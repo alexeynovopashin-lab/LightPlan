@@ -1,0 +1,16 @@
+// Таргет LightPlan-iOS.
+
+SDKROOT = iphoneos
+SUPPORTED_PLATFORMS = iphoneos iphonesimulator
+IPHONEOS_DEPLOYMENT_TARGET = 26.0
+TARGETED_DEVICE_FAMILY = 1
+SUPPORTS_MACCATALYST = NO
+SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
+
+// Info.plist собирается из этих ключей. Только портрет (docs/17 § 19): веб этого
+// не умеет и показывает плашку, натив запрещает поворот сам.
+INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES
+INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES
+INFOPLIST_KEY_UILaunchScreen_Generation = YES
+INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait

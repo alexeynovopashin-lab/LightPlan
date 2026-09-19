@@ -1,0 +1,26 @@
+// Общее для обоих таргетов и обеих конфигураций. Все настройки живут в .xcconfig,
+// а не в LightPlan.xcodeproj: разъезд между таргетами исключён по построению.
+// Слои: Shared ← Debug/Release (проект) и iOS/macOS (таргет).
+
+PRODUCT_NAME = LightPlan
+// Постоянный адрес приложения в системах Apple (docs/17 § 19). Одинаков на iOS и macOS.
+PRODUCT_BUNDLE_IDENTIFIER = Novopashin.LightPlan
+DEVELOPMENT_TEAM = 4A3PUKS9R9
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development
+
+// Swift 6, строгая конкурентность (docs/17 § 1).
+SWIFT_VERSION = 6.0
+SWIFT_STRICT_CONCURRENCY = complete
+
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+
+ALWAYS_SEARCH_USER_PATHS = NO
+
+GENERATE_INFOPLIST_FILE = YES
+INFOPLIST_KEY_CFBundleDisplayName = Light Plan
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+
+// Фаза «Check module boundaries» читает Packages/ и Tools/ за пределами своих входов.
+ENABLE_USER_SCRIPT_SANDBOXING = NO

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "2600"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES"
+      buildArchitectures = "Automatic">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A80000000000000000000001"
+               BuildableName = "LightPlan.app"
+               BlueprintName = "LightPlan-iOS"
+               ReferencedContainer = "container:LightPlan.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LightPlanCoreTests"
+               BuildableName = "LightPlanCoreTests"
+               BlueprintName = "LightPlanCoreTests"
+               ReferencedContainer = "container:Packages/LightPlanCore">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LightPlanDomainTests"
+               BuildableName = "LightPlanDomainTests"
+               BlueprintName = "LightPlanDomainTests"
+               ReferencedContainer = "container:Packages/LightPlanDomain">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LightPlanTimelineTests"
+               BuildableName = "LightPlanTimelineTests"
+               BlueprintName = "LightPlanTimelineTests"
+               ReferencedContainer = "container:Packages/LightPlanTimeline">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LightPlanDataTests"
+               BuildableName = "LightPlanDataTests"
+               BlueprintName = "LightPlanDataTests"
+               ReferencedContainer = "container:Packages/LightPlanData">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LightPlanUITests"
+               BuildableName = "LightPlanUITests"
+               BlueprintName = "LightPlanUITests"
+               ReferencedContainer = "container:Packages/LightPlanUI">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A80000000000000000000001"
+               BuildableName = "LightPlan.app"
+               BlueprintName = "LightPlan-iOS"
+               ReferencedContainer = "container:LightPlan.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A80000000000000000000001"
+               BuildableName = "LightPlan.app"
+               BlueprintName = "LightPlan-iOS"
+               ReferencedContainer = "container:LightPlan.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
