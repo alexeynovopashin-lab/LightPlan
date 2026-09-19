@@ -27,10 +27,12 @@
   build phase of both apps. Rules are in its two functions.
 - Structure changes to `LightPlan.xcodeproj` (targets, phases, package refs):
   propose in text, Alexey does them in Xcode. Never read the pbxproj in full.
-- Devices: iPhone only, portrait (`TARGETED_DEVICE_FAMILY = 1`). iPad later, no
-  date. A version for the iPhone Duo (foldable) comes after the next stable
-  Xcode (Alexey, 2026-09-19; DECISIONS «Устройства…»). Start neither, and don't
-  guess Duo's screen sizes: nothing about it is measured.
+- Devices: first priority is regular iPhones, 14 through 17 Pro Max, portrait
+  (`TARGETED_DEVICE_FAMILY = 1`). Landscape versions for iPadOS and iPhone Duo
+  come later: Alexey has no real iPad or Duo and no mockups exist; his hint is
+  the landscape iOS Calendar (day timeline left, event card right). Duo also
+  waits for the next stable Xcode. Start neither, don't guess their sizes
+  (Alexey, 2026-09-19; DECISIONS «Устройства…»).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 
