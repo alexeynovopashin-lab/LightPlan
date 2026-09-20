@@ -68,7 +68,20 @@ const BLOCKS = {
   light: {
     from: "var GOLD=[226,164,76]",
     to: "var cx = 195, cy = 196, rx = 163, ry = 148;",
-    why: "палитра, skyColor, stateAt, shadowWord, nextLight — 13 состояний света",
+    why: "палитра, skyColor, stateAt, shadowWord, nextLight — 15 состояний света",
+  },
+  /* Слияние лежит в файле двумя кусками: список настроек, которые не
+     сливаются, стоит рядом с их отметками, а сама функция — за тысячу строк
+     от него. Поэтому два блока, а не один. */
+  mergeSkip: {
+    from: "var SET_SKIP = {",
+    to: "function stampSettings(data, now)",
+    why: "какие ключи настроек не участвуют в слиянии",
+  },
+  merge: {
+    from: "var MERGE_LISTS = [",
+    to: "function markBackup()",
+    why: "mtOf, mergePick, mergeStores — слияние двух снимков; функция чистая",
   },
 };
 

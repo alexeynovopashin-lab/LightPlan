@@ -282,6 +282,76 @@ function moonSeries(p, iso) {
   return rec;
 }
 
+/* ---------- Слияние двух снимков ----------
+   Архитектура (§ 7 docs/17) велит сверять `mergeStores` парами снимков:
+   веб сливает пару, результат ложится в фикстуру. Пары — не случайные: каждая
+   названа правилом, которое она проверяет. Прогон идёт в обе стороны, потому
+   что главное свойство слияния — стороны не важны: иначе два устройства
+   выберут разные версии и разойдутся навсегда.
+
+   Функция чистая: `Date.now` внутри неё нет (обрезка отметки из будущего живёт
+   в месте записи, срок надгробия — в чтении). Поэтому фикстура повторяема. */
+const MERGE_PAIRS = [
+  { name: "объединение списков",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 10, n: "моя" }] },
+    b: { dev: "B", sessions: [{ id: "s2", mt: 10, n: "чужая" }] } },
+  { name: "позднейшая правка побеждает",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 20, n: "новее" }] },
+    b: { dev: "B", sessions: [{ id: "s1", mt: 10, n: "старее" }] } },
+  { name: "равные отметки разрешаются меткой устройства",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 10, n: "от A" }] },
+    b: { dev: "B", sessions: [{ id: "s1", mt: 10, n: "от B" }] } },
+  { name: "запись без отметки — самая старая",
+    a: { dev: "A", sessions: [{ id: "s1", n: "без отметки" }] },
+    b: { dev: "B", sessions: [{ id: "s1", mt: 1, n: "с отметкой" }] } },
+  { name: "пустое устройство не стирает книгу",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 10, n: "моя" }] },
+    b: { dev: "B" } },
+  { name: "отсутствие записи не значит удаление",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 10 }, { id: "s2", mt: 10 }] },
+    b: { dev: "B", sessions: [{ id: "s1", mt: 11 }] } },
+  { name: "надгробие позже правки — запись уходит",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 10, n: "жива" }] },
+    b: { dev: "B", graves: [{ id: "s1", del: 20 }] } },
+  { name: "правка позже надгробия — запись возвращается",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 30, n: "правили после" }] },
+    b: { dev: "B", graves: [{ id: "s1", del: 20 }] } },
+  { name: "одно надгробие на двух устройствах — позднейшее время",
+    a: { dev: "A", graves: [{ id: "s1", del: 10 }] },
+    b: { dev: "B", graves: [{ id: "s1", del: 25 }] } },
+  { name: "корзина: удалили на одном, вернули на другом",
+    a: { dev: "A", trashed: [{ rec: { id: "s1", mt: 5 }, del: 10 }] },
+    b: { dev: "B", sessions: [{ id: "s1", mt: 20, n: "вернули" }] } },
+  { name: "корзина побеждает старую правку",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 5, n: "старая" }] },
+    b: { dev: "B", trashed: [{ rec: { id: "s1", mt: 5 }, del: 10 }] } },
+  { name: "корзина по убыванию времени удаления",
+    a: { dev: "A", trashed: [{ rec: { id: "s1" }, del: 10 }, { rec: { id: "s2" }, del: 30 }] },
+    b: { dev: "B", trashed: [{ rec: { id: "s3" }, del: 20 }] } },
+  { name: "все шесть списков сливаются одинаково",
+    a: { dev: "A", sessions: [{ id: "x1", mt: 1 }], orgs: [{ id: "o1", mt: 1 }], spots: [{ id: "p1", mt: 1 }] },
+    b: { dev: "B", blocks: [{ id: "b1", mt: 1 }], shots: [{ id: "h1", mt: 1 }], boards: [{ id: "d1", mt: 1 }] } },
+  { name: "настройка с поздней отметкой побеждает",
+    a: { dev: "A", theme: "dark", setMt: { theme: 10 } },
+    b: { dev: "B", theme: "light", setMt: { theme: 20 } } },
+  { name: "настройка есть только у одного — приходит от него",
+    a: { dev: "A", lang: "ru", setMt: { lang: 1 } },
+    b: { dev: "B", setMt: {} } },
+  { name: "списки не считаются настройками",
+    a: { dev: "A", sessions: [{ id: "s1", mt: 1 }], setMt: { sessions: 99 } },
+    b: { dev: "B", sessions: [{ id: "s2", mt: 1 }] } },
+  { name: "цепочка прежних номеров объединяется",
+    a: { dev: "A", me: { ids: [{ was: "+79990000001", at: "2026-01-02" }] } },
+    b: { dev: "B", me: { ids: [{ was: "+79990000002", at: "2026-01-01" }] } } },
+];
+
+function mergePairs() {
+  const M = ctx.mergeStores;
+  return MERGE_PAIRS.map(function (p) {
+    return { name: p.name, a: p.a, b: p.b, ab: M(p.a, p.b), ba: M(p.b, p.a) };
+  });
+}
+
 /* Млечный Путь: полоса — константа неба, поворот над головой — переменная. */
 function milkyWay() {
   const band = ctx.MW_BAND.map(function (p) { return [p.l, p.w, p.c.ra, p.c.dec]; });
@@ -453,6 +523,14 @@ function main() {
     tolerance: { degrees: 1e-7, dist: 1e-7 },
     count: moon.reduce(function (n, r) { return n + r.t.length; }, 0),
   }, { series: moon }));
+
+  const pairs = mergePairs();
+  out.push(write(dir, "merge_pairs.json", {
+    what: "слияние двух снимков: пара на каждое правило",
+    grid: "каждая пара слита в обе стороны — стороны обязаны быть не важны",
+    tolerance: { result: "строго, включая порядок записей в списках" },
+    count: pairs.length * 2,
+  }, { pairs: pairs }));
 
   const mw = milkyWay();
   out.push(write(dir, "milkyway.json", {

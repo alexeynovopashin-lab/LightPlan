@@ -1,0 +1,477 @@
+{
+  "meta": {
+    "source": "beta/index.html",
+    "cut": "ad1632782902a171",
+    "what": "слияние двух снимков: пара на каждое правило",
+    "grid": "каждая пара слита в обе стороны — стороны обязаны быть не важны",
+    "tolerance": {"result":"строго, включая порядок записей в списках"},
+    "count": 34
+  },
+  "pairs": [
+    {
+      "name": "объединение списков",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":10,"n":"моя"}]},
+      "b": {"dev":"B","sessions":[{"id":"s2","mt":10,"n":"чужая"}]},
+      "ab": {
+        "sessions": [{"id":"s1","mt":10,"n":"моя"},{"id":"s2","mt":10,"n":"чужая"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s2","mt":10,"n":"чужая"},{"id":"s1","mt":10,"n":"моя"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "позднейшая правка побеждает",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":20,"n":"новее"}]},
+      "b": {"dev":"B","sessions":[{"id":"s1","mt":10,"n":"старее"}]},
+      "ab": {
+        "sessions": [{"id":"s1","mt":20,"n":"новее"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s1","mt":20,"n":"новее"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "равные отметки разрешаются меткой устройства",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":10,"n":"от A"}]},
+      "b": {"dev":"B","sessions":[{"id":"s1","mt":10,"n":"от B"}]},
+      "ab": {
+        "sessions": [{"id":"s1","mt":10,"n":"от B"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s1","mt":10,"n":"от B"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "запись без отметки — самая старая",
+      "a": {"dev":"A","sessions":[{"id":"s1","n":"без отметки"}]},
+      "b": {"dev":"B","sessions":[{"id":"s1","mt":1,"n":"с отметкой"}]},
+      "ab": {
+        "sessions": [{"id":"s1","mt":1,"n":"с отметкой"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s1","mt":1,"n":"с отметкой"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "пустое устройство не стирает книгу",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":10,"n":"моя"}]},
+      "b": {"dev":"B"},
+      "ab": {
+        "sessions": [{"id":"s1","mt":10,"n":"моя"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s1","mt":10,"n":"моя"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "отсутствие записи не значит удаление",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":10},{"id":"s2","mt":10}]},
+      "b": {"dev":"B","sessions":[{"id":"s1","mt":11}]},
+      "ab": {
+        "sessions": [{"id":"s1","mt":11},{"id":"s2","mt":10}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s1","mt":11},{"id":"s2","mt":10}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "надгробие позже правки — запись уходит",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":10,"n":"жива"}]},
+      "b": {"dev":"B","graves":[{"id":"s1","del":20}]},
+      "ab": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [{"id":"s1","del":20}],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [{"id":"s1","del":20}],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "правка позже надгробия — запись возвращается",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":30,"n":"правили после"}]},
+      "b": {"dev":"B","graves":[{"id":"s1","del":20}]},
+      "ab": {
+        "sessions": [{"id":"s1","mt":30,"n":"правили после"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [{"id":"s1","del":20}],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s1","mt":30,"n":"правили после"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [{"id":"s1","del":20}],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "одно надгробие на двух устройствах — позднейшее время",
+      "a": {"dev":"A","graves":[{"id":"s1","del":10}]},
+      "b": {"dev":"B","graves":[{"id":"s1","del":25}]},
+      "ab": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [{"id":"s1","del":25}],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [{"id":"s1","del":25}],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "корзина: удалили на одном, вернули на другом",
+      "a": {"dev":"A","trashed":[{"rec":{"id":"s1","mt":5},"del":10}]},
+      "b": {"dev":"B","sessions":[{"id":"s1","mt":20,"n":"вернули"}]},
+      "ab": {
+        "sessions": [{"id":"s1","mt":20,"n":"вернули"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s1","mt":20,"n":"вернули"}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "корзина побеждает старую правку",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":5,"n":"старая"}]},
+      "b": {"dev":"B","trashed":[{"rec":{"id":"s1","mt":5},"del":10}]},
+      "ab": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [{"rec":{"id":"s1","mt":5},"del":10}],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [{"rec":{"id":"s1","mt":5},"del":10}],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "корзина по убыванию времени удаления",
+      "a": {"dev":"A","trashed":[{"rec":{"id":"s1"},"del":10},{"rec":{"id":"s2"},"del":30}]},
+      "b": {"dev":"B","trashed":[{"rec":{"id":"s3"},"del":20}]},
+      "ab": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [{"rec":{"id":"s2"},"del":30},{"rec":{"id":"s3"},"del":20},{"rec":{"id":"s1"},"del":10}],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [{"rec":{"id":"s2"},"del":30},{"rec":{"id":"s3"},"del":20},{"rec":{"id":"s1"},"del":10}],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "все шесть списков сливаются одинаково",
+      "a": {"dev":"A","sessions":[{"id":"x1","mt":1}],"orgs":[{"id":"o1","mt":1}],"spots":[{"id":"p1","mt":1}]},
+      "b": {"dev":"B","blocks":[{"id":"b1","mt":1}],"shots":[{"id":"h1","mt":1}],"boards":[{"id":"d1","mt":1}]},
+      "ab": {
+        "sessions": [{"id":"x1","mt":1}],
+        "orgs": [{"id":"o1","mt":1}],
+        "spots": [{"id":"p1","mt":1}],
+        "blocks": [{"id":"b1","mt":1}],
+        "shots": [{"id":"h1","mt":1}],
+        "boards": [{"id":"d1","mt":1}],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"x1","mt":1}],
+        "orgs": [{"id":"o1","mt":1}],
+        "spots": [{"id":"p1","mt":1}],
+        "blocks": [{"id":"b1","mt":1}],
+        "shots": [{"id":"h1","mt":1}],
+        "boards": [{"id":"d1","mt":1}],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "настройка с поздней отметкой побеждает",
+      "a": {"dev":"A","theme":"dark","setMt":{"theme":10}},
+      "b": {"dev":"B","theme":"light","setMt":{"theme":20}},
+      "ab": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "theme": "light",
+        "setMt": {"theme":20}
+      },
+      "ba": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "theme": "light",
+        "setMt": {"theme":20}
+      }
+    },
+    {
+      "name": "настройка есть только у одного — приходит от него",
+      "a": {"dev":"A","lang":"ru","setMt":{"lang":1}},
+      "b": {"dev":"B","setMt":{}},
+      "ab": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "lang": "ru",
+        "setMt": {"lang":1}
+      },
+      "ba": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "lang": "ru",
+        "setMt": {"lang":1}
+      }
+    },
+    {
+      "name": "списки не считаются настройками",
+      "a": {"dev":"A","sessions":[{"id":"s1","mt":1}],"setMt":{"sessions":99}},
+      "b": {"dev":"B","sessions":[{"id":"s2","mt":1}]},
+      "ab": {
+        "sessions": [{"id":"s1","mt":1},{"id":"s2","mt":1}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      },
+      "ba": {
+        "sessions": [{"id":"s2","mt":1},{"id":"s1","mt":1}],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "setMt": {}
+      }
+    },
+    {
+      "name": "цепочка прежних номеров объединяется",
+      "a": {"dev":"A","me":{"ids":[{"was":"+79990000001","at":"2026-01-02"}]}},
+      "b": {"dev":"B","me":{"ids":[{"was":"+79990000002","at":"2026-01-01"}]}},
+      "ab": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "me": {"ids":[{"was":"+79990000002","at":"2026-01-01"},{"was":"+79990000001","at":"2026-01-02"}]},
+        "setMt": {"me":0}
+      },
+      "ba": {
+        "sessions": [],
+        "orgs": [],
+        "spots": [],
+        "blocks": [],
+        "shots": [],
+        "boards": [],
+        "trashed": [],
+        "graves": [],
+        "me": {"ids":[{"was":"+79990000002","at":"2026-01-01"},{"was":"+79990000001","at":"2026-01-02"}]},
+        "setMt": {"me":0}
+      }
+    }
+  ]
+}

@@ -174,6 +174,52 @@ enum ParityFixtures {
         let air: [AirScore]
     }
 
+    // MARK: - Слияние снимков
+
+    /// Снимок устройства — произвольный JSON: у книги фотографа не один тип.
+    /// Разбирать его здесь незачем, задача фикстуры — сравнение целиком.
+    indirect enum JSONValue: Decodable, Equatable {
+        case null
+        case bool(Bool)
+        case number(Double)
+        case string(String)
+        case array([JSONValue])
+        case object([String: JSONValue])
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.singleValueContainer()
+            if c.decodeNil() { self = .null; return }
+            if let v = try? c.decode(Bool.self) { self = .bool(v); return }
+            if let v = try? c.decode(Double.self) { self = .number(v); return }
+            if let v = try? c.decode(String.self) { self = .string(v); return }
+            if let v = try? c.decode([JSONValue].self) { self = .array(v); return }
+            if let v = try? c.decode([String: JSONValue].self) { self = .object(v); return }
+            throw DecodingError.dataCorruptedError(in: c, debugDescription: "не JSON")
+        }
+
+        /// Вид, в котором порядок записей в списках не считается разницей.
+        /// Нужен ровно для одного вопроса: «стороны слияния не важны?»
+        var canonical: String {
+            switch self {
+            case .null: return "null"
+            case .bool(let v): return v ? "true" : "false"
+            case .number(let v): return String(v)
+            case .string(let v): return "\"\(v)\""
+            case .array(let v): return "[" + v.map(\.canonical).sorted().joined(separator: ",") + "]"
+            case .object(let v):
+                return "{" + v.keys.sorted().map { "\($0):\(v[$0]!.canonical)" }.joined(separator: ",") + "}"
+            }
+        }
+    }
+
+    struct MergePair: Decodable {
+        let name: String
+        let a, b: JSONValue
+        /// Результат слияния «a затем b» и обратного порядка.
+        let ab, ba: JSONValue
+    }
+    struct MergePairsFile: Decodable { let meta: Meta; let pairs: [MergePair] }
+
     // MARK: - Луна и Млечный Путь
 
     struct MoonSeries: Decodable {

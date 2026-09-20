@@ -7,7 +7,7 @@ import Foundation
 /// а загрузчик останется тем же.
 struct ParityFixturesTests {
 
-    @Test("Все шесть фикстур читаются и посчитаны одной вырезкой из беты")
+    @Test("Все семь фикстур читаются и посчитаны одной вырезкой из беты")
     func allFixturesLoad() throws {
         let solar = try ParityFixtures.load("solar_day.json", as: ParityFixtures.SolarDayFile.self)
         let sample = try ParityFixtures.load("solar_sample.json", as: ParityFixtures.SolarSampleFile.self)
@@ -15,9 +15,10 @@ struct ParityFixturesTests {
         let score = try ParityFixtures.load("sunset_score.json", as: ParityFixtures.SunsetScoreFile.self)
         let moon = try ParityFixtures.load("moon.json", as: ParityFixtures.MoonFile.self)
         let mw = try ParityFixtures.load("milkyway.json", as: ParityFixtures.MilkyWayFile.self)
+        let merge = try ParityFixtures.load("merge_pairs.json", as: ParityFixtures.MergePairsFile.self)
 
         let cuts = Set([solar.meta.cut, sample.meta.cut, light.meta.cut,
-                        score.meta.cut, moon.meta.cut, mw.meta.cut])
+                        score.meta.cut, moon.meta.cut, mw.meta.cut, merge.meta.cut])
         #expect(cuts.count == 1, "фикстуры посчитаны разными состояниями беты: \(cuts). Собрать заново: make parity")
 
         #expect(solar.days.count == solar.meta.count)
@@ -26,6 +27,25 @@ struct ParityFixturesTests {
         #expect(score.scores.count + score.air.count == score.meta.count)
         #expect(moon.series.reduce(0) { $0 + $1.t.count } == moon.meta.count)
         #expect(mw.band.count + mw.coreAltAz.count == mw.meta.count)
+        #expect(merge.pairs.count * 2 == merge.meta.count)
+    }
+
+    /// Главное свойство слияния: стороны не важны. Иначе два устройства
+    /// выберут разные версии одной записи и разойдутся навсегда.
+    ///
+    /// Порядок записей внутри списка при этом зависит от стороны — он идёт за
+    /// первым снимком. Замер 20 сентября 2026: из 17 пар две дали разный
+    /// порядок и ни одна — разное содержание. Поэтому сравнение здесь по
+    /// содержанию, а сам порядок Swift обязан повторить в каждую сторону
+    /// отдельно, и это сверяется побайтово с `ab` и `ba`.
+    @Test("Слияние: стороны не важны")
+    func mergeIsSideIndependent() throws {
+        let f = try ParityFixtures.load("merge_pairs.json", as: ParityFixtures.MergePairsFile.self)
+        #expect(!f.pairs.isEmpty)
+        for p in f.pairs {
+            #expect(p.ab.canonical == p.ba.canonical, "пара «\(p.name)»: стороны дали разное содержание")
+            #expect(!p.name.isEmpty)
+        }
     }
 
     @Test("Ряды солнца: время, высота, азимут и тень одной длины")
