@@ -1,0 +1,190 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXFileReference section */
+		B10000000000000000000001 /* TimebarSpike.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TimebarSpike.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10000000000000000000010 /* Spike.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Spike.xcconfig; sourceTree = "<group>"; };
+		B10000000000000000000011 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		B30000000000000000000001 /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B70000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B20000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				B30000000000000000000001 /* App */,
+				B20000000000000000000003 /* Config */,
+				B10000000000000000000011 /* README.md */,
+				B20000000000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B20000000000000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000001 /* TimebarSpike.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B20000000000000000000003 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000010 /* Spike.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B80000000000000000000001 /* TimebarSpike */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA0000000000000000000002 /* Build configuration list for PBXNativeTarget "TimebarSpike" */;
+			buildPhases = (
+				B70000000000000000000002 /* Sources */,
+				B70000000000000000000003 /* Frameworks */,
+				B70000000000000000000004 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B30000000000000000000001 /* App */,
+			);
+			name = TimebarSpike;
+			productName = TimebarSpike;
+			productReference = B10000000000000000000001 /* TimebarSpike.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BB0000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					B80000000000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = BA0000000000000000000001 /* Build configuration list for PBXProject "TimebarSpike" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B20000000000000000000001;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B20000000000000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B80000000000000000000001 /* TimebarSpike */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B70000000000000000000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B70000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B90000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B10000000000000000000010 /* Spike.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		B90000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B10000000000000000000010 /* Spike.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		B90000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B10000000000000000000010 /* Spike.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		B90000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B10000000000000000000010 /* Spike.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BA0000000000000000000001 /* Build configuration list for PBXProject "TimebarSpike" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B90000000000000000000001 /* Debug */,
+				B90000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BA0000000000000000000002 /* Build configuration list for PBXNativeTarget "TimebarSpike" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B90000000000000000000003 /* Debug */,
+				B90000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BB0000000000000000000001 /* Project object */;
+}
