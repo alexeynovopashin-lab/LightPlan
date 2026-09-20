@@ -7,10 +7,30 @@ import SwiftUI
 @MainActor
 final class TimebarModel {
 
-    /// Сутки от сегодняшних. Меняются только передачей разряда.
+    /// Сутки от сегодняшних. Меняет их передача разряда, драг ленты и барабан.
     private(set) var day = 0
-    /// Время внутри суток, в минутах от полуночи.
+    /// Настенное время суток, 0…1440. Лента ходит по всем суткам целиком,
+    /// ползунок — только по светлой части (`dayStart…dayEnd`), как в вебе:
+    /// два контроля смотрят на один момент, но имеют разный ход.
     private(set) var minutes = 700.0
+
+    /// Чем показаны сутки под ползунком.
+    enum RibbonMode: String, CaseIterable, Identifiable {
+        /// Полоса: трое суток шириной в экран, время течёт непрерывно.
+        case lane = "полоса"
+        /// Барабан: ячейки по 50 pt, время суток не трогает вовсе.
+        case drum = "барабан"
+
+        var id: String { rawValue }
+    }
+
+    /// В вебе по умолчанию барабан.
+    var ribbonMode = RibbonMode.drum
+    /// Смещение барабана в ячейках от выбранной. Между хватами всегда 0.
+    private(set) var drumPos = 0.0
+    /// Пружина ленты при срыве и её прозрачность.
+    private(set) var ribbonShift = 0.0
+    private(set) var ribbonOpacity = 1.0
     private(set) var wind = Transmission()
 
     /// Сдвиг и прозрачность всего яруса: ими рисуется и натяжение, и срыв.
@@ -35,21 +55,40 @@ final class TimebarModel {
     private var lastTick: CFTimeInterval = 0
     private var bleedFrom: Double?
     private var bleedStart: CFTimeInterval = 0
+    private var ribbonLast = 0.0
+    private var settleLink: CADisplayLink?
+    private var settleFrom = 0.0
+    private var settleStart: CFTimeInterval = 0
 
     // MARK: - Выдуманные сутки
 
     /// Края суток. Нарочно гуляют ото дня ко дню, чтобы смена даты была видна
     /// не только по подписи. В приложении сюда придёт солнечная модель.
-    var dayStart: Double { 300 + 20 * sin(Double(day) / 9) }
-    var dayEnd: Double { 1260 - 20 * sin(Double(day) / 9) }
+    var dayStart: Double { bounds(offset: 0).start }
+    var dayEnd: Double { bounds(offset: 0).end }
 
-    var date: Date { Calendar.current.date(byAdding: .day, value: day, to: .now) ?? .now }
+    var date: Date { date(offset: 0) }
 
-    /// Где стоит ползунок, 0…1.
+    func date(offset: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: day + offset, to: .now) ?? .now
+    }
+
+    /// Края светлой части чужих суток — лента рисует соседей, а не только свои.
+    func bounds(offset: Int) -> (start: Double, end: Double) {
+        let wave = sin(Double(day + offset) / 9)
+        return (300 + 20 * wave, 1260 - 20 * wave)
+    }
+
+    /// Где стоит ползунок, 0…1. За краями светлой части он упирается, а
+    /// лента продолжает идти — время при этом настоящее.
     var position: Double {
         let span = dayEnd - dayStart
         return span > 0 ? min(max((minutes - dayStart) / span, 0), 1) : 0
     }
+
+    /// Рамка барабана подаётся вслед за натяжением ползунка ещё до срыва:
+    /// видно, что дата уже под нагрузкой, а не дёргается из состояния покоя.
+    var frameShift: Double { wind.strain * 0.6 }
 
     var clock: String {
         let m = Int(minutes.rounded())
@@ -74,7 +113,7 @@ final class TimebarModel {
 
         let usable = max(width - thumb, 1)
         let p = min(max((x - thumb / 2) / usable, 0), 1)
-        setMinutes(dayStart + p * (dayEnd - dayStart))
+        setMinutes(min(max(dayStart + p * (dayEnd - dayStart), dayStart), dayEnd))
 
         // Взвод начинается, только когда значение уже на упоре И палец
         // продолжает идти наружу.
@@ -127,11 +166,116 @@ final class TimebarModel {
     }
 
     private func setMinutes(_ value: Double) {
-        minutes = min(max(value, dayStart), dayEnd)
+        minutes = value
         let hour = Int(minutes) / 60
         if hourMark != hour {
             if hourMark >= 0 { haptics.detent() }
             hourMark = hour
+        }
+    }
+
+    // MARK: - Лента и барабан
+
+    /// Куда сдвинута дорожка. Позицию всегда ставит код: нативного скролла
+    /// здесь нет вовсе, иначе резиновый откат на упоре спорит с нашим счётом
+    /// и даты «убегают» (DECISIONS, «Лента без нативного скролла»).
+    func ribbonOffset(clipWidth: Double) -> Double {
+        switch ribbonMode {
+        case .lane:
+            let pxPerMin = clipWidth / 1440
+            return (1440 + minutes) * pxPerMin - clipWidth / 2
+        case .drum:
+            return (Double(Self.drumSpan) + drumPos) * Self.drumCell
+                 + Self.drumCell / 2 - clipWidth / 2
+        }
+    }
+
+    /// Ячейка барабана и сколько их по сторонам от выбранной.
+    static let drumCell = 50.0
+    static let drumSpan = 4
+
+    func ribbonGrab() {
+        drumStopSettle()
+        ribbonLast = 0
+        meter.start()
+    }
+
+    /// `translation` — накопленный сдвиг пальца от начала жеста.
+    func ribbonDrag(translation: Double, clipWidth: Double) {
+        let dx = translation - ribbonLast
+        ribbonLast = translation
+        switch ribbonMode {
+        case .lane:
+            let pxPerMin = clipWidth / 1440
+            setMinutes(wallFlip(minutes - dx / pxPerMin))
+        case .drum:
+            drumPos = drumFlip(drumPos - dx / Self.drumCell)
+        }
+    }
+
+    func ribbonRelease() {
+        meter.stop()
+        if ribbonMode == .drum { drumSettle() }
+    }
+
+    /// Тап по соседней ячейке — прыжок на её сутки.
+    func drumTap(offset: Int) {
+        guard offset != 0 else { return }
+        drumPos = drumFlip(Double(offset))
+    }
+
+    /// Переход через полночь: сразу, без порога и паузы. Читать собственное
+    /// положение обратно не нужно — значит нечему рассинхронизироваться.
+    private func wallFlip(_ t: Double) -> Double {
+        var t = t
+        while t < 0 || t >= 1440 {
+            let dir = t < 0 ? -1 : 1
+            day += dir
+            t -= Double(dir) * 1440
+        }
+        return t
+    }
+
+    /// Барабан крутит только сутки: время суток он не трогает вовсе, ровно
+    /// как в одометре младший разряд не трогает старший.
+    private func drumFlip(_ pos: Double) -> Double {
+        var pos = pos
+        var flipped = false
+        while pos < -0.5 || pos > 0.5 {
+            let dir = pos > 0 ? 1 : -1
+            day += dir
+            pos -= Double(dir)
+            flipped = true
+        }
+        if flipped { haptics.snap() }
+        return pos
+    }
+
+    /// Осадка: барабан обязан довернуть до своей ячейки сам, а не замереть
+    /// между. Кубическое затухание, те же 210 мс, что у въезда после срыва.
+    private func drumSettle() {
+        drumStopSettle()
+        guard drumPos != 0 else { return }
+        let from = drumPos
+        let start = CACurrentMediaTime()
+        let link = CADisplayLink(target: self, selector: #selector(settleStep))
+        settleFrom = from
+        settleStart = start
+        link.add(to: .main, forMode: .common)
+        settleLink = link
+    }
+
+    private func drumStopSettle() {
+        settleLink?.invalidate()
+        settleLink = nil
+    }
+
+    @objc private func settleStep(_ link: CADisplayLink) {
+        let k = min((link.timestamp - settleStart) / 0.21, 1)
+        drumPos = settleFrom * pow(1 - k, 3)
+        if k >= 1 {
+            drumPos = 0
+            drumStopSettle()
         }
     }
 
@@ -148,9 +292,15 @@ final class TimebarModel {
         snaps += 1
         note("срыв \(dir > 0 ? "вперёд" : "назад"), удержание №\(grabs)")
 
+        // Лента и барабан срываются тем же движением, что и ярус ползунка:
+        // два разряда одного механизма должны быть видимо связаны, а не
+        // ехать порознь. Ход у ленты свой — 40 pt против 34 у барабана.
+        let ribbonOff = ribbonMode == .drum ? 34.0 : 40.0
         withAnimation(.easeIn(duration: 0.09)) {
             laneShift = Double(dir) * 34
             laneOpacity = 0
+            ribbonShift = Double(-dir) * ribbonOff
+            ribbonOpacity = 0
         }
         Task {
             try? await Task.sleep(for: .milliseconds(95))
@@ -159,8 +309,15 @@ final class TimebarModel {
             minutes = dir > 0 ? dayStart : dayEnd
             hourMark = Int(minutes) / 60
             laneShift = Double(-dir) * 34
-            withAnimation(.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.2)) { laneShift = 0 }
-            withAnimation(.easeOut(duration: 0.16)) { laneOpacity = 1 }
+            ribbonShift = Double(dir) * ribbonOff
+            withAnimation(.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.2)) {
+                laneShift = 0
+                ribbonShift = 0
+            }
+            withAnimation(.easeOut(duration: 0.16)) {
+                laneOpacity = 1
+                ribbonOpacity = 1
+            }
             try? await Task.sleep(for: .milliseconds(210))
             snapping = false
         }

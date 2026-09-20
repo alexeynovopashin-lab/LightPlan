@@ -11,6 +11,18 @@ struct SpikeScreen: View {
             haptics
             Spacer(minLength: 0)
 
+            Picker("Вид ленты", selection: Binding(
+                get: { model.ribbonMode },
+                set: { model.ribbonMode = $0 }
+            )) {
+                ForEach(TimebarModel.RibbonMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            RibbonView(model: model)
+
             // Ярус: натяжение и срыв двигают его целиком.
             ScrubView(model: model)
                 .offset(x: model.laneShift)
