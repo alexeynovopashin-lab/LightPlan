@@ -4,8 +4,6 @@ import SwiftUI
 /// ни солнца, ни погоды, ни записей — иначе непонятно, что именно проверяем.
 struct SpikeScreen: View {
     @State private var model = TimebarModel()
-    @State private var snapKind = Haptics.Snap.sharp
-    @State private var windBuzz = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -39,30 +37,13 @@ struct SpikeScreen: View {
         }
     }
 
-    /// Отдачи в вебе на iPhone нет вовсе, поэтому её характер выбирается здесь
-    /// же пальцем, а не в следующей сборке.
+    /// Показания прибора: «слабо бьёт» и «бьёт запасным путём» — разные
+    /// болезни, и лечатся они разным. Числа отдачи подобраны пальцем и зашиты
+    /// (`Haptics`), поэтому ползунков тут больше нет.
     private var haptics: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Picker("Удар на срыве", selection: $snapKind) {
-                ForEach(Haptics.Snap.allCases) { kind in
-                    Text(kind.rawValue).tag(kind)
-                }
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: snapKind) { _, kind in
-                model.haptics.snapKind = kind
-                model.haptics.snap()          // сразу дать пощупать
-            }
-
-            HStack {
-                Toggle("Гудение на взводе", isOn: $windBuzz)
-                    .font(.caption)
-                    .onChange(of: windBuzz) { _, on in model.haptics.windBuzz = on }
-                Button("Ударить") { model.haptics.snap() }
-                    .font(.caption)
-                    .buttonStyle(.bordered)
-            }
-        }
+        Text("отдача: \(model.haptics.status)")
+            .font(.caption2.monospaced())
+            .foregroundStyle(.tertiary)
     }
 
     private var numbers: some View {
