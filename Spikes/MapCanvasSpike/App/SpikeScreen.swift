@@ -11,6 +11,10 @@ struct SpikeScreen: View {
     @State private var hourUTC: Double = 6
     /// Приглушённый вид MapKit. У MapLibre ручки нет — там весь стиль наш.
     @State private var muted = true
+    /// Замер маршрутов Apple — отдельный вопрос итерации 4: если MKDirections
+    /// закрывает и машину, и тропы, путь MapKit становится дешевле вдвойне.
+    @State private var probe = RouteProbe()
+    @State private var showProbe = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -19,6 +23,7 @@ struct SpikeScreen: View {
             InstrumentOverlay(lat: place.lat, lon: place.lon, dark: dark, hourUTC: hourUTC)
                 .ignoresSafeArea()
             controls
+            if showProbe { probeSheet }
         }
         .preferredColorScheme(dark ? .dark : .light)
     }
@@ -28,6 +33,33 @@ struct SpikeScreen: View {
         case .mapKit: MapKitCanvas(place: place, dark: dark, muted: muted)
         case .mapLibre: MapLibreCanvas(place: place, dark: dark)
         }
+    }
+
+    /// Числа замера поверх холста: иначе их пришлось бы вылавливать из лога.
+    private var probeSheet: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(probe.legs) { leg in
+                HStack {
+                    Text("\(leg.mode) · \(leg.name)").font(.system(size: 11))
+                    Spacer()
+                    if let km = leg.km, let min = leg.min {
+                        Text(String(format: "%.1f км · %d мин", km, min))
+                            .font(.system(size: 11, weight: .semibold))
+                    } else {
+                        Text(leg.error ?? "—").font(.system(size: 10)).foregroundStyle(.red)
+                    }
+                }
+            }
+            if !probe.running && !probe.legs.isEmpty {
+                Text(String(format: "всего %.2f с на %d запросов", probe.elapsed, probe.legs.count))
+                    .font(.system(size: 11)).padding(.top, 2)
+            }
+        }
+        .padding(10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 10)
+        .padding(.top, 230)
+        .onTapGesture { showProbe = false }
     }
 
     private var controls: some View {
@@ -51,6 +83,11 @@ struct SpikeScreen: View {
                 }
             }
             Slider(value: $hourUTC, in: 0...24)
+            Button(probe.running ? "считаю…" : "Маршруты Apple") {
+                showProbe = true
+                Task { await probe.run() }
+            }
+            .disabled(probe.running)
         }
         .padding(.horizontal, 12)
         .padding(.top, 4)
