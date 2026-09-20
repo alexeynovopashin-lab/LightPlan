@@ -83,10 +83,18 @@ final class Haptics {
 
     // MARK: - Детент
 
-    /// Час пройден. В вебе это `vibrate(2)` — самый короткий удар.
+    /// Час пройден, ячейка барабана щёлкнула. В вебе это `vibrate(2)` — самый
+    /// короткий удар, но на iPhone его нет вовсе, так что сила подбирается с
+    /// нуля. Алексей, 20 сентября 2026: «щелчок стоит усилить» — поднято с
+    /// 0.6 до полной, с коротким телом для веса. Характер остаётся лёгким:
+    /// высокая резкость, тело всего 18 мс.
     func detent() {
-        guard !play(events: [hit(0.6 * power, 0.9, at: 0)]) else { return }
-        light.impactOccurred(intensity: 0.6 * power)
+        let k = Float(power)
+        guard !play(events: [
+            body(0.45 * k, 0.8, at: 0, for: 0.018),
+            hit(1 * k, 0.95, at: 0),
+        ]) else { return }
+        heavy.impactOccurred(intensity: 0.7 * power)
     }
 
     // MARK: - Взвод
