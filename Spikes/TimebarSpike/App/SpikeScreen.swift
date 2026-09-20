@@ -4,10 +4,13 @@ import SwiftUI
 /// ни солнца, ни погоды, ни записей — иначе непонятно, что именно проверяем.
 struct SpikeScreen: View {
     @State private var model = TimebarModel()
+    @State private var snapKind = Haptics.Snap.sharp
+    @State private var windBuzz = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             header
+            haptics
             Spacer(minLength: 0)
 
             // Ярус: натяжение и срыв двигают его целиком.
@@ -33,6 +36,32 @@ struct SpikeScreen: View {
                 .font(.system(size: 54, weight: .light, design: .rounded))
                 .monospacedDigit()
                 .contentTransition(.numericText())
+        }
+    }
+
+    /// Отдачи в вебе на iPhone нет вовсе, поэтому её характер выбирается здесь
+    /// же пальцем, а не в следующей сборке.
+    private var haptics: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Удар на срыве", selection: $snapKind) {
+                ForEach(Haptics.Snap.allCases) { kind in
+                    Text(kind.rawValue).tag(kind)
+                }
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: snapKind) { _, kind in
+                model.haptics.snapKind = kind
+                model.haptics.snap()          // сразу дать пощупать
+            }
+
+            HStack {
+                Toggle("Гудение на взводе", isOn: $windBuzz)
+                    .font(.caption)
+                    .onChange(of: windBuzz) { _, on in model.haptics.windBuzz = on }
+                Button("Ударить") { model.haptics.snap() }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+            }
         }
     }
 

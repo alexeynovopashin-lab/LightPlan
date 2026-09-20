@@ -25,7 +25,8 @@ final class TimebarModel {
     private(set) var journal: [String] = []
 
     let meter = FrameMeter()
-    private let haptics = Haptics()
+    /// Не private: характер удара выбирают прямо на экране, пальцем.
+    let haptics = Haptics()
 
     private var holding = false
     private var lastX: Double?
@@ -86,9 +87,11 @@ final class TimebarModel {
         lastX = x
 
         guard side != 0 else {
-            // Ушли из зоны: накопленное стравливается, ярус возвращается сразу.
+            // Ушли из зоны: накопленное стравливается, ярус возвращается сразу
+            // (замысел, а не случайность — Алексей, 20 сентября 2026).
             if wind.raw != 0 { startBleed() }
             wind.release()
+            haptics.windStop()
             laneShift = 0
             return
         }
@@ -97,6 +100,8 @@ final class TimebarModel {
         case .fire(let dir): fire(dir)
         case .winding:
             laneShift = wind.strain
+            haptics.windStart()
+            haptics.windLevel(wind.progress)
             startTicker()
         case .idle:
             laneShift = 0
@@ -110,6 +115,7 @@ final class TimebarModel {
         meter.stop()
         let had = wind.raw
         wind.release()
+        haptics.windStop()
         laneShift = 0
         if had != 0, !snapping {
             note("отпустили не дожав, стравлено")
@@ -208,7 +214,9 @@ final class TimebarModel {
         let dt = max(now - lastTick, 0)
         switch wind.dwell(dt: dt) {
         case .fire(let dir): fire(dir)
-        case .winding: laneShift = wind.strain
+        case .winding:
+            laneShift = wind.strain
+            haptics.windLevel(wind.progress)
         case .idle: stopTicker()
         }
     }
