@@ -31,10 +31,14 @@ struct RibbonView: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { g in
-                        if g.translation == .zero { model.ribbonGrab() }
                         model.ribbonDrag(translation: g.translation.width, clipWidth: w)
                     }
-                    .onEnded { _ in model.ribbonRelease() }
+                    .onEnded { g in
+                        // Сдвиг меньше 6 pt — это тап по ячейке, а не драг.
+                        let moved = abs(g.translation.width) + abs(g.translation.height)
+                        model.ribbonRelease(tapAt: moved < 6 ? g.location.x : nil,
+                                            clipWidth: w)
+                    }
             )
         }
         .frame(height: height)
@@ -120,8 +124,6 @@ struct RibbonView: View {
                 .foregroundStyle(offset == 0 ? .primary : .secondary)
         }
         .frame(width: TimebarModel.drumCell, height: height)
-        .contentShape(Rectangle())
-        .onTapGesture { model.drumTap(offset: offset) }
     }
 
     /// Окно барабана: выбранная ячейка всегда по центру.

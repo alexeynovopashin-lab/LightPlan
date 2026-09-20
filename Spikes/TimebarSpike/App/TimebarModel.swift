@@ -56,9 +56,12 @@ final class TimebarModel {
     private var bleedFrom: Double?
     private var bleedStart: CFTimeInterval = 0
     private var ribbonLast = 0.0
+    private var ribbonDragging = false
     private var settleLink: CADisplayLink?
     private var settleFrom = 0.0
     private var settleStart: CFTimeInterval = 0
+    private var settleSeconds = 0.21
+    private var settleCell = 0
 
     // MARK: - Выдуманные сутки
 
@@ -194,14 +197,21 @@ final class TimebarModel {
     static let drumCell = 50.0
     static let drumSpan = 4
 
-    func ribbonGrab() {
-        drumStopSettle()
-        ribbonLast = 0
-        meter.start()
-    }
-
     /// `translation` — накопленный сдвиг пальца от начала жеста.
+    ///
+    /// Начало жеста ловится здесь, а не отдельным «взяли»: SwiftUI не обещает,
+    /// что первый кадр придёт с нулевым сдвигом, и на нём уже может быть
+    /// несколько точек. Пока началом считался ровно ноль, в счётчике оставался
+    /// сдвиг прошлого жеста — и первый же кадр давал огромную разницу: дата
+    /// менялась до того, как палец поехал (Алексей, 20 сентября 2026).
     func ribbonDrag(translation: Double, clipWidth: Double) {
+        if !ribbonDragging {
+            ribbonDragging = true
+            drumStopSettle()
+            meter.start()
+            // Отсчёт всегда от того места, где жест застали.
+            ribbonLast = translation
+        }
         let dx = translation - ribbonLast
         ribbonLast = translation
         switch ribbonMode {
@@ -213,15 +223,40 @@ final class TimebarModel {
         }
     }
 
-    func ribbonRelease() {
+    /// Отпустили. `tapAt` — место пальца, если жест оказался тапом, а не
+    /// драгом. Порог тот же, что в вебе: сдвиг меньше 6 pt — это тап.
+    /// Без него любое дрожание пальца на ячейке перекидывало дату.
+    func ribbonRelease(tapAt x: Double? = nil, clipWidth: Double = 0) {
+        guard ribbonDragging else { return }
+        ribbonDragging = false
+        ribbonLast = 0
         meter.stop()
-        if ribbonMode == .drum { drumSettle() }
+        guard ribbonMode == .drum else { return }
+        if let x, case let offset = cellOffset(atX: x, clipWidth: clipWidth), offset != 0 {
+            drumTap(offset: offset)
+        } else {
+            drumSettle()
+        }
     }
 
-    /// Тап по соседней ячейке — прыжок на её сутки.
+    /// Какая ячейка лежит под пальцем, считая от выбранной.
+    private func cellOffset(atX x: Double, clipWidth: Double) -> Int {
+        let trackX = x + ribbonOffset(clipWidth: clipWidth)
+        let index = Int(floor(trackX / Self.drumCell)) - Self.drumSpan
+        return min(max(index, -Self.drumSpan), Self.drumSpan)
+    }
+
+    /// Тап по соседней ячейке. Сутки меняются сразу, а барабан доезжает до
+    /// них на глазах: ячейки уже новые, но дорожка стоит там, где стояла, и
+    /// съезжает к центру. В вебе тап мгновенный (замерено по коду), это
+    /// улучшение по просьбе Алексея, 20 сентября 2026.
     func drumTap(offset: Int) {
-        guard offset != 0 else { return }
-        drumPos = drumFlip(Double(offset))
+        guard offset != 0, !gliding else { return }
+        day += offset
+        drumPos = Double(offset)
+        // Чем дальше ехать, тем дольше: одинаковое время на одну и на четыре
+        // ячейки читается как рывок.
+        glide(from: Double(offset), seconds: 0.2 + 0.045 * Double(abs(offset)))
     }
 
     /// Переход через полночь: сразу, без порога и паузы. Читать собственное
@@ -247,23 +282,34 @@ final class TimebarModel {
             pos -= Double(dir)
             flipped = true
         }
-        if flipped { haptics.snap() }
+        // Лёгкий щелчок, а не трещотка: трещотка — это переданный разряд,
+        // редкое усилие. Барабан же листают пачками, и тяжёлый удар на каждых
+        // сутках читается как пулемёт (Алексей: «плохие ощущения»). В вебе
+        // отдачи здесь нет вовсе, сравнивать не с чем.
+        if flipped { haptics.detent() }
         return pos
     }
 
     /// Осадка: барабан обязан довернуть до своей ячейки сам, а не замереть
     /// между. Кубическое затухание, те же 210 мс, что у въезда после срыва.
     private func drumSettle() {
-        drumStopSettle()
         guard drumPos != 0 else { return }
-        let from = drumPos
-        let start = CACurrentMediaTime()
-        let link = CADisplayLink(target: self, selector: #selector(settleStep))
+        glide(from: drumPos, seconds: 0.21)
+    }
+
+    /// Доводка барабана к своей ячейке: кубическое затухание, как в вебе.
+    private func glide(from: Double, seconds: Double) {
+        drumStopSettle()
         settleFrom = from
-        settleStart = start
+        settleStart = CACurrentMediaTime()
+        settleSeconds = seconds
+        settleCell = Int(from.rounded(.towardZero))
+        let link = CADisplayLink(target: self, selector: #selector(settleStep))
         link.add(to: .main, forMode: .common)
         settleLink = link
     }
+
+    private var gliding: Bool { settleLink != nil }
 
     private func drumStopSettle() {
         settleLink?.invalidate()
@@ -271,8 +317,15 @@ final class TimebarModel {
     }
 
     @objc private func settleStep(_ link: CADisplayLink) {
-        let k = min((link.timestamp - settleStart) / 0.21, 1)
+        let k = min((link.timestamp - settleStart) / settleSeconds, 1)
         drumPos = settleFrom * pow(1 - k, 3)
+        // Ячейки щёлкают под окном, пока барабан доезжает: механизм с
+        // фиксатором, а не беззвучный слайд.
+        let cell = Int(drumPos.rounded(.towardZero))
+        if cell != settleCell {
+            settleCell = cell
+            haptics.detent()
+        }
         if k >= 1 {
             drumPos = 0
             drumStopSettle()
