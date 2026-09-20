@@ -12,7 +12,10 @@
 - Product decisions: `light_plan:Light_Plan/DECISIONS.md` (append-only; native
   decisions go there too). The web PWA in `light_plan:Light_Plan/` is the
   parity reference; don't edit it from here.
-- Git: local only, no remote (decided 2026-09-19). Nothing to push.
+- Git: remote `origin` = `git@github.com:alexeynovopashin-lab/LightPlan.git`,
+  **public**, created by Alexey 2026-09-20. It is a different repo from the
+  web's `Light-Plan` — the two histories stay separate on purpose. Push after
+  each iteration's checkpoint; no secrets in this tree, keep it that way.
 
 ## Layout and rules
 
