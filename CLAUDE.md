@@ -48,3 +48,13 @@ grep -nE 'error:|\*\* BUILD (SUCCEEDED|FAILED) \*\*' /tmp/cc-xcodebuild.log | he
 `test` instead of `build` runs the tests of all five packages through either
 scheme (`LightPlan-macOS` with `-destination 'platform=macOS'`). One package on
 the Mac host: `swift test` inside `Packages/<name>`.
+
+```
+make parity     rebuild Fixtures/ from the live beta and prove the run repeats
+make blocks     show what is cut out of the beta (cheap anchor check)
+```
+
+Parity bench: `Tools/parity/README.md`. It cuts the math out of the web's
+`beta/index.html` by anchor strings on every run — never copy that code into
+the native tree, a copy drifts silently. Fixtures are regenerated, not
+hand-edited; a parity failure is a porting bug until measured otherwise.
