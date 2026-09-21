@@ -14,3 +14,6 @@ INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES
 INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES
 INFOPLIST_KEY_UILaunchScreen_Generation = YES
 INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait
+// Геолокация — только по запросу пользователя («Найти меня»), одна точка, без фона.
+// Текст видят на системном запросе; локализует его итерация 14.
+INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Light Plan узнает, где вы, чтобы посчитать свет и погоду для вашего места. Ничего не отправляется никому, кроме названия места на серверы Apple.

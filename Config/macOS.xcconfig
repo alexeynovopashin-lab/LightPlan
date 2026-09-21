@@ -8,3 +8,6 @@ LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks
 ENABLE_HARDENED_RUNTIME = YES
 ENABLE_APP_SANDBOX = YES
 ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES
+// Геолокация по запросу пользователя: право в песочнице и текст запроса.
+ENABLE_RESOURCE_ACCESS_LOCATION = YES
+INFOPLIST_KEY_NSLocationUsageDescription = Light Plan узнает, где вы, чтобы посчитать свет и погоду для вашего места. Ничего не отправляется никому, кроме названия места на серверы Apple.
