@@ -54,6 +54,15 @@ public enum Sky {
         return ms / 86_400_000 - 0.5 + 2_440_588 - 2_451_545
     }
 
+    /// `Math.round` веба: половина — вверх, к +∞ (`-2.5 → -2`, `2.5 → 3`).
+    /// Swift-овское `.rounded()` уводит половину от нуля и на отрицательных
+    /// минутах шкалы (окно луны идёт от −720) даёт другую минуту.
+    static func jsRound(_ x: Double) -> Double {
+        guard x.isFinite else { return x }
+        let f = x.rounded(.down)
+        return x - f >= 0.5 ? f + 1 : f
+    }
+
     /// Точка неба, неподвижная относительно звёзд (`eqToAltAz`), для места на
     /// широте и долготе. `days` — из `days(date:minutes:utcOffsetHours:)`.
     public static func horizontal(

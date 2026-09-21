@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "beta/index.html",
-    "cut": "6945a8e00ffffbc3",
+    "cut": "200bd043f299fd73",
     "what": "закатный балл по трём ярусам облаков, влажности и аэрозолю",
     "grid": "low × mid × high × hum по 10 %, порядок в order; аэрозоль отдельной таблицей",
     "tolerance": {"score":"строго, целое"},

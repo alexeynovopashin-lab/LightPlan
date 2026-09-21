@@ -7,7 +7,7 @@ import Foundation
 /// а загрузчик останется тем же.
 struct ParityFixturesTests {
 
-    @Test("Все восемь фикстур читаются и посчитаны одной вырезкой из беты")
+    @Test("Все девять фикстур читаются и посчитаны одной вырезкой из беты")
     func allFixturesLoad() throws {
         let solar = try ParityFixtures.load("solar_day.json", as: ParityFixtures.SolarDayFile.self)
         let sample = try ParityFixtures.load("solar_sample.json", as: ParityFixtures.SolarSampleFile.self)
@@ -17,9 +17,10 @@ struct ParityFixturesTests {
         let mw = try ParityFixtures.load("milkyway.json", as: ParityFixtures.MilkyWayFile.self)
         let eclipse = try ParityFixtures.load("eclipse.json", as: ParityFixtures.EclipseFile.self)
         let merge = try ParityFixtures.load("merge_pairs.json", as: ParityFixtures.MergePairsFile.self)
+        let sky = try ParityFixtures.load("sky_windows.json", as: ParityFixtures.SkyWindowsFile.self)
 
         let cuts = Set([solar.meta.cut, sample.meta.cut, light.meta.cut,
-                        score.meta.cut, moon.meta.cut, mw.meta.cut, merge.meta.cut, eclipse.meta.cut])
+                        score.meta.cut, moon.meta.cut, mw.meta.cut, merge.meta.cut, eclipse.meta.cut, sky.meta.cut])
         #expect(cuts.count == 1, "фикстуры посчитаны разными состояниями беты: \(cuts). Собрать заново: make parity")
 
         #expect(solar.days.count == solar.meta.count)
@@ -30,6 +31,7 @@ struct ParityFixturesTests {
         #expect(eclipse.sweep.on.count == eclipse.meta.count && eclipse.sweep.next.count == eclipse.meta.count)
         #expect(mw.band.count + mw.coreAltAz.count == mw.meta.count)
         #expect(merge.pairs.count * 2 == merge.meta.count)
+        #expect(sky.grid.count + sky.sweep.count == sky.meta.count)
     }
 
     /// Главное свойство слияния: стороны не важны. Иначе два устройства

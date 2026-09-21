@@ -259,6 +259,39 @@ enum ParityFixtures {
         let sweep: EclipseSweep
     }
 
+    // MARK: - Окна неба (итерация 9а)
+
+    /// Один день одного места: дуги луны и ответы `moonArc`, окно Млечного
+    /// Пути, помеха луны звёздам.
+    struct SkyRecord: Decodable {
+        let lat, lon, tz: Double
+        let date: String
+        /// Найденные дуги: `[восход, заход]`.
+        let arcs: [[Double]]
+        /// Моменты вопроса и ответы `moonArc` на них; `nil` — «не всходит».
+        let qt: [Double]
+        let qr, qs: [Double?]
+        struct Window: Decodable {
+            let bestAlt: Double
+            let bestT: Double?
+            let from, to: Double?
+            let spans: [[Double]]
+            let dark, moonBlocks: Bool
+        }
+        struct VsStars: Decodable {
+            let dark: Bool
+            let lit, share: Double
+            let pct, level: Int?
+        }
+        let win: Window
+        let vs: VsStars
+    }
+    struct SkyWindowsFile: Decodable {
+        let meta: Meta
+        let grid: [SkyRecord]
+        let sweep: [SkyRecord]
+    }
+
     struct CoreAltAz: Decodable {
         let lat, lon, tz: Double
         let date: String

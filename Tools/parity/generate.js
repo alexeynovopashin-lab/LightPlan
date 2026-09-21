@@ -437,6 +437,85 @@ function milkyWay() {
   return { band: band, core: { ra: ctx.MW_CORE.ra, dec: ctx.MW_CORE.dec }, coreAltAz: altaz };
 }
 
+/* Окна неба (итерация 9а): восход и заход луны, окно Млечного Пути, помеха
+   луны звёздам. Одна запись — один день одного места, все три ответа рядом.
+
+   Сетка: 12 широт × 3 долготы плюс три места с некруглым поясом × те же даты,
+   что у солнца; плюс «сплошная» развёртка — каждые сутки 2026 года в четырёх
+   местах, чтобы луна прошла все фазы и все положения относительно ночи. Полюса
+   и полярные круги — в широтах: там луна не всходит, а тёмной части нет. */
+const SKY_LONS = [-179, 37, 179];
+const SKY_SWEEP_PLACES = [
+  { lat: 56.02, lon: 37.48, tz: 3 },
+  { lat: 45, lon: 37, tz: 2 },
+  { lat: -45, lon: 170, tz: 12 },
+  { lat: 69.65, lon: 18.96, tz: 1 },
+];
+function skyPlaces() {
+  const out = [];
+  for (const lat of LATS) for (const lon of SKY_LONS) out.push({ lat: lat, lon: lon, tz: tzOfLon(lon) });
+  for (const p of ODD) out.push(p);
+  return out;
+}
+function daysOf2026() {
+  const out = [];
+  for (let d = new Date(2026, 0, 1); d.getFullYear() === 2026; d = new Date(2026, d.getMonth(), d.getDate() + 1)) {
+    out.push(dayText(d));
+  }
+  return out;
+}
+/* Моменты, о которых спрашиваем `moonArc`: сетка сквозь сутки и за их край,
+   а вокруг каждой найденной дуги — минута до восхода, сам восход, заход и
+   минута после: там сравнение `>=` / `<=` меняет ответ. */
+const ARC_ASK = [-720, -360, 0, 360, 720, 1080, 1439, 1440, 2000, 2900, 3600];
+
+function skyRecord(p, iso) {
+  X.setPlace(ctx, p);
+  const d = toDate(iso);
+  ctx.computeSun(d);
+  /* Кэш веба ключуется датой и местом, но не поясом, — чистим перед каждой
+     записью, чтобы два места с одной широтой не делили дуги. */
+  ctx.moonCache = {};
+  ctx.moonArc(d, 0);
+  const cached = Object.keys(ctx.moonCache).map(function (k) { return ctx.moonCache[k]; })[0];
+  const arcs = cached.map(function (a) { return [a.rise, a.set]; });
+  const ask = ARC_ASK.slice();
+  for (const a of arcs) ask.push(a[0] - 1, a[0], a[1], a[1] + 1);
+  const qr = [], qs = [];
+  for (const t of ask) {
+    const a = ctx.moonArc(d, t);
+    qr.push(a.none ? null : a.rise);
+    qs.push(a.none ? null : a.set);
+  }
+  /* mwWindow берёт солнце выбранного дня из глобальных — оно уже посчитано
+     computeSun(d); moonVsStars считает его сама и возвращает выбранный день,
+     поэтому идёт последней. */
+  const w = ctx.mwWindow(d);
+  const v = ctx.moonVsStars(d);
+  return {
+    lat: p.lat, lon: p.lon, tz: p.tz, date: iso,
+    arcs: arcs, qt: ask, qr: qr, qs: qs,
+    win: {
+      bestAlt: w.best.alt, bestT: w.best.t, from: w.from, to: w.to,
+      spans: w.spans.map(function (s) { return [s.from, s.to]; }),
+      dark: w.dark, moonBlocks: w.moonBlocks,
+    },
+    vs: {
+      dark: v.dark, lit: v.lit, share: v.share,
+      pct: v.pct === undefined ? null : v.pct,
+      level: v.level === undefined ? null : v.level,
+    },
+  };
+}
+function skyWindows() {
+  const grid = [], sweep = [];
+  const DF = datesFull();
+  for (const p of skyPlaces()) for (const d of DF) grid.push(skyRecord(p, d));
+  const days = daysOf2026();
+  for (const p of SKY_SWEEP_PLACES) for (const d of days) sweep.push(skyRecord(p, d));
+  return { grid: grid, sweep: sweep };
+}
+
 /* ============================================================
    САМОПРОВЕРКА
    Известные значения, взятые не из этого же кода: две контрольные точки
@@ -493,6 +572,43 @@ function selfcheck() {
     (ctx.eclipseOn(toDate("2026-08-12")) || {}).kind, "ecl.total");
   chk("13 августа 2026 → затмения нет", ctx.eclipseOn(toDate("2026-08-13")), null);
   chk("после 2030-11-25 ближайшего нет", ctx.nextEclipse(toDate("2030-11-26")), null);
+
+  /* Окна неба: факты неба, а не этого кода. В полнолуние луна всходит
+     около заката, в новолуние она ночью не мешает, а полнолунная ночь мешает
+     вся. Ядро на широте −45° в кульминации стоит на 90° − |−45° − (−28.936°)|,
+     то есть чуть выше 73.9° — склонение из контрольных точек галактики. */
+  X.setPlace(ctx, { lat: 56.02, lon: 37.48, tz: 3 });
+  const full = toDate("2026-03-03");
+  ctx.computeSun(full);
+  const fullArc = ctx.moonArc(full, ctx.SUN.set);
+  chk("полнолуние 3 марта 2026 → луна всходит в пределах двух часов от заката",
+    Math.abs(fullArc.rise - ctx.SUN.set) <= 120, true);
+  const vsFull = ctx.moonVsStars(full);
+  chk("полнолуние 3 марта 2026 → помеха «Пути не будет»", vsFull.level, 2);
+  const vsNew = ctx.moonVsStars(toDate("2026-08-12"));
+  chk("новолуние 12 августа 2026 → тёмная часть есть", vsNew.dark, true);
+  chk("новолуние 12 августа 2026 → луна не мешает", vsNew.level, 0);
+  ctx.computeSun(toDate("2026-06-21"));
+  const wJune = ctx.mwWindow(toDate("2026-06-21"));
+  chk("56° с. ш., 21 июня → астрономической темноты нет", wJune.dark, false);
+  chk("56° с. ш., 21 июня → окна нет", wJune.from, null);
+  X.setPlace(ctx, { lat: -45, lon: 170, tz: 12 });
+  const south = toDate("2026-06-21");
+  ctx.computeSun(south);
+  chk("45° ю. ш., 21 июня → ядро в кульминации на 73.9°", ctx.mwWindow(south).best.alt, 73.94, 0.3);
+  X.setPlace(ctx, { lat: 90, lon: 0, tz: 0 });
+  let poleNone = 0;
+  for (const iso of daysOf2026()) {
+    const d = toDate(iso);
+    ctx.moonCache = {};
+    if (ctx.moonArc(d, 720).none) poleNone++;
+  }
+  /* Замер 21 сентября 2026: на полюсе высота луны равна её склонению и за
+     двое с половиной суток окна почти не движется, поэтому пары «восход и
+     заход» в окне не бывает никогда — 365 суток из 365. Веб отвечает «не
+     всходит» и тогда, когда луна две недели стоит над горизонтом; это его
+     поведение, а не ошибка переноса (DECISIONS, «Окна неба»). */
+  chk("90° с. ш.: дуги луны в окне ±3.5 суток нет ни в одни из 365 суток", poleNone, 365);
 
   const bad = rows.filter(function (r) { return !r.ok; });
   for (const r of rows) {
@@ -617,6 +733,18 @@ function main() {
     note: "таблица не считается, а хранится — расчёт отвергнут трижды (DECISIONS, 7130)",
     count: ecl.days,
   }, { table: ecl.table, sweep: ecl.sweep }));
+
+  const sky = skyWindows();
+  out.push(write(dir, "sky_windows.json", {
+    what: "восход и заход луны, окно Млечного Пути, помеха луны звёздам",
+    grid: "grid — 12 широт × 3 долготы плюс 3 места с некруглым поясом × даты § 5.2; " +
+      "sweep — 4 места × каждые сутки 2026. Запись: arcs — дуги луны, qt/qr/qs — ответы moonArc " +
+      "на моменты вокруг дуг (null — не всходит), win — mwWindow, vs — moonVsStars",
+    tolerance: { minutes: "строго, целые", bestAlt: 1e-9, lit: 1e-9, share: "строго", level: "строго" },
+    note: "moonCache веба чистится перед каждой записью; moonVsStars зовётся после mwWindow: " +
+      "она пересчитывает солнце и возвращает выбранный день",
+    count: sky.grid.length + sky.sweep.length,
+  }, sky));
 
   const pairs = mergePairs();
   out.push(write(dir, "merge_pairs.json", {

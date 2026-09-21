@@ -80,6 +80,29 @@ const BLOCKS = {
     to: "/* Восход и заход выбранного дня.",
     why: "moonPhase, PHASES, phaseName — доля диска и код фазы (имя фазы — ключ словаря)",
   },
+  /* Окна неба (итерация 9а). Лежат в вебе четырьмя кусками, между которыми
+     стоят погода над окном (`mwSkyAt`, итерация 10) и облако точек — рисунок.
+     Поэтому четыре блока, а не один. */
+  skyWindows: {
+    from: "/* ---------- Луна против Млечного Пути ----------",
+    to: "function mwDateShort(d)",
+    why: "moonVsStars и mwWindow — помеха луны и окно Млечного Пути",
+  },
+  milkyWayAt: {
+    from: "function milkyWayAt(date, t)",
+    to: "/* ============================================================\n     ЗАТМЕНИЯ",
+    why: "milkyWayAt — ядро над головой в момент; стоит отдельно от МЛЕЧНОГО ПУТИ, за погодой",
+  },
+  moonArc: {
+    from: "/* Восход и заход выбранного дня.",
+    to: "/* ============================================================\n     ПОГОДА ДНЯ",
+    why: "moonArc и moonCross — восход и заход луны; moonCache — оптимизация веба, в Swift её нет",
+  },
+  mwWork: {
+    from: "var MW_WORK_LO = 10, MW_WORK_HI = 15;",
+    to: "var TICK_OUT = 154;",
+    why: "рабочая высота ядра; лежит в блоке купола, за пять тысяч строк от окна",
+  },
   light: {
     from: "var GOLD=[226,164,76]",
     to: "var cx = 195, cy = 196, rx = 163, ry = 148;",
@@ -162,6 +185,10 @@ function load(names, place) {
     Number: Number, String: String, Array: Array, Object: Object,
     LANG: { t: function (k) { return k; } },
     theme: "dark",
+    /* moonVsStars сохраняет выбранный день и возвращает его после подсчёта чужого:
+       в приложении он всегда есть. Стенд задаёт его сам и всегда пересчитывает
+       солнце нужного дня перед окном. */
+    selDate: new Date(2026, 0, 1),
     LAT: 56.02, LON: 37.48, TZ: 3,
   });
   for (const n of list) vm.runInContext(cut(n), ctx, { filename: "beta/index.html:" + n });
