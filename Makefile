@@ -7,11 +7,12 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks
+.PHONY: help parity blocks lang
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
 	@echo "make blocks   показать, что вырезается из беты (дешёвая проверка якорей)"
+	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
 
 parity:
 	@TZ=UTC node Tools/parity/generate.js --out $(FIXTURES)
@@ -27,3 +28,17 @@ parity:
 
 blocks:
 	@node Tools/parity/extract.js
+
+# Итерация 14: словарь и форматы. Каталог — из lang.js, фикстуры — из lang.js и
+# слоя дат беты. TZ=UTC по той же причине, что у parity: даты берутся местными.
+lang:
+	@node Tools/lang2xcstrings.js
+	@TZ=UTC node Tools/parity/lang.js --out $(FIXTURES)
+	@tmp=$$(mktemp -d); \
+	TZ=UTC node Tools/parity/lang.js --out $$tmp --quiet; \
+	if cmp -s $(FIXTURES)/lang.json $$tmp/lang.json && cmp -s $(FIXTURES)/format.json $$tmp/format.json; then \
+		echo "  повторный прогон: побайтово то же"; rm -rf $$tmp; \
+	else \
+		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — эталону нельзя верить"; rm -rf $$tmp; exit 1; \
+	fi
+	@node Tools/lang2xcstrings.js --check

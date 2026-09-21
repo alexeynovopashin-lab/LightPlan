@@ -55,7 +55,15 @@ the Mac host: `swift test` inside `Packages/<name>`.
 ```
 make parity     rebuild Fixtures/ from the live beta and prove the run repeats
 make blocks     show what is cut out of the beta (cheap anchor check)
+make lang       rebuild the string catalog and the text fixtures, prove they repeat
 ```
+
+`LightPlanUI/Resources/Localizable.xcstrings` is generated from the web's
+`beta/lang.js` (`Tools/lang2xcstrings.js`) — never hand-edit it; a word changes
+on the web and comes here by `make lang`. Only Xcode compiles a catalog: under
+`swift test` on the host the catalog tests skip (with a note), so run
+`xcodebuild test` before calling the strings verified. Scripts find the web
+folder next to the repo; **from a worktree set `LIGHT_PLAN_WEB=<path to Light_Plan>`**.
 
 Parity bench: `Tools/parity/README.md`. It cuts the math out of the web's
 `beta/index.html` by anchor strings on every run — never copy that code into

@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "LightPlanUI",
+    defaultLocalization: "en",
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "LightPlanUI", targets: ["LightPlanUI"]),
@@ -21,9 +22,14 @@ let package = Package(
                 .product(name: "LightPlanDomain", package: "LightPlanDomain"),
                 .product(name: "LightPlanTimeline", package: "LightPlanTimeline"),
                 .product(name: "LightPlanData", package: "LightPlanData"),
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
-        .testTarget(name: "LightPlanUITests", dependencies: ["LightPlanUI"]),
+        .testTarget(
+            name: "LightPlanUITests",
+            dependencies: ["LightPlanUI"],
+            resources: [.process("Resources")]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
