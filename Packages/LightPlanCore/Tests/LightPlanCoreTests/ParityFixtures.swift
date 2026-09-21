@@ -225,10 +225,39 @@ enum ParityFixtures {
     struct MoonSeries: Decodable {
         let lat, lon, tz: Double
         let date: String
-        let t: [Int]
+        /// Минуты шкалы. В `series` целые, в `probes` дробные, отрицательные и
+        /// за пределом суток.
+        let t: [Double]
         let alt, az, dist: [Double]
+        let frac, phase: [Double]
+        let name: [String]
     }
-    struct MoonFile: Decodable { let meta: Meta; let series: [MoonSeries] }
+    /// Фаза по трём годам: столбцами. `code` — индекс в `codes`.
+    struct PhaseSweep: Decodable {
+        let tz: Double
+        let y, m, d: [Int]
+        let t: [Double]
+        let frac, phase: [Double]
+        let code: [Int]
+        let codes: [String]
+    }
+    struct MoonFile: Decodable {
+        let meta: Meta
+        let series: [MoonSeries]
+        let probes: [MoonSeries]
+        let phaseSweep: PhaseSweep
+    }
+
+    // MARK: - Затмения
+
+    struct EclipseRow: Decodable { let d: String; let kind: String; let `where`: String }
+    /// Ответы на каждые сутки с `from`: индекс строки таблицы, −1 — нет.
+    struct EclipseSweep: Decodable { let from: String; let on: [Int]; let next: [Int] }
+    struct EclipseFile: Decodable {
+        let meta: Meta
+        let table: [EclipseRow]
+        let sweep: EclipseSweep
+    }
 
     struct CoreAltAz: Decodable {
         let lat, lon, tz: Double

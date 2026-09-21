@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "LightPlanCore", targets: ["LightPlanCore"]),
     ],
     targets: [
-        .target(name: "LightPlanCore"),
+        .target(name: "LightPlanCore", resources: [.copy("Eclipse/Resources/eclipses.json")]),
         .testTarget(name: "LightPlanCoreTests", dependencies: ["LightPlanCore"]),
     ],
     swiftLanguageModes: [.v6]

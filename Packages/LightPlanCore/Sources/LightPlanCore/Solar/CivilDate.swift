@@ -34,3 +34,10 @@ public struct CivilDate: Sendable, Hashable {
         return era * 146_097 + doe - 719_468
     }
 }
+
+/// Дни упорядочены по календарю: год, потом месяц, потом число.
+extension CivilDate: Comparable {
+    public static func < (a: CivilDate, b: CivilDate) -> Bool {
+        (a.year, a.month, a.day) < (b.year, b.month, b.day)
+    }
+}

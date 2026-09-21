@@ -275,12 +275,79 @@ const MOON_LATS = [-45, 0, 23.4, 45, 56.02, 66.6];
 function moonSeries(p, iso) {
   X.setPlace(ctx, p);
   const d = toDate(iso);
-  const rec = { lat: p.lat, lon: p.lon, tz: p.tz, date: iso, t: [], alt: [], az: [], dist: [] };
-  for (let t = 0; t < 1440; t += 180) {
-    const m = ctx.moonAt(d, t);
-    rec.t.push(t); rec.alt.push(m.alt); rec.az.push(m.az); rec.dist.push(m.dist);
-  }
+  const rec = { lat: p.lat, lon: p.lon, tz: p.tz, date: iso, t: [], alt: [], az: [], dist: [],
+    frac: [], phase: [], name: [] };
+  for (let t = 0; t < 1440; t += 180) moonPoint(rec, d, t);
   return rec;
+}
+/* Одна точка луны: положение, доля диска и код фазы (LANG.t в стенде отдаёт
+   сам ключ, поэтому phaseName возвращает код). */
+function moonPoint(rec, d, t) {
+  const m = ctx.moonAt(d, t), ph = ctx.moonPhase(d, t);
+  rec.t.push(t); rec.alt.push(m.alt); rec.az.push(m.az); rec.dist.push(m.dist);
+  rec.frac.push(ph.fraction); rec.phase.push(ph.phase); rec.name.push(ctx.phaseName(ph.phase));
+}
+
+/* Пробы со «страшным» временем. Ползунок таймбара даёт дробные минуты, а веб
+   собирает момент через `new Date(мс)`, и та обрезает дробные миллисекунды. Луна
+   уходит за это на 4e-6° в миллисекунду — больше допуска 1e-7, — поэтому Swift
+   обязан обрезать так же. Здесь t, дающие дробные миллисекунды, отрицательные
+   минуты и минуты за пределом суток (`moonArc` ходит от −720 до +2900). Места —
+   с дробным поясом и по обе стороны антимеридиана. */
+const MOON_PROBE_PLACES = [
+  { lat: 55.03, lon: 83.0, tz: 7 },
+  { lat: 27.7172, lon: 85.3240, tz: 5.75 },
+  { lat: -43.95, lon: -176.56, tz: 12.75 },
+  { lat: 66.6, lon: 179, tz: -11 },
+];
+const MOON_PROBE_DATES = ["2026-03-20", "2026-09-23", "2028-02-29"];
+const MOON_PROBE_T = [0.3333333333333333, 100.0004, 359.99999, 723.3333333333334,
+  1439.9999, -37.5, -719.7, 1500.25, 2899.9, 61.0000001];
+function moonProbes() {
+  const out = [];
+  for (const p of MOON_PROBE_PLACES) for (const iso of MOON_PROBE_DATES) {
+    X.setPlace(ctx, p);
+    const d = toDate(iso);
+    const rec = { lat: p.lat, lon: p.lon, tz: p.tz, date: iso, t: [], alt: [], az: [], dist: [],
+      frac: [], phase: [], name: [] };
+    for (const t of MOON_PROBE_T) moonPoint(rec, d, t);
+    out.push(rec);
+  }
+  return out;
+}
+
+/* Фаза по трём годам: четыре отсчёта в сутки. От места не зависит (доля диска
+   и фаза — это Солнце и Луна, а не горизонт), поэтому одно место. Коды — как
+   индексы в `codes`, чтобы строки не повторялись четыре тысячи раз. */
+function phaseSweep() {
+  X.setPlace(ctx, { lat: 56.02, lon: 37.48, tz: 3 });
+  const codes = [], out = { tz: 3, y: [], m: [], d: [], t: [], frac: [], phase: [], code: [] };
+  for (let day = new Date(2026, 0, 1); day.getFullYear() < 2029; day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)) {
+    for (const t of [0, 360, 720, 1080]) {
+      const ph = ctx.moonPhase(day, t), name = ctx.phaseName(ph.phase);
+      if (codes.indexOf(name) < 0) codes.push(name);
+      out.y.push(day.getFullYear()); out.m.push(day.getMonth() + 1); out.d.push(day.getDate());
+      out.t.push(t); out.frac.push(ph.fraction); out.phase.push(ph.phase); out.code.push(codes.indexOf(name));
+    }
+  }
+  out.codes = codes;
+  return out;
+}
+
+/* Затмения: сама таблица и ответы `eclipseOn` / `nextEclipse` на каждые сутки
+   с середины 2025 до начала 2031 — за край таблицы тоже, где «ближайшего»
+   уже нет. Ответ — индекс строки в таблице, −1 значит «нет». */
+function eclipseSweep() {
+  const table = ctx.ECLIPSES.map(function (e) { return { d: e.d, kind: e.kind, where: e.where }; });
+  const idx = function (e) { return e ? ctx.ECLIPSES.indexOf(e) : -1; };
+  const out = { from: "2025-06-01", on: [], next: [] };
+  let n = 0;
+  for (let day = toDate(out.from); dayText(day) !== "2031-03-01"; day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)) {
+    out.on.push(idx(ctx.eclipseOn(day)));
+    out.next.push(idx(ctx.nextEclipse(day)));
+    n++;
+  }
+  return { table: table, sweep: out, days: n };
 }
 
 /* ---------- Слияние двух снимков ----------
@@ -415,6 +482,18 @@ function selfcheck() {
   chk("балл: чистый горизонт, лучшие ярусы", ctx.sunsetScore(0, 45, 50, 0, null), 100);
   chk("балл: сплошной низкий ярус гасит всё", ctx.sunsetScore(100, 45, 50, 0, null), 5);
 
+  /* Луна и затмения: факты неба, а не этого кода. Солнечное затмение бывает
+     только в новолуние, а лунное 3 марта 2026 — только в полнолуние. */
+  X.setPlace(ctx, { lat: 56.02, lon: 37.48, tz: 3 });
+  chk("12 августа 2026, день затмения → новолуние",
+    ctx.phaseName(ctx.moonPhase(toDate("2026-08-12"), 1080).phase), "moon.new");
+  chk("3 марта 2026 → полнолуние",
+    ctx.phaseName(ctx.moonPhase(toDate("2026-03-03"), 720).phase), "moon.full");
+  chk("затмение 12 августа 2026 → в таблице, полное",
+    (ctx.eclipseOn(toDate("2026-08-12")) || {}).kind, "ecl.total");
+  chk("13 августа 2026 → затмения нет", ctx.eclipseOn(toDate("2026-08-13")), null);
+  chk("после 2030-11-25 ближайшего нет", ctx.nextEclipse(toDate("2030-11-26")), null);
+
   const bad = rows.filter(function (r) { return !r.ok; });
   for (const r of rows) {
     console.log((r.ok ? "  ок  " : "  НЕТ ") + r.name +
@@ -518,12 +597,26 @@ function main() {
     if (!/-01$/.test(d)) continue;
     moon.push(moonSeries({ lat: lat, lon: 37, tz: 2 }, d));
   }
+  const probes = moonProbes(), sweep = phaseSweep();
+  const pointsOf = function (list) { return list.reduce(function (n, r) { return n + r.t.length; }, 0); };
   out.push(write(dir, "moon.json", {
-    what: "высота, азимут и расстояние до луны",
-    grid: "6 широт × первое число каждого месяца трёх лет × каждые 3 часа",
-    tolerance: { degrees: 1e-7, dist: 1e-7 },
-    count: moon.reduce(function (n, r) { return n + r.t.length; }, 0),
-  }, { series: moon }));
+    what: "высота, азимут и расстояние до луны; доля диска и код фазы",
+    grid: "series — 6 широт × первое число каждого месяца трёх лет × каждые 3 часа; " +
+      "probes — 4 места (дробный пояс, антимеридиан) × 3 даты × 10 «страшных» минут; " +
+      "phaseSweep — фаза каждые 6 часов 2026–2028, одно место",
+    tolerance: { degrees: 1e-7, dist: 1e-7, frac: 1e-9, phase: 1e-9, name: "строго" },
+    note: "probes — минуты с дробными миллисекундами: веб обрезает их в new Date(), Swift обязан так же",
+    count: pointsOf(moon) + pointsOf(probes) + sweep.t.length,
+  }, { series: moon, probes: probes, phaseSweep: sweep }));
+
+  const ecl = eclipseSweep();
+  out.push(write(dir, "eclipse.json", {
+    what: "таблица затмений и ответы eclipseOn / nextEclipse на каждые сутки",
+    grid: "сутки с 2025-06-01 по 2031-02-28, индекс строки таблицы, −1 — нет",
+    tolerance: { table: "строго", answers: "строго" },
+    note: "таблица не считается, а хранится — расчёт отвергнут трижды (DECISIONS, 7130)",
+    count: ecl.days,
+  }, { table: ecl.table, sweep: ecl.sweep }));
 
   const pairs = mergePairs();
   out.push(write(dir, "merge_pairs.json", {

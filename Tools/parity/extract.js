@@ -45,6 +45,11 @@ const BLOCKS = {
     to: "/* ---------- Даты: собирает язык",
     why: "rad, deg, clamp — на них стоит вся остальная математика",
   },
+  sameDay: {
+    from: "function sameDay(a, b)",
+    to: "/* День записи хранится строкой",
+    why: "sameDay — одна строка, но на ней стоит выбор затмения дня",
+  },
   solar: {
     from: "var decl = 0, solarNoon = 720",
     to: "var dirOf = function (az)",
@@ -64,6 +69,16 @@ const BLOCKS = {
     from: "var GAL_POLE_RA = rad(192.85948)",
     to: "/* ---------- Облако точек ----------",
     why: "galToEq, eqToAltAz, mwHalfWidth, MW_BAND, MW_CORE; облако точек — рисунок, не математика",
+  },
+  eclipse: {
+    from: "var ECLIPSES = [",
+    to: "/* fraction — какая доля диска освещена",
+    why: "ECLIPSES, eclipseOn, nextEclipse — затмения таблицей, расчёт отвергнут трижды",
+  },
+  moonPhase: {
+    from: "function moonPhase(date, t)",
+    to: "/* Восход и заход выбранного дня.",
+    why: "moonPhase, PHASES, phaseName — доля диска и код фазы (имя фазы — ключ словаря)",
   },
   light: {
     from: "var GOLD=[226,164,76]",

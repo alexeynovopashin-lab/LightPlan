@@ -7,7 +7,7 @@ import Foundation
 /// а загрузчик останется тем же.
 struct ParityFixturesTests {
 
-    @Test("Все семь фикстур читаются и посчитаны одной вырезкой из беты")
+    @Test("Все восемь фикстур читаются и посчитаны одной вырезкой из беты")
     func allFixturesLoad() throws {
         let solar = try ParityFixtures.load("solar_day.json", as: ParityFixtures.SolarDayFile.self)
         let sample = try ParityFixtures.load("solar_sample.json", as: ParityFixtures.SolarSampleFile.self)
@@ -15,17 +15,19 @@ struct ParityFixturesTests {
         let score = try ParityFixtures.load("sunset_score.json", as: ParityFixtures.SunsetScoreFile.self)
         let moon = try ParityFixtures.load("moon.json", as: ParityFixtures.MoonFile.self)
         let mw = try ParityFixtures.load("milkyway.json", as: ParityFixtures.MilkyWayFile.self)
+        let eclipse = try ParityFixtures.load("eclipse.json", as: ParityFixtures.EclipseFile.self)
         let merge = try ParityFixtures.load("merge_pairs.json", as: ParityFixtures.MergePairsFile.self)
 
         let cuts = Set([solar.meta.cut, sample.meta.cut, light.meta.cut,
-                        score.meta.cut, moon.meta.cut, mw.meta.cut, merge.meta.cut])
+                        score.meta.cut, moon.meta.cut, mw.meta.cut, merge.meta.cut, eclipse.meta.cut])
         #expect(cuts.count == 1, "фикстуры посчитаны разными состояниями беты: \(cuts). Собрать заново: make parity")
 
         #expect(solar.days.count == solar.meta.count)
         #expect(sample.series.reduce(0) { $0 + $1.t.count } == sample.meta.count)
         #expect(light.days.reduce(0) { $0 + ($1.t1 - $1.t0 + 1) } == light.meta.count)
         #expect(score.scores.count + score.air.count == score.meta.count)
-        #expect(moon.series.reduce(0) { $0 + $1.t.count } == moon.meta.count)
+        #expect((moon.series + moon.probes).reduce(0) { $0 + $1.t.count } + moon.phaseSweep.t.count == moon.meta.count)
+        #expect(eclipse.sweep.on.count == eclipse.meta.count && eclipse.sweep.next.count == eclipse.meta.count)
         #expect(mw.band.count + mw.coreAltAz.count == mw.meta.count)
         #expect(merge.pairs.count * 2 == merge.meta.count)
     }
@@ -171,14 +173,24 @@ struct ParityFixturesTests {
         #expect(abs(half[1] - 3) < 1e-9)
     }
 
-    @Test("Луна: высоты в пределах круга, расстояние в разумных километрах")
+    @Test("Луна: высоты в пределах круга, расстояние в разумных километрах, ряды одной длины")
     func moonValuesAreSane() throws {
         let f = try ParityFixtures.load("moon.json", as: ParityFixtures.MoonFile.self)
-        for s in f.series {
-            #expect(s.alt.count == s.t.count && s.az.count == s.t.count && s.dist.count == s.t.count)
+        #expect(!f.probes.isEmpty)
+        for s in f.series + f.probes {
+            let n = s.t.count
+            #expect(s.alt.count == n && s.az.count == n && s.dist.count == n)
+            #expect(s.frac.count == n && s.phase.count == n && s.name.count == n)
             #expect(s.alt.allSatisfy { $0 >= -90 && $0 <= 90 })
             #expect(s.az.allSatisfy { $0 >= 0 && $0 < 360 })
             #expect(s.dist.allSatisfy { $0 > 350_000 && $0 < 410_000 })
+            #expect(s.frac.allSatisfy { $0 >= 0 && $0 <= 1 })
         }
+        let w = f.phaseSweep
+        let n = w.t.count
+        #expect(w.y.count == n && w.m.count == n && w.d.count == n && w.frac.count == n
+                && w.phase.count == n && w.code.count == n)
+        #expect(w.code.allSatisfy { $0 >= 0 && $0 < w.codes.count })
+        #expect(w.codes.count == 8, "за три года луна проходит все восемь фаз")
     }
 }

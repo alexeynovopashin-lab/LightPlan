@@ -1,0 +1,14 @@
+[
+  {"d": "2026-02-17", "kind": "ecl.annular", "where": "eclW.2026-02-17"},
+  {"d": "2026-08-12", "kind": "ecl.total", "where": "eclW.2026-08-12"},
+  {"d": "2027-02-06", "kind": "ecl.annular", "where": "eclW.2027-02-06"},
+  {"d": "2027-08-02", "kind": "ecl.total", "where": "eclW.2027-08-02"},
+  {"d": "2028-01-26", "kind": "ecl.annular", "where": "eclW.2028-01-26"},
+  {"d": "2028-07-22", "kind": "ecl.total", "where": "eclW.2028-07-22"},
+  {"d": "2029-01-14", "kind": "ecl.partial", "where": "eclW.2029-01-14"},
+  {"d": "2029-06-12", "kind": "ecl.partial", "where": "eclW.2029-06-12"},
+  {"d": "2029-07-11", "kind": "ecl.partial", "where": "eclW.2029-07-11"},
+  {"d": "2029-12-05", "kind": "ecl.partial", "where": "eclW.2029-12-05"},
+  {"d": "2030-06-01", "kind": "ecl.annular", "where": "eclW.2030-06-01"},
+  {"d": "2030-11-25", "kind": "ecl.total", "where": "eclW.2030-11-25"}
+]
