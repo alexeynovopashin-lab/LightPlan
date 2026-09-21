@@ -28,6 +28,9 @@ let package = Package(
         .testTarget(
             name: "LightPlanUITests",
             dependencies: ["LightPlanUI"],
+            // Ответы веба на корпус названий и эталонный лист знаков читаются по
+            // #filePath, а не ресурсом: это не сборочные файлы.
+            exclude: ["point_sign.json", "icons_ref.png", "icons_ref.json"],
             resources: [.process("Resources")]
         ),
     ],

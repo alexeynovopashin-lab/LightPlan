@@ -56,7 +56,15 @@ the Mac host: `swift test` inside `Packages/<name>`.
 make parity     rebuild Fixtures/ from the live beta and prove the run repeats
 make blocks     show what is cut out of the beta (cheap anchor check)
 make lang       rebuild the string catalog and the text fixtures, prove they repeat
+make icons      rebuild the Swift icon library from the web's beta/icons.js + the Chromium reference sheet
 ```
+
+`LightPlanUI/Icons/IconLibrary.generated.swift` and `point_sign.json`, `icons_ref.*` beside the UI
+tests are generated (`Tools/icons2assets.js`, `Tools/icons_ref.js`) — never hand-edit. Icons are
+stored as vector paths, not as an asset catalog: the web sets line width per context and paints
+weather parts separately, a catalog bakes both (from code, catalog not measured). Use
+`Icon("name", size:, line:)`; colour comes from `.foregroundStyle`. The generator stops if the
+copy of `icons.js` pasted into `beta/index.html` drifted from the file.
 
 `LightPlanUI/Resources/Localizable.xcstrings` is generated from the web's
 `beta/lang.js` (`Tools/lang2xcstrings.js`) — never hand-edit it; a word changes

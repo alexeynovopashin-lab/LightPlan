@@ -7,12 +7,13 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang
+.PHONY: help parity blocks lang icons
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
 	@echo "make blocks   показать, что вырезается из беты (дешёвая проверка якорей)"
 	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
+	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
 
 parity:
 	@TZ=UTC node Tools/parity/generate.js --out $(FIXTURES)
@@ -42,3 +43,10 @@ lang:
 		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — эталону нельзя верить"; rm -rf $$tmp; exit 1; \
 	fi
 	@node Tools/lang2xcstrings.js --check
+
+# Знаки: генератор пишет Swift и корпус подбора, отдельный скрипт — эталонный лист
+# Chromium. Из worktree: LIGHT_PLAN_WEB=<путь к Light_Plan>, если папка не рядом.
+icons:
+	@node Tools/icons2assets.js
+	@node Tools/icons_ref.js
+	@node Tools/icons2assets.js --check
