@@ -22,12 +22,22 @@ public struct RootView: View {
     public var body: some View {
         VStack {
             Spacer()
+            DomeView(sun: state.solarDay, place: state.place, date: state.machine.selectedDate,
+                      t: state.machine.viewMinute, nowMinute: state.nowMinute, mode: skyMode)
+                .padding(.horizontal, 16)
             TimebarView(state)
                 .padding(.horizontal, 16)
             Spacer(minLength: 24)
         }
         .background(.black.opacity(0.92))
         .preferredColorScheme(.dark)
+    }
+
+    /// Купол (итерация 18) и таймбар (итерация 17) делят один тумблер:
+    /// вебовский `showMoon` барабана — то же самое «солнце или луна» куполом.
+    private var skyMode: Binding<DomeSkyMode> {
+        Binding(get: { state.showMoon ? .moon : .sun },
+                set: { state.showMoon = $0 == .moon })
     }
 
     private static func today(in place: Place) -> CivilDate {

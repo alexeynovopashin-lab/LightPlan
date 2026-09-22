@@ -322,6 +322,13 @@ public final class TimebarState {
         abs(machine.viewMinute - minutesNowRelative(to: machine.selectedDate)) > 2
     }
 
+    /// «Сейчас» на шкале выбранных суток — `nil`, если выбран не
+    /// сегодняшний день места: тогда у купола (итерация 18) кольца нет
+    /// вовсе, а не кольцо на чужом времени.
+    public var nowMinute: Minutes? {
+        wallNow().day == machine.selectedDate ? minutesNowRelative(to: machine.selectedDate) : nil
+    }
+
     /// «сейчас» — тот же день, просто другое время; «сегодня» — момент
     /// дальше, чем один экран, вернуться нужно и датой тоже.
     public var nowButtonLabel: String {
