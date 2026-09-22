@@ -7,13 +7,14 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang icons
+.PHONY: help parity blocks lang icons domain
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
 	@echo "make blocks   показать, что вырезается из беты (дешёвая проверка якорей)"
 	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
 	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
+	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
 
 parity:
 	@TZ=UTC node Tools/parity/generate.js --out $(FIXTURES)
@@ -50,3 +51,16 @@ icons:
 	@node Tools/icons2assets.js
 	@node Tools/icons_ref.js
 	@node Tools/icons2assets.js --check
+
+# Итерация 11: домен. Таблицы и правила съёмки режутся из беты своим скриптом и
+# своим отпечатком — общий стенд неба не трогается. TZ=UTC по той же причине,
+# что у parity: дни записей — местные полуночи.
+domain:
+	@TZ=UTC node Tools/parity/domain.js --out $(FIXTURES)
+	@tmp=$$(mktemp -d); \
+	TZ=UTC node Tools/parity/domain.js --out $$tmp --quiet; \
+	if cmp -s $(FIXTURES)/domain.json $$tmp/domain.json; then \
+		echo "  повторный прогон: побайтово то же"; rm -rf $$tmp; \
+	else \
+		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — эталону нельзя верить"; rm -rf $$tmp; exit 1; \
+	fi

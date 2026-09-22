@@ -57,6 +57,7 @@ make parity     rebuild Fixtures/ from the live beta and prove the run repeats
 make blocks     show what is cut out of the beta (cheap anchor check)
 make lang       rebuild the string catalog and the text fixtures, prove they repeat
 make icons      rebuild the Swift icon library from the web's beta/icons.js + the Chromium reference sheet
+make domain     rebuild Fixtures/domain.json (shoot tables and rules, iteration 11) and prove the run repeats
 ```
 
 `LightPlanUI/Icons/IconLibrary.generated.swift` and `point_sign.json`, `icons_ref.*` beside the UI
