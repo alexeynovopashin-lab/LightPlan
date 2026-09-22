@@ -53,6 +53,8 @@ public struct TimelineMachine: Sendable, Equatable {
     /// Ячейка барабана и половина ширины ленты в третях экрана — те же числа,
     /// что в `Spikes/TimebarSpike` и в вебе.
     public static let drumCell = 50.0
+    /// Сколько ячеек барабана видно по каждую сторону от выбранной.
+    public static let drumSpan = 4
 
     public init(date: CivilDate, minute: Minutes? = nil, place: Place, ribbonMode: RibbonMode = .drum) {
         self.place = place
@@ -153,6 +155,19 @@ public struct TimelineMachine: Sendable, Equatable {
         wind.release()
     }
 
+    /// Стравливание накопленного взвода — палец ушёл из зоны или отпустил, не
+    /// дожав. Машина только хранит значение; тикер и кубическое затухание —
+    /// дело вызывающего (итерация 16 сознательно оставила анимацию итерации
+    /// 17: «UI подключает» в комментарии выше).
+    public mutating func bleedWind(from w0: Double, progress k: Double) {
+        wind.bleed(from: w0, k: k)
+    }
+
+    /// Стравливание закончилось — снять остаток.
+    public mutating func resetWind() {
+        wind.reset()
+    }
+
     private mutating func fireDay(_ dir: Int) -> TimelineOutcome {
         wind.fired()
         setDay(selectedDate.adding(days: dir))
@@ -173,7 +188,7 @@ public struct TimelineMachine: Sendable, Equatable {
             let pxPerMin = clipWidth / (maxt - mint)
             return (maxt - mint + (viewMinute - mint)) * pxPerMin - clipWidth / 2
         case .drum:
-            return (4 + drumOffset) * Self.drumCell + Self.drumCell / 2 - clipWidth / 2
+            return (Double(Self.drumSpan) + drumOffset) * Self.drumCell + Self.drumCell / 2 - clipWidth / 2
         }
     }
 
