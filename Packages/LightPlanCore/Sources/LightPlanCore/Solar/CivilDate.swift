@@ -33,6 +33,30 @@ public struct CivilDate: Sendable, Hashable {
         let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
         return era * 146_097 + doe - 719_468
     }
+
+    /// Обратное преобразование: день от 1970-01-01 → год, месяц, число
+    /// (тот же алгоритм Хиннанта, что и `daysFromCivil`, — пара с ним).
+    static func civilFromDays(_ z: Int) -> (year: Int, month: Int, day: Int) {
+        let z2 = z + 719_468
+        let era = (z2 >= 0 ? z2 : z2 - 146_096) / 146_097
+        let doe = z2 - era * 146_097
+        let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365
+        let y = yoe + era * 400
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+        let mp = (5 * doy + 2) / 153
+        let d = doy - (153 * mp + 2) / 5 + 1
+        let m = mp < 10 ? mp + 3 : mp - 9
+        return (m <= 2 ? y + 1 : y, m, d)
+    }
+
+    /// День, отстоящий на `delta` календарных суток — вперёд или назад, с
+    /// переходом через границы месяца и года. Порт приёма `new Date(y, m, d
+    /// + offset)` веба (`moonArc`, `mwSkyAt`, `nextAstroNight`): там это делает
+    /// сам `Date`, здесь — та же арифметика дней, что и `ordinal`.
+    public func adding(days delta: Int) -> CivilDate {
+        let (y, m, d) = CivilDate.civilFromDays(CivilDate.daysFromCivil(year, month, day) + delta)
+        return CivilDate(year: y, month: m, day: d)
+    }
 }
 
 /// Дни упорядочены по календарю: год, потом месяц, потом число.

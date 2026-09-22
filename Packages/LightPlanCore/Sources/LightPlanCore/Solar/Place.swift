@@ -15,6 +15,16 @@ public struct ZoneID: Sendable, Hashable {
         self.zone = zone
     }
 
+    /// Явное смещение от UTC — без базы IANA и без летнего времени. Для
+    /// входов, где пояс уже известен числом, а не именем: стенд паритета
+    /// задаёт его так же — «явный параметр, никогда не системный» (§ 5.2
+    /// плана) — и запасной путь без сети, пока геокодер не ответил.
+    public init(fixedOffsetHours hours: Double) {
+        let seconds = Int((hours * 3600).rounded())
+        self.identifier = "fixed:\(seconds)"
+        self.zone = TimeZone(secondsFromGMT: seconds) ?? TimeZone(identifier: "UTC")!
+    }
+
     /// Смещение от UTC в часах на **начало** этого дня в этой зоне.
     ///
     /// Именно на дату, а не постоянное: в марте и в июле у Берлина оно разное

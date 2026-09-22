@@ -103,6 +103,49 @@ const BLOCKS = {
     to: "var TICK_OUT = 154;",
     why: "рабочая высота ядра; лежит в блоке купола, за пять тысяч строк от окна",
   },
+  /* Погода и закатный балл (итерация 10). Лежат в вебе россыпью между
+     сетью и рисунком; сетевой код (`fetchWeather`, `fetchAir`) в вырезку не
+     входит нарочно: он трогает `fetch`, а песочнице `fetch` не дан. */
+  astroNight: {
+    from: "/* Есть ли этой ночью астрономическая темнота.",
+    to: "/* ---------- Луна против Млечного Пути ----------",
+    why: "hasAstroNight, nextAstroNight — темнота в произвольную дату и её возвращение",
+  },
+  mockWx: {
+    from: "function mulberry32(a)",
+    to: "/* ============================================================\n     ПОГОДА OPEN-METEO",
+    why: "мок погоды: mulberry32, QUAL_C, dkey, qualityOf, dayWeather — детерминированный откат офлайн",
+  },
+  wxState: {
+    from: "var wxKey = null, wxLive = false",
+    to: "/* ---- Закатный балл по трём ярусам облаков",
+    why: "wxByHour — почасовые данные, которые buildWx кладёт и читает окно Млечного Пути",
+  },
+  airWord: {
+    from: "function airWord(air)",
+    to: "function scoreCat(s)",
+    why: "airWord — слово о воздухе; LANG.t в стенде отдаёт ключ",
+  },
+  buildWx: {
+    from: "function scoreCat(s)",
+    to: "function fetchWeather()",
+    why: "scoreCat, deriveQ, buildWx — категория дня и сборка дней из почасового ответа",
+  },
+  airState: {
+    from: "var airDay = {}, airKey",
+    to: "function fetchAir()",
+    why: "airDay, wxRaw — воздух по суткам",
+  },
+  airAt: {
+    from: "function airKeyOf(date)",
+    to: "/* ---------- Погода точек маршрута",
+    why: "airKeyOf, airAt — воздух по часу",
+  },
+  mwSky: {
+    from: "function nearHour(bh, hr)",
+    to: "function milkyWayAt(date, t)",
+    why: "nearHour и mwSkyAt — погода над окном Млечного Пути",
+  },
   light: {
     from: "var GOLD=[226,164,76]",
     to: "var cx = 195, cy = 196, rx = 163, ry = 148;",

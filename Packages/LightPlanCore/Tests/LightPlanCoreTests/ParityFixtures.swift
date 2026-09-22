@@ -305,4 +305,102 @@ enum ParityFixtures {
         let core: [String: Double]
         let coreAltAz: [CoreAltAz]
     }
+
+    // MARK: - Итерация 10: погода и закатный балл
+
+    /// Есть ли астрономическая темнота этой ночью, на этой широте.
+    struct AstroNightHas: Decodable { let lat: Double; let date: String; let has: Bool }
+    /// Когда она вернётся; `nil` — не вернулась за 190 суток.
+    struct AstroNightNext: Decodable { let lat: Double; let date: String; let next: String? }
+    struct AstroNightFile: Decodable {
+        let meta: Meta
+        let has: [AstroNightHas]
+        let next: [AstroNightNext]
+    }
+
+    /// Один день выдумки офлайн (`qualityOf` + `dayWeather`, без сети).
+    struct MockWeatherDay: Decodable {
+        let date: String
+        let q: String
+        let cloud: Int
+        let tempBase, wind: Int
+        /// Облачность часов 16…21 — не округляется.
+        let trend: [Double]
+    }
+    struct MockWeatherFile: Decodable { let meta: Meta; let days: [MockWeatherDay] }
+
+    /// Один час прогноза, как его хранит `wxByHour` (та же форма — и внутри
+    /// дня как `layers`).
+    struct HourRecord: Decodable {
+        let cloud: Double
+        let code: Int
+        let temp: Double
+        let low, mid, high, hum: Double
+        let wind: Double
+        let wdir, gust: Double?
+    }
+    struct AirSample: Decodable { let aod, dust: Double? }
+    /// Один собранный день (`buildWx`).
+    struct WeatherDayValue: Decodable {
+        let q: String
+        let cloud: Int
+        let sunset: Int?
+        let layers: HourRecord?
+        let tempBase, wind: Int
+        let windDir: Double?
+        let gust: Int
+        let trend: [Double]
+        let real: Bool
+    }
+    struct WeatherDayEntry: Decodable { let key: String; let v: WeatherDayValue }
+    struct WeatherHourEntry: Decodable { let key: String; let hours: [String: HourRecord] }
+    /// Почасовой ответ Open-Meteo, как его отдаёт API — теми же именами
+    /// полей, что и стенд, и продукт: сверка не выдумывает свой вход, а
+    /// кормит Swift тем же, чем стенд кормил `buildWx`.
+    struct RawHourly: Decodable {
+        let time: [String]
+        let cloud_cover: [Double]
+        let cloud_cover_low, cloud_cover_mid, cloud_cover_high: [Double]?
+        let relative_humidity_2m: [Double]?
+        let temperature_2m: [Double]
+        let wind_speed_10m: [Double]
+        let wind_direction_10m, wind_gusts_10m: [Double]?
+        let precipitation: [Double]
+        let weather_code: [Int]
+    }
+    /// Аэрозоль и пыль по суткам: ключ — `"YYYY-MM-DD"`, час — строка "0"…"23".
+    typealias RawAirByDay = [String: [String: AirSample]]
+    struct WeatherDayCase: Decodable {
+        let name: String
+        let lat, lon, tz: Double
+        let input: RawHourly
+        let airInput: RawAirByDay
+        let days: [WeatherDayEntry]
+        let hourly: [WeatherHourEntry]
+    }
+    struct WeatherDayFile: Decodable { let meta: Meta; let cases: [WeatherDayCase] }
+
+    /// Погода над окном Млечного Пути (`mwSkyAt`).
+    struct MilkyWaySkyValue: Decodable {
+        let score: Int
+        let look: String
+        let word: String?
+        let cloud, hum: Int
+        let air: AirSample?
+    }
+    struct MilkyWaySkyCase: Decodable {
+        let date: String
+        let lat, lon, tz: Double
+        let why: String
+        let cloud, hum: Double
+        let air: AirSample?
+        struct Span: Decodable { let from, to: Double }
+        struct Window: Decodable { let spans: [Span]; let dark: Bool }
+        let window: Window
+        let input: RawHourly
+        let spanStartIso: String
+        let airInput: RawAirByDay
+        let sky: MilkyWaySkyValue?
+    }
+    struct MilkyWaySkyFile: Decodable { let meta: Meta; let cases: [MilkyWaySkyCase] }
 }

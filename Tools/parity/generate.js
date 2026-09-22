@@ -350,6 +350,187 @@ function eclipseSweep() {
   return { table: table, sweep: out, days: n };
 }
 
+/* ============================================================
+   ИТЕРАЦИЯ 10 — ПОГОДА И ЗАКАТНЫЙ БАЛЛ
+   ============================================================ */
+
+/* Темнота в произвольную дату: сетка широт § 5.2 (долгота и пояс — как у
+   statePlaces, 37/2) на солнцестояния/равноденствия и их соседей — там модель
+   проходит крайние склонения. `next` — только на четырёх датах 2026 года:
+   190 шагов на комбинацию, дороже, чем `has`. */
+function astroNightSweep() {
+  const hasRows = [], nextRows = [];
+  for (const lat of LATS) {
+    X.setPlace(ctx, { lat: lat, lon: 37, tz: 2 });
+    for (const iso of datesFull()) {
+      hasRows.push({ lat: lat, date: iso, has: ctx.hasAstroNight(toDate(iso)) });
+    }
+    for (const iso of SUN_DATES_2026) {
+      const n = ctx.nextAstroNight(toDate(iso));
+      nextRows.push({ lat: lat, date: iso, next: n ? dayText(n) : null });
+    }
+  }
+  return { has: hasRows, next: nextRows };
+}
+
+/* Мок офлайн: чистая функция даты, широта ни при чём. Сетка — все сутки
+   2026 года плюс несколько дат на границах года и семян с несовпадающей
+   разрядностью (29 февраля, стык годов), чтобы поймать порчу семени. */
+function mockSweep() {
+  const dates = daysOf2026().concat(["2025-12-31", "2027-01-01", LEAP_DAY]);
+  const rows = [];
+  for (const iso of dates) {
+    const d = toDate(iso);
+    const w = ctx.dayWeather(d);
+    rows.push({ date: iso, q: ctx.qualityOf(d), cloud: w.cloud, tempBase: w.tempBase, wind: w.wind, trend: w.trend });
+  }
+  return rows;
+}
+
+/* Синтетический почасовой ответ Open-Meteo — детерминированный, без сети и
+   без Math.random: `buildWx` считается только из чисел, которые сам стенд и
+   придумал. `withOptional=false` опускает необязательные ряды целиком —
+   проверка запасных значений (`has(k)`) на весь ряд, а не на час. */
+function syntheticHourly(startIso, days, opts) {
+  opts = opts || {};
+  const time = [], cloud = [], low = [], mid = [], high = [], hum = [], temp = [], wind = [],
+    wdir = [], gust = [], precip = [], code = [];
+  const start = toDate(startIso);
+  for (let dd = 0; dd < days; dd++) {
+    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + dd);
+    const iso = dayText(day);
+    for (let hh = 0; hh < 24; hh++) {
+      time.push(iso + "T" + String(hh).padStart(2, "0") + ":00");
+      const c = opts.cloud !== undefined ? opts.cloud : (30 + dd * 5 + hh) % 101;
+      cloud.push(c);
+      low.push(opts.low !== undefined ? opts.low : Math.max(0, c - 20));
+      mid.push(opts.mid !== undefined ? opts.mid : c);
+      high.push(opts.high !== undefined ? opts.high : Math.min(100, c + 10));
+      hum.push(opts.hum !== undefined ? opts.hum : 40 + (hh % 12) * 3);
+      temp.push(opts.temp !== undefined ? opts.temp : 10 + Math.sin(hh / 24 * Math.PI * 2) * 8);
+      wind.push(opts.wind !== undefined ? opts.wind : 2 + (hh % 5));
+      wdir.push(opts.wdir !== undefined ? opts.wdir : (hh * 37) % 360);
+      gust.push(opts.gust !== undefined ? opts.gust : 3 + (hh % 4));
+      precip.push(opts.precipAt && opts.precipAt(dd, hh) !== undefined ? opts.precipAt(dd, hh) : 0);
+      code.push(opts.codeAt ? opts.codeAt(dd, hh) : 0);
+    }
+  }
+  const h = { time: time, cloud_cover: cloud, temperature_2m: temp, wind_speed_10m: wind,
+    precipitation: precip, weather_code: code };
+  if (opts.withOptional !== false) {
+    h.cloud_cover_low = low; h.cloud_cover_mid = mid; h.cloud_cover_high = high;
+    h.relative_humidity_2m = hum; h.wind_direction_10m = wdir; h.wind_gusts_10m = gust;
+  }
+  return h;
+}
+
+/* `buildWx` по нескольким сценариям: обычный день, ряды без необязательных
+   полей, туман поутру, дождь перебивает категорию, полярный день (часа заката
+   нет вовсе), дробный пояс (Катманду), поправка на аэрозоль в час заката. */
+function weatherDaySweep() {
+  const cases = [
+    { name: "обычный, все поля", place: { lat: 56.02, lon: 37.48, tz: 3 }, startIso: "2026-06-10", days: 2 },
+    { name: "только обязательные поля", place: { lat: 56.02, lon: 37.48, tz: 3 }, startIso: "2026-06-10", days: 1,
+      opts: { withOptional: false } },
+    { name: "туман поутру", place: { lat: 45, lon: 37, tz: 2 }, startIso: "2026-10-05", days: 1,
+      opts: { codeAt: function (dd, hh) { return hh >= 6 && hh <= 8 ? 45 : 0; } } },
+    { name: "дождь перебивает категорию", place: { lat: 45, lon: 37, tz: 2 }, startIso: "2026-10-06", days: 1,
+      opts: { cloud: 10, low: 5, mid: 5, high: 5, codeAt: function () { return 61; }, precipAt: function () { return 1.2; } } },
+    { name: "полярный день — часа заката нет", place: { lat: 78, lon: 0, tz: 0 }, startIso: "2026-06-21", days: 1 },
+    { name: "дробный пояс — Катманду", place: { lat: 27.7172, lon: 85.324, tz: 5.75 }, startIso: "2026-03-13", days: 1 },
+    { name: "южное полушарие, высокая влажность", place: { lat: -33.45, lon: -70.66, tz: -4 }, startIso: "2026-07-15", days: 1,
+      opts: { hum: 88 } },
+    { name: "аэрозоль поправляет закатный балл", place: { lat: 45, lon: 37, tz: 2 }, startIso: "2026-10-07", days: 1,
+      air: { aod: 0.55, dust: 30 } },
+  ];
+  const airBySpec = function (spec) {
+    const byHour = {};
+    for (let hh = 0; hh < 24; hh++) byHour[hh] = { aod: spec.aod, dust: spec.dust };
+    return byHour;
+  };
+  const out = [];
+  for (const c of cases) {
+    X.setPlace(ctx, c.place);
+    const h = syntheticHourly(c.startIso, c.days, c.opts || {});
+    const airInput = {};
+    if (c.air) {
+      const start = toDate(c.startIso);
+      for (let dd = 0; dd < c.days; dd++) {
+        const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + dd);
+        airInput[dayText(day)] = airBySpec(c.air);
+      }
+    }
+    ctx.airDay = {};
+    for (const k in airInput) ctx.airDay[k] = { byHour: airInput[k] };
+    const days = ctx.buildWx(h);
+    const hourly = ctx.wxByHour;
+    const dayKeys = Object.keys(days).sort();
+    out.push({
+      name: c.name, lat: c.place.lat, lon: c.place.lon, tz: c.place.tz,
+      // Вход — то же, чем кормили buildWx: без сети и без выдумки на лету,
+      // Swift обязан прийти к тому же результату на этих же числах.
+      input: h, airInput: airInput,
+      days: dayKeys.map(function (k) { return { key: k, v: days[k] }; }),
+      hourly: dayKeys.map(function (k) { return { key: k, hours: hourly[k] }; }),
+    });
+  }
+  return out;
+}
+
+/* `mwSkyAt`: погода над окном Млечного Пути. Место и дата взяты так, чтобы
+   окно было не пустым (проверено 22 сентября 2026 стендом вручную) — 45°
+   с. ш. даёт окно каждую ночь марта, а 10 мая даёт отрезок, переходящий через
+   солнечную полночь в обе стороны (`from < 0`), — сама функция дню не верит,
+   а спрашивает соседние сутки по `dayOffset`. Облачность, влажность и
+   аэрозоль перебираются сеткой, чтобы пройти все ветви `look`/`word`. */
+function mwSkySweep() {
+  const place = { lat: 45, lon: 37, tz: 2 };
+  const cases = [
+    { iso: "2026-03-15", cloud: 80, hum: 50, air: null, why: "cloud≥70 → poor" },
+    { iso: "2026-03-15", cloud: 50, hum: 50, air: null, why: "35≤cloud<70 → good" },
+    { iso: "2026-03-15", cloud: 20, hum: 50, air: null, why: "низкая облачность, высокий балл → excellent" },
+    { iso: "2026-03-15", cloud: 20, hum: 85, air: null, why: "влажность топит балл ниже 75 → plain" },
+    { iso: "2026-03-15", cloud: 10, hum: 50, air: { aod: 0.5, dust: 0 }, why: "дымка — aod даёт слово и plain" },
+    { iso: "2026-03-15", cloud: 10, hum: 50, air: { aod: 0.1, dust: 25 }, why: "пыль — своё слово и штраф 15" },
+    { iso: "2026-05-10", cloud: 30, hum: 60, air: null, why: "отрезок через солнечную полночь в обе стороны" },
+  ];
+  const out = [];
+  for (const c of cases) {
+    X.setPlace(ctx, place);
+    const d = toDate(c.iso);
+    ctx.computeSun(d);
+    const w = ctx.mwWindow(d);
+    // Синтетика на все сутки окна плюс соседей — окно у 10 мая цепляет и
+    // предыдущий, и следующий день.
+    const spanStartIso = dayText(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1));
+    const h = syntheticHourly(spanStartIso, 3,
+      { cloud: c.cloud, low: c.cloud, mid: c.cloud, high: c.cloud, hum: c.hum });
+    ctx.buildWx(h);
+    ctx.airDay = {};
+    const airInput = {};
+    if (c.air) {
+      const byHour = {};
+      for (let hh = 0; hh < 24; hh++) byHour[hh] = { aod: c.air.aod, dust: c.air.dust };
+      for (let off = -1; off <= 1; off++) {
+        const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + off);
+        ctx.airDay[dayText(day)] = { byHour: byHour };
+        airInput[dayText(day)] = byHour;
+      }
+    }
+    const sky = ctx.mwSkyAt(d, w);
+    out.push({
+      date: c.iso, lat: place.lat, lon: place.lon, tz: place.tz, why: c.why,
+      cloud: c.cloud, hum: c.hum, air: c.air || null,
+      window: { spans: w.spans, dark: w.dark },
+      // Вход, из которого посчитаны почасовые записи и воздух — без него
+      // сверка не смогла бы повторить `buildWx`/`mwSkyAt` в Swift.
+      input: h, spanStartIso: spanStartIso, airInput: airInput,
+      sky: sky,
+    });
+  }
+  return out;
+}
+
 /* ---------- Слияние двух снимков ----------
    Архитектура (§ 7 docs/17) велит сверять `mergeStores` парами снимков:
    веб сливает пару, результат ложится в фикстуру. Пары — не случайные: каждая
@@ -610,6 +791,13 @@ function selfcheck() {
      поведение, а не ошибка переноса (DECISIONS, «Окна неба»). */
   chk("90° с. ш.: дуги луны в окне ±3.5 суток нет ни в одни из 365 суток", poleNone, 365);
 
+  /* Итерация 10: темнота в произвольную дату — известное с солнечной модели,
+     не с этого же кода. 56° с. ш. видели в белые ночи (§ 8, итерация 9а):
+     темноты 21 июня нет, а 21 декабря длинная полярная ночь — тем более есть. */
+  X.setPlace(ctx, { lat: 56.02, lon: 37.48, tz: 3 });
+  chk("56.02° с. ш., 21 июня → hasAstroNight ложь", ctx.hasAstroNight(toDate("2026-06-21")), false);
+  chk("56.02° с. ш., 21 декабря → hasAstroNight истина", ctx.hasAstroNight(toDate("2026-12-21")), true);
+
   const bad = rows.filter(function (r) { return !r.ok; });
   for (const r of rows) {
     console.log((r.ok ? "  ок  " : "  НЕТ ") + r.name +
@@ -761,6 +949,40 @@ function main() {
     tolerance: { degrees: 1e-9, checkpoints: "l=0 → 266.405 / −28.936, l=180 → 86.405 / +28.936" },
     count: mw.band.length + mw.coreAltAz.length,
   }, mw));
+
+  const astro = astroNightSweep();
+  out.push(write(dir, "astro_night.json", {
+    what: "темнота в произвольную дату (hasAstroNight) и её возвращение (nextAstroNight)",
+    grid: "has — широты § 5.2 × datesFull(); next — те же широты × четыре даты 2026 года",
+    tolerance: { has: "строго", next: "строго, null — не вернулась за 190 суток" },
+    count: astro.has.length + astro.next.length,
+  }, astro));
+
+  const mock = mockSweep();
+  out.push(write(dir, "mock_weather.json", {
+    what: "выдумка офлайн: qualityOf и dayWeather — чистая функция даты",
+    grid: "все сутки 2026 года плюс стык годов и 29 февраля",
+    tolerance: { q: "строго", cloud: "строго", tempBase: "строго", wind: "строго", trend: "строго" },
+    count: mock.length,
+  }, { days: mock }));
+
+  const weatherDay = weatherDaySweep();
+  out.push(write(dir, "weather_day.json", {
+    what: "сборка дня из почасового ответа (buildWx): категория, закатный балл, температура, ветер, тренд",
+    grid: "семь сценариев: обычный, без необязательных рядов, туман, дождь, полярный день, дробный пояс, южное полушарие",
+    tolerance: { q: "строго", cloud: "строго", sunset: "строго", tempBase: "строго", wind: "строго",
+      windDir: "строго, null — направления нет", gust: "строго", trend: "строго, не округляется" },
+    note: "синтетический почасовой ответ — без сети и без Math.random, см. Tools/parity/generate.js syntheticHourly",
+    count: weatherDay.reduce(function (n, c) { return n + c.days.length; }, 0),
+  }, { cases: weatherDay }));
+
+  const mwSky = mwSkySweep();
+  out.push(write(dir, "mwsky.json", {
+    what: "погода над окном Млечного Пути (mwSkyAt): балл, взгляд, слово о воздухе",
+    grid: "семь сценариев на 45° с. ш.: границы look, дымка и пыль, отрезок через солнечную полночь",
+    tolerance: { score: "строго", look: "строго", word: "строго", cloud: "строго", hum: "строго" },
+    count: mwSky.length,
+  }, { cases: mwSky }));
 
   if (!quiet) {
     console.log("\nвырезка из беты: " + DIGEST + "\nпапка: " + dir);

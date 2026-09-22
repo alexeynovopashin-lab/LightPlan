@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "beta/index.html",
-    "cut": "200bd043f299fd73",
+    "cut": "bcc0ef3e9e3c8c3f",
     "what": "высота, азимут и длина тени по минутам шкалы",
     "grid": "каждые 10 минут от MINT до MAXT плюс все моменты границ состояний",
     "tolerance": {"degrees":1e-9,"shadow":1e-9,"nullIsNull":"строго"},

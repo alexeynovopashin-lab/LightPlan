@@ -7,7 +7,7 @@ import Foundation
 /// а загрузчик останется тем же.
 struct ParityFixturesTests {
 
-    @Test("Все девять фикстур читаются и посчитаны одной вырезкой из беты")
+    @Test("Все тринадцать фикстур читаются и посчитаны одной вырезкой из беты")
     func allFixturesLoad() throws {
         let solar = try ParityFixtures.load("solar_day.json", as: ParityFixtures.SolarDayFile.self)
         let sample = try ParityFixtures.load("solar_sample.json", as: ParityFixtures.SolarSampleFile.self)
@@ -18,9 +18,14 @@ struct ParityFixturesTests {
         let eclipse = try ParityFixtures.load("eclipse.json", as: ParityFixtures.EclipseFile.self)
         let merge = try ParityFixtures.load("merge_pairs.json", as: ParityFixtures.MergePairsFile.self)
         let sky = try ParityFixtures.load("sky_windows.json", as: ParityFixtures.SkyWindowsFile.self)
+        let astroNight = try ParityFixtures.load("astro_night.json", as: ParityFixtures.AstroNightFile.self)
+        let mock = try ParityFixtures.load("mock_weather.json", as: ParityFixtures.MockWeatherFile.self)
+        let weatherDay = try ParityFixtures.load("weather_day.json", as: ParityFixtures.WeatherDayFile.self)
+        let mwSky = try ParityFixtures.load("mwsky.json", as: ParityFixtures.MilkyWaySkyFile.self)
 
-        let cuts = Set([solar.meta.cut, sample.meta.cut, light.meta.cut,
-                        score.meta.cut, moon.meta.cut, mw.meta.cut, merge.meta.cut, eclipse.meta.cut, sky.meta.cut])
+        let cuts = Set([solar.meta.cut, sample.meta.cut, light.meta.cut, score.meta.cut, moon.meta.cut,
+                        mw.meta.cut, merge.meta.cut, eclipse.meta.cut, sky.meta.cut,
+                        astroNight.meta.cut, mock.meta.cut, weatherDay.meta.cut, mwSky.meta.cut])
         #expect(cuts.count == 1, "фикстуры посчитаны разными состояниями беты: \(cuts). Собрать заново: make parity")
 
         #expect(solar.days.count == solar.meta.count)
@@ -32,6 +37,10 @@ struct ParityFixturesTests {
         #expect(mw.band.count + mw.coreAltAz.count == mw.meta.count)
         #expect(merge.pairs.count * 2 == merge.meta.count)
         #expect(sky.grid.count + sky.sweep.count == sky.meta.count)
+        #expect(astroNight.has.count + astroNight.next.count == astroNight.meta.count)
+        #expect(mock.days.count == mock.meta.count)
+        #expect(weatherDay.cases.reduce(0) { $0 + $1.days.count } == weatherDay.meta.count)
+        #expect(mwSky.cases.count == mwSky.meta.count)
     }
 
     /// Главное свойство слияния: стороны не важны. Иначе два устройства
