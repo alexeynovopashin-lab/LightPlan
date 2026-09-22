@@ -17,7 +17,13 @@ let package = Package(
                 .product(name: "LightPlanCore", package: "LightPlanCore"),
             ]
         ),
-        .testTarget(name: "LightPlanTimelineTests", dependencies: ["LightPlanTimeline"]),
+        .testTarget(
+            name: "LightPlanTimelineTests",
+            dependencies: [
+                "LightPlanTimeline",
+                .product(name: "LightPlanCore", package: "LightPlanCore"),
+            ]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
