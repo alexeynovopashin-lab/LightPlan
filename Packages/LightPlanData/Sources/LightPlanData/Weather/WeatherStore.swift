@@ -51,6 +51,13 @@ public final class WeatherStore {
         MilkyWaySky.over(date: date, window: window, hourly: hourlyByDay, air: air)
     }
 
+    /// Аэрозоль и пыль в час `hour` этих суток; `nil` — на этот час данных
+    /// нет (веб `airAt`). Экран «Свет» (итерация 19) зовёт это для строки
+    /// «Воздух» — единственный, кроме `milkyWaySky`, читатель воздуха снаружи.
+    public func airSample(for date: CivilDate, hour: Int) -> AirSample? {
+        Weather.nearHour(air[date] ?? [:], hour)
+    }
+
     /// Дождаться, пока текущий вопрос о погоде решится (для тестов и для
     /// экранов, которым нужно закрыть спиннер).
     public func settled() async { await refreshTask?.value }

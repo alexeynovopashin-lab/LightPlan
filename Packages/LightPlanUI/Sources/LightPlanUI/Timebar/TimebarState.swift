@@ -302,6 +302,11 @@ public final class TimebarState {
     /// Настенное время места прямо сейчас — грубая дата берёт смещение
     /// пояса, а дальше `WallTime` уточняет день и минуту (тот же приём, что
     /// у `jumpToNow` итерации 16).
+    /// Сегодняшняя дата в поясе места прямо сейчас — не `machine.selectedDate`
+    /// (тот день, что открыт на экране), а настоящее «сегодня». Экран «Свет»
+    /// (итерация 19) зовёт это для шапки (`hNote`: «сегодня»/«через…»/«…назад»).
+    public var todayInPlace: CivilDate { wallNow().day }
+
     private func wallNow() -> WallTime {
         let now = Moment(Date())
         let approx = CivilDate(daysSince1970: Int((Double(now.milliseconds) / 86_400_000).rounded(.down)))

@@ -2,13 +2,13 @@ import SwiftUI
 import LightPlanCore
 import LightPlanData
 
-/// Хозяин экрана на время итерации 17: показывает таймбар на настоящих
-/// данных, пока «Свет» (итерация 19) не завёл собственную модель момента и
-/// хранилище настроек места (итерация 12). Место — фиксированный демо-адрес,
-/// не устройство: `CurrentPlace`/`CoreLocationProvider` заведёт экран «Свет»
-/// вместе с разрешением на геолокацию, здесь этого спрашивать не у чего.
+/// Хозяин приложения: заводит место, дату и погоду один раз, дальше отдаёт
+/// их экрану «Свет» (итерация 19). Место — фиксированный демо-адрес, не
+/// устройство: `CurrentPlace`/`CoreLocationProvider` заведёт экран «Свет»
+/// вместе с разрешением на геолокацию, когда придёт итерация 12; до тех пор
+/// это тот же Барнаул, что был здесь и раньше.
 public struct RootView: View {
-    @State private var state: TimebarState
+    @State private var model: LightScreenModel
 
     public init() {
         // Барнаул — рабочий город Алексея, тот же ориентир, что и в сетке
@@ -16,28 +16,12 @@ public struct RootView: View {
         let place = Place(latitude: 53.3481, longitude: 83.7798, zone: ZoneID("Asia/Barnaul")!)
         let today = RootView.today(in: place)
         let weather = WeatherStore(place: place, source: OpenMeteoSource())
-        _state = State(wrappedValue: TimebarState(place: place, date: today, weather: weather))
+        let timebar = TimebarState(place: place, date: today, weather: weather)
+        _model = State(wrappedValue: LightScreenModel(timebar: timebar, weather: weather))
     }
 
     public var body: some View {
-        VStack {
-            Spacer()
-            DomeView(sun: state.solarDay, place: state.place, date: state.machine.selectedDate,
-                      t: state.machine.viewMinute, nowMinute: state.nowMinute, mode: skyMode)
-                .padding(.horizontal, 16)
-            TimebarView(state)
-                .padding(.horizontal, 16)
-            Spacer(minLength: 24)
-        }
-        .background(.black.opacity(0.92))
-        .preferredColorScheme(.dark)
-    }
-
-    /// Купол (итерация 18) и таймбар (итерация 17) делят один тумблер:
-    /// вебовский `showMoon` барабана — то же самое «солнце или луна» куполом.
-    private var skyMode: Binding<DomeSkyMode> {
-        Binding(get: { state.showMoon ? .moon : .sun },
-                set: { state.showMoon = $0 == .moon })
+        LightScreenView(model)
     }
 
     private static func today(in place: Place) -> CivilDate {
