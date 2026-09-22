@@ -16,16 +16,28 @@ help:
 	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
 	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
 
+# Файлы, которые пишет сам generate.js. Другие цели (lang, domain, локация)
+# кладут в Fixtures/ свои файлы рядом — их сюда не включаем, иначе diff -r
+# всей папки сравнивает generate.js с чужими файлами и всегда «расходится».
+PARITY_FILES := solar_day.json solar_sample.json light_state.json \
+	sunset_score.json moon.json eclipse.json sky_windows.json \
+	merge_pairs.json milkyway.json astro_night.json mock_weather.json \
+	weather_day.json mwsky.json
+
 parity:
 	@TZ=UTC node Tools/parity/generate.js --out $(FIXTURES)
 	@tmp=$$(mktemp -d); \
 	TZ=UTC node Tools/parity/generate.js --out $$tmp --quiet; \
-	if diff -r $(FIXTURES) $$tmp > /dev/null; then \
+	fail=0; \
+	for f in $(PARITY_FILES); do \
+		cmp -s $(FIXTURES)/$$f $$tmp/$$f || { echo "  РАСХОДИТСЯ: $$f"; fail=1; }; \
+	done; \
+	if [ $$fail -eq 0 ]; then \
 		echo "  повторный прогон: побайтово то же"; \
 		rm -rf $$tmp; \
 	else \
-		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — стенду нельзя верить:"; \
-		diff -rq $(FIXTURES) $$tmp; rm -rf $$tmp; exit 1; \
+		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — стенду нельзя верить"; \
+		rm -rf $$tmp; exit 1; \
 	fi
 
 blocks:
