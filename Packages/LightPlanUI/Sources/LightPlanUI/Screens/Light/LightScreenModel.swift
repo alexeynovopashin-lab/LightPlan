@@ -29,6 +29,8 @@ public final class LightScreenModel {
     /// Имя места в шапке. До итерации 20 (карта, выбор места руками) это
     /// город по умолчанию: из настроек, из геолокации или столица.
     public var locationName: String
+    /// Строка под именем — область или страна (`hLocSub` веба), от геокодера.
+    public var locationSub = ""
 
     public var clockPreference: ClockPreference = .auto {
         didSet {

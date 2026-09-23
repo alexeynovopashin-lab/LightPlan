@@ -10,41 +10,42 @@ import LightPlanTimeline
 /// здесь настоящая, `LightTrack.gradient(day:)` от `SolarDay`, а не выдумка.
 struct ScrubView: View {
     let state: TimebarState
+    @Environment(\.colorScheme) private var colorScheme
 
+    /// Числа `.scrub` веба: поле касания 36, рельс 4 по центру (16…20),
+    /// ползунок 26, гравировка 10 под рельсом (24…34) с полями 13, под всем
+    /// ярусом ещё 6 (`.track-wrap { padding-bottom: 6px }`). До 19б здесь
+    /// был стенд прототипа: рельс-капсула 34 pt и белый прямоугольник.
+    static let field: CGFloat = 36
+    static let bottomPad: CGFloat = 6
     private let thumb = 26.0
-    private let track = 34.0
 
     var body: some View {
+        let pal = Palette(colorScheme)
         GeometryReader { geo in
             let w = geo.size.width
-            ZStack(alignment: .leading) {
+            ZStack(alignment: .topLeading) {
                 Capsule()
-                    .fill(Color(white: 0.11))
-                    .overlay(Capsule().strokeBorder(Color(white: 0.22), lineWidth: 1))
-                    .frame(height: track)
-
-                Capsule()
-                    .fill(LinearGradient(gradient: LightTrack.gradient(day: state.solarDay),
-                                         startPoint: .leading, endPoint: .trailing))
-                    .frame(height: track - 16)
-                    .padding(.horizontal, 6)
-                    .opacity(0.65)
+                    .fill(pal.rail)
+                    .overlay(Capsule().fill(LinearGradient(gradient: PathStops.railGradient(day: state.solarDay),
+                                                           startPoint: .leading, endPoint: .trailing)))
+                    .frame(width: w, height: 4)
+                    .padding(.top, 16)
 
                 RulerView(solarDay: state.solarDay)
-                    .frame(height: 10)
-                    .padding(.horizontal, 6)
-                    .offset(y: -track / 2 - 2)
+                    .frame(width: max(0, w - 26), height: 10)
+                    .shotNode("ruler")
+                    .padding(.leading, 13).padding(.top, 24)
 
-                heat(at: .trailing, on: state.machine.wind.side > 0)
-                heat(at: .leading, on: state.machine.wind.side < 0)
+                heat(on: state.machine.wind.side < 0, pal: pal).padding(.top, 16)
+                heat(on: state.machine.wind.side > 0, pal: pal).padding(.leading, max(0, w - 34)).padding(.top, 16)
 
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(.white)
-                    .frame(width: state.machine.wind.thumbWidth, height: state.machine.wind.thumbHeight)
-                    .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
-                    .offset(x: thumb / 2 + position(width: w) * (w - thumb) - state.machine.wind.thumbWidth / 2)
+                knob(pal: pal)
+                    .offset(x: thumb / 2 + position() * (w - thumb) - state.machine.wind.thumbWidth / 2,
+                            y: Self.field / 2 - state.machine.wind.thumbHeight / 2)
             }
-            .frame(height: track + 18, alignment: .center)
+            .frame(width: w, height: Self.field, alignment: .topLeading)
+            .shotNode("scrub")
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -52,28 +53,43 @@ struct ScrubView: View {
                     .onEnded { _ in state.releaseSlider() }
             )
         }
-        .frame(height: track + 18)
+        .frame(height: Self.field)
+        .padding(.bottom, Self.bottomPad)
     }
 
-    private func position(width w: Double) -> Double {
+    /// Ручка — стекло с глухим кантом (`::-webkit-slider-thumb`): сквозь неё
+    /// видна дорожка света, кант 3 pt держит край на светлом участке, снаружи
+    /// волосок `--ink-a22`, сверху блик `--glass-shine`, под ней тень
+    /// 0 4 12 чёрным 55 %. Стекло системное (DECISIONS, 21 сентября 2026).
+    private func knob(pal: Palette) -> some View {
+        let kw = state.machine.wind.thumbWidth, kh = state.machine.wind.thumbHeight
+        return Ellipse()
+            .fill(pal.knobGlass)
+            .glassEffect(.clear, in: Ellipse())
+            .overlay(Ellipse().strokeBorder(pal.knobEdge, lineWidth: 3))
+            .overlay(
+                Ellipse().inset(by: 3).stroke(pal.glassShine, lineWidth: 1)
+                    .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.25)))
+            )
+            .overlay(Ellipse().inset(by: -1).stroke(pal.inkA22, lineWidth: 1))
+            .frame(width: kw, height: kh)
+            .shadow(color: .black.opacity(0.55), radius: 6, y: 4)
+            .allowsHitTesting(false)
+    }
+
+    private func position() -> Double {
         let span = state.solarDay.maxt - state.solarDay.mint
         guard span > 0 else { return 0 }
         return min(max((state.machine.viewMinute - state.solarDay.mint) / span, 0), 1)
     }
 
-    /// Конец дорожки разогревается по мере взвода.
-    private func heat(at edge: Alignment, on active: Bool) -> some View {
-        HStack {
-            if edge == .trailing { Spacer(minLength: 0) }
-            Capsule()
-                .fill(RadialGradient(
-                    colors: [Color(red: 1, green: 0.72, blue: 0.36), .clear],
-                    center: edge == .trailing ? .trailing : .leading,
-                    startRadius: 0, endRadius: 60))
-                .frame(width: 84, height: track)
-                .opacity(active ? state.machine.wind.heat : 0)
-            if edge == .leading { Spacer(minLength: 0) }
-        }
-        .allowsHitTesting(false)
+    /// Разогрев конца дорожки (`.rail-heat`): латунная полоска 34×4 поверх
+    /// рельса у того края, куда давят; яркость — сила взвода.
+    private func heat(on active: Bool, pal: Palette) -> some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(pal.brass)
+            .frame(width: 34, height: 4)
+            .opacity(active ? state.machine.wind.heat : 0)
+            .allowsHitTesting(false)
     }
 }

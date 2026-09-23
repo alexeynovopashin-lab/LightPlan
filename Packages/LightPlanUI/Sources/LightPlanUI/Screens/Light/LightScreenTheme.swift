@@ -7,42 +7,28 @@ import LightPlanCore
 /// пакета (её нет ни у одного экрана — «Свет» первый), поэтому токены живут
 /// здесь тем же приёмом, каким `DomeView` уже завёл свои несколько цветов
 /// (комментарий там же: «купол ещё не заведён в общий словарь тем»).
+/// Цвета экрана «Свет». С итерации 19б — тонкая обёртка над общей
+/// `Palette` (переменные CSS веба по именам): до неё токены жили здесь
+/// своими копиями, и фон светлой темы был `--bg` (#EDE9E1) вместо
+/// поверхности экрана `--surface` (#FAF8F3) — сверка снимков дала Δ 27.
 enum LightScreenTheme {
-    static func ink(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0x17150F) : Color(hex: 0xEFEAE0)
-    }
-    static func ink3(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0x55504A) : Color(hex: 0xA8A093)
-    }
-    static func ink4(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0x6B6559) : Color(hex: 0x8A8478)
-    }
-    static func brass(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0xA9721F) : Color(hex: 0xE2A44C)
-    }
-    static func green(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0x5F6B4E) : Color(hex: 0xA8B49B)
-    }
-    static func blue(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0x3F6088) : Color(hex: 0x7C9CC4)
-    }
-    static func toneGood(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0x6B6559) : Color(hex: 0xB5AC9C)
-    }
+    static func ink(_ s: ColorScheme) -> Color { Palette(s).ink }
+    static func ink2(_ s: ColorScheme) -> Color { Palette(s).ink2 }
+    static func ink3(_ s: ColorScheme) -> Color { Palette(s).ink3 }
+    static func ink4(_ s: ColorScheme) -> Color { Palette(s).ink4 }
+    static func ink6(_ s: ColorScheme) -> Color { Palette(s).ink6 }
+    static func brass(_ s: ColorScheme) -> Color { Palette(s).brass }
+    static func green(_ s: ColorScheme) -> Color { Palette(s).green }
+    static func blue(_ s: ColorScheme) -> Color { Palette(s).blue }
+    static func toneGood(_ s: ColorScheme) -> Color { Palette(s).toneGood }
     /// `--moon` веба не переопределяется в светлой теме — один и тот же
     /// голубоватый цвет в обеих.
-    static let moon = Color(hex: 0xA8BDD8)
-    static func meterOff(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0xD2CBBC) : Color(hex: 0x3A352E)
-    }
-    /// Фон страницы — `--bg` веба (он же `theme-color` в шапке браузера).
-    /// Тема приходит от корня (`preferredColorScheme`), экран её не держит.
-    static func background(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color(hex: 0xEDE9E1) : Color(hex: 0x0F0E0C)
-    }
-    static func hairline(_ scheme: ColorScheme) -> Color {
-        scheme == .light ? Color.black.opacity(0.07) : Color.white.opacity(0.07)
-    }
+    static let moon = Palette(.dark).moon
+    static func meterOff(_ s: ColorScheme) -> Color { Palette(s).meterOff }
+    /// Фон экрана — `--surface`: на телефоне `.device` заливает весь экран
+    /// им, `--bg` виден только вокруг «корпуса» на широком окне.
+    static func background(_ s: ColorScheme) -> Color { Palette(s).surface }
+    static func hairline(_ s: ColorScheme) -> Color { Palette(s).hair2 }
 
     /// `TONE` веба плюс «отличный» тон, который берёт цвет состояния
     /// напрямую, а не фиксированный токен (веб: `tone==='excellent' ? col : TONE[tone]`).
@@ -63,11 +49,5 @@ enum LightScreenTheme {
         case .blue: blue(scheme)
         case .muted: ink4(scheme)
         }
-    }
-}
-
-private extension Color {
-    init(hex: UInt32) {
-        self.init(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
     }
 }

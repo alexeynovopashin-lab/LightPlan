@@ -6,6 +6,10 @@ import LightPlanData
 /// пишет имя, точку и страну — и «Свет» переезжает туда же.
 struct CitySearchField: View {
     @Bindable var app: AppModel
+    /// `.list` — строки системного списка (лист первого запуска), `.web` —
+    /// поле `.set-in` и подсказки строками `.item` (глава «Профиль», 19б).
+    enum Style { case list, web }
+    var style: Style = .list
     @State private var text = ""
     @State private var hits: [CityHit] = []
     /// Последнее имя, выбранное в подсказке: пока поле ему равно, справочник
@@ -13,7 +17,14 @@ struct CitySearchField: View {
     @State private var picked: String?
 
     var body: some View {
-        TextField(app.lexicon.t("start.cityPh"), text: $text)
+        switch style {
+        case .list: fieldAndHits
+        case .web: VStack(alignment: .leading, spacing: 0) { fieldAndHits }
+        }
+    }
+
+    @ViewBuilder private var fieldAndHits: some View {
+        let field = TextField(app.lexicon.t("start.cityPh"), text: $text)
             .autocorrectionDisabled()
             .onAppear { picked = app.settings.home.name; text = app.settings.home.name }
             .onChange(of: text) { _, v in
@@ -27,6 +38,7 @@ struct CitySearchField: View {
                 guard !Task.isCancelled else { return }
                 hits = (try? await app.cityLookup.cities(matching: q)) ?? []
             }
+        if style == .web { field.modifier(SetInputStyle()) } else { field }
         ForEach(hits, id: \.self) { h in
             Button {
                 picked = h.name
@@ -34,11 +46,16 @@ struct CitySearchField: View {
                 hits = []
                 app.takeCity(h)
             } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(h.name).foregroundStyle(.primary)
-                    if !h.area.isEmpty { Text(h.area).font(.footnote).foregroundStyle(.secondary) }
+                if style == .web {
+                    SetItemRow(icon: "pin", title: h.name, value: h.area, chevron: false)
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(h.name).foregroundStyle(.primary)
+                        if !h.area.isEmpty { Text(h.area).font(.footnote).foregroundStyle(.secondary) }
+                    }
                 }
             }
+            .buttonStyle(.plain)
         }
     }
 }
@@ -53,26 +70,32 @@ struct FeedbackSection: View {
 
     private static let telegram = URL(string: "https://t.me/lightplan_app")!
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Вид `#setOvAbout` веба: подпись, сегмент «идея / ошибка», поле
+    /// (`.field textarea`: `--sheet`, 16/24, поле 14 · 15, скругление 12),
+    /// кнопка отправки (`.data-btn`), ссылка на канал и пояснение.
     var body: some View {
-        let t = app.lexicon
-        Section {
-            Picker(t.t("fb.title"), selection: $kind) {
-                Text(t.t("fb.idea")).tag("idea")
-                Text(t.t("fb.bug")).tag("bug")
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+        let t = app.lexicon, pal = Palette(colorScheme)
+        VStack(alignment: .leading, spacing: 0) {
+            SecLabel(text: t.t("fb.title"))
+            WebSeg(options: [(t.t("fb.idea"), "idea"), (t.t("fb.bug"), "bug")], selection: $kind)
+                .padding(.horizontal, 24).padding(.top, 12)
             TextField(t.t("fb.textPh"), text: $text, axis: .vertical)
-                .lineLimit(3...8)
+                .lineLimit(2...8)
+                .lineSpacing(24 - 19.1)
+                .modifier(SetInputStyle())
+                .padding(.top, 2)
             ShareLink(item: message) {
                 Text(t.t("fb.send"))
             }
+            .buttonStyle(DataButtonStyle())
             .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Link(t.t("fb.telegram"), destination: Self.telegram)
-        } header: {
-            Text(t.t("fb.title"))
-        } footer: {
-            Text(t.t("fb.note"))
+            Link(destination: Self.telegram) {
+                Text(t.t("fb.telegram")).font(.system(size: 14)).foregroundStyle(pal.brass)
+            }
+            .padding(.horizontal, 24).padding(.top, 12)
+            SetNote(text: t.t("fb.note"))
         }
     }
 

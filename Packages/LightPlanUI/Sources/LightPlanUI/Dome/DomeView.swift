@@ -37,18 +37,31 @@ public struct DomeView: View {
         self._mode = mode
     }
 
+    /// Высота купола — `.dome { height: 240px }` веба. Холст вписывается в
+    /// рамку как `viewBox` с `meet`: масштаб по меньшей стороне, по центру.
+    /// На 440 pt ширины (17 Pro Max) это масштаб 1 и поля по 25 pt — до
+    /// 19б купол растягивался на всю ширину (×1,046) и был выше на 11 pt.
+    public static let height: CGFloat = 240
+
     public var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: .topTrailing) {
             TimelineView(.animation) { timeline in
                 Canvas { context, size in
                     paint(&context, size: size, now: timeline.date)
                 }
             }
+            #if DEBUG
+            DomeProbe(sun: sun, t: t, nowMinute: nowMinute, moon: mode == .moon)
+            #endif
+            // `.sky-swap`: сверху справа, 26 pt от верха купола, 12 от края,
+            // своё поле 7 pt вокруг знака 52×26.
             SkySwapButton(mode: $mode)
-                .padding(.trailing, 8)
-                .padding(.bottom, 4)
+                .padding(7)
+                .shotNode("dome.swap")
+                .padding(.top, 26)
+                .padding(.trailing, 12)
         }
-        .aspectRatio(CGFloat(DomeGeometry.viewWidth / DomeGeometry.viewHeight), contentMode: .fit)
+        .frame(height: Self.height)
         .onAppear {
             refreshMeteorStarsOpacity()
             meteors.start()
@@ -99,7 +112,9 @@ public struct DomeView: View {
 
     private func paint(_ context: inout GraphicsContext, size: CGSize, now: Date) {
         let g = DomeGeometry.self
-        context.scaleBy(x: size.width / CGFloat(g.viewWidth), y: size.height / CGFloat(g.viewHeight))
+        let fit = DomeFit(size: size)
+        context.translateBy(x: fit.origin.x, y: fit.origin.y)
+        context.scaleBy(x: fit.scale, y: fit.scale)
 
         let moon = mode == .moon
         let e = sun.elevation(at: t)
@@ -216,9 +231,25 @@ public struct DomeView: View {
 
     private func paintSun(_ context: inout GraphicsContext, e: Degrees, p: CGPoint, state: LightState) {
         let g = DomeGeometry.self
-        context.stroke(arcPath(), with: .linearGradient(arcGradient(moon: false),
-            startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: CGFloat(g.viewWidth), y: 0)),
-            style: StrokeStyle(lineWidth: 3, lineCap: .round))
+        // Светлая тема: дуга приподнята тенью 0 5 10 (`#arcPath` веба,
+        // `drop-shadow(... rgba(23,21,15,0.18))`) — край неба, а не предмет.
+        context.drawLayer { layer in
+            if colorScheme == .light {
+                layer.addFilter(.shadow(color: Color(hex: 0x17150F, alpha: 0.18), radius: 5, x: 0, y: 5))
+            }
+            layer.stroke(arcPath(), with: .linearGradient(arcGradient(moon: false),
+                startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: CGFloat(g.viewWidth), y: 0)),
+                style: StrokeStyle(lineWidth: 3, lineCap: .round))
+        }
+
+        // Отвес — под телом светила, как `#drop` в разметке веба (до 19б
+        // рисовался поверх и резал диск штрихом).
+        if e > 0.5 {
+            var drop = Path()
+            drop.move(to: p)
+            drop.addLine(to: CGPoint(x: p.x, y: CGFloat(g.horizonY)))
+            context.stroke(drop, with: .color(ink6), style: StrokeStyle(lineWidth: 1, dash: [2, 4]))
+        }
 
         // Свет ушедшего светила: до −18° своё небо, глубже — чужой рассвет
         // на другой стороне планеты (высота там ровно −e), светлая тема
@@ -244,13 +275,6 @@ public struct DomeView: View {
                       color: state.color, deepColor: deepColor)
         } else {
             paintBody(&context, at: p, eD: e, weight: 1, color: state.color, deepColor: deepColor)
-        }
-
-        if e > 0.5 {
-            var drop = Path()
-            drop.move(to: p)
-            drop.addLine(to: CGPoint(x: p.x, y: CGFloat(g.horizonY)))
-            context.stroke(drop, with: .color(ink6), style: StrokeStyle(lineWidth: 1, dash: [2, 4]))
         }
 
         if let nowMinute, sun.elevation(at: nowMinute) > 0.5 {
@@ -296,25 +320,40 @@ public struct DomeView: View {
         guard v > 0.002 else { return }
         let coreRect = CGRect(x: pos.x - 6.5, y: pos.y - 6.5, width: 13, height: 13)
         let corePath = Path(ellipseIn: coreRect)
-        // Тень как свойство слоя — допустимое улучшение против радиального
-        // градиента веба (риск плана, итерация 18): нужна ровно там, где
-        // светлое сливается со светлым, то есть только на светлой теме.
+        // Тень светила — нарисованная, как у веба (`#sunShade`, `.lit-shade`):
+        // круг 14,5 с градиентом «0,42 тьмы до 42 % радиуса → ноль», только в
+        // светлой теме, сила — `shadeNeed`. Итерация 18 заменила её тенью
+        // слоя (мягче и светлее); пара снимков 19б показала разницу числом —
+        // фон вокруг диска #faf8f3 против #dcd7cc у веба, Δ 59, — и тень
+        // вернулась к вебу буквально.
         if colorScheme == .light {
-            let shadowAlpha = v * g.shadeNeed(color) * 0.4
-            context.drawLayer { layer in
-                layer.addFilter(.shadow(color: .black.opacity(shadowAlpha), radius: 4, x: 0, y: 2))
-                layer.fill(corePath, with: .color(ink.opacity(v)))
-                layer.stroke(corePath, with: .color(surfaceColor.opacity(v)), lineWidth: 2.5)
+            let shade = v * g.shadeNeed(color)
+            if shade > 0.002 {
+                let r: CGFloat = 14.5
+                let rect = CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)
+                context.drawLayer { layer in
+                    layer.opacity = shade
+                    layer.fill(Path(ellipseIn: rect), with: .radialGradient(
+                        Gradient(stops: [
+                            .init(color: Color(hex: 0x17150F, alpha: 0.42), location: 0.42),
+                            .init(color: Color(hex: 0x17150F, alpha: 0), location: 1),
+                        ]), center: pos, startRadius: 0, endRadius: r))
+                }
             }
-        } else {
-            context.fill(corePath, with: .color(ink.opacity(v)))
-            context.stroke(corePath, with: .color(surfaceColor.opacity(v)), lineWidth: 2.5)
         }
+        context.fill(corePath, with: .color(ink.opacity(v)))
+        context.stroke(corePath, with: .color(surfaceColor.opacity(v)), lineWidth: 2.5)
     }
 
     private func paintNowRing(_ context: inout GraphicsContext, at pos: CGPoint) {
         let rect = CGRect(x: pos.x - 11, y: pos.y - 11, width: 22, height: 22)
-        context.stroke(Path(ellipseIn: rect), with: .color(nowRingColor), lineWidth: 1.2)
+        // Светлая тема: лёгкая тень 0 1 2 (`#nowRing` веба) — подсказка, не предмет.
+        context.drawLayer { layer in
+            if colorScheme == .light {
+                layer.addFilter(.shadow(color: Color(hex: 0x17150F, alpha: 0.16), radius: 1, x: 0, y: 1))
+            }
+            layer.stroke(Path(ellipseIn: rect), with: .color(nowRingColor), lineWidth: 1.2)
+        }
     }
 
     // MARK: Луна
@@ -378,3 +417,61 @@ public struct DomeView: View {
         }
     }
 }
+
+/// Вписывание `viewBox` 390×240 в рамку купола, как `preserveAspectRatio`
+/// по умолчанию у SVG веба (`xMidYMid meet`).
+struct DomeFit {
+    let scale: CGFloat
+    let origin: CGPoint
+
+    init(size: CGSize) {
+        let g = DomeGeometry.self
+        let k = min(size.width / CGFloat(g.viewWidth), size.height / CGFloat(g.viewHeight))
+        scale = k
+        origin = CGPoint(x: (size.width - CGFloat(g.viewWidth) * k) / 2,
+                         y: (size.height - CGFloat(g.viewHeight) * k) / 2)
+    }
+
+    func point(_ p: CGPoint) -> CGPoint { CGPoint(x: origin.x + p.x * scale, y: origin.y + p.y * scale) }
+}
+
+#if DEBUG
+/// Рамки деталей купола для пары «веб / натив»: холст — один `Canvas`, и
+/// узлов внутри у него нет. Прозрачные прямоугольники стоят там, где веб
+/// держит `#sunCore` (r 6,5), `#nowRing` (r 11) и `#arcPath`.
+private struct DomeProbe: View {
+    let sun: SolarDay
+    let t: Minutes
+    let nowMinute: Minutes?
+    let moon: Bool
+
+    var body: some View {
+        GeometryReader { geo in
+            let fit = DomeFit(size: geo.size)
+            let g = DomeGeometry.self
+            let p = fit.point(g.posAt(t, sun: sun))
+            let arc0 = fit.point(CGPoint(x: 32, y: CGFloat(g.horizonY) - 148))
+            ZStack(alignment: .topLeading) {
+                // Место — полями, а не `.offset`: смещение рисуется, но рамку
+                // в раскладке не двигает, и отчёт видел бы узел в углу.
+                mark("dome.arc", x: arc0.x, y: arc0.y, w: 326 * fit.scale, h: 148 * fit.scale)
+                if !moon, sun.elevation(at: t) > -0.5 {
+                    mark("dome.sun", x: p.x - 6.5 * fit.scale, y: p.y - 6.5 * fit.scale, w: 13 * fit.scale, h: 13 * fit.scale)
+                    mark("dome.sunGlow", x: p.x - 16 * fit.scale, y: p.y - 16 * fit.scale, w: 32 * fit.scale, h: 32 * fit.scale)
+                }
+                if !moon, let nowMinute, sun.elevation(at: nowMinute) > 0.5 {
+                    let r = fit.point(g.posAt(nowMinute, sun: sun))
+                    mark("dome.ring", x: r.x - 11 * fit.scale, y: r.y - 11 * fit.scale, w: 22 * fit.scale, h: 22 * fit.scale)
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func mark(_ name: String, x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) -> some View {
+        Color.clear.frame(width: w, height: h).shotNode(name)
+            .padding(.leading, x).padding(.top, y)
+    }
+}
+#endif

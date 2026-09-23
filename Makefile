@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang icons domain
+.PHONY: help parity blocks lang icons domain shots
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -15,6 +15,7 @@ help:
 	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
 	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
 	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
+	@echo "make shots    пары снимков веб / натив «Света» и «Настроек» и сверка числами (итерация 19б)"
 
 # Файлы, которые пишет сам generate.js. Другие цели (lang, domain, локация)
 # кладут в Fixtures/ свои файлы рядом — их сюда не включаем, иначе diff -r
@@ -76,3 +77,9 @@ domain:
 	else \
 		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — эталону нельзя верить"; rm -rf $$tmp; exit 1; \
 	fi
+
+# Итерация 19б: пары снимков веб / натив на симуляторе iPhone 17 Pro Max.
+# Параметры сверх умолчаний — прямо скрипту: node Tools/shots/pair.js --help
+# в шапке файла. Из worktree: LIGHT_PLAN_WEB=<путь к Light_Plan>.
+shots:
+	@node Tools/shots/pair.js $(ARGS)

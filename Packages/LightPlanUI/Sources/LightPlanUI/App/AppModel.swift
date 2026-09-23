@@ -7,6 +7,8 @@ import LightPlanTimeline
 /// Хозяин приложения (итерация 19а): снимок на диске, настройки, место и
 /// экран «Свет». Настройки меняются здесь и отсюда же доезжают до «Света»
 /// присвоением — без пересоздания экрана и без перезапуска.
+public enum AppTab: Hashable, Sendable { case light, settings }
+
 @MainActor
 @Observable
 public final class AppModel {
@@ -21,6 +23,11 @@ public final class AppModel {
     public private(set) var citySource: DefaultCity.Source
     /// Лист «Откуда вы работаете» — первый запуск, пока знакомство не пройдено.
     public var showStartSheet: Bool
+    /// Открытая вкладка. Живое приложение встаёт на «Свет»; снимок пары
+    /// (итерация 19б) — на экран своего сценария.
+    public var tab: AppTab = .light
+    /// Глава настроек, открытая при запуске, — только снимок пары (19б).
+    var startChapter: String?
 
     public let cityLookup: any CityLookup
     /// Записей в снимке — для строки «Карта и места» (сохранённые точки).
@@ -32,7 +39,7 @@ public final class AppModel {
 
     init(snapshot: Snapshot, store: Store?, language: String, zone: TimeZone = .current,
          locator: any DeviceLocating, geocoder: any ReverseGeocoding, cityLookup: any CityLookup,
-         weatherSource: any WeatherSource) {
+         weatherSource: any WeatherSource, now: @escaping @Sendable () -> Date = { Date() }) {
         self.snapshot = snapshot
         self.store = store
         self.language = language
@@ -47,7 +54,10 @@ public final class AppModel {
         // (`loc` веба), на старте не читается: выбор руками живёт до
         // перезагрузки (решение 19 сентября).
         let resolved = DefaultCity.resolve(home: settings.home, device: nil, language: language, zone: zone)
-        var zones = ZoneCache()
+        // Зоны, которые веб уже узнал (`zones` снимка): без них первая минута
+        // «Света» считается по оценке пояса из долготы — Барнаул (+7) по
+        // долготе +6, и экран открывался часом раньше «сейчас» (замер 19б).
+        var zones = ZoneCache(entries: Self.savedZones(snapshot))
         if resolved.source == .capital {
             let cap = DefaultCity.capital(language: Lexicon.base(language), zone: zone)
             if let z = ZoneID(cap.zone) { zones.remember(z, at: cap.coordinate) }
@@ -59,9 +69,13 @@ public final class AppModel {
         self.citySource = resolved.source
 
         let weather = WeatherStore(place: place.place, source: weatherSource)
-        let timebar = TimebarState(place: place.place, date: Self.today(in: place.place), weather: weather,
+        let timebar = TimebarState(place: place.place, date: Self.today(in: place.place, now: now()), weather: weather,
                                    language: language, ribbonMode: Self.ribbon(settings.ribbonMode),
-                                   clockPreference: Self.clock(settings.clock))
+                                   clockPreference: Self.clock(settings.clock), now: now)
+        // Экран открывается на нынешней минуте, как веб (`viewMin` на старте
+        // — «сейчас»), а не на солнечном полдне, которым машина времени
+        // встаёт без минуты (найдено 19а, исправлено 19б).
+        timebar.jumpToNow()
         self.light = LightScreenModel(timebar: timebar, weather: weather, language: language,
                                       locationName: resolved.name ?? place.coordinate.text,
                                       clockPreference: Self.clock(settings.clock))
@@ -198,7 +212,10 @@ public final class AppModel {
             light.timebar.setPlace(p)
             light.weather.move(to: p)
         }
-        if !place.isNameStale { light.locationName = place.name?.city ?? place.coordinate.text }
+        if !place.isNameStale {
+            light.locationName = place.name?.city ?? place.coordinate.text
+            light.locationSub = place.name?.sub ?? ""
+        }
     }
 
     // MARK: - Перевод настроек в типы экранов
@@ -211,15 +228,20 @@ public final class AppModel {
         r == .lane ? .lane : .drum
     }
 
+    private static func savedZones(_ s: Snapshot) -> [String: String] {
+        guard case .object(let o)? = s.extra["zones"] else { return [:] }
+        return o.compactMapValues { if case .string(let z) = $0 { z } else { nil } }
+    }
+
     private static func met(_ s: Snapshot) -> Bool {
         if case .object(let me)? = s.extra["me"], case .bool(true)? = me["met"] { return true }
         return false
     }
 
-    static func today(in place: Place) -> CivilDate {
+    static func today(in place: Place, now: Date = Date()) -> CivilDate {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: place.zone.identifier) ?? .current
-        let c = calendar.dateComponents([.year, .month, .day], from: Date())
+        let c = calendar.dateComponents([.year, .month, .day], from: now)
         return CivilDate(year: c.year!, month: c.month!, day: c.day!)
     }
 }

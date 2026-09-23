@@ -68,6 +68,36 @@ struct AppModelTests {
         #expect(after.header.temperature != before.header.temperature)
     }
 
+    // MARK: - 19б: «Свет» открывается на «сейчас», в поясе из снимка
+
+    /// Барнаул из настроек, «сейчас» — 13:00 по Барнаулу.
+    private func barnaulAt13(zones: Bool) -> AppModel {
+        var snap = Snapshot()
+        snap.extra["me"] = .object(["city": .string("Барнаул"), "cityLat": .number(53.3548),
+                                    "cityLon": .number(83.7698), "met": .bool(true)])
+        if zones { snap.extra["zones"] = .object(["53.5,84.0": .string("Asia/Barnaul")]) }
+        let now = ISO8601DateFormatter().date(from: "2026-09-23T13:00:00+07:00")!
+        return AppModel(snapshot: snap, store: nil, language: "ru", zone: barnaul, locator: Locator(authorized: false),
+                        geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather(), now: { now })
+    }
+
+    /// До 19б машина времени вставала на солнечный полдень (12:17 в этот
+    /// день), а не на нынешнюю минуту, как веб (найдено 19а).
+    @Test func lightOpensAtNowNotAtSolarNoon() {
+        let app = barnaulAt13(zones: true)
+        #expect(app.light.timebar.machine.viewMinute == 780)
+        #expect(app.light.telemetry.readout?.time == "13:00")
+        #expect(app.light.timebar.nowButtonVisible == false)
+    }
+
+    /// Зоны, которые веб уже узнал, лежат в снимке (`zones`). Без них пояс
+    /// Барнаула оценивается по долготе (+6), и «сейчас» выходит 12:00 — так
+    /// приложение и открывалось до 19б (снимок пары: 12:17 против 13:00).
+    @Test func savedZoneBeatsLongitudeEstimate() {
+        #expect(barnaulAt13(zones: false).light.timebar.machine.viewMinute == 720)
+        #expect(barnaulAt13(zones: true).light.timebar.machine.viewMinute == 780)
+    }
+
     // MARK: - Город по умолчанию на старте
 
     @Test func capitalWhenNoCityAndNoAccess() {

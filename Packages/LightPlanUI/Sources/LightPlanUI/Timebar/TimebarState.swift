@@ -35,6 +35,11 @@ public final class TimebarState {
     public private(set) var snapping = false
 
     private let weather: WeatherStore?
+    /// Часы приложения. Живое приложение — системные; Debug-снимок против
+    /// веба (итерация 19б) подставляет прибитый момент, чтобы «сейчас» на
+    /// ленте, кольцо купола и открытие экрана встали в ту же минуту, что и
+    /// снимок веба.
+    private let now: @Sendable () -> Date
     private let language: String
     private let lexicon: Lexicon
     private var clock: ClockText
@@ -62,8 +67,9 @@ public final class TimebarState {
 
     public init(place: Place, date: CivilDate, weather: WeatherStore? = nil,
                 language: String = "ru", ribbonMode: RibbonMode = .drum,
-                clockPreference: ClockPreference = .auto) {
+                clockPreference: ClockPreference = .auto, now: @escaping @Sendable () -> Date = { Date() }) {
         self.place = place
+        self.now = now
         self.machine = TimelineMachine(date: date, place: place, ribbonMode: ribbonMode)
         self.weather = weather
         self.language = language
@@ -319,7 +325,7 @@ public final class TimebarState {
     public var todayInPlace: CivilDate { wallNow().day }
 
     private func wallNow() -> WallTime {
-        let now = Moment(Date())
+        let now = Moment(self.now())
         let approx = CivilDate(daysSince1970: Int((Double(now.milliseconds) / 86_400_000).rounded(.down)))
         let offset = place.zone.utcOffsetHours(on: approx)
         return WallTime(moment: now, utcOffsetHours: offset)
@@ -328,7 +334,7 @@ public final class TimebarState {
     private func minutesNowRelative(to date: CivilDate) -> Double {
         let offset = place.zone.utcOffsetHours(on: date)
         let midnight = WallTime(day: date, minutes: 0).moment(utcOffsetHours: offset)
-        let now = Moment(Date())
+        let now = Moment(self.now())
         return Double(now.milliseconds - midnight.milliseconds) / 60_000
     }
 

@@ -58,7 +58,11 @@ make blocks     show what is cut out of the beta (cheap anchor check)
 make lang       rebuild the string catalog and the text fixtures, prove they repeat
 make icons      rebuild the Swift icon library from the web's beta/icons.js + the Chromium reference sheet
 make domain     rebuild Fixtures/domain.json (shoot tables and rules, iteration 11) and prove the run repeats
+make shots      web / native screenshot pairs of «Свет» and «Настройки» on the iPhone 17 Pro Max simulator, compared by numbers
 ```
+
+A screen iteration closes with `make shots` pairs (plan § 5.4): names in the web's
+`tools/shot.js` `NODES`, `.shotNode("name")` on the Swift side. `Tools/shots/README.md`.
 
 `LightPlanUI/Icons/IconLibrary.generated.swift` and `point_sign.json`, `icons_ref.*` beside the UI
 tests are generated (`Tools/icons2assets.js`, `Tools/icons_ref.js`) — never hand-edit. Icons are

@@ -1,0 +1,11 @@
+{
+ "me": {"city": "Барнаул", "cityLat": 53.3548, "cityLon": 83.7698, "cityAt": "Барнаул", "cityCC": "ru", "met": true},
+ "zones": {"53.5,84.0": "Asia/Barnaul"},
+ "theme": "dark",
+ "pro": false,
+ "ribbonMode": "drum",
+ "drumSlot": "paper",
+ "tempUnit": "c",
+ "clock": "auto",
+ "sessions": []
+}

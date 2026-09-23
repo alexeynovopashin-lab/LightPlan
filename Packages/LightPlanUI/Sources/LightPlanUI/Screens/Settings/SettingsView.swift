@@ -50,39 +50,50 @@ public struct SettingsView: View {
         }
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var path: [Chapter] = []
+
+    /// Корень — вид веба: шапка «Light Plan · v3 · прототип», сегмент
+    /// Просто/Астро с небом на «Астро» и пояснением, девять строк разделов.
+    /// Главы открываются системным переходом.
     public var body: some View {
         let t = app.lexicon
-        NavigationStack {
-            List {
-                Section {
-                    Picker(t.t("set.mode"), selection: binding(\.pro)) {
-                        Text(t.t("set.modeSimple")).tag(false)
-                        Text(t.t("set.modePro")).tag(true)
+        NavigationStack(path: $path) {
+            ScrollView {
+                VStack(spacing: 0) {
+                    SetHeader(title: "Light Plan", sub: t.t("set.proto"))
+                    VStack(spacing: 0) {
+                        WebSeg(options: [(t.t("set.modeSimple"), false), (t.t("set.modePro"), true)],
+                               selection: binding(\.pro), nodes: ["mode.simple", "mode.pro"], sky: app.settings.pro)
+                            .shotNode("mode")
+                            .padding(.horizontal, 24)
+                            .padding(.top, 12)
+                        SetNote(text: t.t("set.modeNote"), node: "mode.note")
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                } footer: {
-                    Text(t.t("set.modeNote"))
-                }
-
-                Section {
-                    ForEach(Chapter.allCases, id: \.self) { ch in
-                        NavigationLink(value: ch) {
-                            HStack(spacing: 12) {
-                                Icon(ch.icon, size: 20, line: 1.6).foregroundStyle(.secondary)
-                                Text(t.t(ch.titleKey))
-                                Spacer(minLength: 8)
-                                Text(value(of: ch)).foregroundStyle(.secondary).lineLimit(1)
+                    .padding(.top, 4)
+                    VStack(spacing: 0) {
+                        ForEach(Chapter.allCases, id: \.self) { ch in
+                            NavigationLink(value: ch) {
+                                SetItemRow(icon: ch.icon, title: t.t(ch.titleKey), value: value(of: ch))
                             }
+                            .buttonStyle(.plain)
+                            .shotNode("nav." + ch.rawValue, text: t.t(ch.titleKey) + value(of: ch))
                         }
                     }
+                    .padding(.top, 2)
+                    .shotNode("nav")
                 }
             }
-            .navigationTitle(t.t("nav.settings"))
+            .background(Palette(colorScheme).surface)
+            #if os(iOS)
+            .toolbar(.hidden, for: .navigationBar)
+            #endif
             .navigationDestination(for: Chapter.self) { ch in
                 SettingsChapterView(app: app, chapter: ch)
-                    .navigationTitle(t.t(ch.titleKey))
             }
+        }
+        .onAppear {
+            if let c = app.startChapter, let ch = Chapter(rawValue: c) { path = [ch]; app.startChapter = nil }
         }
     }
 
