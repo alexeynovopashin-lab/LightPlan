@@ -290,7 +290,6 @@ struct ChapterPage<Content: View>: View {
         .background(pal.surface)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
         #endif
     }
 }

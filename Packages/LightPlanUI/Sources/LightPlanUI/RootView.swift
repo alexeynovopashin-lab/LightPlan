@@ -3,9 +3,9 @@ import LightPlanCore
 import LightPlanData
 
 /// Хозяин приложения: поднимает `AppModel` (снимок с диска, настройки, город
-/// по умолчанию) и раскладывает экраны по вкладкам. Вкладок пока две —
-/// «Свет» и «Настройки»; «Карта» (итерация 20) и «Съёмки» (21) встанут между
-/// ними, в порядке веба.
+/// по умолчанию) и раскладывает экраны по вкладкам. Панель — веба
+/// (`TabBarView`), все четыре вкладки; экранов пока два — «Свет» и
+/// «Настройки»; «Карта» (итерация 20) и «Съёмки» (21) встанут между ними.
 public struct RootView: View {
     @State private var app: AppModel?
     @Environment(\.scenePhase) private var scenePhase
@@ -44,14 +44,26 @@ private struct Shell: View {
     @Bindable var app: AppModel
 
     var body: some View {
-        TabView(selection: $app.tab) {
-            Tab(app.lexicon.t("nav.light"), systemImage: "sun.max", value: AppTab.light) {
-                LightScreenView(app.light)
-            }
-            Tab(app.lexicon.t("nav.settings"), systemImage: "gearshape", value: AppTab.settings) {
-                SettingsView(app: app)
+        // Экраны живут оба, виден выбранный: у системной `TabView` так же
+        // сохранялись прокрутка и глава при смене вкладки.
+        ZStack {
+            screen(.light) { LightScreenView(app.light) }
+            screen(.settings) { SettingsView(app: app) }
+        }
+        // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
+        // из неё видно 84 − низ зоны, остальное уходит под полосу.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !app.chapterOpen {
+                GeometryReader { geo in
+                    TabBarView(tab: $app.tab, lexicon: app.lexicon)
+                        .shotNode("tabbar")
+                        .frame(height: TabBarView.height)
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
+                }
+                .frame(height: max(0, TabBarView.height - bottomInset))
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
         .onGeometryChange(for: ShotWindow.self) { ShotWindow(safe: $0.safeAreaInsets, size: $0.size) } action: {
             ShotProbe.shared.window($0)
         }
@@ -61,6 +73,17 @@ private struct Shell: View {
         .sheet(isPresented: $app.showStartSheet, onDismiss: { app.finishStart() }) {
             StartSheet(app: app)
         }
+    }
+
+    @State private var bottomInset: CGFloat = 34
+
+    private func screen(_ tab: AppTab, @ViewBuilder _ content: () -> some View) -> some View {
+        let shown = app.tab == tab
+        return content()
+            .opacity(shown ? 1 : 0)
+            .allowsHitTesting(shown)
+            .accessibilityHidden(!shown)
+            .environment(\.shotSilent, !shown)
     }
 }
 

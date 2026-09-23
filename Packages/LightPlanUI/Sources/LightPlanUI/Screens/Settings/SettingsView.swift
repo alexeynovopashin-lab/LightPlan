@@ -95,6 +95,8 @@ public struct SettingsView: View {
         .onAppear {
             if let c = app.startChapter, let ch = Chapter(rawValue: c) { path = [ch]; app.startChapter = nil }
         }
+        // Глава закрывает панель вкладок, как у веба.
+        .onChange(of: path, initial: true) { app.chapterOpen = !path.isEmpty }
     }
 
     /// Порт `renderSetNav`. Чужие главы (оповещения, хранилище) до своих

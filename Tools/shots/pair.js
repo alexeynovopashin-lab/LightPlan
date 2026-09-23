@@ -281,6 +281,9 @@ function markdown(results) {
     // Соседняя вкладка тоже жива и пишет рамки за краем экрана — не в счёт.
     for (const [k, r] of Object.entries(nat.nodes)) if (r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) delete nat.nodes[k];
     const web = webShot(sc, sc.dir, nat.safe);
+    // Лист главы у веба закрывает панель вкладок, но в разметке она «видна»;
+    // приложение её прячет — под главой панель не сверяется.
+    if (sc.chapter) for (const k of Object.keys(web.nodes)) if (/^tab(bar|\.)/.test(k)) delete web.nodes[k];
     const cmp = await compare(page, sc.dir, web, nat, 3);
     await pairImage(page, sc.dir, web, nat);
     results.push({ name: sc.name, cmp });

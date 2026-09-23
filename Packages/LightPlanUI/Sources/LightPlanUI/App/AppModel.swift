@@ -28,6 +28,9 @@ public final class AppModel {
     public var tab: AppTab = .light
     /// Глава настроек, открытая при запуске, — только снимок пары (19б).
     var startChapter: String?
+    /// Открыта глава настроек — панель вкладок прячется, как у веба
+    /// (раньше это делал `.toolbar(.hidden, for: .tabBar)` системной панели).
+    var chapterOpen = false
 
     public let cityLookup: any CityLookup
     /// Записей в снимке — для строки «Карта и места» (сохранённые точки).

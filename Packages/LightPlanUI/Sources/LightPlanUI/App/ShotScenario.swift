@@ -160,13 +160,35 @@ extension View {
     /// ничего не делает; в Debug пишет рамку, только когда запущен сценарий.
     func shotNode(_ name: String, text: String? = nil) -> some View {
         #if DEBUG
-        onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { rect in
-            ShotProbe.shared.record(name, rect)
-        }
-        .onChange(of: text, initial: true) { _, t in ShotProbe.shared.record(name, text: t) }
-        .onDisappear { ShotProbe.shared.forget(name) }
+        modifier(ShotNodeModifier(name: name, text: text))
         #else
         self
         #endif
     }
 }
+
+extension EnvironmentValues {
+    /// Экран спрятан под видимым (панель вкладок веба держит оба живыми):
+    /// его узлы в отчёт пары не пишутся — раньше соседнюю вкладку уводила
+    /// за край системная панель, и `pair.js` отбрасывал её по краю экрана.
+    @Entry var shotSilent = false
+}
+
+#if DEBUG
+private struct ShotNodeModifier: ViewModifier {
+    let name: String
+    let text: String?
+    @Environment(\.shotSilent) private var silent
+
+    private struct Seen: Equatable { var rect: CGRect; var silent: Bool }
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: Seen.self) { Seen(rect: $0.frame(in: .global), silent: silent) } action: { seen in
+                if seen.silent { ShotProbe.shared.forget(name) } else { ShotProbe.shared.record(name, seen.rect) }
+            }
+            .onChange(of: text, initial: true) { _, t in if !silent { ShotProbe.shared.record(name, text: t) } }
+            .onDisappear { ShotProbe.shared.forget(name) }
+    }
+}
+#endif
