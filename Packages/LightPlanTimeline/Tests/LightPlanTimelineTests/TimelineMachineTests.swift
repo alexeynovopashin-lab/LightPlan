@@ -131,6 +131,22 @@ struct TimelineMachineTests {
         #expect(m.ribbonOffset(clipWidth: 300) == fresh.ribbonOffset(clipWidth: 300))
     }
 
+    /// Сутки на ленте нарисованы от полуночи до полуночи (`buildRibbonDay`),
+    /// и под меткой должна стоять выбранная минута настенных часов — веб
+    /// `ribbonCenterPx`: `(1440 + viewMin) · px/мин − ширина/2`. Машина
+    /// вычитала ещё начало окна суток (`mint` = солнечный полдень − 12 ч), и
+    /// в Барнауле (+7, полдень 13:17) лента стояла на 77 минут раньше
+    /// ползунка — замер пары снимков 19б. На долготе 0 при поясе 0 `mint`
+    /// близок к нулю, поэтому тесты с `Self.place` этого не видели.
+    @Test func laneCentersWallMinuteNotWindowMinute() {
+        let barnaul = Place(latitude: 53.35, longitude: 83.77, zone: ZoneID(fixedOffsetHours: 7))
+        let m = TimelineMachine(date: CivilDate(year: 2026, month: 9, day: 23), minute: 780, place: barnaul, ribbonMode: .lane)
+        #expect(m.mint > 60)                                  // окно суток правда сдвинуто
+        let clip = 392.0, pxPerMin = clip / 1440
+        let centerMinute = (m.ribbonOffset(clipWidth: clip) + clip / 2) / pxPerMin - 1440
+        #expect(abs(centerMinute - 780) < 1e-9)
+    }
+
     @Test func settleDrumReturnsToZero() {
         var m = TimelineMachine(date: CivilDate(year: 2026, month: 6, day: 15), place: Self.place, ribbonMode: .drum)
         _ = m.tapDrumCell(offset: 2)

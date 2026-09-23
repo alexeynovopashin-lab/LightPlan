@@ -185,8 +185,13 @@ public struct TimelineMachine: Sendable, Equatable {
     public func ribbonOffset(clipWidth: Double) -> Double {
         switch ribbonMode {
         case .lane:
-            let pxPerMin = clipWidth / (maxt - mint)
-            return (maxt - mint + (viewMinute - mint)) * pxPerMin - clipWidth / 2
+            // Сутки на дорожке — от полуночи (`buildRibbonDay`), вчера
+            // первыми: под меткой — минута настенных часов, как у веба
+            // (`ribbonCenterPx`). До 19б здесь вычиталось ещё начало окна
+            // (`mint`) — лента отставала от ползунка на сдвиг солнечного
+            // полдня: 77 минут в Барнауле.
+            let pxPerMin = clipWidth / 1440
+            return (1440 + viewMinute) * pxPerMin - clipWidth / 2
         case .drum:
             return (Double(Self.drumSpan) + drumOffset) * Self.drumCell + Self.drumCell / 2 - clipWidth / 2
         }
@@ -205,7 +210,8 @@ public struct TimelineMachine: Sendable, Equatable {
         ribbonLast = translation
         switch ribbonMode {
         case .lane:
-            let pxPerMin = clipWidth / (maxt - mint)
+            // Окно суток всегда 1440 минут, масштаб тот же, что у дорожки.
+            let pxPerMin = clipWidth / 1440
             return wallFlip(delta: -dx / pxPerMin)
         case .drum:
             return drumFlip(delta: -dx / Self.drumCell)
