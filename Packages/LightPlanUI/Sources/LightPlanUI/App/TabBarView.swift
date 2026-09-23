@@ -29,7 +29,7 @@ struct TabBarView: View {
         let pal = Palette(colorScheme)
         HStack(spacing: 0) {
             item(.light, glyph: .light, title: "nav.light", node: "light", pal: pal)
-            item(nil, glyph: .map, title: "nav.map", node: "map", pal: pal)
+            item(.map, glyph: .map, title: "nav.map", node: "map", pal: pal)
             item(nil, glyph: .shoots, title: "nav.shoots", node: "shoots", pal: pal)
             item(.settings, glyph: .settings, title: "nav.settings", node: "settings", pal: pal)
         }

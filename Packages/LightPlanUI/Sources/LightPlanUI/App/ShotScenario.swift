@@ -16,10 +16,10 @@ import LightPlanData
 /// `LPShotSeed` — снимок данных в формате веба (тот же файл засевает
 /// `localStorage` веба); `LPShotForecast`, `LPShotAir` — ответы Open-Meteo;
 /// `LPShotName` — `{ "city", "sub" }` вместо геокодера; `LPShotScreen` —
-/// `light` | `settings`; `LPShotChapter` — глава настроек; `LPShotReport` —
+/// `light` | `map` | `settings`; `LPShotChapter` — глава настроек; `LPShotReport` —
 /// куда записать рамки.
 public struct ShotScenario: Sendable {
-    public enum Screen: String, Sendable { case light, settings }
+    public enum Screen: String, Sendable { case light, map, settings }
 
     public let now: Date
     public let zone: TimeZone
@@ -65,7 +65,8 @@ extension AppModel {
                            cityLookup: ShotCityLookup(),
                            weatherSource: FileWeatherSource(forecast: s.forecast, air: s.air),
                            now: { fixed.addingTimeInterval(Date().timeIntervalSince(start)) })
-        app.tab = s.screen == .settings ? .settings : .light
+        app.tab = s.screen == .settings ? .settings : s.screen == .map ? .map : .light
+        app.mapOffline = true
         app.startChapter = s.chapter
         return app
     }
@@ -115,15 +116,25 @@ public final class ShotProbe {
         }
     }
 
-    func record(_ name: String, _ rect: CGRect) {
+    /// Кто записал узел: у «Света» и «Карты» общие имена (`header.name`,
+    /// `timebar`…), и спрятанная вкладка не должна стирать рамку видимой
+    /// (найдено в 20а: шапка и таймбар карты пропадали из отчёта).
+    private var owners: [String: UUID] = [:]
+
+    func record(_ name: String, _ rect: CGRect, owner: UUID) {
         guard enabled, !name.isEmpty else { return }
+        owners[name] = owner
         let r = { (v: CGFloat) in (Double(v) * 2).rounded() / 2 }
         nodes[name] = Node(x: r(rect.minX), y: r(rect.minY), w: r(rect.width), h: r(rect.height))
     }
 
     func record(_ name: String, text: String?) { if enabled { texts[name] = text } }
 
-    func forget(_ name: String) { if enabled { nodes[name] = nil } }
+    func forget(_ name: String, owner: UUID) {
+        guard enabled, owners[name] == owner else { return }
+        nodes[name] = nil
+        owners[name] = nil
+    }
 
     func window(_ w: ShotWindow) {
         guard enabled else { return }
@@ -179,16 +190,17 @@ private struct ShotNodeModifier: ViewModifier {
     let name: String
     let text: String?
     @Environment(\.shotSilent) private var silent
+    @State private var id = UUID()
 
     private struct Seen: Equatable { var rect: CGRect; var silent: Bool }
 
     func body(content: Content) -> some View {
         content
             .onGeometryChange(for: Seen.self) { Seen(rect: $0.frame(in: .global), silent: silent) } action: { seen in
-                if seen.silent { ShotProbe.shared.forget(name) } else { ShotProbe.shared.record(name, seen.rect) }
+                if seen.silent { ShotProbe.shared.forget(name, owner: id) } else { ShotProbe.shared.record(name, seen.rect, owner: id) }
             }
             .onChange(of: text, initial: true) { _, t in if !silent { ShotProbe.shared.record(name, text: t) } }
-            .onDisappear { ShotProbe.shared.forget(name) }
+            .onDisappear { ShotProbe.shared.forget(name, owner: id) }
     }
 }
 #endif

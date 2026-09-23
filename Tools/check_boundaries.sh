@@ -95,6 +95,17 @@ for dir in "$root"/Packages/*/; do
         LightPlan*) contains "$mod" "$layers" || ok=0 ;;
       esac
       [ "$pkg" = "LightPlanUI" ] && [ "$mod" = "LightPlanUI" ] && ok=1
+      # Холст карты (docs/17 § 10): поставщики живут только в LightPlanMapCanvas,
+      # а сам он не знает ни одного слоя продукта — говорит координатами и углом.
+      if [ "$pkg" = "LightPlanUI" ]; then
+        case "$file" in
+          */Sources/LightPlanMapCanvas/*)
+            case "$mod" in LightPlan*) [ "$mod" = "LightPlanMapCanvas" ] || ok=0 ;; esac ;;
+          *)
+            [ "$mod" = "LightPlanMapCanvas" ] && ok=1
+            case "$mod" in MapLibre|MapKit) ok=0 ;; esac ;;
+        esac
+      fi
       [ "$mod" = "$pkg" ] && ok=1
       if [ "$ok" = 0 ]; then
         errors="$errors$file:$line: error: $pkg не должен импортировать $mod (docs/17 § 1)\n"

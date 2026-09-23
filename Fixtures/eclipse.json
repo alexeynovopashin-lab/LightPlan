@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "beta/index.html",
-    "cut": "bcc0ef3e9e3c8c3f",
+    "cut": "b179ee6f1a87c354",
     "what": "таблица затмений и ответы eclipseOn / nextEclipse на каждые сутки",
     "grid": "сутки с 2025-06-01 по 2031-02-28, индекс строки таблицы, −1 — нет",
     "tolerance": {"table":"строго","answers":"строго"},

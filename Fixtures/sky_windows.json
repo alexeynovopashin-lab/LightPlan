@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "beta/index.html",
-    "cut": "bcc0ef3e9e3c8c3f",
+    "cut": "b179ee6f1a87c354",
     "what": "восход и заход луны, окно Млечного Пути, помеха луны звёздам",
     "grid": "grid — 12 широт × 3 долготы плюс 3 места с некруглым поясом × даты § 5.2; sweep — 4 места × каждые сутки 2026. Запись: arcs — дуги луны, qt/qr/qs — ответы moonArc на моменты вокруг дуг (null — не всходит), win — mwWindow, vs — moonVsStars",
     "tolerance": {"minutes":"строго, целые","bestAlt":1e-9,"lit":1e-9,"share":"строго","level":"строго"},

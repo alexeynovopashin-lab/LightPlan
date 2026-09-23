@@ -33,6 +33,9 @@ public final class TimebarState {
     public private(set) var ribbonShift = 0.0
     public private(set) var ribbonOpacity = 1.0
     public private(set) var snapping = false
+    /// Счёт касаний ползунка и ленты: по нему карта зажигает чип азимута
+    /// (`showMapChip("drag")` веба) — от пальца, а не от хода часов.
+    public private(set) var touches = 0
 
     private let weather: WeatherStore?
     /// Часы приложения. Живое приложение — системные; Debug-снимок против
@@ -113,6 +116,7 @@ public final class TimebarState {
 
     public func dragSlider(x: Double, width: Double, thumb: Double) {
         sliderHolding = true
+        touches += 1
         let outcome = machine.dragSlider(x: x, width: width, thumb: thumb)
         switch outcome {
         case .idle:
@@ -164,6 +168,7 @@ public final class TimebarState {
 
     public func dragRibbon(translation: Double, clipWidth: Double) {
         stopGlide()
+        touches += 1
         let shift = machine.dragRibbon(translation: translation, clipWidth: clipWidth)
         if machine.ribbonMode == .lane { checkHourMark() }
         if shift != 0 { syncSolarDay() }

@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "beta/index.html",
-    "cut": "bcc0ef3e9e3c8c3f",
+    "cut": "b179ee6f1a87c354",
     "what": "выдумка офлайн: qualityOf и dayWeather — чистая функция даты",
     "grid": "все сутки 2026 года плюс стык годов и 29 февраля",
     "tolerance": {"q":"строго","cloud":"строго","tempBase":"строго","wind":"строго","trend":"строго"},

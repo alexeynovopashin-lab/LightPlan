@@ -3,11 +3,12 @@ import Observation
 import LightPlanCore
 import LightPlanData
 import LightPlanTimeline
+import LightPlanMapCanvas
 
 /// Хозяин приложения (итерация 19а): снимок на диске, настройки, место и
 /// экран «Свет». Настройки меняются здесь и отсюда же доезжают до «Света»
 /// присвоением — без пересоздания экрана и без перезапуска.
-public enum AppTab: Hashable, Sendable { case light, settings }
+public enum AppTab: Hashable, Sendable { case light, map, settings }
 
 @MainActor
 @Observable
@@ -33,6 +34,13 @@ public final class AppModel {
     var chapterOpen = false
 
     public let cityLookup: any CityLookup
+    /// Слои карты — `mapLayers` снимка (меню слоёв — итерация 20б).
+    public private(set) var mapLayers: MapLayers
+    /// Поставщик холста (docs/17 § 10). Пока приложение бесплатное — MapLibre;
+    /// строка выбора в настройках — вместе с меню слоёв.
+    public var mapSource: MapCanvasSource = .mapLibre
+    /// Снимок пары веб / натив: без холста — у веба сеть закрыта, и карты нет.
+    var mapOffline = false
     /// Записей в снимке — для строки «Карта и места» (сохранённые точки).
     public var spotCount: Int { snapshot.spots.count }
 
@@ -52,6 +60,7 @@ public final class AppModel {
         let settings = AppSettings(snapshot: snapshot, zone: zone)
         self.settings = settings
         self.showStartSheet = !Self.met(snapshot)
+        self.mapLayers = MapLayers(snapshot.mapLayers)
 
         // Город по умолчанию. Место, выбранное руками в прошлый раз
         // (`loc` веба), на старте не читается: выбор руками живёт до
@@ -137,6 +146,12 @@ public final class AppModel {
             place.move(to: c, knownName: PlaceName(city: settings.home.name, sub: ""))
             citySource = .settings
         }
+    }
+
+    /// Карту сдвинули пальцем — место приложения едет за точкой под
+    /// головкой (`moveend` веба): свет, погода и прибор пересчитываются там.
+    public func moveFromMap(latitude: Double, longitude: Double) {
+        place.move(to: GeoCoordinate(latitude: latitude, longitude: longitude))
     }
 
     /// Выбор из подсказки справочника (`takeCity`).

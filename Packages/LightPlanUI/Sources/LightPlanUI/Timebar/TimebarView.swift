@@ -12,11 +12,15 @@ public struct TimebarView: View {
     /// скрыт без `body.pro-mode`). До 19б приложение показывало её всегда
     /// (найдено 19а).
     let showRibbon: Bool
+    /// На карте таймбар лежит на общем стекле дока: ни поверхности, ни
+    /// волоска (`body[data-tab="s-map"] .timebar` веба).
+    let bare: Bool
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(_ state: TimebarState, showRibbon: Bool = true) {
+    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false) {
         self.state = state
         self.showRibbon = showRibbon
+        self.bare = bare
     }
 
     public var body: some View {
@@ -33,8 +37,8 @@ public struct TimebarView: View {
         }
         // `.timebar`: поля 12 · 24 · 14, поверхность экрана, волосок сверху.
         .padding(EdgeInsets(top: 13, leading: 24, bottom: 14, trailing: 24))   // 1 — волосок `border-top`
-        .background(pal.surface)
-        .overlay(alignment: .top) { Rectangle().fill(pal.hair).frame(height: 1) }
+        .background(bare ? .clear : pal.surface)
+        .overlay(alignment: .top) { Rectangle().fill(bare ? .clear : pal.hair).frame(height: 1) }
     }
 
     // MARK: - Края: восход, «сейчас», закат

@@ -44,7 +44,7 @@ const OFFSET = '+07:00';
 const DEVICE = 'iPhone 17 Pro Max';
 const BUNDLE = 'Novopashin.LightPlan';
 
-const screens = (args.screens || 'light,settings').split(',');
+const screens = (args.screens || 'light,map,settings').split(',');
 /* Режим: «Просто» и «Астро» — у «Света» разный состав (лента суток и
    «Подробно» только в астро), у «Настроек» — разделы вида. Прорези барабана
    (`drumSlot`) различимы только в светлой теме, снимаются одним моментом. */
@@ -128,7 +128,7 @@ async function nativeShot(udid, sc, dir) {
 }
 
 function webShot(sc, dir, safe) {
-  const out = run('node', [path.join(WEB, 'tools', 'shot.js'), '--screen', sc.screen === 'light' ? 'today' : 'settings',
+  const out = run('node', [path.join(WEB, 'tools', 'shot.js'), '--screen', sc.screen === 'light' ? 'today' : sc.screen,
     '--at', MOMENTS[sc.moment], '--tz', ZONE, '--seed', sc.seed,
     '--forecast', path.join(FX, 'forecast_barnaul.json'), '--air', path.join(FX, 'air_barnaul.json'),
     '--name', path.join(FX, 'place_barnaul.json'), '--safe', safe.map(v => Math.round(v)).join(','),
@@ -254,6 +254,13 @@ function markdown(results) {
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
     const s = { ...seed, theme, pro: mode === 'astro', drumSlot: slot, ribbonMode: ribbon };
+    /* Карта (итерация 20а): в «Просто» солнце и луна, в «Астро» к ним
+       Млечный Путь — так обе пары слоёв снимаются без отдельного перебора.
+       Сводка свёрнута: её нет до 20б, а окно прибора считается по свёрнутой. */
+    if (screen === 'map') {
+      s.mapLayers = { sun: true, moon: true, mw: mode === 'astro', compass: true, spots: true };
+      s.mapFold = true;
+    }
     const seedFile = path.join(dir, 'seed.json');
     fs.writeFileSync(seedFile, JSON.stringify(s));
     list.push({ name, dir, screen, theme, moment, chapter, seed: seedFile });

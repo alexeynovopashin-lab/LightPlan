@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang icons domain shots
+.PHONY: help parity blocks lang icons domain shots mapstyle mapref
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -15,7 +15,9 @@ help:
 	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
 	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
 	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
-	@echo "make shots    пары снимков веб / натив «Света» и «Настроек» и сверка числами (итерация 19б)"
+	@echo "make mapstyle описание холста карты из beta/mapstyle.js (итерация 20а)"
+	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
+	@echo "make shots    пары снимков веб / натив «Света», «Карты» и «Настроек» и сверка числами (итерации 19б, 20а)"
 
 # Файлы, которые пишет сам generate.js. Другие цели (lang, domain, локация)
 # кладут в Fixtures/ свои файлы рядом — их сюда не включаем, иначе diff -r
@@ -83,3 +85,10 @@ domain:
 # в шапке файла. Из worktree: LIGHT_PLAN_WEB=<путь к Light_Plan>.
 shots:
 	@node Tools/shots/pair.js $(ARGS)
+
+mapstyle:
+	@node Tools/mapstyle.js && node Tools/mapstyle.js --check
+
+# Разметка #mapLight беты на входах пар снимков — эталон MapSceneParityTests.
+mapref:
+	@node Tools/map_ref.js && node Tools/map_ref.js --check

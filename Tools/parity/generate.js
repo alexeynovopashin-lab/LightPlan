@@ -632,6 +632,12 @@ const SKY_SWEEP_PLACES = [
   { lat: -45, lon: 170, tz: 12 },
   { lat: 69.65, lon: 18.96, tz: 1 },
 ];
+/* Облако точек Млечного Пути (итерация 20а): экваториальные координаты,
+   ярус, порог угасания — в порядке генерации. */
+function mwDust() {
+  return { haze: ctx.MW_HAZE, points: ctx.MW_DUST.map(function (p) { return [p.eq.ra, p.eq.dec, p.tier, p.fade]; }) };
+}
+
 function skyPlaces() {
   const out = [];
   for (const lat of LATS) for (const lon of SKY_LONS) out.push({ lat: lat, lon: lon, tz: tzOfLon(lon) });
@@ -941,6 +947,14 @@ function main() {
     tolerance: { result: "строго, включая порядок записей в списках" },
     count: pairs.length * 2,
   }, { pairs: pairs }));
+
+  const dust = mwDust();
+  out.push(write(dir, "mw_dust.json", {
+    what: "облако точек Млечного Пути на приборе карты (MW_DUST, MW_HAZE)",
+    grid: "все точки в порядке генерации: ra, dec (радианы), ярус, порог угасания",
+    tolerance: { radians: 1e-12, tier: "строго", fade: "строго" },
+    count: dust.points.length,
+  }, dust));
 
   const mw = milkyWay();
   out.push(write(dir, "milkyway.json", {
