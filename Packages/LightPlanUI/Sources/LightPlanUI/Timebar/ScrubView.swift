@@ -59,8 +59,13 @@ struct ScrubView: View {
 
     /// Ручка — стекло с глухим кантом (`::-webkit-slider-thumb`): сквозь неё
     /// видна дорожка света, кант 3 pt держит край на светлом участке, снаружи
-    /// волосок `--ink-a22`, сверху блик `--glass-shine`, под ней тень
+    /// волосок `--ink-a22`, сверху блик `--glass-shine`, снаружи тень
     /// 0 4 12 чёрным 55 %. Стекло системное (DECISIONS, 21 сентября 2026).
+    ///
+    /// Тень — не `.shadow`: та лежит и под самой ручкой и просвечивает
+    /// сквозь стекло, середина ручки в светлой теме гасла 255 → 221 (замер
+    /// после 19б, жалоба Алексея «затемняет сам ползунок»). У веба тень
+    /// `box-shadow` рисуется только снаружи — так и здесь, `OuterShadow`.
     private func knob(pal: Palette) -> some View {
         let kw = state.machine.wind.thumbWidth, kh = state.machine.wind.thumbHeight
         return Ellipse()
@@ -73,7 +78,7 @@ struct ScrubView: View {
             )
             .overlay(Ellipse().inset(by: -1).stroke(pal.inkA22, lineWidth: 1))
             .frame(width: kw, height: kh)
-            .shadow(color: .black.opacity(0.55), radius: 6, y: 4)
+            .background(OuterShadow(color: .black.opacity(0.45), radius: 5.5, y: 4))
             .allowsHitTesting(false)
     }
 
@@ -91,5 +96,29 @@ struct ScrubView: View {
             .frame(width: 34, height: 4)
             .opacity(active ? state.machine.wind.heat : 0)
             .allowsHitTesting(false)
+    }
+}
+
+/// Тень овала только СНАРУЖИ, как CSS `box-shadow`: внешняя тень веба
+/// обрезана по краю элемента и под полупрозрачную ручку не заходит. Холст
+/// шире овала на запас под размытие; сам овал вычитается после тени.
+struct OuterShadow: View {
+    var color: Color
+    var radius: CGFloat
+    var y: CGFloat
+
+    var body: some View {
+        let pad = radius * 3 + abs(y)
+        Canvas { ctx, size in
+            let oval = Path(ellipseIn: CGRect(origin: .zero, size: size).insetBy(dx: pad, dy: pad))
+            ctx.drawLayer { layer in
+                layer.addFilter(.shadow(color: color, radius: radius, x: 0, y: y, options: .shadowOnly))
+                layer.fill(oval, with: .color(.black))
+            }
+            ctx.blendMode = .destinationOut
+            ctx.fill(oval, with: .color(.black))
+        }
+        .padding(-pad)
+        .allowsHitTesting(false)
     }
 }
