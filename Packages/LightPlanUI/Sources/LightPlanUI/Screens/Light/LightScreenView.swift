@@ -51,8 +51,7 @@ public struct LightScreenView: View {
                     .padding(.bottom, 24)
             }
         }
-        .background(.black.opacity(0.92))
-        .preferredColorScheme(.dark)
+        .background(LightScreenTheme.background(colorScheme))
     }
 
     // MARK: - Шапка

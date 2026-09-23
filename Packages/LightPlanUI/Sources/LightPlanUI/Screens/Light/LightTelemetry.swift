@@ -107,7 +107,7 @@ public struct LightTelemetry: Equatable, Sendable {
         sun: SolarDay, t: Minutes, moon moonMode: Bool, moonSnapshot: MoonSnapshot?,
         weather: WeatherDay, weatherLive: Bool, air: AirSample?,
         headerLocationName: String, headerDateLabel: String, headerNote: String,
-        lexicon: Lexicon, clock: ClockText
+        lexicon: Lexicon, clock: ClockText, fahrenheit: Bool = false
     ) -> LightTelemetry {
         let raw = sun.state(at: t)
         let quality = weather.quality
@@ -129,10 +129,10 @@ public struct LightTelemetry: Equatable, Sendable {
         let header = Header(
             locationName: headerLocationName, dateLabel: headerDateLabel, note: headerNote,
             weatherIconName: quality.signIconName,
-            temperature: "\(tempOut(weather.temperatureBase, t))°",
+            temperature: "\(tempOut(weather.temperatureBase, t, fahrenheit))°",
             condition: lexicon.t("qualCond.\(quality.rawValue)"),
-            low: "↓ \(tempOut(weather.temperatureBase, 240))°",
-            high: "↑ \(tempOut(weather.temperatureBase, 960))°"
+            low: "↓ \(tempOut(weather.temperatureBase, 240, fahrenheit))°",
+            high: "↑ \(tempOut(weather.temperatureBase, 960, fahrenheit))°"
         )
 
         let readout: Readout? = moonMode ? nil : Readout(
@@ -170,7 +170,8 @@ public struct LightTelemetry: Equatable, Sendable {
 
         let proGroups = buildProGroups(
             sun: sun, t: t, weather: weather, weatherLive: weatherLive,
-            moonSnapshot: moonMode ? moonSnapshot : nil, lexicon: lexicon, clock: clock
+            moonSnapshot: moonMode ? moonSnapshot : nil, lexicon: lexicon, clock: clock,
+            fahrenheit: fahrenheit
         )
 
         return LightTelemetry(
@@ -204,7 +205,7 @@ public struct LightTelemetry: Equatable, Sendable {
 
     private static func buildProGroups(
         sun: SolarDay, t: Minutes, weather: WeatherDay, weatherLive: Bool,
-        moonSnapshot: MoonSnapshot?, lexicon: Lexicon, clock: ClockText
+        moonSnapshot: MoonSnapshot?, lexicon: Lexicon, clock: ClockText, fahrenheit: Bool
     ) -> [ProGroup] {
         var groups: [ProGroup] = []
 
@@ -269,9 +270,7 @@ public struct LightTelemetry: Equatable, Sendable {
             // Спойлер пишет единицу буквой («°C»), не голым знаком градуса —
             // в шапке и телеметрии её нет, там единица подразумевается,
             // здесь веб называет её явно (`tempOut(...) + " " + unitLabel()`).
-            // Переключателя °C/°F ещё нет (итерация 19а), поэтому буква
-            // всегда «C» — как и сам мок, и настоящий прогноз.
-            ProRow(label: lexicon.t("pro.temp"), value: "\(tempOut(weather.temperatureBase, t)) °C"),
+            ProRow(label: lexicon.t("pro.temp"), value: "\(tempOut(weather.temperatureBase, t, fahrenheit)) \(fahrenheit ? "°F" : "°C")"),
             ProRow(label: lexicon.t("pro.wind"), value: windLine(weather, lexicon: lexicon)),
             ProRow(label: lexicon.t("pro.source"), value: lexicon.t(weatherLive ? "pro.srcLive" : "pro.srcMock")),
         ]))
@@ -292,11 +291,11 @@ public struct LightTelemetry: Equatable, Sendable {
 
     // MARK: - Мелкие помощники (порт мелких функций веба)
 
-    /// `tempAt`+`tempOut` веба без перевода единиц: настройки (итерация 19а)
-    /// ещё не завели переключатель °C/°F, поэтому здесь всегда Цельсий —
-    /// как и мок, и настоящий прогноз, которые всегда приходят в нём.
-    static func tempOut(_ base: Int, _ t: Minutes) -> Int {
-        Int((Double(base) + 5 * sin((t - 600) / 1440 * 2 * .pi)).rounded())
+    /// `tempAt`+`tempOut` веба. Прогноз всегда приходит в Цельсии; Фаренгейт
+    /// считается из неокруглённого значения, как `tempShow` веба.
+    static func tempOut(_ base: Int, _ t: Minutes, _ fahrenheit: Bool = false) -> Int {
+        let c = Double(base) + 5 * sin((t - 600) / 1440 * 2 * .pi)
+        return Int((fahrenheit ? c * 9 / 5 + 32 : c).rounded())
     }
 
     static func windLine(_ w: WeatherDay, lexicon: Lexicon) -> String {

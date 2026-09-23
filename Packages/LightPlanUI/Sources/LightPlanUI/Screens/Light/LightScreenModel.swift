@@ -7,14 +7,11 @@ import LightPlanData
 /// на экране, — купол и лента остаются его же данными) и `WeatherStore`,
 /// считает `LightTelemetry` заново на каждую минуту.
 ///
-/// **Просто/Астро — временное поле, а не система настроек.** Полноценного
-/// экрана настроек ещё нет (итерация 19а). Решение исполнителя: тот же приём,
-/// каким итерация 17 завела `showMoon` в `TimebarState`, — простое
-/// `@Observable`-поле здесь, а не в `TimebarState`: тумблер режима принадлежит
-/// одному экрану «Свет», а `showMoon` делят купол и барабан таймбара сразу
-/// двух разных модулей композиции. Когда экран настроек появится, оба поля
-/// переедут в общее хранилище разом — до тех пор это два отдельных временных
-/// поля, а не одно на будущее хранилище.
+/// **Просто/Астро, часы и градусы приходят из настроек** (итерация 19а):
+/// хранит их `AppModel`, сюда они доезжают присвоением без пересоздания
+/// экрана — выбранная минута и день на таймбаре остаются, где были.
+/// `showMoon` остался в `TimebarState`: его делят купол и барабан, и в
+/// настройках веба его нет.
 @MainActor
 @Observable
 public final class LightScreenModel {
@@ -23,9 +20,22 @@ public final class LightScreenModel {
     public let weather: WeatherStore
 
     /// Просто/Астро: `false` — «Просто» (спойлер «Подробно» скрыт целиком),
-    /// `true` — «Астро». Веб хранит это в настройках приложения; здесь —
-    /// временно, см. комментарий типа выше.
+    /// `true` — «Астро».
     public var proMode = false
+
+    /// Градусы Фаренгейта вместо Цельсия (`tempUnit` веба).
+    public var fahrenheit = false
+
+    /// Имя места в шапке. До итерации 20 (карта, выбор места руками) это
+    /// город по умолчанию: из настроек, из геолокации или столица.
+    public var locationName: String
+
+    public var clockPreference: ClockPreference = .auto {
+        didSet {
+            clock = ClockText(language: language, preference: clockPreference)
+            timebar.setClockPreference(clockPreference)
+        }
+    }
 
     /// Солнце или луна на куполе и в первой группе спойлера — тот же
     /// тумблер, что уже делят `DomeView` и барабан таймбара.
@@ -36,16 +46,17 @@ public final class LightScreenModel {
 
     private let language: String
     private let lexicon: Lexicon
-    private let clock: ClockText
-    private let dateText: DateText
+    private var clock: ClockText
 
-    public init(timebar: TimebarState, weather: WeatherStore, language: String = "ru") {
+    public init(timebar: TimebarState, weather: WeatherStore, language: String = "ru",
+                locationName: String = "", clockPreference: ClockPreference = .auto) {
         self.timebar = timebar
         self.weather = weather
         self.language = language
+        self.locationName = locationName
+        self.clockPreference = clockPreference
         self.lexicon = Lexicon(language)
-        self.clock = ClockText(language: language)
-        self.dateText = DateText(language: language, timeZone: TimeZone(identifier: timebar.place.zone.identifier) ?? .current)
+        self.clock = ClockText(language: language, preference: clockPreference)
     }
 
     /// Данные экрана на текущую минуту таймбара — порт `renderToday`.
@@ -63,7 +74,7 @@ public final class LightScreenModel {
             weather: weatherDay, weatherLive: weather.isLive, air: air,
             headerLocationName: headerLocationName, headerDateLabel: headerDateLabel(t: t),
             headerNote: headerNote(t: t),
-            lexicon: lexicon, clock: clock
+            lexicon: lexicon, clock: clock, fahrenheit: fahrenheit
         )
     }
 
@@ -86,9 +97,7 @@ public final class LightScreenModel {
 
     // MARK: - Шапка: место, дата, «сегодня/через…/…назад»
 
-    /// Демо-место (Барнаул, см. `RootView`) — геокодера ещё нет (итерация 12),
-    /// поэтому имя места здесь буквальное, а не из справочника.
-    private var headerLocationName: String { "Барнаул" }
+    private var headerLocationName: String { locationName }
 
     private func viewDate(t: Minutes) -> CivilDate {
         timebar.machine.selectedDate.adding(days: Int((t / 1440).rounded(.down)))
@@ -113,6 +122,10 @@ public final class LightScreenModel {
     private func asFoundationDate(_ cd: CivilDate) -> Date {
         DateText.carrier(year: cd.year, month: cd.month - 1, day: cd.day, in: timeZone)
     }
+
+    /// Пояс берётся у места на каждый вызов: город по умолчанию уточняет
+    /// зону ответом геокодера уже после того, как экран построен.
+    private var dateText: DateText { DateText(language: language, timeZone: timeZone) }
 
     private var timeZone: TimeZone { TimeZone(identifier: timebar.place.zone.identifier) ?? .current }
 }

@@ -33,6 +33,9 @@ public final class CurrentPlace {
     private let locator: any DeviceLocating
     private let debounce: Duration
     private var lookupTask: Task<Void, Never>?
+    /// Имя, выданное вместе с точкой (`move(to:knownName:)`): пустой ответ
+    /// геокодера его не стирает.
+    private var knownName: PlaceName?
 
     /// - Parameters:
     ///   - initial: последнее сохранённое место.
@@ -53,8 +56,20 @@ public final class CurrentPlace {
     public func move(to c: GeoCoordinate) {
         coordinate = c
         zone = zones.zoneOrEstimate(at: c)
+        knownName = nil
         isNameStale = true
         scheduleNaming(for: c)
+    }
+
+    /// Переезд в место, имя которого уже известно (город выбран в подсказке
+    /// справочника): шапка сразу пишет имя, а не координаты на время ответа —
+    /// без сети навсегда (веб, `takeCity`). Геокодер всё равно спрашивается:
+    /// от него нужна настоящая зона.
+    public func move(to c: GeoCoordinate, knownName: PlaceName) {
+        move(to: c)
+        self.knownName = knownName
+        name = knownName
+        isNameStale = false
     }
 
     /// Ручной ввод. Ошибка ввода место не трогает.
@@ -93,7 +108,7 @@ public final class CurrentPlace {
 
     private func apply(_ found: PlaceLookup, for c: GeoCoordinate) {
         guard c == coordinate else { return }
-        name = found.name
+        name = found.name ?? knownName
         isNameStale = false
         if let z = found.zone {
             zones.remember(z, at: c)

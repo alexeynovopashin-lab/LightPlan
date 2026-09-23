@@ -37,7 +37,7 @@ public final class TimebarState {
     private let weather: WeatherStore?
     private let language: String
     private let lexicon: Lexicon
-    private let clock: ClockText
+    private var clock: ClockText
 
     let haptics = TimebarHaptics()
     let sound = TimebarSound()
@@ -61,15 +61,22 @@ public final class TimebarState {
     public private(set) var drumGlide: Double?
 
     public init(place: Place, date: CivilDate, weather: WeatherStore? = nil,
-                language: String = "ru", ribbonMode: RibbonMode = .drum) {
+                language: String = "ru", ribbonMode: RibbonMode = .drum,
+                clockPreference: ClockPreference = .auto) {
         self.place = place
         self.machine = TimelineMachine(date: date, place: place, ribbonMode: ribbonMode)
         self.weather = weather
         self.language = language
         self.lexicon = Lexicon(language)
-        self.clock = ClockText(language: language)
+        self.clock = ClockText(language: language, preference: clockPreference)
         self.solarDay = SolarDay(date: date, place: place)
         self.solarDayDate = date
+    }
+
+    /// Часы из настроек (итерация 19а): края и подписи ленты читают их на
+    /// следующем кадре, выбранная минута не трогается.
+    public func setClockPreference(_ preference: ClockPreference) {
+        clock = ClockText(language: language, preference: preference)
     }
 
     /// Место сменилось (карта, геокодер) — окно суток пересчитывается на тот
@@ -77,7 +84,11 @@ public final class TimebarState {
     public func setPlace(_ newPlace: Place) {
         place = newPlace
         machine.setPlace(newPlace)
-        syncSolarDay()
+        // Сутки считаются заново и при той же дате: у места другие восход и
+        // закат, у пояса — другие часы. `syncSolarDay` смотрит только на дату
+        // и оставлял сутки прежнего места (замер 19а: Томск с восходом Москвы).
+        solarDay = SolarDay(date: machine.selectedDate, place: newPlace)
+        solarDayDate = machine.selectedDate
     }
 
     public func setRibbonMode(_ mode: RibbonMode) {

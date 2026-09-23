@@ -17,6 +17,14 @@ public protocol DeviceLocating {
     /// Одна точка «сейчас». Разрешение спрашивается при первом вызове и только
     /// по запросу пользователя — сам по себе запрос никто не делает.
     func currentFix() async -> DeviceFix
+    /// Доступ уже дан — спросить точку можно без системного окна. Город по
+    /// умолчанию (итерация 19а) берёт место телефона только в этом случае:
+    /// новых запросов разрешения правило не добавляет.
+    var isAlreadyAuthorized: Bool { get }
+}
+
+public extension DeviceLocating {
+    var isAlreadyAuthorized: Bool { false }
 }
 
 /// `CoreLocation` по запросу. Ничего не слушает постоянно: одна точка и тишина.
@@ -37,6 +45,16 @@ public final class CoreLocationProvider: NSObject, DeviceLocating {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+
+    public var isAlreadyAuthorized: Bool {
+        switch manager.authorizationStatus {
+        case .authorizedAlways: return true
+        #if os(iOS)
+        case .authorizedWhenInUse: return true
+        #endif
+        default: return false
+        }
     }
 
     public func currentFix() async -> DeviceFix {

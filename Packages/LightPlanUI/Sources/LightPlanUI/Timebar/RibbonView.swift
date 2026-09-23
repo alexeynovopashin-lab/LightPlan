@@ -1,5 +1,6 @@
 import SwiftUI
 import LightPlanTimeline
+import LightPlanData
 
 /// Лента под ползунком: контекст соседних суток. Два вида — полоса и
 /// барабан (`state.machine.ribbonMode`).
@@ -13,6 +14,8 @@ import LightPlanTimeline
 /// скролла»).
 struct RibbonView: View {
     let state: TimebarState
+    @Environment(\.drumSlot) private var drumSlot
+    @Environment(\.colorScheme) private var colorScheme
 
     private let height = 54.0
 
@@ -22,6 +25,10 @@ struct RibbonView: View {
             // Выравнивание по левому краю обязательно: смещения считаются от
             // начала дорожки, как в вебе (DECISIONS «Барабан в нативе»).
             ZStack(alignment: .leading) {
+                if let face = slotFace {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous).fill(face)
+                        .frame(width: w, height: height)
+                }
                 track(width: w)
                     .offset(x: -state.machine.ribbonOffset(clipWidth: w) + state.ribbonShift)
                     .opacity(state.ribbonOpacity)
@@ -33,6 +40,9 @@ struct RibbonView: View {
                 }
             }
             .frame(width: w, height: height, alignment: .leading)
+            // Тёмная прорезь в светлой теме: чернила ячеек светлые (`--ink: #F0EBE1`
+            // веба под графитом и окном) — система берёт их из тёмной схемы.
+            .environment(\.colorScheme, slotFace == nil ? colorScheme : .dark)
             .clipped()
             .contentShape(Rectangle())
             .gesture(
@@ -109,6 +119,19 @@ struct RibbonView: View {
 
     // MARK: - Барабан
 
+    /// Грунт прорези (`--drum-face` веба, итерация 19а). Виден только в
+    /// светлой теме: в тёмной все три вида сходятся в один (CSS красит их
+    /// только под `[data-theme="light"]`). «Бумага» — то, что стояло и до
+    /// настройки, своего грунта у неё здесь нет.
+    private var slotFace: Color? {
+        guard state.machine.ribbonMode == .drum, colorScheme == .light else { return nil }
+        switch drumSlot {
+        case .paper: return nil
+        case .graphite: return Color(red: 35 / 255, green: 31 / 255, blue: 24 / 255).opacity(0.72)
+        case .window: return Color(red: 23 / 255, green: 21 / 255, blue: 15 / 255).opacity(0.88)
+        }
+    }
+
     private func cell(offset: Int) -> some View {
         VStack(spacing: 2) {
             Text(state.weekdayShort(offset: offset))
@@ -145,4 +168,9 @@ struct RibbonView: View {
             .frame(width: TimelineMachine.drumCell + 6, height: height - 4)
             .allowsHitTesting(false)
     }
+}
+
+extension EnvironmentValues {
+    /// Вид прорези барабана из настроек (`drumSlot` веба).
+    @Entry var drumSlot: AppSettings.DrumSlot = .paper
 }

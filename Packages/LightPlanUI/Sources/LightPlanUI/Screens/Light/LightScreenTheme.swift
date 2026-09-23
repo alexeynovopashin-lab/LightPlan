@@ -35,6 +35,11 @@ enum LightScreenTheme {
     static func meterOff(_ scheme: ColorScheme) -> Color {
         scheme == .light ? Color(hex: 0xD2CBBC) : Color(hex: 0x3A352E)
     }
+    /// Фон страницы — `--bg` веба (он же `theme-color` в шапке браузера).
+    /// Тема приходит от корня (`preferredColorScheme`), экран её не держит.
+    static func background(_ scheme: ColorScheme) -> Color {
+        scheme == .light ? Color(hex: 0xEDE9E1) : Color(hex: 0x0F0E0C)
+    }
     static func hairline(_ scheme: ColorScheme) -> Color {
         scheme == .light ? Color.black.opacity(0.07) : Color.white.opacity(0.07)
     }
