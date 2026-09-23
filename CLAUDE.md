@@ -16,6 +16,14 @@
   **public**, created by Alexey 2026-09-20. It is a different repo from the
   web's `Light-Plan` — the two histories stay separate on purpose. Push after
   each iteration's checkpoint; no secrets in this tree, keep it that way.
+- **Session size.** Every reply re-reads the whole context, so cost grows
+  faster than length (19б: 650–670K, compact, +400K ≈ 25 % of the weekly
+  limit). Near **300K** write an interim result into the plan («сделано /
+  осталось / где остановился») and `SESSIONS_CHAT.md`, then tell Alexey to
+  continue in a fresh chat — don't grow to 600K, don't re-compact. Compare
+  shots by `make shots` numbers; put an image into context only where the
+  numbers disagree. Measured iterations record the weekly % before/after and
+  peak context (`get_usage`).
 
 ## Layout and rules
 
