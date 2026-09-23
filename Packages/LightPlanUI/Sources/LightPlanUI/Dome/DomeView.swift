@@ -42,14 +42,30 @@ public struct DomeView: View {
     /// На 440 pt ширины (17 Pro Max) это масштаб 1 и поля по 25 pt — до
     /// 19б купол растягивался на всю ширину (×1,046) и был выше на 11 pt.
     public static let height: CGFloat = 240
+    /// Сколько холст рисует ниже купола: самая низкая точка ночного пути
+    /// (`cy + ry` = 344 в `viewBox`, на 104 ниже рамки) плюс свет ушедшего
+    /// светила радиусом 34.
+    static let overflow: CGFloat = 140
 
     public var body: some View {
         ZStack(alignment: .topTrailing) {
             TimelineView(.animation) { timeline in
                 Canvas { context, size in
-                    paint(&context, size: size, now: timeline.date)
+                    paint(&context, size: CGSize(width: size.width, height: Self.height), now: timeline.date)
                 }
             }
+            // `.dome > svg { overflow: visible }` веба: ночью и в сумерки
+            // светило уезжает под купол, и его призрак идёт ПОД строками
+            // ниже, просвечивая (DECISIONS «Светило не исчезает»). Холст
+            // SwiftUI режется своей рамкой — свет ушедшего солнца обрывался
+            // ровно по низу купола (жалоба Алексея: «солнце заныривает под
+            // подложку с обрезкой», пара «dawn» 06:05). Холст выше купола на
+            // `overflow`, рамка купола — прежние 240; строки ниже идут в
+            // стопке позже и рисуются поверх призрака. Касаний холст не
+            // ловит, как и у веба (`pointer-events: none`).
+            .frame(height: Self.height + Self.overflow)
+            .frame(height: Self.height, alignment: .top)
+            .allowsHitTesting(false)
             #if DEBUG
             DomeProbe(sun: sun, t: t, nowMinute: nowMinute, moon: mode == .moon)
             #endif

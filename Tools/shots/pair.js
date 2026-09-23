@@ -30,10 +30,14 @@ process.argv.slice(2).forEach((a, i, all) => {
 
 /* Сценарий пары. Место — Барнаул: пояс машины Алексея тот же (+7), а
    прогноз в Fixtures/shots снят 23 сентября 2026 для этих координат. Моменты
-   — три состояния неба того же дня: светлый день, золотой час (веб в этот
-   день пишет «18:37 – 19:44»), ночь. */
+   — состояния неба того же дня: светлый день, золотой час (веб в этот
+   день пишет «18:37 – 19:44»), ночь и глубокие сумерки перед рассветом
+   (06:05, светило около −8°, у самого горизонта: его свет лежит под
+   куполом — на нём Алексей поймал обрезку, которой три прежних момента
+   не показывали). */
 const ZONE = 'Asia/Barnaul';
-const MOMENTS = { day: '2026-09-23T13:00', golden: '2026-09-23T18:50', night: '2026-09-23T23:00' };
+const MOMENTS = { day: '2026-09-23T13:00', golden: '2026-09-23T18:50', night: '2026-09-23T23:00',
+  dawn: '2026-09-23T06:05' };
 const OFFSET = '+07:00';
 const DEVICE = 'iPhone 17 Pro Max';
 const BUNDLE = 'Novopashin.LightPlan';
@@ -49,7 +53,7 @@ const slots = (args.slots || 'paper,graphite,window').split(',');
    главы, остальные собраны из тех же. */
 const chapters = (args.chapters === '' ? [] : (args.chapters || 'view,locale').split(','));
 const themes = (args.themes || 'dark,light').split(',');
-const moments = (args.moments || 'day,golden,night').split(',');
+const moments = (args.moments || 'day,golden,night,dawn').split(',');
 const OUT = path.resolve(args.out || path.join(os.tmpdir(), 'lp-shots'));
 fs.mkdirSync(OUT, { recursive: true });
 
