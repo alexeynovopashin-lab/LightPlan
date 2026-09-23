@@ -13,6 +13,8 @@
      node Tools/shots/pair.js                      # всё: 2 экрана × 2 темы × моменты
      node Tools/shots/pair.js --screens light --themes dark --moments day
      node Tools/shots/pair.js --skip-build         # сборка уже стоит на симуляторе
+     node Tools/shots/pair.js --drum-nudge 20      # барабан провёрнут на 20 pt (только натив):
+                                                   # видно, как кромка окна гнёт число
    Выход: --out (по умолчанию $TMPDIR/lp-shots) — по папке на сценарий
    (web.png, native.png, web.json, native.json, pair.png) и report.md.
    Из worktree: LIGHT_PLAN_WEB=<путь к Light_Plan>, если папка не рядом. */
@@ -114,7 +116,8 @@ async function nativeShot(udid, sc, dir) {
     '-LPShotNow', MOMENTS[sc.moment] + ':00' + OFFSET, '-LPShotZone', ZONE,
     '-LPShotSeed', sc.seed, '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'),
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
-    '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []), '-LPShotReport', report],
+    '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
+    ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []), '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
   // Первый запуск после установки идёт до 20 с (замер 19б), следующие — 3–4 с.
   for (let i = 0; i < 240 && !fs.existsSync(report); i++) await sleep(250);

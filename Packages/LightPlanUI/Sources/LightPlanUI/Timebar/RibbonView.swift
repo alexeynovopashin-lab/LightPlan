@@ -25,6 +25,15 @@ struct RibbonView: View {
     /// стояли 54 pt прототипа с днём недели и крупным числом.
     static let height = 30.0
 
+    #if DEBUG
+    /// Пара снимков: барабан, провёрнутый на `-LPShotDrumNudge` pt
+    /// (`pair.js --drum-nudge`), — на неподвижном снимке видно, как кромка
+    /// окна гнёт число, заехавшее под неё.
+    private static let shotNudge = UserDefaults.standard.double(forKey: "LPShotDrumNudge")
+    #else
+    private static let shotNudge = 0.0
+    #endif
+
     var body: some View {
         let look = DrumLook(scheme: colorScheme, slot: drumSlot)
         let drum = state.machine.ribbonMode == .drum
@@ -32,28 +41,31 @@ struct RibbonView: View {
             let w = geo.size.width
             // Выравнивание по левому краю обязательно: смещения считаются от
             // начала дорожки, как в вебе (DECISIONS «Барабан в нативе»).
+            let windowX = w / 2 + state.machine.wind.strain * 0.6
             ZStack(alignment: .leading) {
-                if drum {
-                    RoundedRectangle(cornerRadius: 8).fill(look.face)
-                    // Окно — под ячейками, а не поверх: системное стекло
-                    // размывает то, что под ним, и поверх ячеек съедало
-                    // выбранную дату (снимок 19б). Веб кладёт его сверху, но
-                    // его «стекло» только насыщает, не размывает.
-                    frame(look)
-                        .shotNode("ribbon.frame")
-                        .offset(x: w / 2 - 25 + state.machine.wind.strain * 0.6)
+                // Шкала — всё, что лежит под стеклом окна: грунт, ячейки,
+                // тень цилиндра. Окно — «кусок стекла, который лежит над
+                // шкалой с датами» (Алексей, DECISIONS «Прозрачное
+                // стекло…»): его кромка гнёт то, что под ней
+                // (`GlassOptics.slab`), середина не размывает.
+                ZStack(alignment: .leading) {
+                    if drum { RoundedRectangle(cornerRadius: 8).fill(look.face) }
+                    if preview {
+                        HStack(spacing: 0) { ForEach(-1...1, id: \.self) { cell(offset: $0, look: look) } }
+                            .frame(width: w)
+                    } else {
+                        track(width: w, look: look)
+                            .offset(x: -state.machine.ribbonOffset(clipWidth: w) + state.ribbonShift + Self.shotNudge)
+                            .opacity(state.ribbonOpacity)
+                    }
+                    if drum { DrumShade(look: look).allowsHitTesting(false) }
                 }
-                if preview {
-                    HStack(spacing: 0) { ForEach(-1...1, id: \.self) { cell(offset: $0, look: look) } }
-                        .frame(width: w)
-                } else {
-                    track(width: w, look: look)
-                        .offset(x: -state.machine.ribbonOffset(clipWidth: w) + state.ribbonShift)
-                        .opacity(state.ribbonOpacity)
-                }
-                if drum {
-                    DrumShade(look: look).allowsHitTesting(false)
-                } else {
+                .frame(width: w, height: Self.height, alignment: .leading)
+                .layerEffect(GlassOptics.slab(center: CGPoint(x: windowX, y: Self.height / 2),
+                                              size: Self.window, radius: 7, scheme: colorScheme),
+                             maxSampleOffset: CGSize(width: GlassOptics.sideShift, height: GlassOptics.capShift),
+                             isEnabled: drum)
+                if !drum {
                     marker(look).offset(x: w / 2 - 4)
                     #if DEBUG
                     // Начало сегодняшних суток на дорожке — для пары снимков.
@@ -69,6 +81,17 @@ struct RibbonView: View {
             }
             .frame(width: w, height: Self.height, alignment: .leading)
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            // Окно — поверх обрезки прорези: его тень `0 3 10` ложится и
+            // ниже ленты, как у веба (`.drum-frame` стоит вне
+            // `.ribbon-scroll`). Внутри обрезки она срезалась краем барабана:
+            // под окном фон 248 против 233 у веба (светлая тема).
+            .overlay(alignment: .leading) {
+                if drum {
+                    frame(look)
+                        .shotNode("ribbon.frame")
+                        .offset(x: windowX - Self.window.width / 2)
+                }
+            }
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -211,21 +234,50 @@ struct RibbonView: View {
     }
 
     /// `.drum-frame`: окно 50×27 по центру, кант 1 `--terra`, скругление 7,
-    /// прозрачность 0,9; стекло — системное (DECISIONS 21 сентября 2026),
-    /// блик сверху 1,5 и тень 0 3 10 — как у веба.
+    /// прозрачность 0,9, налёт `--glass-fill`, тень 0 3 10 — как у веба.
+    /// Лежит ПОВЕРХ ячеек, как у веба: «это по сути кусок стекла, который
+    /// лежит над шкалой с датами» (Алексей, DECISIONS «Прозрачное стекло…»,
+    /// 23 сентября 2026). Три слоя:
+    /// - шкалу под окном гнёт шейдер на её слое (`GlassOptics.slab`) —
+    ///   числа, заезжающие под край, ломаются кромкой;
+    /// - по краю изнутри канта — кольцо системного стекла 1,5 pt
+    ///   (`FrameRim`): блик кромки рисует система, у веба это была
+    ///   имитация (`inset 0 1.5px 0`). Кольцо узкое — середину системное
+    ///   стекло размыло бы до нечитаемого (снимок 19б), а кольцо до букв не
+    ///   достаёт: зазор до верха даты 1,7 pt. Ширину выбрал Алексей из 2,5 ·
+    ///   2 · 1,5 («края широковаты и наползают на числа»);
+    /// - кант `--terra` поверх.
+    ///
+    /// Тень наружу — `OuterShadow`, а не `.shadow`: та легла бы и под
+    /// прозрачное окно, на выбранную дату.
+    static let window = CGSize(width: 50, height: 27)
+
     private func frame(_ look: DrumLook) -> some View {
-        RoundedRectangle(cornerRadius: 7)
+        let shape = RoundedRectangle(cornerRadius: 7)
+        return shape
             .fill(look.glassFill)
-            .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 7))
-            .overlay(alignment: .top) {
-                RoundedRectangle(cornerRadius: 7).stroke(look.shine, lineWidth: 1.5)
-                    .mask(Rectangle().frame(height: 1.5).frame(maxHeight: .infinity, alignment: .top))
-            }
-            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(look.terra, lineWidth: 1))
-            .shadow(color: look.cast, radius: 5, y: 3)
+            .overlay(Color.clear.glassEffect(.clear, in: FrameRim(radius: 7, border: 1, width: 1.5)))
+            .overlay(shape.strokeBorder(look.terra, lineWidth: 1))
+            .background(OuterShadow(shape: shape, color: look.cast, radius: 5, y: 3))
             .opacity(0.9)
-            .frame(width: 50, height: 27)
+            .frame(width: Self.window.width, height: Self.window.height)
             .allowsHitTesting(false)
+    }
+}
+
+/// Кольцо стекла по краю окна изнутри канта: скругление за вычетом
+/// скругления, ужатого на `width`. Системное стекло на нём даёт блик
+/// кромки и не трогает середину окна.
+struct FrameRim: Shape {
+    var radius: CGFloat
+    var border: CGFloat
+    var width: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let outer = Path(roundedRect: rect.insetBy(dx: border, dy: border), cornerRadius: max(0, radius - border))
+        let inner = Path(roundedRect: rect.insetBy(dx: border + width, dy: border + width),
+                         cornerRadius: max(0, radius - border - width))
+        return outer.subtracting(inner)
     }
 }
 

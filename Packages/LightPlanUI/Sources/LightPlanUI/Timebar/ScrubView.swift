@@ -24,25 +24,35 @@ struct ScrubView: View {
         let pal = Palette(colorScheme)
         GeometryReader { geo in
             let w = geo.size.width
+            let kw = state.machine.wind.thumbWidth, kh = state.machine.wind.thumbHeight
+            let cx = thumb / 2 + position() * (w - thumb)
             ZStack(alignment: .topLeading) {
-                Capsule()
-                    .fill(pal.rail)
-                    .overlay(Capsule().fill(LinearGradient(gradient: PathStops.railGradient(day: state.solarDay),
-                                                           startPoint: .leading, endPoint: .trailing)))
-                    .frame(width: w, height: 4)
-                    .padding(.top, 16)
+                // Всё, что лежит под ручкой: сквозь её прозрачное кольцо это
+                // видно, и кромка кольца это гнёт (`GlassOptics.ring`).
+                ZStack(alignment: .topLeading) {
+                    Capsule()
+                        .fill(pal.rail)
+                        .overlay(Capsule().fill(LinearGradient(gradient: PathStops.railGradient(day: state.solarDay),
+                                                               startPoint: .leading, endPoint: .trailing)))
+                        .frame(width: w, height: 4)
+                        .padding(.top, 16)
 
-                RulerView(solarDay: state.solarDay)
-                    .frame(width: max(0, w - 26), height: 10)
-                    .shotNode("ruler")
-                    .padding(.leading, 13).padding(.top, 24)
+                    RulerView(solarDay: state.solarDay)
+                        .frame(width: max(0, w - 26), height: 10)
+                        .shotNode("ruler")
+                        .padding(.leading, 13).padding(.top, 24)
 
-                heat(on: state.machine.wind.side < 0, pal: pal).padding(.top, 16)
-                heat(on: state.machine.wind.side > 0, pal: pal).padding(.leading, max(0, w - 34)).padding(.top, 16)
+                    heat(on: state.machine.wind.side < 0, pal: pal).padding(.top, 16)
+                    heat(on: state.machine.wind.side > 0, pal: pal).padding(.leading, max(0, w - 34)).padding(.top, 16)
+                }
+                .frame(width: w, height: Self.field, alignment: .topLeading)
+                .layerEffect(GlassOptics.ring(center: CGPoint(x: cx, y: Self.field / 2),
+                                              radii: CGSize(width: kw / 2, height: kh / 2),
+                                              width: Self.ring, scheme: colorScheme),
+                             maxSampleOffset: CGSize(width: GlassOptics.ringShift, height: GlassOptics.ringShift))
 
                 knob(pal: pal)
-                    .offset(x: thumb / 2 + position() * (w - thumb) - state.machine.wind.thumbWidth / 2,
-                            y: Self.field / 2 - state.machine.wind.thumbHeight / 2)
+                    .offset(x: cx - kw / 2, y: Self.field / 2 - kh / 2)
             }
             .frame(width: w, height: Self.field, alignment: .topLeading)
             .shotNode("scrub")
@@ -57,10 +67,15 @@ struct ScrubView: View {
         .padding(.bottom, Self.bottomPad)
     }
 
-    /// Ручка — стекло с глухим кантом (`::-webkit-slider-thumb`): сквозь неё
-    /// видна дорожка света, кант 3 pt держит край на светлом участке, снаружи
-    /// волосок `--ink-a22`, сверху блик `--glass-shine`, снаружи тень
-    /// 0 4 12 чёрным 55 %. Стекло системное (DECISIONS, 21 сентября 2026).
+    /// Ручка — два стекла (`::-webkit-slider-thumb` веба плюс слово
+    /// Алексея). Середина — матовое, системное (DECISIONS, 21 сентября 2026):
+    /// сквозь неё видна дорожка света, сверху блик `--glass-shine`. Вокруг —
+    /// прозрачное кольцо 3 pt на месте глухого канта `--knob-edge`: «это
+    /// пустое пространство вокруг матового стекла также предполагалось
+    /// заполнить стеклом, только прозрачным» (DECISIONS «Прозрачное стекло…»,
+    /// 23 сентября 2026), в обеих темах. Кольцо само ничего не рисует, кроме
+    /// кромок: то, что под ним, гнёт шейдер на слое дорожки. Край ручки
+    /// держат волосок `--ink-a22` снаружи и светлая кромка стекла сверху.
     ///
     /// Тень — не `.shadow`: та лежит и под самой ручкой и просвечивает
     /// сквозь стекло, середина ручки в светлой теме гасла 255 → 221 (замер
@@ -68,19 +83,37 @@ struct ScrubView: View {
     /// `box-shadow` рисуется только снаружи — так и здесь, `OuterShadow`.
     private func knob(pal: Palette) -> some View {
         let kw = state.machine.wind.thumbWidth, kh = state.machine.wind.thumbHeight
-        return Ellipse()
-            .fill(pal.knobGlass)
-            .glassEffect(.clear, in: Ellipse())
-            .overlay(Ellipse().strokeBorder(pal.knobEdge, lineWidth: 3))
-            .overlay(
-                Ellipse().inset(by: 3).stroke(pal.glassShine, lineWidth: 1)
-                    .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.25)))
-            )
-            .overlay(Ellipse().inset(by: -1).stroke(pal.inkA22, lineWidth: 1))
-            .frame(width: kw, height: kh)
-            .background(OuterShadow(color: .black.opacity(0.45), radius: 5.5, y: 4))
-            .allowsHitTesting(false)
+        let r = Self.ring
+        return ZStack {
+            // Налёт прозрачного стекла — только на кольце: под матовой
+            // серединой он высветлял её в тёмной теме 86 → 108 (веб 75;
+            // Алексей велел оставить 86).
+            Ellipse().strokeBorder(pal.glassFill, lineWidth: r)
+            Ellipse()
+                .fill(pal.knobGlass)
+                .glassEffect(.clear, in: Ellipse())
+                .overlay(
+                    Ellipse().inset(by: 0.5).stroke(pal.glassShine, lineWidth: 1)
+                        .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.25)))
+                )
+                .padding(r)
+            // Кромка прозрачного кольца: сверху свет, снизу — тень толщины.
+            Ellipse().inset(by: 0.5)
+                .stroke(LinearGradient(stops: [.init(color: pal.glassShine, location: 0),
+                                               .init(color: pal.glassShine.opacity(0), location: 0.35),
+                                               .init(color: .black.opacity(0), location: 0.65),
+                                               .init(color: .black.opacity(0.28), location: 1)],
+                                       startPoint: .top, endPoint: .bottom),
+                        lineWidth: 1)
+        }
+        .overlay(Ellipse().inset(by: -1).stroke(pal.inkA22, lineWidth: 1))
+        .frame(width: kw, height: kh)
+        .background(OuterShadow(shape: Ellipse(), color: .black.opacity(0.45), radius: 5.5, y: 4))
+        .allowsHitTesting(false)
     }
+
+    /// Ширина прозрачного кольца — бывший кант веба `border: 3px`.
+    static let ring = 3.0
 
     private func position() -> Double {
         let span = state.solarDay.maxt - state.solarDay.mint
@@ -99,26 +132,3 @@ struct ScrubView: View {
     }
 }
 
-/// Тень овала только СНАРУЖИ, как CSS `box-shadow`: внешняя тень веба
-/// обрезана по краю элемента и под полупрозрачную ручку не заходит. Холст
-/// шире овала на запас под размытие; сам овал вычитается после тени.
-struct OuterShadow: View {
-    var color: Color
-    var radius: CGFloat
-    var y: CGFloat
-
-    var body: some View {
-        let pad = radius * 3 + abs(y)
-        Canvas { ctx, size in
-            let oval = Path(ellipseIn: CGRect(origin: .zero, size: size).insetBy(dx: pad, dy: pad))
-            ctx.drawLayer { layer in
-                layer.addFilter(.shadow(color: color, radius: radius, x: 0, y: y, options: .shadowOnly))
-                layer.fill(oval, with: .color(.black))
-            }
-            ctx.blendMode = .destinationOut
-            ctx.fill(oval, with: .color(.black))
-        }
-        .padding(-pad)
-        .allowsHitTesting(false)
-    }
-}
