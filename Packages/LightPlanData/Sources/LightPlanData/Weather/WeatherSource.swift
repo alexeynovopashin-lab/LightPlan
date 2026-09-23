@@ -42,8 +42,10 @@ extension OpenMeteoHourlyResponse.Hourly {
 struct OpenMeteoAirResponse: Decodable {
     struct Hourly: Decodable {
         let time: [String]
-        let aerosol_optical_depth: [Double]?
-        let dust: [Double]?
+        // Часы, которых у службы нет, приходят `null` (замер 23 сентября 2026:
+        // 4 из 120). `[Double]` ронял весь ответ, и дым выпадал из балла.
+        let aerosol_optical_depth: [Double?]?
+        let dust: [Double?]?
     }
     let hourly: Hourly
 }
@@ -53,7 +55,7 @@ extension OpenMeteoAirResponse.Hourly {
         var out: [CivilDate: [Int: AirSample]] = [:]
         for i in 0..<time.count {
             guard let (date, hour) = WeatherDay.parse(time[i]) else { continue }
-            out[date, default: [:]][hour] = AirSample(aod: aerosol_optical_depth?[i], dust: dust?[i])
+            out[date, default: [:]][hour] = AirSample(aod: aerosol_optical_depth?[i] ?? nil, dust: dust?[i] ?? nil)
         }
         return out
     }

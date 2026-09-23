@@ -151,3 +151,26 @@ struct WeatherStoreTests {
         #expect(store.day(for: date).sunset! < bare)
     }
 }
+
+/// Ответ `air-quality-api` приходит с `null` в часах, которых у службы нет
+/// (4 из 120 в настоящем ответе по Барнаулу 23 сентября 2026). Разбор
+/// ронял весь ответ, и закатный балл считался без дыма: 24 вместо 34 у веба
+/// (пара снимков, итерация 19б). Пустой час — пустой замер, а не отказ.
+@Test func airAnswerWithNullHoursStillDecodes() async throws {
+    let json = """
+    {"hourly": {"time": ["2026-09-23T18:00", "2026-09-23T19:00", "2026-09-23T20:00"],
+                "aerosol_optical_depth": [0.16, 0.16, null], "dust": [1.0, null, null]}}
+    """
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("air-null-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let file = dir.appendingPathComponent("air.json")
+    try Data(json.utf8).write(to: file)
+    let source = FileWeatherSource(forecast: file, air: file)
+    let place = Place(latitude: 53.35, longitude: 83.77, zone: ZoneID("Asia/Barnaul")!)
+    let air = try await source.fetchAir(at: place)
+    let day = CivilDate(year: 2026, month: 9, day: 23)
+    #expect(air[day]?[19]?.aod == 0.16)
+    #expect(air[day]?[19]?.dust == nil)
+    #expect(air[day]?[20]?.aod == nil)
+    #expect(air[day]?.count == 3)
+}
