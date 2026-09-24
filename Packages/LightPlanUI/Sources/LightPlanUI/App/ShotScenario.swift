@@ -16,10 +16,11 @@ import LightPlanData
 /// `LPShotSeed` — снимок данных в формате веба (тот же файл засевает
 /// `localStorage` веба); `LPShotForecast`, `LPShotAir` — ответы Open-Meteo;
 /// `LPShotName` — `{ "city", "sub" }` вместо геокодера; `LPShotScreen` —
-/// `light` | `map` | `settings`; `LPShotChapter` — глава настроек; `LPShotReport` —
+/// `light` | `map` | `planner` | `settings`; `LPShotChapter` — глава настроек;
+/// `LPShotScope` — вид «Съёмок» (`month` | `week` | `day`); `LPShotReport` —
 /// куда записать рамки.
 public struct ShotScenario: Sendable {
-    public enum Screen: String, Sendable { case light, map, settings }
+    public enum Screen: String, Sendable { case light, map, planner, settings }
 
     public let now: Date
     public let zone: TimeZone
@@ -30,6 +31,10 @@ public struct ShotScenario: Sendable {
     public let screen: Screen
     /// Глава настроек (`view`, `locale`…) — открыта поверх корня.
     public let chapter: String?
+    /// Вид «Съёмок» при запуске (итерация 21).
+    public let scope: CalScope?
+    /// Дата закреплённой недели дня, 0 — понедельник (`LPShotPick`).
+    public let pick: Int?
     public let report: URL?
 
     public static func fromLaunch(_ defaults: UserDefaults = .standard) -> ShotScenario? {
@@ -45,6 +50,8 @@ public struct ShotScenario: Sendable {
             air: url("LPShotAir"), name: url("LPShotName"),
             screen: defaults.string(forKey: "LPShotScreen").flatMap(Screen.init(rawValue:)) ?? .light,
             chapter: defaults.string(forKey: "LPShotChapter"),
+            scope: defaults.string(forKey: "LPShotScope").flatMap(CalScope.init(rawValue:)),
+            pick: defaults.object(forKey: "LPShotPick") == nil ? nil : defaults.integer(forKey: "LPShotPick"),
             report: url("LPShotReport"))
     }
 }
@@ -65,7 +72,17 @@ extension AppModel {
                            cityLookup: ShotCityLookup(),
                            weatherSource: FileWeatherSource(forecast: s.forecast, air: s.air),
                            now: { fixed.addingTimeInterval(Date().timeIntervalSince(start)) })
-        app.tab = s.screen == .settings ? .settings : s.screen == .map ? .map : .light
+        app.tab = switch s.screen {
+        case .settings: .settings
+        case .map: .map
+        case .planner: .planner
+        case .light: .light
+        }
+        if let scope = s.scope { app.planner.setScope(scope) }
+        if let k = s.pick, (0..<7).contains(k) {
+            app.planner.pickInStrip(app.planner.week[k])
+            _ = app.planner.consumeDayShift()
+        }
         app.mapOffline = true
         app.startChapter = s.chapter
         return app

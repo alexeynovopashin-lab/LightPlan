@@ -13,6 +13,8 @@
      node Tools/shots/pair.js                      # всё: 2 экрана × 2 темы × моменты
      node Tools/shots/pair.js --screens light --themes dark --moments day
      node Tools/shots/pair.js --skip-build         # сборка уже стоит на симуляторе
+     node Tools/shots/pair.js --screens planner --scopes day   # «Съёмки» (итерация 21):
+                                                   # засев сезона (planner_seed.js), виды месяц/неделя/день
      node Tools/shots/pair.js --drum-nudge 20      # барабан провёрнут на 20 pt (только натив):
                                                    # видно, как кромка окна гнёт число
    Выход: --out (по умолчанию $TMPDIR/lp-shots) — по папке на сценарий
@@ -44,7 +46,10 @@ const OFFSET = '+07:00';
 const DEVICE = 'iPhone 17 Pro Max';
 const BUNDLE = 'Novopashin.LightPlan';
 
-const screens = (args.screens || 'light,map,settings').split(',');
+const screens = (args.screens || 'light,map,planner,settings').split(',');
+/* Виды «Съёмок» (итерация 21). Режим и момент им не нужны: одна пара на вид
+   и тему, в 13:00 — рядом съёмка «прямо сейчас» и черта «сейчас» на ленте. */
+const scopes = (args.scopes || 'month,week,day').split(',');
 /* Режим: «Просто» и «Астро» — у «Света» разный состав (лента суток и
    «Подробно» только в астро), у «Настроек» — разделы вида. Прорези барабана
    (`drumSlot`) различимы только в светлой теме, снимаются одним моментом. */
@@ -117,6 +122,7 @@ async function nativeShot(udid, sc, dir) {
     '-LPShotSeed', sc.seed, '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'),
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
+    ...(sc.scope ? ['-LPShotScope', sc.scope] : []), ...(sc.pick != null ? ['-LPShotPick', String(sc.pick)] : []),
     ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []), '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
   // Первый запуск после установки идёт до 20 с (замер 19б), следующие — 3–4 с.
@@ -128,7 +134,9 @@ async function nativeShot(udid, sc, dir) {
 }
 
 function webShot(sc, dir, safe) {
-  const out = run('node', [path.join(WEB, 'tools', 'shot.js'), '--screen', sc.screen === 'light' ? 'today' : sc.screen,
+  const out = run('node', [path.join(WEB, 'tools', 'shot.js'), '--screen',
+    sc.screen === 'light' ? 'today' : sc.screen === 'planner' ? 'plan' : sc.screen, ...(sc.scope ? ['--scope', sc.scope] : []),
+    ...(sc.pick != null ? ['--pick', String(sc.pick)] : []),
     '--at', MOMENTS[sc.moment], '--tz', ZONE, '--seed', sc.seed,
     '--forecast', path.join(FX, 'forecast_barnaul.json'), '--air', path.join(FX, 'air_barnaul.json'),
     '--name', path.join(FX, 'place_barnaul.json'), '--safe', safe.map(v => Math.round(v)).join(','),
@@ -248,12 +256,14 @@ function markdown(results) {
 
   const seed = JSON.parse(fs.readFileSync(path.join(FX, 'seed.json'), 'utf8'));
   const list = [];
-  const add = (screen, theme, mode, moment, slot, chapter, ribbon = 'drum') => {
-    const name = [screen, mode, theme, screen === 'settings' ? null : moment, slot === 'paper' ? null : slot, chapter,
-      ribbon === 'drum' ? null : ribbon].filter(Boolean).join('-');
+  const plannerSeed = JSON.parse(fs.readFileSync(path.join(FX, 'seed_planner.json'), 'utf8'));
+  const add = (screen, theme, mode, moment, slot, chapter, ribbon = 'drum', scope = null, pick = null) => {
+    const name = scope ? [screen, scope + (pick != null ? pick : ''), theme].join('-')
+      : [screen, mode, theme, screen === 'settings' ? null : moment, slot === 'paper' ? null : slot, chapter,
+        ribbon === 'drum' ? null : ribbon].filter(Boolean).join('-');
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
-    const s = { ...seed, theme, pro: mode === 'astro', drumSlot: slot, ribbonMode: ribbon };
+    const s = { ...(scope ? plannerSeed : seed), theme, pro: mode === 'astro', drumSlot: slot, ribbonMode: ribbon };
     /* Карта (итерация 20а): в «Просто» солнце и луна, в «Астро» к ним
        Млечный Путь — так обе пары слоёв снимаются без отдельного перебора.
        Сводка свёрнута: её нет до 20б, а окно прибора считается по свёрнутой. */
@@ -263,9 +273,15 @@ function markdown(results) {
     }
     const seedFile = path.join(dir, 'seed.json');
     fs.writeFileSync(seedFile, JSON.stringify(s));
-    list.push({ name, dir, screen, theme, moment, chapter, seed: seedFile });
+    list.push({ name, dir, screen, theme, moment, chapter, scope, pick, seed: seedFile });
   };
-  for (const screen of screens) for (const mode of modes) for (const theme of themes) {
+  if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
+    add('planner', theme, 'simple', 'day', 'paper', null, 'drum', scope);
+    /* Суббота 26-го: две съёмки внахлёст (14:00–15:30 и 15:00–16:30) —
+       колонки ленты на экране, а не только в стенде `make planner` */
+    if (scope === 'day') add('planner', theme, 'simple', 'day', 'paper', null, 'drum', scope, 5);
+  }
+  for (const screen of screens.filter(x => x !== 'planner')) for (const mode of modes) for (const theme of themes) {
     // «Настройки» от момента не зависят — одна пара на тему и режим.
     for (const moment of screen === 'settings' ? [moments[0]] : moments) add(screen, theme, mode, moment, 'paper');
     if (screen === 'settings') for (const ch of chapters) add(screen, theme, mode, moments[0], 'paper', ch);

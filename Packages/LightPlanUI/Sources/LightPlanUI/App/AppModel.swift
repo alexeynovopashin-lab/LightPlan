@@ -2,13 +2,14 @@ import Foundation
 import Observation
 import LightPlanCore
 import LightPlanData
+import LightPlanDomain
 import LightPlanTimeline
 import LightPlanMapCanvas
 
 /// Хозяин приложения (итерация 19а): снимок на диске, настройки, место и
 /// экран «Свет». Настройки меняются здесь и отсюда же доезжают до «Света»
 /// присвоением — без пересоздания экрана и без перезапуска.
-public enum AppTab: Hashable, Sendable { case light, map, settings }
+public enum AppTab: Hashable, Sendable { case light, map, planner, settings }
 
 @MainActor
 @Observable
@@ -44,6 +45,35 @@ public final class AppModel {
     /// Записей в снимке — для строки «Карта и места» (сохранённые точки).
     public var spotCount: Int { snapshot.spots.count }
 
+    /// «Съёмки» (итерация 21): одно состояние на месяц, неделю и день.
+    /// Открывается на месяце и сегодняшнем дне при каждом запуске, как веб.
+    public var planner: PlannerState
+    /// Сводка дня свёрнута (`dayFold` снимка) — единственное, что планировщик
+    /// помнит между запусками.
+    public var dayFold: Bool {
+        get { snapshot.dayFold }
+        set {
+            guard newValue != snapshot.dayFold else { return }
+            snapshot.dayFold = newValue
+            persist()
+        }
+    }
+    /// Записи и занятость снимка — планировщик их только читает (правка —
+    /// итерации форм).
+    public var sessions: [Session] { snapshot.sessions }
+    public var blocks: [Block] { snapshot.blocks }
+    public var orgs: [Org] { snapshot.orgs }
+    /// Слой событий чужого календаря (веб `icsLayer`): без него события из
+    /// подписки в планировщике не показываются.
+    public var eventsLayer: Bool {
+        if case .bool(let on)? = snapshot.extra["icsLayer"] { return on }
+        return false
+    }
+    public var delivery: DeliverySetting { snapshot.delivery }
+    public var genrePrefs: [Genre: GenrePrefs] { snapshot.genrePrefs }
+    /// Часы приложения: у снимка пары — прибитые, как `page.clock` веба.
+    public let now: @Sendable () -> Date
+
     private var snapshot: Snapshot
     private let store: Store?
     private let locator: any DeviceLocating
@@ -53,6 +83,7 @@ public final class AppModel {
          weatherSource: any WeatherSource, now: @escaping @Sendable () -> Date = { Date() }) {
         self.snapshot = snapshot
         self.store = store
+        self.now = now
         self.language = language
         self.lexicon = Lexicon(language)
         self.locator = locator
@@ -79,6 +110,7 @@ public final class AppModel {
                                  zones: zones, namer: PlaceNamer(geocoder: geocoder), locator: locator)
         self.place = place
         self.citySource = resolved.source
+        self.planner = PlannerState(today: Self.today(in: place.place, now: now()))
 
         let weather = WeatherStore(place: place.place, source: weatherSource)
         let timebar = TimebarState(place: place.place, date: Self.today(in: place.place, now: now()), weather: weather,
@@ -254,6 +286,23 @@ public final class AppModel {
     private static func met(_ s: Snapshot) -> Bool {
         if case .object(let me)? = s.extra["me"], case .bool(true)? = me["met"] { return true }
         return false
+    }
+
+    /// Сегодня по часам места приложения.
+    public var today: CivilDate { Self.today(in: place.place, now: now()) }
+
+    /// Минута «сейчас» в поясе места.
+    public var nowMinute: Int {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: place.place.zone.identifier) ?? .current
+        let c = calendar.dateComponents([.hour, .minute], from: now())
+        return c.hour! * 60 + c.minute!
+    }
+
+    /// Ступень сдачи записи сейчас (веб `deliveryState`): сутки считаются в
+    /// поясе телефона, как у веба.
+    public func deliveryStatus(_ s: Session) -> DeliveryStatus {
+        Delivery.status(s, now: Moment(now()), zone: .current, setting: snapshot.delivery, prefs: snapshot.genrePrefs)
     }
 
     static func today(in place: Place, now: Date = Date()) -> CivilDate {
