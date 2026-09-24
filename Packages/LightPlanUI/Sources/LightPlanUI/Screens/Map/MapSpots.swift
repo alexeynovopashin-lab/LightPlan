@@ -102,32 +102,38 @@ private struct SpotMark: View {
 
     var body: some View {
         // Нулевая рамка с остриём в начале координат, как `.spot-mark` веба.
+        // Точка под головкой наблюдателя — колечко; сдвинули карту — оно
+        // «поднимается» и вырастает в булавку от острия (слово Алексея
+        // 24.09: «нужна промежуточная анимация»). Оба знака живут всегда,
+        // смена — пружиной по `here`, в обе стороны.
         ZStack(alignment: .topLeading) {
-            if here {
-                Circle().stroke(pal.brass, lineWidth: 1.4).opacity(0.55)
-                    .frame(width: 22, height: 22)
-                    .offset(x: -11, y: -11)
-            } else {
-                PinGlyph(pinned: spot.pinned == true, pal: pal)
-                    .frame(width: 24 * MapSpots.glyphScale, height: 24 * MapSpots.glyphScale)
-                    .offset(x: -12 * MapSpots.glyphScale, y: -21 * MapSpots.glyphScale)
-                // Плашка та же, что у атрибуции (`--bar-2` на размытии 8):
-                // не шире 132, длинное имя обрезается многоточием.
-                Text(spot.name.isEmpty ? spot.coordinate.text : spot.name)
-                    .font(.system(size: 11, weight: .semibold)).tracking(0.2)
-                    .foregroundStyle(pal.ink2)
-                    .lineLimit(1).truncationMode(.tail)
-                    .padding(.horizontal, 5).padding(.vertical, 1)
-                    .background {
-                        ZStack { Rectangle().fill(.ultraThinMaterial); Rectangle().fill(pal.bar2) }
-                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    }
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { onLabel($0) }
-                    .frame(maxWidth: MapSpots.labelMax, alignment: .leading)
-                    .frame(width: MapSpots.labelMax, height: MapSpots.labelHeight, alignment: .leading)
-                    .offset(x: MapSpots.labelOrigin.x, y: MapSpots.labelOrigin.y)
-            }
+            Circle().stroke(pal.brass, lineWidth: 1.4).opacity(here ? 0.55 : 0)
+                .frame(width: 22, height: 22)
+                .scaleEffect(here ? 1 : 0.3)
+                .offset(x: -11, y: -11)
+            PinGlyph(pinned: spot.pinned == true, pal: pal)
+                .frame(width: 24 * MapSpots.glyphScale, height: 24 * MapSpots.glyphScale)
+                .scaleEffect(here ? 0.25 : 1, anchor: UnitPoint(x: 12.0 / 24, y: 21.0 / 24))
+                .opacity(here ? 0 : 1)
+                .offset(x: -12 * MapSpots.glyphScale, y: -21 * MapSpots.glyphScale)
+            // Плашка та же, что у атрибуции (`--bar-2` на размытии 8):
+            // не шире 132, длинное имя обрезается многоточием.
+            Text(spot.name.isEmpty ? spot.coordinate.text : spot.name)
+                .font(.system(size: 11, weight: .semibold)).tracking(0.2)
+                .foregroundStyle(pal.ink2)
+                .lineLimit(1).truncationMode(.tail)
+                .padding(.horizontal, 5).padding(.vertical, 1)
+                .background {
+                    ZStack { Rectangle().fill(.ultraThinMaterial); Rectangle().fill(pal.bar2) }
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { onLabel($0) }
+                .frame(maxWidth: MapSpots.labelMax, alignment: .leading)
+                .frame(width: MapSpots.labelMax, height: MapSpots.labelHeight, alignment: .leading)
+                .offset(x: MapSpots.labelOrigin.x, y: MapSpots.labelOrigin.y)
+                .opacity(here ? 0 : 1)
         }
+        .animation(.spring(response: 0.38, dampingFraction: 0.62), value: here)
         .frame(width: 0, height: 0, alignment: .topLeading)
     }
 }
