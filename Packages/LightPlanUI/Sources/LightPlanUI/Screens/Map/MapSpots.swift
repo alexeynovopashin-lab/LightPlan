@@ -29,11 +29,17 @@ enum MapSpots {
         p.x >= -140 && p.y >= -80 && p.x <= size.width + 140 && p.y <= size.height + 80
     }
 
-    /// Тело булавки: знак 18 × 18, остриё (12, 21) холста 24 × 24 — на 9
-    /// вправо и 15,75 вниз от угла (`.spot-mark svg`).
-    static let body = CGRect(x: -9, y: -15.75, width: 18, height: 18)
-    /// Подпись (`.sm-name`): 8 вправо от острия, 14 вверх, не шире 132.
-    static let labelOrigin = CGPoint(x: 8, y: -14)
+    /// Булавка на встроенном стекле (20г, слово Алексея 24.09): круглая
+    /// головка — 20 pt, как центр компаса вместе с кольцами (13 + 2·3,5).
+    /// Знак `pin` — 24 × 24, головка в нём 14 (r 7 с центром (12, 10)),
+    /// значит масштаб 20 / 14; остриё (12, 21) — в (17,14; 30) от угла.
+    static let headDiameter: CGFloat = 20
+    static let glyphScale: CGFloat = headDiameter / 14
+    /// Попадание тапа берёт головку и тело до острия, а не квадрат знака:
+    /// углы квадрата пустые.
+    static let body = CGRect(x: -headDiameter / 2, y: -18 * glyphScale, width: headDiameter, height: 18 * glyphScale)
+    /// Подпись: правее головки (10) с зазором 4, вровень с её центром.
+    static let labelOrigin = CGPoint(x: 14, y: -15.7 - labelHeight / 2)
     static let labelMax: CGFloat = 132
     static let labelHeight: CGFloat = 15
 
@@ -103,8 +109,8 @@ private struct SpotMark: View {
                     .offset(x: -11, y: -11)
             } else {
                 PinGlyph(pinned: spot.pinned == true, pal: pal)
-                    .frame(width: 18, height: 18)
-                    .offset(x: MapSpots.body.minX, y: MapSpots.body.minY)
+                    .frame(width: 24 * MapSpots.glyphScale, height: 24 * MapSpots.glyphScale)
+                    .offset(x: -12 * MapSpots.glyphScale, y: -21 * MapSpots.glyphScale)
                 // Плашка та же, что у атрибуции (`--bar-2` на размытии 8):
                 // не шире 132, длинное имя обрезается многоточием.
                 Text(spot.name.isEmpty ? spot.coordinate.text : spot.name)
@@ -126,23 +132,47 @@ private struct SpotMark: View {
     }
 }
 
-/// Знак `pin` залитым: у веба `fill: var(--brass); stroke: var(--canvas)`,
-/// у полого (`.addr`) заливка — цвет холста, обводка латунью 1,8.
+/// Булавка-стекло: капля знака `pin` на матовом стекле ползунка (`knobGlass`
+/// плюс `.glassEffect(.clear)`), кромка света сверху, волосок чернил снаружи
+/// и тень под предметом. В головке — точка: сплошная латунь у сохранённой,
+/// колечко у взятой у геокодера (`.addr`).
 private struct PinGlyph: View {
     let pinned: Bool
     let pal: Palette
 
     var body: some View {
-        let art = Icon.common("pin")
-        let k: CGFloat = 18 / 24
-        ZStack {
-            ForEach(art.parts.indices, id: \.self) { i in
-                let shape = IconOutline(path: art.parts[i].path)
-                shape.fill(pinned ? pal.brass : pal.canvas)
-                shape.stroke(pinned ? pal.canvas : pal.brass,
-                             style: StrokeStyle(lineWidth: (pinned ? 1.6 : 1.8) * k, lineCap: .round, lineJoin: .round))
+        let k = MapSpots.glyphScale
+        ZStack(alignment: .topLeading) {
+            PinDrop().fill(pal.knobGlass)
+                .glassEffect(.clear, in: PinDrop())
+                .overlay(
+                    PinDrop().stroke(LinearGradient(
+                        stops: [.init(color: pal.glassShine, location: 0),
+                                .init(color: pal.glassShine.opacity(0), location: 0.4)],
+                        startPoint: .top, endPoint: .bottom), lineWidth: 1))
+                .overlay(PinDrop().stroke(pal.inkA22, lineWidth: 1).opacity(0.8))
+                .background(OuterShadow(shape: PinDrop(), color: .black.opacity(0.4), radius: 3, y: 2))
+            Group {
+                if pinned { Circle().fill(pal.brass) } else { Circle().stroke(pal.brass, lineWidth: 1.5) }
             }
+            .frame(width: 2 * 2.6 * k, height: 2 * 2.6 * k)
+            .offset(x: (12 - 2.6) * k, y: (10 - 2.6) * k)
         }
+    }
+}
+
+/// Капля знака `pin` (24 × 24): круглая головка r 7 в (12, 10) и остриё (12, 21).
+private struct PinDrop: Shape {
+    func path(in rect: CGRect) -> Path {
+        let k = min(rect.width, rect.height) / 24
+        var p = Path()
+        p.move(to: CGPoint(x: 12, y: 21))
+        p.addCurve(to: CGPoint(x: 19, y: 10), control1: CGPoint(x: 12, y: 21), control2: CGPoint(x: 19, y: 14.7))
+        p.addCurve(to: CGPoint(x: 12, y: 3), control1: CGPoint(x: 19, y: 6.134), control2: CGPoint(x: 15.866, y: 3))
+        p.addCurve(to: CGPoint(x: 5, y: 10), control1: CGPoint(x: 8.134, y: 3), control2: CGPoint(x: 5, y: 6.134))
+        p.addCurve(to: CGPoint(x: 12, y: 21), control1: CGPoint(x: 5, y: 14.7), control2: CGPoint(x: 12, y: 21))
+        p.closeSubpath()
+        return p.applying(CGAffineTransform(scaleX: k, y: k)).offsetBy(dx: rect.minX, dy: rect.minY)
     }
 }
 

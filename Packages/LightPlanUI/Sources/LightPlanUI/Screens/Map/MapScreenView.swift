@@ -17,6 +17,8 @@ struct MapScreenView: View {
     /// (`measureMapOptic`: центр считается по свёрнутому низу, иначе карта
     /// поехала бы от раскрытого свода).
     @State private var headerBottom: CGFloat = 150
+    /// Сколько раз поставили булавку — на смену отвечает отдача.
+    @State private var spotDrops = 0
     @State private var timebarTop: CGFloat = 760
     @State private var readoutHeight: CGFloat = 60
     @State private var foldContentHeight: CGFloat = 0
@@ -188,6 +190,7 @@ struct MapScreenView: View {
             .ignoresSafeArea()
         }
         .onChange(of: timebar.touches) { showChip(.drag, life: 1.2) }
+        .sensoryFeedback(.impact(weight: .medium), trigger: spotDrops)
         // Фокус в поле — отсчёт снят; ушёл — имя записано (`blur` веба).
         .onChange(of: barFocus) { _, focused in
             if focused { holdBar() } else if barSpot != nil { commitBar() }
@@ -499,6 +502,8 @@ struct MapScreenView: View {
     /// нет, и полоса стоит без неё и без обратного отсчёта.
     private func saveTapped(keyboard: Bool = true) {
         guard let sp = app.toggleSpotHere() else { return }
+        spotDrops += 1
+        MapClick.play()
         openBar(sp, edit: false, quiet: false, keyboard: keyboard)
     }
 

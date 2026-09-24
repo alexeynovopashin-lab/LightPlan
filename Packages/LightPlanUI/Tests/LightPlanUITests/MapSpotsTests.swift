@@ -69,19 +69,25 @@ struct MapSpotsTests {
     @Test func tapHitsBodyOrLabelNearestFirst() {
         let a = (id: "a", tip: CGPoint(x: 100, y: 100), labelWidth: CGFloat(60))
         let b = (id: "b", tip: CGPoint(x: 108, y: 104), labelWidth: CGFloat(60))
-        // Тело: 18 × 18 от (−9, −15.75), поле 6.
+        // Тело: 20 × 25,7 от (−10, −25,7), поле 6.
         #expect(MapSpots.hit(CGPoint(x: 100, y: 92), marks: [a]) == "a")
         #expect(MapSpots.hit(CGPoint(x: 85, y: 92), marks: [a]) == "a")        // в поле 6
-        #expect(MapSpots.hit(CGPoint(x: 84, y: 92), marks: [a]) == nil)
-        // Подпись: от (8, −14), ширина 60, высота 15, поле 4.
+        #expect(MapSpots.hit(CGPoint(x: 83, y: 92), marks: [a]) == nil)
+        // Подпись: от (14, −23,2), ширина 60, высота 15, поле 4.
         #expect(MapSpots.hit(CGPoint(x: 160, y: 90), marks: [a]) == "a")
-        #expect(MapSpots.hit(CGPoint(x: 173, y: 90), marks: [a]) == nil)
+        #expect(MapSpots.hit(CGPoint(x: 179, y: 90), marks: [a]) == nil)
         // Внахлёст — ближняя к центру задетой части.
         #expect(MapSpots.hit(CGPoint(x: 101, y: 92), marks: [a, b]) == "a")
         #expect(MapSpots.hit(CGPoint(x: 109, y: 96), marks: [a, b]) == "b")
         // Подпись ещё не измерена — попадает только тело.
         let c = (id: "c", tip: CGPoint(x: 100, y: 100), labelWidth: CGFloat(0))
         #expect(MapSpots.hit(CGPoint(x: 140, y: 90), marks: [c]) == nil)
+    }
+
+    /// Головка булавки — 20 pt, как центр компаса (13 + кольца 2 × 3,5).
+    @Test func pinHeadMatchesCompassCentre() {
+        #expect(MapSpots.headDiameter == 13 + 2 * 3.5)
+        #expect(abs(14 * MapSpots.glyphScale - MapSpots.headDiameter) < 1e-9)
     }
 
     @Test func offScreenBoundsMatchWeb() {
