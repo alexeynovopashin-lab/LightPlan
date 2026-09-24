@@ -144,7 +144,8 @@ struct MapScreenView: View {
                     .font(.system(size: 9)).tracking(0.2)
                     .foregroundStyle(pal.ink7)
                     .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(pal.bar2, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(pal.bar2)
+                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 7, style: .continuous)))
                     .shotNode("map.credit")
                     .frame(width: size.width - 8, alignment: .trailing)
                     .padding(.top, headerBottom + 8)
@@ -254,7 +255,7 @@ struct MapScreenView: View {
                 .padding(.top, top + 24 - 6)
                 .padding(.trailing, 24 - 8)
         }
-        .background { glass(pal) }
+        .background { glass(pal, outside: [.top, .horizontal]) }
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair).frame(height: 1) }
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).maxY } action: { headerBottom = $0 }
     }
@@ -321,7 +322,7 @@ struct MapScreenView: View {
                 .shotNode("timebar")
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: { timebarTop = $0 }
         }
-        .background { glass(pal) }
+        .background { glass(pal, outside: [.bottom, .horizontal]) }
         .overlay(alignment: .top) { Rectangle().fill(pal.hair).frame(height: 1) }
     }
 
@@ -464,9 +465,12 @@ struct MapScreenView: View {
         .shotNode("map.layers")
     }
 
-    /// Стекло веба: `--bar` поверх размытия 20 px.
-    private func glass(_ pal: Palette) -> some View {
-        ZStack { Rectangle().fill(.ultraThinMaterial); Rectangle().fill(pal.bar) }
+    /// Шапка и док — рецепт панели вкладок (19б): тон веба `--bar` поверх
+    /// встроенного стекла. Системное стекло светит кромкой по всему контуру,
+    /// а у веба край один — волосок к карте; остальные края — за экраном.
+    private func glass(_ pal: Palette, outside: Edge.Set) -> some View {
+        Rectangle().fill(pal.bar).glassEffect(.regular, in: Rectangle())
+            .padding(outside, -4)
     }
 
     // MARK: - Сохранённые точки
@@ -590,30 +594,15 @@ struct MapScreenView: View {
 
     // MARK: - Головка
 
-    /// `.map-pin i`: 13 pt, светлая. В тёмной теме — гнездо: кольцо цвета
-    /// холста 2 pt и кольцо чернил 1,5 pt снаружи. В светлой те же кольца
-    /// читались чёрной обводкой (Алексей: «спорит с общим визуалом») — там
-    /// тёплая кромка 1 pt и тень под предметом в два слоя `--glass-cast`:
-    /// `0 1px 2px` и `0 2px 6px`.
-    @ViewBuilder
+    /// `.map-pin i`: центр компаса — матовое стекло ручки ползунка
+    /// (`KnobGlass`, 20д), 20 pt — как головка булавки, которая из него
+    /// вырастает (20г: «окружность как у центра компаса»). Прежде — светлый
+    /// шарик 13 pt с кольцами до тех же 20.
     private func pin(_ pal: Palette) -> some View {
-        let head = Circle().fill(pal.knob).frame(width: 13, height: 13)
-        Group {
-            if pal.dark {
-                head
-                    .background(Circle().fill(pal.pinRing).padding(-2))
-                    .background(Circle().fill(pal.inkA40).padding(-3.5))
-            } else {
-                // Тень каждого слоя — от самой головки, а не от соседней тени:
-                // под головкой два её двойника, каждый со своей тенью.
-                head
-                    .background(Circle().fill(pal.knobEdge).padding(-1))
-                    .background(Circle().fill(pal.knob).shadow(color: pal.glassCast, radius: 1, x: 0, y: 1))
-                    .background(Circle().fill(pal.knob).shadow(color: pal.glassCast, radius: 3, x: 0, y: 2))
-            }
-        }
-        .shotNode("map.pin")
-        .allowsHitTesting(false)
+        KnobGlass(shape: Circle(), pal: pal)
+            .frame(width: MapSpots.headDiameter, height: MapSpots.headDiameter)
+            .shotNode("map.pin")
+            .allowsHitTesting(false)
     }
 
     // MARK: - Чип

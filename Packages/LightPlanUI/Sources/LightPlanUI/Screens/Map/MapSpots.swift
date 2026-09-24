@@ -116,16 +116,16 @@ private struct SpotMark: View {
                 .scaleEffect(here ? 0.25 : 1, anchor: UnitPoint(x: 12.0 / 24, y: 21.0 / 24))
                 .opacity(here ? 0 : 1)
                 .offset(x: -12 * MapSpots.glyphScale, y: -21 * MapSpots.glyphScale)
-            // Плашка та же, что у атрибуции (`--bar-2` на размытии 8):
-            // не шире 132, длинное имя обрезается многоточием.
+            // Плашка та же, что у атрибуции: тон `--bar-2` на встроенном
+            // стекле (20д); не шире 132, длинное имя обрезается многоточием.
             Text(spot.name.isEmpty ? spot.coordinate.text : spot.name)
                 .font(.system(size: 11, weight: .semibold)).tracking(0.2)
                 .foregroundStyle(pal.ink2)
                 .lineLimit(1).truncationMode(.tail)
                 .padding(.horizontal, 5).padding(.vertical, 1)
                 .background {
-                    ZStack { Rectangle().fill(.ultraThinMaterial); Rectangle().fill(pal.bar2) }
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(pal.bar2)
+                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { onLabel($0) }
                 .frame(maxWidth: MapSpots.labelMax, alignment: .leading)
@@ -138,9 +138,8 @@ private struct SpotMark: View {
     }
 }
 
-/// Булавка-стекло: капля знака `pin` на матовом стекле ползунка (`knobGlass`
-/// плюс `.glassEffect(.clear)`), кромка света сверху, волосок чернил снаружи
-/// и тень под предметом. В головке — точка: сплошная латунь у сохранённой,
+/// Булавка-стекло: капля знака `pin` на матовом стекле ползунка
+/// (`KnobGlass`). В головке — точка: сплошная латунь у сохранённой,
 /// колечко у взятой у геокодера (`.addr`).
 private struct PinGlyph: View {
     let pinned: Bool
@@ -149,15 +148,7 @@ private struct PinGlyph: View {
     var body: some View {
         let k = MapSpots.glyphScale
         ZStack(alignment: .topLeading) {
-            PinDrop().fill(pal.knobGlass)
-                .glassEffect(.clear, in: PinDrop())
-                .overlay(
-                    PinDrop().stroke(LinearGradient(
-                        stops: [.init(color: pal.glassShine, location: 0),
-                                .init(color: pal.glassShine.opacity(0), location: 0.4)],
-                        startPoint: .top, endPoint: .bottom), lineWidth: 1))
-                .overlay(PinDrop().stroke(pal.inkA22, lineWidth: 1).opacity(0.8))
-                .background(OuterShadow(shape: PinDrop(), color: .black.opacity(0.4), radius: 3, y: 2))
+            KnobGlass(shape: PinDrop(), pal: pal)
             Group {
                 if pinned { Circle().fill(pal.brass) } else { Circle().stroke(pal.brass, lineWidth: 1.5) }
             }
@@ -241,8 +232,9 @@ struct SpotNameBar: View {
         // здесь `strokeBorder` рисует внутрь.
         .padding(.leading, 12).padding(.vertical, 8).padding(.trailing, 8)
         .background {
-            ZStack { Rectangle().fill(.ultraThinMaterial); Rectangle().fill(pal.bar) }
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // Тон веба `--bar` на встроенном стекле (20д).
+            RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.bar)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(pal.ink10, lineWidth: 1))
         .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { _ in onTouch() })

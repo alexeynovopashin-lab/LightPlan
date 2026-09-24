@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang icons domain shots mapstyle mapref planner tapspot
+.PHONY: help parity blocks lang icons domain shots mapstyle mapref planner tapspot glass
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -19,6 +19,7 @@ help:
 	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
 	@echo "make planner  эталон колонок ленты дня и шкалы срочности из беты и доказать повторяемость (итерация 21)"
 	@echo "make tapspot тап по булавке на живом холсте MapLibre и MapKit открывает полосу имени (20е, нужна сеть, ~1 мин)"
+	@echo "make glass    стекло без подделки: ни системного материала, ни нарисованного блика вне Timebar/ (20д; идёт и фазой сборки)"
 	@echo "make shots    пары снимков веб / натив «Света», «Карты», «Съёмок» и «Настроек» и сверка числами (19б, 20а, 21)"
 
 # Файлы, которые пишет сам generate.js. Другие цели (lang, domain, локация)
@@ -110,3 +111,7 @@ mapref:
 # симулятор — ARGS="--device <имя>".
 tapspot:
 	@node Tools/tap_spot.js $(ARGS)
+
+# Итерация 20д: там, где у веба имитация стекла, — только встроенное стекло.
+glass:
+	@Tools/check_glass.sh

@@ -119,3 +119,6 @@ if [ -n "$errors" ]; then
   exit 1
 fi
 echo "границы слоёв: ок ($packages пакетов, $files файлов)"
+
+# Стекло без подделки (20д) — та же фаза сборки, чтобы не заводить вторую.
+exec "$root/Tools/check_glass.sh"

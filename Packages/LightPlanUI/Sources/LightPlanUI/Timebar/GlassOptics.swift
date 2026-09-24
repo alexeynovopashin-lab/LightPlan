@@ -64,3 +64,26 @@ struct OuterShadow<S: Shape>: View {
         .allowsHitTesting(false)
     }
 }
+
+/// Матовое стекло ручки ползунка на малом предмете «Карты» — головка
+/// булавки (20г) и центр компаса (20д; Алексей 24.09: «Центр компаса -
+/// матовое стекло, как на ползунке, по сути мы дублируем этот элемент»):
+/// `knobGlass` на `.glassEffect(.clear)`, кромка света сверху, волосок
+/// чернил снаружи и тень только снаружи. Блик — часть рецепта ручки
+/// (решения 19б), поэтому рецепт живёт здесь: `Tools/check_glass.sh` вне
+/// `Timebar/` нарисованный блик не пускает.
+struct KnobGlass<S: Shape>: View {
+    let shape: S
+    let pal: Palette
+
+    var body: some View {
+        shape.fill(pal.knobGlass)
+            .glassEffect(.clear, in: shape)
+            .overlay(shape.stroke(LinearGradient(
+                stops: [.init(color: pal.glassShine, location: 0),
+                        .init(color: pal.glassShine.opacity(0), location: 0.4)],
+                startPoint: .top, endPoint: .bottom), lineWidth: 1))
+            .overlay(shape.stroke(pal.inkA22, lineWidth: 1).opacity(0.8))
+            .background(OuterShadow(shape: shape, color: .black.opacity(0.4), radius: 3, y: 2))
+    }
+}
