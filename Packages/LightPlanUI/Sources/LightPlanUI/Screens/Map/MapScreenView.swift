@@ -110,6 +110,10 @@ struct MapScreenView: View {
                     }
                     .frame(width: side, height: side)
                     .position(x: size.width / 2, y: size.height / 2)
+                    #if DEBUG
+                    // Кадр сменился — отсчёт сценария заново: тап только по улёгшемуся.
+                    .task(id: "\(anchor.x),\(anchor.y),\(side)") { await shotTapSpot(anchor: anchor, side: side) }
+                    #endif
 
                     Color(hex: 0x05070C)
                         .opacity(veil)
@@ -477,17 +481,8 @@ struct MapScreenView: View {
     /// тихая полоса с её именем; мимо — открытая полоса закрывается и больше
     /// ничего. Точка под головкой в тап не идёт: ехать некуда.
     private func tapMap(_ p: CGPoint, anchor: CGPoint, side: CGFloat) {
-        let cam = feed.camera ?? fallbackCamera(app.light.timebar.place)
-        let here = app.place.coordinate
-        let bounds = CGSize(width: side, height: side)
-        let marks: [(id: String, tip: CGPoint, labelWidth: CGFloat)] = app.mapLayers.spots ? app.spots.compactMap { sp in
-            guard let la = sp.latitude, let lo = sp.longitude, !sp.coordinate.isSameSpot(as: here) else { return nil }
-            let d = MapSpots.offset(latitude: la, longitude: lo, camera: cam)
-            let tip = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
-            guard MapSpots.onScreen(tip, in: bounds) else { return nil }
-            return (sp.id, tip, feed.labelWidths[sp.id] ?? 0)
-        } : []
-        guard let id = MapSpots.hit(p, marks: marks), let sp = app.spots.first(where: { $0.id == id }),
+        guard let id = MapSpots.hit(p, marks: spotMarks(anchor: anchor, side: side)),
+              let sp = app.spots.first(where: { $0.id == id }),
               let la = sp.latitude, let lo = sp.longitude else {
             if barSpot != nil { closeBar() }
             return
@@ -495,6 +490,48 @@ struct MapScreenView: View {
         app.moveFromMap(latitude: la, longitude: lo)
         openBar(sp, edit: true, quiet: true)
     }
+
+    /// Булавки на кадре в координатах холста — их острия ловят тап.
+    private func spotMarks(anchor: CGPoint, side: CGFloat) -> [(id: String, tip: CGPoint, labelWidth: CGFloat)] {
+        guard app.mapLayers.spots else { return [] }
+        let cam = feed.camera ?? fallbackCamera(app.light.timebar.place)
+        let here = app.place.coordinate
+        let bounds = CGSize(width: side, height: side)
+        return app.spots.compactMap { sp in
+            guard let la = sp.latitude, let lo = sp.longitude, !sp.coordinate.isSameSpot(as: here) else { return nil }
+            let d = MapSpots.offset(latitude: la, longitude: lo, camera: cam)
+            let tip = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
+            guard MapSpots.onScreen(tip, in: bounds) else { return nil }
+            return (sp.id, tip, feed.labelWidths[sp.id] ?? 0)
+        }
+    }
+
+    #if DEBUG
+    /// Сценарий `-LPShotTapSpot <id>` (итерация 20е): когда кадр три секунды
+    /// стоит, приложение само тапает острие булавки тем же `tapMap`, что и
+    /// распознаватель холста, и пишет в `-LPShotTapReport`, стоит ли полоса
+    /// имени через 1 и 4 с и ушла ли через 6,5 с (тихая живёт 5 с). Камеру
+    /// ведёт живой холст (`-LPShotLiveMap`) — ошибка 20е жила в нём.
+    private func shotTapSpot(anchor: CGPoint, side: CGFloat) async {
+        let d = UserDefaults.standard
+        guard let id = d.string(forKey: "LPShotTapSpot"), let out = d.string(forKey: "LPShotTapReport") else { return }
+        try? await Task.sleep(for: .seconds(3))
+        guard !Task.isCancelled, feed.camera != nil else { return }
+        guard let mark = spotMarks(anchor: anchor, side: side).first(where: { $0.id == id }) else {
+            try? Data(#"{"error":"no pin on screen"}"#.utf8).write(to: URL(fileURLWithPath: out))
+            return
+        }
+        tapMap(mark.tip, anchor: anchor, side: side)
+        var seen: [String: Bool] = [:]
+        for (key, wait) in [("bar1", 1.0), ("bar4", 3.0), ("bar6_5", 2.5)] {
+            try? await Task.sleep(for: .seconds(wait))
+            seen[key] = barSpot == id
+        }
+        seen["moved"] = app.place.coordinate.isSameSpot(as: app.spots.first { $0.id == id }?.coordinate ?? .init(latitude: 0, longitude: 0))
+        let json = try? JSONSerialization.data(withJSONObject: seen, options: [.sortedKeys])
+        try? json?.write(to: URL(fileURLWithPath: out))
+    }
+    #endif
 
     /// Закладка шапки: новая точка — полоса с пустым полем и клавиатурой
     /// (`openSpotName(spots[0])`); повторный тап убирает точку.

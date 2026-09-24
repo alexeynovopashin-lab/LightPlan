@@ -78,6 +78,7 @@ make domain     rebuild Fixtures/domain.json (shoot tables and rules, iteration 
 make shots      web / native screenshot pairs of «Свет», «Карта», «Настройки» on the iPhone 17 Pro Max simulator, compared by numbers
 make mapstyle   rebuild the map canvas style (LightPlanMapCanvas/Resources) from the web's beta/mapstyle.js
 make mapref     rebuild map_scene_ref.json (the web's #mapLight markup as numbers) for MapSceneParityTests
+make tapspot    tap a pin on the live canvas (network), MapLibre and MapKit: the name bar must open and hold (20е)
 ```
 
 A screen iteration closes with `make shots` pairs (plan § 5.4): names in the web's

@@ -36,18 +36,27 @@ struct MapKitCanvas: View {
                 let span = max(1e-9, ctx.region.span.longitudeDelta)
                 let z = log2(Double(width) * 360 / (512 * span))
                 let moved = MapCanvasCenter(latitude: c.latitude, longitude: c.longitude)
-                onCamera(MapCanvasCamera(center: moved, zoom: z, byHand: moved != placed))
+                onCamera(MapCanvasCamera(center: moved, zoom: z, byHand: Self.byHand(moved, placed: placed)))
             }
             .onAppear { place() }
             .onChange(of: center) { if center != placed { place() } }
             .onMapCameraChange(frequency: .onEnd) { ctx in
                 let c = ctx.region.center
                 let moved = MapCanvasCenter(latitude: c.latitude, longitude: c.longitude)
-                guard let placed, abs(moved.latitude - placed.latitude) + abs(moved.longitude - placed.longitude) > 1e-6
-                else { return }
+                guard placed != nil, Self.byHand(moved, placed: placed) else { return }
                 self.placed = moved
                 onMove(moved)
             }
+    }
+
+    /// Жеста MapKit не называет: камера ушла с поставленного центра — значит,
+    /// тянули пальцем. Точное равенство не годится: центр возвращается с шумом
+    /// в девятом знаке (53.354800002 вместо 53.3548, замер 20е), и переезд к
+    /// булавке выглядел жестом — полоса имени закрывалась в тот же кадр.
+    /// Допуск 1e-6° — дециметр; точка экрана на уровне 14 — около 3 м.
+    static func byHand(_ moved: MapCanvasCenter, placed: MapCanvasCenter?) -> Bool {
+        guard let placed else { return true }
+        return abs(moved.latitude - placed.latitude) + abs(moved.longitude - placed.longitude) > 1e-6
     }
 
     /// Ширина кадра в метрах — от уровня веба, чтобы крупность совпала с

@@ -19,7 +19,9 @@ import LightPlanData
 /// `light` | `map` | `planner` | `settings`; `LPShotChapter` — глава настроек;
 /// `LPShotScope` — вид «Съёмок» (`month` | `week` | `day`); `LPShotReport` —
 /// куда записать рамки; `LPShotLiveMap` — холст карты с сетью (глазами, не
-/// для пары: у веба в паре сети нет).
+/// для пары: у веба в паре сети нет); `LPShotTapSpot`, `LPShotTapReport` —
+/// приложение само тапает булавку и пишет, стоит ли полоса имени (20е,
+/// `MapScreenView.shotTapSpot`, `Tools/tap_spot.js`).
 public struct ShotScenario: Sendable {
     public enum Screen: String, Sendable { case light, map, planner, settings }
 

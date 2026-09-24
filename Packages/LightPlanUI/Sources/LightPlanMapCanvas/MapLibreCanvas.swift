@@ -83,8 +83,8 @@ struct MapLibreCanvas: UIViewRepresentable {
             self.onTap = onTap
         }
 
-        private static let byHand: MLNCameraChangeReason = [.gesturePan, .gesturePinch, .gestureZoomIn,
-                                                            .gestureZoomOut, .gestureOneFingerZoom]
+        private static let handReasons: MLNCameraChangeReason = [.gesturePan, .gesturePinch, .gestureZoomIn,
+                                                                 .gestureZoomOut, .gestureOneFingerZoom]
 
         @objc func tapped(_ g: UITapGestureRecognizer) {
             guard g.state == .ended, let v = g.view else { return }
@@ -95,11 +95,14 @@ struct MapLibreCanvas: UIViewRepresentable {
         /// картой, а не догоняют её в конце жеста.
         private func report(_ mapView: MLNMapView, _ reason: MLNCameraChangeReason) {
             let c = mapView.centerCoordinate
-            // Переезд программой — не жест, даже если в маске осталась
-            // причина прошлой протяжки (`originalEvent` веба у `jumpTo` нет).
-            let hand = !reason.intersection(Self.byHand).isEmpty && !reason.contains(.programmatic)
             onCamera(MapCanvasCamera(center: MapCanvasCenter(latitude: c.latitude, longitude: c.longitude),
-                                     zoom: mapView.zoomLevel, byHand: hand))
+                                     zoom: mapView.zoomLevel, byHand: Self.byHand(reason)))
+        }
+
+        /// Переезд программой — не жест, даже если в маске осталась причина
+        /// прошлой протяжки (`originalEvent` веба у `jumpTo` нет).
+        static func byHand(_ reason: MLNCameraChangeReason) -> Bool {
+            !reason.intersection(Self.handReasons).isEmpty && !reason.contains(.programmatic)
         }
 
         func mapView(_ mapView: MLNMapView, regionIsChangingWith reason: MLNCameraChangeReason) {
@@ -108,7 +111,7 @@ struct MapLibreCanvas: UIViewRepresentable {
 
         func mapView(_ mapView: MLNMapView, regionDidChangeWith reason: MLNCameraChangeReason, animated: Bool) {
             report(mapView, reason)
-            guard !reason.intersection(Self.byHand).isEmpty else { return }
+            guard !reason.intersection(Self.handReasons).isEmpty else { return }
             let c = mapView.centerCoordinate
             let moved = MapCanvasCenter(latitude: c.latitude, longitude: c.longitude)
             center = moved
