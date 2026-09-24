@@ -145,10 +145,10 @@ struct MapScreenView: View {
                     .opacity(app.mapSource == .mapLibre ? 1 : 0)
                     .allowsHitTesting(false)
 
-                layersButton(pal, on: layers.sun || layers.moon || layers.mw)
+                layersButton(pal, on: layers.sun || layers.moon || layers.mw, darkCanvas: darkCanvas)
                     .position(x: 12 + 17, y: readoutTop - 12 - 17)
 
-                headingButton(pal)
+                headingButton(pal, darkCanvas: darkCanvas)
                     .position(x: 12 + 17, y: headerBottom + 12 + 17)
 
                 VStack(spacing: 0) {
@@ -370,22 +370,19 @@ struct MapScreenView: View {
 
     // MARK: - Слои
 
-    /// `.map-here.map-layers-btn`: кружок 34 на `--bar-2` с размытием 12,
-    /// блик сверху и тень `0 2px 8px --glass-cast`; знак 18, линия 1,8,
-    /// `--ink-3`, латунью — когда светится хоть одно светило.
-    private func layersButton(_ pal: Palette, on: Bool) -> some View {
-        Button {
+    /// `.map-here.map-layers-btn`: кружок 34, знак 18, линия 1,8, `--ink-3`,
+    /// латунью — когда светится хоть одно светило. Стекло — встроенное, как у
+    /// веера (20в), а не подделка веба (`--bar-2`, блик дугой, тень).
+    private func layersButton(_ pal: Palette, on: Bool, darkCanvas: Bool) -> some View {
+        let ink = MapGlassCircle.ink(pal, darkCanvas: darkCanvas)
+        return Button {
             withAnimation(.easeOut(duration: 0.16)) { layersOpen.toggle() }
         } label: {
             LayersGlyph()
-                .stroke(on ? pal.brass : pal.ink3, style: StrokeStyle(lineWidth: 1.8 * 18 / 24, lineCap: .round, lineJoin: .round))
+                .stroke(on ? ink.brass : ink.ink3, style: StrokeStyle(lineWidth: 1.8 * 18 / 24, lineCap: .round, lineJoin: .round))
                 .frame(width: 18, height: 18)
                 .frame(width: 34, height: 34)
-                .background(Circle().fill(.ultraThinMaterial))
-                .background(Circle().fill(pal.bar2))
-                .overlay(Circle().inset(by: 0.5).trim(from: 0.6, to: 0.9).stroke(pal.glassShine, lineWidth: 1))
-                .clipShape(Circle())
-                .shadow(color: pal.glassCast, radius: 4, x: 0, y: 2)
+                .modifier(MapGlassCircle(pal: pal, darkCanvas: darkCanvas))
         }
         .buttonStyle(.plain)
         .shotNode("map.layersBtn")
@@ -393,23 +390,20 @@ struct MapScreenView: View {
 
     /// `.map-heading-btn`: тот же кружок, что у слоёв, у верха окна прибора
     /// слева; включённый — латунью и дышит (1 ↔ 0,55 за 1,6 с).
-    private func headingButton(_ pal: Palette) -> some View {
-        Button {
+    private func headingButton(_ pal: Palette, darkCanvas: Bool) -> some View {
+        let ink = MapGlassCircle.ink(pal, darkCanvas: darkCanvas)
+        return Button {
             if rotor.live { northUp() } else { rotor.setLive(true) }
         } label: {
             HeadingGlyph()
-                .stroke(rotor.live ? pal.brass : pal.ink3,
+                .stroke(rotor.live ? ink.brass : ink.ink3,
                         style: StrokeStyle(lineWidth: 1.8 * 18 / 24, lineCap: .round, lineJoin: .round))
                 .frame(width: 18, height: 18)
                 .phaseAnimator([1.0, 0.55]) { v, k in v.opacity(rotor.live ? k : 1) } animation: { _ in
                     .easeInOut(duration: 0.8)
                 }
                 .frame(width: 34, height: 34)
-                .background(Circle().fill(.ultraThinMaterial))
-                .background(Circle().fill(pal.bar2))
-                .overlay(Circle().inset(by: 0.5).trim(from: 0.6, to: 0.9).stroke(pal.glassShine, lineWidth: 1))
-                .clipShape(Circle())
-                .shadow(color: pal.glassCast, radius: 4, x: 0, y: 2)
+                .modifier(MapGlassCircle(pal: pal, darkCanvas: darkCanvas))
         }
         .buttonStyle(.plain)
         .shotNode("map.headingBtn")
@@ -641,5 +635,29 @@ private struct HeadingGlyph: Shape {
         p.move(to: CGPoint(x: 15, y: 9)); p.addLine(to: CGPoint(x: 13, y: 14)); p.addLine(to: CGPoint(x: 9, y: 15))
         p.addLine(to: CGPoint(x: 11, y: 10)); p.closeSubpath()
         return p.applying(CGAffineTransform(scaleX: k, y: k)).offsetBy(dx: rect.minX, dy: rect.minY)
+    }
+}
+
+/// Кружок кнопки «Карты» на встроенном стекле — рецепт веера (20в): тон
+/// `mapGlass` поверх системного стекла, тема стекла — по холсту под ним.
+/// `interactive` даёт отклик на нажатие, как у системного стекла; свой блик
+/// и тень не рисуются — у стекла они свои.
+private struct MapGlassCircle: ViewModifier {
+    let pal: Palette
+    let darkCanvas: Bool
+
+    /// Палитра знака: на ночном холсте стекло тёмное и в светлой теме, и
+    /// тёмные чернила светлой темы на нём теряются (#55504A на #535353) —
+    /// знак берёт чернила и латунь тёмной темы.
+    static func ink(_ pal: Palette, darkCanvas: Bool) -> Palette {
+        darkCanvas ? Palette(.dark) : pal
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .background(Circle().fill(pal.mapGlass))
+            .glassEffect(.regular.interactive(), in: Circle())
+            .contentShape(Circle())
+            .environment(\.colorScheme, darkCanvas ? .dark : .light)
     }
 }
