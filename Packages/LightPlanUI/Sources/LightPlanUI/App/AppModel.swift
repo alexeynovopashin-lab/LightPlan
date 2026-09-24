@@ -37,12 +37,45 @@ public final class AppModel {
     /// Слои карты — `mapLayers` снимка (меню слоёв — итерация 20б).
     public private(set) var mapLayers: MapLayers
     /// Поставщик холста (docs/17 § 10). Пока приложение бесплатное — MapLibre;
-    /// строка выбора в настройках — вместе с меню слоёв.
-    public var mapSource: MapCanvasSource = .mapLibre
+    /// выбор — глава «Карта и места». Веб такого ключа не знает, он лежит в
+    /// снимке среди чужих (`extra`), как у других нативных полей.
+    public private(set) var mapSource: MapCanvasSource
+    public func setMapSource(_ s: MapCanvasSource) {
+        guard mapSource != s else { return }
+        mapSource = s
+        snapshot.extra["mapSource"] = .string(s.rawValue)
+        persist()
+    }
+    /// Названия улиц и мест на холсте (`mapLabels` снимка, тумблер веба).
+    public var mapLabels: Bool { snapshot.mapLabels }
+    public func setMapLabels(_ on: Bool) {
+        guard snapshot.mapLabels != on else { return }
+        snapshot.mapLabels = on
+        persist()
+    }
     /// Снимок пары веб / натив: без холста — у веба сеть закрыта, и карты нет.
     var mapOffline = false
     /// Записей в снимке — для строки «Карта и места» (сохранённые точки).
     public var spotCount: Int { snapshot.spots.count }
+    /// Засветка места по атласу Лоренца — строка «Засветка» сводки карты.
+    public let glow: GlowStore
+    /// Датчик направления для живого компаса карты; `nil` — тесты и пары.
+    let heading: (any HeadingSource)?
+    /// Сводка карты свёрнута (`mapFold` снимка): кто свернул, не хочет видеть
+    /// её и завтра — состояние переживает перезапуск, как у веба.
+    public var mapFoldShut: Bool { snapshot.mapFold }
+    /// Пункт меню слоёв: слой включён или выключен — и сразу в снимок.
+    public func setMapLayer(_ key: MapLayers.Key, _ on: Bool) {
+        guard mapLayers[key] != on else { return }
+        mapLayers[key] = on
+        snapshot.mapLayers = mapLayers.saved
+        persist()
+    }
+    public func setMapFold(shut: Bool) {
+        guard snapshot.mapFold != shut else { return }
+        snapshot.mapFold = shut
+        persist()
+    }
 
     private var snapshot: Snapshot
     private let store: Store?
@@ -50,17 +83,25 @@ public final class AppModel {
 
     init(snapshot: Snapshot, store: Store?, language: String, zone: TimeZone = .current,
          locator: any DeviceLocating, geocoder: any ReverseGeocoding, cityLookup: any CityLookup,
-         weatherSource: any WeatherSource, now: @escaping @Sendable () -> Date = { Date() }) {
+         weatherSource: any WeatherSource, glowSource: any GlowTileSource = NoGlowSource(),
+         headingSource: (any HeadingSource)? = nil,
+         now: @escaping @Sendable () -> Date = { Date() }) {
         self.snapshot = snapshot
         self.store = store
         self.language = language
         self.lexicon = Lexicon(language)
         self.locator = locator
         self.cityLookup = cityLookup
+        self.heading = headingSource
         let settings = AppSettings(snapshot: snapshot, zone: zone)
         self.settings = settings
         self.showStartSheet = !Self.met(snapshot)
         self.mapLayers = MapLayers(snapshot.mapLayers)
+        if case .string(let raw)? = snapshot.extra["mapSource"], let src = MapCanvasSource(rawValue: raw) {
+            self.mapSource = src
+        } else {
+            self.mapSource = .mapLibre
+        }
 
         // Город по умолчанию. Место, выбранное руками в прошлый раз
         // (`loc` веба), на старте не читается: выбор руками живёт до
@@ -81,6 +122,7 @@ public final class AppModel {
         self.citySource = resolved.source
 
         let weather = WeatherStore(place: place.place, source: weatherSource)
+        self.glow = GlowStore(place: place.place, source: glowSource)
         let timebar = TimebarState(place: place.place, date: Self.today(in: place.place, now: now()), weather: weather,
                                    language: language, ribbonMode: Self.ribbon(settings.ribbonMode),
                                    clockPreference: Self.clock(settings.clock), now: now)
@@ -123,7 +165,8 @@ public final class AppModel {
         let locale = Locale(identifier: language)
         return AppModel(snapshot: snapshot, store: store, language: language,
                         locator: CoreLocationProvider(), geocoder: AppleReverseGeocoder(locale: locale),
-                        cityLookup: AppleCityLookup(locale: locale), weatherSource: OpenMeteoSource())
+                        cityLookup: AppleCityLookup(locale: locale), weatherSource: OpenMeteoSource(),
+                        glowSource: LorenzAtlas(), headingSource: CoreLocationHeading())
     }
 
     // MARK: - Правка настроек
@@ -230,6 +273,7 @@ public final class AppModel {
             light.timebar.setPlace(p)
             light.weather.move(to: p)
         }
+        glow.move(to: p)
         if !place.isNameStale {
             light.locationName = place.name?.city ?? place.coordinate.text
             light.locationSub = place.name?.sub ?? ""
@@ -262,4 +306,10 @@ public final class AppModel {
         let c = calendar.dateComponents([.year, .month, .day], from: now)
         return CivilDate(year: c.year!, month: c.month!, day: c.day!)
     }
+}
+
+/// Атлас без сети: тесты и снимки пар (у веба в паре сеть закрыта, и строки
+/// засветки нет).
+struct NoGlowSource: GlowTileSource {
+    func tile(tx: Int, ty: Int) async throws -> Data { throw URLError(.notConnectedToInternet) }
 }

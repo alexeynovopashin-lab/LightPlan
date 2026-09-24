@@ -56,6 +56,10 @@ const slots = (args.slots || 'paper,graphite,window').split(',');
 const chapters = (args.chapters === '' ? [] : (args.chapters || 'view,locale').split(','));
 const themes = (args.themes || 'dark,light').split(',');
 const moments = (args.moments || 'day,golden,night,dawn').split(',');
+/* Сводка карты (итерация 20б): свёрнутая — окно прибора 20а, раскрытая —
+   строки свода. Центр прибора от сводки не зависит, поэтому раскрытая
+   сверяет и прибор. */
+const folds = (args.fold || 'shut,open').split(',');
 const OUT = path.resolve(args.out || path.join(os.tmpdir(), 'lp-shots'));
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -248,18 +252,18 @@ function markdown(results) {
 
   const seed = JSON.parse(fs.readFileSync(path.join(FX, 'seed.json'), 'utf8'));
   const list = [];
-  const add = (screen, theme, mode, moment, slot, chapter, ribbon = 'drum') => {
+  const add = (screen, theme, mode, moment, slot, chapter, ribbon = 'drum', fold = 'shut') => {
     const name = [screen, mode, theme, screen === 'settings' ? null : moment, slot === 'paper' ? null : slot, chapter,
-      ribbon === 'drum' ? null : ribbon].filter(Boolean).join('-');
+      ribbon === 'drum' ? null : ribbon, fold === 'open' ? 'fold' : null].filter(Boolean).join('-');
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
     const s = { ...seed, theme, pro: mode === 'astro', drumSlot: slot, ribbonMode: ribbon };
     /* Карта (итерация 20а): в «Просто» солнце и луна, в «Астро» к ним
        Млечный Путь — так обе пары слоёв снимаются без отдельного перебора.
-       Сводка свёрнута: её нет до 20б, а окно прибора считается по свёрнутой. */
+       Сводка — свёрнутая и раскрытая (`--fold`). */
     if (screen === 'map') {
       s.mapLayers = { sun: true, moon: true, mw: mode === 'astro', compass: true, spots: true };
-      s.mapFold = true;
+      s.mapFold = fold !== 'open';
     }
     const seedFile = path.join(dir, 'seed.json');
     fs.writeFileSync(seedFile, JSON.stringify(s));
@@ -267,8 +271,12 @@ function markdown(results) {
   };
   for (const screen of screens) for (const mode of modes) for (const theme of themes) {
     // «Настройки» от момента не зависят — одна пара на тему и режим.
-    for (const moment of screen === 'settings' ? [moments[0]] : moments) add(screen, theme, mode, moment, 'paper');
+    for (const moment of screen === 'settings' ? [moments[0]] : moments) {
+      for (const fold of screen === 'map' ? folds : ['shut']) add(screen, theme, mode, moment, 'paper', null, 'drum', fold);
+    }
     if (screen === 'settings') for (const ch of chapters) add(screen, theme, mode, moments[0], 'paper', ch);
+    // Меню слоёв карты (20б) — одним моментом, сводка свёрнута.
+    if (screen === 'map' && !args['no-layers']) add(screen, theme, mode, moments[0], 'paper', 'layers');
     if (screen === 'light' && mode === 'astro' && theme === 'light') {
       for (const slot of slots) if (slot !== 'paper') add(screen, theme, mode, moments[0], slot);
     }
@@ -284,13 +292,13 @@ function markdown(results) {
     const nat = await nativeShot(dev.udid, sc, sc.dir);
     // Под главой корень остаётся в стеке и пишет свои рамки — сверяется
     // только глава (веб прячет корень листом главы).
-    if (sc.chapter) for (const k of Object.keys(nat.nodes)) if (/^(header|mode|nav)/.test(k)) delete nat.nodes[k];
+    if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(nat.nodes)) if (/^(header|mode|nav)/.test(k)) delete nat.nodes[k];
     // Соседняя вкладка тоже жива и пишет рамки за краем экрана — не в счёт.
     for (const [k, r] of Object.entries(nat.nodes)) if (r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) delete nat.nodes[k];
     const web = webShot(sc, sc.dir, nat.safe);
     // Лист главы у веба закрывает панель вкладок, но в разметке она «видна»;
     // приложение её прячет — под главой панель не сверяется.
-    if (sc.chapter) for (const k of Object.keys(web.nodes)) if (/^tab(bar|\.)/.test(k)) delete web.nodes[k];
+    if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(web.nodes)) if (/^tab(bar|\.)/.test(k)) delete web.nodes[k];
     const cmp = await compare(page, sc.dir, web, nat, 3);
     await pairImage(page, sc.dir, web, nat);
     results.push({ name: sc.name, cmp });

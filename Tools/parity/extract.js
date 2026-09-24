@@ -172,6 +172,18 @@ const BLOCKS = {
     to: "function markBackup()",
     why: "mtOf, mergePick, mergeStores — слияние двух снимков; функция чистая",
   },
+  /* Засветка по атласу Лоренца (итерация 20б). Два куска: между ними сеть
+     (`gunzipBytes`, `fetchGlow`) — она трогает `fetch` и в вырезку не входит. */
+  glow: {
+    from: "var GLOW_YEAR = 2025",
+    to: "function gunzipBytes(buf)",
+    why: "glowIndex, glowRead — ячейка атласа и чтение приращений плитки",
+  },
+  glowScale: {
+    from: "function glowLevel(r)",
+    to: "/* При таскании карты moveend",
+    why: "glowLevel, glowMag — ступени засветки для камеры и mag/arcsec²",
+  },
 };
 
 const ALL = Object.keys(BLOCKS);

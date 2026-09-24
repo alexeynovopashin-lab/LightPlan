@@ -455,4 +455,25 @@ public struct MapLayers: Equatable, Sendable {
         sun = o["sun"] ?? true; moon = o["moon"] ?? true; mw = o["mw"] ?? false
         compass = o["compass"] ?? true; spots = o["spots"] ?? true
     }
+
+    /// Пункты меню слоёв в порядке веба; имя — ключ `mapLayers` снимка.
+    public enum Key: String, CaseIterable, Sendable { case sun, moon, mw, compass, spots }
+
+    public subscript(key: Key) -> Bool {
+        get {
+            switch key { case .sun: sun; case .moon: moon; case .mw: mw; case .compass: compass; case .spots: spots }
+        }
+        set {
+            switch key {
+            case .sun: sun = newValue
+            case .moon: moon = newValue
+            case .mw: mw = newValue
+            case .compass: compass = newValue
+            case .spots: spots = newValue
+            }
+        }
+    }
+
+    /// Вид для снимка — все пять ключей, как пишет `saveAll` веба.
+    var saved: [String: Bool] { Dictionary(uniqueKeysWithValues: Key.allCases.map { ($0.rawValue, self[$0]) }) }
 }

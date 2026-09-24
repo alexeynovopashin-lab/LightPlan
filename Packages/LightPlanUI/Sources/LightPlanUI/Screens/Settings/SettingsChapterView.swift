@@ -1,6 +1,7 @@
 import SwiftUI
 import LightPlanData
 import LightPlanDomain
+import LightPlanMapCanvas
 #if os(iOS)
 import UIKit
 #endif
@@ -26,7 +27,7 @@ struct SettingsChapterView: View {
             case .view: view
             case .shoots: shoots
             case .alerts: foreign("set.feedback"); foreign("set.notify")
-            case .places: foreign("nav.map"); foreign("set.places")
+            case .places: places
             case .store: foreign("set.moodboards"); foreign("set.orgsDocs"); foreign("card.bin")
             case .data: foreign("set.data"); foreign("set.icsImport"); foreign("cloud.title")
             case .locale: locale
@@ -79,6 +80,40 @@ struct SettingsChapterView: View {
                 // Подпись «Тема» у веба — не первая в разметке главы даже в
                 // «Просто» (лента и прорезь скрыты, но стоят раньше), поле 30.
                 note: t.t("set.themeNote"), index: s.pro ? (slotShown ? 2 : 1) : 0)
+    }
+
+    // MARK: - Карта и места
+
+    /// `#setOvPlaces`: «Карта» — тумблер названий улиц с пояснением; под ним
+    /// выбор холста (docs/17 § 10 — только натив, у веба холст один, и слов
+    /// для строки в словаре нет: варианты названы именами поставщиков). На Mac
+    /// MapLibre нет — выбирать не из чего. «Места» — счёт точек; лист точек
+    /// открывается с карты.
+    @ViewBuilder private var places: some View {
+        let pal = Palette(colorScheme)
+        SecLabel(text: t.t("nav.map"), first: true, node: "sec.0")
+        HStack(spacing: 12) {
+            Text(t.t("set.streetNames")).font(.system(size: 15)).foregroundStyle(pal.ink)
+                .shotNode("labels", text: t.t("set.streetNames"))
+            Spacer(minLength: 0)
+            Toggle("", isOn: Binding(get: { app.mapLabels }, set: { app.setMapLabels($0) }))
+                .labelsHidden().tint(pal.brass)
+                .shotNode("labels.toggle", text: app.mapLabels ? "on" : "off")
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 8)
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+        SetNote(text: t.t("set.streetNote"), node: "labels.note")
+        #if os(iOS)
+        WebSeg(options: [("OpenStreetMap", MapCanvasSource.mapLibre), ("Apple", .mapKit)],
+               selection: Binding(get: { app.mapSource }, set: { app.setMapSource($0) }))
+            .shotNode("canvas")
+            .padding(.horizontal, 24).padding(.top, 16)
+        #endif
+        SecLabel(text: t.t("set.places"), node: "sec.1")
+        SetItemRow(icon: "pin", title: t.t("loc.myPlaces"),
+                   value: app.spotCount > 0 ? String(app.spotCount) : t.t("card.none"), chevron: false)
+            .shotNode("spots", text: t.t("loc.myPlaces"))
     }
 
     // MARK: - Съёмки

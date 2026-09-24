@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 @testable import LightPlanUI
+import LightPlanMapCanvas
 import LightPlanCore
 import LightPlanData
 import LightPlanTimeline
@@ -188,6 +189,22 @@ struct AppModelTests {
         #expect(second.settings.pro)
         #expect(second.citySource == .settings)
         #expect(second.light.locationName == "Томск")
+    }
+
+    /// Глава «Карта и места» (20б): подписи и холст — после перезапуска те же.
+    @Test func mapLabelsAndCanvasSurviveRestart() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lp-20b-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = Store(directory: dir, debounce: .milliseconds(1))
+        let first = model(store: store)
+        #expect(!first.mapLabels && first.mapSource == .mapLibre)
+        first.setMapLabels(true)
+        first.setMapSource(.mapKit)
+        await first.flush()
+
+        let second = model(try await store.load(), store: store)
+        #expect(second.mapLabels)
+        #expect(second.mapSource == .mapKit)
     }
 
     // MARK: - Язык из iOS

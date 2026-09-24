@@ -638,6 +638,38 @@ function mwDust() {
   return { haze: ctx.MW_HAZE, points: ctx.MW_DUST.map(function (p) { return [p.eq.ra, p.eq.dec, p.tier, p.fade]; }) };
 }
 
+/* Засветка (итерация 20б). Настоящих плиток в фикстуре нет: у атласа нет
+   лицензии, и класть его данные в публичный репозиторий незачем. Плитка —
+   синтетическая, из формулы, которую Swift-тест повторяет байт в байт;
+   сверяется то, что и переносилось: ячейка, знак байта, ход приращений,
+   развёртка сжатия, ступени и звёздные величины. */
+/* Приращения −10…+10 (половина — знаковые байты больше 127), первая точка
+   поднята до 128: иначе случайный ход уходит в минус и всё читается нулём. */
+function glowTileByte(i) {
+  if (i === 0) return 1;
+  return (((Math.imul(i + 1, 2654435761) >>> 24) % 21) - 10) & 255;
+}
+function glowSweep() {
+  const raw = new Uint8Array(ctx.GLOW_SIZE);
+  for (let i = 0; i < raw.length; i++) raw[i] = glowTileByte(i);
+  const pts = [];
+  for (let lat = -70; lat <= 80; lat += 7.3) for (let lon = -180; lon <= 180; lon += 13.7) pts.push([lat, lon]);
+  /* Швы и края: граница атласа, линия перемены дат, нулевой меридиан, ровная
+     граница плиток, половина ячейки (215.2 у веба — DECISIONS) и места замеров
+     при подключении. */
+  pts.push([-65, 0], [-65.0001, 0], [74.9999, 10], [75, 10], [55, 180], [55, -180], [55, 0], [55, -0.0001],
+    [60, 35], [59.99999, 35], [56.02, 35.2], [56.853, 35.2], [-24.627, -70.404], [50.0, 88.7],
+    [69.17, 35.14], [38.64, 34.83], [56.01, 37.48], [59.94, 30.31], [55.75, 37.62], [36.5, -112.1]);
+  const cells = pts.map(function (p) {
+    const ix = ctx.glowIndex(p[0], p[1]);
+    return { lat: p[0], lon: p[1], at: ix ? [ix.tx, ix.ty, ix.ix, ix.iy] : null,
+      v: ix ? ctx.glowRead(raw, ix.ix, ix.iy) : null };
+  });
+  const ratios = [0, 0.009, 0.59, 0.999, 1, 7.99, 8, 26.99, 27, 35.5, 166, 1000];
+  return { cells: cells, scale: ratios.map(function (r) { return { r: r, level: ctx.glowLevel(r), mag: ctx.glowMag(r) }; }),
+    none: ctx.glowLevel(null) };
+}
+
 function skyPlaces() {
   const out = [];
   for (const lat of LATS) for (const lon of SKY_LONS) out.push({ lat: lat, lon: lon, tz: tzOfLon(lon) });
@@ -955,6 +987,15 @@ function main() {
     tolerance: { radians: 1e-12, tier: "строго", fade: "строго" },
     count: dust.points.length,
   }, dust));
+
+  const glow = glowSweep();
+  out.push(write(dir, "glow.json", {
+    what: "засветка по атласу Лоренца: ячейка плитки, чтение приращений, ступени, mag/arcsec²",
+    grid: "широты −70…80 шагом 7,3 × долготы −180…180 шагом 13,7, плюс швы и места замеров; " +
+      "плитка синтетическая: байт 0 — 1, байт i — ((imul(i + 1, 2654435761) >>> 24) % 21 − 10) & 255",
+    tolerance: { at: "строго", v: "относительно 1e-12", level: "строго", mag: 1e-12 },
+    count: glow.cells.length + glow.scale.length,
+  }, glow));
 
   const mw = milkyWay();
   out.push(write(dir, "milkyway.json", {

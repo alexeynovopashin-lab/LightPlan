@@ -313,7 +313,7 @@ private struct PlanShootGlyph: Shape {
 /// снизу (`ws:CLAUDE.md` «разделитель — это щель» — родственное правило для
 /// прорезей плашек; здесь по месту достаточно обычного тонкого `Divider`,
 /// щель как таковая — деталь других экранов).
-private struct TelemetryRow<Value: View>: View {
+struct TelemetryRow<Value: View>: View {
     let labelKey: String
     let labelText: (String) -> String
     @ViewBuilder let value: () -> Value

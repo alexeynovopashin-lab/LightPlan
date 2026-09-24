@@ -6,14 +6,17 @@ import MapLibre
 struct MapLibreCanvas: UIViewRepresentable {
     let center: MapCanvasCenter
     let zoom: Double
-    let dark: Bool
+    let style: URL?
+    /// Под поворотом живого компаса пиксели жеста врут — тянуть нельзя,
+    /// щипок остаётся (`dragPan.disable` веба).
+    let panEnabled: Bool
     let focusShift: CGFloat
     let onMove: (MapCanvasCenter) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(onMove: onMove) }
 
     func makeUIView(context: Context) -> MLNMapView {
-        let view = MLNMapView(frame: .zero, styleURL: MapStyle.url(dark: dark))
+        let view = MLNMapView(frame: .zero, styleURL: style)
         view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.allowsRotating = false
         view.allowsTilting = false
@@ -23,14 +26,13 @@ struct MapLibreCanvas: UIViewRepresentable {
         view.attributionButton.isHidden = true
         view.automaticallyAdjustsContentInset = false
         view.delegate = context.coordinator
-        context.coordinator.style = MapStyle.url(dark: dark)
+        context.coordinator.style = style
         apply(view, context: context, force: true)
         return view
     }
 
     func updateUIView(_ view: MLNMapView, context: Context) {
         context.coordinator.onMove = onMove
-        let style = MapStyle.url(dark: dark)
         if context.coordinator.style != style {
             context.coordinator.style = style
             view.styleURL = style
@@ -40,6 +42,7 @@ struct MapLibreCanvas: UIViewRepresentable {
 
     private func apply(_ view: MLNMapView, context: Context, force: Bool) {
         let c = context.coordinator
+        if view.isScrollEnabled != panEnabled { view.isScrollEnabled = panEnabled }
         let inset = UIEdgeInsets(top: max(0, -focusShift), left: 0, bottom: max(0, focusShift), right: 0)
         if force || c.inset != inset {
             c.inset = inset

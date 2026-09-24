@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "beta/index.html",
-    "cut": "b179ee6f1a87c354",
+    "cut": "9d1c840c3d0dedfa",
     "what": "темнота в произвольную дату (hasAstroNight) и её возвращение (nextAstroNight)",
     "grid": "has — широты § 5.2 × datesFull(); next — те же широты × четыре даты 2026 года",
     "tolerance": {"has":"строго","next":"строго, null — не вернулась за 190 суток"},

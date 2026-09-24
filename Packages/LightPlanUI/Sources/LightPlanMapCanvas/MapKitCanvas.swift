@@ -7,6 +7,7 @@ struct MapKitCanvas: View {
     let center: MapCanvasCenter
     let zoom: Double
     let dark: Bool
+    let panEnabled: Bool
     let focusShift: CGFloat
     let onMove: (MapCanvasCenter) -> Void
 
@@ -15,7 +16,7 @@ struct MapKitCanvas: View {
     @State private var placed: MapCanvasCenter?
 
     var body: some View {
-        Map(position: $camera, interactionModes: [.pan, .zoom]) { }
+        Map(position: $camera, interactionModes: panEnabled ? [.pan, .zoom] : [.zoom]) { }
             .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll,
                                 showsTraffic: false))
             .mapControlVisibility(.hidden)

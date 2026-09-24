@@ -5,17 +5,34 @@ import LightPlanMapCanvas
 /// Экран «Карта» (итерация 20а): холст во весь экран, над ним ночная вуаль,
 /// прибор и белая головка — в середине свободного окна между стеклом шапки и
 /// стеклом дока (строка показания + таймбар), как `measureMapOptic` веба.
-/// Сводка, меню слоёв, ротор и сохранённые точки — итерация 20б.
+/// Итерация 20б: сводка под строкой показания (`MapSummary`), меню слоёв,
+/// ротор с живым компасом (`MapRotor`), сохранённые точки.
 struct MapScreenView: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var colorScheme
 
-    /// Низ стекла шапки и верх дока в точках экрана.
+    /// Низ стекла шапки, верх таймбара и высота строки показания в точках
+    /// экрана. Верх дока для окна прибора — по свёрнутой сводке
+    /// (`measureMapOptic`: центр считается по свёрнутому низу, иначе карта
+    /// поехала бы от раскрытого свода).
     @State private var headerBottom: CGFloat = 150
-    @State private var dockTop: CGFloat = 700
+    @State private var timebarTop: CGFloat = 760
+    @State private var readoutHeight: CGFloat = 60
+    @State private var foldContentHeight: CGFloat = 0
+    /// Верх строки показания — живой низ окна: кружки карты уворачиваются от
+    /// раскрытого свода (`--ctl-bot`), центр прибора — нет.
+    @State private var readoutTop: CGFloat = 700
+    @State private var layersOpen = false
+    private var dockTop: CGFloat { timebarTop - readoutHeight }
     @State private var chip: MapInstrument.Chip?
     @State private var chipTask: Task<Void, Never>?
     @State private var cache = MapDayCache()
+    @State private var rotor: CompassRotor
+
+    init(app: AppModel) {
+        self.app = app
+        _rotor = State(initialValue: CompassRotor(source: app.heading))
+    }
 
     private static let space = "mapScreen"
 
@@ -51,27 +68,42 @@ struct MapScreenView: View {
             let size = CGSize(width: g.size.width + safe.leading + safe.trailing,
                               height: g.size.height + safe.top + safe.bottom)
             ZStack(alignment: .topLeading) {
-                // В снимке пары холста нет: у веба сеть закрыта, библиотека карты
-                // не грузится, и под прибором голая подложка. Холст сверен
-                // числами в итерации 4 (земля #15191C, вода #24343A).
-                if app.mapOffline {
-                    ground
-                } else {
-                    MapCanvasView(source: app.mapSource,
-                                  center: MapCanvasCenter(latitude: place.latitude, longitude: place.longitude),
-                                  zoom: 14, dark: darkCanvas, focusShift: ((size.height / 2 - cy) * 2).rounded(),
-                                  onMove: { app.moveFromMap(latitude: $0.latitude, longitude: $0.longitude) })
-                        .background(ground)
+                // Ротор (`.map-rotor`): карта, вуаль и прибор одним слоем —
+                // живой компас крутит их вокруг наблюдателя. Карта и вуаль —
+                // квадрат `MapRotor.side`, чтобы на любом угле не открылся клин.
+                let side = MapRotor.side(width: size.width, height: size.height, cy: cy)
+                ZStack(alignment: .topLeading) {
+                    Group {
+                        // В снимке пары холста нет: у веба сеть закрыта, библиотека
+                        // карты не грузится, и под прибором голая подложка. Холст
+                        // сверен числами в итерации 4 (земля #15191C, вода #24343A).
+                        if app.mapOffline {
+                            ground
+                        } else {
+                            MapCanvasView(source: app.mapSource,
+                                          center: MapCanvasCenter(latitude: place.latitude, longitude: place.longitude),
+                                          zoom: 14, dark: darkCanvas, labels: app.mapLabels, language: app.language,
+                                          panEnabled: !rotor.live, focusShift: ((size.height / 2 - cy) * 2).rounded(),
+                                          onMove: { app.moveFromMap(latitude: $0.latitude, longitude: $0.longitude) })
+                                .background(ground)
+                        }
+                    }
+                    .frame(width: side, height: side)
+                    .position(x: size.width / 2, y: size.height / 2)
+
+                    Color(hex: 0x05070C)
+                        .opacity(veil)
+                        .animation(.linear(duration: 0.18), value: veil)
+                        .frame(width: side, height: side)
+                        .position(x: size.width / 2, y: size.height / 2)
+                        .allowsHitTesting(false)
+                        .shotNode("map.veil", text: String(format: "%.3f", veil))
+
+                    MapInstrumentView(scene: scene, optic: optic(size), onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
+                                      onTapMoon: { tap(.tapMoon(az: $0, alt: $1)) })
                 }
-
-                Color(hex: 0x05070C)
-                    .opacity(veil)
-                    .animation(.linear(duration: 0.18), value: veil)
-                    .allowsHitTesting(false)
-                    .shotNode("map.veil", text: String(format: "%.3f", veil))
-
-                MapInstrumentView(scene: scene, optic: optic(size), onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
-                                  onTapMoon: { tap(.tapMoon(az: $0, alt: $1)) })
+                .frame(width: size.width, height: size.height)
+                .rotationEffect(.degrees(-rotor.angle), anchor: UnitPoint(x: 0.5, y: cy / max(1, size.height)))
 
                 pin(pal).position(x: size.width / 2, y: cy)
 
@@ -86,10 +118,33 @@ struct MapScreenView: View {
                     .opacity(app.mapSource == .mapLibre ? 1 : 0)
                     .allowsHitTesting(false)
 
+                layersButton(pal, on: layers.sun || layers.moon || layers.mw)
+                    .position(x: 12 + 17, y: readoutTop - 12 - 17)
+
+                headingButton(pal)
+                    .position(x: 12 + 17, y: headerBottom + 12 + 17)
+
                 VStack(spacing: 0) {
                     header(light, telemetry, pal, top: safe.top)
                     Spacer(minLength: 0).allowsHitTesting(false)
-                    dock(light, telemetry, pal).padding(.bottom, safe.bottom)
+                    dock(light, telemetry, summary(date: date, minute: minute, solar: solar, place: place, clock: clock),
+                         pal, cy: cy).padding(.bottom, safe.bottom)
+                }
+            }
+            .overlay {
+                if layersOpen {
+                    ZStack(alignment: .bottomLeading) {
+                        // Скрим — тап мимо меню закрывает его (`#mapLayersScrim`).
+                        Color.clear.contentShape(Rectangle())
+                            .onTapGesture { withAnimation(.easeOut(duration: 0.16)) { layersOpen = false } }
+                        // Растёт вверх от кнопки, 8 над её верхом: вниз мешают
+                        // край кадра и док.
+                        layersMenu(pal, layers, darkCanvas: darkCanvas)
+                            .fixedSize()
+                            .padding(.leading, 12)
+                            .padding(.bottom, max(0, size.height - (readoutTop - 12 - 34 - 8)))
+                            .transition(.scale(scale: 0.94, anchor: .bottomLeading).combined(with: .opacity))
+                    }
                 }
             }
             .frame(width: size.width, height: size.height)
@@ -97,6 +152,12 @@ struct MapScreenView: View {
             .ignoresSafeArea()
         }
         .onChange(of: timebar.touches) { showChip(.drag, life: 1.2) }
+        // Уходя с карты, гасим датчик — он не нужен нигде больше (веб так же).
+        .onDisappear { northUp() }
+        .onAppear {
+            // Снимок пары открывает меню слоёв, как палец (`--chapter layers`).
+            if app.startChapter == "layers" { layersOpen = true; app.startChapter = nil }
+        }
     }
 
     /// Окно прибора: поля 16 по бокам, сверху низ шапки, снизу верх дока.
@@ -145,33 +206,213 @@ struct MapScreenView: View {
 
     // MARK: - Док на стекле
 
-    /// Строка показания (`.map-read` свёрнутой) и таймбар — одним стеклом
-    /// (`.map-frame::after`). Верх дока — низ окна прибора.
-    private func dock(_ light: LightScreenModel, _ t: LightTelemetry, _ pal: Palette) -> some View {
+    /// Строка показания (`.map-read`), свод (`.map-fold`) и таймбар — одним
+    /// стеклом (`.map-frame::after`). Шеврон сворачивает всё, кроме времени.
+    private func dock(_ light: LightScreenModel, _ t: LightTelemetry, _ summary: MapSummary,
+                      _ pal: Palette, cy: CGFloat) -> some View {
         let time = t.readout?.time ?? "", phase = t.readout?.phase ?? ""
+        let shut = app.mapFoldShut
+        // Потолок свода: стекло не накрывает белую головку (`--fold-max`).
+        let foldMax = max(120, (timebarTop - readoutHeight - cy - 20).rounded())
         return VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 11) {
-                Text(time)
-                    .font(.system(size: 34, weight: .ultraLight).monospacedDigit()).tracking(-0.5)
-                    .foregroundStyle(pal.ink)
-                    .shotNode("readout.time", text: time)
-                    .frame(height: 34)
-                Text(phase)
-                    .font(.system(size: 11, weight: .semibold)).tracking(1.4).textCase(.uppercase)
-                    .foregroundStyle(pal.dark ? Color(t.stateColor) : pal.ink3)
-                    .shotNode("readout.phase", text: phase)
-                    .frame(height: 15)
-                    .padding(.top, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                withAnimation(.easeInOut(duration: 0.4)) { app.setMapFold(shut: !shut) }
+            } label: {
+                HStack(alignment: .top, spacing: 11) {
+                    Text(time)
+                        .font(.system(size: 34, weight: .ultraLight).monospacedDigit()).tracking(-0.5)
+                        .foregroundStyle(pal.ink)
+                        .shotNode("readout.time", text: time)
+                        .frame(height: 34)
+                    Text(phase)
+                        .font(.system(size: 11, weight: .semibold)).tracking(1.4).textCase(.uppercase)
+                        .foregroundStyle(pal.dark ? Color(t.stateColor) : pal.ink3)
+                        .shotNode("readout.phase", text: phase)
+                        .frame(minHeight: 15)
+                        .padding(.top, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // `.mr-chev`: 16, `--ink-4`, линия 2,4; раскрытая смотрит
+                    // вниз, свёрнутая — вверх.
+                    Icon("chevron", size: 16, line: 2.4)
+                        .foregroundStyle(pal.ink4)
+                        .rotationEffect(.degrees(shut ? -90 : 90))
+                        .shotNode("readout.chev")
+                        .frame(height: 34)
+                }
+                .padding(EdgeInsets(top: 13, leading: 24, bottom: 12, trailing: 24))
+                .contentShape(Rectangle())
             }
-            .padding(EdgeInsets(top: 13, leading: 24, bottom: 12, trailing: 24))
+            .buttonStyle(.plain)
             .overlay(alignment: .bottom) { Rectangle().fill(pal.hair).frame(height: 1) }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { readoutHeight = $0 }
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: { readoutTop = $0 }
+
+            if !shut {
+                // Что не поместилось под потолок — прокручивается внутри свода,
+                // карта под ним не двигается.
+                ScrollView(.vertical) {
+                    fold(summary, light: light, pal)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { foldContentHeight = $0 }
+                }
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(height: min(foldContentHeight, foldMax))
+                .clipped()
+                .transition(.opacity)
+                .shotNode("map.fold")
+            }
+
             TimebarView(light.timebar, showRibbon: light.proMode, bare: true)
                 .shotNode("timebar")
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: { timebarTop = $0 }
         }
         .background { glass(pal) }
         .overlay(alignment: .top) { Rectangle().fill(pal.hair).frame(height: 1) }
-        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: { dockTop = $0 }
+    }
+
+    /// `.telemetry` (поле 24) и `.pro` со спойлером «Подробно» (только астро).
+    private func fold(_ summary: MapSummary, light: LightScreenModel, _ pal: Palette) -> some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 0) {
+                ForEach(summary.rows, id: \.label) { row in
+                    TelemetryRow(labelKey: row.label, labelText: { app.lexicon.t($0) }) {
+                        Text(row.text)
+                            .foregroundStyle(color(row.tone, pal))
+                            .shotNode("fold." + row.label.dropFirst(4), text: row.text)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            LightSpoilerView(groups: summary.pro, open: light.proMode, title: app.lexicon.t("today.details"))
+                .padding(.horizontal, 24)
+        }
+    }
+
+    private func color(_ tone: MapSummary.Tone, _ pal: Palette) -> Color {
+        switch tone {
+        case .ink: pal.ink
+        case .ink2: pal.ink2
+        case .ink4: pal.ink4
+        case .terra: pal.terra
+        case .violet: Color(hex: 0xC6AAE8)
+        case .warm: Color(hex: 0xE2A44C)
+        case .shade: Color(hex: 0x8A8478)
+        }
+    }
+
+    /// Свод на минуту ползунка. Окно Млечного Пути и помеха луны — раз на
+    /// сутки и место, и только при включённом слое.
+    private func summary(date: CivilDate, minute: Minutes, solar: SolarDay, place: Place, clock: ClockText) -> MapSummary {
+        let mw: MapSummary.MilkyWayInput? = app.mapLayers.mw ? {
+            let (w, moon) = cache.milkyWay(date: date, place: place)
+            return MapSummary.MilkyWayInput(
+                window: w, moon: moon, sky: app.light.weather.milkyWaySky(for: date, window: w),
+                nextDark: { AstroNight.next(after: date, latitude: place.latitude,
+                                            utcOffsetHours: place.zone.utcOffsetHours(on: date)) })
+        }() : nil
+        let zone = TimeZone(identifier: place.zone.identifier) ?? .current
+        let dates = DateText(language: app.language, timeZone: zone)
+        return MapSummary.build(
+            date: date, t: minute, sun: solar, place: place,
+            utcOffset: place.zone.utcOffsetHours(on: app.light.timebar.todayInPlace), pro: app.light.proMode,
+            glow: app.glow.ratio, mw: mw,
+            dateShort: { dates.dMonShort(DateText.carrier(year: $0.year, month: $0.month - 1, day: $0.day, in: zone)) },
+            lexicon: app.lexicon, clock: clock)
+    }
+
+    // MARK: - Слои
+
+    /// `.map-here.map-layers-btn`: кружок 34 на `--bar-2` с размытием 12,
+    /// блик сверху и тень `0 2px 8px --glass-cast`; знак 18, линия 1,8,
+    /// `--ink-3`, латунью — когда светится хоть одно светило.
+    private func layersButton(_ pal: Palette, on: Bool) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.16)) { layersOpen.toggle() }
+        } label: {
+            LayersGlyph()
+                .stroke(on ? pal.brass : pal.ink3, style: StrokeStyle(lineWidth: 1.8 * 18 / 24, lineCap: .round, lineJoin: .round))
+                .frame(width: 18, height: 18)
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(.ultraThinMaterial))
+                .background(Circle().fill(pal.bar2))
+                .overlay(Circle().inset(by: 0.5).trim(from: 0.6, to: 0.9).stroke(pal.glassShine, lineWidth: 1))
+                .clipShape(Circle())
+                .shadow(color: pal.glassCast, radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+        .shotNode("map.layersBtn")
+    }
+
+    /// `.map-heading-btn`: тот же кружок, что у слоёв, у верха окна прибора
+    /// слева; включённый — латунью и дышит (1 ↔ 0,55 за 1,6 с).
+    private func headingButton(_ pal: Palette) -> some View {
+        Button {
+            if rotor.live { northUp() } else { rotor.setLive(true) }
+        } label: {
+            HeadingGlyph()
+                .stroke(rotor.live ? pal.brass : pal.ink3,
+                        style: StrokeStyle(lineWidth: 1.8 * 18 / 24, lineCap: .round, lineJoin: .round))
+                .frame(width: 18, height: 18)
+                .phaseAnimator([1.0, 0.55]) { v, k in v.opacity(rotor.live ? k : 1) } animation: { _ in
+                    .easeInOut(duration: 0.8)
+                }
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(.ultraThinMaterial))
+                .background(Circle().fill(pal.bar2))
+                .overlay(Circle().inset(by: 0.5).trim(from: 0.6, to: 0.9).stroke(pal.glassShine, lineWidth: 1))
+                .clipShape(Circle())
+                .shadow(color: pal.glassCast, radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+        .shotNode("map.headingBtn")
+    }
+
+    /// Компас выключен — карта возвращается на север за 0,3 с.
+    private func northUp() {
+        rotor.setLive(false)
+        withAnimation(.easeInOut(duration: 0.3)) { rotor.angle = 0 }
+    }
+
+    /// `.scope-menu.map-layers-menu`: стекло карты (`--map-glass`, размытие
+    /// 5), радиус 16, поле 6, ширина от 208; пункт — поле 12, зазор 10,
+    /// 15 pt. Галочка 16 латунью (линия 2,2) видна у включённого, знак 19
+    /// (линия 1,5) — `--ink-4`, у включённого `--ink`.
+    private func layersMenu(_ pal: Palette, _ layers: MapLayers, darkCanvas: Bool) -> some View {
+        let items: [(MapLayers.Key, String, String)] = [
+            (.sun, "sun", "layer.sun"), (.moon, "moon", "layer.moon"), (.mw, "stars", "layer.mw"),
+            (.compass, "compass", "layer.compass"), (.spots, "pin", "layer.spots"),
+        ]
+        return VStack(spacing: 0) {
+            ForEach(items, id: \.0) { key, icon, word in
+                let on = layers[key]
+                Button {
+                    app.setMapLayer(key, !on)
+                } label: {
+                    HStack(spacing: 10) {
+                        Icon("check", size: 16, line: 2.2).foregroundStyle(pal.brass).opacity(on ? 1 : 0)
+                        Icon(icon, size: 19, line: 1.5).foregroundStyle(on ? pal.ink : pal.ink4)
+                        Text(app.lexicon.t(word)).font(.system(size: 15)).foregroundStyle(pal.ink)
+                            .shotNode(word, text: app.lexicon.t(word))
+                        Spacer(minLength: 0)
+                    }
+                    .padding(12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(minWidth: 208 - 12)
+        .padding(6)
+        // Вид прототипа на встроенном стекле, как панель вкладок: тон веба
+        // поверх системного стекла (материал осветлял карту: Δ 45–107 к вебу).
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.mapGlass)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            // Тема стекла — по холсту под ним: со звёздами холст ночной и в
+            // светлой теме, а системное стекло светлой темы его осветляло.
+            .environment(\.colorScheme, darkCanvas ? .dark : .light))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.55), radius: 20, x: 0, y: 18)
+        .shotNode("map.layers")
     }
 
     /// Стекло веба: `--bar` поверх размытия 20 px.
@@ -226,6 +467,16 @@ struct MapScreenView: View {
 final class MapDayCache {
     private var key: (CivilDate, Place)?
     private var value: MapInstrument.Day?
+    private var mwKey: (CivilDate, Place)?
+    private var mwValue: (MilkyWayWindow, MoonVsStars)?
+
+    func milkyWay(date: CivilDate, place: Place) -> (MilkyWayWindow, MoonVsStars) {
+        if let mwKey, let mwValue, mwKey.0 == date, mwKey.1 == place { return mwValue }
+        let v = (MilkyWayWindow(date: date, place: place), MoonVsStars(date: date, place: place))
+        mwKey = (date, place)
+        mwValue = v
+        return v
+    }
 
     func day(date: CivilDate, place: Place, solar: SolarDay) -> MapInstrument.Day {
         if let key, let value, key.0 == date, key.1 == place { return value }
@@ -233,5 +484,30 @@ final class MapDayCache {
         key = (date, place)
         value = d
         return d
+    }
+}
+
+/// Знак слоёв — свой SVG в разметке веба (`M12 3l9 5-9 5-9-5 9-5z M3 13l9 5 9-5`),
+/// не из `icons.js`.
+private struct LayersGlyph: Shape {
+    func path(in rect: CGRect) -> Path {
+        let k = min(rect.width, rect.height) / 24
+        var p = Path()
+        p.move(to: CGPoint(x: 12, y: 3)); p.addLine(to: CGPoint(x: 21, y: 8)); p.addLine(to: CGPoint(x: 12, y: 13))
+        p.addLine(to: CGPoint(x: 3, y: 8)); p.closeSubpath()
+        p.move(to: CGPoint(x: 3, y: 13)); p.addLine(to: CGPoint(x: 12, y: 18)); p.addLine(to: CGPoint(x: 21, y: 13))
+        return p.applying(CGAffineTransform(scaleX: k, y: k)).offsetBy(dx: rect.minX, dy: rect.minY)
+    }
+}
+
+/// Знак живого компаса — свой SVG в разметке веба: круг r 8,5 и стрелка
+/// `M15 9l-2 5-4 1 2-5z`.
+private struct HeadingGlyph: Shape {
+    func path(in rect: CGRect) -> Path {
+        let k = min(rect.width, rect.height) / 24
+        var p = Path(ellipseIn: CGRect(x: 3.5, y: 3.5, width: 17, height: 17))
+        p.move(to: CGPoint(x: 15, y: 9)); p.addLine(to: CGPoint(x: 13, y: 14)); p.addLine(to: CGPoint(x: 9, y: 15))
+        p.addLine(to: CGPoint(x: 11, y: 10)); p.closeSubpath()
+        return p.applying(CGAffineTransform(scaleX: k, y: k)).offsetBy(dx: rect.minX, dy: rect.minY)
     }
 }

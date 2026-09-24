@@ -25,7 +25,7 @@ help:
 PARITY_FILES := solar_day.json solar_sample.json light_state.json \
 	sunset_score.json moon.json eclipse.json sky_windows.json \
 	merge_pairs.json milkyway.json astro_night.json mock_weather.json \
-	weather_day.json mwsky.json
+	weather_day.json mwsky.json mw_dust.json glow.json
 
 parity:
 	@TZ=UTC node Tools/parity/generate.js --out $(FIXTURES)

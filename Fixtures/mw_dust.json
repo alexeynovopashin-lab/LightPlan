@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "beta/index.html",
-    "cut": "b179ee6f1a87c354",
+    "cut": "9d1c840c3d0dedfa",
     "what": "облако точек Млечного Пути на приборе карты (MW_DUST, MW_HAZE)",
     "grid": "все точки в порядке генерации: ra, dec (радианы), ярус, порог угасания",
     "tolerance": {"radians":1e-12,"tier":"строго","fade":"строго"},
