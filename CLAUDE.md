@@ -24,6 +24,12 @@
   shots by `make shots` numbers; put an image into context only where the
   numbers disagree. Measured iterations record the weekly % before/after and
   peak context (`get_usage`).
+- **Hand over only committed work** (Alexey, 2026-09-24). An iteration works
+  in its own worktree (`.claude/worktrees/<task>`, branch `wt/<task>`), never
+  uncommitted in the main folder. Before handing over, commit the work in
+  progress to that branch (`wip:` title, tests may be red — say so in the
+  body); the next chat continues the branch. Merge into `main` at the
+  checkpoint only. Two iterations in parallel each keep their own branch.
 
 ## Layout and rules
 
