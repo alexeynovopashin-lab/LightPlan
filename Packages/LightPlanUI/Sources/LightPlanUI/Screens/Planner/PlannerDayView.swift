@@ -72,6 +72,8 @@ struct PlannerDayBody: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     @Environment(\.colorScheme) private var scheme
+    /// Открытое меню часа: номер часа и минута с получасом (веб `.armed`).
+    @State private var armed: (hour: Int, at: Int)?
 
     /// Высота заголовка загрузки: поле 16 + строка 12 + поле 7.
     static let loadHeight: CGFloat = 35
@@ -93,6 +95,7 @@ struct PlannerDayBody: View {
                 .padding(.bottom, 20)
                 .shotNode("line")
                 .id(d)
+                .onChange(of: d) { _, _ in armed = nil }
                 .transition(.asymmetric(insertion: .offset(x: 18 * CGFloat(app.planner.dayShift)).combined(with: .opacity),
                                         removal: .identity))
         }
@@ -108,7 +111,8 @@ struct PlannerDayBody: View {
             // Сетка часов.
             VStack(spacing: 0) {
                 ForEach(0...24, id: \.self) { h in
-                    slot(h, pal: pal, sky: sky, hushed: isToday && Self.hushed(h, now: nowMin))
+                    slot(h, pal: pal, sky: sky, hushed: isToday && Self.hushed(h, now: nowMin),
+                         half: armed?.hour == h ? armed!.at % 60 : nil)
                         .shotNode("slot.\(h)")
                 }
             }
@@ -128,6 +132,7 @@ struct PlannerDayBody: View {
             if isToday {
                 nowMark(nowMin, node: "mark.\(lights.count)", pal)
             }
+            if let a = armed { slotMenu(a, pal) }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .frame(height: 25 * Self.hourH, alignment: .top)
@@ -144,18 +149,13 @@ struct PlannerDayBody: View {
         return dh > -12.2 && dh < 15.7
     }
 
-    private func slot(_ h: Int, pal: Palette, sky: SolarDay, hushed: Bool) -> some View {
+    /// Час сетки. Тап по верхней половине — «:00», по нижней — «:30» (веб: на
+    /// получас пальцем попадают, точнее правят в форме); повторный — закрыть.
+    private func slot(_ h: Int, pal: Palette, sky: SolarDay, hushed: Bool, half: Int?) -> some View {
         let label = String(format: "%02d:00", h % 24)
-        return Menu {
-            Section(f.fmt(Double(h % 24 * 60))) {
-                Button(f.t.t("day.actShoot")) {}
-                Button(f.t.t("day.actMeet")) {}
-                Button(f.t.t("day.actBusy")) {}
-            }
-        } label: {
-            HStack(spacing: 0) {
+        return HStack(spacing: 0) {
                 Text(label).font(webFont(12)).tracking(0.2).monospacedDigit()
-                    .foregroundStyle(pal.ink7)
+                    .foregroundStyle(half == 0 ? pal.brassDeep : pal.ink7)
                     .opacity(hushed ? 0 : 1)
                     .frame(width: 46, height: Self.hourH, alignment: .topLeading)
                     .offset(y: -6)
@@ -165,19 +165,54 @@ struct PlannerDayBody: View {
                     .fill(LinearGradient(colors: [Self.phase(a, sky), Self.phase(b, sky)], startPoint: .top, endPoint: .bottom))
                     .frame(width: 3)
                     .frame(width: 18)
-                Rectangle().fill(.clear)
-                    .overlay(alignment: .top) { Rectangle().fill(pal.hairline).frame(height: 1) }
+                Rectangle().fill(half == 30
+                        ? AnyShapeStyle(LinearGradient(stops: [.init(color: .clear, location: 0.5),
+                                                               .init(color: Color(hex: 0xE2A44C, alpha: 0.10), location: 1)],
+                                                       startPoint: .top, endPoint: .bottom))
+                        : AnyShapeStyle(Color.clear))
+                    .overlay(alignment: .top) { Rectangle().fill(half == 0 ? pal.brassDark : pal.hairline).frame(height: 1) }
                     .overlay {
-                        Line().stroke(pal.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 3])).opacity(0.55)
+                        Line().stroke(half == 30 ? pal.brassDark : pal.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                            .opacity(half == 30 ? 1 : 0.55)
                             .frame(height: 1)
                     }
                     .padding(.leading, 10)
             }
             .frame(height: Self.hourH)
             .contentShape(Rectangle())
+            .onTapGesture { p in
+                if armed?.hour == h { armed = nil; return }
+                armed = (h, h * 60 + (p.y > Self.hourH / 2 ? 30 : 0))
+            }
+    }
+
+    /// Меню часа (`.slot-menu`): время и три действия под выбранным часом; у
+    /// последних часов опустить некуда — встаёт над ним. Сетку не сдвигает.
+    private func slotMenu(_ a: (hour: Int, at: Int), _ pal: Palette) -> some View {
+        let menuH: CGFloat = 66, gridH = 25 * Self.hourH
+        let below = CGFloat(a.hour + 1) * Self.hourH
+        let top = below + menuH > gridH ? max(0, CGFloat(a.hour) * Self.hourH - menuH) : below
+        let acts: [(String, String)] = [("camera", "day.actShoot"), ("guests", "day.actMeet"), ("lock", "day.actBusy")]
+        return HStack(spacing: 8) {
+            Text(f.fmt(Double(a.at % 1440))).font(webFont(13, 650)).monospacedDigit().foregroundStyle(pal.brass)
+            ForEach(acts, id: \.1) { ic, key in
+                Button { armed = nil } label: {
+                    VStack(spacing: 4) {
+                        Icon(ic, size: 19, line: 1.5).foregroundStyle(pal.brass)
+                        Text(f.t.t(key)).font(webFont(11)).foregroundStyle(pal.ink3).lineLimit(1)
+                    }
+                    .padding(.vertical, 9).padding(.horizontal, 4)
+                    .frame(maxWidth: .infinity)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.sheet))
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
+        .padding(.top, 4).padding(.bottom, 8)
+        .background(pal.surface)
+        .padding(.leading, 24 + 64).padding(.trailing, 24)
+        .padding(.top, top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     /// Цвет оси в минуту дня (веб `phaseCol`): ночь, синий час, рассвет,

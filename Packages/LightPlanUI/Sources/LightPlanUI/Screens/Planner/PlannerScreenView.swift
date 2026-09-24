@@ -10,7 +10,8 @@ import LightPlanCore
 ///
 /// Заглушки итерации: «+», статистика, поиск, заголовок (→ год, итерация 22),
 /// тап по съёмке (→ карточка, 25) и три действия (→ формы, 23) ничего не
-/// открывают. Веер видов — системное меню, а не веер веба: жесты и движение —
+/// открывают. Веер видов и меню часа — виды веба на встроенном стекле, не
+/// системные меню (NEXT_SESSION: «не системные компоненты»); их движение —
 /// итерация 29.
 public struct PlannerScreenView: View {
     @Bindable var app: AppModel
@@ -18,6 +19,8 @@ public struct PlannerScreenView: View {
     @State private var position = ScrollPosition(edge: .top)
     /// Наводка ленты на 09:00 — одна на день (веб `dayScrollDay`).
     @State private var aimedDay: CivilDate?
+    /// Веер видов открыт (веб `#scopeMenu`).
+    @State private var scopeOpen = false
 
     public init(app: AppModel) { self.app = app }
 
@@ -38,7 +41,7 @@ public struct PlannerScreenView: View {
         .scrollPosition($position)
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: 0) {
-                PlanTop(app: app, f: f)
+                PlanTop(app: app, f: f, scopeOpen: $scopeOpen)
                 if st.scope == .day { PlannerDaySticky(app: app, f: f) }
                 if st.scope != .day, st.isAway(from: f.today) { nowBack(pal, f) }
             }
@@ -61,10 +64,50 @@ public struct PlannerScreenView: View {
                 .padding(.bottom, 12)
             }
         }
+        .overlay(alignment: .topLeading) {
+            if scopeOpen { scopeMenu(pal, f) }
+        }
         .background(pal.surface.ignoresSafeArea())
         .simultaneousGesture(swipe)
         .onChange(of: st.scope, initial: true) { _, _ in aim() }
         .onChange(of: st.selected) { _, _ in aim() }
+    }
+
+    /// Веер видов (`.scope-menu`): под кнопкой вида на 8 pt, три строки —
+    /// галочка текущего, знак, имя. Тап мимо закрывает.
+    private func scopeMenu(_ pal: Palette, _ f: PlannerFacts) -> some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear.contentShape(Rectangle()).ignoresSafeArea()
+                .onTapGesture { scopeOpen = false }
+            VStack(spacing: 0) {
+                ForEach(CalScope.allCases, id: \.self) { s in
+                    let on = s == app.planner.scope
+                    Button {
+                        scopeOpen = false
+                        withAnimation(.snappy(duration: 0.25)) { app.planner.setScope(s) }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Icon("check", size: 16, line: 2.2).foregroundStyle(pal.brass).opacity(on ? 1 : 0)
+                            Icon(PlanTop.icon(s), size: 19, line: 1.5).foregroundStyle(on ? pal.ink : pal.ink4)
+                            Text(f.t.t(PlanTop.menuKey(s))).font(webFont(15)).foregroundStyle(pal.ink)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(6)
+            .frame(minWidth: 208, alignment: .leading)
+            .fixedSize()
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheetGlass))
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: .black.opacity(0.55), radius: 20, y: 18)
+            .padding(.leading, 16)
+            .padding(.top, 12 + 44 + 8)
+            .transition(.scale(scale: 0.96, anchor: .topLeading).combined(with: .opacity))
+        }
     }
 
     /// «↺ сегодня» строкой под шапкой в месяце и неделе (`.now-back.show`).
@@ -89,10 +132,12 @@ public struct PlannerScreenView: View {
 
     /// Первый показ дня ставит 09:00 на 10 pt ниже закреплённого блока (веб:
     /// `target.top − sticky.bottom − 10`). Сверху ленты — заголовок загрузки
-    /// (35) и поле ленты (8), час — 38.
+    /// (35) и поле ленты (8), час — 38. Наводка одна на день и смену вида
+    /// переживает (веб `dayScrollDay` не сбрасывается): вернувшись в тот же
+    /// день из недели, лента стоит там, куда её привела смена вида.
     private func aim() {
         let st = app.planner
-        guard st.scope == .day else { aimedDay = nil; position.scrollTo(edge: .top); return }
+        guard st.scope == .day else { position.scrollTo(edge: .top); return }
         guard aimedDay != st.selected else { return }
         aimedDay = st.selected
         position.scrollTo(y: PlannerDayBody.loadHeight + PlannerDayBody.lineTop + 9 * DayLanes.hourHeight - 10)
@@ -106,26 +151,22 @@ public struct PlannerScreenView: View {
 private struct PlanTop: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
+    @Binding var scopeOpen: Bool
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let pal = Palette(scheme)
         let st = app.planner
         HStack(spacing: 6) {
-            Menu {
-                ForEach(CalScope.allCases, id: \.self) { s in
-                    Button {
-                        withAnimation(.snappy(duration: 0.25)) { app.planner.setScope(s) }
-                    } label: {
-                        Label(f.t.t(Self.menuKey(s)), systemImage: s == st.scope ? "checkmark" : "")
-                    }
-                }
+            Button {
+                withAnimation(.easeOut(duration: 0.16)) { scopeOpen.toggle() }
             } label: {
                 Icon(Self.icon(st.scope), size: 21, line: 1.6)
                     .foregroundStyle(pal.brass)
                     .frame(width: 44, height: 44)
                     .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(pal.sheet))
             }
+            .buttonStyle(.plain)
             .shotNode("plan.scope")
             .accessibilityLabel(f.t.t("plan.viewPick"))
 
