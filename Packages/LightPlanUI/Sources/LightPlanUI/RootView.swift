@@ -4,8 +4,8 @@ import LightPlanData
 
 /// Хозяин приложения: поднимает `AppModel` (снимок с диска, настройки, город
 /// по умолчанию) и раскладывает экраны по вкладкам. Панель — веба
-/// (`TabBarView`), все четыре вкладки; экранов три — «Свет», «Карта»
-/// (итерация 20а) и «Настройки»; «Съёмки» (21) встанут перед настройками.
+/// (`TabBarView`), все четыре вкладки: «Свет», «Карта» (итерация 20а),
+/// «Съёмки» (21) и «Настройки».
 public struct RootView: View {
     @State private var app: AppModel?
     @Environment(\.scenePhase) private var scenePhase
@@ -49,6 +49,7 @@ private struct Shell: View {
         ZStack {
             screen(.light) { LightScreenView(app.light) }
             screen(.map) { MapScreenView(app: app) }
+            screen(.planner) { PlannerScreenView(app: app) }
             screen(.settings) { SettingsView(app: app) }
         }
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной

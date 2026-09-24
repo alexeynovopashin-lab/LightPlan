@@ -16,8 +16,6 @@ import SwiftUI
 /// зазор 4, подпись 10/500. Активная: знак `--brass`, подпись `--ink`;
 /// прочие — `--ink-6`.
 ///
-/// «Карта» (итерация 20) и «Съёмки» (21) стоят на местах веба, но ещё не
-/// нажимаются — экранов нет (решение исполнителя, обратимое).
 struct TabBarView: View {
     @Binding var tab: AppTab
     let lexicon: Lexicon
@@ -30,7 +28,7 @@ struct TabBarView: View {
         HStack(spacing: 0) {
             item(.light, glyph: .light, title: "nav.light", node: "light", pal: pal)
             item(.map, glyph: .map, title: "nav.map", node: "map", pal: pal)
-            item(nil, glyph: .shoots, title: "nav.shoots", node: "shoots", pal: pal)
+            item(.planner, glyph: .shoots, title: "nav.shoots", node: "shoots", pal: pal)
             item(.settings, glyph: .settings, title: "nav.settings", node: "settings", pal: pal)
         }
         .padding(.horizontal, 6)

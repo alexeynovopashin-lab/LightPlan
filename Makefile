@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang icons domain shots mapstyle mapref
+.PHONY: help parity blocks lang icons domain shots mapstyle mapref planner
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -17,7 +17,8 @@ help:
 	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
 	@echo "make mapstyle описание холста карты из beta/mapstyle.js (итерация 20а)"
 	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
-	@echo "make shots    пары снимков веб / натив «Света», «Карты» и «Настроек» и сверка числами (итерации 19б, 20а)"
+	@echo "make planner  эталон колонок ленты дня и шкалы срочности из беты и доказать повторяемость (итерация 21)"
+	@echo "make shots    пары снимков веб / натив «Света», «Карты», «Съёмок» и «Настроек» и сверка числами (19б, 20а, 21)"
 
 # Файлы, которые пишет сам generate.js. Другие цели (lang, domain, локация)
 # кладут в Fixtures/ свои файлы рядом — их сюда не включаем, иначе diff -r
@@ -75,6 +76,17 @@ domain:
 	@tmp=$$(mktemp -d); \
 	TZ=UTC node Tools/parity/domain.js --out $$tmp --quiet; \
 	if cmp -s $(FIXTURES)/domain.json $$tmp/domain.json; then \
+		echo "  повторный прогон: побайтово то же"; rm -rf $$tmp; \
+	else \
+		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — эталону нельзя верить"; rm -rf $$tmp; exit 1; \
+	fi
+
+# Итерация 21: колонки ленты дня и шкала срочности сдачи — из беты.
+planner:
+	@node Tools/parity/planner.js --out $(FIXTURES)
+	@tmp=$$(mktemp -d); \
+	node Tools/parity/planner.js --out $$tmp --quiet; \
+	if cmp -s $(FIXTURES)/planner.json $$tmp/planner.json; then \
 		echo "  повторный прогон: побайтово то же"; rm -rf $$tmp; \
 	else \
 		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — эталону нельзя верить"; rm -rf $$tmp; exit 1; \
