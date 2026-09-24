@@ -5,6 +5,9 @@
 
 ## Where things are
 
+- **Read first, after `git log`:** `light_plan:Light_Plan/docs/NEXT_SESSION.md` —
+  what runs now, what the roadmap chat decided for upcoming iterations, open
+  threads. Short; the roadmap chat rewrites it after every iteration report.
 - Architecture: `light_plan:Light_Plan/docs/17_NATIVE_ARCHITECTURE.md`.
   Plan by iterations: `light_plan:Light_Plan/SWIFT_MIGRATION_PLAN.md` — do only
   the iteration you were asked for; every iteration ends with a commit named in
