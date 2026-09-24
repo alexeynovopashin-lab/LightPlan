@@ -17,6 +17,21 @@ public struct MapCanvasCenter: Equatable, Sendable {
     }
 }
 
+/// Камера холста на кадре: центр, крупность (уровень веба, плитка 512) и
+/// кто двигает — палец или программа. Булавки сохранённых точек едут по ней
+/// на каждом кадре жеста (итерация 20б); `byHand` закрывает полосу точки
+/// (`move` с `originalEvent` у веба).
+public struct MapCanvasCamera: Equatable, Sendable {
+    public var center: MapCanvasCenter
+    public var zoom: Double
+    public var byHand: Bool
+    public init(center: MapCanvasCenter, zoom: Double, byHand: Bool = false) {
+        self.center = center
+        self.zoom = zoom
+        self.byHand = byHand
+    }
+}
+
 /// Холст карты. Поворота и наклона нет, как у веба: прибор и есть карта, и
 /// крутиться они должны одним куском (ротор — итерация 20б).
 ///
@@ -35,12 +50,18 @@ public struct MapCanvasView: View {
     let panEnabled: Bool
     let focusShift: CGFloat
     let onMove: (MapCanvasCenter) -> Void
+    let onCamera: (MapCanvasCamera) -> Void
+    /// Тап по холсту, палец не поехал (`click` движка веба) — точка в
+    /// собственных координатах холста, без поворота ротора.
+    let onTap: (CGPoint) -> Void
 
     /// `labels` — подписи улиц и мест (тумблер настроек, у веба
     /// `mapLabels`); только у MapLibre: MapKit их не выключает.
     public init(source: MapCanvasSource, center: MapCanvasCenter, zoom: Double, dark: Bool,
                 labels: Bool = false, language: String = "en", panEnabled: Bool = true, focusShift: CGFloat = 0,
-                onMove: @escaping (MapCanvasCenter) -> Void = { _ in }) {
+                onMove: @escaping (MapCanvasCenter) -> Void = { _ in },
+                onCamera: @escaping (MapCanvasCamera) -> Void = { _ in },
+                onTap: @escaping (CGPoint) -> Void = { _ in }) {
         self.source = source
         self.center = center
         self.zoom = zoom
@@ -50,19 +71,24 @@ public struct MapCanvasView: View {
         self.panEnabled = panEnabled
         self.focusShift = focusShift
         self.onMove = onMove
+        self.onCamera = onCamera
+        self.onTap = onTap
     }
 
     public var body: some View {
         #if canImport(MapLibre)
         if source == .mapLibre {
             MapLibreCanvas(center: center, zoom: zoom, style: MapStyle.url(dark: dark, labels: labels, language: language),
-                           panEnabled: panEnabled, focusShift: focusShift, onMove: onMove)
+                           panEnabled: panEnabled, focusShift: focusShift, onMove: onMove,
+                           onCamera: onCamera, onTap: onTap)
         } else {
-            MapKitCanvas(center: center, zoom: zoom, dark: dark, panEnabled: panEnabled, focusShift: focusShift, onMove: onMove)
+            MapKitCanvas(center: center, zoom: zoom, dark: dark, panEnabled: panEnabled, focusShift: focusShift, onMove: onMove,
+                           onCamera: onCamera, onTap: onTap)
         }
         #else
         // На Mac MapLibre нет (дистрибутив только для iOS) — MapKit.
-        MapKitCanvas(center: center, zoom: zoom, dark: dark, panEnabled: panEnabled, focusShift: focusShift, onMove: onMove)
+        MapKitCanvas(center: center, zoom: zoom, dark: dark, panEnabled: panEnabled, focusShift: focusShift, onMove: onMove,
+                           onCamera: onCamera, onTap: onTap)
         #endif
     }
 

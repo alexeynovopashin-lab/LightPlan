@@ -17,7 +17,8 @@ import LightPlanData
 /// `localStorage` веба); `LPShotForecast`, `LPShotAir` — ответы Open-Meteo;
 /// `LPShotName` — `{ "city", "sub" }` вместо геокодера; `LPShotScreen` —
 /// `light` | `map` | `settings`; `LPShotChapter` — глава настроек; `LPShotReport` —
-/// куда записать рамки.
+/// куда записать рамки; `LPShotLiveMap` — холст карты с сетью (глазами, не
+/// для пары: у веба в паре сети нет).
 public struct ShotScenario: Sendable {
     public enum Screen: String, Sendable { case light, map, settings }
 
@@ -66,7 +67,7 @@ extension AppModel {
                            weatherSource: FileWeatherSource(forecast: s.forecast, air: s.air),
                            now: { fixed.addingTimeInterval(Date().timeIntervalSince(start)) })
         app.tab = s.screen == .settings ? .settings : s.screen == .map ? .map : .light
-        app.mapOffline = true
+        app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
         app.startChapter = s.chapter
         return app
     }

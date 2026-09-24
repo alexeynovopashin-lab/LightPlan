@@ -1,5 +1,6 @@
 import SwiftUI
 import LightPlanCore
+import LightPlanDomain
 import LightPlanMapCanvas
 
 /// Экран «Карта» (итерация 20а): холст во весь экран, над ним ночная вуаль,
@@ -28,6 +29,15 @@ struct MapScreenView: View {
     @State private var chipTask: Task<Void, Never>?
     @State private var cache = MapDayCache()
     @State private var rotor: CompassRotor
+    /// Камера холста для булавок — своим объектом, чтобы кадр жеста
+    /// пересобирал только знаки (`MapCameraFeed`).
+    @State private var feed = MapCameraFeed()
+    /// Полоса имени точки: какая точка названа, набранное, обратный отсчёт
+    /// «тихой» полосы (`snbTimer`, 5 с).
+    @State private var barSpot: String?
+    @State private var barText = ""
+    @State private var barTimer: Task<Void, Never>?
+    @FocusState private var barFocus: Bool
 
     init(app: AppModel) {
         self.app = app
@@ -72,6 +82,8 @@ struct MapScreenView: View {
                 // живой компас крутит их вокруг наблюдателя. Карта и вуаль —
                 // квадрат `MapRotor.side`, чтобы на любом угле не открылся клин.
                 let side = MapRotor.side(width: size.width, height: size.height, cy: cy)
+                // Центр камеры в квадрате ротора — под головкой наблюдателя.
+                let anchor = CGPoint(x: side / 2, y: cy - size.height / 2 + side / 2)
                 ZStack(alignment: .topLeading) {
                     Group {
                         // В снимке пары холста нет: у веба сеть закрыта, библиотека
@@ -84,7 +96,13 @@ struct MapScreenView: View {
                                           center: MapCanvasCenter(latitude: place.latitude, longitude: place.longitude),
                                           zoom: 14, dark: darkCanvas, labels: app.mapLabels, language: app.language,
                                           panEnabled: !rotor.live, focusShift: ((size.height / 2 - cy) * 2).rounded(),
-                                          onMove: { app.moveFromMap(latitude: $0.latitude, longitude: $0.longitude) })
+                                          onMove: { app.moveFromMap(latitude: $0.latitude, longitude: $0.longitude) },
+                                          onCamera: { cam in
+                                              feed.camera = cam
+                                              // Карту двинули пальцем — полоса точки уходит.
+                                              if cam.byHand, barSpot != nil { closeBar() }
+                                          },
+                                          onTap: { tapMap($0, anchor: anchor, side: side) })
                                 .background(ground)
                         }
                     }
@@ -98,6 +116,15 @@ struct MapScreenView: View {
                         .position(x: size.width / 2, y: size.height / 2)
                         .allowsHitTesting(false)
                         .shotNode("map.veil", text: String(format: "%.3f", veil))
+
+                    // Булавки своих мест — над вуалью и под прибором: город ночью
+                    // темнеет, свои точки — нет. Слой — квадрат ротора, как холст.
+                    if layers.spots {
+                        MapSpotsLayer(spots: app.spots, feed: feed, fallback: fallbackCamera(place),
+                                      anchor: anchor, here: app.place.coordinate, pal: pal)
+                            .frame(width: side, height: side)
+                            .position(x: size.width / 2, y: size.height / 2)
+                    }
 
                     MapInstrumentView(scene: scene, optic: optic(size), onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
                                       onTapMoon: { tap(.tapMoon(az: $0, alt: $1)) })
@@ -131,6 +158,15 @@ struct MapScreenView: View {
                          pal, cy: cy).padding(.bottom, safe.bottom)
                 }
             }
+            .overlay(alignment: .top) {
+                // Полоса имени — у верха окна прибора, над картой и кружками.
+                if let id = barSpot, let sp = app.spots.first(where: { $0.id == id }) {
+                    SpotNameBar(text: $barText, focus: $barFocus, coord: sp.coordinate.text, lexicon: app.lexicon,
+                                pal: pal, onDelete: deleteBar, onDone: commitBar, onTouch: holdBar)
+                        .padding(.horizontal, 10)
+                        .padding(.top, headerBottom + 10)
+                }
+            }
             .overlay {
                 if layersOpen {
                     ZStack(alignment: .bottomLeading) {
@@ -152,11 +188,17 @@ struct MapScreenView: View {
             .ignoresSafeArea()
         }
         .onChange(of: timebar.touches) { showChip(.drag, life: 1.2) }
+        // Фокус в поле — отсчёт снят; ушёл — имя записано (`blur` веба).
+        .onChange(of: barFocus) { _, focused in
+            if focused { holdBar() } else if barSpot != nil { commitBar() }
+        }
         // Уходя с карты, гасим датчик — он не нужен нигде больше (веб так же).
         .onDisappear { northUp() }
         .onAppear {
             // Снимок пары открывает меню слоёв, как палец (`--chapter layers`).
             if app.startChapter == "layers" { layersOpen = true; app.startChapter = nil }
+            // …и нажимает закладку (`--chapter spot`): точка и полоса её имени.
+            if app.startChapter == "spot" { app.startChapter = nil; saveTapped(keyboard: false) }
         }
     }
 
@@ -199,6 +241,12 @@ struct MapScreenView: View {
         .padding(.horizontal, 24)
         .padding(.top, top + 24)
         .padding(.bottom, 16)
+        // Закладка в правом углу шапки (`.map-save`, поля −6 сверху и −8 справа).
+        .overlay(alignment: .topTrailing) {
+            MapSaveButton(on: app.spotHere != nil, lexicon: app.lexicon, pal: pal, action: { saveTapped() })
+                .padding(.top, top + 24 - 6)
+                .padding(.trailing, 24 - 8)
+        }
         .background { glass(pal) }
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair).frame(height: 1) }
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).maxY } action: { headerBottom = $0 }
@@ -418,6 +466,90 @@ struct MapScreenView: View {
     /// Стекло веба: `--bar` поверх размытия 20 px.
     private func glass(_ pal: Palette) -> some View {
         ZStack { Rectangle().fill(.ultraThinMaterial); Rectangle().fill(pal.bar) }
+    }
+
+    // MARK: - Сохранённые точки
+
+    /// Камера, пока холст не сказал своей (нет сети в паре, первый кадр):
+    /// место приложения на уровне веба 14.
+    private func fallbackCamera(_ place: Place) -> MapCanvasCamera {
+        MapCanvasCamera(center: MapCanvasCenter(latitude: place.latitude, longitude: place.longitude), zoom: 14)
+    }
+
+    /// Тап по холсту (`lmap.on("click")`): по булавке — переезд на точку и
+    /// тихая полоса с её именем; мимо — открытая полоса закрывается и больше
+    /// ничего. Точка под головкой в тап не идёт: ехать некуда.
+    private func tapMap(_ p: CGPoint, anchor: CGPoint, side: CGFloat) {
+        let cam = feed.camera ?? fallbackCamera(app.light.timebar.place)
+        let here = app.place.coordinate
+        let bounds = CGSize(width: side, height: side)
+        let marks: [(id: String, tip: CGPoint, labelWidth: CGFloat)] = app.mapLayers.spots ? app.spots.compactMap { sp in
+            guard let la = sp.latitude, let lo = sp.longitude, !sp.coordinate.isSameSpot(as: here) else { return nil }
+            let d = MapSpots.offset(latitude: la, longitude: lo, camera: cam)
+            let tip = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
+            guard MapSpots.onScreen(tip, in: bounds) else { return nil }
+            return (sp.id, tip, feed.labelWidths[sp.id] ?? 0)
+        } : []
+        guard let id = MapSpots.hit(p, marks: marks), let sp = app.spots.first(where: { $0.id == id }),
+              let la = sp.latitude, let lo = sp.longitude else {
+            if barSpot != nil { closeBar() }
+            return
+        }
+        app.moveFromMap(latitude: la, longitude: lo)
+        openBar(sp, edit: true, quiet: true)
+    }
+
+    /// Закладка шапки: новая точка — полоса с пустым полем и клавиатурой
+    /// (`openSpotName(spots[0])`); повторный тап убирает точку.
+    /// `keyboard: false` — снимок пары: у веба в безголовом браузере клавиатуры
+    /// нет, и полоса стоит без неё и без обратного отсчёта.
+    private func saveTapped(keyboard: Bool = true) {
+        guard let sp = app.toggleSpotHere() else { return }
+        openBar(sp, edit: false, quiet: false, keyboard: keyboard)
+    }
+
+    /// `openSpotName`: `edit` — в поле нынешнее имя; `quiet` — тап «что это
+    /// за точка»: клавиатура не поднимается, полоса гаснет через 5 с.
+    private func openBar(_ sp: Spot, edit: Bool, quiet: Bool, keyboard: Bool = true) {
+        holdBar()
+        barSpot = sp.id
+        barText = edit ? sp.name : ""
+        if quiet {
+            barFocus = false
+            barTimer = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(5))
+                if !Task.isCancelled { closeBar() }
+            }
+        } else if keyboard {
+            // Поле появляется этим же проходом — фокус на следующем.
+            Task { @MainActor in barFocus = true }
+        }
+    }
+
+    private func holdBar() { barTimer?.cancel(); barTimer = nil }
+
+    /// Закрытие без записи (`closeSpotName`); набранное записывает уход фокуса.
+    private func closeBar() {
+        holdBar()
+        if barFocus { barFocus = false } else { barSpot = nil }
+    }
+
+    /// Галочка, «Готово» клавиатуры, уход фокуса (`commitSpotName`).
+    private func commitBar() {
+        guard let id = barSpot else { return }
+        holdBar()
+        barSpot = nil
+        barFocus = false
+        app.renameSpot(id: id, to: barText)
+    }
+
+    /// Корзина (`spotNameDel`): точка уходит, набранное не пишется.
+    private func deleteBar() {
+        guard let id = barSpot else { return }
+        holdBar()
+        barSpot = nil
+        barFocus = false
+        app.removeSpot(id: id)
     }
 
     // MARK: - Головка

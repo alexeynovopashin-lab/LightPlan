@@ -49,8 +49,10 @@ struct MapSummaryTests {
         let mid = (sun.civilB! + sun.nauticalB!) / 2
         #expect(labels(build(mid, pro: true)).contains("map.twilight"))
         #expect(!labels(build(mid, pro: false)).contains("map.twilight"))
-        // В тестах словарь без ресурсов отдаёт ключи — видна ветка ступени.
-        #expect(MapSummary.twilight(sun: sun, t: mid, lexicon: lexicon, clock: clock) == "twi.till")
+        // Под `swift test` словарь без ресурсов отдаёт ключи («twi.till»), под
+        // `xcodebuild test` — настоящую строку, начатую ступенью.
+        let twi = MapSummary.twilight(sun: sun, t: mid, lexicon: lexicon, clock: clock)
+        #expect(twi == "twi.till" || twi?.hasPrefix(lexicon.t("twi.nautical") + " · ") == true)
     }
 
     @Test("Слой Млечного Пути добавляет пять строк в конец и группу в «Подробно»")

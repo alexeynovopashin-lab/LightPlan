@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import LightPlanCore
+import LightPlanDomain
 import LightPlanData
 import LightPlanTimeline
 import LightPlanMapCanvas
@@ -77,7 +78,97 @@ public final class AppModel {
         persist()
     }
 
+    // MARK: - Сохранённые точки (итерация 20б)
+
+    /// «Мои места» (`spots` снимка): булавки карты и закладка шапки.
+    public var spots: [Spot] { snapshot.spots }
+
+    /// Точка под головкой наблюдателя (`spotHere` веба) — допуск ~60 м.
+    public var spotHere: Spot? {
+        let c = place.coordinate
+        return snapshot.spots.first { $0.coordinate.isSameSpot(as: c) }
+    }
+
+    /// Закладка шапки (`mapSave`): место под головкой уже сохранено — убрать,
+    /// нет — записать первым в список. Новая точка возвращается: полоса имени
+    /// открывается на ней. Имя — город от геокодера (`uniqueSpotName`), пока
+    /// его нет — координаты, и геокодер ещё может назвать точку (`named`).
+    @discardableResult
+    public func toggleSpotHere(now: Date = Date()) -> Spot? {
+        if let here = spotHere { removeSpot(id: here.id, now: now); return nil }
+        let c = place.coordinate
+        let name = place.isNameStale ? nil : place.name
+        let city = name?.city ?? ""
+        var sp = Spot(id: Self.newSpotId(now), name: Self.uniqueSpotName(city, in: snapshot.spots) ?? c.text,
+                      latitude: Self.round5(c.latitude), longitude: Self.round5(c.longitude))
+        sp.sub = name?.sub ?? ""
+        sp.named = !city.isEmpty
+        // Закладка — самый ручной способ завести место: координаты под
+        // булавкой человек выбрал сам, и булавка сплошная.
+        sp.pinned = true
+        sp.modifiedAt = Self.ms(now)
+        snapshot.spots.insert(sp, at: 0)
+        persist()
+        return sp
+    }
+
+    /// Имя из полосы (`commitSpotName`): пустое не пишется, набранное рукой
+    /// геокодер больше не перебивает.
+    public func renameSpot(id: String, to raw: String, now: Date = Date()) {
+        let v = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !v.isEmpty, let i = snapshot.spots.firstIndex(where: { $0.id == id }) else { return }
+        snapshot.spots[i].name = v
+        snapshot.spots[i].named = true
+        snapshot.spots[i].modifiedAt = Self.ms(now)
+        persist()
+    }
+
+    /// Корзина полосы и повторный тап закладки: ссылки съёмок на точку
+    /// обнуляются (`unlinkSpot`), в `graves` ложится могила (`bury`) —
+    /// слияние двух устройств иначе вернуло бы точку.
+    public func removeSpot(id: String, now: Date = Date()) {
+        guard let i = snapshot.spots.firstIndex(where: { $0.id == id }) else { return }
+        for s in snapshot.sessions.indices {
+            for r in snapshot.sessions[s].route.indices where snapshot.sessions[s].route[r].spotId == id {
+                snapshot.sessions[s].route[r].spotId = nil
+            }
+        }
+        var graves: [JSONValue] = []
+        if case .array(let g)? = snapshot.extra["graves"] { graves = g }
+        graves.removeAll { if case .object(let o) = $0, o["id"] == .string(id) { true } else { false } }
+        graves.append(.object(["id": .string(id), "del": .number(Double(Self.ms(now)))]))
+        snapshot.extra["graves"] = .array(graves)
+        snapshot.spots.remove(at: i)
+        persist()
+    }
+
+    /// `newSpotId` веба: «p» + время и четыре случайных знака в base36.
+    static func newSpotId(_ now: Date) -> String {
+        let tail = String((0..<4).map { _ in "0123456789abcdefghijklmnopqrstuvwxyz".randomElement()! })
+        return "p" + String(ms(now), radix: 36) + tail
+    }
+
+    /// `uniqueSpotName` веба: имя занято — «Томск 2», «Томск 3»…; пустое — `nil`.
+    static func uniqueSpotName(_ base: String, in spots: [Spot]) -> String? {
+        guard !base.isEmpty else { return nil }
+        var busy = false, top = 1
+        for sp in spots {
+            if sp.name == base { busy = true; continue }
+            // `/^ (\d+)$/` веба: после пробела только цифры ASCII.
+            let tail = sp.name.hasPrefix(base + " ") ? sp.name.dropFirst(base.count + 1) : ""
+            guard !tail.isEmpty, tail.allSatisfy({ $0.isASCII && $0.isNumber }), let n = Int(tail) else { continue }
+            busy = true; top = max(top, n)
+        }
+        return busy ? "\(base) \(top + 1)" : base
+    }
+
+    /// `+LAT.toFixed(5)` веба.
+    private static func round5(_ v: Double) -> Double { Double(JSNumber.fixed(v, 5)) ?? v }
+    private static func ms(_ d: Date) -> Int64 { Int64((d.timeIntervalSince1970 * 1000).rounded(.down)) }
+
     private var snapshot: Snapshot
+    /// Снимок как есть — для тестов записи (могилы, ссылки маршрутов).
+    var snapshotForTests: Snapshot { snapshot }
     private let store: Store?
     private let locator: any DeviceLocating
 

@@ -42,8 +42,8 @@ public struct GeoCoordinate: Sendable, Hashable {
 /// «0.0625» даёт «0.063» там и «0.062» здесь. Веб — эталон подписей, поэтому
 /// правило веба и повторено. Решает первая отброшенная цифра точного
 /// десятичного разложения: пять и больше — вверх, включая точную середину.
-enum JSNumber {
-    static func fixed(_ x: Double, _ digits: Int) -> String {
+public enum JSNumber {
+    public static func fixed(_ x: Double, _ digits: Int) -> String {
         precondition(digits >= 0 && digits <= 12)
         guard x.isFinite else { return x.isNaN ? "NaN" : (x < 0 ? "-Infinity" : "Infinity") }
         let negative = x < 0                    // −0 знака не получает: `-0 < 0` ложь, как в JS

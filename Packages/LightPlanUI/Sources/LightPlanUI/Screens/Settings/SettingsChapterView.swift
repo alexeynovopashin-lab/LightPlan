@@ -94,16 +94,23 @@ struct SettingsChapterView: View {
         SecLabel(text: t.t("nav.map"), first: true, node: "sec.0")
         HStack(spacing: 12) {
             Text(t.t("set.streetNames")).font(.system(size: 15)).foregroundStyle(pal.ink)
-                .shotNode("labels", text: t.t("set.streetNames"))
             Spacer(minLength: 0)
             Toggle("", isOn: Binding(get: { app.mapLabels }, set: { app.setMapLabels($0) }))
                 .labelsHidden().tint(pal.brass)
+                // Переключатель iOS 26 — 28 pt, у веба `.toggle` 31: строка
+                // держит высоту веба (замер пары 20б).
+                .frame(height: 31)
                 .shotNode("labels.toggle", text: app.mapLabels ? "on" : "off")
         }
+        // `.item` веба: поля 15, переключатель 31 и волосок 1 снизу — 62.
         .padding(.horizontal, 24)
-        .padding(.vertical, 8)
+        .padding(.top, 15)
+        .padding(.bottom, 16)
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
-        SetNote(text: t.t("set.streetNote"), node: "labels.note")
+        // Узлы по порядку, как `shot.js` нумерует главы веба: строка — `item.N`,
+        // пояснение — `note.N`. У выбора холста пары нет: у веба холст один.
+        .shotNode("item.0", text: t.t("set.streetNames"))
+        SetNote(text: t.t("set.streetNote"), node: "note.0")
         #if os(iOS)
         WebSeg(options: [("OpenStreetMap", MapCanvasSource.mapLibre), ("Apple", .mapKit)],
                selection: Binding(get: { app.mapSource }, set: { app.setMapSource($0) }))
@@ -113,7 +120,7 @@ struct SettingsChapterView: View {
         SecLabel(text: t.t("set.places"), node: "sec.1")
         SetItemRow(icon: "pin", title: t.t("loc.myPlaces"),
                    value: app.spotCount > 0 ? String(app.spotCount) : t.t("card.none"), chevron: false)
-            .shotNode("spots", text: t.t("loc.myPlaces"))
+            .shotNode("item.1", text: t.t("loc.myPlaces"))
     }
 
     // MARK: - Съёмки

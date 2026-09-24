@@ -53,7 +53,7 @@ const slots = (args.slots || 'paper,graphite,window').split(',');
 /* Главы настроек, которые сверяются сверх корня: «Вид» (сегменты и образец
    барабана) и «Язык и регион» (сегменты и фишки) — на них все детали
    главы, остальные собраны из тех же. */
-const chapters = (args.chapters === '' ? [] : (args.chapters || 'view,locale').split(','));
+const chapters = (args.chapters === '' ? [] : (args.chapters || 'view,locale,places').split(','));
 const themes = (args.themes || 'dark,light').split(',');
 const moments = (args.moments || 'day,golden,night,dawn').split(',');
 /* Сводка карты (итерация 20б): свёрнутая — окно прибора 20а, раскрытая —
@@ -277,6 +277,8 @@ function markdown(results) {
     if (screen === 'settings') for (const ch of chapters) add(screen, theme, mode, moments[0], 'paper', ch);
     // Меню слоёв карты (20б) — одним моментом, сводка свёрнута.
     if (screen === 'map' && !args['no-layers']) add(screen, theme, mode, moments[0], 'paper', 'layers');
+    // Закладка нажата — точка под головкой и полоса её имени (20б).
+    if (screen === 'map' && !args['no-spot']) add(screen, theme, mode, moments[0], 'paper', 'spot');
     if (screen === 'light' && mode === 'astro' && theme === 'light') {
       for (const slot of slots) if (slot !== 'paper') add(screen, theme, mode, moments[0], slot);
     }

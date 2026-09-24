@@ -12,8 +12,10 @@ struct MapLibreCanvas: UIViewRepresentable {
     let panEnabled: Bool
     let focusShift: CGFloat
     let onMove: (MapCanvasCenter) -> Void
+    let onCamera: (MapCanvasCamera) -> Void
+    let onTap: (CGPoint) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(onMove: onMove) }
+    func makeCoordinator() -> Coordinator { Coordinator(onMove: onMove, onCamera: onCamera, onTap: onTap) }
 
     func makeUIView(context: Context) -> MLNMapView {
         let view = MLNMapView(frame: .zero, styleURL: style)
@@ -26,6 +28,13 @@ struct MapLibreCanvas: UIViewRepresentable {
         view.attributionButton.isHidden = true
         view.automaticallyAdjustsContentInset = false
         view.delegate = context.coordinator
+        // Тап — свой распознаватель, уступающий двойному тапу движка
+        // (приближение): одиночный срабатывает, только если второго не было.
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tapped(_:)))
+        for case let other as UITapGestureRecognizer in view.gestureRecognizers ?? [] where other.numberOfTapsRequired == 2 {
+            tap.require(toFail: other)
+        }
+        view.addGestureRecognizer(tap)
         context.coordinator.style = style
         apply(view, context: context, force: true)
         return view
@@ -33,6 +42,8 @@ struct MapLibreCanvas: UIViewRepresentable {
 
     func updateUIView(_ view: MLNMapView, context: Context) {
         context.coordinator.onMove = onMove
+        context.coordinator.onCamera = onCamera
+        context.coordinator.onTap = onTap
         if context.coordinator.style != style {
             context.coordinator.style = style
             view.styleURL = style
@@ -59,16 +70,45 @@ struct MapLibreCanvas: UIViewRepresentable {
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
         var onMove: (MapCanvasCenter) -> Void
+        var onCamera: (MapCanvasCamera) -> Void
+        var onTap: (CGPoint) -> Void
         var center: MapCanvasCenter?
         var inset: UIEdgeInsets = .zero
         var style: URL?
 
-        init(onMove: @escaping (MapCanvasCenter) -> Void) { self.onMove = onMove }
+        init(onMove: @escaping (MapCanvasCenter) -> Void, onCamera: @escaping (MapCanvasCamera) -> Void,
+             onTap: @escaping (CGPoint) -> Void) {
+            self.onMove = onMove
+            self.onCamera = onCamera
+            self.onTap = onTap
+        }
+
+        private static let byHand: MLNCameraChangeReason = [.gesturePan, .gesturePinch, .gestureZoomIn,
+                                                            .gestureZoomOut, .gestureOneFingerZoom]
+
+        @objc func tapped(_ g: UITapGestureRecognizer) {
+            guard g.state == .ended, let v = g.view else { return }
+            onTap(g.location(in: v))
+        }
+
+        /// Камера на каждом кадре — и пальца, и программы: булавки едут за
+        /// картой, а не догоняют её в конце жеста.
+        private func report(_ mapView: MLNMapView, _ reason: MLNCameraChangeReason) {
+            let c = mapView.centerCoordinate
+            // Переезд программой — не жест, даже если в маске осталась
+            // причина прошлой протяжки (`originalEvent` веба у `jumpTo` нет).
+            let hand = !reason.intersection(Self.byHand).isEmpty && !reason.contains(.programmatic)
+            onCamera(MapCanvasCamera(center: MapCanvasCenter(latitude: c.latitude, longitude: c.longitude),
+                                     zoom: mapView.zoomLevel, byHand: hand))
+        }
+
+        func mapView(_ mapView: MLNMapView, regionIsChangingWith reason: MLNCameraChangeReason) {
+            report(mapView, reason)
+        }
 
         func mapView(_ mapView: MLNMapView, regionDidChangeWith reason: MLNCameraChangeReason, animated: Bool) {
-            let byHand: MLNCameraChangeReason = [.gesturePan, .gesturePinch, .gestureZoomIn, .gestureZoomOut,
-                                                 .gestureOneFingerZoom]
-            guard !reason.intersection(byHand).isEmpty else { return }
+            report(mapView, reason)
+            guard !reason.intersection(Self.byHand).isEmpty else { return }
             let c = mapView.centerCoordinate
             let moved = MapCanvasCenter(latitude: c.latitude, longitude: c.longitude)
             center = moved

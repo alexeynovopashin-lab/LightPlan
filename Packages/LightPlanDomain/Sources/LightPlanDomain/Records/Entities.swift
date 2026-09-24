@@ -98,6 +98,13 @@ public struct Spot: Sendable, Hashable, Identifiable {
     public var longitude: Double?
     /// `mt`.
     public var modifiedAt: Int64?
+    /// `pinned` — поставлена пальцем на карте (закладка шапки): координаты
+    /// выбрал человек. Без него место назвал геокодер, и булавка полая.
+    public var pinned: Bool?
+    /// `named` — имя набрано рукой, а не взято у геокодера.
+    public var named: Bool?
+    /// `ic` — знак места в списке точек (`pin`, если пусто).
+    public var icon: String?
 
     public init(id: String, name: String = "", latitude: Double?, longitude: Double?) {
         self.id = id

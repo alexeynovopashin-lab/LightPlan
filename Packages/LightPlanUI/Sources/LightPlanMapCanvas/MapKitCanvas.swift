@@ -10,6 +10,8 @@ struct MapKitCanvas: View {
     let panEnabled: Bool
     let focusShift: CGFloat
     let onMove: (MapCanvasCenter) -> Void
+    let onCamera: (MapCanvasCamera) -> Void
+    let onTap: (CGPoint) -> Void
 
     @State private var camera: MapCameraPosition = .automatic
     @State private var width: CGFloat = 440
@@ -24,6 +26,18 @@ struct MapKitCanvas: View {
             .safeAreaPadding(.bottom, max(0, focusShift))
             .environment(\.colorScheme, dark ? .dark : .light)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            // Тап без сдвига (`click` веба); пан и щипок остаются у карты.
+            .onTapGesture { onTap($0) }
+            // Камера на каждом кадре — булавки едут за картой. Крупность — из
+            // ширины кадра в градусах долготы: плитка 512, как у MapLibre.
+            // Из кода, не мерено: у MapKit сдвиг центра полями не сверен.
+            .onMapCameraChange(frequency: .continuous) { ctx in
+                let c = ctx.camera.centerCoordinate
+                let span = max(1e-9, ctx.region.span.longitudeDelta)
+                let z = log2(Double(width) * 360 / (512 * span))
+                let moved = MapCanvasCenter(latitude: c.latitude, longitude: c.longitude)
+                onCamera(MapCanvasCamera(center: moved, zoom: z, byHand: moved != placed))
+            }
             .onAppear { place() }
             .onChange(of: center) { if center != placed { place() } }
             .onMapCameraChange(frequency: .onEnd) { ctx in

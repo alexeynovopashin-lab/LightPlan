@@ -72,7 +72,7 @@ extension Block: Codable {
 }
 
 extension Spot: Codable {
-    enum CodingKeys: String, CodingKey { case id, name, address, town, sub, lat, lon, mt }
+    enum CodingKeys: String, CodingKey { case id, name, address, town, sub, lat, lon, mt, pinned, named, ic }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -84,6 +84,9 @@ extension Spot: Codable {
         town = try c.decodeIfPresent(String.self, forKey: .town) ?? ""
         sub = try c.decodeIfPresent(String.self, forKey: .sub) ?? ""
         modifiedAt = try c.decodeIfPresent(Int64.self, forKey: .mt)
+        pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned)
+        named = try c.decodeIfPresent(Bool.self, forKey: .named)
+        icon = try c.decodeIfPresent(String.self, forKey: .ic)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -96,6 +99,9 @@ extension Spot: Codable {
         try c.encodeIfPresent(latitude, forKey: .lat)
         try c.encodeIfPresent(longitude, forKey: .lon)
         try c.encodeIfPresent(modifiedAt, forKey: .mt)
+        try c.encodeIfPresent(pinned, forKey: .pinned)
+        try c.encodeIfPresent(named, forKey: .named)
+        try c.encodeIfPresent(icon, forKey: .ic)
     }
 }
 
