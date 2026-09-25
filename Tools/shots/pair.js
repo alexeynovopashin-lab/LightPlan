@@ -15,6 +15,7 @@
      node Tools/shots/pair.js --skip-build         # сборка уже стоит на симуляторе
      node Tools/shots/pair.js --screens planner --scopes day   # «Съёмки» (итерация 21):
                                                    # засев сезона (planner_seed.js), виды месяц/неделя/день
+     node Tools/shots/pair.js --screens light --sheets fork,addr,geo   # лист «Где снимаем» (21в)
      node Tools/shots/pair.js --drum-nudge 20      # барабан провёрнут на 20 pt (только натив):
                                                    # видно, как кромка окна гнёт число
    Выход: --out (по умолчанию $TMPDIR/lp-shots/<ветка>) — по папке на сценарий
@@ -67,6 +68,14 @@ const moments = (args.moments || 'day,golden,night,dawn').split(',');
    строки свода. Центр прибора от сводки не зависит, поэтому раскрытая
    сверяет и прибор. */
 const folds = (args.fold || 'shut,open').split(',');
+/* Лист «Где снимаем» (итерация 21в): развилка и два пути над «Светом», над
+   «Картой» — развилка (та же кнопка места в шапке). В засеве две точки
+   «Моих мест»: с адресом и безымянная (строку называют координаты). */
+const sheets = args.sheets === '' ? [] : (args.sheets || 'fork,addr,geo').split(',');
+const SHEET_SPOTS = [
+  { id: 'p_shot_a', name: 'Нагорный парк', address: 'ул. Гоголя, 2', lat: 53.3334, lon: 83.8035, pinned: true },
+  { id: 'p_shot_b', name: '', address: '', lat: 53.35, lon: 83.75, pinned: true }
+];
 const OUT = path.resolve(args.out || path.join(os.tmpdir(), 'lp-shots', sim.nameFor(ROOT).replace(/\W+/g, '-')));
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -114,7 +123,9 @@ function build(udid) {
 async function nativeShot(udid, sc, dir) {
   const report = path.join(dir, 'native.json');
   fs.rmSync(report, { force: true });
-  try { run('xcrun', ['simctl', 'terminate', udid, BUNDLE], { stdio: 'ignore' }); } catch (e) {}
+  // Потолок 10 с: на свежем симуляторе `terminate` неработающего приложения
+  // висел минутами (замер 21в); ошибка здесь не важна — приложения может и не быть.
+  try { run('xcrun', ['simctl', 'terminate', udid, BUNDLE], { stdio: 'ignore', timeout: 10000 }); } catch (e) {}
   run('xcrun', ['simctl', 'ui', udid, 'appearance', sc.theme]);
   run('xcrun', ['simctl', 'launch', udid, BUNDLE,
     '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
@@ -123,7 +134,9 @@ async function nativeShot(udid, sc, dir) {
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
     ...(sc.scope ? ['-LPShotScope', sc.scope] : []), ...(sc.pick != null ? ['-LPShotPick', String(sc.pick)] : []),
-    ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []), '-LPShotReport', report],
+    ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []),
+    ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
+    '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
   // Первый запуск после установки идёт до 20 с (замер 19б), следующие — 3–4 с.
   for (let i = 0; i < 240 && !fs.existsSync(report); i++) await sleep(250);
@@ -141,6 +154,7 @@ function webShot(sc, dir, safe) {
     '--forecast', path.join(FX, 'forecast_barnaul.json'), '--air', path.join(FX, 'air_barnaul.json'),
     '--name', path.join(FX, 'place_barnaul.json'), '--safe', safe.map(v => Math.round(v)).join(','),
     ...(sc.chapter ? ['--chapter', sc.chapter] : []),
+    ...(sc.sheet ? ['--sheet', 'loc', ...(sc.sheet !== 'fork' ? ['--way', sc.sheet] : [])] : []),
     '--scale', '3', '--out', path.join(dir, 'web.png'), '--report', path.join(dir, 'web.json')]);
   return JSON.parse(fs.readFileSync(path.join(dir, 'web.json'), 'utf8'));
 }
@@ -225,6 +239,10 @@ function markdown(results) {
   let md = '# Пары веб / натив\n\n';
   for (const r of results) {
     md += `## ${r.name}\n\nфон экрана: веб ${r.cmp.screenBg[0]} · натив ${r.cmp.screenBg[1]}\n\n`;
+    if (r.cmp.norm) {
+      md += `лист × ${r.cmp.norm.scale} (парящий лист iOS 26); смещения от верха листа, делённые на масштаб, Δ x,y,w,h:\n\n`;
+      md += Object.entries(r.cmp.norm.rows).map(([k, d]) => `- ${k}: ${d.join(', ')}`).join('\n') + '\n\n';
+    }
     md += '| узел | веб x,y,w,h | Δ натив x,y,w,h | фон веб/натив Δ | чернила веб/натив Δ | текст |\n|---|---|---|---|---|---|\n';
     for (const row of r.cmp.rows) {
       if (!row.web && !row.native) continue;
@@ -272,6 +290,18 @@ function markdown(results) {
     fs.writeFileSync(seedFile, JSON.stringify(s));
     list.push({ name, dir, screen, theme, moment, chapter, scope, pick, seed: seedFile });
   };
+  for (const screen of ['light', 'map'].filter(x => screens.includes(x))) for (const way of sheets) for (const theme of themes) {
+    if (screen === 'map' && way !== 'fork') continue;
+    const name = [screen, 'loc', way, theme].join('-');
+    const dir = path.join(OUT, name);
+    fs.mkdirSync(dir, { recursive: true });
+    const s = { ...seed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum', spots: SHEET_SPOTS };
+    if (screen === 'map') { s.mapLayers = { sun: true, moon: true, mw: false, compass: true, spots: true }; s.mapFold = true; }
+    const seedFile = path.join(dir, 'seed.json');
+    fs.writeFileSync(seedFile, JSON.stringify(s));
+    list.push({ name, dir, screen, theme, moment: 'day', sheet: way, seed: seedFile });
+  }
+  if (args['only-sheets']) screens.length = 0;
   if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
     add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope);
     /* Суббота 26-го: две съёмки внахлёст (14:00–15:30 и 15:00–16:30) —
@@ -293,6 +323,9 @@ function markdown(results) {
     if (screen === 'light' && mode === 'astro' && theme === 'light') {
       for (const slot of slots) if (slot !== 'paper') add(screen, theme, mode, moments[0], slot);
     }
+    // Лист «Когда смотрим» (19в) — тапом по показаниям купола, одним
+    // моментом, в «Просто»: состав листа от режима не зависит.
+    if (screen === 'light' && mode === 'simple' && !args['no-pick']) add(screen, theme, mode, moments[0], 'paper', 'pick');
     // Лента суток «Полоса» вместо барабана — второй вид того же органа.
     if (screen === 'light' && mode === 'astro' && !args['no-lane']) add(screen, theme, mode, moments[0], 'paper', null, 'lane');
   }
@@ -308,12 +341,33 @@ function markdown(results) {
     if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(nat.nodes)) if (/^(header|mode|nav)/.test(k)) delete nat.nodes[k];
     // Соседняя вкладка тоже жива и пишет рамки за краем экрана — не в счёт.
     for (const [k, r] of Object.entries(nat.nodes)) if (r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) delete nat.nodes[k];
+    // Под листом места экран жив и пишет рамки — сверяется только лист.
+    if (sc.sheet) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('loc.')) delete nat.nodes[k];
     const web = webShot(sc, sc.dir, nat.safe);
     // Лист главы у веба закрывает панель вкладок, но в разметке она «видна»;
     // приложение её прячет — под главой панель не сверяется.
     if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(web.nodes)) if (/^tab(bar|\.)/.test(k)) delete web.nodes[k];
     const cmp = await compare(page, sc.dir, web, nat, 3);
     await pairImage(page, sc.dir, web, nat);
+    /* Лист места (21в): системный лист iOS 26 на неполной высоте — парящая
+       карточка, всё в ней уменьшено в (ширина листа / 440) раз (замер:
+       424 / 440 = 0,964). Сверка раскладки — смещения от верха листа,
+       делённые на этот масштаб. */
+    if (sc.sheet && web.nodes['loc.sheet'] && nat.nodes['loc.sheet']) {
+      const ns = nat.nodes['loc.sheet'], ws = web.nodes['loc.sheet'], k = ns.w / 440;
+      let worst = { v: 0, name: '—' };
+      cmp.norm = { scale: +k.toFixed(4), rows: {} };
+      for (const [name, a] of Object.entries(web.nodes)) {
+        const b = nat.nodes[name];
+        if (name === 'loc.sheet' || !b || a.visible === false) continue;
+        const d = [(b.x - ns.x) / k - a.x, (b.y - ns.y) / k - (a.y - ws.y), b.w / k - a.w, b.h / k - a.h].map(v => +v.toFixed(1));
+        cmp.norm.rows[name] = d;
+        const m = Math.max(...d.map(Math.abs));
+        if (m > worst.v) worst = { v: m, name };
+      }
+      cmp.norm.worst = worst;
+      console.log(`${sc.name}: лист × ${k.toFixed(3)}, после деления на масштаб худший узел ${worst.name} ${worst.v} pt`);
+    }
     results.push({ name: sc.name, cmp });
     const both = cmp.rows.filter(r => r.web && r.native);
     const off = both.filter(r => r.d.some(v => Math.abs(v) > 2)).length;

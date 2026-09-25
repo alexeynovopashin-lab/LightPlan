@@ -46,6 +46,63 @@ public final class LightScreenModel {
         set { timebar.showMoon = newValue }
     }
 
+    /// Лист «Когда смотрим» открыт — тап по показаниям купола (19в).
+    public var pickerOpen = false
+
+    // MARK: - Светило пальцем (итерация 19в)
+
+    /// Минута под пальцем в рамке купола размера `size`; `nil` — ниже
+    /// горизонта. Дуга — того светила, что на куполе.
+    func domeMinute(at p: CGPoint, in size: CGSize) -> Minutes? {
+        guard let f = DomeDrag.fraction(at: DomeDrag.viewPoint(p, in: size)) else { return nil }
+        let m = timebar.machine
+        let arc = DomeDrag.arc(moon: moonMode, sun: timebar.solarDay, date: m.selectedDate, place: timebar.place,
+                               at: m.viewMinute, mint: m.mint, maxt: m.maxt)
+        return DomeDrag.minute(fraction: f, arcStart: arc.start, arcEnd: arc.end, mint: m.mint, maxt: m.maxt)
+    }
+
+    func dragDome(at p: CGPoint, in size: CGSize) {
+        if let t = domeMinute(at: p, in: size) { timebar.dragDome(to: t) }
+    }
+
+    /// Выбор из листа: `onDone` веба — день и время суток по часам места.
+    public func pick(day: CivilDate, minute: Minutes) {
+        timebar.show(day: day, minute: minute)
+    }
+
+    // MARK: - Лист «Когда смотрим»
+
+    /// Дни барабана даты: месяц назад и год вперёд от сегодняшнего дня места
+    /// (`BACK = 30`, `AHEAD = 365` веба), «Сегодня», «Завтра», дальше «ПТ 2
+    /// октября».
+    static let pickBack = 30, pickAhead = 365
+
+    func pickerDays() -> [(day: CivilDate, label: String)] {
+        let today = timebar.todayInPlace, dt = dateText
+        return (-Self.pickBack...Self.pickAhead).map { o in
+            let d = today.adding(days: o)
+            let label = o == 0 ? lexicon.t("pick.dayToday") : o == 1 ? lexicon.t("pick.dayTomorrow")
+                : dt.wdShort(asFoundationDate(d)) + " " + dt.dMon(asFoundationDate(d))
+            return (d, label)
+        }
+    }
+
+    /// Час на барабане — по выбранным часам: «07» или «7 AM» (`hourLabel`
+    /// веба); значение всегда 0–23.
+    func pickerHourLabel(_ h: Int) -> String {
+        clock.is12 ? clock.fmt(Double(h * 60)).replacingOccurrences(of: #"^(\d+):00"#, with: "$1", options: .regularExpression)
+            : String(format: "%02d", h)
+    }
+
+    /// С чего лист открывается: день и время, которые на экране. Веб берёт
+    /// выбранный день ленты и минуту по модулю суток — за полночью у него
+    /// лист открывается на день раньше, чем в шапке (DECISIONS, 19в).
+    var pickerStart: (day: CivilDate, minute: Int) {
+        let t = timebar.machine.viewMinute.rounded()
+        let wrapped = Int(((t.truncatingRemainder(dividingBy: 1440)) + 1440).truncatingRemainder(dividingBy: 1440))
+        return (viewDate(t: t), wrapped)
+    }
+
     private let language: String
     private let lexicon: Lexicon
     private var clock: ClockText

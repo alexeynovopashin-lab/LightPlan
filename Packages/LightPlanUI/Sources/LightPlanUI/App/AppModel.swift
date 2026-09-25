@@ -35,6 +35,13 @@ public final class AppModel {
     var chapterOpen = false
 
     public let cityLookup: any CityLookup
+    /// Поиск места по названию — путь «Место» листа «Где снимаем» (21в).
+    public let placeSearch: any PlaceSearch
+    /// Лист «Где снимаем» открыт: кнопка места в шапке «Света» и «Карты».
+    public var placeSheetOpen = false
+    /// Путь, на котором лист открывается (пара снимков открывает его сразу на
+    /// «Месте» или «Геопозиции»); кнопка шапки — всегда развилка.
+    var placeSheetStart: PlaceSheetForm.Way = .fork
     /// Слои карты — `mapLayers` снимка (меню слоёв — итерация 20б).
     public private(set) var mapLayers: MapLayers
     /// Поставщик холста (docs/17 § 10). Пока приложение бесплатное — MapLibre;
@@ -203,6 +210,7 @@ public final class AppModel {
 
     init(snapshot: Snapshot, store: Store?, language: String, zone: TimeZone = .current,
          locator: any DeviceLocating, geocoder: any ReverseGeocoding, cityLookup: any CityLookup,
+         placeSearch: any PlaceSearch = ApplePlaceSearch(),
          weatherSource: any WeatherSource, glowSource: any GlowTileSource = NoGlowSource(),
          headingSource: (any HeadingSource)? = nil,
          now: @escaping @Sendable () -> Date = { Date() }) {
@@ -213,6 +221,7 @@ public final class AppModel {
         self.lexicon = Lexicon(language)
         self.locator = locator
         self.cityLookup = cityLookup
+        self.placeSearch = placeSearch
         self.heading = headingSource
         let settings = AppSettings(snapshot: snapshot, zone: zone)
         self.settings = settings
@@ -287,7 +296,8 @@ public final class AppModel {
         let locale = Locale(identifier: language)
         return AppModel(snapshot: snapshot, store: store, language: language,
                         locator: CoreLocationProvider(), geocoder: AppleReverseGeocoder(locale: locale),
-                        cityLookup: AppleCityLookup(locale: locale), weatherSource: OpenMeteoSource(),
+                        cityLookup: AppleCityLookup(locale: locale), placeSearch: ApplePlaceSearch(locale: locale),
+                        weatherSource: OpenMeteoSource(),
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading())
     }
 
@@ -317,6 +327,68 @@ public final class AppModel {
     /// головкой (`moveend` веба): свет, погода и прибор пересчитываются там.
     public func moveFromMap(latitude: Double, longitude: Double) {
         place.move(to: GeoCoordinate(latitude: latitude, longitude: longitude))
+    }
+
+    /// Лист «Где снимаем» ответил точкой (`gotoLocation` веба): место
+    /// приложения, свет, погода, имя шапки и камера карты едут за ней. Как и
+    /// сдвиг карты, выбор руками живёт до перезапуска (решение 19 сентября).
+    public func movePlace(to c: GeoCoordinate) {
+        place.move(to: c)
+    }
+
+    /// «Подставить моё место» листа: разрешение спрашивается здесь.
+    @discardableResult
+    public func locateHere() async -> DeviceFix {
+        await place.useDeviceLocation()
+        return place.lastDeviceResult ?? .unavailable
+    }
+
+    /// Разрешение на геоданные ещё не спрашивали — лист встаёт на путь
+    /// координат и спрашивает сам (веб, `openLocSheet`).
+    public var locationNeedsPermission: Bool { locator.needsPermission }
+
+    /// Тумблер «Сохранить в моих местах» листа. Точка в 60 м от сохранённой —
+    /// та же самая (`sameSpot`): ей обновляются имя и адрес, двойник не
+    /// заводится. Новая встаёт первой; без имени её называют координаты.
+    /// `fromHit` — координаты принёс поиск, а не рука: булавка полая.
+    ///
+    /// Веб в режиме места приложения этот тумблер не читает (ошибка эталона,
+    /// справка 21в), здесь он делает то, что обещает.
+    @discardableResult
+    public func saveSpot(at c: GeoCoordinate, name raw: String, address rawAddr: String, fromHit: Bool,
+                         now: Date = Date()) -> Spot {
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let addr = rawAddr.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let i = snapshot.spots.firstIndex(where: { $0.coordinate.isSameSpot(as: c) }) {
+            if !name.isEmpty { snapshot.spots[i].name = name; snapshot.spots[i].named = true }
+            if !addr.isEmpty { snapshot.spots[i].address = addr }
+            snapshot.spots[i].modifiedAt = Self.ms(now)
+            persist()
+            return snapshot.spots[i]
+        }
+        var sp = Spot(id: Self.newSpotId(now), name: name.isEmpty ? c.text : name,
+                      latitude: Self.round5(c.latitude), longitude: Self.round5(c.longitude))
+        sp.address = addr
+        sp.named = !name.isEmpty
+        sp.pinned = !fromHit
+        sp.modifiedAt = Self.ms(now)
+        snapshot.spots.insert(sp, at: 0)
+        persist()
+        return sp
+    }
+
+    /// Правка строки «Моих мест» в листе (карандаш): имя и адрес пишутся по
+    /// мере набора. Пустое имя можно — строку тогда называют координаты
+    /// (веб, `renderSpots`); полоса имени на карте пустое не пишет.
+    public func editSpot(id: String, name raw: String? = nil, address rawAddr: String? = nil, now: Date = Date()) {
+        guard let i = snapshot.spots.firstIndex(where: { $0.id == id }) else { return }
+        if let raw {
+            snapshot.spots[i].name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            snapshot.spots[i].named = true
+        }
+        if let rawAddr { snapshot.spots[i].address = rawAddr.trimmingCharacters(in: .whitespacesAndNewlines) }
+        snapshot.spots[i].modifiedAt = Self.ms(now)
+        persist()
     }
 
     /// Выбор из подсказки справочника (`takeCity`).

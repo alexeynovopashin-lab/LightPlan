@@ -317,6 +317,8 @@ struct MapScreenView: View {
     /// `#s-map > .header`: место (16/600) со знаком, область (11), дата
     /// (11/500 прописными) — на стекле `--bar` с волоском снизу и полем 16.
     private func header(_ light: LightScreenModel, _ t: LightTelemetry, _ pal: Palette, top: CGFloat) -> some View {
+        // `#mapLoc` — кнопка на место, область и дату: открывает лист места.
+        Button { app.placeSheetOpen = true } label: {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(light.locationName)
@@ -324,7 +326,7 @@ struct MapScreenView: View {
                     .foregroundStyle(pal.ink)
                     .shotNode("header.name", text: light.locationName)
                     .frame(height: 18)
-                Icon("pin", size: 13, line: 1.6).foregroundStyle(pal.ink6)
+                PlacePin(pal: pal)
                     .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
             }
             if !light.locationSub.isEmpty {
@@ -342,6 +344,10 @@ struct MapScreenView: View {
                 .frame(height: 13)
                 .padding(.top, 3)
         }
+        .contentShape(Rectangle())
+        }
+        .buttonStyle(PlaceButtonStyle())
+        .accessibilityLabel(app.lexicon.t("today.changePlace"))
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 24)
         .padding(.top, top + 24)

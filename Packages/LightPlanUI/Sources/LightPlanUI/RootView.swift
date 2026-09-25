@@ -47,10 +47,16 @@ private struct Shell: View {
         // Экраны живут оба, виден выбранный: у системной `TabView` так же
         // сохранялись прокрутка и глава при смене вкладки.
         ZStack {
-            screen(.light) { LightScreenView(app.light) }
+            screen(.light) { LightScreenView(app.light, onPlace: { app.placeSheetOpen = true }) }
             screen(.map) { MapScreenView(app: app) }
             screen(.planner) { PlannerScreenView(app: app) }
             screen(.settings) { SettingsView(app: app) }
+            // Затемнение под листом места (`.scrim` веба, чёрный 0,55): лист
+            // iOS 26 на неполной высоте экран под собой не затемняет.
+            Color.black.opacity(app.placeSheetOpen ? 0.55 : 0)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+                .animation(.easeOut(duration: 0.3), value: app.placeSheetOpen)
         }
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
         // из неё видно 84 − низ зоны, остальное уходит под полосу.
@@ -65,9 +71,13 @@ private struct Shell: View {
                 .frame(height: max(0, TabBarView.height - bottomInset))
             }
         }
+        // Лист «Когда смотрим» (19в) лежит над панелью вкладок, как `#sheet`
+        // веба (z-index 70 над `.tabbar`).
+        .overlay { MomentSheetHost(model: app.light) }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
         .onGeometryChange(for: ShotWindow.self) { ShotWindow(safe: $0.safeAreaInsets, size: $0.size) } action: {
             ShotProbe.shared.window($0)
+            windowHeight = $0.size.height + $0.safe.top + $0.safe.bottom
         }
         .environment(\.drumSlot, app.settings.drumSlot)
         // «Система» — отказ выбирать: телефон сам знает, вечер или день.
@@ -75,9 +85,14 @@ private struct Shell: View {
         .sheet(isPresented: $app.showStartSheet, onDismiss: { app.finishStart() }) {
             StartSheet(app: app)
         }
+        // Лист «Где снимаем» (21в) — с кнопки места «Света» и «Карты».
+        .sheet(isPresented: $app.placeSheetOpen, onDismiss: { app.placeSheetStart = .fork }) {
+            PlaceSheet(app: app, windowHeight: windowHeight)
+        }
     }
 
     @State private var bottomInset: CGFloat = 34
+    @State private var windowHeight: CGFloat = 956
 
     private func screen(_ tab: AppTab, @ViewBuilder _ content: () -> some View) -> some View {
         let shown = app.tab == tab

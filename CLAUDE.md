@@ -84,6 +84,24 @@ make rotor      «Карта» under a scripted compass, 8 headings: north on sc
 make sims       this branch's simulator; ARGS=--prune deletes simulators of deleted branches
 ```
 
+Build on Alexey's iPhone — for his word at the end of an iteration. Device: **iPhone ALno**
+(15 Pro Max, `5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F`). Never «iPhone Elena» — not his.
+Free signing team until the Developer Program is paid: the build expires in 7 days, reinstall.
+
+```
+xcrun devicectl list devices | grep ALno        # "available (paired)" — else ask him to plug in / unlock
+xcodebuild -project LightPlan.xcodeproj -scheme LightPlan-iOS -configuration Debug \
+  -destination 'platform=iOS,id=5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F' \
+  -derivedDataPath /tmp/cc-phone-<branch> -allowProvisioningUpdates build \
+  > /tmp/cc-phone.log 2>&1; echo "exit=$?"; grep -nE 'error:|BUILD (SUCCEEDED|FAILED)' /tmp/cc-phone.log | head
+xcrun devicectl device install app --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F \
+  /tmp/cc-phone-<branch>/Build/Products/Debug-iphoneos/LightPlan.app
+xcrun devicectl device process launch --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F Novopashin.LightPlan
+```
+
+`launch` fails with «Locked» when the phone is locked — the app is installed anyway; tell him to
+open it. Say which build it is (commit) and what to check, in product words.
+
 Simulators: every branch gets its own, `LP <branch>` (iPhone 17 Pro Max model and iOS, created on
 first run by `Tools/sim.js`); `shots`, `tapspot`, `pinch`, `rotor` use it, so parallel worktrees don't collide.
 `LP_SIM=<name>` overrides. Tools leave the base iPhone 17 Pro Max alone — someone may be using it.

@@ -287,6 +287,37 @@ public struct TimelineMachine: Sendable, Equatable {
         return shift
     }
 
+    // MARK: - Купол и выбор момента (итерация 19в)
+
+    /// Палец ведёт светило по куполу (`domeDrag` → `setView` веба): минута
+    /// внутри тех же суток, день не меняется — купол, как и ползунок, за
+    /// окно `mint…maxt` не выходит.
+    public mutating func setViewMinute(_ minute: Minutes) {
+        viewMinute = Self.clamp(minute, mint, maxt)
+    }
+
+    /// Момент из листа «Когда смотрим»: день и время суток по часам места.
+    /// Окно суток начинается солнечной полночью, а не 00:00, и время у самой
+    /// полуночи ему может не принадлежать (00:10 при `mint` = 00:30). Такое
+    /// время отходит к соседним суткам, а минута — та, что выбрана: экран
+    /// покажет выбранный день. Веб в этом случае прибавляет 1440 к тем же
+    /// суткам и показывает следующий день (DECISIONS, 19в).
+    @discardableResult
+    public mutating func show(day: CivilDate, minute: Minutes) -> Int {
+        let from = selectedDate
+        setDay(day)
+        drumOffset = 0
+        viewMinute = minute
+        while viewMinute < mint || viewMinute >= maxt {
+            let dir = viewMinute < mint ? -1 : 1
+            setDay(selectedDate.adding(days: dir))
+            viewMinute -= Double(dir) * 1440
+        }
+        let dir = selectedDate == from ? 0 : (selectedDate > from ? 1 : -1)
+        if dir != 0 { dayShift = dir }
+        return dir
+    }
+
     // MARK: - «Сейчас»
 
     /// Прыжок к настоящему моменту (кнопка «↺ сейчас»). `today`/`minute` уже
