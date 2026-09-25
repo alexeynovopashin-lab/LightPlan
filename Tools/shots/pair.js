@@ -288,6 +288,8 @@ function markdown(results) {
     if (screen === 'map' && !args['no-layers']) add(screen, theme, mode, moments[0], 'paper', 'layers');
     // Закладка нажата — точка под головкой и полоса её имени (20б).
     if (screen === 'map' && !args['no-spot']) add(screen, theme, mode, moments[0], 'paper', 'spot');
+    // Голый холст: низ убран свайпом, кружок возврата по центру (21б).
+    if (screen === 'map' && !args['no-bare']) add(screen, theme, mode, moments[0], 'paper', 'bare');
     if (screen === 'light' && mode === 'astro' && theme === 'light') {
       for (const slot of slots) if (slot !== 'paper') add(screen, theme, mode, moments[0], slot);
     }

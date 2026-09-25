@@ -26,6 +26,17 @@ struct MapScreenView: View {
     /// раскрытого свода (`--ctl-bot`), центр прибора — нет.
     @State private var readoutTop: CGFloat = 700
     @State private var layersOpen = false
+    /// Голый холст (`setMapBare`, DECISIONS 7.09): низ убран свайпом вниз по
+    /// строке часов, возвращает круглый шеврон. Не сохраняется — вернувшись
+    /// в приложение, время хотят видеть.
+    @State private var bare = false
+    /// Низ уехал и погас на время подмены (`dock-out`): 26 вниз, 0,24 с.
+    @State private var dockOut = false
+    /// Подмена идёт: холст ведёт своё поле плавно, вслед за головкой.
+    @State private var glide = false
+    /// Палец на строке часов уже убрал низ — его отпускание не тап.
+    @State private var bareSwiped = false
+    @State private var bareDrag = false
     private var dockTop: CGFloat { timebarTop - readoutHeight }
     @State private var chip: MapInstrument.Chip?
     @State private var chipTask: Task<Void, Never>?
@@ -65,7 +76,6 @@ struct MapScreenView: View {
             lightTheme: lightTheme, chip: chip, clock: { clock.fmt($0) },
             cardinals: ["card.n", "card.e", "card.s", "card.w"].map { app.lexicon.t($0) })
         let scene = MapInstrument.scene(input, day: cache.day(date: date, place: place, solar: solar))
-        let cy = (headerBottom + dockTop) / 2
         // Вуаль по высоте солнца до −18°; со звёздами глубже (`nightVeil`).
         let deep = max(0, min(1, -solar.elevation(at: minute) / 18))
         let veil = deep * (layers.mw ? 0.72 : 0.5)
@@ -79,6 +89,10 @@ struct MapScreenView: View {
             let safe = g.safeAreaInsets
             let size = CGSize(width: g.size.width + safe.leading + safe.trailing,
                               height: g.size.height + safe.top + safe.bottom)
+            // Низ окна: верх дока, а в голом холсте — верх панели вкладок
+            // (`measureMapOptic`: барабаны и читалка сняты, остаётся таб-бар).
+            let floor = bare ? size.height - safe.bottom : dockTop
+            let cy = (headerBottom + floor) / 2
             ZStack(alignment: .topLeading) {
                 // Ротор (`.map-rotor`): карта, вуаль и прибор одним слоем —
                 // живой компас крутит их вокруг наблюдателя. Карта и вуаль —
@@ -98,6 +112,7 @@ struct MapScreenView: View {
                                           center: MapCanvasCenter(latitude: place.latitude, longitude: place.longitude),
                                           zoom: 14, dark: darkCanvas, labels: app.mapLabels, language: app.language,
                                           panEnabled: !rotor.live, focusShift: ((size.height / 2 - cy) * 2).rounded(),
+                                          focusGlide: glide,
                                           onMove: { app.moveFromMap(latitude: $0.latitude, longitude: $0.longitude) },
                                           onCamera: { cam in
                                               feed.camera = cam
@@ -132,8 +147,11 @@ struct MapScreenView: View {
                             .position(x: size.width / 2, y: size.height / 2)
                     }
 
-                    MapInstrumentView(scene: scene, optic: optic(size), onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
+                    MapInstrumentView(scene: scene, optic: optic(size, floor: floor), onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
                                       onTapMoon: { tap(.tapMoon(az: $0, alt: $1)) })
+                        // Прибор гаснет вместе с уходящим низом, но не едет:
+                        // он лежит на карте, а не в доке (`#mapLight`).
+                        .opacity(dockOut ? 0 : 1)
                     #if DEBUG
                     // Метка севера сценария компаса (21а): в роторе, в 120 pt к северу
                     // от оси — `Tools/rotor.js` мерит по ней угол на снимке.
@@ -161,7 +179,13 @@ struct MapScreenView: View {
                     .allowsHitTesting(false)
 
                 layersButton(pal, on: layers.sun || layers.moon || layers.mw, darkCanvas: darkCanvas)
-                    .position(x: 12 + 17, y: readoutTop - 12 - 17)
+                    .position(x: 12 + 17, y: (bare ? floor : readoutTop) - 12 - 17)
+
+                // Возврат низа — по центру, там, где панель была (`.map-bare-btn`).
+                if bare {
+                    bareButton(pal, darkCanvas: darkCanvas)
+                        .position(x: size.width / 2, y: floor - 12 - 17)
+                }
 
                 headingButton(pal, darkCanvas: darkCanvas)
                     .position(x: 12 + 17, y: headerBottom + 12 + 17)
@@ -169,8 +193,13 @@ struct MapScreenView: View {
                 VStack(spacing: 0) {
                     header(light, telemetry, pal, top: safe.top)
                     Spacer(minLength: 0).allowsHitTesting(false)
-                    dock(light, telemetry, summary(date: date, minute: minute, solar: solar, place: place, clock: clock),
-                         pal, cy: cy).padding(.bottom, safe.bottom)
+                    if !bare {
+                        dock(light, telemetry, summary(date: date, minute: minute, solar: solar, place: place, clock: clock),
+                             pal, cy: cy).padding(.bottom, safe.bottom)
+                            .offset(y: dockOut ? 26 : 0)
+                            .opacity(dockOut ? 0 : 1)
+                            .transition(.identity)
+                    }
                 }
             }
             .overlay(alignment: .top) {
@@ -193,7 +222,7 @@ struct MapScreenView: View {
                         layersMenu(pal, layers, darkCanvas: darkCanvas)
                             .fixedSize()
                             .padding(.leading, 12)
-                            .padding(.bottom, max(0, size.height - (readoutTop - 12 - 34 - 8)))
+                            .padding(.bottom, max(0, size.height - ((bare ? floor : readoutTop) - 12 - 34 - 8)))
                             .transition(.scale(scale: 0.94, anchor: .bottomLeading).combined(with: .opacity))
                     }
                 }
@@ -220,15 +249,67 @@ struct MapScreenView: View {
             if app.startChapter == "spot" { app.startChapter = nil; saveTapped(keyboard: false) }
             // …и включает компас (`--chapter compass`, 21а): курс — подставной.
             if app.startChapter == "compass" { app.startChapter = nil; rotor.setLive(true) }
+            // …и убирает низ (`--chapter bare`, 21б) — сразу, без подмены.
+            if app.startChapter == "bare" { app.startChapter = nil; bare = true }
         }
         #if DEBUG
         .task { await shotHeading() }
         #endif
     }
 
-    /// Окно прибора: поля 16 по бокам, сверху низ шапки, снизу верх дока.
-    private func optic(_ size: CGSize) -> CGRect {
-        CGRect(x: 16, y: headerBottom, width: max(0, size.width - 32), height: max(0, dockTop - headerBottom))
+    /// Окно прибора: поля 16 по бокам, сверху низ шапки, снизу верх дока
+    /// (в голом холсте — верх панели вкладок).
+    private func optic(_ size: CGSize, floor: CGFloat) -> CGRect {
+        CGRect(x: 16, y: headerBottom, width: max(0, size.width - 32), height: max(0, floor - headerBottom))
+    }
+
+    /// `setMapBare` через `swapMapDock`: низ уезжает на 26 вниз и гаснет за
+    /// 0,24 с (`ease`), прибор гаснет с ним; подмена — в невидимости; затем
+    /// всё возвращается, а головка переезжает к новой середине окна за 0,3 с
+    /// (`optic-glide`).
+    private func setBare(_ on: Bool) {
+        guard bare != on, !dockOut else { return }
+        let ease = Animation.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24)
+        withAnimation(ease) { dockOut = true }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(240))
+            glide = true
+            withAnimation(.timingCurve(0.22, 0.61, 0.36, 1, duration: 0.3)) { bare = on }
+            withAnimation(ease) { dockOut = false }
+            try? await Task.sleep(for: .milliseconds(340))
+            glide = false
+        }
+    }
+
+    /// Свайп вниз по строке часов убирает низ. 40 pt отделяют жест от дрожания
+    /// пальца на тапе, сравнение с горизонталью — от бокового движения; жест
+    /// только на этой строке: барабаны под ней живут горизонталью.
+    private var bareSwipe: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { v in
+                if !bareDrag { bareDrag = true; bareSwiped = false }
+                let dy = v.translation.height, dx = v.translation.width
+                if !bareSwiped, dy > 40, abs(dy) > abs(dx) {
+                    bareSwiped = true
+                    setBare(true)
+                }
+            }
+            .onEnded { _ in bareDrag = false }
+    }
+
+    /// `.map-here.map-bare-btn`: кружок 34 на стекле, шеврон вверх 18 / 1,8.
+    private func bareButton(_ pal: Palette, darkCanvas: Bool) -> some View {
+        let ink = MapGlassCircle.ink(pal, darkCanvas: darkCanvas)
+        return Button { setBare(false) } label: {
+            Icon("chevron", size: 18, line: 1.8)
+                .foregroundStyle(ink.ink3)
+                .rotationEffect(.degrees(-90))
+                .frame(width: 34, height: 34)
+                .modifier(MapGlassCircle(pal: pal, darkCanvas: darkCanvas))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(app.lexicon.t("map.showDock"))
+        .shotNode("map.bareBtn")
     }
 
     // MARK: - Шапка на стекле
@@ -288,6 +369,8 @@ struct MapScreenView: View {
         let foldMax = max(120, (timebarTop - readoutHeight - cy - 20).rounded())
         return VStack(spacing: 0) {
             Button {
+                // Это был свайп, а не тап.
+                if bareSwiped { bareSwiped = false; return }
                 withAnimation(.easeInOut(duration: 0.4)) { app.setMapFold(shut: !shut) }
             } label: {
                 HStack(alignment: .top, spacing: 11) {
@@ -315,6 +398,7 @@ struct MapScreenView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(bareSwipe)
             .overlay(alignment: .bottom) { Rectangle().fill(pal.hair).frame(height: 1) }
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { readoutHeight = $0 }
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: { readoutTop = $0 }

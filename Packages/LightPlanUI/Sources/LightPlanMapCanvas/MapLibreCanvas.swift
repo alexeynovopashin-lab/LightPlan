@@ -11,6 +11,7 @@ struct MapLibreCanvas: UIViewRepresentable {
     /// щипок остаётся (`dragPan.disable` веба).
     let panEnabled: Bool
     let focusShift: CGFloat
+    let focusGlide: Bool
     let onMove: (MapCanvasCenter) -> Void
     let onCamera: (MapCanvasCamera) -> Void
     let onTap: (CGPoint) -> Void
@@ -60,7 +61,7 @@ struct MapLibreCanvas: UIViewRepresentable {
         let inset = UIEdgeInsets(top: max(0, -focusShift), left: 0, bottom: max(0, focusShift), right: 0)
         if force || c.inset != inset {
             c.inset = inset
-            view.setContentInset(inset, animated: false, completionHandler: nil)
+            view.setContentInset(inset, animated: focusGlide && !force, completionHandler: nil)
         }
         if force || Coordinator.mustPlace(center, given: c.given, camera: c.center) {
             c.center = center
