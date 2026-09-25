@@ -291,6 +291,9 @@ function markdown(results) {
     if (screen === 'light' && mode === 'astro' && theme === 'light') {
       for (const slot of slots) if (slot !== 'paper') add(screen, theme, mode, moments[0], slot);
     }
+    // Лист «Когда смотрим» (19в) — тапом по показаниям купола, одним
+    // моментом, в «Просто»: состав листа от режима не зависит.
+    if (screen === 'light' && mode === 'simple' && !args['no-pick']) add(screen, theme, mode, moments[0], 'paper', 'pick');
     // Лента суток «Полоса» вместо барабана — второй вид того же органа.
     if (screen === 'light' && mode === 'astro' && !args['no-lane']) add(screen, theme, mode, moments[0], 'paper', null, 'lane');
   }

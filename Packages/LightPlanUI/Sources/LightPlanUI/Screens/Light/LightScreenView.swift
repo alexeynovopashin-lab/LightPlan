@@ -14,6 +14,9 @@ public struct LightScreenView: View {
     /// Видимая высота прокрутки — чтобы кнопка съёмки легла к низу, как
     /// `.screen-action { margin-top: auto }` веба.
     @State private var visibleHeight: CGFloat = 0
+    /// Рамка купола и показаний в ней — светило пальцем (19в).
+    @State private var domeSize = CGSize(width: 0, height: DomeView.height)
+    @State private var readoutFrame = CGRect.null
 
     public init(_ model: LightScreenModel) {
         self.model = model
@@ -142,11 +145,33 @@ public struct LightScreenView: View {
             .overlay {
                 if let readout = t.readout {
                     GeometryReader { geo in
-                        readoutView(readout, t, pal)
+                        // Тап по показаниям — лист «Когда смотрим» (19в).
+                        Button { model.pickerOpen = true } label: { readoutView(readout, t, pal) }
+                            .buttonStyle(.plain)
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.domeSpace)) } action: {
+                                readoutFrame = $0
+                            }
                             .position(x: geo.size.width / 2, y: 124)
                     }
                 }
             }
+            .coordinateSpace(.named(Self.domeSpace))
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { domeSize = $0 }
+            .contentShape(Rectangle())
+            .modifier(DomeDragModifier(gesture: DomeDragGesture(
+                accepts: { domeAccepts($0) },
+                onMove: { model.dragDome(at: $0, in: domeSize) })))
+    }
+
+    private static let domeSpace = "dome"
+
+    /// Касание купола — наше, если оно над горизонтом и мимо показаний и
+    /// тумблера светила (`closest("#readout")`, `closest("#skySwap")` веба).
+    /// Тумблер — 52×26 с полем 7, на 26 от верха и 12 от правого края.
+    private func domeAccepts(_ p: CGPoint) -> Bool {
+        let swap = CGRect(x: domeSize.width - 12 - 66, y: 26, width: 66, height: 40)
+        if swap.contains(p) || readoutFrame.contains(p) { return false }
+        return model.domeMinute(at: p, in: domeSize) != nil
     }
 
     /// `.dome-readout`: середина — 124 pt от верха купола; время 46 тонким
@@ -362,5 +387,22 @@ private struct LightGaugeView: View {
                 }
             }
         }
+    }
+}
+
+/// Жест светила: на iOS распознаватель UIKit, на Mac — протяжка SwiftUI
+/// (`DomeDragGesture`).
+private struct DomeDragModifier: ViewModifier {
+    let gesture: DomeDragGesture
+    #if !os(iOS)
+    @State private var axis = DomeDrag.Axis.pending
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.gesture(gesture)
+        #else
+        content.gesture(gesture.gesture(axis: $axis))
+        #endif
     }
 }

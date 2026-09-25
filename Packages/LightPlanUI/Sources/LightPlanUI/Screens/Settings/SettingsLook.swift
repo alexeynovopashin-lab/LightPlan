@@ -68,7 +68,9 @@ struct WebSeg<V: Hashable>: View {
                 GeometryReader { g in SegSky().frame(width: g.size.width / 2 - 3).frame(maxWidth: .infinity, alignment: .trailing) }
                     .padding(3)
                     .allowsHitTesting(false)
-                    .transition(.opacity)
+                    // `.seg-sky { transition: opacity 0.7s ease }` — своё время,
+                    // а не 0,3 с смены кнопки (19в).
+                    .transition(.opacity.animation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.7)))
             }
         }
     }

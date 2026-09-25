@@ -181,4 +181,49 @@ struct TimelineMachineTests {
         #expect(shift == 0)
         #expect(m.selectedDate == day)
     }
+
+    // MARK: - Купол и лист «Когда смотрим» (19в)
+
+    @Test func domeMinuteStaysInsideTheDay() {
+        let day = CivilDate(year: 2026, month: 9, day: 23)
+        var m = TimelineMachine(date: day, place: Self.place)
+        m.setViewMinute(m.maxt + 300)
+        #expect(m.viewMinute == m.maxt)
+        m.setViewMinute(m.mint - 300)
+        #expect(m.viewMinute == m.mint)
+        #expect(m.selectedDate == day)
+        #expect(m.consumeDayShift() == 0)
+    }
+
+    @Test func pickedMomentInsideTheWindowIsTakenAsIs() {
+        var m = TimelineMachine(date: CivilDate(year: 2026, month: 9, day: 23), place: Self.place)
+        let target = CivilDate(year: 2026, month: 10, day: 23)
+        #expect(m.show(day: target, minute: 19 * 60 + 5) == 1)
+        #expect(m.selectedDate == target)
+        #expect(m.viewMinute == 19 * 60 + 5)
+    }
+
+    /// 00:03 лежит до солнечной полуночи (в феврале полдень на нулевом
+    /// меридиане около 12:14, `mint` ≈ 00:14): минута уходит к предыдущим
+    /// суткам, но день на экране — выбранный. Веб показал бы следующий день.
+    @Test func pickedMomentBeforeSolarMidnightKeepsThePickedDay() {
+        let target = CivilDate(year: 2026, month: 2, day: 11)
+        var m = TimelineMachine(date: CivilDate(year: 2026, month: 9, day: 23), place: Self.place)
+        #expect(TimelineMachine(date: target, place: Self.place).mint > 3)
+        m.show(day: target, minute: 3)
+        #expect(m.selectedDate == target.adding(days: -1))
+        #expect(m.viewMinute == 1443)
+        #expect(m.viewMinute >= m.mint && m.viewMinute < m.maxt)
+    }
+
+    /// Зеркальный край: в октябре полдень около 11:44, окно кончается в
+    /// 23:44, и 23:55 принадлежит следующим суткам — минутой −5.
+    @Test func pickedMomentAfterSolarMidnightKeepsThePickedDay() {
+        let target = CivilDate(year: 2026, month: 10, day: 23)
+        var m = TimelineMachine(date: CivilDate(year: 2026, month: 9, day: 23), place: Self.place)
+        #expect(TimelineMachine(date: target, place: Self.place).maxt < 1435)
+        m.show(day: target, minute: 1435)
+        #expect(m.selectedDate == target.adding(days: 1))
+        #expect(m.viewMinute == -5)
+    }
 }

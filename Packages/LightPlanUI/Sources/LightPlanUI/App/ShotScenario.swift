@@ -98,6 +98,8 @@ extension AppModel {
         }
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
         app.startChapter = s.chapter
+        // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.
+        if s.screen == .light, s.chapter == "pick" { app.light.pickerOpen = true }
         return app
     }
 }

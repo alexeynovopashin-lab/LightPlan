@@ -65,6 +65,9 @@ private struct Shell: View {
                 .frame(height: max(0, TabBarView.height - bottomInset))
             }
         }
+        // Лист «Когда смотрим» (19в) лежит над панелью вкладок, как `#sheet`
+        // веба (z-index 70 над `.tabbar`).
+        .overlay { MomentSheetHost(model: app.light) }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
         .onGeometryChange(for: ShotWindow.self) { ShotWindow(safe: $0.safeAreaInsets, size: $0.size) } action: {
             ShotProbe.shared.window($0)

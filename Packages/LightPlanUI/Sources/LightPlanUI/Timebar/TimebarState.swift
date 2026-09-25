@@ -155,6 +155,26 @@ public final class TimebarState {
         }
     }
 
+    // MARK: - Купол и лист «Когда смотрим» (итерация 19в)
+
+    /// Палец ведёт светило по куполу — та же минута, что у ползунка и
+    /// ленты (DECISIONS «Два контроля синхронны…»), тот же щелчок на каждом
+    /// часе (`TICK_MIN` веба = 60).
+    public func dragDome(to minute: Minutes) {
+        machine.setViewMinute(minute)
+        checkHourMark()
+    }
+
+    /// Момент из листа выбора: день и время суток, как `applyDate` веба —
+    /// без анимации ленты, барабан встаёт на новый день сразу.
+    public func show(day: CivilDate, minute: Minutes) {
+        stopGlide()
+        drumGlide = nil
+        machine.show(day: day, minute: minute)
+        syncSolarDay()
+        hourMark = Int(machine.viewMinute) / 60
+    }
+
     private func checkHourMark() {
         let hour = Int(machine.viewMinute) / 60
         guard hourMark != hour else { return }
