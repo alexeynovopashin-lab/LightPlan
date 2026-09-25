@@ -11,12 +11,14 @@
    этот прибор не делает — симулятор без руки; её держат модульные тесты
    `MapCanvasHandTests` и замер 20е руками (DECISIONS).
 
-   node Tools/tap_spot.js [--device <имя симулятора>] [--skip-build]
+   node Tools/tap_spot.js [--skip-build]
+   Симулятор — свой у ветки (`Tools/sim.js`); другой — LP_SIM=<имя>.
    Нужна сеть: без стиля холст камеры не шлёт. */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const sim = require('./sim');
 
 const ROOT = path.resolve(__dirname, '..');
 const FX = path.join(ROOT, 'Fixtures', 'shots');
@@ -25,18 +27,12 @@ const args = {};
 process.argv.slice(2).forEach((a, i, all) => {
   if (a.startsWith('--')) args[a.slice(2)] = all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : '1';
 });
-const DEVICE = args.device || 'iPhone 17 Pro Max';
-const OUT = path.join(os.tmpdir(), 'lp-tap-spot');
+if (args.device) process.env.LP_SIM = args.device;
+const OUT = path.join(os.tmpdir(), 'lp-tap-spot', sim.nameFor(ROOT).replace(/\W+/g, '-'));
 fs.mkdirSync(OUT, { recursive: true });
 
 const run = (cmd, argv, opts = {}) => execFileSync(cmd, argv, { encoding: 'utf8', ...opts });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-function device() {
-  const all = JSON.parse(run('xcrun', ['simctl', 'list', 'devices', 'available', '-j'])).devices;
-  for (const list of Object.values(all)) for (const d of list) if (d.name === DEVICE) return d;
-  throw new Error('нет симулятора ' + DEVICE);
-}
 
 function build(udid) {
   const dd = path.join(OUT, 'DerivedData');
@@ -53,11 +49,7 @@ function build(udid) {
 }
 
 (async () => {
-  const dev = device();
-  if (dev.state !== 'Booted') {
-    run('xcrun', ['simctl', 'boot', dev.udid]);
-    run('xcrun', ['simctl', 'bootstatus', dev.udid, '-b'], { stdio: 'ignore' });
-  }
+  const dev = sim.device(ROOT);
   if (!args['skip-build']) run('xcrun', ['simctl', 'install', dev.udid, build(dev.udid)]);
 
   // Булавка в полукилометре к северо-востоку от центра Барнаула — на кадре

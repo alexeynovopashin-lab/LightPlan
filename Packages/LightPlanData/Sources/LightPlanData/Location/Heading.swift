@@ -61,3 +61,45 @@ extension CoreLocationHeading: @preconcurrency CLLocationManagerDelegate {
     public func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool { false }
     #endif
 }
+
+/// Подставной компас (итерация 21а): заданные углы по очереди, каждый держится
+/// `hold` секунд, потом следующий; после последнего стоит на нём. В симуляторе
+/// и на Mac магнитометра нет — этим источником ротор карты крутится так же,
+/// как от живого компаса (тот же `start`, то же сглаживание у ротора).
+/// Закрывает код ротора, не датчик: компас на телефоне проверяет Алексей.
+@MainActor
+public final class ScriptedHeading: HeadingSource {
+    public let angles: [Double]
+    public let hold: Duration
+    private var play: Task<Void, Never>?
+
+    public init(angles: [Double], hold: Duration = .seconds(3)) {
+        self.angles = angles
+        self.hold = hold
+    }
+
+    /// `"0,45,90"` → углы; пустое или без чисел — `nil`.
+    public nonisolated static func angles(_ list: String) -> [Double]? {
+        let a = list.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        return a.isEmpty ? nil : a
+    }
+
+    public var isAvailable: Bool { true }
+
+    public func start(_ onHeading: @escaping @MainActor (Double) -> Void) {
+        play?.cancel()
+        let angles = angles, hold = hold
+        play = Task { @MainActor in
+            for (i, deg) in angles.enumerated() {
+                guard !Task.isCancelled else { return }
+                onHeading(deg)
+                if i < angles.count - 1 { try? await Task.sleep(for: hold) }
+            }
+        }
+    }
+
+    public func stop() {
+        play?.cancel()
+        play = nil
+    }
+}

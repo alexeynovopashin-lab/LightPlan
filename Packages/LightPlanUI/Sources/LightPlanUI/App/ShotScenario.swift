@@ -21,7 +21,11 @@ import LightPlanData
 /// куда записать рамки; `LPShotLiveMap` — холст карты с сетью (глазами, не
 /// для пары: у веба в паре сети нет); `LPShotTapSpot`, `LPShotTapReport` —
 /// приложение само тапает булавку и пишет, стоит ли полоса имени (20е,
-/// `MapScreenView.shotTapSpot`, `Tools/tap_spot.js`).
+/// `MapScreenView.shotTapSpot`, `Tools/tap_spot.js`). Подставной компас (21а,
+/// `Tools/rotor.js`): `LPShotHeading` — углы через запятую, `LPShotHeadingHold`
+/// — секунд на угол (3); `LPShotChapter compass` включает компас при запуске,
+/// `LPShotVoid` — цвет пустоты под ротором (`#00FF00`), `LPShotHeadingReport` —
+/// куда писать, на каком угле ротор встал (`MapScreenView.shotHeading`).
 public struct ShotScenario: Sendable {
     public enum Screen: String, Sendable { case light, map, planner, settings }
 
@@ -39,6 +43,9 @@ public struct ShotScenario: Sendable {
     /// Дата закреплённой недели дня, 0 — понедельник (`LPShotPick`).
     public let pick: Int?
     public let report: URL?
+    /// Углы подставного компаса (`LPShotHeading`), секунд на угол.
+    public let heading: [Double]?
+    public let headingHold: Double
 
     public static func fromLaunch(_ defaults: UserDefaults = .standard) -> ShotScenario? {
         guard let nowText = defaults.string(forKey: "LPShotNow"),
@@ -55,7 +62,9 @@ public struct ShotScenario: Sendable {
             chapter: defaults.string(forKey: "LPShotChapter"),
             scope: defaults.string(forKey: "LPShotScope").flatMap(CalScope.init(rawValue:)),
             pick: defaults.object(forKey: "LPShotPick") == nil ? nil : defaults.integer(forKey: "LPShotPick"),
-            report: url("LPShotReport"))
+            report: url("LPShotReport"),
+            heading: ScriptedHeading.angles(defaults.string(forKey: "LPShotHeading") ?? ""),
+            headingHold: defaults.object(forKey: "LPShotHeadingHold") == nil ? 3 : defaults.double(forKey: "LPShotHeadingHold"))
     }
 }
 
@@ -74,6 +83,7 @@ extension AppModel {
                            geocoder: ShotGeocoder(city: name?["city"], sub: name?["sub"], zone: s.zone.identifier),
                            cityLookup: ShotCityLookup(),
                            weatherSource: FileWeatherSource(forecast: s.forecast, air: s.air),
+                           headingSource: s.heading.map { ScriptedHeading(angles: $0, hold: .seconds(s.headingHold)) },
                            now: { fixed.addingTimeInterval(Date().timeIntervalSince(start)) })
         app.tab = switch s.screen {
         case .settings: .settings

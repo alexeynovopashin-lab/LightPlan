@@ -17,13 +17,16 @@
                                                    # засев сезона (planner_seed.js), виды месяц/неделя/день
      node Tools/shots/pair.js --drum-nudge 20      # барабан провёрнут на 20 pt (только натив):
                                                    # видно, как кромка окна гнёт число
-   Выход: --out (по умолчанию $TMPDIR/lp-shots) — по папке на сценарий
+   Выход: --out (по умолчанию $TMPDIR/lp-shots/<ветка>) — по папке на сценарий
    (web.png, native.png, web.json, native.json, pair.png) и report.md.
-   Из worktree: LIGHT_PLAN_WEB=<путь к Light_Plan>, если папка не рядом. */
+   Из worktree: LIGHT_PLAN_WEB=<путь к Light_Plan>, если папка не рядом.
+   Симулятор — свой у ветки (`Tools/sim.js`, итерация 21а): два worktree
+   снимают пары одновременно; другой — переменной LP_SIM=<имя>. */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const sim = require('../sim');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const FX = path.join(ROOT, 'Fixtures', 'shots');
@@ -43,7 +46,6 @@ const ZONE = 'Asia/Barnaul';
 const MOMENTS = { day: '2026-09-23T13:00', golden: '2026-09-23T18:50', night: '2026-09-23T23:00',
   dawn: '2026-09-23T06:05' };
 const OFFSET = '+07:00';
-const DEVICE = 'iPhone 17 Pro Max';
 const BUNDLE = 'Novopashin.LightPlan';
 
 const screens = (args.screens || 'light,map,planner,settings').split(',');
@@ -65,7 +67,7 @@ const moments = (args.moments || 'day,golden,night,dawn').split(',');
    строки свода. Центр прибора от сводки не зависит, поэтому раскрытая
    сверяет и прибор. */
 const folds = (args.fold || 'shut,open').split(',');
-const OUT = path.resolve(args.out || path.join(os.tmpdir(), 'lp-shots'));
+const OUT = path.resolve(args.out || path.join(os.tmpdir(), 'lp-shots', sim.nameFor(ROOT).replace(/\W+/g, '-')));
 fs.mkdirSync(OUT, { recursive: true });
 
 function webRoot() {
@@ -91,12 +93,6 @@ function playwright() {
 
 const run = (cmd, argv, opts = {}) => execFileSync(cmd, argv, { encoding: 'utf8', ...opts });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-function device() {
-  const all = JSON.parse(run('xcrun', ['simctl', 'list', 'devices', 'available', '-j'])).devices;
-  for (const list of Object.values(all)) for (const d of list) if (d.name === DEVICE) return d;
-  throw new Error('нет симулятора ' + DEVICE);
-}
 
 function build(udid) {
   const dd = path.join(OUT, 'DerivedData');
@@ -245,11 +241,8 @@ function markdown(results) {
 }
 
 (async () => {
-  const dev = device();
-  if (dev.state !== 'Booted') {
-    run('xcrun', ['simctl', 'boot', dev.udid]);
-    run('xcrun', ['simctl', 'bootstatus', dev.udid, '-b'], { stdio: 'ignore' });
-  }
+  const dev = sim.device(ROOT);
+  console.log('симулятор: ' + dev.name + ' · вывод: ' + OUT);
   run('xcrun', ['simctl', 'status_bar', dev.udid, 'override', '--time', '9:41', '--batteryState', 'charged',
     '--batteryLevel', '100', '--cellularBars', '4', '--wifiBars', '3']);
   if (!args['skip-build']) {

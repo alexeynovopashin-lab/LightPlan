@@ -134,6 +134,14 @@ struct MapScreenView: View {
 
                     MapInstrumentView(scene: scene, optic: optic(size), onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
                                       onTapMoon: { tap(.tapMoon(az: $0, alt: $1)) })
+                    #if DEBUG
+                    // Метка севера сценария компаса (21а): в роторе, в 120 pt к северу
+                    // от оси — `Tools/rotor.js` мерит по ней угол на снимке.
+                    if Self.shotMarks {
+                        Circle().fill(Color(hex: 0xFF00FF)).frame(width: 8, height: 8)
+                            .position(x: size.width / 2, y: cy - 120).allowsHitTesting(false)
+                    }
+                    #endif
                 }
                 .frame(width: size.width, height: size.height)
                 .rotationEffect(.degrees(-rotor.angle), anchor: UnitPoint(x: 0.5, y: cy / max(1, size.height)))
@@ -191,6 +199,9 @@ struct MapScreenView: View {
                 }
             }
             .frame(width: size.width, height: size.height)
+            #if DEBUG
+            .background(Self.shotVoid)
+            #endif
             .coordinateSpace(.named(Self.space))
             .ignoresSafeArea()
         }
@@ -207,7 +218,12 @@ struct MapScreenView: View {
             if app.startChapter == "layers" { layersOpen = true; app.startChapter = nil }
             // …и нажимает закладку (`--chapter spot`): точка и полоса её имени.
             if app.startChapter == "spot" { app.startChapter = nil; saveTapped(keyboard: false) }
+            // …и включает компас (`--chapter compass`, 21а): курс — подставной.
+            if app.startChapter == "compass" { app.startChapter = nil; rotor.setLive(true) }
         }
+        #if DEBUG
+        .task { await shotHeading() }
+        #endif
     }
 
     /// Окно прибора: поля 16 по бокам, сверху низ шапки, снизу верх дока.
@@ -511,6 +527,49 @@ struct MapScreenView: View {
     }
 
     #if DEBUG
+    /// Пустота под ротором (21а): в сценарии `-LPShotVoid` — яркий цвет, которого
+    /// нет ни на карте, ни в приборе; открылся клин — `Tools/rotor.js` найдёт его
+    /// на снимке экрана. С ним же в роторе — метка севера. Без аргумента — ничего.
+    private static let shotMarks = UserDefaults.standard.string(forKey: "LPShotVoid") != nil
+    private static let shotVoid: Color = {
+        guard let hex = UserDefaults.standard.string(forKey: "LPShotVoid"),
+              let v = UInt32(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) else { return .clear }
+        return Color(hex: v)
+    }()
+
+    /// Сценарий подставного компаса (21а): для каждого угла `-LPShotHeading`
+    /// ждёт, пока ротор встанет (в 0,2° от угла), и дописывает в
+    /// `-LPShotHeadingReport`, на каком угле стоит, — `Tools/rotor.js` по этой
+    /// записи снимает экран. Первый угол — после 1,5 с раскладки экрана. Не
+    /// встал за три выдержки и 15 с сверху — пишет `settled: false` (в 21а
+    /// ротор раз простоял на 0° 10 с после запуска: 9 с было мало).
+    private func shotHeading() async {
+        guard let out = UserDefaults.standard.string(forKey: "LPShotHeadingReport"),
+              let s = ShotScenario.fromLaunch(), let angles = s.heading else { return }
+        let hold = s.headingHold
+        try? await Task.sleep(for: .seconds(1.5))
+        var rows: [[String: Any]] = []
+        let write = {
+            let json = try? JSONSerialization.data(withJSONObject: ["rows": rows], options: [.sortedKeys])
+            try? json?.write(to: URL(fileURLWithPath: out), options: .atomic)
+        }
+        for (i, target) in angles.enumerated() {
+            let start = Date()
+            var off = 360.0
+            while !Task.isCancelled, Date().timeIntervalSince(start) < hold * 3 + 15 {
+                off = rotor.angle - target
+                off -= 360 * (off / 360).rounded()
+                if rotor.live, abs(off) < 0.2 { break }
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+            guard !Task.isCancelled else { return }
+            rows.append(["i": i, "target": target, "angle": rotor.angle, "live": rotor.live,
+                         "cy": Double((headerBottom + dockTop) / 2),
+                         "settled": abs(off) < 0.2, "ms": Int(Date().timeIntervalSince(start) * 1000)])
+            write()
+        }
+    }
+
     /// Сценарий `-LPShotTapSpot <id>` (итерация 20е): когда кадр три секунды
     /// стоит, приложение само тапает острие булавки тем же `tapMap`, что и
     /// распознаватель холста, и пишет в `-LPShotTapReport`, стоит ли полоса
