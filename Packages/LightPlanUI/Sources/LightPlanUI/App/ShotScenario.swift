@@ -26,6 +26,8 @@ import LightPlanData
 /// — секунд на угол (3); `LPShotChapter compass` включает компас при запуске,
 /// `LPShotVoid` — цвет пустоты под ротором (`#00FF00`), `LPShotHeadingReport` —
 /// куда писать, на каком угле ротор встал (`MapScreenView.shotHeading`).
+/// Лист места (21в): `LPShotSheet loc` открывает «Где снимаем» над экраном,
+/// `LPShotWay` — путь (`addr` | `geo`), без него — развилка.
 public struct ShotScenario: Sendable {
     public enum Screen: String, Sendable { case light, map, planner, settings }
 
@@ -46,6 +48,9 @@ public struct ShotScenario: Sendable {
     /// Углы подставного компаса (`LPShotHeading`), секунд на угол.
     public let heading: [Double]?
     public let headingHold: Double
+    /// Лист поверх экрана (`loc`) и его путь.
+    public let sheet: String?
+    public let way: String?
 
     public static func fromLaunch(_ defaults: UserDefaults = .standard) -> ShotScenario? {
         guard let nowText = defaults.string(forKey: "LPShotNow"),
@@ -64,7 +69,8 @@ public struct ShotScenario: Sendable {
             pick: defaults.object(forKey: "LPShotPick") == nil ? nil : defaults.integer(forKey: "LPShotPick"),
             report: url("LPShotReport"),
             heading: ScriptedHeading.angles(defaults.string(forKey: "LPShotHeading") ?? ""),
-            headingHold: defaults.object(forKey: "LPShotHeadingHold") == nil ? 3 : defaults.double(forKey: "LPShotHeadingHold"))
+            headingHold: defaults.object(forKey: "LPShotHeadingHold") == nil ? 3 : defaults.double(forKey: "LPShotHeadingHold"),
+            sheet: defaults.string(forKey: "LPShotSheet"), way: defaults.string(forKey: "LPShotWay"))
     }
 }
 
@@ -81,7 +87,7 @@ extension AppModel {
         let app = AppModel(snapshot: snapshot, store: nil, language: AppLanguage.current, zone: s.zone,
                            locator: ShotLocator(),
                            geocoder: ShotGeocoder(city: name?["city"], sub: name?["sub"], zone: s.zone.identifier),
-                           cityLookup: ShotCityLookup(),
+                           cityLookup: ShotCityLookup(), placeSearch: ShotPlaceSearch(),
                            weatherSource: FileWeatherSource(forecast: s.forecast, air: s.air),
                            headingSource: s.heading.map { ScriptedHeading(angles: $0, hold: .seconds(s.headingHold)) },
                            now: { fixed.addingTimeInterval(Date().timeIntervalSince(start)) })
@@ -100,6 +106,10 @@ extension AppModel {
         app.startChapter = s.chapter
         // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.
         if s.screen == .light, s.chapter == "pick" { app.light.pickerOpen = true }
+        if s.sheet == "loc" {
+            app.placeSheetStart = s.way.flatMap(PlaceSheetForm.Way.init(rawValue:)) ?? .fork
+            app.placeSheetOpen = true
+        }
         return app
     }
 }
@@ -118,6 +128,10 @@ private struct ShotGeocoder: ReverseGeocoding {
 
 private struct ShotCityLookup: CityLookup {
     func cities(matching query: String) async throws -> [CityHit] { [] }
+}
+
+private struct ShotPlaceSearch: PlaceSearch {
+    func places(matching query: String) async throws -> [PlaceHit] { [] }
 }
 
 // MARK: - Рамки узлов
