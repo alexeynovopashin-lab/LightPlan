@@ -118,9 +118,19 @@ struct SettingsChapterView: View {
             .padding(.horizontal, 24).padding(.top, 16)
         #endif
         SecLabel(text: t.t("set.places"), node: "sec.1")
-        SetItemRow(icon: "pin", title: t.t("loc.myPlaces"),
-                   value: app.spotCount > 0 ? String(app.spotCount) : t.t("card.none"), chevron: false)
-            .shotNode("item.1", text: t.t("loc.myPlaces"))
+        // Тап открывает лист «Где снимаем» (21в) сразу на пути «Место» — там
+        // живёт список; строка называет его числом, развилка спрашивала бы
+        // заново то, что уже названо (веб `spotsRow`: открывает развилку —
+        // расхождение записано в DECISIONS, веб не правим).
+        Button {
+            app.placeSheetStart = .addr
+            app.placeSheetOpen = true
+        } label: {
+            SetItemRow(icon: "pin", title: t.t("loc.myPlaces"),
+                       value: app.spotCount > 0 ? String(app.spotCount) : t.t("card.none"))
+        }
+        .buttonStyle(.plain)
+        .shotNode("item.1", text: t.t("loc.myPlaces"))
     }
 
     // MARK: - Съёмки
