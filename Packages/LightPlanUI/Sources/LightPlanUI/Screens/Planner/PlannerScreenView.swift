@@ -191,7 +191,9 @@ private struct PlanTop: View {
             .buttonStyle(.plain)
 
             HStack(spacing: 8) {
-                action(.add, pal.brass, "plan.add")
+                Button { app.openForm(day: app.planner.selected) } label: { action(.add, pal.brass, "plan.add") }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(f.t.t("plan.newShoot"))
                 action(.stats, pal.brass, "plan.stats")
                 action(.search, pal.ink, "plan.search")
             }
