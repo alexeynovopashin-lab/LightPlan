@@ -106,11 +106,14 @@ function readPng(file) {
    «подкрашенные» — под стеклом шапки или дока, зелёный выше прочих на 80;
    рамка в точках (снимок 3×). Метка: середина пурпурных пикселей, пеленг от
    оси (x — середина экрана, y — `cy` из отчёта приложения) по часовой от
-   верха, градусы. */
+   верха, градусы. Строка состояния (верхние 60 pt) не в счёт: карты там нет,
+   а значок батареи на свежем симуляторе зелёный — прибор принял его за
+   пустоту (`LP main`, 25.09: 1194 px в 371,27–394,37 pt на всех углах). */
+const STATUS_PT = 60;
 function analyze(file, cy) {
   const { w, h, bpp, px } = readPng(file);
   let pure = 0, tint = 0, box = null, mark = 0, mx = 0, my = 0;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = STATUS_PT * 3; y < h; y++) for (let x = 0; x < w; x++) {
     const i = (y * w + x) * bpp, r = px[i], g = px[i + 1], b = px[i + 2];
     if (near(r, g, b, MARK)) { mark++; mx += x; my += y; continue; }
     const isPure = near(r, g, b, VOID);
