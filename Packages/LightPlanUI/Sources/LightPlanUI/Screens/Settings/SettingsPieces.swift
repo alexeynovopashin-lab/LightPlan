@@ -1,4 +1,5 @@
 import SwiftUI
+import LightPlanDomain
 import LightPlanData
 
 /// «Мой город»: поле и подсказки справочника (`cityHints` веба). Набранное
@@ -116,6 +117,13 @@ struct FeedbackSection: View {
 struct StartSheet: View {
     @Bindable var app: AppModel
 
+    private var phone: Binding<String> {
+        Binding(get: { app.myPhone }, set: { v in
+            let old = app.myPhone.filter(\.isNumber).count
+            app.setMyPhone(TelFormat.typed(v, previousDigits: old, country: app.telCountry))
+        })
+    }
+
     var body: some View {
         let t = app.lexicon
         NavigationStack {
@@ -123,13 +131,21 @@ struct StartSheet: View {
                 Section {
                     CitySearchField(app: app)
                 } header: {
-                    // `start.sub` веба говорит и о номере, которого здесь нет, —
-                    // берём подпись «Моего города», она о том же без номера.
-                    Text(t.t("set.myCityNote"))
+                    Text(t.t("start.sub"))
                         .textCase(nil)
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 8)
+                }
+                // Телефон — по желанию (итерация 23): целиком, одним полем, без блока кода;
+                // смены номера здесь не бывает, вопроса о копии нет (веб `#startTel`).
+                Section {
+                    TextField(t.t("start.telPh"), text: phone)
+                        #if os(iOS)
+                        .keyboardType(.phonePad).textContentType(.telephoneNumber)
+                        #endif
+                } footer: {
+                    Text(t.t("start.note"))
                 }
             }
             .navigationTitle(t.t("start.title"))

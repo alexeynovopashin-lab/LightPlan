@@ -213,6 +213,8 @@ public final class AppModel {
     var lastFormGenre: Genre = .portrait
     var draftStore: any DraftStoring = DefaultsDraftStore()
     var draftTask: Task<Void, Never>?
+    /// Последний зафиксированный номер владельца (веб `myTelSnap`): смена считается от него.
+    var telSnap: String?
 
     /// Внутренний, а не закрытый: форма записи (`AppModel+Form`) правит список записей.
     var snapshot: Snapshot

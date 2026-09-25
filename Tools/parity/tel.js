@@ -23,9 +23,12 @@ const code = [
   "var telCountry = 'RU'; function telSpec() { return TEL_CC[telCountry] || TEL_CC.RU; }",
   cut("function telNsnOk(sp, n)", "/* ---------- Национальная часть отдельно"),
   cut("function telDigits(v)", "  /* Ключ, по которому две разные записи"),
+  cut("function telKey(v)", "/* ---------- Номер живёт во времени"),
+  cut("function telCcFit(raw)", "/* Страна идёт за номером молча"),
+  cut("function telNatIn(str, intl)", "/* ---------- Номер как ключ"),
 ].join("\n");
 const ctx = vm.createContext({});
-vm.runInContext(code + "\nthis.__api = { TEL_CC, setCountry: function (c) { telCountry = c; }, formatTel, telFull, telMobile, appId };", ctx);
+vm.runInContext(code + "\nthis.__api = { TEL_CC, setCountry: function (c) { telCountry = c; }, formatTel, telFull, telMobile, appId, telReal, telCcFit, telNatIn, telNatOf, telJoin };", ctx);
 const api = ctx.__api;
 
 const inputs = [
@@ -47,6 +50,8 @@ for (const iso of Object.keys(api.TEL_CC)) {
       c: iso, v,
       f: api.formatTel(v, false), p: api.formatTel(v, true),
       full: api.telFull(v), mob: !!api.telMobile(v), id: api.appId(v),
+      real: !!api.telReal(v), fit: api.telCcFit(v), nat: api.telNatOf(v), join: api.telJoin(v),
+      in: (() => { const r = api.telNatIn(v); return { cc: r.cc, nat: r.nat }; })(),
     });
   }
 }

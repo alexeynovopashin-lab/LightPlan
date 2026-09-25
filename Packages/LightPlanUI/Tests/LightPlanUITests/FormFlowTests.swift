@@ -113,4 +113,24 @@ struct FormFlowTests {
         #expect(s.orgId != nil && s.contact == "Вега · Мария")
         #expect(app.orgs.contains { $0.name == "Вега" })
     }
+
+    // MARK: - Профиль: телефон и прежние ID
+
+    @Test func phoneChainKeepsPreviousIds() {
+        let app = model(disk: Disk())
+        app.setMyPhone("8 916 111-11-11"); app.commitMyPhone()
+        #expect(app.myAppId == "id79161111111" && app.myPreviousIds.isEmpty)
+        app.setMyPhone("8 916 222-22-22"); app.commitMyPhone()
+        #expect(app.myAppId == "id79162222222" && app.myPreviousIds.map(\.was) == ["id79161111111"])
+        app.setMyPhone("8 916 333-33-33"); app.commitMyPhone()
+        #expect(app.myPreviousIds.map(\.was) == ["id79162222222", "id79161111111"], "новые первыми")
+        app.setMyPhone("8 916 111-11-11"); app.commitMyPhone()      // вернулись к первому — цепочка срезана
+        #expect(app.myPreviousIds.isEmpty)
+    }
+
+    @Test func cityNumberGivesNoId() {
+        let app = model(disk: Disk())
+        app.setMyPhone("8 495 123-45-67"); app.commitMyPhone()
+        #expect(app.myAppId.isEmpty)
+    }
 }

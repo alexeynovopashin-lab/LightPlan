@@ -165,7 +165,7 @@ public enum TelFormat {
         return (!d.isEmpty && isMobile(value, country: country)) ? "id" + d : ""
     }
 
-    static func digits(_ s: String) -> String { s.filter { $0.isASCII && $0.isNumber } }
+    public static func digits(_ s: String) -> String { s.filter { $0.isASCII && $0.isNumber } }
 
     /// Разложить цифры по образцу; кончились цифры — обрываем без хвоста разделителей.
     static func groups(_ d: String, _ fmt: String) -> String {
@@ -178,5 +178,105 @@ public enum TelFormat {
             else { pend.append(ch) }
         }
         return out + String(d.dropFirst(used))
+    }
+}
+
+// MARK: - Национальная часть и цепочка прежних ID (профиль)
+
+extension TelFormat {
+
+    /// Короче пяти цифр — не номер, а обрывок (`telReal`).
+    public static func isReal(_ value: String, country: TelCountry) -> Bool { full(value, country: country).count >= 5 }
+
+    /// Страны, при которых введённое выходит мобильным (`telCcFit`). Городской номер сюда не попадает.
+    public static func countriesFitting(_ raw: String) -> [TelCountry] {
+        var d = digits(raw)
+        if d.isEmpty { return [] }
+        let plus = raw.drop(while: { $0 == " " }).hasPrefix("+") || d.hasPrefix("00")
+        if d.hasPrefix("00") { d = String(d.dropFirst(2)) }
+        return TelCountry.all.filter { sp in
+            let n: String
+            if plus {
+                guard d.hasPrefix(sp.cc) else { return false }
+                n = String(d.dropFirst(sp.cc.count))
+            } else if !sp.trunk.isEmpty, d.count > sp.trunk.count, d.hasPrefix(sp.trunk) {
+                n = String(d.dropFirst(sp.trunk.count))
+            } else if d.hasPrefix(sp.cc), sp.nsnOk(String(d.dropFirst(sp.cc.count))) {
+                n = String(d.dropFirst(sp.cc.count))
+            } else {
+                n = d
+            }
+            return sp.nsnOk(n) && n.range(of: sp.mobile, options: .regularExpression) != nil
+        }
+    }
+
+    /// Разбор входящего в поле без кода страны (`telNatIn`): лишнюю голову снимаем;
+    /// если она называет другую страну — переставляем и блок кода.
+    public static func natIn(_ str: String, international: Bool = false, country sp: TelCountry) -> (country: TelCountry?, national: String) {
+        var d = digits(str)
+        let plus = international || str.drop(while: { $0 == " " }).hasPrefix("+") || d.hasPrefix("00")
+        if d.hasPrefix("00") { d = String(d.dropFirst(2)) }
+        if plus {
+            if d.hasPrefix(sp.cc), sp.nsnFits(String(d.dropFirst(sp.cc.count))) { return (nil, String(d.dropFirst(sp.cc.count))) }
+            if let fit = countriesFitting("+" + d).first { return (fit, String(d.dropFirst(fit.cc.count))) }
+            return (nil, d)
+        }
+        if !sp.trunk.isEmpty, d.count > sp.trunk.count, d.hasPrefix(sp.trunk), sp.nsnFits(String(d.dropFirst(sp.trunk.count))) {
+            return (nil, String(d.dropFirst(sp.trunk.count)))
+        }
+        if d.hasPrefix(sp.cc), sp.nsnOk(String(d.dropFirst(sp.cc.count))) { return (nil, String(d.dropFirst(sp.cc.count))) }
+        return (nil, d)
+    }
+
+    /// Национальная часть, разложенная по образцу страны (`telNatFmt`).
+    public static func nationalFormatted(_ d: String, country sp: TelCountry) -> String { groups(digits(d), sp.format) }
+
+    /// Из хранимой международной записи — то, что стоит в поле (`telNatOf`).
+    public static func national(of value: String, country sp: TelCountry) -> String {
+        let f = full(value, country: sp)
+        if f.isEmpty { return "" }
+        return nationalFormatted(f.hasPrefix(sp.cc) ? String(f.dropFirst(sp.cc.count)) : f, country: sp)
+    }
+
+    /// Хранимый номер из блока кода и поля (`telJoin`).
+    public static func join(national: String, country sp: TelCountry) -> String {
+        let d = digits(national)
+        return d.isEmpty ? "" : format("+" + sp.cc + d, country: sp)
+    }
+}
+
+/// Прежний ID владельца: ID, а не номер — наружу уходил ID, его и держат чужие системы.
+public struct MyIdEntry: Sendable, Hashable {
+    public var was: String
+    /// ISO 8601, как пишет веб.
+    public var at: String
+    public init(was: String, at: String) { self.was = was; self.at = at }
+}
+
+/// Цепочка прежних ID владельца, старые первыми (веб `myIdRetire`).
+public enum MyIdChain {
+    public static let maxLength = 12
+
+    /// Смена номера: пустое поле и тот же номер, записанный иначе, сменой не считаются.
+    public static func swapped(from before: String, to after: String, country: TelCountry) -> Bool {
+        TelFormat.isReal(before, country: country) && TelFormat.isReal(after, country: country)
+            && TelFormat.full(before, country: country) != TelFormat.full(after, country: country)
+    }
+
+    /// Новая цепочка и признак настоящей смены. Вернулись к номеру, которым уже были, —
+    /// цепочка срезается до этой точки, колец A→Б→A нет. Прежний номер не мобильный —
+    /// хранить нечего, но смена настоящая.
+    public static func retire(_ list: [MyIdEntry], from before: String, to after: String,
+                              country: TelCountry, at now: String) -> (list: [MyIdEntry], real: Bool) {
+        guard swapped(from: before, to: after, country: country) else { return (list, false) }
+        let nk = TelFormat.full(after, country: country)
+        if let i = list.firstIndex(where: { TelFormat.full($0.was, country: country) == nk }) {
+            return (Array(list[..<i]), true)
+        }
+        let wasId = TelFormat.appId(before, country: country)
+        guard !wasId.isEmpty else { return (list, true) }
+        var out = list + [MyIdEntry(was: wasId, at: now)]
+        if out.count > maxLength { out = Array(out.suffix(maxLength)) }
+        return (out, true)
     }
 }
