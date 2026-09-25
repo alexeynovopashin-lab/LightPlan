@@ -38,13 +38,21 @@ extension AppModel {
 
     // MARK: - Открытие
 
-    /// Окно света дня в месте приложения — подсказка времени (веб `dayWindow`).
-    /// Вечернее окно: золотой час и до конца синего; полярная ночь и день
-    /// окна не дают — форма откроется на полдне.
+    /// Окно света дня в месте приложения — подсказка времени (веб `dayWindow`): вечернее,
+    /// золотой час и до конца синего; в тумане — утреннее; «плохо» — окна нет. Без окна
+    /// (полярная ночь и день) — `nil`.
     func formLight(on day: CivilDate) -> FormLightWindow? {
         let sun = SolarDay(date: day, place: place.place)
-        guard let a = sun.goldenB, let b = sun.blueB, b > a else { return nil }
-        return FormLightWindow(start: a, end: b)
+        switch light.weather.day(for: day).quality {
+        case .poor:
+            return FormLightWindow(start: 0, end: 0, poor: true)
+        case .fog:
+            guard let a = sun.blueA, let b = sun.goldenA, b > a else { return nil }
+            return FormLightWindow(start: a, end: b, dawn: true)
+        default:
+            guard let a = sun.goldenB, let b = sun.blueB, b > a else { return nil }
+            return FormLightWindow(start: a, end: b)
+        }
     }
 
     /// Новая съёмка или встреча. Черновик, если он есть, поднимается **поверх**

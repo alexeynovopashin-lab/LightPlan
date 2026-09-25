@@ -7,10 +7,13 @@ public struct FormLightWindow: Sendable, Hashable {
     public var start: Double
     public var end: Double
     public var poor: Bool
-    public init(start: Double, end: Double, poor: Bool = false) {
+    /// Утреннее окно (в тумане закат не годится) — подпись «Рассвет», не «Закат».
+    public var dawn: Bool
+    public init(start: Double, end: Double, poor: Bool = false, dawn: Bool = false) {
         self.start = start
         self.end = end
         self.poor = poor
+        self.dawn = dawn
     }
 }
 

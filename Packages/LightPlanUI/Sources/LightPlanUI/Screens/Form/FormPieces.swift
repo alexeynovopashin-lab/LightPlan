@@ -22,6 +22,7 @@ struct FormGroupLabel: View {
 /// `.group`: подложка `--sheet`, скругление 14, строки разделены **щелью** цвета
 /// страницы в 1 pt — светлых линий в форме нет (правило «разделитель — щель»).
 struct FormGroup<Content: View>: View {
+    var node = ""
     @ViewBuilder var content: Content
     @Environment(\.colorScheme) private var scheme
     var body: some View {
@@ -29,13 +30,17 @@ struct FormGroup<Content: View>: View {
         VStack(spacing: 0) {
             Group(subviews: content) { subs in
                 ForEach(subs.indices, id: \.self) { i in
-                    if i > 0 { Rectangle().fill(pal.surface).frame(height: 1) }
-                    subs[i]
+                    // Щель — не строка высотой 1 pt, а 1 pt внутри строки (`inset 0 1px 0 var(--surface)`):
+                    // высота группы от неё не растёт.
+                    subs[i].overlay(alignment: .top) {
+                        if i > 0 { Rectangle().fill(pal.surface).frame(height: 1) }
+                    }
                 }
             }
         }
         .background(pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shotNode(node)
     }
 }
 
@@ -51,7 +56,7 @@ struct FormTextField: View {
         field(pal)
             .font(.system(size: 16)).foregroundStyle(pal.ink)
             .padding(15)
-            .frame(minHeight: 52, alignment: .leading)
+            .frame(height: 48, alignment: .leading)
     }
 
     @ViewBuilder
@@ -72,6 +77,7 @@ struct FormTextField: View {
 /// Капсула значения `.rv-v`: таблетка (999), поля 5 / 12, `--field`, 16 цифрами
 /// одной ширины; раскрытая — латунная (`rgba(226,164,76,.16)` и `--brass`).
 struct FormCapsule: View {
+    var node = ""
     let text: String
     let open: Bool
     let action: () -> Void
@@ -81,11 +87,14 @@ struct FormCapsule: View {
         Button(action: action) {
             Text(text)
                 .font(.system(size: 16).monospacedDigit())
+                .lineLimit(1)
                 .foregroundStyle(open ? pal.brass : pal.ink)
-                .padding(.vertical, 5).padding(.horizontal, 12)
-                .frame(minWidth: 72)
+                .padding(.horizontal, 12)
+                .frame(minWidth: 72, minHeight: 28)
                 .background(open ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Capsule())
+                .fixedSize()
         }
+        .shotNode(node, text: text)
         .buttonStyle(.plain)
     }
 }
@@ -94,6 +103,7 @@ struct FormCapsule: View {
 /// сплошная `--ink` со знаком цвета страницы.
 struct FormBarButton: View {
     enum Kind { case close, save }
+    var node = ""
     let kind: Kind
     let label: String
     let action: () -> Void
@@ -101,7 +111,7 @@ struct FormBarButton: View {
     var body: some View {
         let pal = Palette(scheme)
         let face = Icon(kind == .close ? "close" : "check", size: 18, line: 2.2)
-            .foregroundStyle(kind == .close ? pal.ink : pal.surface)
+            .foregroundStyle(kind == .close ? pal.ink3 : pal.surface)
             .frame(width: 40, height: 40)
         Button(action: action) {
             if kind == .close {
@@ -111,6 +121,7 @@ struct FormBarButton: View {
             }
         }
         .buttonStyle(.plain)
+        .shotNode(node)
         .accessibilityLabel(label)
     }
 }
@@ -125,7 +136,7 @@ struct GenreTile: View {
     var body: some View {
         let pal = Palette(scheme)
         Button(action: action) {
-            VStack(spacing: 5) {
+            VStack(spacing: 6) {
                 Icon(genre: genre.rawValue, size: 22, line: 1.5)
                 Text(name).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.8)
             }

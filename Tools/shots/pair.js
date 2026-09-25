@@ -72,6 +72,8 @@ const folds = (args.fold || 'shut,open').split(',');
    «Картой» — развилка (та же кнопка места в шапке). В засеве две точки
    «Моих мест»: с адресом и безымянная (строку называют координаты). */
 const sheets = args.sheets === '' ? [] : (args.sheets || 'fork,addr,geo').split(',');
+// Форма записи (23): `--forms portrait,wedding,report` — «Съёмки», «＋», жанр плиткой.
+const forms = args.forms ? args.forms.split(',') : [];
 const SHEET_SPOTS = [
   { id: 'p_shot_a', name: 'Нагорный парк', address: 'ул. Гоголя, 2', lat: 53.3334, lon: 83.8035, pinned: true },
   { id: 'p_shot_b', name: '', address: '', lat: 53.35, lon: 83.75, pinned: true }
@@ -135,6 +137,7 @@ async function nativeShot(udid, sc, dir) {
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
     ...(sc.scope ? ['-LPShotScope', sc.scope] : []), ...(sc.pick != null ? ['-LPShotPick', String(sc.pick)] : []),
     ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []),
+    ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
     '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
@@ -154,6 +157,7 @@ function webShot(sc, dir, safe) {
     '--forecast', path.join(FX, 'forecast_barnaul.json'), '--air', path.join(FX, 'air_barnaul.json'),
     '--name', path.join(FX, 'place_barnaul.json'), '--safe', safe.map(v => Math.round(v)).join(','),
     ...(sc.chapter ? ['--chapter', sc.chapter] : []),
+    ...(sc.form ? ['--sheet', 'form', '--way', sc.form] : []),
     ...(sc.sheet ? ['--sheet', 'loc', ...(sc.sheet !== 'fork' ? ['--way', sc.sheet] : [])] : []),
     '--scale', '3', '--out', path.join(dir, 'web.png'), '--report', path.join(dir, 'web.json')]);
   return JSON.parse(fs.readFileSync(path.join(dir, 'web.json'), 'utf8'));
@@ -301,7 +305,15 @@ function markdown(results) {
     fs.writeFileSync(seedFile, JSON.stringify(s));
     list.push({ name, dir, screen, theme, moment: 'day', sheet: way, seed: seedFile });
   }
-  if (args['only-sheets']) screens.length = 0;
+  for (const g of forms) for (const theme of themes) {
+    const name = ['planner', 'form', g, theme].join('-');
+    const dir = path.join(OUT, name);
+    fs.mkdirSync(dir, { recursive: true });
+    const seedFile = path.join(dir, 'seed.json');
+    fs.writeFileSync(seedFile, JSON.stringify({ ...seed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' }));
+    list.push({ name, dir, screen: 'planner', theme, moment: 'day', form: g, seed: seedFile });
+  }
+  if (args['only-sheets'] || args.forms && args['only-forms']) screens.length = 0;
   if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
     add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope);
     /* Суббота 26-го: две съёмки внахлёст (14:00–15:30 и 15:00–16:30) —
@@ -343,6 +355,8 @@ function markdown(results) {
     for (const [k, r] of Object.entries(nat.nodes)) if (r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) delete nat.nodes[k];
     // Под листом места экран жив и пишет рамки — сверяется только лист.
     if (sc.sheet) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('loc.')) delete nat.nodes[k];
+    // Под формой «Съёмки» живы и пишут рамки — сверяется только форма.
+    if (sc.form) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('form.')) delete nat.nodes[k];
     const web = webShot(sc, sc.dir, nat.safe);
     // Лист главы у веба закрывает панель вкладок, но в разметке она «видна»;
     // приложение её прячет — под главой панель не сверяется.

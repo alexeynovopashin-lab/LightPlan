@@ -32,10 +32,10 @@ struct FormScreen: View {
             let t = app.lexicon
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    bar(pal, t).padding(.top, 10)
+                    bar(pal, t).padding(.top, 46).padding(.bottom, 8)
                     title(f, pal, t)
                     if app.formIsDraft { draftStrip(pal, t) }
-                    genreBlock(f, pal, t)
+                    genreBlock(f, pal, t).padding(.top, 24)
                     whoBlock(f, pal, t)
                     timeBlock(f, pal, t)
                     notesBlock(f, pal, t)
@@ -45,6 +45,7 @@ struct FormScreen: View {
                 .padding(.horizontal, 24)
             }
             .scrollDismissesKeyboard(.interactively)
+            .ignoresSafeArea(.container, edges: .top)
             .background(pal.surface.ignoresSafeArea())
             .sheet(isPresented: $orgSheet) { OrgPickSheet(app: app) }
         }
@@ -54,17 +55,17 @@ struct FormScreen: View {
 
     private func bar(_ pal: Palette, _ t: Lexicon) -> some View {
         HStack {
-            FormBarButton(kind: .close, label: t.t("form.cancel")) { app.closeForm() }
+            FormBarButton(node: "form.close", kind: .close, label: t.t("form.cancel")) { app.closeForm() }
             Spacer()
-            FormBarButton(kind: .save, label: t.t("form.save")) { app.saveForm() }
+            FormBarButton(node: "form.save", kind: .save, label: t.t("form.save")) { app.saveForm() }
         }
     }
 
     private func title(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
         let name = f.mode == .meet ? (f.isNew ? t.t("form.newMeet") : t.t("plan.meet")) : (f.isNew ? t.t("plan.newShoot") : t.t("card.shootPoint"))
         return VStack(alignment: .leading, spacing: 0) {
-            Text(name).font(webFont(30, 650)).tracking(-0.5).foregroundStyle(pal.ink).padding(.top, 10)
-            Text(subtitle(f, t)).font(.system(size: 14)).foregroundStyle(pal.ink4).padding(.top, 6)
+            Text(name).font(webFont(30, 650)).tracking(-0.5).foregroundStyle(pal.ink).frame(maxWidth: .infinity, alignment: .leading).shotNode("form.title", text: name).padding(.top, 10)
+            Text(subtitle(f, t)).font(.system(size: 14)).foregroundStyle(pal.ink4).frame(maxWidth: .infinity, alignment: .leading).shotNode("form.sub", text: subtitle(f, t)).padding(.top, 6)
             if let note = app.formNote {
                 Text(note).font(.system(size: 13)).foregroundStyle(pal.ink4).padding(.top, 6)
             }
@@ -74,7 +75,7 @@ struct FormScreen: View {
     /// Откуда взялось время (веб `formSub`): встреча — про разговор, свет — подсказал, окно — вот.
     private func subtitle(_ f: EventForm, _ t: Lexicon) -> String {
         if f.mode == .meet { return t.t("form.subMeet") }
-        guard let w = app.formLight(on: f.day) else { return t.t("form.subNoWindow") }
+        guard let w = app.formLight(on: f.day), !w.poor else { return t.t("form.subNoWindow") }
         let clock = clockText
         if f.timeFromLight || f.start == Int(w.start.rounded()) {
             return t.t("form.subFromLight", ["t": clock.fmt(Double(f.start))])
@@ -108,6 +109,7 @@ struct FormScreen: View {
                         GenreTile(genre: g, name: t.t("genre." + g.rawValue), on: g == f.genre) { app.pickFormGenre(g) }
                     }
                 }
+                .shotNode("form.genre")
                 .padding(.top, 13).padding(.horizontal, 15).padding(.bottom, 15)
             }
         }
@@ -121,7 +123,7 @@ struct FormScreen: View {
             let group = f.genre.group.rawValue
             VStack(alignment: .leading, spacing: 0) {
                 FormGroupLabel(text: t.t("who." + group))
-                FormGroup {
+                FormGroup(node: "form.who") {
                     if f.shows(.contactLine) {
                         FormTextField(placeholder: t.t("whoHint." + group), text: text(\.contact), kind: .name)
                         phoneRow(t.t("form.phone"), text: phone(\.clientPhone))
@@ -181,7 +183,7 @@ struct FormScreen: View {
         return VStack(alignment: .leading, spacing: 0) {
             FormGroupLabel(text: t.t("form.time"))
             FormGroup {
-                timeRow(t.t("form.start"), sub: startHint(f, t),
+                timeRow("form.start", t.t("form.start"), sub: startHint(f, t),
                         date: dates.dMonShortYear(carrier(f.day)), time: clock.fmt(Double(f.start)),
                         openDate: picker == .startDate, openTime: picker == .startTime,
                         pickDate: { toggle(.startDate) }, pickTime: { toggle(.startTime) }, pal)
@@ -196,7 +198,7 @@ struct FormScreen: View {
                     }
                     .padding(.horizontal, 10)
                 }
-                timeRow(t.t("form.end"), sub: durationText(f, t),
+                timeRow("form.end", t.t("form.end"), sub: durationText(f, t),
                         date: dates.dMonShortYear(carrier(f.endDay)), time: clock.fmt(Double(f.start + f.duration)),
                         openDate: picker == .endDate, openTime: picker == .endTime,
                         pickDate: { toggle(.endDate) }, pickTime: { toggle(.endTime) }, pal)
@@ -216,15 +218,17 @@ struct FormScreen: View {
         }
     }
 
-    private func timeRow(_ label: String, sub: String?, date: String, time: String,
+    private func timeRow(_ node: String, _ label: String, sub: String?, date: String, time: String,
                          openDate: Bool, openTime: Bool, pickDate: @escaping () -> Void, pickTime: @escaping () -> Void,
                          _ pal: Palette) -> some View {
         VStack(alignment: .trailing, spacing: 4) {
             HStack(spacing: 12) {
                 Text(label).font(.system(size: 16)).foregroundStyle(pal.ink)
                 Spacer()
-                FormCapsule(text: date, open: openDate, action: pickDate)
-                FormCapsule(text: time, open: openTime, action: pickTime)
+                HStack(spacing: 6) {    // `.caps` веба: зазор 6
+                    FormCapsule(node: node + "Date", text: date, open: openDate, action: pickDate)
+                    FormCapsule(node: node + "Val", text: time, open: openTime, action: pickTime)
+                }
             }
             if let sub { Text(sub).font(.system(size: 11)).foregroundStyle(pal.ink6).multilineTextAlignment(.trailing) }
         }
@@ -233,8 +237,8 @@ struct FormScreen: View {
 
     private func startHint(_ f: EventForm, _ t: Lexicon) -> String? {
         guard f.mode != .meet else { return nil }
-        guard let w = app.formLight(on: f.day) else { return t.t("day.noWindow") }
-        return clockText.range(w.start, w.end)
+        guard let w = app.formLight(on: f.day), !w.poor else { return t.t("day.noWindow") }
+        return t.t(w.dawn ? "win.dawn" : "win.sunset") + " " + clockText.range(w.start, w.end)
     }
 
     /// «1,5 часа» и слово про полночь: конец числом меньше начала без пояснения не читается.
@@ -264,7 +268,7 @@ struct FormScreen: View {
             FormGroup {
                 TextField("", text: text(\.notes), prompt: Text(t.t("form.notesPh")).foregroundStyle(pal.ink8), axis: .vertical)
                     .font(.system(size: 16)).foregroundStyle(pal.ink).lineSpacing(3)
-                    .lineLimit(4...12)
+                    .lineLimit(2...12)
                     .padding(15).frame(minHeight: 92, alignment: .topLeading)
             }
         }

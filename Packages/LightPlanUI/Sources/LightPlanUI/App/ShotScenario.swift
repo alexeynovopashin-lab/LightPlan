@@ -111,8 +111,12 @@ extension AppModel {
         // только в памяти: прогон не должен писать на диск симулятора.
         if s.sheet == "form" {
             app.draftStore = MemoryDraftStore()
-            app.openForm(day: app.planner.selected)
-            if let g = s.way.flatMap(Genre.init(rawValue:)) { app.pickFormGenre(g) }
+            // Форма читает качество неба дня: ждём, пока погода из файла придёт (у веба она уже на месте).
+            Task { @MainActor in
+                await app.light.weather.settled()
+                app.openForm(day: app.planner.selected)
+                if let g = s.way.flatMap(Genre.init(rawValue:)) { app.pickFormGenre(g) }
+            }
         }
         if s.sheet == "loc" {
             app.placeSheetStart = s.way.flatMap(PlaceSheetForm.Way.init(rawValue:)) ?? .fork
