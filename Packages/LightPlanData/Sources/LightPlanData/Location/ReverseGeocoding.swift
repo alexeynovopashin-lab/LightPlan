@@ -36,7 +36,13 @@ public struct AppleReverseGeocoder: ReverseGeocoding {
     /// решит итерация 14.
     public let locale: Locale
 
-    public init(locale: Locale = Locale(identifier: "ru_RU")) { self.locale = locale }
+    /// Регион в настройках iPhone; от него зависит страна у точек Крыма.
+    public let deviceRegion: String?
+
+    public init(locale: Locale = Locale(identifier: "ru_RU"),
+                deviceRegion: String? = Locale.current.region?.identifier) {
+        self.locale = locale; self.deviceRegion = deviceRegion
+    }
 
     public func answer(for c: GeoCoordinate) async throws -> GeocodeAnswer {
         // Один `CLGeocoder` на запрос: на одном экземпляре второй запрос отменяет первый.
@@ -46,6 +52,8 @@ public struct AppleReverseGeocoder: ReverseGeocoding {
             return GeocodeAnswer(locality: nil, region: nil, country: nil, zoneIdentifier: nil)
         }
         return GeocodeAnswer(locality: p.locality, region: p.administrativeArea,
-                             country: p.country, zoneIdentifier: p.timeZone?.identifier)
+                             country: CrimeaCountry.country(p.country, isoCode: p.isoCountryCode, at: c,
+                                                            deviceRegion: deviceRegion, locale: locale),
+                             zoneIdentifier: p.timeZone?.identifier)
     }
 }

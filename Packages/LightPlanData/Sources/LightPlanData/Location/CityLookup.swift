@@ -27,7 +27,12 @@ public protocol CityLookup: Sendable {
 public struct AppleCityLookup: CityLookup {
     public let locale: Locale
 
-    public init(locale: Locale = Locale(identifier: "ru_RU")) { self.locale = locale }
+    public let deviceRegion: String?
+
+    public init(locale: Locale = Locale(identifier: "ru_RU"),
+                deviceRegion: String? = Locale.current.region?.identifier) {
+        self.locale = locale; self.deviceRegion = deviceRegion
+    }
 
     public func cities(matching query: String) async throws -> [CityHit] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -36,10 +41,13 @@ public struct AppleCityLookup: CityLookup {
         var seen = Set<String>()
         return marks.compactMap { p -> CityHit? in
             guard let name = p.locality, let loc = p.location else { return nil }
-            let area = [p.administrativeArea, p.country].compactMap { $0 }.filter { $0 != name }.joined(separator: ", ")
+            let coord = GeoCoordinate(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude)
+            let country = CrimeaCountry.country(p.country, isoCode: p.isoCountryCode, at: coord,
+                                                deviceRegion: deviceRegion, locale: locale)
+            let area = [p.administrativeArea, country].compactMap { $0 }.filter { $0 != name }.joined(separator: ", ")
             guard seen.insert(name + "|" + area).inserted else { return nil }
             return CityHit(name: name, area: area, countryCode: p.isoCountryCode?.lowercased(),
-                           coordinate: GeoCoordinate(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude))
+                           coordinate: coord)
         }.prefix(5).map { $0 }
     }
 }
