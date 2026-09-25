@@ -21,10 +21,15 @@ public protocol DeviceLocating {
     /// умолчанию (итерация 19а) берёт место телефона только в этом случае:
     /// новых запросов разрешения правило не добавляет.
     var isAlreadyAuthorized: Bool { get }
+    /// Разрешение ещё не спрашивали. Лист «Где снимаем» тогда сам встаёт на
+    /// путь координат и спрашивает (веб, `openLocSheet`: `permissions` →
+    /// `prompt`): кнопка живёт там, и просить, не показав кто, нечестно.
+    var needsPermission: Bool { get }
 }
 
 public extension DeviceLocating {
     var isAlreadyAuthorized: Bool { false }
+    var needsPermission: Bool { false }
 }
 
 /// `CoreLocation` по запросу. Ничего не слушает постоянно: одна точка и тишина.
@@ -56,6 +61,8 @@ public final class CoreLocationProvider: NSObject, DeviceLocating {
         default: return false
         }
     }
+
+    public var needsPermission: Bool { manager.authorizationStatus == .notDetermined }
 
     public func currentFix() async -> DeviceFix {
         // Второй вопрос при живом первом не плодим: тому, кто спросил вторым, отвечаем «нет».

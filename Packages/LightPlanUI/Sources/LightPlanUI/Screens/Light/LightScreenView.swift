@@ -10,13 +10,16 @@ import LightPlanCore
 /// было: показание, шапку, телеметрию, спойлер, кнопку.
 public struct LightScreenView: View {
     @Bindable var model: LightScreenModel
+    /// Кнопка места в шапке (`#todayLoc`): открывает лист «Где снимаем».
+    var onPlace: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     /// Видимая высота прокрутки — чтобы кнопка съёмки легла к низу, как
     /// `.screen-action { margin-top: auto }` веба.
     @State private var visibleHeight: CGFloat = 0
 
-    public init(_ model: LightScreenModel) {
+    public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {}) {
         self.model = model
+        self.onPlace = onPlace
     }
 
     /// Вёрстка — числа `#s-today` беты (вычисленные стили, снимок пары 19б):
@@ -73,6 +76,8 @@ public struct LightScreenView: View {
     /// погода — знак 22 и 24/600, состояние 14 (`--ink-2`), ↓↑ 13 (`--ink-4`).
     private func header(_ h: LightTelemetry.Header, _ pal: Palette) -> some View {
         HStack(alignment: .top, spacing: 12) {
+            // `.loc` веба — кнопка на всю левую колонку: место, область, дата.
+            Button(action: onPlace) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(h.locationName)
@@ -80,7 +85,7 @@ public struct LightScreenView: View {
                         .foregroundStyle(pal.ink)
                         .shotNode("header.name", text: h.locationName)
                         .frame(height: 18)
-                    Icon("pin", size: 13, line: 1.6).foregroundStyle(pal.ink6)
+                    PlacePin(pal: pal)
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
                 }
                 if !model.locationSub.isEmpty {
@@ -104,6 +109,10 @@ public struct LightScreenView: View {
                     .frame(height: 13)
                     .padding(.top, 4)
             }
+            .contentShape(Rectangle())
+            }
+            .buttonStyle(PlaceButtonStyle())
+            .accessibilityLabel(model.lexiconWord("today.changePlace"))
             Spacer(minLength: 0)
             VStack(alignment: .trailing, spacing: 2) {
                 // Знак и градусы: 22 + поле 8 (`.wx` у знака) + зазор 7 = 15
