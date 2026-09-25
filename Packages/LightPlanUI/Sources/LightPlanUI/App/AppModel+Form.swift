@@ -24,6 +24,13 @@ public struct DefaultsDraftStore: DraftStoring, @unchecked Sendable {
     }
 }
 
+/// Черновик в памяти — для сценариев снимков: на диск они не пишут.
+final class MemoryDraftStore: DraftStoring, @unchecked Sendable {
+    private var data: Data?
+    func load() -> Data? { data }
+    func save(_ data: Data?) { self.data = data }
+}
+
 /// Форма записи (итерация 23): открыть, править, сохранить, черновик. Правила —
 /// в `EventForm` (Domain); здесь — то, что связано с приложением: часы, место,
 /// снимок, диск.

@@ -126,7 +126,7 @@ struct GenreTile: View {
         let pal = Palette(scheme)
         Button(action: action) {
             VStack(spacing: 5) {
-                Icon(genre.rawValue, size: 22, line: 1.5)
+                Icon(genre: genre.rawValue, size: 22, line: 1.5)
                 Text(name).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.8)
             }
             .foregroundStyle(on ? pal.brass : pal.ink5)
