@@ -79,12 +79,13 @@ make shots      web / native screenshot pairs of «Свет», «Карта», �
 make mapstyle   rebuild the map canvas style (LightPlanMapCanvas/Resources) from the web's beta/mapstyle.js
 make mapref     rebuild map_scene_ref.json (the web's #mapLight markup as numbers) for MapSceneParityTests
 make tapspot    tap a pin on the live canvas (network), MapLibre and MapKit: the name bar must open and hold (20е)
+make pinch      five pinches on the live MapLibre canvas: each zoom holds, the centre doesn't jump back (21б)
 make rotor      «Карта» under a scripted compass, 8 headings: north on screen within 1°, no void wedge (21а)
 make sims       this branch's simulator; ARGS=--prune deletes simulators of deleted branches
 ```
 
 Simulators: every branch gets its own, `LP <branch>` (iPhone 17 Pro Max model and iOS, created on
-first run by `Tools/sim.js`); `shots`, `tapspot`, `rotor` use it, so parallel worktrees don't collide.
+first run by `Tools/sim.js`); `shots`, `tapspot`, `pinch`, `rotor` use it, so parallel worktrees don't collide.
 `LP_SIM=<name>` overrides. Tools leave the base iPhone 17 Pro Max alone — someone may be using it.
 
 A screen iteration closes with `make shots` pairs (plan § 5.4): names in the web's

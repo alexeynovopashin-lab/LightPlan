@@ -36,5 +36,21 @@ struct MapCanvasHandTests {
         #expect(C.byHand(.gesturePinch))
         #expect(C.byHand([.gesturePan, .gestureZoomIn]))
     }
+
+    /// 21б: после щипка SwiftUI ещё кадр присылает прежнее место — это не
+    /// переезд, камера остаётся, где её оставил палец. Живой путь — `make pinch`.
+    @Test func mapLibreStaleCenterIsNotAMove() {
+        typealias C = MapLibreCanvas.Coordinator
+        let old = MapCanvasCenter(latitude: 53.3548, longitude: 83.7698)
+        let pinched = MapCanvasCenter(latitude: 53.3568, longitude: 83.7728)
+        // Кадр со старым местом: присылали его же.
+        #expect(!C.mustPlace(old, given: old, camera: pinched))
+        // Место доехало — это то, куда увёл палец.
+        #expect(!C.mustPlace(pinched, given: old, camera: pinched))
+        // Настоящий переезд снаружи (город, булавка).
+        let elsewhere = MapCanvasCenter(latitude: 55.75, longitude: 37.62)
+        #expect(C.mustPlace(elsewhere, given: pinched, camera: pinched))
+        #expect(C.mustPlace(elsewhere, given: nil, camera: nil))
+    }
     #endif
 }

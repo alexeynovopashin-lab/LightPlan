@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang icons domain shots mapstyle mapref planner tapspot rotor sims glass
+.PHONY: help parity blocks lang icons domain shots mapstyle mapref planner tapspot pinch rotor sims glass
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -19,6 +19,7 @@ help:
 	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
 	@echo "make planner  эталон колонок ленты дня и шкалы срочности из беты и доказать повторяемость (итерация 21)"
 	@echo "make tapspot тап по булавке на живом холсте MapLibre и MapKit открывает полосу имени (20е, нужна сеть, ~1 мин)"
+	@echo "make pinch    пять щипков на живом холсте MapLibre: уровень держится, центр не прыгает назад (21б, нужна сеть, ~1 мин)"
 	@echo "make rotor    ротор «Карты» под подставным компасом: восемь углов, клина пустоты нет (21а, ~1 мин)"
 	@echo "make sims     симулятор этой ветки; ARGS=--prune удаляет симуляторы веток, которых нет (21а)"
 	@echo "make glass    стекло без подделки: ни системного материала, ни нарисованного блика вне Timebar/ (20д; идёт и фазой сборки)"
@@ -114,6 +115,10 @@ mapref:
 # симулятор — LP_SIM=<имя>.
 tapspot:
 	@node Tools/tap_spot.js $(ARGS)
+
+# Итерация 21б: щипок на живом холсте MapLibre — уровень держится.
+pinch:
+	@node Tools/pinch.js $(ARGS)
 
 # Итерация 21а: у каждой ветки свой симулятор (`LP <ветка>`, Tools/sim.js) —
 # им пользуются shots, tapspot, rotor. Ротор под подставным компасом.

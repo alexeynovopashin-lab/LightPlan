@@ -37,6 +37,9 @@ struct MapLibreCanvas: UIViewRepresentable {
         view.addGestureRecognizer(tap)
         context.coordinator.style = style
         apply(view, context: context, force: true)
+        #if DEBUG
+        ShotPinch.run(view, context.coordinator)
+        #endif
         return view
     }
 
@@ -59,20 +62,22 @@ struct MapLibreCanvas: UIViewRepresentable {
             c.inset = inset
             view.setContentInset(inset, animated: false, completionHandler: nil)
         }
-        // Центр ставится, только когда его сменили снаружи: своё же движение
-        // пальцем, вернувшееся через `onMove`, камеру назад не дёргает.
-        if force || c.center != center {
+        if force || Coordinator.mustPlace(center, given: c.given, camera: c.center) {
             c.center = center
             view.setCenter(CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
                            zoomLevel: zoom, animated: false)
         }
+        c.given = center
     }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
         var onMove: (MapCanvasCenter) -> Void
         var onCamera: (MapCanvasCamera) -> Void
         var onTap: (CGPoint) -> Void
+        /// Где камера по нашим сведениям: поставлена программой или оставлена пальцем.
         var center: MapCanvasCenter?
+        /// Центр, который SwiftUI прислал в прошлый раз.
+        var given: MapCanvasCenter?
         var inset: UIEdgeInsets = .zero
         var style: URL?
 
@@ -81,6 +86,18 @@ struct MapLibreCanvas: UIViewRepresentable {
             self.onMove = onMove
             self.onCamera = onCamera
             self.onTap = onTap
+        }
+
+        /// Ставить ли камеру на присланный центр. Сменили снаружи — это
+        /// когда присланный центр не тот, что в прошлый раз (`onChange` у
+        /// MapKit), а не когда он не совпал с камерой: после щипка SwiftUI
+        /// ещё кадр рисует прежнее место — оно доезжает до таймбара своей
+        /// задачей, — и холст ставил старый центр с уровнем 14 (замер 21б:
+        /// 16 → 14 через 12 мс). Своё же движение пальцем, вернувшееся через
+        /// `onMove`, камеру назад не дёргает.
+        static func mustPlace(_ center: MapCanvasCenter, given: MapCanvasCenter?,
+                              camera: MapCanvasCenter?) -> Bool {
+            center != given && center != camera
         }
 
         private static let handReasons: MLNCameraChangeReason = [.gesturePan, .gesturePinch, .gestureZoomIn,
@@ -119,4 +136,44 @@ struct MapLibreCanvas: UIViewRepresentable {
         }
     }
 }
+
+#if DEBUG
+/// Прибор 21б (`make pinch`): щипок без пальцев. Симулятору руку не дать,
+/// поэтому холсту говорится ровно то, что движок говорит в конце щипка:
+/// камера уже на новом уровне, центр съехал к точке между пальцами,
+/// причина — `.gesturePinch`. Дальше путь тот же, что у пальца: `onMove`,
+/// переезд места, новый кадр SwiftUI. Ошибка — гонка кадра со старым местом
+/// и доставки нового (на старом коде ловилась в 4 прогонах из 6), поэтому
+/// щипков пять подряд; после каждого через 1 с пишется уровень холста и
+/// остался ли центр там, куда его увели пальцы.
+enum ShotPinch {
+    static let levels: [Double] = [16, 15, 17, 15.5, 16.5]
+
+    static func run(_ view: MLNMapView, _ coordinator: MapLibreCanvas.Coordinator) {
+        guard let out = UserDefaults.standard.string(forKey: "LPShotPinchReport") else { return }
+        Task { @MainActor [weak view] in
+            try? await Task.sleep(for: .seconds(4))
+            guard let view else { return }
+            var seen: [String: Any] = ["before": view.zoomLevel]
+            var zooms: [Double] = [], stayed: [Bool] = []
+            for level in levels {
+                // Пальцы правее и выше центра: щипок тянет центр к ним.
+                let c = view.centerCoordinate
+                let pinched = CLLocationCoordinate2D(latitude: c.latitude + 0.0005, longitude: c.longitude + 0.0008)
+                view.setCenter(pinched, zoomLevel: level, animated: false)
+                coordinator.mapView(view, regionDidChangeWith: .gesturePinch, animated: false)
+                try? await Task.sleep(for: .seconds(1))
+                let now = view.centerCoordinate
+                zooms.append(view.zoomLevel)
+                stayed.append(abs(now.latitude - pinched.latitude) + abs(now.longitude - pinched.longitude) < 1e-6)
+            }
+            seen["levels"] = levels
+            seen["zooms"] = zooms
+            seen["stayed"] = stayed
+            let json = try? JSONSerialization.data(withJSONObject: seen, options: [.sortedKeys])
+            try? json?.write(to: URL(fileURLWithPath: out))
+        }
+    }
+}
+#endif
 #endif
