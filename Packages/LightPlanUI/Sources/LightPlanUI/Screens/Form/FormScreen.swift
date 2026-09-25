@@ -11,11 +11,20 @@ struct FormScreen: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
     /// Раскрыта одна из четырёх строк времени — по одной, как `ROWS` веба.
-    @State private var picker: TimePicker?
+    @State private var picker: TimePicker? = Self.launchPicker
     @State private var orgSheet = false
     @FocusState private var focus: Bool
 
-    enum TimePicker { case startDate, startTime, endDate, endTime }
+    enum TimePicker: String { case startDate, startTime, endDate, endTime }
+
+    /// Снимок сценария: `-LPShotPicker startTime` раскрывает строку сразу (только Debug).
+    private static var launchPicker: TimePicker? {
+        #if DEBUG
+        UserDefaults.standard.string(forKey: "LPShotPicker").flatMap(TimePicker.init(rawValue:))
+        #else
+        nil
+        #endif
+    }
 
     var body: some View {
         if let f = app.form {
@@ -38,7 +47,6 @@ struct FormScreen: View {
             .scrollDismissesKeyboard(.interactively)
             .background(pal.surface.ignoresSafeArea())
             .sheet(isPresented: $orgSheet) { OrgPickSheet(app: app) }
-            .task(id: f.day) { picker = nil }
         }
     }
 
