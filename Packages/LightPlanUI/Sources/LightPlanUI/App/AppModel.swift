@@ -176,6 +176,9 @@ public final class AppModel {
     /// «Съёмки» (итерация 21): одно состояние на месяц, неделю и день.
     /// Открывается на месяце и сегодняшнем дне при каждом запуске, как веб.
     public var planner: PlannerState
+    /// Полоса «Вернуть» после удаления (итерация 22, веб `#undoBar`): висит
+    /// над любой вкладкой, пока не выйдет срок или не вернут.
+    public var undo: UndoOffer?
     /// Сводка дня свёрнута (`dayFold` снимка) — единственное, что планировщик
     /// помнит между запусками.
     public var dayFold: Bool {
@@ -516,6 +519,93 @@ public final class AppModel {
         calendar.timeZone = TimeZone(identifier: place.zone.identifier) ?? .current
         let c = calendar.dateComponents([.year, .month, .day], from: now)
         return CivilDate(year: c.year!, month: c.month!, day: c.day!)
+    }
+}
+
+// MARK: - Корзина и занятость (итерация 22)
+
+extension AppModel {
+    /// Корзина, новые первыми (веб `trashed`).
+    public var trashed: [TrashedItem] { snapshot.trashed }
+
+    private var nowMs: Int64 { Self.ms(now()) }
+
+    /// Убрать съёмку, встречу или событие в корзину (веб `removeSession`) и
+    /// показать «Вернуть». Подпись — строка клиента или имя съёмки, как у веба
+    /// (`rec.contact || typeName`).
+    public func trashSession(id: String) {
+        guard let rec = Bin.trash(id, in: &snapshot, now: nowMs) else { return }
+        let words = PlannerWords(lexicon: lexicon, orgs: orgs)
+        let name = rec.contact.isEmpty ? words.typeName(rec) : rec.contact
+        undo = UndoOffer(what: .session(id: id), text: lexicon.t("day.inBin", ["name": name]))
+        persist()
+    }
+
+    /// Вернуть из корзины — из листа или полосой. Полоса, которая держит эту
+    /// запись, гаснет: ей больше нечего возвращать.
+    public func restoreSession(id: String) {
+        guard Bin.restore(id, in: &snapshot, now: nowMs) else { return }
+        if undo?.what == .session(id: id) { undo = nil }
+        persist()
+    }
+
+    /// «Очистить корзину» — после «Стереть». Полоса «Вернуть» съёмки гаснет:
+    /// у веба она оставалась и молча ничего не делала.
+    public func clearBin() {
+        guard !snapshot.trashed.isEmpty else { return }
+        Bin.clear(&snapshot, now: nowMs)
+        if case .session? = undo?.what { undo = nil }
+        persist()
+    }
+
+    /// «Убрать из календаря» у занятости — с полосой «Вернуть».
+    public func removeBlock(id: String) {
+        guard let (b, i) = Bin.removeBlock(id, in: &snapshot, now: nowMs) else { return }
+        let label = b.note.isEmpty ? lexicon.t("blkKind." + b.kind.rawValue) : b.note
+        undo = UndoOffer(what: .block(b, index: i), text: lexicon.t("blk.removed", ["name": label]))
+        persist()
+    }
+
+    /// Нажали «Вернуть» на полосе.
+    public func takeUndo() {
+        guard let u = undo else { return }
+        undo = nil
+        switch u.what {
+        case .session(let id):
+            if Bin.restore(id, in: &snapshot, now: nowMs) { persist() }
+        case .block(let b, let i):
+            Bin.restoreBlock(b, at: i, in: &snapshot, now: nowMs)
+            persist()
+        }
+    }
+
+    /// Срок полосы вышел — гасим, только если это всё ещё тот же показ.
+    public func expireUndo(_ token: UUID) {
+        if undo?.token == token { undo = nil }
+    }
+
+    /// Сохранить занятость из листа «Занять время» (веб `#blkDone`): та же
+    /// по знаку заменяется, новая добавляется в конец.
+    public func saveBlock(_ b: Block) {
+        var b = b
+        b.modifiedAt = nowMs
+        if let i = snapshot.blocks.firstIndex(where: { $0.id == b.id }) {
+            snapshot.blocks[i] = b
+        } else {
+            snapshot.blocks.append(b)
+        }
+        persist()
+    }
+
+    /// Раздел настроек «Сдача материала» (веб `#delvSeg`, `#delvDays`).
+    /// Срок «единого» помнится, когда режим уходит и возвращается.
+    public func setDelivery(mode: DeliveryMode? = nil, days: Int? = nil) {
+        var d = snapshot.delivery
+        if let mode { d.mode = mode }
+        if let days { d.days = days }
+        guard d != snapshot.delivery else { return }
+        snapshot.delivery = d
+        persist()
     }
 }
 

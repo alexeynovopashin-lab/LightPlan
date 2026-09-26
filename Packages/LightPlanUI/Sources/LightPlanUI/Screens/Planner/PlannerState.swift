@@ -1,6 +1,7 @@
 import LightPlanCore
 
-/// Масштаб календаря (веб `calScope`). Год и год-12 — итерация 22.
+/// Масштаб календаря (веб `calScope`). Год и год-12 — не масштабы, а слои
+/// поверх «Съёмок» (веб `#yearOverlay`, `#year12Overlay`; итерация 22).
 public enum CalScope: String, Sendable, CaseIterable {
     case month, week, day
 }
@@ -100,6 +101,26 @@ public struct PlannerState: Hashable, Sendable {
     public mutating func goToday(_ today: CivilDate) {
         month = Self.first(of: today)
         selected = today
+        weekOpen = nil
+    }
+
+    /// Тап по числу в ленте месяцев года (итерация 22, веб `buildMonthEl`):
+    /// в день. Раскол месяца на ленту дня (`partMonthIntoDay`) — движение,
+    /// итерация 29, как и вход в день из месяца.
+    public mutating func enterDay(_ day: CivilDate) {
+        scope = .day
+        selected = day
+        month = Self.first(of: day)
+        dayShift = 0
+        weekOpen = nil
+    }
+
+    /// Тап по имени месяца в ленте года: в месяц. Выбран сегодняшний день,
+    /// если это нынешний месяц, иначе первое число.
+    public mutating func enterMonth(_ first: CivilDate, today: CivilDate) {
+        scope = .month
+        month = Self.first(of: first)
+        selected = Self.sameMonth(first, today) ? today : month
         weekOpen = nil
     }
 

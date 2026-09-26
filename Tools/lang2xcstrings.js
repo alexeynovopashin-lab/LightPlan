@@ -75,6 +75,27 @@ function loadDict() {
   return g.LANG.dict;
 }
 
+/* Слова, которых у веба нет, а приложению нужны (итерация 22): подпись
+   VoiceOver своих приборов, полоса «Вернуть» у занятости — у веба та
+   стирается без возврата. Веб заморожен, поэтому такие слова лежат рядом,
+   в `Tools/lang_native.json`, и доливаются в каталог. Слово веба сильнее:
+   ключ, который у веба уже есть на этом языке, — ошибка, а не замена. */
+function addNative(dict) {
+  const file = path.join(__dirname, "lang_native.json");
+  if (!fs.existsSync(file)) return dict;
+  const own = JSON.parse(fs.readFileSync(file, "utf8"));
+  for (const code of Object.keys(own)) {
+    if (!dict[code]) throw new Error("lang_native.json: языка " + code + " нет у веба");
+    for (const key of Object.keys(own[code])) {
+      if (dict[code][key] != null) {
+        throw new Error("lang_native.json: ключ " + key + " (" + code + ") уже есть у веба — берётся веба");
+      }
+      dict[code][key] = own[code][key];
+    }
+  }
+  return dict;
+}
+
 const baseOf = (code) => code.split("-")[0];
 
 function unit(value) {
@@ -137,7 +158,7 @@ function print(v, indent) {
 
 function main() {
   const check = process.argv.includes("--check");
-  const { catalog, codes, plural } = build(loadDict());
+  const { catalog, codes, plural } = build(addNative(loadDict()));
   const text = print(catalog, 0) + "\n";
   const keyCount = Object.keys(catalog.strings).length;
   if (check) {

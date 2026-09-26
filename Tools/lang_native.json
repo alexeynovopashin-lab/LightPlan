@@ -1,0 +1,10 @@
+{
+  "ru": {
+    "blk.removed": "{name} · убрано",
+    "year.nextYear": "Следующий год"
+  },
+  "en": {
+    "blk.removed": "{name} · removed",
+    "year.nextYear": "Next year"
+  }
+}
