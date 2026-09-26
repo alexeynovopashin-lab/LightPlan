@@ -215,8 +215,8 @@ struct BinSheet: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .padding(.top, 14)
                     .shotNode("bin.clear")
+                    .padding(.top, 14)
                 }
             }
             .padding(.horizontal, 24)
@@ -224,6 +224,7 @@ struct BinSheet: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
         .scrollBounceBehavior(.basedOnSize)
+        .shotNode("bin.sheet")
         .presentationDetents([.height(min(contentHeight, windowHeight * 0.86))])
         .presentationDragIndicator(.hidden)
         .sheet(isPresented: $asking) {

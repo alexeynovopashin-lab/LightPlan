@@ -33,6 +33,9 @@ public final class AppModel {
     /// Открыта глава настроек — панель вкладок прячется, как у веба
     /// (раньше это делал `.toolbar(.hidden, for: .tabBar)` системной панели).
     var chapterOpen = false
+    /// Открыты статистика или поиск «Съёмок» (22) — они закрывают панель
+    /// вкладок, как у веба (`z-index` 85 и 80 над 30 у `.tabbar`); год — нет.
+    var plannerPageOpen = false
 
     public let cityLookup: any CityLookup
     /// Поиск места по названию — путь «Место» листа «Где снимаем» (21в).

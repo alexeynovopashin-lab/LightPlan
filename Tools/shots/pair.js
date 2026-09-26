@@ -16,6 +16,8 @@
      node Tools/shots/pair.js --screens planner --scopes day   # «Съёмки» (итерация 21):
                                                    # засев сезона (planner_seed.js), виды месяц/неделя/день
      node Tools/shots/pair.js --screens light --sheets fork,addr,geo   # лист «Где снимаем» (21в)
+     node Tools/shots/pair.js --layers year,year12,stats,search,bin,blk --only-layers
+                                                   # слои и листы «Съёмок» (итерация 22)
      node Tools/shots/pair.js --drum-nudge 20      # барабан провёрнут на 20 pt (только натив):
                                                    # видно, как кромка окна гнёт число
    Выход: --out (по умолчанию $TMPDIR/lp-shots/<ветка>) — по папке на сценарий
@@ -71,9 +73,16 @@ const folds = (args.fold || 'shut,open').split(',');
 /* Лист «Где снимаем» (итерация 21в): развилка и два пути над «Светом», над
    «Картой» — развилка (та же кнопка места в шапке). В засеве две точки
    «Моих мест»: с адресом и безымянная (строку называют координаты). */
-const sheets = args.sheets === '' ? [] : (args.sheets || 'fork,addr,geo').split(',');
+const sheets = args.sheets === '' || args['only-layers'] ? [] : (args.sheets || 'fork,addr,geo').split(',');
 // Форма записи (23): `--forms portrait,wedding,report` — «Съёмки», «＋», жанр плиткой.
 const forms = args.forms ? args.forms.split(',') : [];
+/* Слои и листы «Съёмок» (22): лента года, «Год целиком», статистика, поиск,
+   корзина, «Занять время» — поверх месяца, засев сезона. Сверяются только узлы
+   слоя (и панель вкладок над слоями); корзине засев кладёт две записи. */
+const layers = args.layers ? args.layers.split(',') : [];
+const LAYER_NODES = { year: /^(year|ym)\./, year12: /^y12\./, stats: /^stat\./, search: /^se\./,
+  bin: /^bin\./, blk: /^blk\./ };
+const LAYER_SHEETS = { bin: 1, blk: 1 };
 const SHEET_SPOTS = [
   { id: 'p_shot_a', name: 'Нагорный парк', address: 'ул. Гоголя, 2', lat: 53.3334, lon: 83.8035, pinned: true },
   { id: 'p_shot_b', name: '', address: '', lat: 53.35, lon: 83.75, pinned: true }
@@ -138,6 +147,7 @@ async function nativeShot(udid, sc, dir) {
     ...(sc.scope ? ['-LPShotScope', sc.scope] : []), ...(sc.pick != null ? ['-LPShotPick', String(sc.pick)] : []),
     ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []),
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
+    ...(sc.layer ? ['-LPShotSheet', sc.layer] : []),
     ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
     '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
@@ -158,6 +168,7 @@ function webShot(sc, dir, safe) {
     '--name', path.join(FX, 'place_barnaul.json'), '--safe', safe.map(v => Math.round(v)).join(','),
     ...(sc.chapter ? ['--chapter', sc.chapter] : []),
     ...(sc.form ? ['--sheet', 'form', '--way', sc.form] : []),
+    ...(sc.layer ? ['--sheet', sc.layer] : []),
     ...(sc.sheet ? ['--sheet', 'loc', ...(sc.sheet !== 'fork' ? ['--way', sc.sheet] : [])] : []),
     '--scale', '3', '--out', path.join(dir, 'web.png'), '--report', path.join(dir, 'web.json')]);
   return JSON.parse(fs.readFileSync(path.join(dir, 'web.json'), 'utf8'));
@@ -313,7 +324,22 @@ function markdown(results) {
     fs.writeFileSync(seedFile, JSON.stringify({ ...seed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' }));
     list.push({ name, dir, screen: 'planner', theme, moment: 'day', form: g, seed: seedFile });
   }
-  if (args['only-sheets'] || args.forms && args['only-forms']) screens.length = 0;
+  for (const layer of layers) for (const theme of themes) {
+    const name = ['planner', 'layer', layer, theme].join('-');
+    const dir = path.join(OUT, name);
+    fs.mkdirSync(dir, { recursive: true });
+    const s = { ...plannerSeed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' };
+    if (layer === 'bin') {
+      // Две первые записи посева — в корзину, как удалённые веером (веб `trashRecord`).
+      const recs = (s.sessions || []).slice(0, 2);
+      s.sessions = (s.sessions || []).slice(2);
+      s.trashed = recs.map((rec, i) => ({ rec, at: i, del: Date.parse('2026-09-23T12:00:00+07:00') - i * 60000 }));
+    }
+    const seedFile = path.join(dir, 'seed.json');
+    fs.writeFileSync(seedFile, JSON.stringify(s));
+    list.push({ name, dir, screen: 'planner', theme, moment: 'day', scope: 'month', layer, seed: seedFile });
+  }
+  if (args['only-sheets'] || args.forms && args['only-forms'] || args['only-layers']) screens.length = 0;
   if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
     add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope);
     /* Суббота 26-го: две съёмки внахлёст (14:00–15:30 и 15:00–16:30) —
@@ -357,7 +383,14 @@ function markdown(results) {
     if (sc.sheet) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('loc.')) delete nat.nodes[k];
     // Под формой «Съёмки» живы и пишут рамки — сверяется только форма.
     if (sc.form) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('form.')) delete nat.nodes[k];
+    // Под слоем «Съёмки» живы и пишут рамки — сверяется только слой (и панель вкладок над ним).
+    const keep = sc.layer && (k => LAYER_NODES[sc.layer].test(k) || (!LAYER_SHEETS[sc.layer] && /^tab(bar|\.)/.test(k)));
+    if (keep) for (const k of Object.keys(nat.nodes)) if (!keep(k)) delete nat.nodes[k];
     const web = webShot(sc, sc.dir, nat.safe);
+    if (keep) for (const [k, r] of Object.entries(web.nodes)) {
+      // Лента прокручена к месяцу: ушедшее за край экрана у веба тоже не в счёт.
+      if (!keep(k) || r.visible !== false && (r.y >= 956 || r.y + r.h <= 0)) delete web.nodes[k];
+    }
     // Лист главы у веба закрывает панель вкладок, но в разметке она «видна»;
     // приложение её прячет — под главой панель не сверяется.
     if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(web.nodes)) if (/^tab(bar|\.)/.test(k)) delete web.nodes[k];
@@ -367,13 +400,14 @@ function markdown(results) {
        карточка, всё в ней уменьшено в (ширина листа / 440) раз (замер:
        424 / 440 = 0,964). Сверка раскладки — смещения от верха листа,
        делённые на этот масштаб. */
-    if (sc.sheet && web.nodes['loc.sheet'] && nat.nodes['loc.sheet']) {
-      const ns = nat.nodes['loc.sheet'], ws = web.nodes['loc.sheet'], k = ns.w / 440;
+    const sheetKey = sc.sheet ? 'loc.sheet' : LAYER_SHEETS[sc.layer] ? sc.layer + '.sheet' : null;
+    if (sheetKey && web.nodes[sheetKey] && nat.nodes[sheetKey]) {
+      const ns = nat.nodes[sheetKey], ws = web.nodes[sheetKey], k = ns.w / 440;
       let worst = { v: 0, name: '—' };
       cmp.norm = { scale: +k.toFixed(4), rows: {} };
       for (const [name, a] of Object.entries(web.nodes)) {
         const b = nat.nodes[name];
-        if (name === 'loc.sheet' || !b || a.visible === false) continue;
+        if (name === sheetKey || !b || a.visible === false) continue;
         const d = [(b.x - ns.x) / k - a.x, (b.y - ns.y) / k - (a.y - ws.y), b.w / k - a.w, b.h / k - a.h].map(v => +v.toFixed(1));
         cmp.norm.rows[name] = d;
         const m = Math.max(...d.map(Math.abs));

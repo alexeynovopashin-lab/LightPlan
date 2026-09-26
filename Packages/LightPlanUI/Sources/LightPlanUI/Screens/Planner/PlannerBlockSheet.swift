@@ -44,7 +44,7 @@ struct BlockSheet: View {
                     .shotNode("blk.title")
                 Text(t.t("blk.sub")).font(.system(size: 13)).foregroundStyle(pal.ink4)
                     .padding(.top, 5)
-                kinds(t, pal).padding(.top, 12)
+                kinds(t, pal)
                 FormGroup(node: "blk.group") {
                     allDayRow(t, pal)
                     fromRow(f, pal)
@@ -64,7 +64,7 @@ struct BlockSheet: View {
                     if open == .toTime {
                         wheel(((b.start ?? 600) + (b.duration ?? 120) - shift) % 1440) { m in setEnd(m) }
                     }
-                    FormTextField(placeholder: t.t("blk.notePh"), text: $b.note)
+                    FormTextField(placeholder: t.t("blk.notePh"), text: $b.note).shotNode("blk.note")
                 }
                 .padding(.top, 14)
                 Button(action: done) {
@@ -99,6 +99,7 @@ struct BlockSheet: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
+        .shotNode("blk.sheet")
         .presentationDetents([.height(min(contentHeight, windowHeight * 0.86))])
         .presentationDragIndicator(.hidden)
         .animation(.snappy(duration: 0.25), value: open)
@@ -106,18 +107,18 @@ struct BlockSheet: View {
 
     // MARK: - Вид занятости
 
-    /// Четыре `.tool`: знак 22 и подпись 10; выбранный — латунь на `--press-warm`.
+    /// Четыре `.tool` в `.chips` (перенос строк, зазор 8): по ширине подписи,
+    /// знак 22 и подпись 10 через 6; выбранный — латунь на `--press-warm`.
     private func kinds(_ t: Lexicon, _ pal: Palette) -> some View {
         HStack(spacing: 8) {
             ForEach(BlockKind.allCases, id: \.self) { k in
                 let on = b.kind == k
                 Button { b.kind = k } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 6) {
                         Icon(k.iconName, size: 22, line: 1.5)
-                        Text(t.t("blkKind." + k.rawValue)).font(.system(size: 10)).lineLimit(1)
+                        Text(t.t("blkKind." + k.rawValue)).font(.system(size: 10)).tracking(0.2).lineLimit(1)
                     }
                     .foregroundStyle(on ? pal.brass : pal.ink5)
-                    .frame(maxWidth: .infinity)
                     .padding(.top, 11).padding(.bottom, 9).padding(.horizontal, 2)
                     .background(on ? pal.pressWarm : .clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .contentShape(Rectangle())
@@ -143,6 +144,7 @@ struct BlockSheet: View {
             .labelsHidden().tint(pal.brass)
         }
         .padding(.vertical, 11).padding(.horizontal, 15).frame(minHeight: 52)
+        .shotNode("blk.allDay")
     }
 
     private func fromRow(_ f: PlannerFacts, _ pal: Palette) -> some View {
@@ -152,6 +154,7 @@ struct BlockSheet: View {
                 FormCapsule(node: "blk.fromTime", text: f.fmt(Double(b.start ?? 600)), open: open == .fromTime) { toggle(.fromTime) }
             }
         } sub: { EmptyView() }
+        .shotNode("blk.from")
     }
 
     private func toRow(_ f: PlannerFacts, _ pal: Palette) -> some View {
@@ -165,6 +168,7 @@ struct BlockSheet: View {
             Text(span(f)).font(.system(size: 12)).foregroundStyle(pal.ink4).monospacedDigit()
                 .shotNode("blk.span")
         }
+        .shotNode("blk.to")
     }
 
     /// Строка группы: подпись (и метка пояса) слева, капсулы справа, под

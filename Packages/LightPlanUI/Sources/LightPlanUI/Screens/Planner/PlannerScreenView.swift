@@ -76,6 +76,8 @@ public struct PlannerScreenView: View {
         .coordinateSpace(name: plannerFanSpace)
         .overlay { EventFan(app: app, f: f, fan: $fan) }
         .overlay { PlannerLayers(app: app, f: f, nav: nav) }
+        .onAppear { openStartLayer() }
+        .onChange(of: nav.statsOpen || nav.searchOpen, initial: true) { _, open in app.plannerPageOpen = open }
         .onChange(of: st.scope, initial: true) { _, _ in aim() }
         .onChange(of: st.selected) { _, _ in aim() }
         // Смена вкладки закрывает слои (веб: `.overlay-right.open` и прочие).
@@ -88,6 +90,21 @@ public struct PlannerScreenView: View {
                 fan = nil
             }
         }
+    }
+
+    /// Слой при запуске сценария снимка (22): `LPShotSheet year | year12 |
+    /// stats | search` — как тап по заголовку, «Год целиком» или кнопкам шапки.
+    private func openStartLayer() {
+        guard let layer = app.startChapter else { return }
+        let month = app.planner.month
+        switch layer {
+        case "year": nav.openLenta(from: month)
+        case "year12": nav.openLenta(from: month); nav.year12Open = true
+        case "stats": nav.year = month.year; nav.statsOpen = true
+        case "search": nav.searchOpen = true
+        default: return
+        }
+        app.startChapter = nil
     }
 
     /// Веер видов (`.scope-menu`): под кнопкой вида на 8 pt, три строки —

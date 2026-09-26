@@ -28,7 +28,9 @@ import LightPlanDomain
 /// `LPShotVoid` — цвет пустоты под ротором (`#00FF00`), `LPShotHeadingReport` —
 /// куда писать, на каком угле ротор встал (`MapScreenView.shotHeading`).
 /// Лист места (21в): `LPShotSheet loc` открывает «Где снимаем» над экраном,
-/// `LPShotWay` — путь (`addr` | `geo`), без него — развилка.
+/// `LPShotWay` — путь (`addr` | `geo`), без него — развилка. «Съёмки» (22):
+/// `LPShotSheet year | year12 | stats | search` — слой, `bin` — корзина,
+/// `blk` — «Занять время» на выбранный день.
 public struct ShotScenario: Sendable {
     public enum Screen: String, Sendable { case light, map, planner, settings }
 
@@ -118,6 +120,11 @@ extension AppModel {
                 if let g = s.way.flatMap(Genre.init(rawValue:)) { app.pickFormGenre(g) }
             }
         }
+        // Слои «Съёмок» и листы (22): слои открывает сам экран при появлении
+        // (у него они в своём состоянии), листы — здесь. Корзину засевает файл.
+        if ["year", "year12", "stats", "search"].contains(s.sheet ?? "") { app.startChapter = s.sheet }
+        if s.sheet == "bin" { app.binOpen = true }
+        if s.sheet == "blk" { app.openBlockSheet(day: app.planner.selected) }
         if s.sheet == "loc" {
             app.placeSheetStart = s.way.flatMap(PlaceSheetForm.Way.init(rawValue:)) ?? .fork
             app.placeSheetOpen = true

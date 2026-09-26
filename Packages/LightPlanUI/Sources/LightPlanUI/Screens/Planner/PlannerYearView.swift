@@ -306,11 +306,15 @@ struct YearLentaView: View {
                         withAnimation(nil) { nav.lentaOpen = false }
                         app.planner.enterDay(day)
                     } label: {
-                        Text("\(d)")
-                            .font(webFont(13.5, isToday ? 700 : 400)).monospacedDigit()
-                            .foregroundStyle(isToday ? pal.onBrass : pal.ink3)
-                            .frame(maxWidth: .infinity)
+                        // Квадрат клетки задаёт пустой `Color`, число — поверх: у текста
+                        // с `aspectRatio` строки сетки после второй сплющивались в «…».
+                        Color.clear
                             .aspectRatio(1, contentMode: .fit)
+                            .overlay {
+                                Text("\(d)")
+                                    .font(webFont(13.5, isToday ? 700 : 400)).monospacedDigit()
+                                    .foregroundStyle(isToday ? pal.onBrass : pal.ink3)
+                            }
                             .background { if isToday { Circle().fill(pal.brass).frame(width: 30, height: 30) } }
                             .contentShape(Circle())
                     }

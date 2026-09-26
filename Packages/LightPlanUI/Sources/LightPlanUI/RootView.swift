@@ -63,7 +63,7 @@ private struct Shell: View {
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
         // из неё видно 84 − низ зоны, остальное уходит под полосу.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !app.chapterOpen {
+            if !app.chapterOpen && !app.plannerPageOpen {
                 GeometryReader { geo in
                     TabBarView(tab: $app.tab, lexicon: app.lexicon)
                         .shotNode("tabbar")
