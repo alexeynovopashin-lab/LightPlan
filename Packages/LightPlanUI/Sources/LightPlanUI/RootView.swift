@@ -85,6 +85,8 @@ private struct Shell: View {
         .sheet(isPresented: $app.showStartSheet, onDismiss: { app.finishStart() }) {
             StartSheet(app: app)
         }
+        // Форма записи (23): на всю высоту, как `#formOverlay` веба.
+        .modifier(FormCover(app: app))
         // Лист «Где снимаем» (21в) — с кнопки места «Света» и «Карты».
         .sheet(isPresented: $app.placeSheetOpen, onDismiss: { app.placeSheetStart = .fork }) {
             PlaceSheet(app: app, windowHeight: windowHeight)
@@ -101,6 +103,19 @@ private struct Shell: View {
             .allowsHitTesting(shown)
             .accessibilityHidden(!shown)
             .environment(\.shotSilent, !shown)
+    }
+}
+
+/// Форма поверх вкладок. На Mac (хост сборки пакета) — обычный лист.
+private struct FormCover: ViewModifier {
+    @Bindable var app: AppModel
+    func body(content: Content) -> some View {
+        let shown = Binding(get: { app.form != nil }, set: { if !$0 { app.closeForm() } })
+        #if os(iOS)
+        content.fullScreenCover(isPresented: shown) { FormScreen(app: app) }
+        #else
+        content.sheet(isPresented: shown) { FormScreen(app: app) }
+        #endif
     }
 }
 

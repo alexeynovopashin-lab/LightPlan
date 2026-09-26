@@ -151,3 +151,5 @@ Open-Meteo, снятые один раз), имя места (`place_barnaul.jso
   (`killall -9 com.apple.CoreSimulator.CoreSimulatorService`) всё отвечает
   сразу. Перезапуск выключает симуляторы всех веток — предупредить в
   `SESSIONS_CHAT.md`. На `terminate` в `pair.js` теперь потолок 10 с.
+
+Форма записи (итерация 23): `node Tools/shots/pair.js --screens planner --sheets '' --forms portrait,wedding,report --only-forms --themes dark,light` — «Съёмки», кнопка «＋», плитка жанра. Узлы `form.*` (`tools/shot.js` `NODES.form`). У веба под формой лежат блоки места, маршрута и денег, поэтому сверяется верх формы: шапка, заголовок, жанры, «кто», начало и конец.

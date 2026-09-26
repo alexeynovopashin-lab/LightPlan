@@ -42,10 +42,8 @@ struct SettingsChapterView: View {
         SecLabel(text: t.t("set.myCity"), first: true)
         CitySearchField(app: app, style: .web)
         SetNote(text: t.t("set.myCityNote"))
-        // Номер, ID приложения и контакты — профиль для Event OS; ни одна
-        // итерация плана их пока не назначает (записано в DECISIONS).
-        foreign("set.myPhone")
-        foreign("set.appId")
+        // «Мой телефон», «ID приложения», «Прежние ID» — итерация 23; контакты — 28.
+        ProfilePhoneSection(app: app)
         foreign("set.contacts")
     }
 

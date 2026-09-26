@@ -205,7 +205,22 @@ public final class AppModel {
     /// Часы приложения: у снимка пары — прибитые, как `page.clock` веба.
     public let now: @Sendable () -> Date
 
-    private var snapshot: Snapshot
+    // MARK: - Форма записи (итерация 23; правила — `AppModel+Form`)
+    /// Открытая форма записи; `nil` — закрыта.
+    public var form: EventForm?
+    /// Форма поднята из черновика — над ней полоса «Черновик восстановлен».
+    public var formIsDraft = false
+    /// Строка под заголовком формы («черновик стёрт»).
+    public var formNote: String?
+    /// Последний жанр формы: новая форма открывается на нём (веб `shootType`).
+    var lastFormGenre: Genre = .portrait
+    var draftStore: any DraftStoring = DefaultsDraftStore()
+    var draftTask: Task<Void, Never>?
+    /// Последний зафиксированный номер владельца (веб `myTelSnap`): смена считается от него.
+    var telSnap: String?
+
+    /// Внутренний, а не закрытый: форма записи (`AppModel+Form`) правит список записей.
+    var snapshot: Snapshot
     /// Снимок как есть — для тестов записи (могилы, ссылки маршрутов).
     var snapshotForTests: Snapshot { snapshot }
     private let store: Store?
@@ -433,7 +448,7 @@ public final class AppModel {
     /// (поймано тестом `startSheetOnceAndSettingsSurviveRestart`).
     private var saving: Task<Void, Never>?
 
-    private func persist() {
+    func persist() {
         guard let store else { return }
         let snap = snapshot, prev = saving
         saving = Task {

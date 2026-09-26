@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import LightPlanCore
 import LightPlanData
+import LightPlanDomain
 
 /// Половина пары «веб / натив» (итерация 19б, § 5.4 плана): приложение
 /// открывается в той же минуте, в том же месте, с той же погодой и теми же
@@ -106,6 +107,17 @@ extension AppModel {
         app.startChapter = s.chapter
         // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.
         if s.screen == .light, s.chapter == "pick" { app.light.pickerOpen = true }
+        // Форма записи (23): `LPShotSheet form`, жанр — `LPShotWay` (без него — последний). Черновик
+        // только в памяти: прогон не должен писать на диск симулятора.
+        if s.sheet == "form" {
+            app.draftStore = MemoryDraftStore()
+            // Форма читает качество неба дня: ждём, пока погода из файла придёт (у веба она уже на месте).
+            Task { @MainActor in
+                await app.light.weather.settled()
+                app.openForm(day: app.planner.selected)
+                if let g = s.way.flatMap(Genre.init(rawValue:)) { app.pickFormGenre(g) }
+            }
+        }
         if s.sheet == "loc" {
             app.placeSheetStart = s.way.flatMap(PlaceSheetForm.Way.init(rawValue:)) ?? .fork
             app.placeSheetOpen = true

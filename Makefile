@@ -76,6 +76,9 @@ icons:
 # Итерация 11: домен. Таблицы и правила съёмки режутся из беты своим скриптом и
 # своим отпечатком — общий стенд неба не трогается. TZ=UTC по той же причине,
 # что у parity: дни записей — местные полуночи.
+tel:
+	@node Tools/parity/tel.js --out $(FIXTURES)
+
 domain:
 	@TZ=UTC node Tools/parity/domain.js --out $(FIXTURES)
 	@tmp=$$(mktemp -d); \
