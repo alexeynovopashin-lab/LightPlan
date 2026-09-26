@@ -3,8 +3,10 @@ import LightPlanCore
 import LightPlanDomain
 
 /// Сетка жанров формы с уточнениями (веб `renderGenres`, `subDrop`, L26830–26940).
-/// Тап по своему же жанру раскрывает уточнения; удержание 0,42 с делает то же с
-/// любой плитки, у которой они есть (веб `holdToOpen`, `MB_HOLD`). Панель встаёт
+/// Тап по своему же жанру раскрывает уточнения; удержание 0,42 с на любой плитке,
+/// у которой они есть, — то же, что два тапа: жанр выбирается, панель
+/// раскрывается с отдачей и остаётся открытой, когда палец отпущен (Алексей,
+/// 26.09; у веба `holdToOpen` жанр не выбирал). Панель встаёт
 /// в конец ряда, из которого её позвали, а не сразу за плиткой: иначе она рвала
 /// бы ряд. Выбранное уточнение занимает саму плитку жанра — «Ньюборн» с
 /// младенцем, а не «Портрет» с пометкой.
@@ -13,6 +15,8 @@ struct GenreGrid: View {
     let form: EventForm
     /// Какой жанр раскрыт — состояние руки, в запись не идёт (веб `subOpenFor`).
     @State private var openFor: Genre?
+    /// Счётчик удержаний — по нему отдача.
+    @State private var holds = 0
     @Environment(\.colorScheme) private var scheme
 
     static let columns = 4
@@ -32,6 +36,7 @@ struct GenreGrid: View {
             }
         }
         .onChange(of: list) { if let g = openFor, !list.contains(g) { openFor = nil } }
+        .sensoryFeedback(.impact(weight: .medium), trigger: holds)
     }
 
     private func tile(_ g: Genre, _ t: Lexicon) -> some View {
@@ -39,12 +44,9 @@ struct GenreGrid: View {
         let sub = on ? form.subGenre : nil
         let hasSubs = !g.subGenres.isEmpty
         return GenreTile(genre: g, sub: sub, name: sub.map { t.t("sub." + $0.rawValue) } ?? t.t("genre." + g.rawValue),
-                         on: on, marker: hasSubs ? (openFor == g ? .open : .closed) : nil) {
-            if on { toggle(g) } else { pick(g, nil) }
-        }
-        .simultaneousGesture(LongPressGesture(minimumDuration: 0.42, maximumDistance: 10).onEnded { _ in
-            if hasSubs { toggle(g) }
-        })
+                         on: on, marker: hasSubs ? (openFor == g ? .open : .closed) : nil,
+                         action: { if on { toggle(g) } else { pick(g, nil) } },
+                         hold: hasSubs ? { hold(g, selected: on) } : nil)
     }
 
     /// Панель: первой стоит сама съёмка без уточнения — ею же его и снимают.
@@ -73,6 +75,13 @@ struct GenreGrid: View {
     private func toggle(_ g: Genre) {
         guard !g.subGenres.isEmpty else { return }
         withAnimation(.easeOut(duration: 0.2)) { openFor = openFor == g ? nil : g }
+    }
+
+    /// Удержание = два тапа: чужой жанр сначала выбирается, потом раскрывается.
+    private func hold(_ g: Genre, selected: Bool) {
+        if !selected { app.pickFormGenre(g, sub: nil) }
+        holds += 1
+        withAnimation(.easeOut(duration: 0.2)) { openFor = selected && openFor == g ? nil : g }
     }
 
     private func pick(_ g: Genre, _ x: SubGenre?) {

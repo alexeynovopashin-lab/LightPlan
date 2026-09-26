@@ -162,7 +162,12 @@ struct UndoBar: View {
                     .shotNode("undo.btn")
                 }
                 .padding(.vertical, 12).padding(.horizontal, 15)
+                // Матовая, а не прозрачная (Алексей, 26.09): тон веба `--overlay-3` поверх
+                // стекла, кант `--hairline` и тень `--glass-cast` — как `.undo` веба.
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.overlay3))
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1))
+                .shadow(color: pal.glassCast, radius: 15, y: 10)
                 .padding(.horizontal, 14).padding(.bottom, 14)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: u.token) {
