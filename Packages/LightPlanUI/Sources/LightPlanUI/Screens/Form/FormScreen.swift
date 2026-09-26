@@ -109,7 +109,8 @@ struct FormScreen: View {
     private func genreBlock(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // `.g-label` с шестерёнкой «Мои жанры»: ряд по центру, шестерёнка (`.gear`: поле 8,
-            // знак 21 линией 1,6, `--ink-4`) делает его высотой 37.
+            // знак 21 линией 1,6, `--ink-4`) делает его высотой 37. Ряд встаёт на 30 ниже
+            // подзаголовка (пары 24: сверху 24 от `genreBlock` и 6 здесь), а не на 30 + 24.
             HStack {
                 Text(t.t("form.genre"))
                     .font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)
@@ -122,7 +123,7 @@ struct FormScreen: View {
                 .accessibilityLabel(t.t("form.myGenres"))
                 .shotNode("form.gear")
             }
-            .padding(.top, 30).padding(.horizontal, 4).padding(.bottom, 9)
+            .padding(.top, 6).padding(.horizontal, 4).padding(.bottom, 9)
             FormGroup {
                 GenreGrid(app: app, form: f)
                 .shotNode("form.genre")
@@ -309,7 +310,9 @@ struct FormScreen: View {
                 Picker("", selection: Binding(get: { f.repeatCount }, set: { app.setFormRepeatCount($0) })) {
                     ForEach(Repeats.minCount...Repeats.maxCount, id: \.self) { Text(String($0)).tag($0) }
                 }
+                #if os(iOS)
                 .pickerStyle(.wheel)
+                #endif
                 .frame(height: 140)
                 .padding(.horizontal, 10)
             }

@@ -78,10 +78,29 @@ struct FormDateGrid: View {
 }
 
 /// Колесо часа и минуты — **системное** (DECISIONS «Барабаны формы — системное
-/// колесо»): шаг минут — свойство колеса (`minuteInterval`). Формат 12 или 24
-/// часа берётся из настройки приложения, а не из локали телефона: локаль
-/// задаётся явно (`@hours=h12` / `h23`). Значение — минуты от полуночи; колесо
-/// живёт в UTC, чтобы часовой пояс телефона не сдвигал числа.
+/// колесо»), но не `UIDatePicker`: тот умеет только минуты по шагу, и время от
+/// света (18:37 при шаге 5) показывал как 18:35. Здесь два столбца
+/// `UIPickerView`, как барабаны веба: минуты — шаг плюс текущая минута, если
+/// она не по шагу (веб `fillMins`, `minsList`); час — всегда 0–23, у двенадцати
+/// часов подпись «7 PM» без отдельного столбца AM/PM (веб `hourLabel`). Список
+/// минут строится при открытии и держится, пока колесо открыто: иначе ряды
+/// сдвигались бы под пальцем. Оба столбца закольцованы, как у веба и системы.
+extension FormTimeWheel {
+    /// Минуты столбца: шаг и минута не по шагу, по возрастанию.
+    static func minutes(step: Int, current: Int?) -> [Int] {
+        var out = Array(stride(from: 0, to: 60, by: max(1, step)))
+        if let c = current, !out.contains(c) { out.append(c); out.sort() }
+        return out
+    }
+
+    /// Подпись часа: «07» по 24 часам, «7 AM» по двенадцати.
+    static func hourLabel(_ h: Int, twelveHour: Bool, language: String) -> String {
+        guard twelveHour else { return (h < 10 ? "0" : "") + String(h) }
+        let s = ClockText(language: language, preference: .h12).fmt(Double(h * 60))
+        return s.replacingOccurrences(of: #"^(\d+):00"#, with: "$1", options: .regularExpression)
+    }
+}
+
 #if canImport(UIKit)
 struct FormTimeWheel: UIViewRepresentable {
     let minute: Int
@@ -92,34 +111,76 @@ struct FormTimeWheel: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeUIView(context: Context) -> UIDatePicker {
-        let p = UIDatePicker()
-        p.datePickerMode = .time
-        p.preferredDatePickerStyle = .wheels
-        p.timeZone = TimeZone(identifier: "UTC")
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: "UTC")!
-        p.calendar = cal
-        p.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .valueChanged)
+    func makeUIView(context: Context) -> UIPickerView {
+        let p = UIPickerView()
+        p.dataSource = context.coordinator
+        p.delegate = context.coordinator
+        p.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return p
     }
 
-    func updateUIView(_ p: UIDatePicker, context: Context) {
-        context.coordinator.onChange = onChange
-        p.minuteInterval = step
-        p.locale = Locale(identifier: Lexicon.base(language) + (twelveHour ? "_US@hours=h12" : "_RU@hours=h23"))
-        let want = Date(timeIntervalSinceReferenceDate: Double(minute * 60))
-        if abs(p.date.timeIntervalSince(want)) > 30 { p.setDate(want, animated: false) }
+    func updateUIView(_ p: UIPickerView, context: Context) {
+        let c = context.coordinator
+        c.onChange = onChange
+        let m = ((minute % 1440) + 1440) % 1440
+        let hours = (0..<24).map { Self.hourLabel($0, twelveHour: twelveHour, language: language) }
+        if hours != c.hours { c.hours = hours; p.reloadComponent(0) }
+        if c.step != step || !c.mins.contains(m % 60) {
+            c.step = step
+            c.mins = Self.minutes(step: step, current: m % 60)
+            p.reloadComponent(1)
+        }
+        c.show(m, in: p)
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIDatePicker, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIPickerView, context: Context) -> CGSize? {
         CGSize(width: proposal.width ?? 320, height: 140)
     }
 
-    final class Coordinator: NSObject {
+    final class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {
         var onChange: (Int) -> Void = { _ in }
-        @objc func changed(_ p: UIDatePicker) {
-            onChange(Int(p.date.timeIntervalSinceReferenceDate / 60) % 1440)
+        var hours: [String] = []
+        var mins: [Int] = []
+        var step = 0
+        /// Копий списка в столбце: колесо листается «без конца» и после остановки
+        /// возвращается в среднюю копию.
+        static let loops = 101
+
+        func numberOfComponents(in pickerView: UIPickerView) -> Int { 2 }
+        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent c: Int) -> Int {
+            (c == 0 ? hours.count : mins.count) * Self.loops
+        }
+        func pickerView(_ pickerView: UIPickerView, widthForComponent c: Int) -> CGFloat {
+            c == 0 && hours.first.map { $0.count > 2 } == true ? 96 : 64
+        }
+        func pickerView(_ pickerView: UIPickerView, rowHeightForComponent c: Int) -> CGFloat { 34 }
+        func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent c: Int) -> String? {
+            c == 0 ? hours[row % hours.count] : (mins[row % mins.count] < 10 ? "0" : "") + String(mins[row % mins.count])
+        }
+
+        func pickerView(_ p: UIPickerView, didSelectRow row: Int, inComponent c: Int) {
+            let h = p.selectedRow(inComponent: 0) % hours.count
+            let mm = mins[p.selectedRow(inComponent: 1) % mins.count]
+            let m = h * 60 + mm
+            center(p)
+            onChange(m)
+        }
+
+        /// Ставит колесо на минуту, если оно стоит не на ней.
+        func show(_ m: Int, in p: UIPickerView) {
+            guard !hours.isEmpty, !mins.isEmpty, let mi = mins.firstIndex(of: m % 60) else { return }
+            let h = m / 60
+            let mid = Self.loops / 2
+            if p.selectedRow(inComponent: 0) % hours.count != h { p.selectRow(mid * hours.count + h, inComponent: 0, animated: false) }
+            if p.selectedRow(inComponent: 1) % mins.count != mi { p.selectRow(mid * mins.count + mi, inComponent: 1, animated: false) }
+        }
+
+        private func center(_ p: UIPickerView) {
+            let mid = Self.loops / 2
+            for (c, n) in [(0, hours.count), (1, mins.count)] where n > 0 {
+                let r = p.selectedRow(inComponent: c)
+                if r / n != mid { p.selectRow(mid * n + r % n, inComponent: c, animated: false) }
+            }
         }
     }
 }

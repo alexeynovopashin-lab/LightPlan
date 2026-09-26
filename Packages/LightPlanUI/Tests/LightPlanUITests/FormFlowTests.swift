@@ -103,6 +103,51 @@ struct FormFlowTests {
         #expect(app.sessions.count == count && app.sessions.first { $0.id == s.id }?.notes == "правка")
     }
 
+    // MARK: хвосты 23 (итерация 24, шаг 1)
+
+    @Test func repeatSavesCopiesOnce() throws {
+        let app = model(disk: Disk())
+        app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
+        app.setFormRepeat(.week)
+        app.setFormRepeatCount(3)
+        let open = try #require(app.form)
+        #expect(app.formRepeatSummary(open) != nil)
+        let s = try #require(app.saveForm())
+        let group = try #require(s.repeatInfo?.group)
+        #expect(app.sessions.filter { $0.repeatInfo?.group == group }.map(\.day)
+                == [3, 10, 17].map { CivilDate(year: 2026, month: 10, day: $0) })
+        // Правка карточки из группы копий не множит.
+        app.openForm(editing: s.id)
+        let again = try #require(app.form)
+        #expect(!again.repeatEditable && app.formRepeatInfo(again) != nil)
+        app.saveForm()
+        #expect(app.sessions.count == 3)
+    }
+
+    @Test func deleteFromFormClosesItAndRemovesRecord() throws {
+        let app = model(disk: Disk())
+        app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
+        let s = try #require(app.saveForm())
+        app.openForm(editing: s.id)
+        app.deleteFormRecord()
+        #expect(app.form == nil && !app.sessions.contains { $0.id == s.id })
+    }
+
+    @Test func lastGenreCannotBeSwitchedOff() {
+        let app = model(disk: Disk())
+        for g in Genre.allCases.dropFirst() { app.toggleGenre(g) }
+        #expect(app.enabledGenres == [Genre.allCases[0]])
+        app.toggleGenre(Genre.allCases[0])
+        #expect(app.enabledGenres == [Genre.allCases[0]])
+    }
+
+    @Test func wheelShowsLightMinuteBesideTheStep() {
+        #expect(FormTimeWheel.minutes(step: 5, current: 37) == [0, 5, 10, 15, 20, 25, 30, 35, 37, 40, 45, 50, 55])
+        #expect(FormTimeWheel.minutes(step: 15, current: 30) == [0, 15, 30, 45])
+        #expect(FormTimeWheel.hourLabel(7, twelveHour: false, language: "ru") == "07")
+        #expect(FormTimeWheel.hourLabel(19, twelveHour: true, language: "en").hasPrefix("7"))
+    }
+
     @Test func newOrgIsCreatedAndChosen() throws {
         let app = model(disk: Disk())
         app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
