@@ -27,10 +27,11 @@ struct PlannerSearchView: View {
                     .font(webFont(16)).foregroundStyle(pal.ink)
                     .focused($focused)
                     .autocorrectionDisabled()
+                    .tint(pal.ink) // каретка веба — цвет текста, не системный синий
                     .padding(.vertical, 14).padding(.horizontal, 15)
                     .background(focused ? pal.press : pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .padding(.top, 14)
                     .shotNode("se.field")
+                    .padding(.top, 14)
                 if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     empty("search.startTyping", pal)
                 } else if hits.isEmpty {

@@ -210,7 +210,8 @@ struct BinSheet: View {
                         }
                     }
                     Button { asking = true } label: {
-                        Text(t.t("bin.clear")).font(.system(size: 15)).foregroundStyle(pal.ink3)
+                        // `.ghost` веба: 14, `--ink-4`.
+                        Text(t.t("bin.clear")).font(.system(size: 14)).foregroundStyle(pal.ink4)
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
                             .contentShape(Rectangle())
                     }

@@ -73,8 +73,8 @@ struct BlockSheet: View {
                         .background(pal.brass, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .padding(.top, 20)
                 .shotNode("blk.done")
+                .padding(.top, 20)
                 if editing {
                     Button {
                         app.blockSheet = nil
@@ -143,7 +143,9 @@ struct BlockSheet: View {
             }))
             .labelsHidden().tint(pal.brass)
         }
-        .padding(.vertical, 11).padding(.horizontal, 15).frame(minHeight: 52)
+        // `.row` веба: поля 14 × 15 (пара 22: строка 59 при переключателе 31).
+        // Переключатель веба 31 в высоту, системный — 28: строка держит 59, как у веба.
+        .padding(.vertical, 14).padding(.horizontal, 15).frame(minHeight: 59)
         .shotNode("blk.allDay")
     }
 
@@ -165,7 +167,8 @@ struct BlockSheet: View {
                 FormCapsule(node: "blk.toTime", text: f.fmt(Double(end - shift)), open: open == .toTime) { toggle(.toTime) }
             }
         } sub: {
-            Text(span(f)).font(.system(size: 12)).foregroundStyle(pal.ink4).monospacedDigit()
+            // `.row .sub` веба: 11, `--ink-6`, через 2 под капсулой.
+            Text(span(f)).font(.system(size: 11)).foregroundStyle(pal.ink6).monospacedDigit()
                 .shotNode("blk.span")
         }
         .shotNode("blk.to")
@@ -181,12 +184,12 @@ struct BlockSheet: View {
                 if let tz { Text(tz).font(.system(size: 11)).foregroundStyle(pal.ink4) }
             }
             Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 3) {
+            VStack(alignment: .trailing, spacing: 2) {
                 HStack(spacing: 6) { caps() }
                 sub()
             }
         }
-        .padding(.vertical, 12).padding(.horizontal, 15).frame(minHeight: 52)
+        .padding(.vertical, 14).padding(.horizontal, 15).frame(minHeight: 52)
     }
 
     private func wheel(_ minute: Int, _ set: @escaping (Int) -> Void) -> some View {

@@ -456,8 +456,8 @@ struct Year12View: View {
             Text(f.dates.monthTitleN(i))
                 .font(webFont(12.5, 650)).tracking(0.1)
                 .foregroundStyle(now ? pal.brass : pal.ink)
-                .padding(.bottom, 7)
                 .shotNode("y12.name.\(i)")
+                .padding(.bottom, 7)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {
                 ForEach(0..<lead, id: \.self) { k in Color.clear.frame(height: 16.15).id("pad\(k)") }
                 ForEach(1...days, id: \.self) { d in

@@ -172,8 +172,9 @@ struct PlannerStatsView: View {
             s += AttributedString(f.t.sep(k) + (w == k ? words.genreName(g.genre) : w))
         }
         return Text(s).font(webFont(13)).foregroundStyle(pal.ink6)
-            .lineSpacing(13)
-            .padding(.vertical, 6.5)
+            // `line-height: 2` веба — строка 26 при строке шрифта 15,75 (замер пары 22).
+            .lineSpacing(10.25)
+            .padding(.vertical, 5.125)
     }
 
     private func lateRows(_ rows: [(genre: Genre, days: Int)], _ pal: Palette) -> some View {
