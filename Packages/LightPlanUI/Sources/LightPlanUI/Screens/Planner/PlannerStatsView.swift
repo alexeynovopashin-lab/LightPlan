@@ -23,31 +23,31 @@ struct PlannerStatsView: View {
         let empty = over == nil && !hasBars && all.isEmpty && late.isEmpty
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                OverlayBack(title: f.t.t("year.one"), node: "st.back") {
+                OverlayBack(title: f.t.t("year.one"), node: "stat.back") {
                     withAnimation(statsSlide) { nav.statsOpen = false }
                 }
                 if empty {
                     Text(f.t.t("stats.empty")).font(webFont(14)).foregroundStyle(pal.ink7)
-                        .padding(.vertical, 20).shotNode("st.empty")
+                        .padding(.vertical, 20).shotNode("stat.empty")
                 }
                 if let over { overload(over, pal) }
                 if hasBars {
-                    label("year.months", node: "st.months", top: 30)
+                    label("year.months", node: "stat.months", top: 30)
                     Text(f.t.t("year.monthsNote")).font(webFont(12)).foregroundStyle(pal.ink6)
                         .lineSpacing(18 - 14.3).padding(.vertical, (18 - 14.3) / 2)
                         .padding(.horizontal, 24).padding(.top, 10 - 4).padding(.bottom, 10)
-                        .shotNode("st.monthsNote")
+                        .shotNode("stat.monthsNote")
                     monthBars(bars, pal).padding(.top, 10)
                 }
                 genres(all, pal).padding(.top, 18)
                 if !all.isEmpty {
-                    label("year.profit", node: "st.profit", top: 22 + 30)
+                    label("year.profit", node: "stat.profit", top: 22 + 30)
                     ProfitPlate(profit: YearMath.profit(app.sessions, year: y, home: app.settings.currency),
                                 year: y, home: app.settings.currency, money: money)
                         .padding(.top, 12)
                 }
                 if !late.isEmpty {
-                    label("year.delivery", node: "st.delv", top: 22 + 30)
+                    label("year.delivery", node: "stat.delv", top: 22 + 30)
                     lateRows(late, pal).padding(.top, 12)
                 }
             }
@@ -93,7 +93,7 @@ struct PlannerStatsView: View {
         .background(pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .modifier(WarnGlow(rgb: (201, 102, 61), alpha: scheme == .light ? 0.55 : 0.32))
         .padding(.top, 9)
-        .shotNode("st.overload")
+        .shotNode("stat.overload")
     }
 
     /// Куски между `\u{1}` и `\u{2}` — чернилами (веб `<b>` без жирного).
@@ -136,7 +136,7 @@ struct PlannerStatsView: View {
                 }
                 .padding(.vertical, 8).padding(.horizontal, 2)
                 .overlay(alignment: .bottom) { if m < 11 { Rectangle().fill(pal.hair).frame(height: 1) } }
-                .shotNode("st.bar.\(m)")
+                .shotNode("stat.bar.\(m)")
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(f.dates.monthTitleN(m))
                 .accessibilityValue(f.t.count("unit.shoot", b.count))
@@ -149,8 +149,8 @@ struct PlannerStatsView: View {
         let today = f.today
         let shot = all.filter { $0.day < today }, todo = all.filter { $0.day >= today }
         VStack(alignment: .leading, spacing: 0) {
-            if !shot.isEmpty { genreLine("year.shot", shot, pal).shotNode("st.shot") }
-            if !todo.isEmpty { genreLine("year.todo", todo, pal).shotNode("st.todo") }
+            if !shot.isEmpty { genreLine("year.shot", shot, pal).shotNode("stat.shot") }
+            if !todo.isEmpty { genreLine("year.todo", todo, pal).shotNode("stat.todo") }
         }
     }
 
@@ -193,7 +193,7 @@ struct PlannerStatsView: View {
                 }
                 .padding(.vertical, 10).padding(.horizontal, 2)
                 .overlay(alignment: .top) { if i > 0 { Rectangle().fill(pal.hair).frame(height: 1) } }
-                .shotNode("st.late.\(i)")
+                .shotNode("stat.late.\(i)")
                 .accessibilityElement(children: .combine)
             }
         }
@@ -217,7 +217,7 @@ private struct ProfitPlate: View {
             Text(String(year)).font(webFont(11, 600)).tracking(1.3).foregroundStyle(pal.ink4)
             Text(money(profit.amount, home)).font(webFont(30, 300)).tracking(-0.5).monospacedDigit()
                 .foregroundStyle(tone).padding(.top, 6)
-                .shotNode("st.profitNum")
+                .shotNode("stat.profitNum")
             Spark(points: YearMath.sparkPoints(profit.cumulative.map { NSDecimalNumber(decimal: $0).doubleValue }))
                 .stroke(tone, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                 .overlay { SparkDot(points: YearMath.sparkPoints(profit.cumulative.map { NSDecimalNumber(decimal: $0).doubleValue })).fill(tone) }
@@ -236,7 +236,7 @@ private struct ProfitPlate: View {
         .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(pal.sheet2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shotNode("st.plate")
+        .shotNode("stat.plate")
     }
 }
 
