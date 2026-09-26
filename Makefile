@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang icons domain shots mapstyle mapref planner tapspot pinch rotor sims glass
+.PHONY: help parity blocks lang icons domain shots mapstyle mapref planner year tapspot pinch rotor sims glass
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -18,6 +18,7 @@ help:
 	@echo "make mapstyle описание холста карты из beta/mapstyle.js (итерация 20а)"
 	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
 	@echo "make planner  эталон колонок ленты дня и шкалы срочности из беты и доказать повторяемость (итерация 21)"
+	@echo "make year     эталон прибыли года по валютам и основы слова поиска из беты (итерация 22)"
 	@echo "make tapspot тап по булавке на живом холсте MapLibre и MapKit открывает полосу имени (20е, нужна сеть, ~1 мин)"
 	@echo "make pinch    пять щипков на живом холсте MapLibre: уровень держится, центр не прыгает назад (21б, нужна сеть, ~1 мин)"
 	@echo "make rotor    ротор «Карты» под подставным компасом: восемь углов, клина пустоты нет (21а, ~1 мин)"
@@ -95,6 +96,18 @@ planner:
 	@tmp=$$(mktemp -d); \
 	node Tools/parity/planner.js --out $$tmp --quiet; \
 	if cmp -s $(FIXTURES)/planner.json $$tmp/planner.json; then \
+		echo "  повторный прогон: побайтово то же"; rm -rf $$tmp; \
+	else \
+		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — эталону нельзя верить"; rm -rf $$tmp; exit 1; \
+	fi
+
+# Итерация 22: прибыль года по валютам и основа слова поиска — код веба над
+# записями посева сезона и их копиями в разных валютах.
+year:
+	@node Tools/parity/year.js --out $(FIXTURES)
+	@tmp=$$(mktemp -d); \
+	node Tools/parity/year.js --out $$tmp --quiet; \
+	if cmp -s $(FIXTURES)/year.json $$tmp/year.json; then \
 		echo "  повторный прогон: побайтово то же"; rm -rf $$tmp; \
 	else \
 		echo "  ПОВТОРНЫЙ ПРОГОН РАЗОШЁЛСЯ — эталону нельзя верить"; rm -rf $$tmp; exit 1; \
