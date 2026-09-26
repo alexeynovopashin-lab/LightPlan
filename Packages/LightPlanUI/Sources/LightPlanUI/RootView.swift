@@ -57,6 +57,8 @@ private struct Shell: View {
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
                 .animation(.easeOut(duration: 0.3), value: app.placeSheetOpen)
+            // «Вернуть» после удаления (22) — над любой вкладкой, 14 над панелью.
+            UndoBar(app: app)
         }
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
         // из неё видно 84 − низ зоны, остальное уходит под полосу.
@@ -91,6 +93,9 @@ private struct Shell: View {
         .sheet(isPresented: $app.placeSheetOpen, onDismiss: { app.placeSheetStart = .fork }) {
             PlaceSheet(app: app, windowHeight: windowHeight)
         }
+        // Корзина и «Занять время» (22): из «Съёмок» и настроек.
+        .sheet(isPresented: $app.binOpen) { BinSheet(app: app, windowHeight: windowHeight) }
+        .sheet(item: $app.blockSheet) { d in BlockSheet(app: app, draft: d, windowHeight: windowHeight) }
     }
 
     @State private var bottomInset: CGFloat = 34

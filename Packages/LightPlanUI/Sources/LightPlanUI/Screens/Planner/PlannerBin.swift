@@ -108,3 +108,11 @@ public struct UndoOffer: Equatable, Sendable {
 
     public static let seconds: Double = 6
 }
+
+/// Заготовка листа «Занять время»: правится в листе и пишется только по
+/// «Готово» (веб: закрыть подложкой — изменения пропадают).
+public struct BlockDraft: Identifiable, Equatable, Sendable {
+    public var block: Block
+    public let editing: Bool
+    public var id: String { block.id }
+}

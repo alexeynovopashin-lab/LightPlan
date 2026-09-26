@@ -179,6 +179,10 @@ public final class AppModel {
     /// Полоса «Вернуть» после удаления (итерация 22, веб `#undoBar`): висит
     /// над любой вкладкой, пока не выйдет срок или не вернут.
     public var undo: UndoOffer?
+    /// Лист «Корзина» (веб `#binSheet`): из настроек, недели и карточки.
+    public var binOpen = false
+    /// Лист «Занять время» (веб `#blkSheet`) с заготовкой; `nil` — закрыт.
+    public var blockSheet: BlockDraft?
     /// Сводка дня свёрнута (`dayFold` снимка) — единственное, что планировщик
     /// помнит между запусками.
     public var dayFold: Bool {
@@ -610,6 +614,35 @@ extension AppModel {
             snapshot.blocks.append(b)
         }
         persist()
+    }
+
+    /// Открыть лист «Занять время» (веб `openBlockSheet`). С тулбара — весь
+    /// выбранный день; из меню часа — два часа с этого часа, «выходной»;
+    /// занятость — на правку.
+    public func openBlockSheet(editing id: String) {
+        guard let b = snapshot.blocks.first(where: { $0.id == id }) else { return }
+        var d = b
+        // Веб `b.min || 600` превращал занятость с полуночи в 10:00.
+        d.start = b.start ?? 600
+        d.duration = b.duration ?? 120
+        d.days = max(1, b.days)
+        blockSheet = BlockDraft(block: d, editing: true)
+    }
+
+    public func openBlockSheet(day: CivilDate, at minute: Int? = nil) {
+        var b = Block(id: Self.newBlockId(nowMs), kind: .off, from: day)
+        b.allDay = minute == nil
+        b.days = 1
+        b.start = minute ?? 600
+        b.duration = 120
+        blockSheet = BlockDraft(block: b, editing: false)
+    }
+
+    /// Знак новой занятости (веб `newBlockId`): «b», время в base36 и три
+    /// случайных знака.
+    static func newBlockId(_ ms: Int64) -> String {
+        let abc = Array("0123456789abcdefghijklmnopqrstuvwxyz")
+        return "b" + String(ms, radix: 36) + String((0..<3).map { _ in abc.randomElement()! })
     }
 
     /// Раздел настроек «Сдача материала» (веб `#delvSeg`, `#delvDays`).

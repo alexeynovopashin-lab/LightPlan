@@ -24,7 +24,7 @@ struct PlannerStatsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 OverlayBack(title: f.t.t("year.one"), node: "st.back") {
-                    withAnimation(.timingCurve(0.25, 1, 0.4, 1, duration: 0.36)) { nav.statsOpen = false }
+                    withAnimation(statsSlide) { nav.statsOpen = false }
                 }
                 if empty {
                     Text(f.t.t("stats.empty")).font(webFont(14)).foregroundStyle(pal.ink7)

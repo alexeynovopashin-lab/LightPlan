@@ -8,9 +8,9 @@ import LightPlanCore
 /// (`position: sticky` + `backdrop-filter`); в дне к ней прилипают даты недели
 /// и сводка (`.day-sticky.on`), а лента часов едет под ними.
 ///
-/// Заглушки итерации: «+», статистика, поиск, заголовок (→ год, итерация 22),
-/// тап по съёмке (→ карточка, 25) и три действия (→ формы, 23) ничего не
-/// открывают. Веер видов и меню часа — виды веба на встроенном стекле, не
+/// Заголовок открывает ленту года, статистика и поиск — свои слои поверх
+/// (итерация 22, `PlannerLayers`); удержание съёмки — веер «Заполнить /
+/// Удалить». Тап по съёмке (→ карточка, 25) пока ничего не открывает. Веер видов и меню часа — виды веба на встроенном стекле, не
 /// системные меню (NEXT_SESSION: «не системные компоненты»); их движение —
 /// итерация 29.
 public struct PlannerScreenView: View {
@@ -21,6 +21,10 @@ public struct PlannerScreenView: View {
     @State private var aimedDay: CivilDate?
     /// Веер видов открыт (веб `#scopeMenu`).
     @State private var scopeOpen = false
+    /// Слои года, статистики и поиска (итерация 22).
+    @State private var nav = PlannerNav()
+    /// Веер удержанной записи.
+    @State private var fan: FanTarget?
 
     public init(app: AppModel) { self.app = app }
 
@@ -31,9 +35,9 @@ public struct PlannerScreenView: View {
         ScrollView {
             VStack(spacing: 0) {
                 switch st.scope {
-                case .month: PlannerMonthBody(app: app, f: f)
+                case .month: PlannerMonthBody(app: app, f: f, fan: $fan)
                 case .week: PlannerWeekBody(app: app, f: f)
-                case .day: PlannerDayBody(app: app, f: f)
+                case .day: PlannerDayBody(app: app, f: f, fan: $fan)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .top)
@@ -41,7 +45,7 @@ public struct PlannerScreenView: View {
         .scrollPosition($position)
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: 0) {
-                PlanTop(app: app, f: f, scopeOpen: $scopeOpen)
+                PlanTop(app: app, f: f, scopeOpen: $scopeOpen, nav: nav)
                 if st.scope == .day { PlannerDaySticky(app: app, f: f) }
                 if st.scope != .day, st.isAway(from: f.today) { nowBack(pal, f) }
             }
@@ -69,8 +73,21 @@ public struct PlannerScreenView: View {
         }
         .background(pal.surface.ignoresSafeArea())
         .simultaneousGesture(swipe)
+        .coordinateSpace(name: plannerFanSpace)
+        .overlay { EventFan(app: app, f: f, fan: $fan) }
+        .overlay { PlannerLayers(app: app, f: f, nav: nav) }
         .onChange(of: st.scope, initial: true) { _, _ in aim() }
         .onChange(of: st.selected) { _, _ in aim() }
+        // Смена вкладки закрывает слои (веб: `.overlay-right.open` и прочие).
+        .onChange(of: app.tab) { _, _ in
+            var off = Transaction()
+            off.disablesAnimations = true
+            withTransaction(off) {
+                nav.lentaOpen = false; nav.year12Open = false
+                nav.statsOpen = false; nav.searchOpen = false
+                fan = nil
+            }
+        }
     }
 
     /// Веер видов (`.scope-menu`): под кнопкой вида на 8 pt, три строки —
@@ -152,6 +169,7 @@ private struct PlanTop: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     @Binding var scopeOpen: Bool
+    let nav: PlannerNav
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -170,7 +188,9 @@ private struct PlanTop: View {
             .shotNode("plan.scope")
             .accessibilityLabel(f.t.t("plan.viewPick"))
 
-            Button {} label: {
+            Button {
+                withAnimation(overlaySlide) { nav.openLenta(from: app.planner.month) }
+            } label: {
                 // Шеврон веба стоит в строке с полями −5 и −3 и пробелом
                 // перед словом (`.pt-chev`): группа центрируется со сдвигом.
                 HStack(spacing: 3.9) {
@@ -194,8 +214,15 @@ private struct PlanTop: View {
                 Button { app.openForm(day: app.planner.selected) } label: { action(.add, pal.brass, "plan.add") }
                     .buttonStyle(.plain)
                     .accessibilityLabel(f.t.t("plan.newShoot"))
-                action(.stats, pal.brass, "plan.stats")
-                action(.search, pal.ink, "plan.search")
+                Button {
+                    nav.year = app.planner.month.year
+                    withAnimation(statsSlide) { nav.statsOpen = true }
+                } label: { action(.stats, pal.brass, "plan.stats") }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(f.t.t("plan.stats"))
+                Button { withAnimation(overlaySlide) { nav.searchOpen = true } } label: { action(.search, pal.ink, "plan.search") }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(f.t.t("plan.search"))
             }
         }
         .padding(.horizontal, 16)

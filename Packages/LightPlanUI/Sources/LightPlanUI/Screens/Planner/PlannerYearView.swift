@@ -227,13 +227,14 @@ struct YearLentaView: View {
                 Spacer()
                 HStack(spacing: 2) {
                     OverlayIconButton(kind: .add, color: pal.brass, label: f.t.t("plan.newShoot"), node: "year.add") {
-                        // Форма новой съёмки — итерация 23; веб закрывает ленту и
-                        // открывает форму на выбранном дне.
+                        // Веб закрывает ленту и открывает форму на выбранном дне
+                        // календаря, с начала его окна света.
                         withAnimation(overlaySlide) { nav.lentaOpen = false }
+                        app.openForm(day: app.planner.selected)
                     }
                     if YearMath.work(app.sessions, year: nav.year).count > 0 {
                         OverlayIconButton(kind: .stats, color: pal.brass, label: f.t.t("plan.stats"), node: "year.stats") {
-                            withAnimation(.timingCurve(0.25, 1, 0.4, 1, duration: 0.36)) { nav.statsOpen = true }
+                            withAnimation(statsSlide) { nav.statsOpen = true }
                         }
                     }
                     OverlayIconButton(kind: .search, color: pal.brass, label: f.t.t("plan.search"), node: "year.search") {

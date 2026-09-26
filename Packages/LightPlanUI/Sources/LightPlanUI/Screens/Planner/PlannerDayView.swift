@@ -71,6 +71,7 @@ struct PlannerDaySticky: View {
 struct PlannerDayBody: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
+    @Binding var fan: FanTarget?
     @Environment(\.colorScheme) private var scheme
     /// Открытое меню часа: номер часа и минута с получасом (веб `.armed`).
     @State private var armed: (hour: Int, at: Int)?
@@ -196,7 +197,14 @@ struct PlannerDayBody: View {
         return HStack(spacing: 8) {
             Text(f.fmt(Double(a.at % 1440))).font(webFont(13, 650)).monospacedDigit().foregroundStyle(pal.brass)
             ForEach(acts, id: \.1) { ic, key in
-                Button { armed = nil } label: {
+                Button {
+                    armed = nil
+                    // «занять» — два часа с этого часа (22); съёмка и встреча — формы 23–24.
+                    if key == "day.actBusy" {
+                        let d = app.planner.selected
+                        app.openBlockSheet(day: a.at >= 1440 ? d.adding(days: 1) : d, at: a.at % 1440)
+                    }
+                } label: {
                     VStack(spacing: 4) {
                         Icon(ic, size: 19, line: 1.5).foregroundStyle(pal.brass)
                         Text(f.t.t(key)).font(webFont(11)).foregroundStyle(pal.ink3).lineLimit(1)
@@ -253,6 +261,8 @@ struct PlannerDayBody: View {
             eventBody(it, index: index, height: hgt, cols: cols, pal: pal)
                 .frame(width: width, height: hgt, alignment: .topLeading)
                 .clipped()
+                .contentShape(Rectangle())
+                .modifier(RowAct(app: app, it: it, fan: $fan))
                 .position(x: x + width / 2, y: top + hgt / 2)
         }
         .frame(height: 25 * Self.hourH)

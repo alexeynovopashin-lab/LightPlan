@@ -8,6 +8,7 @@ import LightPlanDomain
 struct PlannerMonthBody: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
+    @Binding var fan: FanTarget?
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -35,7 +36,7 @@ struct PlannerMonthBody: View {
             .shotNode("cal")
             if hasShoots { legend(pal) }
             PlannerDayPanel(app: app, f: f)
-            PlannerDayList(app: app, f: f)
+            PlannerDayList(app: app, f: f, fan: $fan)
             PlannerDayStates(f: f)
         }
     }
@@ -292,6 +293,7 @@ struct PlannerLoadLabel: View {
 struct PlannerDayList: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
+    @Binding var fan: FanTarget?
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -350,6 +352,10 @@ struct PlannerDayList: View {
         .padding(.horizontal, 12)
         .frame(height: 40)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.sheet4))
+        .contentShape(Rectangle())
+        // Занятость — тапом в свой лист; запись — удержанием в веер (у
+        // занятости веера нет, веб `if (b.dataset.b) return`).
+        .modifier(RowAct(app: app, it: it, fan: $fan))
     }
 
     private func icon(_ s: Session, _ it: DayItem, _ pal: Palette) -> some View {
@@ -390,8 +396,9 @@ struct PlannerDayList: View {
     }
 }
 
-/// Три действия дня (веб `#dayStates`) — в месяце, под списком. Формы —
-/// итерации 23–24, здесь кнопки ничего не открывают.
+/// Три действия дня (веб `#dayStates`) — в месяце, под списком. «Занять» —
+/// лист занятости на весь выбранный день (22); формы съёмки и встречи —
+/// итерации 23–24.
 struct PlannerDayStates: View {
     let f: PlannerFacts
     @Environment(\.colorScheme) private var scheme
@@ -410,7 +417,9 @@ struct PlannerDayStates: View {
 
     private func state(_ k: PlanGlyph.Kind, _ key: String, on: Bool, ink: Color, label: Color, weight: Int,
                        node: String, _ pal: Palette) -> some View {
-        Button {} label: {
+        Button {
+            if k == .lock { f.app.openBlockSheet(day: f.app.planner.selected) }
+        } label: {
             VStack(spacing: 2) {
                 PlanGlyph(kind: k)
                     .stroke(ink, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
@@ -427,5 +436,22 @@ struct PlannerDayStates: View {
         }
         .buttonStyle(.plain)
         .shotNode(node)
+    }
+}
+
+/// Действие строки дня: занятость открывается тапом, запись держат для веера.
+struct RowAct: ViewModifier {
+    let app: AppModel
+    let it: DayItem
+    @Binding var fan: FanTarget?
+
+    func body(content: Content) -> some View {
+        if let b = it.block {
+            content.onTapGesture { app.openBlockSheet(editing: b.id) }
+        } else if let s = it.session {
+            content.modifier(FanHold(id: s.id, fan: $fan))
+        } else {
+            content
+        }
     }
 }
