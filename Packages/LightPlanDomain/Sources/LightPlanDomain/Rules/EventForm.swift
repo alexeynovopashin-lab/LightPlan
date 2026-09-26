@@ -57,6 +57,12 @@ public struct EventForm: Equatable, Sendable {
     public var brief = ""
     public var models = ""
 
+    /// Повтор (веб `fRep`, `fRepN`, `fRepOn`): `nil` — «Никогда».
+    public var repeatRule: RepeatRule?
+    public var repeatCount = Repeats.defaultCount
+    /// Какие блоки едут в копии (строки «Повторять …»).
+    public var repeatBlocks = RepeatBlock.defaults
+
     /// Исходная запись при правке; `nil` — новая.
     public var base: Session?
     public var isNew: Bool { base == nil }
@@ -233,6 +239,24 @@ public struct EventForm: Equatable, Sendable {
         if orderPhone.trimmingCharacters(in: .whitespaces).isEmpty { orderPhone = org.phone }
     }
 
+    // MARK: - Повтор
+
+    /// Повтор заводится только у съёмки и только пока она не в группе (веб `repEditable`):
+    /// у карточки из группы строка — сведения, а не выбор.
+    public var repeatEditable: Bool { mode == .shoot && base?.repeatInfo == nil }
+    /// Правило выбрано: видны «Сколько раз», переключатели блоков и итог.
+    public var repeatOn: Bool { repeatEditable && repeatRule != nil }
+
+    /// Даты будущей группы, первая — сама съёмка.
+    public var repeatDates: [CivilDate] {
+        guard let r = repeatRule, repeatOn else { return [] }
+        return Repeats.dates(from: day, rule: r, count: repeatCount)
+    }
+
+    public mutating func setRepeat(block b: RepeatBlock, on: Bool) {
+        if on { repeatBlocks.insert(b) } else { repeatBlocks.remove(b) }
+    }
+
     // MARK: - Черновик
 
     /// Набрано ли руками (веб `draftHasContent`): жанр, день, время, длительность и
@@ -284,6 +308,8 @@ extension EventForm {
         var contact: String, clientPhone: String, breed: String, orgId: String?
         var orderPerson: String, orderPhone: String, persons: [[String]], guests: Int
         var notes: String, brief: String, models: String
+        /// Повтор (веб `repDraft`): пишется, только когда правило выбрано.
+        var repRule: String?, repN: Int?, repOn: [String]?
     }
 
     public func draftData() -> Data? {
@@ -294,7 +320,9 @@ extension EventForm {
                       contact: contact, clientPhone: clientPhone, breed: breed, orgId: orgId,
                       orderPerson: orderPerson, orderPhone: orderPhone,
                       persons: persons.map { [$0.name, $0.phone] }, guests: guests,
-                      notes: notes, brief: brief, models: models)
+                      notes: notes, brief: brief, models: models,
+                      repRule: repeatRule?.rawValue, repN: repeatRule == nil ? nil : repeatCount,
+                      repOn: repeatRule == nil ? nil : repeatBlocks.map(\.rawValue).sorted())
         return try? JSONEncoder().encode(d)
     }
 
@@ -310,6 +338,9 @@ extension EventForm {
         f.orderPerson = d.orderPerson; f.orderPhone = d.orderPhone; f.guests = d.guests
         f.notes = d.notes; f.brief = d.brief; f.models = d.models
         f.persons = d.persons.map { Person(name: $0.first ?? "", phone: $0.count > 1 ? $0[1] : "") }
+        f.repeatRule = d.repRule.flatMap(RepeatRule.init(rawValue:))
+        if let n = d.repN { f.repeatCount = min(max(n, Repeats.minCount), Repeats.maxCount) }
+        if let on = d.repOn { f.repeatBlocks = Set(on.compactMap(RepeatBlock.init(rawValue:))) }
         f.fitPersons()
         return f
     }

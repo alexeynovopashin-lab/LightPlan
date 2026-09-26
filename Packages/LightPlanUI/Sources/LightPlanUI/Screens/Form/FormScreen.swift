@@ -13,9 +13,12 @@ struct FormScreen: View {
     /// Раскрыта одна из четырёх строк времени — по одной, как `ROWS` веба.
     @State private var picker: TimePicker? = Self.launchPicker
     @State private var orgSheet = false
+    @State private var genreSheet = false
+    /// Веер правила повтора раскрыт.
+    @State private var repMenu = false
     @FocusState private var focus: Bool
 
-    enum TimePicker: String { case startDate, startTime, endDate, endTime }
+    enum TimePicker: String { case startDate, startTime, endDate, endTime, repeatCount }
 
     /// Снимок сценария: `-LPShotPicker startTime` раскрывает строку сразу (только Debug).
     private static var launchPicker: TimePicker? {
@@ -40,6 +43,7 @@ struct FormScreen: View {
                     timeBlock(f, pal, t)
                     notesBlock(f, pal, t)
                     if f.shows(.order) { orderBlock(f, pal, t) }
+                    if !f.isNew { deleteButton(f, pal, t) }
                     Color.clear.frame(height: 40)
                 }
                 .padding(.horizontal, 24)
@@ -47,7 +51,9 @@ struct FormScreen: View {
             .scrollDismissesKeyboard(.interactively)
             .ignoresSafeArea(.container, edges: .top)
             .background(pal.surface.ignoresSafeArea())
+            .overlayPreferenceValue(RepeatAnchorKey.self) { anchor in repFan(anchor, f, t) }
             .sheet(isPresented: $orgSheet) { OrgPickSheet(app: app) }
+            .sheet(isPresented: $genreSheet) { GenreSheet(app: app) }
         }
     }
 
@@ -102,13 +108,23 @@ struct FormScreen: View {
 
     private func genreBlock(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            FormGroupLabel(text: t.t("form.genre"))
-            FormGroup {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
-                    ForEach(app.enabledGenres, id: \.self) { g in
-                        GenreTile(genre: g, name: t.t("genre." + g.rawValue), on: g == f.genre) { app.pickFormGenre(g) }
-                    }
+            // `.g-label` с шестерёнкой «Мои жанры»: ряд по центру, шестерёнка (`.gear`: поле 8,
+            // знак 21 линией 1,6, `--ink-4`) делает его высотой 37.
+            HStack {
+                Text(t.t("form.genre"))
+                    .font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)
+                    .foregroundStyle(pal.ink7)
+                Spacer()
+                Button { genreSheet = true } label: {
+                    Icon("gear", size: 21, line: 1.6).foregroundStyle(pal.ink4).padding(8).contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(t.t("form.myGenres"))
+                .shotNode("form.gear")
+            }
+            .padding(.top, 30).padding(.horizontal, 4).padding(.bottom, 9)
+            FormGroup {
+                GenreGrid(app: app, form: f)
                 .shotNode("form.genre")
                 .padding(.top, 13).padding(.horizontal, 15).padding(.bottom, 15)
             }
@@ -142,6 +158,7 @@ struct FormScreen: View {
                         phoneRow(t.t("form.phone"), text: phone(\.orderPhone))
                     }
                     if f.shows(.guests) { guestsRow(f, pal, t) }
+                    if f.repeatOn { repToggle(.client, f, t) }
                 }
             }
         }
@@ -214,6 +231,7 @@ struct FormScreen: View {
                     }
                     .padding(.horizontal, 10)
                 }
+                repeatRows(f, pal, t)
             }
         }
     }
@@ -255,6 +273,79 @@ struct FormScreen: View {
         return s
     }
 
+    // MARK: - Повтор
+
+    /// Строки повтора в группе времени (веб `#fRepRow`, `#fRepNRow`, `#fRepSum`). У карточки
+    /// из группы строка остаётся, но это сведения, а не выбор — без капсулы.
+    @ViewBuilder
+    private func repeatRows(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
+        let info = app.formRepeatInfo(f)
+        if f.repeatEditable || info != nil {
+            HStack(spacing: 12) {
+                Text(t.t("rep.label")).font(.system(size: 16)).foregroundStyle(pal.ink)
+                Spacer()
+                if f.repeatEditable {
+                    FormCapsule(node: "form.repVal", text: t.t("rep." + (f.repeatRule?.rawValue ?? "never")), open: repMenu) {
+                        focus = false
+                        withAnimation(.snappy(duration: 0.22)) { repMenu.toggle() }
+                    }
+                    .anchorPreference(key: RepeatAnchorKey.self, value: .bounds) { $0 }
+                } else if let info {
+                    Text(info).font(.system(size: 15)).foregroundStyle(pal.ink4).shotNode("form.repInfo", text: info)
+                }
+            }
+            .padding(.vertical, 14).padding(.horizontal, 15).frame(minHeight: 52)
+        }
+        if f.repeatOn {
+            HStack(spacing: 12) {
+                Text(t.t("rep.count")).font(.system(size: 16)).foregroundStyle(pal.ink)
+                Spacer()
+                FormCapsule(node: "form.repN", text: t.count("unit.times", f.repeatCount), open: picker == .repeatCount) {
+                    toggle(.repeatCount)
+                }
+            }
+            .padding(.vertical, 14).padding(.horizontal, 15).frame(minHeight: 52)
+            if picker == .repeatCount {
+                Picker("", selection: Binding(get: { f.repeatCount }, set: { app.setFormRepeatCount($0) })) {
+                    ForEach(Repeats.minCount...Repeats.maxCount, id: \.self) { Text(String($0)).tag($0) }
+                }
+                .pickerStyle(.wheel)
+                .frame(height: 140)
+                .padding(.horizontal, 10)
+            }
+            if let sum = app.formRepeatSummary(f) {
+                // `.f-hint.rep-sum`: 12 `--ink-6`, поле 11 · 15 · 13, строка 1,45.
+                Text(sum).font(.system(size: 12)).foregroundStyle(pal.ink6).lineSpacing(12 * 0.45 - 2)
+                    .padding(.top, 11).padding(.horizontal, 15).padding(.bottom, 13)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .shotNode("form.repSum", text: sum)
+            }
+        }
+    }
+
+    /// Веер правила от капсулы: по её правому краю, под ней на 8; внизу экрана — над ней.
+    @ViewBuilder
+    private func repFan(_ anchor: Anchor<CGRect>?, _ f: EventForm, _ t: Lexicon) -> some View {
+        if repMenu, let anchor {
+            GeometryReader { geo in
+                let r = geo[anchor]
+                let h: CGFloat = 6 * 44 + 12
+                let below = r.maxY + 8 + h <= geo.size.height - 12
+                ZStack(alignment: .topTrailing) {
+                    Color.clear.contentShape(Rectangle()).onTapGesture { repMenu = false }
+                    RepeatFan(lexicon: t, current: f.repeatRule) { rule in
+                        repMenu = false
+                        app.setFormRepeat(rule)
+                    }
+                    .padding(.trailing, max(12, geo.size.width - r.maxX))
+                    .padding(.top, below ? r.maxY + 8 : max(12, r.minY - 8 - h))
+                    .transition(.scale(scale: 0.96, anchor: .topTrailing).combined(with: .opacity))
+                }
+            }
+            .ignoresSafeArea()
+        }
+    }
+
     private func toggle(_ p: TimePicker) {
         focus = false
         withAnimation(.easeOut(duration: 0.34)) { picker = picker == p ? nil : p }
@@ -270,6 +361,7 @@ struct FormScreen: View {
                     .font(.system(size: 16)).foregroundStyle(pal.ink).lineSpacing(3)
                     .lineLimit(2...12)
                     .padding(15).frame(minHeight: 92, alignment: .topLeading)
+                if f.repeatOn { repToggle(.notes, f, t) }
             }
         }
     }
@@ -280,8 +372,26 @@ struct FormScreen: View {
             FormGroup {
                 FormTextField(placeholder: t.t("form.briefPh"), text: text(\.brief))
                 if f.shows(.models) { FormTextField(placeholder: t.t("form.modelsPh"), text: text(\.models)) }
+                if f.repeatOn { repToggle(.brief, f, t) }
             }
         }
+    }
+
+    private func repToggle(_ b: RepeatBlock, _ f: EventForm, _ t: Lexicon) -> some View {
+        FormToggleRow(node: "form.rep." + b.rawValue, label: t.t("rep." + b.rawValue), on: f.repeatBlocks.contains(b)) { v in
+            app.setFormRepeat(block: b, on: v)
+        }
+    }
+
+    /// «Удалить» (`.danger`): во всю ширину, отступ 26, поле 15, 15 `--terra-2`, без подложки.
+    private func deleteButton(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
+        Button { app.deleteFormRecord() } label: {
+            Text(t.t("card.delShoot")).font(.system(size: 15)).foregroundStyle(pal.terra2)
+                .frame(maxWidth: .infinity).padding(15).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 26)
+        .shotNode("form.delete")
     }
 
     // MARK: - Связки

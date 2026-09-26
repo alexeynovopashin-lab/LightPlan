@@ -127,22 +127,36 @@ struct FormBarButton: View {
 }
 
 /// Плитка жанра `.tool`: знак 22 линией 1,5, подпись 10; выбранная — латунь на `--press-warm`.
+/// Уточнение (`sub`) занимает плитку своим знаком; черта под подписью (`.hasub`,
+/// 10 × 1,5 на 3 от низа, 0,3) — единственный намёк, что уточнения есть; у
+/// раскрытой — 14 и 0,9.
 struct GenreTile: View {
+    enum Marker { case closed, open }
     let genre: Genre
+    var sub: SubGenre? = nil
     let name: String
     let on: Bool
+    var marker: Marker? = nil
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
     var body: some View {
         let pal = Palette(scheme)
         Button(action: action) {
             VStack(spacing: 6) {
-                Icon(genre: genre.rawValue, size: 22, line: 1.5)
+                if let sub { Icon(sub.iconName, size: 22, line: 1.5) } else { Icon(genre: genre.rawValue, size: 22, line: 1.5) }
                 Text(name).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.8)
             }
             .foregroundStyle(on ? pal.brass : pal.ink5)
             .frame(maxWidth: .infinity)
             .padding(.top, 11).padding(.horizontal, 2).padding(.bottom, 9)
+            .overlay(alignment: .bottom) {
+                if let marker {
+                    RoundedRectangle(cornerRadius: 1).fill(on ? pal.brass : pal.ink5)
+                        .frame(width: marker == .open ? 14 : 10, height: 1.5)
+                        .opacity(marker == .open ? 0.9 : 0.3)
+                        .padding(.bottom, 3)
+                }
+            }
             .background(on ? pal.pressWarm : .clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(Rectangle())
         }
