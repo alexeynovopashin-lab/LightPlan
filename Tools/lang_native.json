@@ -6,5 +6,17 @@
   "en": {
     "blk.removed": "{name} · removed",
     "year.nextYear": "Next year"
+  },
+  "es": {
+    "blk.removed": "{name} · quitado",
+    "year.nextYear": "Año siguiente"
+  },
+  "ja": {
+    "blk.removed": "{name} · 削除しました",
+    "year.nextYear": "翌年"
+  },
+  "zh": {
+    "blk.removed": "{name} · 已移除",
+    "year.nextYear": "下一年"
   }
 }

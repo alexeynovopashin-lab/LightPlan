@@ -75,6 +75,9 @@ private struct WeekRow: View {
             !s.delivered && Delivery.deadline(for: s, setting: app.delivery, prefs: app.genrePrefs) == day
         }
         let sky = f.sky(day)
+        // В этот день что-то удалили — метка ведёт в общую корзину (`.wk-bin`,
+        // 22); живёт в строке света, слева.
+        let binned = app.trashed.filter { $0.record.day == day }.count
         return VStack(alignment: .leading, spacing: 0) {
             if shoots.isEmpty {
                 Text(f.t.t(open ? "week.freeOpen" : "week.free"))
@@ -83,10 +86,23 @@ private struct WeekRow: View {
             } else {
                 ForEach(shoots, id: \.id) { s in card(s, pal) }
             }
-            if sky.set != nil || sky.goldenB != nil {
+            if sky.set != nil || sky.goldenB != nil || binned > 0 {
                 HStack(spacing: 6) {
+                    if binned > 0 {
+                        Button { app.binOpen = true } label: {
+                            HStack(spacing: 6) {
+                                Icon("trash", size: 14, line: 1.6)
+                                Text(f.t.t("week.trashN", ["n": "\(binned)"]))
+                            }
+                            .foregroundStyle(pal.ink6)
+                        }
+                        .buttonStyle(.plain)
+                        .shotNode("wk.bin")
+                    }
                     Spacer(minLength: 0)
-                    if shoots.isEmpty {
+                    if sky.set == nil && sky.goldenB == nil {
+                        EmptyView()
+                    } else if shoots.isEmpty {
                         Icon("golden", size: 14)
                         Text(f.t.t("week.goldenAt", ["t": f.fmt(sky.goldenB ?? sky.set)]))
                     } else {

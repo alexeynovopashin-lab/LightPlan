@@ -7,8 +7,8 @@ import UIKit
 #endif
 
 /// Страница одной главы настроек. Свои разделы итерации 19а работают;
-/// разделы, содержимое которых делает другая итерация (корзина — 22, карта —
-/// 20, мудборды и организации — 28, знакомство — 29, уведомления — 30,
+/// «Сдача материала» и «Корзина» — итерация 22; разделы, содержимое которых
+/// делает другая итерация (карта — 20, мудборды и организации — 28, знакомство — 29, уведомления — 30,
 /// копия и облако — 31), стоят на своём месте в главе приглушённой строкой:
 /// свою работу они добавят сами.
 struct SettingsChapterView: View {
@@ -28,7 +28,7 @@ struct SettingsChapterView: View {
             case .shoots: shoots
             case .alerts: foreign("set.feedback"); foreign("set.notify")
             case .places: places
-            case .store: foreign("set.moodboards"); foreign("set.orgsDocs"); foreign("card.bin")
+            case .store: foreign("set.moodboards"); foreign("set.orgsDocs"); binRow
             case .data: foreign("set.data"); foreign("set.icsImport"); foreign("cloud.title")
             case .locale: locale
             case .about: about
@@ -135,7 +135,7 @@ struct SettingsChapterView: View {
 
     @ViewBuilder private var shoots: some View {
         foreign("set.calendar")
-        foreign("card.delivery")
+        delivery
         segment("set.step", \.timeStep, AppSettings.steps.map { ($0, "set.step\($0)") },
                 note: s.timeStep == 30 ? t.t("set.stepNote30")
                     : t.t("set.stepNoteN", ["n": t.count("unit.min", s.timeStep)]))
@@ -212,6 +212,43 @@ struct SettingsChapterView: View {
 
     /// Подпись, сегмент и пояснение — `.sec-label` + `.seg` + `.seg-note`
     /// веба. `index` — номер подписи и пояснения в главе для пары снимков,
+    /// «Сдача материала» (веб `#delvSeg`, `#delvDays`, `#delvNote`): по жанру,
+    /// единый срок, без срока. Фишки срока — только у единого; срок помнится,
+    /// когда режим уходит и возвращается.
+    @ViewBuilder private var delivery: some View {
+        let d = app.delivery
+        SecLabel(text: t.t("card.delivery"), node: "sec.delv")
+        WebSeg(options: [(t.t("set.delvGenre"), DeliveryMode.genre), (t.t("set.delvSingle"), .single),
+                         (t.t("set.delvNone"), .none)],
+               selection: Binding(get: { app.delivery.mode }, set: { app.setDelivery(mode: $0) }))
+            .shotNode("seg.delv")
+            .padding(.horizontal, 24).padding(.top, 12)
+        if d.mode == .single {
+            Chips(options: Delivery.dayChoices.map { (delvName($0), $0) },
+                  selection: Binding(get: { app.delivery.days }, set: { app.setDelivery(days: $0) }), node: "chips.delv")
+        }
+        SetNote(text: t.t(d.mode == .genre ? "set.delvNoteGenre" : d.mode == .single ? "set.delvNoteSingle" : "set.delvNoteNone"),
+                node: "note.delv")
+    }
+
+    /// «3 дн.», «Месяц», «3 месяца» (веб `delvDaysName`).
+    private func delvName(_ d: Int) -> String {
+        d == 30 ? t.t("set.delvMonth") : d == 90 ? t.t("set.delv3Months") : t.count("unit.dayShort", d)
+    }
+
+    // MARK: - Хранилище
+
+    /// Строка «Корзина» (веб `#binSetRow`): видна и пустой — место корзины
+    /// должно быть известно заранее.
+    private var binRow: some View {
+        Button { app.binOpen = true } label: {
+            SetItemRow(icon: "trash", title: t.t("card.bin"),
+                       value: app.trashed.isEmpty ? t.t("bin.emptyShort") : String(app.trashed.count))
+        }
+        .buttonStyle(.plain)
+        .shotNode("item.bin", text: t.t("card.bin"))
+    }
+
     /// `segIndex` — номер сегмента, если они расходятся.
     private func segment<V: Hashable>(_ titleKey: String, _ key: WritableKeyPath<AppSettings, V>,
                                       _ options: [(V, String)], note: String, first: Bool = false,
