@@ -11,7 +11,7 @@ import LightPlanData
 /// `Light_Plan/docs/native_21v_loc_sheet_web_spec.md`.
 struct PlaceSheetForm: Equatable {
     /// Путь листа (`locWay`): развилка или один из двух входов.
-    enum Way: String, Equatable { case fork, addr, geo }
+    enum Way: String, Equatable { case fork, addr, geo, studio }
 
     var way: Way = .fork
     /// Поля широты и долготы — строкой, как их видит человек. На открытии —
@@ -86,9 +86,9 @@ struct PlaceSheetForm: Equatable {
 
     /// Заголовок и подпись: на развилке — вопрос листа, в пути — его слова.
     var titleKey: String {
-        switch way { case .fork: "loc.title"; case .addr: "loc.wayAddr"; case .geo: "loc.wayGeo" }
+        switch way { case .fork: "loc.title"; case .addr: "loc.wayAddr"; case .geo: "loc.wayGeo"; case .studio: "loc.wayStudio" }
     }
     var subKey: String {
-        switch way { case .fork: "loc.sub"; case .addr: "loc.wayAddrSub"; case .geo: "loc.wayGeoSub" }
+        switch way { case .fork: "loc.sub"; case .addr: "loc.wayAddrSub"; case .geo: "loc.wayGeoSub"; case .studio: "loc.wayStudioSub" }
     }
 }

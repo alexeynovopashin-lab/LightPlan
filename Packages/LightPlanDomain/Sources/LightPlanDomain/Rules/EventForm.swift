@@ -63,6 +63,16 @@ public struct EventForm: Equatable, Sendable {
     /// Какие блоки едут в копии (строки «Повторять …»).
     public var repeatBlocks = RepeatBlock.defaults
 
+    /// Точки дня в порядке фотографа (веб `fRoute`); первая — место съёмки.
+    /// Часы — минуты от полуночи первого дня, `nil` — часа не называли.
+    public var route: [RoutePoint] = []
+    /// Точки подставлены приложением, а не набраны (веб `fRouteSeeded`).
+    public var routeSeeded = false
+    /// Место съёмки — производное первой точки (веб `sessionPlace`).
+    public var sessionPlace = FormPlace()
+    /// Пожелания к погоде; пусто — «Неважно» (веб `wishes`).
+    public var wishes: [Wish] = []
+
     /// Исходная запись при правке; `nil` — новая.
     public var base: Session?
     public var isNew: Bool { base == nil }
@@ -75,12 +85,19 @@ public struct EventForm: Equatable, Sendable {
     ///   - fromLight: минута — начало окна света и округляться не должна.
     ///   - genre: жанр — последний использованный, форма его не сбрасывает (веб `shootType`).
     public static func new(id: String, day: CivilDate, start: Int?, fromLight: Bool, mode: FormMode = .shoot,
-                           genre: Genre, prefs: GenrePrefs? = nil, light: FormLightWindow?, step: Int = 5) -> EventForm {
+                           genre: Genre, prefs: GenrePrefs? = nil, light: FormLightWindow?, step: Int = 5,
+                           home: RepeatHome? = nil) -> EventForm {
         var f = EventForm(id: id, mode: mode, genre: genre, day: day,
                           start: start.map { fromLight ? $0 : snap($0, step: step) } ?? 720,
                           duration: 60,
                           timeIsProposed: start == nil || fromLight, timeFromLight: fromLight)
         f.applyPreset(prefs: prefs, light: light)
+        // Места у новой съёмки ещё нет: город и опора — «Мой город» (веб L30524–30530).
+        f.sessionPlace = FormPlace(town: home?.town ?? "", latitude: home?.latitude, longitude: home?.longitude, isCity: true)
+        if GenreProfile(genre).hasRoute {
+            f.route = seededRoute()
+            f.routeSeeded = true
+        }
         return f
     }
 
@@ -101,6 +118,8 @@ public struct EventForm: Equatable, Sendable {
         f.notes = s.notes
         f.brief = s.brief
         f.models = s.models
+        f.wishes = s.wishes
+        f.loadRoute(s)
         f.base = s
         f.fitPersons()
         return f
@@ -168,6 +187,11 @@ public struct EventForm: Equatable, Sendable {
         subGenre = sub.flatMap { g.subGenres.contains($0) ? $0 : nil }
         if changed {
             if isNew { applyPreset(prefs: prefs, light: light) } else { fitPersons() }
+            // Засеянные точки принадлежат жанру: сменили жанр — меняются и они (веб `applyGenreShape`).
+            if isNew, routeSeeded || route.isEmpty {
+                route = GenreProfile(g).hasRoute ? Self.seededRoute() : []
+                routeSeeded = !route.isEmpty
+            }
         }
     }
 
@@ -266,13 +290,15 @@ public struct EventForm: Equatable, Sendable {
         return ![contact, clientPhone, notes, orderPerson, orderPhone, brief, models, breed].allSatisfy(blank)
             || persons.contains { !blank($0.name) || !blank($0.phone) }
             || guests > 0
+            || (!routeSeeded && !routeOut.isEmpty) || !wishes.isEmpty
     }
 
     // MARK: - Сохранение
 
     /// Запись из формы (веб `#fSave`, L31753–31814). Валидации нет — пустая форма
     /// сохраняется; правка накладывается на исходную запись и не теряет чужих полей.
-    public func session(orgName: String?, and: String, now: Date = Date()) -> Session {
+    public func session(orgName: String?, and: String, studios: [Studio] = [], warning: WishWarning? = nil,
+                        now: Date = Date()) -> Session {
         var s = base ?? Session(id: id, kind: mode == .meet ? .meet : .shoot, day: day, start: start)
         s.kind = mode == .meet ? .meet : (base?.kind ?? .shoot)
         s.day = day
@@ -292,6 +318,22 @@ public struct EventForm: Equatable, Sendable {
         s.notes = notes
         s.brief = brief
         s.models = models
+        // Место съёмки и студия — копия первой точки (веб `#fSave`, `headStudio`).
+        s.place = sessionPlace.name
+        s.placeTown = sessionPlace.townOut
+        s.placeAddress = sessionPlace.address
+        s.latitude = sessionPlace.latitude
+        s.longitude = sessionPlace.longitude
+        s.placeIsCity = sessionPlace.isCity
+        let head = headStudio(studios: studios)
+        s.studioId = head?.id
+        s.hallId = head?.hall
+        s.rentFrom = head?.from
+        s.rentTo = head?.to
+        if head == nil { s.bookingRef = nil; s.rentRequest = nil }
+        s.route = routeOut
+        s.wishes = wishes
+        s.wishWarning = mode == .meet ? nil : warning
         s.modifiedAt = Int64((now.timeIntervalSince1970 * 1000).rounded(.down))
         return s
     }
@@ -310,6 +352,14 @@ extension EventForm {
         var notes: String, brief: String, models: String
         /// Повтор (веб `repDraft`): пишется, только когда правило выбрано.
         var repRule: String?, repN: Int?, repOn: [String]?
+        /// Точки и место (веб `route`, `sessionPlace` в черновике), пожелания.
+        var route: [DraftStop]?, seeded: Bool?, place: DraftPlace?, wish: [String]?
+    }
+    private struct DraftStop: Codable {
+        var t: Int?, t2: Int?, n: String, p: String, placeId: String?, studioId: String?, hallId: String?, walk: Bool
+    }
+    private struct DraftPlace: Codable {
+        var name: String, town: String, addr: String, lat: Double?, lon: Double?, city: Bool
     }
 
     public func draftData() -> Data? {
@@ -322,7 +372,13 @@ extension EventForm {
                       persons: persons.map { [$0.name, $0.phone] }, guests: guests,
                       notes: notes, brief: brief, models: models,
                       repRule: repeatRule?.rawValue, repN: repeatRule == nil ? nil : repeatCount,
-                      repOn: repeatRule == nil ? nil : repeatBlocks.map(\.rawValue).sorted())
+                      repOn: repeatRule == nil ? nil : repeatBlocks.map(\.rawValue).sorted(),
+                      route: route.map { DraftStop(t: $0.start, t2: $0.end, n: $0.name, p: $0.placeText, placeId: $0.spotId,
+                                                   studioId: $0.studioId, hallId: $0.hallId, walk: $0.walk) },
+                      seeded: routeSeeded,
+                      place: DraftPlace(name: sessionPlace.name, town: sessionPlace.town, addr: sessionPlace.address,
+                                        lat: sessionPlace.latitude, lon: sessionPlace.longitude, city: sessionPlace.isCity),
+                      wish: wishes.map(\.rawValue))
         return try? JSONEncoder().encode(d)
     }
 
@@ -341,6 +397,15 @@ extension EventForm {
         f.repeatRule = d.repRule.flatMap(RepeatRule.init(rawValue:))
         if let n = d.repN { f.repeatCount = min(max(n, Repeats.minCount), Repeats.maxCount) }
         if let on = d.repOn { f.repeatBlocks = Set(on.compactMap(RepeatBlock.init(rawValue:))) }
+        if let r = d.route {
+            f.route = r.map { RoutePoint(start: $0.t, end: $0.t2, name: $0.n, placeText: $0.p, spotId: $0.placeId,
+                                         studioId: $0.studioId, hallId: $0.hallId, walk: $0.walk) }
+            f.routeSeeded = d.seeded ?? false
+        }
+        if let p = d.place {
+            f.sessionPlace = FormPlace(name: p.name, town: p.town, address: p.addr, latitude: p.lat, longitude: p.lon, isCity: p.city)
+        }
+        f.wishes = (d.wish ?? []).compactMap(Wish.init(rawValue:)).filter { $0 != .any }
         f.fitPersons()
         return f
     }

@@ -54,10 +54,11 @@ struct PlaceSheet: View {
                 case .fork: ways(t, pal)
                 case .addr: addrWay(t, pal)
                 case .geo: geoWay(t, pal)
+                case .studio: studioWay(t, pal)
                 }
-                if form.way != .fork { placeGroup(t, pal) }
+                if form.way != .fork && form.way != .studio { placeGroup(t, pal) }
                 errorLine(t, pal)
-                if form.way != .fork { doneButton(t, pal) }
+                if form.way != .fork && form.way != .studio { doneButton(t, pal) }
             }
             .padding(.horizontal, 24)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
@@ -71,7 +72,7 @@ struct PlaceSheet: View {
         .task {
             // Первый раз: разрешение ещё не спрашивали — лист встаёт на путь
             // координат и спрашивает сам (веб, `openLocSheet`).
-            if form.way == .fork, app.locationNeedsPermission {
+            if form.way == .fork, stop == nil, app.locationNeedsPermission {
                 form.open(.geo)
                 await locate()
             }
@@ -85,6 +86,16 @@ struct PlaceSheet: View {
     }
 
     private func close() { app.placeSheetOpen = false }
+
+    /// Точка маршрута формы, о чьём месте спрашивают (веб `locTarget === "stop"`);
+    /// `nil` — место приложения.
+    private var stop: Int? { app.placeSheetStop }
+
+    /// Место выбрано: точке формы — в точку, приложению — переезд.
+    private func deliver(_ sp: Spot) {
+        if let i = stop { app.setFormStopPlace(i, spot: sp) } else { app.movePlace(to: sp.coordinate) }
+        close()
+    }
 
     // MARK: - Шапка листа
 
@@ -124,6 +135,9 @@ struct PlaceSheet: View {
     private func ways(_ t: Lexicon, _ pal: Palette) -> some View {
         VStack(spacing: 0) {
             wayRow(.addr, icon: "city", title: t.t("loc.wayAddr"), sub: t.t("loc.wayAddrSub"), pal)
+            if stop != nil {
+                wayRow(.studio, icon: "studio", title: t.t("loc.wayStudio"), sub: t.t("loc.wayStudioSub"), pal)
+            }
             wayRow(.geo, icon: "route", title: t.t("loc.wayGeo"), sub: t.t("loc.wayGeoSub"), pal)
         }
         .padding(.top, 16)
@@ -259,10 +273,7 @@ struct PlaceSheet: View {
     private func spotRow(_ sp: Spot, index i: Int, _ t: Lexicon, _ pal: Palette) -> some View {
         let name = sp.name.isEmpty ? sp.coordinate.text : sp.name
         return HStack(spacing: 10) {
-            Button {
-                app.movePlace(to: sp.coordinate)
-                close()
-            } label: {
+            Button { deliver(sp) } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name).font(.system(size: 15)).foregroundStyle(pal.ink)
                         .lineLimit(1).truncationMode(.tail)
@@ -334,6 +345,9 @@ struct PlaceSheet: View {
 
     private func geoWay(_ t: Lexicon, _ pal: Palette) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Точке формы «моё место» не подставляется: определение двигает место
+            // приложения, а спрашивали о точке (хвост шага 2 итерации 24).
+            if stop == nil {
             Button { Task { await locate() } } label: {
                 HStack(spacing: 9) {
                     PlaceGlyphView(glyph: .detect, size: 18, line: 1.8)
@@ -348,6 +362,7 @@ struct PlaceSheet: View {
             .disabled(detecting)
             .shotNode("loc.here")
             .padding(.top, 14)
+            }
             HStack(alignment: .top, spacing: 10) {
                 coordField(t.t("loc.lat"), "56.021", text: Binding(get: { form.lat }, set: { form.typeCoords(lat: $0) }),
                            field: .lat, label: "loc.latLabel", node: "loc.lat", pal)
@@ -404,6 +419,41 @@ struct PlaceSheet: View {
         if case .fix = r { close() } else { form.errorKey = "loc.errNotFound" }
     }
 
+    // MARK: - Путь «Фотостудия»
+
+    /// Студии фотографа (веб `setWay("studio")`): тап — студия в точку. Карточка
+    /// новой студии (залы, ключ брони) — хвост шага 2 итерации 24.
+    @ViewBuilder
+    private func studioWay(_ t: Lexicon, _ pal: Palette) -> some View {
+        let list = app.studios
+        if list.isEmpty {
+            Text(t.t("loc.noStudios")).font(.system(size: 12)).foregroundStyle(pal.ink6)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 14).padding(.bottom, 12)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(list.enumerated()), id: \.element.id) { i, st in
+                    Button {
+                        if let s = stop { app.setFormStopStudio(s, studio: st) }
+                        close()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(st.name).font(.system(size: 15)).foregroundStyle(pal.ink)
+                            if !st.address.isEmpty { Text(st.address).font(.system(size: 12)).foregroundStyle(pal.ink4) }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 11).padding(.horizontal, 2)
+                        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressFade())
+                    .shotNode("loc.studio.\(i)")
+                }
+            }
+            .padding(.top, 10)
+        }
+    }
+
     // MARK: - Имя, ошибка, «Готово»
 
     /// Имя и сохранение — общие для обоих путей (`#locPlaceGroup`); строки
@@ -456,6 +506,14 @@ struct PlaceSheet: View {
             case .failure(let e):
                 form.errorKey = e.key
             case .success(let c):
+                if let i = stop {
+                    // Точке своё место нужно всегда: точка ссылается на «Мои места» (веб `#locDone`).
+                    let sp = app.saveSpot(at: c, name: form.name, address: form.way == .addr ? form.address : "",
+                                          fromHit: form.fromHit)
+                    app.setFormStopPlace(i, spot: sp)
+                    close()
+                    return
+                }
                 if form.save {
                     app.saveSpot(at: c, name: form.name, address: form.way == .addr ? form.address : "",
                                  fromHit: form.fromHit)
