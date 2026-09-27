@@ -1,0 +1,161 @@
+# Второе мнение по коду итераций: модель OpenAI читает изменения ветки и
+# пишет замечания. Не блокирует ничего — это совет, а не проверка.
+#
+# Когда запускается:
+#   - сам, при каждом пуше в ветку итерации wt/<nn> — смотрит только этот пуш;
+#   - кнопкой Run workflow (Actions → OpenAI review) — смотрит всю ветку
+#     против main, например перед чекпоинтом.
+# Где ответ: комментарий к последнему коммиту и сводка запуска в Actions.
+# Ключ: секрет OPENAI_API_KEY. Модель: переменная репозитория
+# OPENAI_REVIEW_MODEL (Settings → Variables), по умолчанию gpt-4.1;
+# если она недоступна, повтор на gpt-4.1-mini.
+
+name: OpenAI review
+
+on:
+  push:
+    branches: ['wt/**']
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Ветка итерации'
+        required: true
+        default: 'wt/24'
+
+permissions:
+  contents: write   # комментарий к коммиту
+
+concurrency:
+  group: openai-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Collect diff
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+        run: |
+          set -euo pipefail
+          git fetch -q origin main
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if ! printf '%s' "$INPUT_BRANCH" | grep -qE '^[A-Za-z0-9._/-]+$'; then
+              echo "bad branch name"; exit 1
+            fi
+            git fetch -q origin "$INPUT_BRANCH"
+            HEAD_SHA=$(git rev-parse FETCH_HEAD)
+            BASE=$(git merge-base origin/main "$HEAD_SHA")
+            SCOPE="вся ветка $INPUT_BRANCH против main"
+          else
+            HEAD_SHA="$AFTER"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+               || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+              BASE=$(git merge-base origin/main "$HEAD_SHA")
+            else
+              BASE="$BEFORE"
+            fi
+            SCOPE="пуш в ${GITHUB_REF_NAME}"
+          fi
+          # Сгенерированное и данные не смотрим: их пишут скрипты, не люди.
+          git diff --unified=5 "$BASE" "$HEAD_SHA" -- . \
+            ':(exclude)*.generated.swift' ':(exclude)*.xcstrings' \
+            ':(exclude)*.json' ':(exclude)*.pbxproj' ':(exclude)**/Fixtures/**' \
+            ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.pdf' \
+            > /tmp/full.diff
+          BYTES=$(wc -c < /tmp/full.diff)
+          LIMIT=300000   # ~75 тыс. токенов, около 0,2 $ на gpt-4.1
+          head -c "$LIMIT" /tmp/full.diff > /tmp/review.diff
+          TRUNC=""
+          if [ "$BYTES" -gt "$LIMIT" ]; then TRUNC="обрезано: $BYTES байт, показано $LIMIT"; fi
+          {
+            echo "head_sha=$HEAD_SHA"
+            echo "base_sha=$BASE"
+            echo "scope=$SCOPE"
+            echo "bytes=$BYTES"
+            echo "trunc=$TRUNC"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Ask OpenAI
+        if: steps.diff.outputs.bytes != '0'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL: ${{ vars.OPENAI_REVIEW_MODEL || 'gpt-4.1' }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/instructions.txt <<'EOF'
+          Ты — строгий ревьюер Swift-кода. Проект Light Plan: планировщик съёмок для
+          фотографов, переносится с веб-прототипа на iPhone (SwiftUI, iOS 26).
+          Правила проекта:
+          - слои: пакеты LightPlanCore, LightPlanDomain, LightPlanTimeline импортируют
+            только Foundation; LightPlanData зависит от Core и Domain; LightPlanUI — от всех;
+          - веб-бета — эталон поведения; расчёты не копируются из веба, а сверяются фикстурами;
+          - стекло делается встроенным .glassEffect;
+          - сгенерированные файлы (*.generated.swift, Localizable.xcstrings) руками не правят.
+          Задача: найди в изменениях настоящие ошибки — неверная логика, падение,
+          потеря данных пользователя, гонки, утечки, нарушение правил выше, тесты,
+          которые ничего не проверяют. Стиль и вкусовщину не пиши.
+          Формат ответа, по-русски:
+          1) Первая строка — итог простыми словами для не-программиста, одно предложение.
+          2) Список замечаний, самое важное сверху. Каждое: [важно|средне|мелочь]
+             файл:строка — что не так и чем грозит — как исправить. Не больше 10.
+          3) Если серьёзного нет — так и напиши, не выдумывай замечания.
+          Если уверенность низкая, пометь «(не уверен)».
+          EOF
+          ask() {
+            jq -n --arg model "$1" \
+                  --rawfile instr /tmp/instructions.txt \
+                  --rawfile diff /tmp/review.diff \
+                  '{model:$model, instructions:$instr, input:("Изменения (git diff):\n\n" + $diff)}' \
+              | curl -sS -o /tmp/resp.json -w '%{http_code}' https://api.openai.com/v1/responses \
+                  -H "Authorization: Bearer $OPENAI_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  --data-binary @-
+          }
+          USED="$MODEL"
+          CODE=$(ask "$MODEL")
+          if [ "$CODE" != "200" ] && [ "$MODEL" != "gpt-4.1-mini" ]; then
+            echo "model $MODEL answered $CODE, retry on gpt-4.1-mini"
+            USED="gpt-4.1-mini"
+            CODE=$(ask "$USED")
+          fi
+          if [ "$CODE" != "200" ]; then
+            echo "OpenAI answered $CODE:"; jq -r '.error.message // .' /tmp/resp.json | head -5
+            exit 1
+          fi
+          jq -r '[.output[]? | .content[]? | select(.type=="output_text") | .text] | join("\n")' \
+            /tmp/resp.json > /tmp/answer.md
+          jq -r --arg m "$USED" '"Модель \($m), токены: \(.usage.input_tokens) на входе, \(.usage.output_tokens) на выходе"' \
+            /tmp/resp.json > /tmp/usage.txt
+
+      - name: Publish
+        if: steps.diff.outputs.bytes != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.diff.outputs.head_sha }}
+          BASE_SHA: ${{ steps.diff.outputs.base_sha }}
+          SCOPE: ${{ steps.diff.outputs.scope }}
+          TRUNC: ${{ steps.diff.outputs.trunc }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Второе мнение OpenAI — $SCOPE"
+            echo "Изменения ${BASE_SHA:0:7}..${HEAD_SHA:0:7}. $(cat /tmp/usage.txt)."
+            if [ -n "$TRUNC" ]; then echo "⚠️ Дифф $TRUNC — конец не просмотрен."; fi
+            echo
+            cat /tmp/answer.md
+            echo
+            echo "_Это совет другой модели, не проверка. Решение — за исполнителем итерации._"
+          } > /tmp/comment.md
+          cat /tmp/comment.md >> "$GITHUB_STEP_SUMMARY"
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/comments" \
+            -F body=@/tmp/comment.md > /dev/null
