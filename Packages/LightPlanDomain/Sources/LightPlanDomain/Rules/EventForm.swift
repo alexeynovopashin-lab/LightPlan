@@ -359,7 +359,7 @@ extension EventForm {
         var t: Int?, t2: Int?, n: String, p: String, placeId: String?, studioId: String?, hallId: String?, walk: Bool
     }
     private struct DraftPlace: Codable {
-        var name: String, town: String, addr: String, lat: Double?, lon: Double?, city: Bool
+        var name: String, town: String, addr: String, lat: Double?, lon: Double?, city: Bool, typed: Bool?
     }
 
     public func draftData() -> Data? {
@@ -377,7 +377,8 @@ extension EventForm {
                                                    studioId: $0.studioId, hallId: $0.hallId, walk: $0.walk) },
                       seeded: routeSeeded,
                       place: DraftPlace(name: sessionPlace.name, town: sessionPlace.town, addr: sessionPlace.address,
-                                        lat: sessionPlace.latitude, lon: sessionPlace.longitude, city: sessionPlace.isCity),
+                                        lat: sessionPlace.latitude, lon: sessionPlace.longitude, city: sessionPlace.isCity,
+                                        typed: sessionPlace.townTyped),
                       wish: wishes.map(\.rawValue))
         return try? JSONEncoder().encode(d)
     }
@@ -404,6 +405,7 @@ extension EventForm {
         }
         if let p = d.place {
             f.sessionPlace = FormPlace(name: p.name, town: p.town, address: p.addr, latitude: p.lat, longitude: p.lon, isCity: p.city)
+            f.sessionPlace.townTyped = p.typed ?? false
         }
         f.wishes = (d.wish ?? []).compactMap(Wish.init(rawValue:)).filter { $0 != .any }
         f.fitPersons()

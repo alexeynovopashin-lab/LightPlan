@@ -67,7 +67,8 @@ extension AppModel {
         formIsDraft = false
         let genre = lastFormGenre
         form = EventForm.new(id: Self.newRecordId(now()), day: d, start: start, fromLight: fromLight, mode: mode,
-                             genre: genre, prefs: genrePrefs[genre], light: formLight(on: d), step: settings.timeStep)
+                             genre: genre, prefs: genrePrefs[genre], light: formLight(on: d), step: settings.timeStep,
+                             home: repeatHome)
     }
 
     /// Правка существующей записи: черновика у правки нет.
@@ -150,7 +151,8 @@ extension AppModel {
     public func saveForm() -> Session? {
         guard let f = form else { return nil }
         let org = f.orgId.flatMap { id in snapshot.orgs.first { $0.id == id } }
-        var s = f.session(orgName: org?.name, and: lexicon.t("card.and"), now: now())
+        var s = f.session(orgName: org?.name, and: lexicon.t("card.and"), studios: snapshot.studios,
+                          warning: formWishWarning(f), now: now())
         // Повтор: копии заводятся один раз, здесь, и дальше живут сами (веб `repMake`).
         var copies: [Session] = []
         if f.repeatOn, let rule = f.repeatRule {

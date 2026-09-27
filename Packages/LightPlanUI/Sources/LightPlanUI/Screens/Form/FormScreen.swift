@@ -16,6 +16,10 @@ struct FormScreen: View {
     @State private var genreSheet = false
     /// Веер правила повтора раскрыт.
     @State private var repMenu = false
+    /// Колесо под точкой дня (24): одно на форму вместе с колёсами времени.
+    @State private var stopWheel: StopWheel?
+    /// Высота окна — потолок листа «Где снимаем».
+    @State private var screenHeight: CGFloat = 956
     @FocusState private var focus: Bool
 
     enum TimePicker: String { case startDate, startTime, endDate, endTime, repeatCount }
@@ -38,22 +42,32 @@ struct FormScreen: View {
                     bar(pal, t).padding(.top, 46).padding(.bottom, 8)
                     title(f, pal, t)
                     if app.formIsDraft { draftStrip(pal, t) }
+                    // Замысел против прогноза — вверху: узнавать о нём, докрутив до низа, поздно.
+                    if let w = app.formWishWarning(f) { FormWishWarn(warning: w) }
                     genreBlock(f, pal, t).padding(.top, 24)
                     whoBlock(f, pal, t)
                     timeBlock(f, pal, t)
+                    FormPlaceBlock(app: app, form: f, wheel: $stopWheel) { picker = nil; repMenu = false }
                     notesBlock(f, pal, t)
                     if f.shows(.order) { orderBlock(f, pal, t) }
+                    if f.mode != .meet { FormWishBlock(app: app, form: f) }
                     if !f.isNew { deleteButton(f, pal, t) }
                     Color.clear.frame(height: 40)
                 }
                 .padding(.horizontal, 24)
             }
             .scrollDismissesKeyboard(.interactively)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height + $0.safeAreaInsets.top + $0.safeAreaInsets.bottom } action: { screenHeight = $0 }
             .ignoresSafeArea(.container, edges: .top)
             .background(pal.surface.ignoresSafeArea())
             .overlayPreferenceValue(RepeatAnchorKey.self) { anchor in repFan(anchor, f, t) }
             .sheet(isPresented: $orgSheet) { OrgPickSheet(app: app) }
             .sheet(isPresented: $genreSheet) { GenreSheet(app: app) }
+            // Лист «Где снимаем» для точки дня: форма лежит поверх оболочки, её лист встал бы под форму.
+            .sheet(isPresented: Binding(get: { app.placeSheetStop != nil }, set: { if !$0 { app.placeSheetStop = nil } }),
+                   onDismiss: { app.placeSheetStart = .fork }) {
+                PlaceSheet(app: app, windowHeight: screenHeight)
+            }
         }
     }
 
@@ -351,6 +365,7 @@ struct FormScreen: View {
 
     private func toggle(_ p: TimePicker) {
         focus = false
+        stopWheel = nil
         withAnimation(.easeOut(duration: 0.34)) { picker = picker == p ? nil : p }
     }
 

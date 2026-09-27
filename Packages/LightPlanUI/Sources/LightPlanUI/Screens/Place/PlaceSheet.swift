@@ -36,7 +36,20 @@ struct PlaceSheet: View {
     init(app: AppModel, windowHeight: CGFloat) {
         self.app = app
         self.windowHeight = windowHeight
-        _form = State(initialValue: PlaceSheetForm(here: app.place.coordinate, way: app.placeSheetStart))
+        var f = PlaceSheetForm(here: app.place.coordinate, way: app.placeSheetStart)
+        // Точка формы: поля — её место, а нет его — место съёмки; опоры нет — пусто
+        // (веб `openLocSheet`, ветка `stopRec`): Лобня из кода не выдаётся за ответ.
+        if let i = app.placeSheetStop, let ff = app.form, ff.route.indices.contains(i) {
+            let r = ff.route[i]
+            let pl = Stops.place(of: r, spots: app.snapshot.spots, studios: app.snapshot.studios)
+            let lat = pl?.point.latitude ?? ff.sessionPlace.latitude
+            let lon = pl?.point.longitude ?? ff.sessionPlace.longitude
+            f.lat = lat.map { JSNumber.fixed($0, 4) } ?? ""
+            f.lon = lon.map { JSNumber.fixed($0, 4) } ?? ""
+            f.name = pl?.name ?? r.placeText
+            f.address = pl?.address ?? ""
+        }
+        _form = State(initialValue: f)
     }
 
     var body: some View {
@@ -85,7 +98,7 @@ struct PlaceSheet: View {
         return contentHeight > cap ? .height(cap) : .height(contentHeight)
     }
 
-    private func close() { app.placeSheetOpen = false }
+    private func close() { app.placeSheetOpen = false; app.placeSheetStop = nil }
 
     /// Точка маршрута формы, о чьём месте спрашивают (веб `locTarget === "stop"`);
     /// `nil` — место приложения.
@@ -466,6 +479,8 @@ struct PlaceSheet: View {
                 groupField(t.t("loc.addrPh"), text: $form.address, field: .address, node: "loc.addr", pal)
                     .overlay(alignment: .top) { Rectangle().fill(pal.surface).frame(height: 1) }
             }
+            // Точке тумблер не задают: её место сохраняется всегда (веб `locSaveRow.hidden = forStop`).
+            if stop == nil {
             HStack(spacing: 12) {
                 Text(t.t("loc.saveSpot")).font(.system(size: 16)).foregroundStyle(pal.ink)
                 Spacer(minLength: 0)
@@ -475,6 +490,7 @@ struct PlaceSheet: View {
             .frame(minHeight: 59)
             .overlay(alignment: .top) { Rectangle().fill(pal.surface).frame(height: 1) }
             .shotNode("loc.save")
+            }
         }
         .shotNode("loc.group")
         .padding(.top, form.way == .addr ? 0 : 12)

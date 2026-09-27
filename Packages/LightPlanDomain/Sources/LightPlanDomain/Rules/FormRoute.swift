@@ -13,6 +13,8 @@ public struct FormPlace: Equatable, Sendable {
     public var longitude: Double?
     /// Рядом город — засветка: звёздам это помеха.
     public var isCity = false
+    /// Город набран руками — геокодер его больше не перебивает (веб `townTyped`).
+    public var townTyped = false
 
     public init(name: String = "", town: String = "", address: String = "",
                 latitude: Double? = nil, longitude: Double? = nil, isCity: Bool = false) {
@@ -26,7 +28,7 @@ public struct FormPlace: Equatable, Sendable {
 
     /// Город в запись — только у названного места (веб `placeTownOut`).
     var townOut: String {
-        latitude != nil || !name.trimmingCharacters(in: .whitespaces).isEmpty ? town : ""
+        latitude != nil || townTyped || !name.trimmingCharacters(in: .whitespaces).isEmpty ? town : ""
     }
 }
 
@@ -115,19 +117,20 @@ extension EventForm {
     }
 
     /// Точку убрали крестиком; первая — место съёмки пересчитывается.
-    public mutating func removeStop(_ i: Int, spots: [Spot], studios: [Studio]) {
+    public mutating func removeStop(_ i: Int, spots: [Spot], studios: [Studio], home: RepeatHome? = nil) {
         guard route.indices.contains(i) else { return }
         route.remove(at: i)
         routeSeeded = false
-        if i == 0 { syncHeadPlace(spots: spots, studios: studios) }
+        if i == 0 { syncHeadPlace(spots: spots, studios: studios, home: home) }
     }
 
     /// Правка точки руками: точки перестают быть «нашими».
-    public mutating func editStop(_ i: Int, spots: [Spot] = [], studios: [Studio] = [], _ change: (inout RoutePoint) -> Void) {
+    public mutating func editStop(_ i: Int, spots: [Spot] = [], studios: [Studio] = [], home: RepeatHome? = nil,
+                                   _ change: (inout RoutePoint) -> Void) {
         guard route.indices.contains(i) else { return }
         change(&route[i])
         routeSeeded = false
-        if i == 0 { syncHeadPlace(spots: spots, studios: studios) }
+        if i == 0 { syncHeadPlace(spots: spots, studios: studios, home: home) }
     }
 
     /// Час, на который встаёт колесо пустой клетки (веб `stopTimeSeed`): начало —
@@ -225,6 +228,12 @@ extension EventForm {
         if let a = askedStop, route.indices.contains(a) { return true }
         guard let head = route.first else { return true }
         return head.spotId == nil && head.studioId == nil && head.placeText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Город набран руками (веб `#fCity`): съёмка в другом городе, а точки ещё нет.
+    public mutating func setCity(_ v: String) {
+        sessionPlace.town = v.trimmingCharacters(in: .whitespaces)
+        sessionPlace.townTyped = true
     }
 
     // MARK: - Пожелания
