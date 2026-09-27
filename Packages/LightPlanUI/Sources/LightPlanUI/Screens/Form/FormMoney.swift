@@ -23,7 +23,7 @@ struct FormPayBlock: View {
                     .foregroundStyle(pal.ink7)
                 Spacer()
                 Button { sheet = true } label: {
-                    Icon("gear", size: 21, line: 1.6).foregroundStyle(pal.ink4).padding(8).contentShape(Rectangle())
+                    FormGearIcon().foregroundStyle(pal.ink4).padding(8).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(t.t("form.ratePacks"))

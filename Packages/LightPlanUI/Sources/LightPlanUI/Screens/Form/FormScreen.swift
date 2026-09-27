@@ -72,6 +72,9 @@ struct FormScreen: View {
             .onAppear { Self.launchScroll.map { id in DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { proxy.scrollTo(id, anchor: .top) } } }
             }
             .scrollDismissesKeyboard(.interactively)
+            #if os(iOS)
+            .background(KeyboardDismissOnTap())
+            #endif
             .onGeometryChange(for: CGFloat.self) { $0.size.height + $0.safeAreaInsets.top + $0.safeAreaInsets.bottom } action: { screenHeight = $0 }
             .ignoresSafeArea(.container, edges: .top)
             .background(pal.surface.ignoresSafeArea())
@@ -147,7 +150,7 @@ struct FormScreen: View {
                     .foregroundStyle(pal.ink7)
                 Spacer()
                 Button { genreSheet = true } label: {
-                    Icon("gear", size: 21, line: 1.6).foregroundStyle(pal.ink4).padding(8).contentShape(Rectangle())
+                    FormGearIcon().foregroundStyle(pal.ink4).padding(8).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(t.t("form.myGenres"))
