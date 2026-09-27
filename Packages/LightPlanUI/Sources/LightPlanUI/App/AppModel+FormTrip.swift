@@ -110,9 +110,13 @@ extension AppModel {
         let q = BookingQuery(studioKey: st.key, catalogId: st.catalogId,
                              date: String(format: "%04d-%02d-%02d", day.year, day.month, day.day),
                              from: Self.hm24(from), to: Self.hm24(to), phones: phones)
-        // Пока студия думала, форму могли закрыть, открыть другую или сменить студию:
-        // ответ ложится только в ту же запись с той же студией (ревью GPT к 9099202).
-        func same() -> Bool { form?.id == f.id && form?.route.first?.studioId == st.id }
+        // Пока студия думала, форму могли закрыть, открыть другую, сменить студию, день
+        // или часы: ответ ложится только туда, о чём спрашивали (ревью GPT к 9099202, 5ea8dd2).
+        func same() -> Bool {
+            guard let now = form, let h = now.route.first else { return false }
+            return now.id == f.id && h.studioId == st.id && now.day == f.day && now.start == f.start
+                && now.duration == f.duration && h.start == r.start && h.end == r.end
+        }
         do {
             guard let a = try await bookingMatch.match(q) else {
                 if same() { editForm { $0.bookingRef = nil } }
