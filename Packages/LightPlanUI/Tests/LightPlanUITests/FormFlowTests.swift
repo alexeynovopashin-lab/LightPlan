@@ -178,4 +178,31 @@ struct FormFlowTests {
         app.setMyPhone("8 495 123-45-67"); app.commitMyPhone()
         #expect(app.myAppId.isEmpty)
     }
+
+    /// 24, шаг 2: место из «Моих мест» и студия в точках дня, пожелание — в запись.
+    @Test func stopsAndWishesReachTheRecord() throws {
+        var snap = Snapshot()
+        var garden = Spot(id: "sp1", name: "Лагерный сад", latitude: 56.45, longitude: 84.96); garden.town = "Томск"
+        var lumen = Studio(id: "st1", name: "Люмен", latitude: 56.47, longitude: 84.97)
+        lumen.halls = [Studio.Hall(id: "h1", name: "Белый")]
+        snap.spots = [garden]; snap.studios = [lumen]
+        let app = model(disk: Disk(), snapshot: snap)
+        app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
+        app.pickFormGenre(.wedding)
+        #expect(app.form?.route.count == 3)
+        app.openStopPlace(0, way: .addr)
+        #expect(app.placeSheetStop == 0 && app.placeSheetStart == .addr && !app.placeSheetOpen, "лист точки — у формы, не у оболочки")
+        app.setFormStopPlace(0, spot: garden)
+        app.setFormStopStudio(1, studio: lumen)
+        app.setFormStopHall(1, hall: lumen.halls[0])
+        app.setFormStopTime(1, end: false, minute: 960)
+        app.toggleFormWish(.sunset)
+        let s = try #require(app.saveForm())
+        #expect(s.place == "Лагерный сад" && s.latitude == 56.45 && s.placeTown == "Томск")
+        // Слова — из словаря: под `swift test` каталог не собран, сверяем с тем, что он отдаёт.
+        let t = app.lexicon
+        #expect(s.route.count == 2 && s.route[1].placeText == t.t("form.placeHall", ["place": "Люмен", "hall": "Белый"]))
+        #expect(s.route[1].name == t.t("loc.wayStudio") && s.route[1].hallId == "h1" && s.route[1].start == 960)
+        #expect(s.wishes == [.sunset])
+    }
 }

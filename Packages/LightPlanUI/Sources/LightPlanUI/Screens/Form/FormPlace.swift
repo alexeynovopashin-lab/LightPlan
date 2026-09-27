@@ -36,7 +36,6 @@ struct FormPlaceBlock: View {
         let askIdx: Int? = forStop ? waysStop : (headEmpty && n > 0 ? 0 : nil)
         VStack(alignment: .leading, spacing: 0) {
             FormGroupLabel(text: t.t(n > 1 ? "card.route" : "form.placeAddr"))
-                .shotNode("form.placeLabel", text: t.t(n > 1 ? "card.route" : "form.placeAddr"))
             FormGroup(node: "form.place") {
                 FormTextField(placeholder: t.t("form.city"),
                               text: Binding(get: { app.form?.sessionPlace.town ?? "" }, set: { app.setFormCity($0) }))
@@ -50,8 +49,6 @@ struct FormPlaceBlock: View {
                         }
                         if !forStop { addButton(f, pal, t) }
                     }
-                    .padding(.top, 11)
-                    .shotNode("form.route")
                 }
                 if waysShown && askIdx == nil { ways(0, inList: false, pal, t) }
                 if f.repeatOn {
@@ -86,6 +83,7 @@ struct FormPlaceBlock: View {
                               prompt: Text(hint).font(.system(size: 16, weight: .semibold)).foregroundStyle(pal.ink8))
                         .font(.system(size: 16, weight: .semibold)).foregroundStyle(pal.ink)
                         .textFieldStyle(.plain)
+                        .frame(height: 18)
                         .simultaneousGesture(TapGesture().onEnded { if wheel != nil { wheel = nil } })
                         .shotNode("form.stop.\(i).name")
                     span(i, r, pal)
@@ -97,11 +95,13 @@ struct FormPlaceBlock: View {
                     .accessibilityLabel(t.t("gen.removeAria"))
                     .shotNode("form.stop.\(i).x")
                 }
-                placeLine(i, r, pal, t).padding(.top, 5)
+                // `.rt-pick` с полем −5: знак булавки встаёт под край имени.
+                placeLine(i, r, pal, t).padding(.leading, -5).padding(.top, 5)
             }
             .padding(.bottom, 16)
         }
         .padding(.horizontal, 14)
+        .padding(.top, i == 0 ? 11 : 0)     // `.rt-row:first-child`
         .fixedSize(horizontal: false, vertical: true)
         .shotNode("form.stop.\(i)")
     }
@@ -122,7 +122,7 @@ struct FormPlaceBlock: View {
 
     private func half(_ m: Int?, open: Bool, _ pal: Palette, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(m.map { clock.fmt(Double($0)) } ?? "—:—")
+            Text(m.map { clock.fmt(Double($0)) } ?? "--:--")
                 .font(.system(size: 13).monospacedDigit())
                 .foregroundStyle(open ? pal.brass : (m == nil ? pal.ink8 : pal.ink))
         }
@@ -139,7 +139,6 @@ struct FormPlaceBlock: View {
                     .frame(width: 24, height: 24).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.leading, -5)
             .accessibilityLabel(t.t("form.pickSpotAria"))
             .shotNode("form.stop.\(i).pin")
             if r.studioId != nil {
@@ -164,6 +163,7 @@ struct FormPlaceBlock: View {
                 }), prompt: Text(t.t("form.scenePlacePh")).foregroundStyle(pal.ink9))
                     .font(.system(size: 13)).foregroundStyle(pal.ink4)
                     .textFieldStyle(.plain)
+                    .frame(height: 16)
                     .simultaneousGesture(TapGesture().onEnded { if wheel != nil { wheel = nil } })
                     .shotNode("form.stop.\(i).place")
             }
@@ -229,7 +229,6 @@ struct FormPlaceBlock: View {
         }
         .padding(.vertical, 12).padding(.leading, inList ? 35 : 15).padding(.trailing, 15)
         .overlay(alignment: .top) { if inList { Rectangle().fill(pal.surface).frame(height: 1) } }
-        .padding(.bottom, inList ? 12 : 0)
         .shotNode("form.ways")
     }
 

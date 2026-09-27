@@ -378,7 +378,9 @@ function markdown(results) {
     // только глава (веб прячет корень листом главы).
     if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(nat.nodes)) if (/^(header|mode|nav)/.test(k)) delete nat.nodes[k];
     // Соседняя вкладка тоже жива и пишет рамки за краем экрана — не в счёт.
-    for (const [k, r] of Object.entries(nat.nodes)) if (r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) delete nat.nodes[k];
+    // Форма (24) — длинный лист в прокрутке: её узлы ниже края экрана у обеих
+    // сторон в координатах непрокрученной формы, их и сверяем.
+    if (!sc.form) for (const [k, r] of Object.entries(nat.nodes)) if (r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) delete nat.nodes[k];
     // Под листом места экран жив и пишет рамки — сверяется только лист.
     if (sc.sheet) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('loc.')) delete nat.nodes[k];
     // Под формой «Съёмки» живы и пишут рамки — сверяется только форма.
