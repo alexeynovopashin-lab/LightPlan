@@ -68,14 +68,14 @@ extension AppModel {
         let genre = lastFormGenre
         form = EventForm.new(id: Self.newRecordId(now()), day: d, start: start, fromLight: fromLight, mode: mode,
                              genre: genre, prefs: genrePrefs[genre], light: formLight(on: d), step: settings.timeStep,
-                             home: repeatHome)
+                             home: repeatHome, genreRate: genreRate(genre), currency: settings.currency)
     }
 
     /// Правка существующей записи: черновика у правки нет.
     public func openForm(editing id: String) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
         formIsDraft = false
-        form = EventForm.editing(s)
+        form = EventForm.editing(s, home: settings.currency)
     }
 
     /// Жанры, включённые в «Моих жанрах». Пустой список снимка — включены все (веб: «изначально включены все»).
@@ -87,7 +87,7 @@ extension AppModel {
     /// Выбор жанра в форме: пресет пересобирается, последний жанр запоминается.
     public func pickFormGenre(_ g: Genre, sub: SubGenre? = nil) {
         guard var f = form else { return }
-        f.pick(g, sub: sub, prefs: genrePrefs[g], light: formLight(on: f.day))
+        f.pick(g, sub: sub, prefs: genrePrefs[g], light: formLight(on: f.day), genreRate: genreRate(g))
         lastFormGenre = g
         form = f
         formChanged()
@@ -151,14 +151,15 @@ extension AppModel {
     public func saveForm() -> Session? {
         guard let f = form else { return nil }
         let org = f.orgId.flatMap { id in snapshot.orgs.first { $0.id == id } }
+        let money = formMoney(f)
         var s = f.session(orgName: org?.name, and: lexicon.t("card.and"), studios: snapshot.studios,
-                          warning: formWishWarning(f), now: now())
+                          warning: formWishWarning(f), money: money, now: now())
         // Повтор: копии заводятся один раз, здесь, и дальше живут сами (веб `repMake`).
         var copies: [Session] = []
         if f.repeatOn, let rule = f.repeatRule {
             let clock = now()
             copies = Repeats.make(&s, rule: rule, count: f.repeatCount, blocks: f.repeatBlocks, home: repeatHome,
-                                  group: Self.newRecordId(clock)) { Self.newRecordId(clock) }
+                                  group: Self.newRecordId(clock), monthly: f.repeatMonthly) { Self.newRecordId(clock) }
         }
         if let i = snapshot.sessions.firstIndex(where: { $0.id == s.id }) {
             snapshot.sessions[i] = s
@@ -166,6 +167,9 @@ extension AppModel {
             snapshot.sessions.append(s)
         }
         snapshot.sessions.append(contentsOf: copies)
+        if let e = f.monthSumEdit(money), s.pay == .monthly, let g = f.monthGroup?.group {
+            addMonthSum(MonthSum(month: e.month, sum: e.sum, at: Int64((now().timeIntervalSince1970 * 1000).rounded(.down))), group: g)
+        }
         draftTask?.cancel()
         if f.isNew { draftStore.save(nil) }
         persist()
@@ -194,13 +198,15 @@ extension AppModel {
         return RepeatHome(town: place.name?.city ?? "", latitude: c.latitude, longitude: c.longitude)
     }
 
-    public func setFormRepeat(_ rule: RepeatRule?) { editForm { $0.repeatRule = rule } }
+    public func setFormRepeat(_ rule: RepeatRule?) {
+        editForm { f in f.repeatRule = rule; f.fitPay(genreRate: genreRate(f.genre)) }
+    }
     public func setFormRepeatCount(_ n: Int) {
         editForm { $0.repeatCount = min(max(n, Repeats.minCount), Repeats.maxCount) }
     }
     public func setFormRepeat(block b: RepeatBlock, on: Bool) { editForm { $0.setRepeat(block: b, on: on) } }
 
-    private func editForm(_ change: (inout EventForm) -> Void) {
+    func editForm(_ change: (inout EventForm) -> Void) {
         guard var f = form else { return }
         change(&f)
         form = f
@@ -294,7 +300,7 @@ extension AppModel {
         // Жанр формы выключили — форма перестраивается под первый включённый;
         // сохранённой записи время не переписываем (веб `renderGenres`, `swapped`).
         if var f = form, !enabledGenres.contains(f.genre), let first = enabledGenres.first {
-            f.pick(first, prefs: genrePrefs[first], light: formLight(on: f.day))
+            f.pick(first, prefs: genrePrefs[first], light: formLight(on: f.day), genreRate: genreRate(first))
             form = f
             formChanged()
         }

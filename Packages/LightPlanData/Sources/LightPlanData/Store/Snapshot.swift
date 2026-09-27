@@ -39,6 +39,9 @@ public struct Snapshot: Sendable, Hashable {
     public var genres: [Genre] = []
     public var genrePrefs: [Genre: GenrePrefs] = [:]
     public var defaultRate: Decimal = 0
+    /// Пакеты по жанрам (веб `packs`, `genrePacks`). Строки без цены живут
+    /// в редакторе и в файле, но при чтении отбрасываются, как у веба.
+    public var packs: [Genre: [Pack]] = [:]
     public var delivery: DeliverySetting = .standard
     public var equipment: [String] = []
     public var cardOrder: [GenreGroup: [CardBlock]] = [:]
@@ -56,7 +59,7 @@ extension Snapshot: Codable {
         case sessions, orgs, blocks, spots, studios, trashed
         case loc, theme, clock, tempUnit, currency, timeStep, travelMin
         case pro, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold
-        case practice, genres, genrePrefs, defaultRate, delivery, equipment
+        case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment
         case cardOrder, cardOff, sync
     }
 
@@ -97,6 +100,7 @@ extension Snapshot: Codable {
         genres = try c.decodeLenientArray(Genre.self, forKey: .genres)
         genrePrefs = try c.decodeLenientDictionary(keyedBy: Genre.self, valueType: GenrePrefs.self, forKey: .genrePrefs)
         defaultRate = try c.decodeIfPresent(Decimal.self, forKey: .defaultRate) ?? 0
+        packs = Pack.genrePacks(from: try? c.decodeIfPresent(JSONValue.self, forKey: .packs))
         delivery = try c.decodeIfPresent(DeliverySetting.self, forKey: .delivery) ?? .standard
         equipment = try c.decodeIfPresent([String].self, forKey: .equipment) ?? []
         cardOrder = try c.decodeLenientDictionaryOfArrays(keyedBy: GenreGroup.self, elementType: CardBlock.self, forKey: .cardOrder)
@@ -141,6 +145,9 @@ extension Snapshot: Codable {
         try c.encodeLenientArray(genres, forKey: .genres)
         try c.encodeLenientDictionary(genrePrefs, forKey: .genrePrefs)
         try c.encode(defaultRate, forKey: .defaultRate)
+        if !packs.isEmpty {
+            try c.encode(Dictionary(uniqueKeysWithValues: packs.map { ($0.key.rawValue, $0.value) }), forKey: .packs)
+        }
         try c.encode(delivery, forKey: .delivery)
         try c.encode(equipment, forKey: .equipment)
         try c.encodeLenientDictionaryOfArrays(cardOrder, forKey: .cardOrder)

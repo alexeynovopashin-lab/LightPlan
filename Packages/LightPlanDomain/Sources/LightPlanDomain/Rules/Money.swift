@@ -67,25 +67,39 @@ public enum Money {
         return day.day < start.day ? k - 1 : k
     }
 
+    /// Первый день месяца `k` группы (веб `repPeriodStart`): число первого дня,
+    /// а если такого в месяце нет — первое число следующего.
+    public static func periodStart(start: CivilDate, month k: Int) -> CivilDate {
+        let m0 = start.year * 12 + (start.month - 1) + k
+        let y = m0 >= 0 ? m0 / 12 : (m0 - 11) / 12, m = m0 - y * 12 + 1
+        let first = CivilDate(year: y, month: m, day: 1)
+        let len = first.adding(days: 31).days(since: first) - (first.adding(days: 31).day - 1)
+        if start.day <= len { return CivilDate(year: y, month: m, day: start.day) }
+        return m == 12 ? CivilDate(year: y + 1, month: 1, day: 1) : CivilDate(year: y, month: m + 1, day: 1)
+    }
+
     /// Сумма месяца `k` у группы (веб `repSumAt`): действует самая поздняя из
     /// смен, начатых не позже этого месяца. Смены читаются со всех живых
     /// карточек группы — слияние облака могло оставить у карточки версию, где
-    /// смены ещё нет, и её донесут соседи.
-    public static func monthSum(_ rep: Repeat, month k: Int, among sessions: [Session]) -> Decimal {
+    /// смены ещё нет, и её донесут соседи. `edit` — набранная в форме, ещё не
+    /// сохранённая смена (веб `extra` с `at: Infinity`): она сильнее всех.
+    public static func monthSum(_ rep: Repeat, month k: Int, among sessions: [Session],
+                                edit: MonthSum? = nil) -> Decimal {
         var best = (sum: rep.monthly ?? 0, at: Int64(0))
         func see(_ e: MonthSum) { if e.month <= k && e.at > best.at { best = (e.sum, e.at) } }
         for x in sessions where x.repeatInfo?.group == rep.group { x.repeatInfo!.sums.forEach(see) }
         rep.sums.forEach(see)
+        if let edit { see(edit) }
         return best.sum
     }
 
     /// Доля месяца (веб `repShare`): сумма группы поровну между живыми
     /// помесячными карточками этого месяца. Удалённая выпадает — доли растут.
     /// Карточка со своим гонораром в счёт идёт: её число — доплата или скидка.
-    public static func monthShare(of s: Session, among sessions: [Session]) -> Decimal {
+    public static func monthShare(of s: Session, among sessions: [Session], edit: MonthSum? = nil) -> Decimal {
         guard let rep = s.repeatInfo, let start = rep.start else { return 0 }
         let k = monthIndex(start: start, day: s.day)
-        let sum = monthSum(rep, month: k, among: sessions)
+        let sum = monthSum(rep, month: k, among: sessions, edit: edit)
         if sum == 0 { return 0 }
         var n = 1
         for x in sessions where x.id != s.id && x.repeatInfo?.group == rep.group && x.pay == .monthly

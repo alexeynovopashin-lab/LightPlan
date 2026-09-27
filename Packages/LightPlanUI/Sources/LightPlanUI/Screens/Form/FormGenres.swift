@@ -168,7 +168,7 @@ struct GenreSheet: View {
         var list = Self.durations
         if let c = cur, !list.contains(c) { list.append(c); list.sort() }
         let head: [(String, String)] = GenreProfile(g).spec.duration == nil ? [(t.t("gen.byLight"), "light")] : []
-        return head + list.map { (durationLabel($0, t), String($0)) }
+        return head + list.map { (Self.durationLabel($0, t), String($0)) }
     }
 
     private func deliveryOptions(_ g: Genre, _ t: Lexicon) -> [(String, String)] {
@@ -181,7 +181,7 @@ struct GenreSheet: View {
     }
 
     /// Подпись длительности (веб `durLabel`): «30 мин», «1 ч», «1,5 ч».
-    private func durationLabel(_ m: Int, _ t: Lexicon) -> String {
+    static func durationLabel(_ m: Int, _ t: Lexicon) -> String {
         let h = m / 60, mm = m % 60
         if h == 0 { return t.t("dur.minutes", ["m": "\(mm)"]) }
         if mm == 0 { return t.t("dur.hours", ["h": "\(h)", "hourWord": t.word("unit.hour", h)]) }

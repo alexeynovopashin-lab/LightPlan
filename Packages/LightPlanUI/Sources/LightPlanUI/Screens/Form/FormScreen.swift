@@ -14,6 +14,7 @@ struct FormScreen: View {
     @State private var picker: TimePicker? = Self.launchPicker
     @State private var orgSheet = false
     @State private var genreSheet = false
+    @State private var paySheet = false
     /// Веер правила повтора раскрыт.
     @State private var repMenu = false
     /// Колесо под точкой дня (24): одно на форму вместе с колёсами времени.
@@ -33,10 +34,20 @@ struct FormScreen: View {
         #endif
     }
 
+    /// Снимок сценария: `-LPShotFormScroll pay` прокручивает форму к оплате (только Debug).
+    private static var launchScroll: String? {
+        #if DEBUG
+        UserDefaults.standard.string(forKey: "LPShotFormScroll")
+        #else
+        nil
+        #endif
+    }
+
     var body: some View {
         if let f = app.form {
             let pal = Palette(scheme)
             let t = app.lexicon
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     bar(pal, t).padding(.top, 46).padding(.bottom, 8)
@@ -51,10 +62,14 @@ struct FormScreen: View {
                     notesBlock(f, pal, t)
                     if f.shows(.order) { orderBlock(f, pal, t) }
                     if f.mode != .meet { FormWishBlock(app: app, form: f) }
+                    if f.shows(.payment) { FormPayBlock(app: app, form: f, sheet: $paySheet).id("pay") }
+                    if f.shows(.delivery) { FormDeliveryBlock(app: app, form: f) }
                     if !f.isNew { deleteButton(f, pal, t) }
                     Color.clear.frame(height: 40)
                 }
                 .padding(.horizontal, 24)
+            }
+            .onAppear { Self.launchScroll.map { id in DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { proxy.scrollTo(id, anchor: .top) } } }
             }
             .scrollDismissesKeyboard(.interactively)
             .onGeometryChange(for: CGFloat.self) { $0.size.height + $0.safeAreaInsets.top + $0.safeAreaInsets.bottom } action: { screenHeight = $0 }
@@ -63,6 +78,7 @@ struct FormScreen: View {
             .overlayPreferenceValue(RepeatAnchorKey.self) { anchor in repFan(anchor, f, t) }
             .sheet(isPresented: $orgSheet) { OrgPickSheet(app: app) }
             .sheet(isPresented: $genreSheet) { GenreSheet(app: app) }
+            .sheet(isPresented: $paySheet) { PaySheet(app: app) }
             // Лист «Где снимаем» для точки дня: форма лежит поверх оболочки, её лист встал бы под форму.
             .sheet(isPresented: Binding(get: { app.placeSheetStop != nil }, set: { if !$0 { app.placeSheetStop = nil } }),
                    onDismiss: { app.placeSheetStart = .fork }) {

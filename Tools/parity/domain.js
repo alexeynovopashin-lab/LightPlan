@@ -70,6 +70,7 @@ const BLOCKS = {
   deal:        { from: "function dealName(k, inPhrase) {", to: "/* ---------- Заказ в карточке" },
   docGuess:    { from: "var DOC_GUESS = [", to: "function renderDocKinds()" },
   repeat:      { from: "function repPeriodIndex(start, date) {", to: "/* Все смены суммы группы" },
+  periodStart: { from: "function repPeriodStart(start, k) {", to: "/* Доля первой новой карточки продления" },
   wishes:      { from: "var WISHES = [\"any\"", to: "\n" },
   placeText:   { from: "function placeText(s) {", to: "\n" },
 };
@@ -386,7 +387,25 @@ function money(ctx) {
       period: s.rep && s.rep.start ? ctx.repPeriodIndex(s.rep.start, s.date) : null });
   }
   out.monthlySessions = group.map(function (s) { return webRec(ctx, s); });
+  /* Набранная в форме сумма месяца (итерация 24): доля карточки с ещё не
+     сохранённой сменой — `extra` с `at: Infinity` сильнее всех */
+  out.monthEdit = [];
+  for (const id of ["m1", "m3", "m5", "m6", "m9", "m10", "n1", "z2"]) {
+    const s = group.find(function (x) { return x.id === id; });
+    for (const k of [0, 1, 2]) for (const sum of [30000, 0, 12345]) {
+      const e = { k: k, sum: sum, at: Infinity };
+      out.monthEdit.push({ id: id, k: k, sum: sum, share: ctx.repShare(s, e), at: ctx.repSumAt(s.rep, ctx.repPeriodIndex(s.rep.start, s.date), e) });
+    }
+  }
   ctx.sessions = [];
+  /* Первый день месяца группы: 31-е в коротком месяце — первое число следующего */
+  out.periodStart = [];
+  for (const st of ["2026-01-31", "2026-01-30", "2026-01-15", "2024-01-31", "2026-12-31", "2026-03-31"]) {
+    for (let k = -2; k <= 14; k++) {
+      const d = ctx.repPeriodStart(st, k);
+      out.periodStart.push({ start: st, k: k, y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() });
+    }
+  }
 
   /* Суммы по валютам: без пересчёта курса, домашняя первой */
   function C(id, cur, rate, extra) {

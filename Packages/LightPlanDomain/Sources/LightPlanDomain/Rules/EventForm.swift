@@ -73,6 +73,31 @@ public struct EventForm: Equatable, Sendable {
     /// Пожелания к погоде; пусто — «Неважно» (веб `wishes`).
     public var wishes: [Wish] = []
 
+    /// Оплата (веб `fPay`, `fRate`, `fUnits`, `fExpense`): способ, ставка / цена /
+    /// сумма, количество, расходы. `rate == nil` — только у помесячной карточки:
+    /// «доля месяца», а не ноль.
+    public var pay: PayKind = .hourly
+    public var rate: Decimal? = 0
+    public var units = 1
+    public var expense: Decimal = 0
+    /// Предоплата, набранная руками или поставленная долей жанра (веб `fPrepay`).
+    public var prepayTyped: Decimal = 0
+    /// Предоплату держит доля жанра, пока в поле не вписали своё (веб `fPrepayAuto`).
+    public var prepayAuto = true
+    /// Валюта сделки (веб `fCurrency`): у новой — из настроек, у правки — записи.
+    public var currency: Currency = .rub
+    /// Сумма месяца заводимой помесячной группы (веб `fRepMonthly`).
+    public var repeatMonthly: Decimal = 0
+    /// Набранная сумма месяца у карточки помесячной группы; `nil` — не трогали (веб `fMonSum`).
+    public var monthSumTyped: Decimal?
+    /// Оплата раскрыта (веб `!payFolded`): не часть записи, а вид блока.
+    public var payOpen = false
+
+    /// Срок сдачи (веб `fDelvChoice`) и отметка «сдан» с моментом (веб `fDone`, `fDeliveredAt`).
+    public var deadline: DeadlineChoice = .auto
+    public var delivered = false
+    public var deliveredAt: Date?
+
     /// Исходная запись при правке; `nil` — новая.
     public var base: Session?
     public var isNew: Bool { base == nil }
@@ -86,12 +111,13 @@ public struct EventForm: Equatable, Sendable {
     ///   - genre: жанр — последний использованный, форма его не сбрасывает (веб `shootType`).
     public static func new(id: String, day: CivilDate, start: Int?, fromLight: Bool, mode: FormMode = .shoot,
                            genre: Genre, prefs: GenrePrefs? = nil, light: FormLightWindow?, step: Int = 5,
-                           home: RepeatHome? = nil) -> EventForm {
+                           home: RepeatHome? = nil, genreRate: Decimal = 0, currency: Currency = .rub) -> EventForm {
         var f = EventForm(id: id, mode: mode, genre: genre, day: day,
                           start: start.map { fromLight ? $0 : snap($0, step: step) } ?? 720,
                           duration: 60,
                           timeIsProposed: start == nil || fromLight, timeFromLight: fromLight)
-        f.applyPreset(prefs: prefs, light: light)
+        f.currency = currency
+        f.applyPreset(prefs: prefs, light: light, genreRate: genreRate)
         // Места у новой съёмки ещё нет: город и опора — «Мой город» (веб L30524–30530).
         f.sessionPlace = FormPlace(town: home?.town ?? "", latitude: home?.latitude, longitude: home?.longitude, isCity: true)
         if GenreProfile(genre).hasRoute {
@@ -102,7 +128,8 @@ public struct EventForm: Equatable, Sendable {
     }
 
     /// Правка существующей записи (веб `fillFormFrom`): ничего не предлагается.
-    public static func editing(_ s: Session) -> EventForm {
+    /// `home` — валюта из настроек для записи, у которой своей нет.
+    public static func editing(_ s: Session, home: Currency = .rub) -> EventForm {
         var f = EventForm(id: s.id, mode: s.kind == .meet ? .meet : .shoot, genre: s.genre ?? .portrait, day: s.day,
                           start: s.start, duration: s.duration ?? max(s.endMinute - s.start, minDuration),
                           timeIsProposed: false, timeFromLight: false)
@@ -119,6 +146,7 @@ public struct EventForm: Equatable, Sendable {
         f.brief = s.brief
         f.models = s.models
         f.wishes = s.wishes
+        f.loadMoney(s, home: home)
         f.loadRoute(s)
         f.base = s
         f.fitPersons()
@@ -147,8 +175,9 @@ public struct EventForm: Equatable, Sendable {
     /// Пресет жанра новой записи: длительность и начало (веб `applyGenrePreset`).
     /// Встреча длится час и светом не двигается; событие дня и день без окна
     /// начинаются в полдень; остальное — с начала золотого часа.
-    mutating func applyPreset(prefs: GenrePrefs?, light: FormLightWindow?) {
+    mutating func applyPreset(prefs: GenrePrefs?, light: FormLightWindow?, genreRate: Decimal = 0) {
         let sp = GenreProfile(genre).spec
+        defer { presetMoney(prefs: prefs, genreRate: genreRate) }
         if mode == .meet {
             duration = 60
         } else if let own = prefs?.duration {           // своя длительность жанра, в том числе «по свету»
@@ -181,12 +210,13 @@ public struct EventForm: Equatable, Sendable {
 
     /// Выбор жанра и уточнения — один вход (веб `pickGenre`): пресет
     /// перестраивается ровно один раз, и только у новой записи.
-    public mutating func pick(_ g: Genre, sub: SubGenre? = nil, prefs: GenrePrefs? = nil, light: FormLightWindow? = nil) {
+    public mutating func pick(_ g: Genre, sub: SubGenre? = nil, prefs: GenrePrefs? = nil, light: FormLightWindow? = nil,
+                              genreRate: Decimal = 0) {
         let changed = g != genre
         genre = g
         subGenre = sub.flatMap { g.subGenres.contains($0) ? $0 : nil }
         if changed {
-            if isNew { applyPreset(prefs: prefs, light: light) } else { fitPersons() }
+            if isNew { applyPreset(prefs: prefs, light: light, genreRate: genreRate) } else { fitPersons(); fitShape(genreRate: genreRate) }
             // Засеянные точки принадлежат жанру: сменили жанр — меняются и они (веб `applyGenreShape`).
             if isNew, routeSeeded || route.isEmpty {
                 route = GenreProfile(g).hasRoute ? Self.seededRoute() : []
@@ -291,6 +321,9 @@ public struct EventForm: Equatable, Sendable {
             || persons.contains { !blank($0.name) || !blank($0.phone) }
             || guests > 0
             || (!routeSeeded && !routeOut.isEmpty) || !wishes.isEmpty
+            // Ставка и предоплата — набранное (веб `+o.prepay > 0 || +o.rate > 0`): жанровая
+            // ставка часа делает черновиком и нетронутую форму — так у веба.
+            || prepayTyped > 0 || (rate ?? 0) > 0 || (repeatOn && repeatMonthly > 0)
     }
 
     // MARK: - Сохранение
@@ -298,7 +331,7 @@ public struct EventForm: Equatable, Sendable {
     /// Запись из формы (веб `#fSave`, L31753–31814). Валидации нет — пустая форма
     /// сохраняется; правка накладывается на исходную запись и не теряет чужих полей.
     public func session(orgName: String?, and: String, studios: [Studio] = [], warning: WishWarning? = nil,
-                        now: Date = Date()) -> Session {
+                        money: FormMoneyContext? = nil, now: Date = Date()) -> Session {
         var s = base ?? Session(id: id, kind: mode == .meet ? .meet : .shoot, day: day, start: start)
         s.kind = mode == .meet ? .meet : (base?.kind ?? .shoot)
         s.day = day
@@ -334,6 +367,7 @@ public struct EventForm: Equatable, Sendable {
         s.route = routeOut
         s.wishes = wishes
         s.wishWarning = mode == .meet ? nil : warning
+        writeMoney(&s, money)
         s.modifiedAt = Int64((now.timeIntervalSince1970 * 1000).rounded(.down))
         return s
     }
@@ -354,6 +388,14 @@ extension EventForm {
         var repRule: String?, repN: Int?, repOn: [String]?
         /// Точки и место (веб `route`, `sessionPlace` в черновике), пожелания.
         var route: [DraftStop]?, seeded: Bool?, place: DraftPlace?, wish: [String]?
+        /// Деньги и сдача (веб `pay`, `rate`, …, `deadlineChoice`, `delivered`).
+        var money: DraftMoney?
+    }
+    private struct DraftMoney: Codable {
+        var pay: String, rate: Decimal?, units: Int, expense: Decimal, prepay: Decimal, auto: Bool
+        var cur: String, monthly: Decimal, open: Bool
+        /// Срок: «auto», «none» или число дней строкой.
+        var delv: String, done: Bool, doneAt: Date?
     }
     private struct DraftStop: Codable {
         var t: Int?, t2: Int?, n: String, p: String, placeId: String?, studioId: String?, hallId: String?, walk: Bool
@@ -379,7 +421,10 @@ extension EventForm {
                       place: DraftPlace(name: sessionPlace.name, town: sessionPlace.town, addr: sessionPlace.address,
                                         lat: sessionPlace.latitude, lon: sessionPlace.longitude, city: sessionPlace.isCity,
                                         typed: sessionPlace.townTyped),
-                      wish: wishes.map(\.rawValue))
+                      wish: wishes.map(\.rawValue),
+                      money: DraftMoney(pay: pay.rawValue, rate: rate, units: units, expense: expense, prepay: prepayTyped,
+                                        auto: prepayAuto, cur: currency.rawValue, monthly: repeatMonthly, open: payOpen,
+                                        delv: Self.deadlineKey(deadline), done: delivered, doneAt: deliveredAt))
         return try? JSONEncoder().encode(d)
     }
 
@@ -408,7 +453,28 @@ extension EventForm {
             f.sessionPlace.townTyped = p.typed ?? false
         }
         f.wishes = (d.wish ?? []).compactMap(Wish.init(rawValue:)).filter { $0 != .any }
+        if let m = d.money {
+            f.pay = PayKind(rawValue: m.pay) ?? f.pay
+            f.rate = m.rate; f.units = max(1, m.units); f.expense = m.expense
+            f.prepayTyped = m.prepay; f.prepayAuto = m.auto
+            f.currency = Currency(rawValue: m.cur) ?? f.currency
+            f.repeatMonthly = m.monthly; f.payOpen = m.open
+            f.deadline = Self.deadline(key: m.delv)
+            f.delivered = m.done; f.deliveredAt = m.doneAt
+        }
         f.fitPersons()
         return f
+    }
+
+    static func deadlineKey(_ d: DeadlineChoice) -> String {
+        switch d {
+        case .auto: "auto"
+        case .none: "none"
+        case .days(let n): String(n)
+        }
+    }
+
+    static func deadline(key: String) -> DeadlineChoice {
+        key == "none" ? .none : Int(key).map { .days($0) } ?? .auto
     }
 }
