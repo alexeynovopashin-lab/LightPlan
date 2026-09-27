@@ -118,6 +118,16 @@ extension AppModel {
                 await app.light.weather.settled()
                 app.openForm(day: app.planner.selected)
                 if let g = s.way.flatMap(Genre.init(rawValue:)) { app.pickFormGenre(g) }
+                // Город формы (шаг 4б): `defaults write … LPShotFormCity Москва` — строки выезда и дороги.
+                if let c = UserDefaults.standard.string(forKey: "LPShotFormCity") {
+                    app.setFormCity(c)
+                    app.editForm { $0.setTrip(true) }   // родного города в засеве нет — выезд руками
+                }
+                // Путь «Фотостудия» точки (шаг 4б): `defaults write … LPShotFormStudio 1`.
+                if UserDefaults.standard.bool(forKey: "LPShotFormStudio") {
+                    if app.form?.route.isEmpty == true { app.addFormStop() }
+                    app.openStopPlace(0, way: .studio)
+                }
             }
         }
         // Слои «Съёмок» и листы (22): слои открывает сам экран при появлении

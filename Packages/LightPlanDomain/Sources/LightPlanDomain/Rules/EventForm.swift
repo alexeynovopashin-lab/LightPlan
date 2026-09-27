@@ -76,6 +76,12 @@ public struct EventForm: Equatable, Sendable {
     public var sessionPlace = FormPlace()
     /// Пожелания к погоде; пусто — «Неважно» (веб `wishes`).
     public var wishes: [Wish] = []
+    /// Выезд, заданный руками (веб `fTrip` при `fTripManual`); без правки — по городам (`trip(home:)`).
+    public var tripOn = false
+    /// Выезд правили руками — приложение держит ответ человека (веб `fTripManual`).
+    public var tripManual = false
+    /// Бронь в студии первой точки (веб `fBookingRef`).
+    public var bookingRef: String?
 
     /// Оплата (веб `fPay`, `fRate`, `fUnits`, `fExpense`): способ, ставка / цена /
     /// сумма, количество, расходы. `rate == nil` — только у помесячной карточки:
@@ -152,6 +158,10 @@ public struct EventForm: Equatable, Sendable {
         f.gear = s.gear
         f.docs = s.docs
         f.wishes = s.wishes
+        // Запись без `tripManual`, но с выездом, считается правленой руками (веб L30416).
+        f.tripOn = s.trip
+        f.tripManual = s.tripManual || s.trip
+        f.bookingRef = s.bookingRef
         f.loadMoney(s, home: home)
         f.loadRoute(s)
         f.base = s
@@ -338,7 +348,8 @@ public struct EventForm: Equatable, Sendable {
     /// Запись из формы (веб `#fSave`, L31753–31814). Валидации нет — пустая форма
     /// сохраняется; правка накладывается на исходную запись и не теряет чужих полей.
     public func session(orgName: String?, and: String, studios: [Studio] = [], spots: [Spot] = [],
-                        warning: WishWarning? = nil, money: FormMoneyContext? = nil, now: Date = Date()) -> Session {
+                        warning: WishWarning? = nil, money: FormMoneyContext? = nil, homeCity: String = "",
+                        now: Date = Date()) -> Session {
         // Пустые точки впереди отбрасываются до того, как место и студия берутся
         // «с первой точки»: иначе студия второй точки при пустой первой вставала
         // в маршрут первой, а в запись не попадала. Веб здесь ошибается так же
@@ -348,7 +359,7 @@ public struct EventForm: Equatable, Sendable {
             f.route.removeFirst(k)
             f.syncHeadPlace(spots: spots, studios: studios)
             return f.session(orgName: orgName, and: and, studios: studios, spots: spots,
-                             warning: warning, money: money, now: now)
+                             warning: warning, money: money, homeCity: homeCity, now: now)
         }
         var s = base ?? Session(id: id, kind: mode == .meet ? .meet : .shoot, day: day, start: start)
         s.kind = mode == .meet ? .meet : (base?.kind ?? .shoot)
@@ -383,7 +394,12 @@ public struct EventForm: Equatable, Sendable {
         s.hallId = head?.hall
         s.rentFrom = head?.from
         s.rentTo = head?.to
-        if head == nil { s.bookingRef = nil; s.rentRequest = nil }
+        if head == nil { s.bookingRef = nil; s.rentRequest = nil } else { s.bookingRef = bookingRef }
+        // Выезд (веб `#fSave`: `trip`, `tripManual`, `tripPlace`); у встречи его нет.
+        let trip = mode != .meet && self.trip(home: homeCity)
+        s.trip = trip
+        s.tripManual = mode != .meet && tripManual
+        s.tripPlace = trip ? (sessionPlace.town.isEmpty ? sessionPlace.name : sessionPlace.town) : ""
         s.route = routeOut
         s.wishes = wishes
         s.wishWarning = mode == .meet ? nil : warning
@@ -412,6 +428,8 @@ extension EventForm {
         var money: DraftMoney?
         /// Оборудование и документы (веб `gear`, `docs` черновика).
         var gear: [String]?, docs: [Attachment]?
+        /// Выезд (веб `trip`, `tripManual` черновика).
+        var trip: Bool?, tripManual: Bool?
     }
     private struct DraftMoney: Codable {
         var pay: String, rate: Decimal?, units: Int, expense: Decimal, prepay: Decimal, auto: Bool
@@ -447,7 +465,7 @@ extension EventForm {
                       money: DraftMoney(pay: pay.rawValue, rate: rate, units: units, expense: expense, prepay: prepayTyped,
                                         auto: prepayAuto, cur: currency.rawValue, monthly: repeatMonthly, open: payOpen,
                                         delv: Self.deadlineKey(deadline), done: delivered, doneAt: deliveredAt),
-                      gear: gear, docs: docs)
+                      gear: gear, docs: docs, trip: tripOn, tripManual: tripManual)
         return try? JSONEncoder().encode(d)
     }
 
@@ -463,6 +481,7 @@ extension EventForm {
         f.orderPerson = d.orderPerson; f.orderPhone = d.orderPhone; f.guests = d.guests
         f.notes = d.notes; f.brief = d.brief; f.models = d.models
         f.gear = d.gear ?? []; f.docs = d.docs ?? []
+        f.tripOn = d.trip ?? false; f.tripManual = d.tripManual ?? false
         f.persons = d.persons.map { Person(name: $0.first ?? "", phone: $0.count > 1 ? $0[1] : "") }
         f.repeatRule = d.repRule.flatMap(RepeatRule.init(rawValue:))
         if let n = d.repN { f.repeatCount = min(max(n, Repeats.minCount), Repeats.maxCount) }

@@ -178,7 +178,7 @@ public final class AppModel {
 
     /// `+LAT.toFixed(5)` веба.
     private static func round5(_ v: Double) -> Double { Double(JSNumber.fixed(v, 5)) ?? v }
-    private static func ms(_ d: Date) -> Int64 { Int64((d.timeIntervalSince1970 * 1000).rounded(.down)) }
+    static func ms(_ d: Date) -> Int64 { Int64((d.timeIntervalSince1970 * 1000).rounded(.down)) }
 
     /// «Съёмки» (итерация 21): одно состояние на месяц, неделю и день.
     /// Открывается на месяце и сегодняшнем дне при каждом запуске, как веб.
@@ -226,6 +226,10 @@ public final class AppModel {
     /// Последний жанр формы: новая форма открывается на нём (веб `shootType`).
     var lastFormGenre: Genre = .portrait
     var draftStore: any DraftStoring = DefaultsDraftStore()
+    /// Шлюз студии для «Связать с бронью»; тестам подставляется свой.
+    var bookingMatch: any BookingMatching = HTTPBookingMatch()
+    /// Город формы, по которому уже спрашивали геокодер (веб `sessionPlace.townAt`).
+    var formCityAsked: String?
     var draftTask: Task<Void, Never>?
     /// Последний зафиксированный номер владельца (веб `myTelSnap`): смена считается от него.
     var telSnap: String?
@@ -554,7 +558,7 @@ extension AppModel {
     /// Корзина, новые первыми (веб `trashed`).
     public var trashed: [TrashedItem] { snapshot.trashed }
 
-    private var nowMs: Int64 { Self.ms(now()) }
+    var nowMs: Int64 { Self.ms(now()) }
 
     /// Убрать съёмку, встречу или событие в корзину (веб `removeSession`) и
     /// показать «Вернуть». Подпись — строка клиента или имя съёмки, как у веба

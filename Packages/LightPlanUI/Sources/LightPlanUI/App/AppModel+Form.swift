@@ -153,7 +153,8 @@ extension AppModel {
         let org = f.orgId.flatMap { id in snapshot.orgs.first { $0.id == id } }
         let money = formMoney(f)
         var s = f.session(orgName: org?.name, and: lexicon.t("card.and"), studios: snapshot.studios,
-                          spots: snapshot.spots, warning: formWishWarning(f), money: money, now: now())
+                          spots: snapshot.spots, warning: formWishWarning(f), money: money,
+                          homeCity: homeCityName, now: now())
         // Повтор: копии заводятся один раз, здесь, и дальше живут сами (веб `repMake`).
         var copies: [Session] = []
         if f.repeatOn, let rule = f.repeatRule {

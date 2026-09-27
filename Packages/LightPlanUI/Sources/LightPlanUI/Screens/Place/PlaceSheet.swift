@@ -29,6 +29,9 @@ struct PlaceSheet: View {
     @State private var detecting = false
     /// Строка «Моих мест», раскрытая карандашом.
     @State private var editing: String?
+    /// Путь «Фотостудия»: выбранная или правимая студия и чья карточка раскрыта.
+    @State private var studioDraft: StudioDraft?
+    @State private var studioEdit: String?
     @FocusState private var focus: Field?
 
     private enum Field: Hashable { case query, lat, lon, name, address, spotName, spotAddress }
@@ -48,6 +51,16 @@ struct PlaceSheet: View {
             f.lon = lon.map { JSNumber.fixed($0, 4) } ?? ""
             f.name = pl?.name ?? r.placeText
             f.address = pl?.address ?? ""
+            // Студия точки открывается уже выбранной (веб `openLocSheet`, `pickStudio(st0)`).
+            if let st = app.studios.first(where: { $0.id == r.studioId }) {
+                _studioDraft = State(initialValue: StudioDraft(st, fallback: app.place.coordinate))
+            }
+        }
+        // Пустой список студий сразу открывает карточку новой (веб: «не тупик»).
+        if f.way == .studio && app.studios.isEmpty && app.lostStudios.isEmpty {
+            let town = app.form?.sessionPlace.town ?? ""
+            _studioDraft = State(initialValue: StudioDraft(new: town.isEmpty ? app.homeCityName : town, at: app.place.coordinate))
+            _studioEdit = State(initialValue: PlaceStudioWay.newCard)
         }
         _form = State(initialValue: f)
     }
@@ -67,11 +80,11 @@ struct PlaceSheet: View {
                 case .fork: ways(t, pal)
                 case .addr: addrWay(t, pal)
                 case .geo: geoWay(t, pal)
-                case .studio: studioWay(t, pal)
+                case .studio: PlaceStudioWay(app: app, draft: $studioDraft, edit: $studioEdit)
                 }
                 if form.way != .fork && form.way != .studio { placeGroup(t, pal) }
                 errorLine(t, pal)
-                if form.way != .fork && form.way != .studio { doneButton(t, pal) }
+                if form.way != .fork { doneButton(t, pal) }
             }
             .padding(.horizontal, 24)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
@@ -82,6 +95,13 @@ struct PlaceSheet: View {
         .presentationDetents([detent])
         .presentationDragIndicator(.hidden)
         .animation(.snappy(duration: 0.3), value: form.way)
+        .onChange(of: form.way) { _, w in
+            // Путь студии с пустым списком — сразу карточка новой (веб `.loc-way` click).
+            guard w == .studio, studioDraft == nil, app.studios.isEmpty, app.lostStudios.isEmpty else { return }
+            let town = app.form?.sessionPlace.town ?? ""
+            studioDraft = StudioDraft(new: town.isEmpty ? app.homeCityName : town, at: app.place.coordinate)
+            studioEdit = PlaceStudioWay.newCard
+        }
         .task {
             // Первый раз: разрешение ещё не спрашивали — лист встаёт на путь
             // координат и спрашивает сам (веб, `openLocSheet`).
@@ -432,41 +452,6 @@ struct PlaceSheet: View {
         if case .fix = r { close() } else { form.errorKey = "loc.errNotFound" }
     }
 
-    // MARK: - Путь «Фотостудия»
-
-    /// Студии фотографа (веб `setWay("studio")`): тап — студия в точку. Карточка
-    /// новой студии (залы, ключ брони) — хвост шага 2 итерации 24.
-    @ViewBuilder
-    private func studioWay(_ t: Lexicon, _ pal: Palette) -> some View {
-        let list = app.studios
-        if list.isEmpty {
-            Text(t.t("loc.noStudios")).font(.system(size: 12)).foregroundStyle(pal.ink6)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 14).padding(.bottom, 12)
-        } else {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(list.enumerated()), id: \.element.id) { i, st in
-                    Button {
-                        if let s = stop { app.setFormStopStudio(s, studio: st) }
-                        close()
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(st.name).font(.system(size: 15)).foregroundStyle(pal.ink)
-                            if !st.address.isEmpty { Text(st.address).font(.system(size: 12)).foregroundStyle(pal.ink4) }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 11).padding(.horizontal, 2)
-                        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressFade())
-                    .shotNode("loc.studio.\(i)")
-                }
-            }
-            .padding(.top, 10)
-        }
-    }
-
     // MARK: - Имя, ошибка, «Готово»
 
     /// Имя и сохранение — общие для обоих путей (`#locPlaceGroup`); строки
@@ -518,6 +503,14 @@ struct PlaceSheet: View {
     /// «Готово»: точка из полей или строка ошибки; тумблер сохраняет место.
     private func doneButton(_ t: Lexicon, _ pal: Palette) -> some View {
         Button {
+            if form.way == .studio {
+                // Студия сохраняется всегда и ложится в точку (веб `studioFromDraft`).
+                guard let d = studioDraft else { form.errorKey = "loc.studioNone"; return }
+                let st = app.saveStudio(d)
+                if let i = stop { app.setFormStopStudio(i, studio: st) }
+                close()
+                return
+            }
             switch form.answer() {
             case .failure(let e):
                 form.errorKey = e.key

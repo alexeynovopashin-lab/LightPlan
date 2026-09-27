@@ -20,6 +20,9 @@ struct FormPlaceBlock: View {
     let closeOthers: () -> Void
     /// Для какой точки открыт ряд путей (веб `waysStop`).
     @State private var waysStop: Int?
+    /// Подпись «Связать с бронью» на время вопроса и после ответа (веб `#fLinkVal`).
+    @State private var linkWord: String?
+    @FocusState private var cityFocus: Bool
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -39,7 +42,14 @@ struct FormPlaceBlock: View {
             FormGroup(node: "form.place") {
                 FormTextField(placeholder: t.t("form.city"),
                               text: Binding(get: { app.form?.sessionPlace.town ?? "" }, set: { app.setFormCity($0) }))
+                    .focused($cityFocus)
+                    .onSubmit { Task { await app.commitFormCity() } }
+                    .onChange(of: cityFocus) { _, on in if !on { Task { await app.commitFormCity() } } }
                     .shotNode("form.city")
+                let home = app.homeCityName
+                if f.tripRowShown(home: home) { tripRow(f, home, pal, t) }
+                if !meet && f.trip(home: home) { roadRow(f, pal, t) }
+                if app.formLinkShown(f) { linkRow(f, pal, t) }
                 if !meet && n > 0 {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(0..<n, id: \.self) { i in
@@ -58,6 +68,44 @@ struct FormPlaceBlock: View {
                 }
             }
         }
+    }
+
+    // MARK: - Выезд, дорога, бронь
+
+    /// «Выезд» (веб `#fTripRow`): подпись говорит последствие обоих положений.
+    private func tripRow(_ f: EventForm, _ home: String, _ pal: Palette, _ t: Lexicon) -> some View {
+        let on = f.trip(home: home)
+        return FormSubRow(node: "form.trip", label: t.t("pane.trip"), sub: t.t(on ? "form.tripNote" : "form.tripNoteOff")) {
+            Toggle("", isOn: Binding(get: { on }, set: { app.setFormTrip($0) })).labelsHidden().tint(pal.brass)
+                .accessibilityLabel(t.t("pane.trip"))
+        }
+    }
+
+    /// «Время в пути» (веб `#fRoadRow`): ведёт в лист «Занять время».
+    private func roadRow(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
+        let r = app.formRoadRow(f)
+        return Button { app.openRoadSheet() } label: {
+            FormSubRow(node: "form.road", label: t.t("form.road"), sub: r.note) {
+                Text(r.value).font(.system(size: r.set ? 16 : 14)).foregroundStyle(pal.ink3)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// «Связать с бронью» (веб `#fLinkRow`): номера уезжают только по нажатию.
+    private func linkRow(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
+        let word = linkWord ?? (f.bookingRef != nil ? "form.linked" : "form.linkAsk")
+        return Button {
+            guard linkWord != "form.linking" else { return }
+            linkWord = "form.linking"
+            Task { linkWord = await app.linkFormBooking() }
+        } label: {
+            FormSubRow(node: "form.link", label: t.t("form.link"), sub: nil) {
+                Text(t.t(word)).font(.system(size: 14)).foregroundStyle(pal.ink3)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Точка
@@ -396,4 +444,32 @@ struct FormWishWarn: View {
 
 extension Array {
     subscript(safe i: Int) -> Element? { indices.contains(i) ? self[i] : nil }
+}
+
+/// Строка `.row` с подписью `.sub2` под именем (11, `--ink-6`, 2 над) и значением справа.
+struct FormSubRow<Value: View>: View {
+    var node = ""
+    let label: String
+    let sub: String?
+    @ViewBuilder var value: Value
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let pal = Palette(scheme)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.system(size: 16)).foregroundStyle(pal.ink)
+                if let sub {
+                    Text(sub).font(.system(size: 11)).foregroundStyle(pal.ink6)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .shotNode(node.isEmpty ? "" : node + ".sub", text: sub)
+                }
+            }
+            Spacer(minLength: 0)
+            value
+        }
+        .padding(.vertical, 14).padding(.horizontal, 15).frame(minHeight: 52)
+        .contentShape(Rectangle())
+        .shotNode(node)
+    }
 }

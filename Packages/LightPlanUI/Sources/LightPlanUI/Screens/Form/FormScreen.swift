@@ -55,11 +55,11 @@ struct FormScreen: View {
                     title(f, pal, t)
                     if app.formIsDraft { draftStrip(pal, t) }
                     // Замысел против прогноза — вверху: узнавать о нём, докрутив до низа, поздно.
-                    if let w = app.formWishWarning(f) { FormWishWarn(warning: w) }
+                    if let w = app.formWarning(f) { FormWishWarn(warning: w) }
                     genreBlock(f, pal, t).padding(.top, 24)
                     whoBlock(f, pal, t)
                     timeBlock(f, pal, t)
-                    FormPlaceBlock(app: app, form: f, wheel: $stopWheel) { picker = nil; repMenu = false }
+                    FormPlaceBlock(app: app, form: f, wheel: $stopWheel) { picker = nil; repMenu = false }.id("place")
                     notesBlock(f, pal, t)
                     if f.shows(.order) { orderBlock(f, pal, t).id("order") }
                     if f.mode != .meet { FormWishBlock(app: app, form: f) }
@@ -88,6 +88,10 @@ struct FormScreen: View {
             .sheet(isPresented: Binding(get: { app.placeSheetStop != nil }, set: { if !$0 { app.placeSheetStop = nil } }),
                    onDismiss: { app.placeSheetStart = .fork }) {
                 PlaceSheet(app: app, windowHeight: screenHeight)
+            }
+            // «Занять время» из строки «Время в пути» — тоже поверх формы (веб `openRoadSheet`).
+            .sheet(item: Binding(get: { app.blockSheet }, set: { app.blockSheet = $0 })) { d in
+                BlockSheet(app: app, draft: d, windowHeight: screenHeight)
             }
         }
     }
