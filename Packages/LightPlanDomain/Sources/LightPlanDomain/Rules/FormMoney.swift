@@ -83,7 +83,11 @@ extension EventForm {
     /// Пакет подставляет цену, а если в нём заданы часы — и длительность.
     public mutating func choose(_ p: Pack) {
         rate = p.price
-        if let h = p.hours, h > 0 { duration = Int((h * 60).rounded()) }
+        // Часы из файла или вставки бывают любыми: без предела `Int(…)` от
+        // 10²⁰ минут роняет приложение (ревью e626e32). Предел — тот же, что у колеса.
+        if let h = p.hours, h.isFinite, h > 0 {
+            duration = max(Self.minDuration, Int(min(h * 60, Double(Self.maxDuration)).rounded()))
+        }
     }
 
     /// Выбранный пакет — тот, чья цена стоит в поле (веб `p.p === fRate`).

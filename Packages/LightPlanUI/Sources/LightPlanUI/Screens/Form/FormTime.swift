@@ -171,8 +171,10 @@ struct FormTimeWheel: UIViewRepresentable {
             guard !hours.isEmpty, !mins.isEmpty, let mi = mins.firstIndex(of: m % 60) else { return }
             let h = m / 60
             let mid = Self.loops / 2
-            if p.selectedRow(inComponent: 0) % hours.count != h { p.selectRow(mid * hours.count + h, inComponent: 0, animated: false) }
-            if p.selectedRow(inComponent: 1) % mins.count != mi { p.selectRow(mid * mins.count + mi, inComponent: 1, animated: false) }
+            // Строка сверяется целиком, не остатком: у свежего колеса строка 0 —
+            // это «00» у самого края, назад к «55» оттуда не прокрутить (ревью e626e32).
+            if p.selectedRow(inComponent: 0) != mid * hours.count + h { p.selectRow(mid * hours.count + h, inComponent: 0, animated: false) }
+            if p.selectedRow(inComponent: 1) != mid * mins.count + mi { p.selectRow(mid * mins.count + mi, inComponent: 1, animated: false) }
         }
 
         private func center(_ p: UIPickerView) {

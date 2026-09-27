@@ -147,6 +147,8 @@ public struct Session: Sendable, Hashable, Identifiable {
     public var icsImportedAt: Int64?
     /// `mt` — когда запись правили последний раз (миллисекунды); нужна обмену устройств.
     public var modifiedAt: Int64?
+    /// Ключи снимка, которых эта сборка не знает: форма и запись их не трогают.
+    public var extra: [String: JSONValue] = [:]
 
     public init(id: String, kind: RecordKind = .shoot, day: CivilDate, start: Int,
                 end: Int? = nil, duration: Int? = nil, genre: Genre? = nil) {

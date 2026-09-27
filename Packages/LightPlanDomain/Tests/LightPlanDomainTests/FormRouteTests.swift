@@ -58,6 +58,20 @@ import LightPlanDomain
         #expect(s.studioId == "st1" && s.hallId == "h1" && s.place == "Люмен, зал Белый")
     }
 
+    @Test func emptyFirstStopDoesNotHideTheStudio() {
+        var f = fresh(.wedding)
+        f.setStopStudio(1, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        #expect(f.route[0].placeText.isEmpty, "первая заготовка осталась пустой")
+        let s = f.session(orgName: nil, and: " и ", studios: [lumen])
+        #expect(s.route.first?.studioId == "st1")
+        #expect(s.studioId == "st1" && s.place == "Люмен" && s.latitude == 56.47 && s.placeAddress == "Нахимова, 8",
+                "место и студия — с первой сохранённой точки, а не с пустой заготовки")
+        var g = fresh(.wedding)
+        g.setStopPlace(2, spot: garden, spots: [garden], studios: [])
+        let t = g.session(orgName: nil, and: " и ", spots: [garden])
+        #expect(t.place == "Лагерный сад" && t.latitude == 56.45 && t.studioId == nil)
+    }
+
     @Test func stopTimeTakesHintAsName() {
         var f = fresh(.wedding)
         #expect(f.stopTimeSeed(0, end: false) == 900)

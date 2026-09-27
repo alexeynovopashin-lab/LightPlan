@@ -77,6 +77,16 @@ import LightPlanCore
         #expect(x.pay == .hourly)
     }
 
+    @Test func packHoursOutOfRangeDoNotCrash() {
+        var x = fresh(.portrait, rate: 2000)
+        x.choose(Pack(name: "Сутки", price: 1, hours: 1e20))
+        #expect(x.duration == EventForm.maxDuration, "огромные часы — до предела колеса, без падения")
+        x.choose(Pack(name: "Минута", price: 1, hours: 0.001))
+        #expect(x.duration == EventForm.minDuration)
+        x.choose(Pack(name: "Пусто", price: 1, hours: .nan))
+        #expect(x.duration == EventForm.minDuration, "не число — длительность не трогаем")
+    }
+
     @Test func unitsStayInRange() {
         var x = fresh(.product)
         x.choosePay(.item, genreRate: 0)

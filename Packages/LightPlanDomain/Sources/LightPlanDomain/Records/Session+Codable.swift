@@ -7,7 +7,7 @@ import LightPlanCore
 /// (`Coding/LenientCoding.swift`) — незнакомый код не должен ронять всю
 /// запись, а синтез уронил бы.
 extension Session: Codable {
-    enum CodingKeys: String, CodingKey {
+    enum CodingKeys: String, CodingKey, CaseIterable {
         case id, kind, date, min, end, dur, type, sub
         case contact, clientTel, notes, orgId, person, phone, persons
         case place, placeTown, placeAddr, placeLat, placeLon, placeCity
@@ -98,6 +98,14 @@ extension Session: Codable {
         icsSignature = try c.decodeIfPresent(String.self, forKey: .icsSig)
         icsImportedAt = try c.decodeIfPresent(Int64.self, forKey: .icsAt)
         modifiedAt = try c.decodeIfPresent(Int64.self, forKey: .mt)
+
+        // Ключи, которых натив не знает (веб новее, чем эта сборка), лежат
+        // как есть и уходят обратно при записи — сохранение их не теряет.
+        let dyn = try decoder.container(keyedBy: AnyKey.self)
+        let known = Set(CodingKeys.allCases.map(\.stringValue))
+        for key in dyn.allKeys where !known.contains(key.stringValue) {
+            extra[key.stringValue] = try dyn.decode(JSONValue.self, forKey: key)
+        }
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -173,6 +181,11 @@ extension Session: Codable {
         try c.encodeIfPresent(icsSignature, forKey: .icsSig)
         try c.encodeIfPresent(icsImportedAt, forKey: .icsAt)
         try c.encodeIfPresent(modifiedAt, forKey: .mt)
+
+        var dyn = encoder.container(keyedBy: AnyKey.self)
+        for (k, v) in extra {
+            try dyn.encode(v, forKey: AnyKey(k))
+        }
     }
 }
 
@@ -325,4 +338,13 @@ extension RentRequest: Codable {
         try c.encodeLenient(status, forKey: .status)
         try c.encodeIfPresent(newEnd, forKey: .newEnd)
     }
+}
+
+/// Ключ снимка по имени — для полей, которых нет в `CodingKeys`.
+private struct AnyKey: CodingKey {
+    var stringValue: String
+    var intValue: Int? { nil }
+    init(_ s: String) { stringValue = s }
+    init?(stringValue: String) { self.stringValue = stringValue }
+    init?(intValue: Int) { nil }
 }

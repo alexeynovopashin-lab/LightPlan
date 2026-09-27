@@ -15,6 +15,7 @@ struct FormScreen: View {
     @State private var orgSheet = false
     @State private var genreSheet = false
     @State private var paySheet = false
+    @State private var kitSheet = false
     /// Веер правила повтора раскрыт.
     @State private var repMenu = false
     /// Колесо под точкой дня (24): одно на форму вместе с колёсами времени.
@@ -60,7 +61,7 @@ struct FormScreen: View {
                     timeBlock(f, pal, t)
                     FormPlaceBlock(app: app, form: f, wheel: $stopWheel) { picker = nil; repMenu = false }
                     notesBlock(f, pal, t)
-                    if f.shows(.order) { orderBlock(f, pal, t) }
+                    if f.shows(.order) { orderBlock(f, pal, t).id("order") }
                     if f.mode != .meet { FormWishBlock(app: app, form: f) }
                     if f.shows(.payment) { FormPayBlock(app: app, form: f, sheet: $paySheet).id("pay") }
                     if f.shows(.delivery) { FormDeliveryBlock(app: app, form: f) }
@@ -82,6 +83,7 @@ struct FormScreen: View {
             .sheet(isPresented: $orgSheet) { OrgPickSheet(app: app) }
             .sheet(isPresented: $genreSheet) { GenreSheet(app: app) }
             .sheet(isPresented: $paySheet) { PaySheet(app: app) }
+            .sheet(isPresented: $kitSheet) { KitSheet(app: app) }
             // Лист «Где снимаем» для точки дня: форма лежит поверх оболочки, её лист встал бы под форму.
             .sheet(isPresented: Binding(get: { app.placeSheetStop != nil }, set: { if !$0 { app.placeSheetStop = nil } }),
                    onDismiss: { app.placeSheetStart = .fork }) {
@@ -399,6 +401,9 @@ struct FormScreen: View {
                     .lineLimit(2...12)
                     .padding(15).frame(minHeight: 92, alignment: .topLeading)
                 if f.repeatOn { repToggle(.notes, f, t) }
+                // Список техники ведёт сам фотограф — каталога не навязываем (веб `#fKitRow`).
+                FormKitRow(app: app, form: f, sheet: $kitSheet)
+                if f.repeatOn { repToggle(.kit, f, t) }
             }
         }
     }
@@ -406,12 +411,22 @@ struct FormScreen: View {
     private func orderBlock(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             FormGroupLabel(text: t.t("form.order"))
-            FormGroup {
-                FormTextField(placeholder: t.t("form.briefPh"), text: text(\.brief))
-                if f.shows(.models) { FormTextField(placeholder: t.t("form.modelsPh"), text: text(\.models)) }
+            FormGroup(node: "form.order") {
+                // Задание и модели — `textarea` веба, как заметки: от 92 pt (`.group textarea`).
+                area(t.t("form.briefPh"), \.brief, pal)
+                if f.shows(.models) { area(t.t("form.modelsPh"), \.models, pal) }
                 if f.repeatOn { repToggle(.brief, f, t) }
+                FormDocs(app: app, form: f)
+                if f.repeatOn { repToggle(.docs, f, t) }
             }
         }
+    }
+
+    private func area(_ placeholder: String, _ key: WritableKeyPath<EventForm, String>, _ pal: Palette) -> some View {
+        TextField("", text: text(key), prompt: Text(placeholder).foregroundStyle(pal.ink8), axis: .vertical)
+            .font(.system(size: 16)).foregroundStyle(pal.ink).lineSpacing(3)
+            .lineLimit(2...12)
+            .padding(15).frame(minHeight: 92, alignment: .topLeading)
     }
 
     private func repToggle(_ b: RepeatBlock, _ f: EventForm, _ t: Lexicon) -> some View {
