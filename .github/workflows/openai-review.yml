@@ -6,9 +6,12 @@
 #   - кнопкой Run workflow (Actions → OpenAI review) — смотрит всю ветку
 #     против main, например перед чекпоинтом.
 # Где ответ: комментарий к последнему коммиту и сводка запуска в Actions.
-# Ключ: секрет OPENAI_API_KEY. Модель: переменная репозитория
-# OPENAI_REVIEW_MODEL (Settings → Variables), по умолчанию gpt-4.1;
-# если она недоступна, повтор на gpt-4.1-mini.
+# Ключ: секрет OPENAI_API_KEY. Модели (решение Алексея 27.09 «не жадничать»,
+# посчитано под ~60 пушей оставшихся итераций на балансе 20 $):
+#   пуш     — gpt-6-sol   (~0,06 $), переменная OPENAI_REVIEW_MODEL;
+#   кнопка  — gpt-6-astra (~0,8 $ за всю ветку), переменная OPENAI_REVIEW_MODEL_FULL.
+# Если модель отказала (лимит в минуту у нового аккаунта), повтор на
+# gpt-6-sol, затем на gpt-6-luna.
 
 name: OpenAI review
 
@@ -73,7 +76,7 @@ jobs:
             ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.pdf' \
             > /tmp/full.diff
           BYTES=$(wc -c < /tmp/full.diff)
-          LIMIT=300000   # ~75 тыс. токенов, около 0,2 $ на gpt-4.1
+          LIMIT=300000   # ~75 тыс. токенов: ~0,15 $ на sol, ~0,8 $ на astra
           head -c "$LIMIT" /tmp/full.diff > /tmp/review.diff
           TRUNC=""
           if [ "$BYTES" -gt "$LIMIT" ]; then TRUNC="обрезано: $BYTES байт, показано $LIMIT"; fi
@@ -89,7 +92,7 @@ jobs:
         if: steps.diff.outputs.bytes != '0'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          MODEL: ${{ vars.OPENAI_REVIEW_MODEL || 'gpt-4.1' }}
+          MODEL: ${{ github.event_name == 'workflow_dispatch' && (vars.OPENAI_REVIEW_MODEL_FULL || 'gpt-6-astra') || (vars.OPENAI_REVIEW_MODEL || 'gpt-6-sol') }}
         run: |
           set -euo pipefail
           cat > /tmp/instructions.txt <<'EOF'
@@ -121,13 +124,15 @@ jobs:
                   -H "Content-Type: application/json" \
                   --data-binary @-
           }
-          USED="$MODEL"
-          CODE=$(ask "$MODEL")
-          if [ "$CODE" != "200" ] && [ "$MODEL" != "gpt-4.1-mini" ]; then
-            echo "model $MODEL answered $CODE, retry on gpt-4.1-mini"
-            USED="gpt-4.1-mini"
+          CODE=""; TRIED=" "
+          for USED in "$MODEL" gpt-6-sol gpt-6-luna; do
+            case "$TRIED" in *" $USED "*) continue ;; esac
+            TRIED="$TRIED$USED "
+            if [ "$USED" != "$MODEL" ]; then echo "retry on $USED"; fi
             CODE=$(ask "$USED")
-          fi
+            if [ "$CODE" = "200" ]; then break; fi
+            echo "model $USED answered $CODE: $(jq -r '.error.message // empty' /tmp/resp.json | head -c 200)"
+          done
           if [ "$CODE" != "200" ]; then
             echo "OpenAI answered $CODE:"; jq -r '.error.message // .' /tmp/resp.json | head -5
             exit 1
