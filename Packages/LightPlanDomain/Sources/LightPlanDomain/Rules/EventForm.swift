@@ -428,8 +428,8 @@ extension EventForm {
         var money: DraftMoney?
         /// Оборудование и документы (веб `gear`, `docs` черновика).
         var gear: [String]?, docs: [Attachment]?
-        /// Выезд (веб `trip`, `tripManual` черновика).
-        var trip: Bool?, tripManual: Bool?
+        /// Выезд и бронь (веб `trip`, `tripManual`, `bookingRef` черновика).
+        var trip: Bool?, tripManual: Bool?, bookingRef: String?
     }
     private struct DraftMoney: Codable {
         var pay: String, rate: Decimal?, units: Int, expense: Decimal, prepay: Decimal, auto: Bool
@@ -465,7 +465,7 @@ extension EventForm {
                       money: DraftMoney(pay: pay.rawValue, rate: rate, units: units, expense: expense, prepay: prepayTyped,
                                         auto: prepayAuto, cur: currency.rawValue, monthly: repeatMonthly, open: payOpen,
                                         delv: Self.deadlineKey(deadline), done: delivered, doneAt: deliveredAt),
-                      gear: gear, docs: docs, trip: tripOn, tripManual: tripManual)
+                      gear: gear, docs: docs, trip: tripOn, tripManual: tripManual, bookingRef: bookingRef)
         return try? JSONEncoder().encode(d)
     }
 
@@ -481,7 +481,7 @@ extension EventForm {
         f.orderPerson = d.orderPerson; f.orderPhone = d.orderPhone; f.guests = d.guests
         f.notes = d.notes; f.brief = d.brief; f.models = d.models
         f.gear = d.gear ?? []; f.docs = d.docs ?? []
-        f.tripOn = d.trip ?? false; f.tripManual = d.tripManual ?? false
+        f.tripOn = d.trip ?? false; f.tripManual = d.tripManual ?? false; f.bookingRef = d.bookingRef
         f.persons = d.persons.map { Person(name: $0.first ?? "", phone: $0.count > 1 ? $0[1] : "") }
         f.repeatRule = d.repRule.flatMap(RepeatRule.init(rawValue:))
         if let n = d.repN { f.repeatCount = min(max(n, Repeats.minCount), Repeats.maxCount) }

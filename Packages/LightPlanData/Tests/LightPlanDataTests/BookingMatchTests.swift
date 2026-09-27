@@ -4,13 +4,13 @@ import Testing
 
 /// Ответ шлюза студии на «Связать с бронью» (веб `#fLinkRow`).
 @Suite struct BookingMatchTests {
-    @Test func matchCarriesRefHallAndHours() {
+    @Test func matchCarriesRefHallAndHours() throws {
         let j = #"{"match":true,"bookingRef":"B9","hallId":"h1","start":"15:10","end":"17:00"}"#
-        #expect(HTTPBookingMatch.answer(Data(j.utf8)) == BookingAnswer(ref: "B9", hallId: "h1", start: "15:10", end: "17:00"))
+        #expect(try HTTPBookingMatch.answer(Data(j.utf8)) == BookingAnswer(ref: "B9", hallId: "h1", start: "15:10", end: "17:00"))
     }
 
-    @Test func noMatchOrGarbageIsNil() {
-        #expect(HTTPBookingMatch.answer(Data(#"{"match":false}"#.utf8)) == nil)
-        #expect(HTTPBookingMatch.answer(Data("oops".utf8)) == nil)
+    @Test func noMatchIsNilButGarbageIsAFailure() throws {
+        #expect(try HTTPBookingMatch.answer(Data(#"{"match":false}"#.utf8)) == nil)
+        #expect(throws: (any Error).self) { try HTTPBookingMatch.answer(Data("oops".utf8)) }
     }
 }

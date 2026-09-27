@@ -42,9 +42,10 @@ import LightPlanDomain
         let off = f.session(orgName: nil, and: " и ", homeCity: "Томск")
         #expect(!off.trip && off.tripManual && off.tripPlace.isEmpty)
         f.notes = "x"
+        f.bookingRef = "B1"
         let data = try #require(f.draftData())
         let d = try #require(EventForm.fromDraft(data))
-        #expect(d.tripManual && !d.tripOn)
+        #expect(d.tripManual && !d.tripOn && d.bookingRef == "B1", "бронь в черновике, как у веба")
     }
 
     @Test func meetingHasNoTrip() {

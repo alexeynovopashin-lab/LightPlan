@@ -54,14 +54,19 @@ public struct HTTPBookingMatch: BookingMatching {
         body["studioId"] = q.catalogId ?? NSNull()
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
         req.timeoutInterval = 15
-        let (data, _) = try await URLSession.shared.data(for: req)
-        return Self.answer(data)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        // Ошибка шлюза — «студия не ответила», а не «брони нет» (ревью GPT к 9099202).
+        if let h = resp as? HTTPURLResponse, !(200..<300).contains(h.statusCode) { throw URLError(.badServerResponse) }
+        return try Self.answer(data)
     }
 
-    /// Разбор ответа отдельно от сети — его проверяют тесты.
-    static func answer(_ data: Data) -> BookingAnswer? {
-        guard let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              (o["match"] as? Bool) == true else { return nil }
+    /// Разбор ответа отдельно от сети — его проверяют тесты. Не JSON — сбой, как
+    /// у веба (`x.json()` бросает, и строка говорит «студия не ответила»).
+    static func answer(_ data: Data) throws -> BookingAnswer? {
+        guard let o = (try JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw URLError(.cannotParseResponse)
+        }
+        guard (o["match"] as? Bool) == true else { return nil }
         let ref = (o["bookingRef"] as? String) ?? (o["bookingRef"].map { "\($0)" } ?? "")
         return BookingAnswer(ref: ref, hallId: o["hallId"] as? String,
                              start: o["start"] as? String, end: o["end"] as? String)

@@ -135,7 +135,7 @@ struct FormTripFlowTests {
         #expect(r.hallId == "h1" && r.start == 910 && r.end == 1020 && app.form?.bookingRef == "B9")
         gate.fail = true
         #expect(await app.linkFormBooking() == "form.linkOff")
-        #expect(app.form?.bookingRef == nil)
+        #expect(app.form?.bookingRef == "B9", "студия не ответила — прежняя бронь остаётся")
     }
 
     @Test func studioCardSavesFirstWithoutEmptyHalls() throws {

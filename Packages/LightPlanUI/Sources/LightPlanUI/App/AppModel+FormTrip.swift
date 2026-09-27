@@ -72,8 +72,11 @@ extension AppModel {
         guard !q.isEmpty, f.sessionPlace.name.trimmingCharacters(in: .whitespaces).isEmpty,
               q != formCityAsked else { return }
         formCityAsked = q                      // за один и тот же город не спрашиваем дважды
-        guard let hit = try? await cityLookup.cities(matching: q).first,
-              var now = form, now.sessionPlace.town == q, now.sessionPlace.name.isEmpty else { return }
+        let hits = try? await cityLookup.cities(matching: q)
+        // Сбой сети — не ответ: тот же город можно спросить снова (ревью GPT к 9099202; веб так не умеет).
+        if hits == nil, formCityAsked == q { formCityAsked = nil }
+        guard let hit = hits?.first, var now = form, now.id == f.id,
+              now.sessionPlace.town == q, now.sessionPlace.name.isEmpty else { return }
         now.sessionPlace.latitude = hit.coordinate.latitude
         now.sessionPlace.longitude = hit.coordinate.longitude
         form = now
@@ -107,11 +110,15 @@ extension AppModel {
         let q = BookingQuery(studioKey: st.key, catalogId: st.catalogId,
                              date: String(format: "%04d-%02d-%02d", day.year, day.month, day.day),
                              from: Self.hm24(from), to: Self.hm24(to), phones: phones)
+        // Пока студия думала, форму могли закрыть, открыть другую или сменить студию:
+        // ответ ложится только в ту же запись с той же студией (ревью GPT к 9099202).
+        func same() -> Bool { form?.id == f.id && form?.route.first?.studioId == st.id }
         do {
             guard let a = try await bookingMatch.match(q) else {
-                editForm { $0.bookingRef = nil }
+                if same() { editForm { $0.bookingRef = nil } }
                 return "form.linkNone"
             }
+            guard same() else { return "form.linkAsk" }
             let base = dayOff * 1440
             editForm {
                 $0.applyBooking(ref: a.ref, hallId: a.hallId, start: a.start.flatMap(Self.minutes).map { $0 + base },
@@ -121,7 +128,8 @@ extension AppModel {
             }
             return "form.linked"
         } catch {
-            editForm { $0.bookingRef = nil }
+            // Студия не ответила — это не «брони нет»: прежняя связь остаётся. Веб её
+            // здесь стирает (`fBookingRef = null`); расхождение — DECISIONS, шаг 4б.
             return "form.linkOff"
         }
     }
