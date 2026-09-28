@@ -13,6 +13,8 @@
      node Tools/shots/pair.js                      # всё: 2 экрана × 2 темы × моменты
      node Tools/shots/pair.js --screens light --themes dark --moments day
      node Tools/shots/pair.js --skip-build         # сборка уже стоит на симуляторе
+     node Tools/shots/pair.js --forecast /tmp/forecast.json --no-sheets --no-pick
+                                                   # своё небо без замены эталонной фикстуры
      node Tools/shots/pair.js --screens planner --scopes day   # «Съёмки» (итерация 21):
                                                    # засев сезона (planner_seed.js), виды месяц/неделя/день
      node Tools/shots/pair.js --screens light --sheets fork,addr,geo   # лист «Где снимаем» (21в)
@@ -37,6 +39,7 @@ const args = {};
 process.argv.slice(2).forEach((a, i, all) => {
   if (a.startsWith('--')) args[a.slice(2)] = all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : '1';
 });
+const FORECAST = path.resolve(args.forecast || path.join(FX, 'forecast_barnaul.json'));
 
 /* Сценарий пары. Место — Барнаул: пояс машины Алексея тот же (+7), а
    прогноз в Fixtures/shots снят 23 сентября 2026 для этих координат. Моменты
@@ -73,7 +76,7 @@ const folds = (args.fold || 'shut,open').split(',');
 /* Лист «Где снимаем» (итерация 21в): развилка и два пути над «Светом», над
    «Картой» — развилка (та же кнопка места в шапке). В засеве две точки
    «Моих мест»: с адресом и безымянная (строку называют координаты). */
-const sheets = args.sheets === '' || args['only-layers'] ? [] : (args.sheets || 'fork,addr,geo').split(',');
+const sheets = args.sheets === '' || args['only-layers'] || args['no-sheets'] ? [] : (args.sheets || 'fork,addr,geo').split(',');
 // Форма записи (23): `--forms portrait,wedding,report` — «Съёмки», «＋», жанр плиткой.
 const forms = args.forms ? args.forms.split(',') : [];
 /* Слои и листы «Съёмок» (22): лента года, «Год целиком», статистика, поиск,
@@ -152,7 +155,7 @@ async function nativeShot(udid, sc, dir) {
   run('xcrun', ['simctl', 'launch', udid, BUNDLE,
     '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
     '-LPShotNow', MOMENTS[sc.moment] + ':00' + OFFSET, '-LPShotZone', ZONE,
-    '-LPShotSeed', sc.seed, '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'),
+    '-LPShotSeed', sc.seed, '-LPShotForecast', FORECAST,
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
     ...(sc.scope ? ['-LPShotScope', sc.scope] : []), ...(sc.pick != null ? ['-LPShotPick', String(sc.pick)] : []),
@@ -176,7 +179,7 @@ function webShot(sc, dir, safe) {
     sc.screen === 'light' ? 'today' : sc.screen === 'planner' ? 'plan' : sc.screen, ...(sc.scope ? ['--scope', sc.scope] : []),
     ...(sc.pick != null ? ['--pick', String(sc.pick)] : []),
     '--at', MOMENTS[sc.moment], '--tz', ZONE, '--seed', sc.seed,
-    '--forecast', path.join(FX, 'forecast_barnaul.json'), '--air', path.join(FX, 'air_barnaul.json'),
+    '--forecast', FORECAST, '--air', path.join(FX, 'air_barnaul.json'),
     '--name', path.join(FX, 'place_barnaul.json'), '--safe', safe.map(v => Math.round(v)).join(','),
     ...(sc.chapter ? ['--chapter', sc.chapter] : []),
     ...(sc.form ? ['--sheet', 'form', '--way', sc.form] : []),

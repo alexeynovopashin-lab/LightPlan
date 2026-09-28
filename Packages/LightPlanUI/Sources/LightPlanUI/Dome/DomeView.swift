@@ -23,13 +23,19 @@ public struct DomeView: View {
     let t: Minutes
     /// `nil`, если смотрим не сегодняшний день — кольца «сейчас» тогда нет.
     let nowMinute: Minutes?
+    /// Палитра заката по прогнозу дня: зарево, а в «Астро» ещё и само небо.
+    let skyPalette: SkyPalette?
+    let astro: Bool
     @Binding var mode: DomeSkyMode
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var meteors = DomeMeteorController()
 
-    public init(sun: SolarDay, place: Place, date: CivilDate, t: Minutes, nowMinute: Minutes?, mode: Binding<DomeSkyMode>) {
+    public init(sun: SolarDay, place: Place, date: CivilDate, t: Minutes, nowMinute: Minutes?,
+                skyPalette: SkyPalette? = nil, astro: Bool = false, mode: Binding<DomeSkyMode>) {
         self.sun = sun
+        self.skyPalette = skyPalette
+        self.astro = astro
         self.place = place
         self.date = date
         self.t = t
@@ -119,10 +125,16 @@ public struct DomeView: View {
                                : Color(red: 0xEF / 255, green: 0xEA / 255, blue: 0xE0 / 255).opacity(0.2)
     }
     private var arcMid: Color {
-        colorScheme == .light ? Color(red: 0x17 / 255, green: 0x15 / 255, blue: 0x0F / 255)
+        if let sky = astroSky { return Color(sky.ink(at: 0.35)) }
+        return colorScheme == .light ? Color(red: 0x17 / 255, green: 0x15 / 255, blue: 0x0F / 255)
                                : Color(red: 0xEF / 255, green: 0xEA / 255, blue: 0xE0 / 255)
     }
     private var moonDark: Color { Color(red: 0x16 / 255, green: 0x16 / 255, blue: 0x1A / 255) }
+
+    private var astroSky: DomeSky? {
+        DomeSky(astro: astro, elevation: sun.elevation(at: t), morning: t < sun.solarNoon,
+                lightTheme: colorScheme == .light, palette: skyPalette)
+    }
 
     // MARK: - Рисование
 
@@ -137,8 +149,13 @@ public struct DomeView: View {
         let state = sun.state(at: t)
         let p = g.posAt(t, sun: sun)
 
+        let sky = astroSky
+        if let sky { paintSky(&context, sky: sky) }
         paintStarsAndMeteors(&context, e: e, now: now)
-        paintHorizonGlow(&context, atX: Double(p.x), color: state.color, glowAmount: state.glow)
+        let glow = HorizonGlow.paint(state: state, elevation: e, palette: skyPalette,
+                                     moon: moon, lightTheme: colorScheme == .light)
+        paintHorizonGlow(&context, atX: Double(p.x), color: sky?.glowColor ?? glow.color,
+                         opacity: sky?.glowOpacity ?? glow.opacity)
         paintHorizonLine(&context)
 
         if moon {
@@ -149,6 +166,38 @@ public struct DomeView: View {
     }
 
     // MARK: Звёзды и метеоры (только над горизонтом)
+
+    private func skyPath() -> Path {
+        var path = arcPath()
+        path.closeSubpath()
+        return path
+    }
+
+    private func paintSky(_ context: inout GraphicsContext, sky: DomeSky) {
+        let g = DomeGeometry.self
+        let top = CGPoint(x: CGFloat(g.cx), y: CGFloat(g.cy - g.ry))
+        let bottom = CGPoint(x: CGFloat(g.cx), y: CGFloat(g.cy))
+        context.fill(skyPath(), with: .linearGradient(Gradient(colors: [Color(sky.zenith), Color(sky.horizon)]),
+                                                     startPoint: top, endPoint: bottom))
+        guard let palette = sky.forecast, sky.forecastOpacity > 0 else { return }
+        context.drawLayer { layer in
+            layer.clip(to: skyPath())
+            layer.clipToLayer { mask in
+                mask.translateBy(x: CGFloat(g.cx), y: CGFloat(g.cy))
+                mask.scaleBy(x: 175.0 / 158.0, y: 1)
+                mask.fill(Path(ellipseIn: CGRect(x: -158, y: -158, width: 316, height: 316)),
+                          with: .radialGradient(Gradient(stops: [
+                            .init(color: .white, location: 0), .init(color: .white, location: 0.35),
+                            .init(color: .clear, location: 1)
+                          ]), center: .zero, startRadius: 0, endRadius: 158))
+            }
+            layer.opacity = sky.forecastOpacity
+            layer.fill(skyPath(), with: .linearGradient(Gradient(stops: [
+                .init(color: Color(palette.zenith), location: 0), .init(color: Color(palette.high), location: 0.38),
+                .init(color: Color(palette.mid), location: 0.72), .init(color: Color(palette.horizon), location: 1)
+            ]), startPoint: top, endPoint: bottom))
+        }
+    }
 
     private func paintStarsAndMeteors(_ context: inout GraphicsContext, e: Degrees, now: Date) {
         let opacity = DomeGeometry.clamp((-e - 8) / 8, 0, 1)
@@ -190,29 +239,27 @@ public struct DomeView: View {
         context.stroke(line, with: .color(hairColor), style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
     }
 
-    private func paintHorizonGlow(_ context: inout GraphicsContext, atX x: Double, color: SkyColor, glowAmount: Double) {
+    private func paintHorizonGlow(_ context: inout GraphicsContext, atX x: Double, color: SkyColor, opacity: Double) {
         let g = DomeGeometry.self
         let cx = g.clamp(x, 60, 330)
-        let glowK = colorScheme == .light ? 0.42 : 1.0
-        let opacity = g.clamp(glowAmount * glowK, 0, 1)
         guard opacity > 0.002 else { return }
         context.drawLayer { layer in
             layer.clip(to: Path(CGRect(x: 0, y: 0, width: CGFloat(g.viewWidth), height: CGFloat(g.horizonY))))
+            if astro { layer.clip(to: skyPath()) }
             layer.translateBy(x: CGFloat(cx), y: CGFloat(g.horizonY))
             layer.scaleBy(x: 130.0 / 62.0, y: 1)
             let r: CGFloat = 62
             let rect = CGRect(x: -r, y: -r, width: r * 2, height: r * 2)
             layer.fill(Path(ellipseIn: rect), with: .radialGradient(
-                Gradient(colors: [Color(color).opacity(opacity * 0.32), Color(color).opacity(0)]),
+                Gradient(colors: [Color(color).opacity(opacity), Color(color).opacity(0)]),
                 center: .zero, startRadius: 0, endRadius: r))
         }
     }
 
     // MARK: Солнце
 
-    /// Статичная дуга-градиент: те же неизменные стопы, что у веба
-    /// (`#dayLight`/`#moonLight`) — не пересчитывается по минуте, дуга не
-    /// красит текущее состояние света, она обрамляет купол.
+    /// Стопы дуги — как у веба (`#dayLight`/`#moonLight`). В «Астро»
+    /// нейтральная середина дополнительно подстраивается под яркость неба.
     private func arcGradient(moon: Bool) -> Gradient {
         if moon {
             let c = Color(red: 0xA8 / 255, green: 0xBD / 255, blue: 0xD8 / 255)

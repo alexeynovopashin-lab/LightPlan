@@ -149,7 +149,10 @@ public struct LightScreenView: View {
     private func dome(_ t: LightTelemetry, _ pal: Palette) -> some View {
         DomeView(sun: model.timebar.solarDay, place: model.timebar.place,
                  date: model.timebar.machine.selectedDate, t: model.timebar.machine.viewMinute,
-                 nowMinute: model.timebar.nowMinute, mode: moonModeBinding)
+                 nowMinute: model.timebar.nowMinute,
+                 skyPalette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)),
+                 astro: model.proMode,
+                 mode: moonModeBinding)
             .shotNode("dome")
             .overlay {
                 if let readout = t.readout {
@@ -188,21 +191,32 @@ public struct LightScreenView: View {
     /// 1,4, цвет — состояние неба в тёмной теме и `--ink-3` в светлой
     /// (`labelColor` веба); смысл 12, `--ink-4`.
     private func readoutView(_ r: LightTelemetry.Readout, _ t: LightTelemetry, _ pal: Palette) -> some View {
-        VStack(spacing: 0) {
+        let sun = model.timebar.solarDay
+        let minute = model.timebar.machine.viewMinute
+        let sky = DomeSky(astro: model.proMode, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
+                          lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
+        // Text layout stays unchanged; only ink follows its actual height in the sky.
+        let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
+        func ink(at y: CGFloat, fallback: Color) -> Color {
+            guard let sky else { return fallback }
+            let modelY = (y - fit.origin.y) / fit.scale
+            return Color(sky.ink(at: (Double(modelY) - (DomeGeometry.cy - DomeGeometry.ry)) / DomeGeometry.ry))
+        }
+        return VStack(spacing: 0) {
             Text(r.time)
                 .font(.system(size: 46, weight: .thin).monospacedDigit()).tracking(-0.5)
-                .foregroundStyle(pal.ink)
+                .foregroundStyle(ink(at: 105, fallback: pal.ink))
                 .shotNode("readout.time", text: r.time)
                 .frame(height: 46)
             Text(r.phase)
                 .font(.system(size: 11, weight: .semibold)).tracking(1.4).textCase(.uppercase)
-                .foregroundStyle(pal.dark ? Color(t.stateColor) : pal.ink3)
+                .foregroundStyle(ink(at: 141, fallback: pal.dark ? Color(t.stateColor) : pal.ink3))
                 .shotNode("readout.phase", text: r.phase)
                 .frame(height: 13)
                 .padding(.top, 7)
             Text(r.sense)
                 .font(.system(size: 12))
-                .foregroundStyle(pal.ink4)
+                .foregroundStyle(ink(at: 160, fallback: pal.ink4))
                 .shotNode("readout.sense", text: r.sense)
                 .frame(height: 15)
                 .padding(.top, 4)
