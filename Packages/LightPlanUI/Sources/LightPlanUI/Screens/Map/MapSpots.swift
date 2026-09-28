@@ -160,7 +160,16 @@ private struct SpotMark: View {
     }
 }
 
-/// `spot-land` веба: 0,52 с, ось — остриё; каждый отрезок ключей со своей
+/// Посадка точки маршрута: булавка, номер следом, строка в полосе — после.
+/// У веба `spot-land` 0,52 с и `no-land` 0,16 + 0,3 с; натив в `pace` раз
+/// медленнее, пропорции те же (Алексей 28.09 на телефоне: «слишком быстрая,
+/// дёрганая, надо увеличить время»).
+enum SpotLanding {
+    static let pace = 1.5
+    static let pin = 0.52 * pace
+}
+
+/// `spot-land` веба, ось — остриё; каждый отрезок ключей со своей
 /// кривой `cubic-bezier(.2, .7, .3, 1)`, как `animation-timing-function` CSS.
 private struct SpotLand: ViewModifier {
     let tick: Int
@@ -175,23 +184,23 @@ private struct SpotLand: ViewModifier {
         } keyframes: { _ in
             KeyframeTrack(\.scale) {
                 MoveKeyframe(2.2)
-                LinearKeyframe(1.3, duration: 0.52 * 0.38, timingCurve: Self.curve)
-                LinearKeyframe(1.06, duration: 0.52 * 0.24, timingCurve: Self.curve)
-                LinearKeyframe(0.97, duration: 0.52 * 0.20, timingCurve: Self.curve)
-                LinearKeyframe(1, duration: 0.52 * 0.18, timingCurve: Self.curve)
+                LinearKeyframe(1.3, duration: SpotLanding.pin * 0.38, timingCurve: Self.curve)
+                LinearKeyframe(1.06, duration: SpotLanding.pin * 0.24, timingCurve: Self.curve)
+                LinearKeyframe(0.97, duration: SpotLanding.pin * 0.20, timingCurve: Self.curve)
+                LinearKeyframe(1, duration: SpotLanding.pin * 0.18, timingCurve: Self.curve)
             }
             KeyframeTrack(\.angle) {
                 MoveKeyframe(-10)
-                LinearKeyframe(7, duration: 0.52 * 0.38, timingCurve: Self.curve)
-                LinearKeyframe(-4, duration: 0.52 * 0.24, timingCurve: Self.curve)
-                LinearKeyframe(2, duration: 0.52 * 0.20, timingCurve: Self.curve)
-                LinearKeyframe(0, duration: 0.52 * 0.18, timingCurve: Self.curve)
+                LinearKeyframe(7, duration: SpotLanding.pin * 0.38, timingCurve: Self.curve)
+                LinearKeyframe(-4, duration: SpotLanding.pin * 0.24, timingCurve: Self.curve)
+                LinearKeyframe(2, duration: SpotLanding.pin * 0.20, timingCurve: Self.curve)
+                LinearKeyframe(0, duration: SpotLanding.pin * 0.18, timingCurve: Self.curve)
             }
         }
     }
 }
 
-/// `no-land`: номер приходит следом — задержка 0,16 с, 0,3 с, `scale .2 →
+/// `no-land`: номер приходит следом — задержка 0,16 с, 0,3 с (× `pace`), `scale .2 →
 /// 1.18 → 1`, прозрачность 0 → 1 к 60 %; до начала — невидим (`backwards`).
 private struct NumberLand: ViewModifier {
     let tick: Int
@@ -205,14 +214,14 @@ private struct NumberLand: ViewModifier {
         } keyframes: { _ in
             KeyframeTrack(\.scale) {
                 MoveKeyframe(0.2)
-                LinearKeyframe(0.2, duration: 0.16)
-                LinearKeyframe(1.18, duration: 0.3 * 0.6, timingCurve: Self.curve)
-                LinearKeyframe(1, duration: 0.3 * 0.4, timingCurve: Self.curve)
+                LinearKeyframe(0.2, duration: 0.16 * SpotLanding.pace)
+                LinearKeyframe(1.18, duration: 0.3 * SpotLanding.pace * 0.6, timingCurve: Self.curve)
+                LinearKeyframe(1, duration: 0.3 * SpotLanding.pace * 0.4, timingCurve: Self.curve)
             }
             KeyframeTrack(\.opacity) {
                 MoveKeyframe(0)
-                LinearKeyframe(0, duration: 0.16)
-                LinearKeyframe(1, duration: 0.3 * 0.6, timingCurve: Self.curve)
+                LinearKeyframe(0, duration: 0.16 * SpotLanding.pace)
+                LinearKeyframe(1, duration: 0.3 * SpotLanding.pace * 0.6, timingCurve: Self.curve)
             }
         }
     }

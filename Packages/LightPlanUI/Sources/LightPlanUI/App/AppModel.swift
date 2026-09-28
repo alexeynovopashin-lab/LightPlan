@@ -119,9 +119,12 @@ public final class AppModel {
 
     /// Новое место под головкой первым в списке — у закладки и у точки
     /// маршрута (`routeNewSpot` веба) один рецепт. Без записи на диск.
+    /// Пока имя нового места в пути (0,9 с после сдвига карты и ответ
+    /// геокодера), берётся прежнее — как `geoCity` веба; иначе точка,
+    /// поставленная сразу после сдвига, получала координаты (Алексей 28.09).
     func insertSpotHere(now: Date) -> Spot {
         let c = place.coordinate
-        let name = place.isNameStale ? nil : place.name
+        let name = place.name
         let city = name?.city ?? ""
         var sp = Spot(id: Self.newSpotId(now), name: Self.uniqueSpotName(city, in: snapshot.spots) ?? c.text,
                       latitude: Self.round5(c.latitude), longitude: Self.round5(c.longitude))

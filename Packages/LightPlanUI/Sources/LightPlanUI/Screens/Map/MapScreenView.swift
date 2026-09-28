@@ -755,8 +755,8 @@ struct MapScreenView: View {
     }
 
     /// Постановка (`markLand`): движение булавки, отдача и щелчок закладки.
-    /// Строка новой точки в полосе ждёт, пока булавка сядет (`spot-land`
-    /// 0,52 с); точка, уже стоявшая в черновике, строку не прячет.
+    /// Строка новой точки в полосе ждёт, пока булавка сядет
+    /// (`SpotLanding.pin`); точка, уже стоявшая в черновике, строку не прячет.
     private func land(_ id: String, newRow: Bool = true) {
         landing = (id, (landing?.tick ?? 0) + 1)
         spotDrops += 1
@@ -764,7 +764,7 @@ struct MapScreenView: View {
         guard newRow else { return }
         rowLag.insert(id)
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(520))
+            try? await Task.sleep(for: .seconds(SpotLanding.pin))
             rowLag.remove(id)
         }
     }

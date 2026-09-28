@@ -55,6 +55,26 @@ struct MapRouteTests {
         #expect(app.spots.first?.id == b.spot.id)
     }
 
+    private struct BarnaulGeocoder: ReverseGeocoding {
+        func answer(for c: GeoCoordinate) async throws -> GeocodeAnswer {
+            GeocodeAnswer(locality: "Барнаул", region: nil, country: "Россия", zoneIdentifier: nil)
+        }
+    }
+
+    /// Точка сразу после сдвига карты, пока имя нового места в пути, берёт
+    /// прежнее — как `geoCity` веба, а не координаты (Алексей, 28.09).
+    @Test func spotRightAfterPanTakesLastKnownCity() async {
+        let app = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
+                           locator: Locator(), geocoder: BarnaulGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather())
+        app.moveFromMap(latitude: 53.3480, longitude: 83.7760)
+        await app.place.settled()
+        #expect(app.routeAddHere().spot.name == "Барнаул")
+        app.moveFromMap(latitude: 53.3550, longitude: 83.7900)
+        #expect(app.place.isNameStale)
+        let b = app.routeAddHere().spot
+        #expect(b.name == "Барнаул 2" && b.named == true)
+    }
+
     @Test func pinTapTogglesAndNumbersFollowLiveSpots() {
         var snap = Snapshot()
         snap.spots = [Spot(id: "a", name: "A", latitude: 53.34, longitude: 83.77),
