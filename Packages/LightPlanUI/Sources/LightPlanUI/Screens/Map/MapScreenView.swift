@@ -110,9 +110,12 @@ struct MapScreenView: View {
             let safe = g.safeAreaInsets
             let size = CGSize(width: g.size.width + safe.leading + safe.trailing,
                               height: g.size.height + safe.top + safe.bottom)
-            // Низ окна: верх дока, а в голом холсте — верх панели вкладок
-            // (`measureMapOptic`: барабаны и читалка сняты, остаётся таб-бар).
-            let floor = routeMode ? routeBarTop : bare ? size.height - safe.bottom : dockTop
+            // Низ окна: верх дока, а в голом холсте и в наборе маршрута — верх
+            // панели вкладок (`measureMapOptic`: барабаны и читалка сняты,
+            // остаётся таб-бар). Полоса черновика растёт с каждой точкой, и
+            // центр за ней не ходит — иначе карта ехала бы от каждого тапа;
+            // от полосы уворачиваются только кружки (`ctlBot`).
+            let floor = routeMode || bare ? size.height - safe.bottom : dockTop
             // Живой низ кружков карты (`--ctl-bot`).
             let ctlBot = routeMode ? routeBarTop : bare ? floor : readoutTop
             let cy = (headerBottom + floor) / 2

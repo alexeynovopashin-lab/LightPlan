@@ -316,6 +316,10 @@ function markdown(results) {
       s.mapLayers = { sun: true, moon: true, mw: mode === 'astro', compass: true, spots: true };
       s.mapFold = fold !== 'open';
       if (chapter === 'fan') s.spots = FAN_SPOTS;
+      /* Режим маршрута (24а): те же три места — все в черновике по порядку.
+         У веба в паре сети нет — линия прямая штрихом; натив в паре дорогу
+         не спрашивает (`mapOffline`), так что линии сверимы. */
+      if (chapter === 'route') { s.spots = FAN_SPOTS; s.mapRoute = FAN_SPOTS.map(x => x.id); }
     }
     const seedFile = path.join(dir, 'seed.json');
     fs.writeFileSync(seedFile, JSON.stringify(s));
@@ -376,6 +380,8 @@ function markdown(results) {
     if (screen === 'map' && !args['no-bare']) add(screen, theme, mode, moments[0], 'paper', 'bare');
     // «Мои места» в шапке: веер открыт тапом по кнопке (шаг 5 итерации 24).
     if (screen === 'map' && !args['no-fan']) add(screen, theme, mode, moments[0], 'paper', 'fan');
+    // Режим маршрута: полоса черновика из трёх точек (24а).
+    if (screen === 'map' && !args['no-route']) add(screen, theme, mode, moments[0], 'paper', 'route');
     if (screen === 'light' && mode === 'astro' && theme === 'light') {
       for (const slot of slots) if (slot !== 'paper') add(screen, theme, mode, moments[0], slot);
     }
@@ -407,6 +413,9 @@ function markdown(results) {
     const keep = sc.layer && (k => LAYER_NODES[sc.layer].test(k) || (!LAYER_SHEETS[sc.layer] && /^tab(bar|\.)/.test(k)));
     if (keep) for (const k of Object.keys(nat.nodes)) if (!keep(k)) delete nat.nodes[k];
     const web = webShot(sc, sc.dir, nat.safe);
+    // Режим маршрута (24а): прибор, закладка и сводка у натива гаснут
+    // прозрачностью (затухание подмены), а рамки пишут — у веба они скрыты.
+    if (sc.chapter === 'route') for (const [k, r] of Object.entries(web.nodes)) if (r.visible === false) delete nat.nodes[k];
     if (keep) for (const [k, r] of Object.entries(web.nodes)) {
       // Лента прокручена к месяцу: ушедшее за край экрана у веба тоже не в счёт.
       if (!keep(k) || r.visible !== false && (r.y >= 956 || r.y + r.h <= 0)) delete web.nodes[k];

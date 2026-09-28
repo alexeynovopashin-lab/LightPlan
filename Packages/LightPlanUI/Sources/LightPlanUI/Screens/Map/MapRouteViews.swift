@@ -231,6 +231,7 @@ struct RouteBar: View {
                     let sum = lexicon.count("unit.point", count) + (dist.map { " · " + $0 } ?? "")
                     Text(sum)
                         .font(.system(size: 11)).foregroundStyle(pal.ink4).lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .shotNode("route.sum", text: sum)
                 } else {
                     Text(lexicon.t(hasSpots ? "map.routeHint" : "map.routeNoSpots"))
