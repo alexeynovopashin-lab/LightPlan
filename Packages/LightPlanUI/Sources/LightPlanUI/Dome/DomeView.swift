@@ -23,13 +23,17 @@ public struct DomeView: View {
     let t: Minutes
     /// `nil`, если смотрим не сегодняшний день — кольца «сейчас» тогда нет.
     let nowMinute: Minutes?
+    /// Палитра заката по прогнозу дня: красит зарево у горизонта.
+    let skyPalette: SkyPalette?
     @Binding var mode: DomeSkyMode
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var meteors = DomeMeteorController()
 
-    public init(sun: SolarDay, place: Place, date: CivilDate, t: Minutes, nowMinute: Minutes?, mode: Binding<DomeSkyMode>) {
+    public init(sun: SolarDay, place: Place, date: CivilDate, t: Minutes, nowMinute: Minutes?,
+                skyPalette: SkyPalette? = nil, mode: Binding<DomeSkyMode>) {
         self.sun = sun
+        self.skyPalette = skyPalette
         self.place = place
         self.date = date
         self.t = t
@@ -138,7 +142,9 @@ public struct DomeView: View {
         let p = g.posAt(t, sun: sun)
 
         paintStarsAndMeteors(&context, e: e, now: now)
-        paintHorizonGlow(&context, atX: Double(p.x), color: state.color, glowAmount: state.glow)
+        let glow = HorizonGlow.paint(state: state, elevation: e, palette: skyPalette,
+                                     moon: moon, lightTheme: colorScheme == .light)
+        paintHorizonGlow(&context, atX: Double(p.x), color: glow.color, opacity: glow.opacity)
         paintHorizonLine(&context)
 
         if moon {
@@ -190,11 +196,9 @@ public struct DomeView: View {
         context.stroke(line, with: .color(hairColor), style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
     }
 
-    private func paintHorizonGlow(_ context: inout GraphicsContext, atX x: Double, color: SkyColor, glowAmount: Double) {
+    private func paintHorizonGlow(_ context: inout GraphicsContext, atX x: Double, color: SkyColor, opacity: Double) {
         let g = DomeGeometry.self
         let cx = g.clamp(x, 60, 330)
-        let glowK = colorScheme == .light ? 0.42 : 1.0
-        let opacity = g.clamp(glowAmount * glowK, 0, 1)
         guard opacity > 0.002 else { return }
         context.drawLayer { layer in
             layer.clip(to: Path(CGRect(x: 0, y: 0, width: CGFloat(g.viewWidth), height: CGFloat(g.horizonY))))
@@ -203,7 +207,7 @@ public struct DomeView: View {
             let r: CGFloat = 62
             let rect = CGRect(x: -r, y: -r, width: r * 2, height: r * 2)
             layer.fill(Path(ellipseIn: rect), with: .radialGradient(
-                Gradient(colors: [Color(color).opacity(opacity * 0.32), Color(color).opacity(0)]),
+                Gradient(colors: [Color(color).opacity(opacity), Color(color).opacity(0)]),
                 center: .zero, startRadius: 0, endRadius: r))
         }
     }

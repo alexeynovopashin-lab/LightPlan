@@ -149,7 +149,9 @@ public struct LightScreenView: View {
     private func dome(_ t: LightTelemetry, _ pal: Palette) -> some View {
         DomeView(sun: model.timebar.solarDay, place: model.timebar.place,
                  date: model.timebar.machine.selectedDate, t: model.timebar.machine.viewMinute,
-                 nowMinute: model.timebar.nowMinute, mode: moonModeBinding)
+                 nowMinute: model.timebar.nowMinute,
+                 skyPalette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)),
+                 mode: moonModeBinding)
             .shotNode("dome")
             .overlay {
                 if let readout = t.readout {
