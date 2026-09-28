@@ -133,7 +133,7 @@ public struct DomeView: View {
 
     private var astroSky: DomeSky? {
         DomeSky(astro: astro, elevation: sun.elevation(at: t), morning: t < sun.solarNoon,
-                lightTheme: colorScheme == .light, palette: skyPalette)
+                lightTheme: colorScheme == .light, palette: skyPalette, moon: mode == .moon)
     }
 
     // MARK: - Рисование

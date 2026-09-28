@@ -12,7 +12,8 @@ struct DomeSky: Sendable, Equatable {
     let glowColor: SkyColor
     let glowOpacity: Double
 
-    init?(astro: Bool, elevation e: Degrees, morning: Bool, lightTheme: Bool, palette: SkyPalette?) {
+    init?(astro: Bool, elevation e: Degrees, morning: Bool, lightTheme: Bool, palette: SkyPalette?,
+          moon: Bool = false) {
         guard astro, e.isFinite else { return nil }
         let stops = Self.stops
         var lower = stops[0], upper = stops[0]
@@ -32,7 +33,8 @@ struct DomeSky: Sendable, Equatable {
 
         let state = LightState(elevation: e, morning: morning)
         let near = Self.clamp((8 - e) / 14)
-        let pal = e < 8 ? forecast : nil
+        // Like `HorizonGlow.paint`: the forecast tints only the sun's glow, not the moon's.
+        let pal = e < 8 && !moon ? forecast : nil
         glowColor = pal.map { LightPalette.lerp(state.color, $0.horizon, near * 0.75) } ?? state.color
         let themeGain = lightTheme ? 0.65 + 0.35 * Self.clamp((6 - e) / 12) : 1
         // The dark-theme sky reaches true black at astronomical night. Fade

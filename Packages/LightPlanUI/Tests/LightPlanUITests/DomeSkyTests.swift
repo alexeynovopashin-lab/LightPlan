@@ -24,6 +24,20 @@ struct DomeSkyTests {
         #expect(DomeSky(astro: true, elevation: .nan, morning: false, lightTheme: true, palette: nil) == nil)
     }
 
+    /// Ревью GPT к `8c8c280`: у Луны зарево без прогнозной палитры, как у
+    /// `HorizonGlow.paint(moon: true)`; ночное затухание «Астро» остаётся.
+    @Test func moonGlowIgnoresSunsetForecast() {
+        for light in [false, true] {
+            for e in stride(from: -20.0, through: 7, by: 1) {
+                let moon = DomeSky(astro: true, elevation: e, morning: false, lightTheme: light, palette: bright, moon: true)!
+                let plain = sky(e, light: light)
+                #expect(moon.glowColor == LightState(elevation: e, morning: false).color)
+                #expect(moon.glowOpacity == plain.glowOpacity)
+                #expect(moon.forecastOpacity == sky(e, light: light, palette: bright).forecastOpacity)
+            }
+        }
+    }
+
     @Test func daylightStaysPaleIncludingSixPM() {
         for e in stride(from: 0.0, through: 90, by: 1) {
             #expect(sky(e).zenith == SkyColor(207,225,235))
