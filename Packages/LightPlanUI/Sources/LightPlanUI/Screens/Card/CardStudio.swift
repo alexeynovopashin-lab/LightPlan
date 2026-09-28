@@ -119,7 +119,10 @@ struct CardStudio: View {
             }
             .frame(width: 104, height: 104)
             VStack(alignment: .leading, spacing: 0) {
-                Text(st.title).font(webFont(15)).foregroundStyle(pal.ink).lineSpacing(15 * 0.3)
+                Text(st.title).font(webFont(15)).foregroundStyle(pal.ink)
+                    // `line-height: 1.3` — шаг строк 19,5; у SF свой шаг 1,19
+                    // кегля, добавляется разница (пара шага 4: было 40,5 на 37,5).
+                    .lineSpacing(15 * (1.3 - 1.19))
                     .shotNode("card.studioName", text: st.title)
                 Text(st.span).font(webFont(13.5)).monospacedDigit().foregroundStyle(pal.ink3).padding(.top, 3)
                 if let tel { telRow(tel, inside: true) }
@@ -131,8 +134,8 @@ struct CardStudio: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 13)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(pal.sheet3))
-        .padding(.top, 9)
         .shotNode("card.studio")
+        .padding(.top, 9)
     }
 
     /// Номер администратора — та же ссылка, что у клиента, но в плитке мельче:
@@ -147,8 +150,10 @@ struct CardStudio: View {
             .padding(.horizontal, inside ? 8 : 10).padding(.vertical, inside ? 11 : 9)
         }
         .buttonStyle(PressFade())
-        .padding(inside ? EdgeInsets(top: -7, leading: -8, bottom: -7, trailing: 0) : EdgeInsets())
+        // Рамка — поле под палец, как `getBoundingClientRect` у веба: сдвиг
+        // назад (`margin −7/0/−7/−8`) её не ужимает.
         .shotNode("card.studioTel")
+        .padding(inside ? EdgeInsets(top: -7, leading: -8, bottom: -7, trailing: 0) : EdgeInsets())
     }
 
     @Environment(\.openURL) private var openURL

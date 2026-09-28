@@ -35,8 +35,8 @@ struct CardHeadTileTests {
     private func app(_ iso: String, tomsk: Bool = true, manualEnd: Bool = false, geocoder: String? = nil,
                      edit: (inout Snapshot) -> Void = { _ in }) -> AppModel {
         var snap = CardPhaseTests.seed
-        if tomsk, case .object(var z)? = snap.extra["zones"] {
-            z["56.5,85.0"] = .string("Asia/Tomsk")
+        if case .object(var z)? = snap.extra["zones"] {
+            z["56.5,85.0"] = tomsk ? .string("Asia/Tomsk") : nil
             snap.extra["zones"] = .object(z)
         }
         snap.manualEnd = manualEnd
@@ -66,7 +66,7 @@ struct CardHeadTileTests {
 
     // MARK: - Пояс точки съёмки
 
-    /// Пояс Томска в посеве не записан: по оценке долготы (+6) в 13:00
+    /// Пояс Томска не записан: по оценке долготы (+6) в 13:00
     /// телефона портрет в студии ещё впереди. Карточка спросила геокодер —
     /// «Asia/Tomsk» (+7), съёмка идёт, и пояс лёг в снимок под ключом веба.
     @Test func shootPointZoneComesFromGeocoder() async {

@@ -104,25 +104,27 @@ struct CardDayTile: View {
         let x = DayTileText(s, phase: phase, app: app)
         let f = PlannerFacts(app: app, dark: pal.dark)
         let route = DayTileText.route(of: s)
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                date(f)
-                VStack(alignment: .leading, spacing: 0) {
-                    top(x)
-                    rich(x.left).font(webFont(12.5)).foregroundStyle(pal.ink4)
-                        .padding(.top, 3).shotNode("card.dayLeft", text: x.plainLeft)
+        // Сетка веба `auto | 1fr`: дата стоит по середине высоты
+        // (`align-self: center`), правый столбец — сверху, и лента точек живёт
+        // в нём (`.dt-main > .lane`), а не на всю ширину плитки.
+        HStack(alignment: .top, spacing: 12) {
+            date(f).frame(maxHeight: .infinity)
+            VStack(alignment: .leading, spacing: 0) {
+                top(x)
+                rich(x.left).font(webFont(12.5)).foregroundStyle(pal.ink4)
+                    .shotNode("card.dayLeft", text: x.plainLeft).padding(.top, 3)
+                if !route.isEmpty {
+                    CardLane(app: app, s: s, route: route, phase: phase, pal: pal)
+                        .padding(.top, 12)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if !route.isEmpty {
-                CardLane(app: app, s: s, route: route, phase: phase, pal: pal)
-                    .padding(.top, 12)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 12).padding(.vertical, 14)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(pal.sheet3))
-        .padding(.top, 14)
         .shotNode("card.day")
+        .padding(.top, 14)
     }
 
     /// Число, месяц, день недели — день начала записи; справа черта.

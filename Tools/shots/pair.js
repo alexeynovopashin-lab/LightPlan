@@ -54,7 +54,7 @@ const MOMENTS = { day: '2026-09-23T13:00', golden: '2026-09-23T18:50', night: '2
 const OFFSET = '+07:00';
 const BUNDLE = 'Novopashin.LightPlan';
 
-const screens = (args.screens || 'light,map,planner,settings').split(',');
+const screens = (args.screens || 'light,map,planner,settings,card').split(',');
 /* Виды «Съёмок» (итерация 21). Режим и момент им не нужны: одна пара на вид
    и тему, в 13:00 — рядом съёмка «прямо сейчас» и черта «сейчас» на ленте. */
 const scopes = (args.scopes || 'month,week,day').split(',');
@@ -86,6 +86,19 @@ const layers = args.layers ? args.layers.split(',') : [];
 const LAYER_NODES = { year: /^(year|ym)\./, year12: /^y12\./, stats: /^stat\./, search: /^se\./,
   bin: /^bin\./, blk: /^blk\./ };
 const LAYER_SHEETS = { bin: 1, blk: 1 };
+/* Карточка (итерация 25, `--screens card`): три фазы × четыре группы жанров на
+   записях посева сезона. Часы — от записи, в её день: «до» — за 2 ч до
+   начала, «во время» — через 30 мин после начала, «после» — через час после
+   конца. Свадьба с точками и студией (event), портрет в студии с соседкой
+   внахлёст (people), интерьер в студии у организации (client), пейзаж на
+   рассвете (own). `stack` — 26-е с четырьмя соседями: ступени краёв стопки;
+   `finish` — портрет «во время» с «Завершать вручную»: кнопка в нижнем ряду.
+   Часть — `--cards people,stack`, `--phases during`. */
+const CARDS = { event: 'sd_sep_wed', people: 'sd_sep_clash_a', client: 'sd_sep_inter', own: 'sd_aug_land' };
+const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish'];
+const phases = (args.phases || 'before,during,after').split(',');
+// Стена часов Барнаула (+7, без перехода) в минуту `m` суток записи `iso`.
+const wallAt = (iso, m) => new Date(Date.parse(iso) + 7 * 3600e3 + m * 60e3).toISOString().slice(0, 16);
 const SHEET_SPOTS = [
   { id: 'p_shot_a', name: 'Нагорный парк', address: 'ул. Гоголя, 2', lat: 53.3334, lon: 83.8035, pinned: true },
   { id: 'p_shot_b', name: '', address: '', lat: 53.35, lon: 83.75, pinned: true }
@@ -154,7 +167,7 @@ async function nativeShot(udid, sc, dir) {
   run('xcrun', ['simctl', 'ui', udid, 'appearance', sc.theme]);
   run('xcrun', ['simctl', 'launch', udid, BUNDLE,
     '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
-    '-LPShotNow', MOMENTS[sc.moment] + ':00' + OFFSET, '-LPShotZone', ZONE,
+    '-LPShotNow', (sc.at || MOMENTS[sc.moment]) + ':00' + OFFSET, '-LPShotZone', ZONE,
     '-LPShotSeed', sc.seed, '-LPShotForecast', FORECAST,
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
@@ -164,6 +177,7 @@ async function nativeShot(udid, sc, dir) {
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     ...(sc.layer ? ['-LPShotSheet', sc.layer] : []),
     ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
+    ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card] : []),
     '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
   // Первый запуск после установки идёт до 20 с (замер 19б), следующие — 3–4 с.
@@ -178,13 +192,14 @@ function webShot(sc, dir, safe) {
   const out = run('node', [path.join(WEB, 'tools', 'shot.js'), '--screen',
     sc.screen === 'light' ? 'today' : sc.screen === 'planner' ? 'plan' : sc.screen, ...(sc.scope ? ['--scope', sc.scope] : []),
     ...(sc.pick != null ? ['--pick', String(sc.pick)] : []),
-    '--at', MOMENTS[sc.moment], '--tz', ZONE, '--seed', sc.seed,
+    '--at', sc.at || MOMENTS[sc.moment], '--tz', ZONE, '--seed', sc.seed,
     '--forecast', FORECAST, '--air', path.join(FX, 'air_barnaul.json'),
     '--name', path.join(FX, 'place_barnaul.json'), '--safe', safe.map(v => Math.round(v)).join(','),
     ...(sc.chapter ? ['--chapter', sc.chapter] : []),
     ...(sc.form ? ['--sheet', 'form', '--way', sc.form] : []),
     ...(sc.layer ? ['--sheet', sc.layer] : []),
     ...(sc.sheet ? ['--sheet', 'loc', ...(sc.sheet !== 'fork' ? ['--way', sc.sheet] : [])] : []),
+    ...(sc.card ? ['--sheet', 'card', '--way', sc.card] : []),
     '--scale', '3', '--out', path.join(dir, 'web.png'), '--report', path.join(dir, 'web.json')]);
   return JSON.parse(fs.readFileSync(path.join(dir, 'web.json'), 'utf8'));
 }
@@ -359,6 +374,30 @@ function markdown(results) {
     fs.writeFileSync(seedFile, JSON.stringify(s));
     list.push({ name, dir, screen: 'planner', theme, moment: 'day', scope: 'month', layer, seed: seedFile });
   }
+  if (screens.includes('card') && !args['only-sheets'] && !args['only-forms'] && !args['only-layers']) {
+    for (const g of cards) for (const ph of CARDS[g] ? phases : ['during']) for (const theme of themes) {
+      const id = CARDS[g] || 'sd_sep_clash_a';
+      const name = ['card', g, ph, theme].join('-');
+      const dir = path.join(OUT, name);
+      fs.mkdirSync(dir, { recursive: true });
+      const s = { ...plannerSeed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' };
+      if (g === 'stack') {
+        // Три соседа сверх «Семьи Ким»: встреча утром и две съёмки вечером.
+        const b = s.sessions.find(x => x.id === 'sd_sep_clash_b');
+        s.sessions = [...s.sessions,
+          { ...b, id: 'shot_st_meet', kind: 'meet', min: 600, end: 645, dur: 45, contact: 'Анна Лис', persons: [] },
+          { ...b, id: 'shot_st_eve', min: 1020, end: 1110, dur: 90, contact: 'Пётр Сомов', persons: [] },
+          { ...b, id: 'shot_st_late', min: 1140, end: 1200, dur: 60, contact: 'Ольга Верх', persons: [] }];
+      }
+      if (g === 'finish') s.manualEnd = true;
+      const rec = s.sessions.find(x => x.id === id);
+      const end = rec.end != null ? rec.end : rec.min + (rec.dur || 90);
+      const at = wallAt(rec.date, ph === 'before' ? rec.min - 120 : ph === 'during' ? rec.min + 30 : end + 60);
+      const seedFile = path.join(dir, 'seed.json');
+      fs.writeFileSync(seedFile, JSON.stringify(s));
+      list.push({ name, dir, screen: 'planner', theme, moment: 'day', at, card: id, phase: ph, seed: seedFile });
+    }
+  }
   if (args['only-sheets'] || args.forms && args['only-forms'] || args['only-layers']) screens.length = 0;
   if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
     add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope);
@@ -366,7 +405,7 @@ function markdown(results) {
        колонки ленты на экране, а не только в стенде `make planner` */
     if (scope === 'day') add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope, 5);
   }
-  for (const screen of screens.filter(x => x !== 'planner')) for (const mode of modes) for (const theme of themes) {
+  for (const screen of screens.filter(x => x !== 'planner' && x !== 'card')) for (const mode of modes) for (const theme of themes) {
     // «Настройки» от момента не зависят — одна пара на тему и режим.
     for (const moment of screen === 'settings' ? [moments[0]] : moments) {
       for (const fold of screen === 'map' ? folds : ['shut']) add(screen, theme, mode, moment, 'paper', null, 'drum', fold);
@@ -409,6 +448,10 @@ function markdown(results) {
     if (sc.sheet) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('loc.')) delete nat.nodes[k];
     // Под формой «Съёмки» живы и пишут рамки — сверяется только форма.
     if (sc.form) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('form.')) delete nat.nodes[k];
+    // Под карточкой «Съёмки» живы и пишут рамки — сверяется только карточка. Фаза
+    // натива (`card.phase`) — словом в строке прогона: у веба такого узла нет.
+    const natPhase = sc.card && nat.nodes['card.phase'] ? nat.nodes['card.phase'].text : null;
+    if (sc.card) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('card.') || k === 'card.phase') delete nat.nodes[k];
     // Под слоем «Съёмки» живы и пишут рамки — сверяется только слой (и панель вкладок над ним).
     const keep = sc.layer && (k => LAYER_NODES[sc.layer].test(k) || (!LAYER_SHEETS[sc.layer] && /^tab(bar|\.)/.test(k)));
     if (keep) for (const k of Object.keys(nat.nodes)) if (!keep(k)) delete nat.nodes[k];
@@ -416,6 +459,9 @@ function markdown(results) {
     // Режим маршрута (24а): прибор, закладка и сводка у натива гаснут
     // прозрачностью (затухание подмены), а рамки пишут — у веба они скрыты.
     if (sc.chapter === 'route') for (const [k, r] of Object.entries(web.nodes)) if (r.visible === false) delete nat.nodes[k];
+    // Карточка длиннее экрана: ниже его края у веба тоже не в счёт.
+    if (sc.card) for (const [k, r] of Object.entries(web.nodes)) if (r.y >= 956) delete web.nodes[k];
+    if (sc.card) console.log(`${sc.name}: ${sc.at}, фаза натива ${natPhase}` + (natPhase === sc.phase ? '' : ` — ждали ${sc.phase}`));
     if (keep) for (const [k, r] of Object.entries(web.nodes)) {
       // Лента прокручена к месяцу: ушедшее за край экрана у веба тоже не в счёт.
       if (!keep(k) || r.visible !== false && (r.y >= 956 || r.y + r.h <= 0)) delete web.nodes[k];

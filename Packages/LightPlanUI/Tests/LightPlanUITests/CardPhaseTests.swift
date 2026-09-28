@@ -38,15 +38,16 @@ struct CardPhaseTests {
     }()
 
     /// Пояс Томска: телефон узнаёт его от геокодера, когда место приложения —
-    /// Томск. В посеве его нет — там только Барнаул.
+    /// Томск. В посеве он записан с шага 4 итерации 25 (пары карточки);
+    /// `tomsk: false` его снимает — остаётся оценка по долготе.
     private static let tomskZone = ["56.5,85.0": JSONValue.string("Asia/Tomsk")]
 
     /// Приложение посева в момент `iso`; телефон в Барнауле.
     private func app(_ iso: String, manualEnd: Bool = false, tomsk: Bool = true,
                      edit: (inout Snapshot) -> Void = { _ in }) -> AppModel {
         var snap = Self.seed
-        if tomsk, case .object(var z)? = snap.extra["zones"] {
-            for (k, v) in Self.tomskZone { z[k] = v }
+        if case .object(var z)? = snap.extra["zones"] {
+            for (k, v) in Self.tomskZone { z[k] = tomsk ? v : nil }
             snap.extra["zones"] = .object(z)
         }
         snap.manualEnd = manualEnd
@@ -98,7 +99,7 @@ struct CardPhaseTests {
         #expect(at("22:01") == .after)
     }
 
-    /// Часы — места съёмки, не телефона. Пояс Томска в посеве не записан, и
+    /// Часы — места съёмки, не телефона. Пояс Томска не записан, и
     /// оценка по долготе даёт +6: в 13:00 телефона у студии 12:00, портрет
     /// ещё впереди. Так же считает веб (`tzAt`).
     @Test func studioWithoutKnownZoneUsesLongitudeEstimate() {

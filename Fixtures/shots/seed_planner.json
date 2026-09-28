@@ -8,7 +8,8 @@
   "met": true
  },
  "zones": {
-  "53.5,84.0": "Asia/Barnaul"
+  "53.5,84.0": "Asia/Barnaul",
+  "56.5,85.0": "Asia/Tomsk"
  },
  "theme": "dark",
  "pro": false,

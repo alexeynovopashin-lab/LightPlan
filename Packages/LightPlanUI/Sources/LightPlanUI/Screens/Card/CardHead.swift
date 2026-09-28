@@ -98,13 +98,13 @@ struct CardHead: View {
         let h = CardHeadText(s, phase: phase, app: app)
         VStack(spacing: 0) {
             sign
-            title(h.name).padding(.top, 6).shotNode("card.name")
+            title(h.name).shotNode("card.name").padding(.top, 6)
             if !h.person.isEmpty {
                 Text(h.person).font(webFont(14.5)).foregroundStyle(pal.ink2)
-                    .padding(.top, 5).shotNode("card.person")
+                    .shotNode("card.person").padding(.top, 5)
             }
             Text(h.when).font(webFont(13)).foregroundStyle(phase == .after ? pal.ink6 : pal.green)
-                .padding(.top, 5).shotNode("card.when")
+                .shotNode("card.when").padding(.top, 5)
             if let tel = h.tel { telLink(tel) }
         }
         .multilineTextAlignment(.center)
@@ -141,9 +141,13 @@ struct CardHead: View {
         }
     }
 
+    /// Строка веба — `line-height: 1.1`, у SF своя — 1,19 кегля (пара шага 4:
+    /// 34,5 pt на 29): лишнее снимается поровну сверху и снизу, иначе всё ниже
+    /// имени уезжает на 2,6 pt. Перенесённое имя идёт шагом SF — у SwiftUI
+    /// шаг строк меньше родного не задаётся.
     private func line(_ name: String, _ size: CGFloat) -> some View {
         Text(name).font(webFont(size, 700)).tracking(-0.7).foregroundStyle(pal.ink)
-            .lineSpacing(size * 0.1)
+            .padding(.vertical, -size * (1.19 - 1.1) / 2)
     }
 
     private func telLink(_ tel: (shown: String, dial: String)) -> some View {
@@ -156,7 +160,7 @@ struct CardHead: View {
             .padding(.horizontal, 10).padding(.vertical, 9)
         }
         .buttonStyle(PressFade())
-        .padding(.top, 4)
         .shotNode("card.tel")
+        .padding(.top, 4)
     }
 }

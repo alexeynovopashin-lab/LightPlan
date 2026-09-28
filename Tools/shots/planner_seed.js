@@ -17,7 +17,11 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const FX = path.join(ROOT, 'Fixtures', 'shots');
 const ZONE = 'Asia/Barnaul';
-const AT = '2026-09-23T13:00:00+07:00';
+/* `LP_SEED_AT` / `LP_SEED_OUT` — посев на другой момент и в другой файл
+   (шаг 4 итерации 25: данные для копии ветки на телефоне, `devicectl device
+   copy to` в `Library/Application Support/LightPlan/light-plan.json`).
+   Эталон пар — только без них. */
+const AT = process.env.LP_SEED_AT || '2026-09-23T13:00:00+07:00';
 const KEYS = ['sessions', 'blocks', 'orgs', 'studios', 'spots'];
 
 function webRoot() {
@@ -67,7 +71,12 @@ function playwright() {
   // Время правки записи — часы страницы: прибиты, но вписаны явно, чтобы файл
   // не зависел от того, сколько миллисекунд шёл посев.
   for (const k of KEYS) for (const r of out[k]) if (r && typeof r.mt === 'number') r.mt = Date.parse(AT);
-  const file = path.join(FX, 'seed_planner.json');
+  /* Пояс Томска (шаг 4 итерации 25): записи посева — в Томске, а веб без
+     записанного пояса считает его по долготе (+6), натив — ответом геокодера
+     (+7), и томские карточки пары расходились бы на час. Ключ — клетка
+     полградуса, как у кэша поясов беты (`zoneKey`). */
+  out.zones = { ...(base.zones || {}), '56.5,85.0': 'Asia/Tomsk' };
+  const file = process.env.LP_SEED_OUT ? path.resolve(process.env.LP_SEED_OUT) : path.join(FX, 'seed_planner.json');
   fs.writeFileSync(file, JSON.stringify(out, null, 1) + '\n');
   console.log(file + ': ' + KEYS.map(k => k + ' ' + out[k].length).join(', '));
 })().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });
