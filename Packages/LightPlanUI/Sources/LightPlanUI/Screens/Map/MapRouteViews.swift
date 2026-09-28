@@ -146,6 +146,13 @@ struct RouteNumber: View {
     }
 }
 
+/// Строка, которую тянут: откуда, куда встанет и сдвиг пальца.
+private struct RowDrag: Equatable {
+    let from: Int
+    var to: Int
+    var dy: CGFloat
+}
+
 /// Строка списка черновика: место и способ перехода к следующей.
 struct RouteRow: Identifiable, Equatable {
     let id: String
@@ -162,6 +169,8 @@ struct RouteRow: Identifiable, Equatable {
 /// полоса держит прежнюю высоту (`hold`).
 struct RouteBar: View {
     let rows: [RouteRow]
+    /// «12 км · 25 мин» — когда ответили все куски дороги.
+    var dist: String? = nil
     let hasSpots: Bool
     /// Есть место не в черновике — «＋» виден.
     let canAdd: Bool
@@ -171,6 +180,8 @@ struct RouteBar: View {
     var onAdd: (CGRect) -> Void = { _ in }
     var onClear: () -> Void = {}
     var onDrop: (String) -> Void = { _ in }
+    /// Перестановка: строка `from` встала на `to` (по отпусканию).
+    var onMove: (Int, Int) -> Void = { _, _ in }
     var onWay: (Int) -> Void = { _ in }
     var onMake: () -> Void = {}
     var onSave: () -> Void = {}
@@ -180,6 +191,10 @@ struct RouteBar: View {
     @State private var height: CGFloat = 0
     @State private var held: CGFloat?
     @State private var addFrame: CGRect = .zero
+    @State private var drag: RowDrag?
+    @State private var lifts = 0
+    @State private var scroll = ScrollPosition(edge: .top)
+    @State private var scrollY: CGFloat = 0
 
     static let rowH: CGFloat = 28
     /// Окно списка: 4 строки + 9 (`max-height: 121px`).
@@ -212,10 +227,11 @@ struct RouteBar: View {
             Icon("route", size: 17, line: 1.7).foregroundStyle(pal.brass)
             VStack(alignment: .leading, spacing: 1) {
                 if count > 0 {
-                    // Км и минуты — только от маршрутизатора (шаг 3).
-                    Text(lexicon.count("unit.point", count))
-                        .font(.system(size: 11)).foregroundStyle(pal.ink4)
-                        .shotNode("route.sum", text: lexicon.count("unit.point", count))
+                    // Км и минуты — только от маршрутизатора.
+                    let sum = lexicon.count("unit.point", count) + (dist.map { " · " + $0 } ?? "")
+                    Text(sum)
+                        .font(.system(size: 11)).foregroundStyle(pal.ink4).lineLimit(1)
+                        .shotNode("route.sum", text: sum)
                 } else {
                     Text(lexicon.t(hasSpots ? "map.routeHint" : "map.routeNoSpots"))
                         .font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.ink)
@@ -257,40 +273,78 @@ struct RouteBar: View {
 
     // MARK: список
 
+    /// Шаг строки: 28 и волосок.
+    private static let pitch: CGFloat = rowH + 1
+
     private var list: some View {
         let full = CGFloat(rows.count) * Self.rowH + CGFloat(max(0, rows.count - 1))
+        let window = min(full, Self.listMax)
         let scrolls = full > Self.listMax
         return ScrollView(.vertical) {
-            VStack(spacing: 0) {
+            VStack(spacing: 1) {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, r in
-                    if i > 0 { Rectangle().fill(pal.hairline).frame(height: 1) }
-                    row(i, r)
+                    row(i, r, window: window, full: full)
                 }
             }
+            // Волоски и пустой слот стоят на сетке строк: строки ездят над ними.
+            .background(alignment: .top) {
+                ZStack(alignment: .top) {
+                    ForEach(1 ..< max(1, rows.count), id: \.self) { k in
+                        Rectangle().fill(pal.hairline).frame(height: 1)
+                            .offset(y: CGFloat(k) * Self.pitch - 1)
+                    }
+                    if let d = drag {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous).fill(pal.hair3)
+                            .frame(height: Self.rowH)
+                            .offset(y: CGFloat(d.to) * Self.pitch)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .coordinateSpace(.named("rbList"))
         }
+        .scrollPosition($scroll)
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollY = y }
+        .scrollDisabled(drag != nil)
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
-        .frame(height: min(full, Self.listMax))
-        // Строки уходят под низ окна — маска 16 (`mask-image` веба).
+        .frame(height: window)
+        // Строки уходят под низ окна — маска 16 (`mask-image` веба). Пока
+        // строку тянут, маски нет: она гасила бы строку у нижнего края.
         .mask {
             VStack(spacing: 0) {
                 Color.black
                 LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                    .frame(height: scrolls ? 16 : 0)
+                    .frame(height: scrolls && drag == nil ? 16 : 0)
             }
         }
+        .sensoryFeedback(.selection, trigger: lifts)
         .shotNode("route.list")
     }
 
-    private func row(_ i: Int, _ r: RouteRow) -> some View {
-        HStack(spacing: 0) {
-            // Номер-кнопка 28; перестановка удержанием — шаг 3.
-            Text(String(i + 1))
-                .font(.system(size: 9.5, weight: .bold).monospacedDigit())
+    /// Где строка стоит сейчас: поднятая — на слоте, остальные — сдвинуты им.
+    private func place(_ i: Int) -> Int {
+        guard let d = drag else { return i }
+        if i == d.from { return d.to }
+        let p = i > d.from ? i - 1 : i
+        return p >= d.to ? p + 1 : p
+    }
+
+    private func row(_ i: Int, _ r: RouteRow, window: CGFloat, full: CGFloat) -> some View {
+        let at = place(i)
+        let lifted = drag?.from == i
+        return HStack(spacing: 0) {
+            // Номер — рукоять перестановки: удержание 250 мс (сдвиг > 8 —
+            // отмена), дальше строка идёт за пальцем (`rbHold`).
+            Text(String(at + 1))
+                .font(.system(size: lifted ? 12 : 9.5, weight: .bold).monospacedDigit())
                 .foregroundStyle(pal.surface)
-                .frame(width: 15, height: 15)
+                .frame(width: lifted ? 22 : 15, height: lifted ? 22 : 15)
                 .background(Circle().fill(pal.brass))
                 .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+                .gesture(hold(i, window: window, full: full))
+                .shotNode("route.no.\(i + 1)")
             Text(r.name).font(.system(size: 13.5)).foregroundStyle(pal.ink).lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let walk = r.walk {
@@ -311,7 +365,47 @@ struct RouteBar: View {
             .accessibilityLabel(lexicon.t("map.routeDrop"))
         }
         .frame(height: Self.rowH)
+        // Поднятая строка: 34 (по 3 за края), радиус 10, `--peek-2`, тень
+        // `0 10 24 --glass-cast`, кант латунью .35 (`.rb-row.drag`).
+        .background {
+            if lifted {
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(pal.peek2)
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color(red: 226 / 255, green: 164 / 255, blue: 76 / 255, opacity: 0.35), lineWidth: 1))
+                    .shadow(color: pal.glassCast, radius: 12, y: 10)
+                    .padding(.vertical, -3)
+            }
+        }
+        .offset(y: lifted ? drag?.dy ?? 0 : CGFloat(at - i) * Self.pitch)
+        .zIndex(lifted ? 1 : 0)
         .shotNode("route.row.\(i + 1)", text: r.name)
+    }
+
+    private func hold(_ i: Int, window: CGFloat, full: CGFloat) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.25, maximumDistance: 8)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("rbList")))
+            .onChanged { v in
+                guard case .second(true, let g) = v else { return }
+                if drag == nil {
+                    drag = RowDrag(from: i, to: i, dy: 0)
+                    lifts += 1
+                }
+                guard let g, var d = drag else { return }
+                d.dy = g.translation.height
+                // У краёв окна список едет сам на 6 за кадр жеста.
+                let y = g.location.y - scrollY
+                if full > window {
+                    if y < 22 { scroll.scrollTo(y: max(0, scrollY - 6)) }
+                    else if y > window - 22 { scroll.scrollTo(y: min(full - window, scrollY + 6)) }
+                }
+                d.to = max(0, min(rows.count - 1, Int(((CGFloat(i) * Self.pitch + d.dy) / Self.pitch).rounded())))
+                drag = d
+            }
+            .onEnded { _ in
+                guard let d = drag else { return }
+                drag = nil
+                if d.to != d.from { onMove(d.from, d.to) }
+            }
     }
 
     // MARK: низ
@@ -371,11 +465,14 @@ struct RouteBar: View {
     }
 }
 
-/// Линия черновика на холсте (`placeRoutePath`): пока дороги нет — прямая
-/// штрихом, 2,2 латунью .45, `dash 6 6`. Слой под булавками, над вуалью.
-/// Одно место дважды подряд — не переезд (нулевой отрезок и так не виден).
+/// Линия черновика на холсте (`placeRoutePath`). Слой под булавками, над
+/// вуалью; куски — `routeRuns`. Пока дороги нет — прямая штрихом, 2,2 латунью
+/// .45, `dash 6 6`. Дорога машиной — ореол 7,5 / .2 и линия 2,8 / .95; пешком —
+/// цепочка точек 2,8 / .9, `dash 0 5,6` (круглый конец делает точку).
 struct RoutePathLayer: View {
-    let spots: [Spot]
+    let runs: [RouteRun]
+    /// Ответ на каждый кусок по порядку; `nil` — прямая.
+    let roads: [RoadAnswer?]
     let feed: MapCameraFeed
     let fallback: MapCanvasCamera
     let anchor: CGPoint
@@ -383,16 +480,32 @@ struct RoutePathLayer: View {
 
     var body: some View {
         let cam = feed.camera ?? fallback
-        Path { p in
-            for (i, sp) in spots.enumerated() {
-                guard let la = sp.latitude, let lo = sp.longitude else { continue }
-                let d = MapSpots.offset(latitude: la, longitude: lo, camera: cam)
-                let pt = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
-                if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
-            }
+        let raw = path(cam) { road, _ in road == nil }
+        let car = path(cam) { road, run in road != nil && run.mode == .car }
+        let foot = path(cam) { road, run in road != nil && run.mode == .foot }
+        ZStack {
+            car.stroke(pal.brass.opacity(0.2), style: StrokeStyle(lineWidth: 7.5, lineCap: .round, lineJoin: .round))
+            car.stroke(pal.brass.opacity(0.95), style: StrokeStyle(lineWidth: 2.8, lineCap: .round, lineJoin: .round))
+            foot.stroke(pal.brass.opacity(0.9),
+                        style: StrokeStyle(lineWidth: 2.8, lineCap: .round, lineJoin: .round, dash: [0, 5.6]))
+            raw.stroke(pal.brass.opacity(0.45),
+                       style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round, dash: [6, 6]))
         }
-        .stroke(pal.brass.opacity(0.45), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [6, 6]))
         .allowsHitTesting(false)
         .shotNode("route.line")
+    }
+
+    private func path(_ cam: MapCanvasCamera, _ take: (RoadAnswer?, RouteRun) -> Bool) -> Path {
+        Path { p in
+            for (j, run) in runs.enumerated() {
+                let road = j < roads.count ? roads[j] : nil
+                guard take(road, run) else { continue }
+                for (i, c) in (road?.line ?? run.points).enumerated() {
+                    let d = MapSpots.offset(latitude: c.latitude, longitude: c.longitude, camera: cam)
+                    let pt = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
+                    if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+                }
+            }
+        }
     }
 }

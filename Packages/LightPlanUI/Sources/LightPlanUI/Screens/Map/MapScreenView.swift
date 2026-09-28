@@ -167,8 +167,9 @@ struct MapScreenView: View {
                     // Булавки своих мест — над вуалью и под прибором: город ночью
                     // темнеет, свои точки — нет. Слой — квадрат ротора, как холст.
                     if routeMode && app.routeSpots.count > 1 {
-                        RoutePathLayer(spots: app.routeSpots, feed: feed, fallback: fallbackCamera(place),
-                                       anchor: anchor, pal: pal)
+                        let runs = app.routeRuns
+                        RoutePathLayer(runs: runs, roads: runs.map { roadOf($0) }, feed: feed,
+                                       fallback: fallbackCamera(place), anchor: anchor, pal: pal)
                             .frame(width: side, height: side)
                             .position(x: size.width / 2, y: size.height / 2)
                     }
@@ -294,6 +295,12 @@ struct MapScreenView: View {
         .onChange(of: timebar.touches) { showChip(.drag, life: 1.2) }
         .onChange(of: light.locationName) { hereError = nil }
         .sensoryFeedback(.impact(weight: .medium), trigger: spotDrops)
+        // Дорогу спрашиваем, когда куски сменились (`roadAsk`); в паре сети
+        // у веба нет — там прямые, и натив не спрашивает.
+        .onChange(of: routeMode ? app.routeRuns : [], initial: true) { _, runs in
+            if !runs.isEmpty && !app.mapOffline { app.roads.ask(app.mapSource, runs) }
+        }
+        .onChange(of: app.mapSource) { if routeMode && !app.mapOffline { app.roads.ask(app.mapSource, app.routeRuns) } }
         // Центр компаса стал булавкой-визиром или вернулся в круг (слово
         // Алексея 24.09: «тактильная отдача, значок трансформируется»).
         .sensoryFeedback(.impact(weight: .medium), trigger: sight)
@@ -788,6 +795,25 @@ struct MapScreenView: View {
         }
     }
 
+    /// Дорога куска, если ответили (`roadOf` веба); иначе прямая.
+    private func roadOf(_ run: RouteRun) -> RoadAnswer? {
+        app.roads.answer(app.mapSource, run) ?? nil
+    }
+
+    /// «12 км · 25 мин» — только когда ответили все куски (`chainDist`).
+    private func routeDist() -> String? {
+        let runs = app.routeRuns
+        guard !runs.isEmpty else { return nil }
+        var km = 0.0, min = 0
+        for r in runs {
+            guard let a = roadOf(r) else { return nil }
+            km += a.km; min += a.min
+        }
+        let nt = NumberText(language: app.language)
+        let n = km < 10 ? nt.num(km, digits: 1) : nt.num(km.rounded(), digits: 0)
+        return app.lexicon.t("pro.distKm", ["n": n]) + " · " + PlannerFacts(app: app, dark: false).durLabel(min)
+    }
+
     /// Полоса черновика и её кнопки.
     private func routeBar(_ pal: Palette) -> some View {
         let pts = app.routeSpots
@@ -796,7 +822,7 @@ struct MapScreenView: View {
             RouteRow(id: sp.id, name: sp.name.isEmpty ? sp.coordinate.text : sp.name,
                      walk: i + 1 < pts.count ? app.isWalk(from: sp.id, to: pts[i + 1].id) : nil)
         }
-        return RouteBar(rows: rows, hasSpots: !app.spots.isEmpty,
+        return RouteBar(rows: rows, dist: routeDist(), hasSpots: !app.spots.isEmpty,
                         canAdd: app.spots.contains { !inRoute.contains($0.id) },
                         undo: app.undo, lexicon: app.lexicon, pal: pal,
                         onAdd: { f in
@@ -806,6 +832,7 @@ struct MapScreenView: View {
                         },
                         onClear: { withAnimation(.easeOut(duration: 0.2)) { app.clearRoute() } },
                         onDrop: { id in app.dropRouteUndo(); app.routeToggle(id: id) },
+                        onMove: { from, to in app.moveRoute(from: from, to: to) },
                         onWay: { i in
                             guard i + 1 < pts.count else { return }
                             app.toggleWalk(from: pts[i].id, to: pts[i + 1].id)

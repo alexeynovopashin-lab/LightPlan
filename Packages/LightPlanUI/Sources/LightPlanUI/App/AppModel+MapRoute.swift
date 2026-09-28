@@ -2,6 +2,8 @@ import Foundation
 import LightPlanDomain
 import LightPlanData
 import LightPlanCore
+import LightPlanMapCanvas
+import Observation
 
 /// Черновик маршрута «Карты» (итерация 24а): `mapRoute` веба — id «Моих мест»
 /// по порядку, один на приложение. Ключ веба лежит в снимке среди чужих
@@ -139,4 +141,102 @@ func kmBetween(_ a: GeoCoordinate, _ b: GeoCoordinate) -> Double {
     let h = sin(dLat / 2) * sin(dLat / 2)
         + cos(a.latitude * rad) * cos(b.latitude * rad) * sin(dLon / 2) * sin(dLon / 2)
     return 2 * 6371 * asin(min(1, sqrt(h)))
+}
+
+// MARK: - Дорога (шаг 3)
+
+/// Кусок черновика, который спрашивают у маршрутизатора одним запросом
+/// (`chainRuns` веба): подряд идущие точки одного способа.
+public struct RouteRun: Equatable, Sendable {
+    public var mode: RoadMode
+    public var points: [MapCanvasCenter]
+}
+
+extension AppModel {
+    /// Одно место (`sameSpot` веба): ближе 0,0006° по обеим осям.
+    static func sameSpot(_ a: MapCanvasCenter, _ b: MapCanvasCenter) -> Bool {
+        abs(a.latitude - b.latitude) < 0.0006 && abs(a.longitude - b.longitude) < 0.0006
+    }
+
+    /// `chainRuns(routeChain())` веба для черновика. Два места подряд в одной
+    /// точке — не переезд; смена способа рвёт кусок: машину и пешком считают
+    /// разные сервисы.
+    public var routeRuns: [RouteRun] {
+        let pts = routeSpots
+        var runs: [RouteRun] = []
+        var cur: Int?
+        for i in 0 ..< max(0, pts.count - 1) {
+            let a = pts[i], b = pts[i + 1]
+            guard let ala = a.latitude, let alo = a.longitude,
+                  let bla = b.latitude, let blo = b.longitude else { cur = nil; continue }
+            let pa = MapCanvasCenter(latitude: ala, longitude: alo)
+            let pb = MapCanvasCenter(latitude: bla, longitude: blo)
+            if Self.sameSpot(pa, pb) { continue }
+            let mode: RoadMode = isWalk(from: a.id, to: b.id) ? .foot : .car
+            if let c = cur, runs[c].mode == mode, let last = runs[c].points.last, Self.sameSpot(last, pa) {
+                runs[c].points.append(pb)
+            } else {
+                runs.append(RouteRun(mode: mode, points: [pa, pb]))
+                cur = runs.count - 1
+            }
+        }
+        return runs
+    }
+
+    /// Перестановка удержанием номера (`rbDragEnd`): строка `from` встаёт на `to`
+    /// в порядке живых точек. Удалённые места в черновике остаются, где были.
+    public func moveRoute(from: Int, to: Int) {
+        let live = routeSpots.map(\.id)
+        guard from != to, live.indices.contains(from), live.indices.contains(to) else { return }
+        var order = live
+        order.insert(order.remove(at: from), at: to)
+        // Живые id встают на свои прежние места в полном списке по новому порядку.
+        var next = order.makeIterator()
+        let liveSet = Set(live)
+        setMapRoute(mapRoute.map { liveSet.contains($0) ? next.next()! : $0 })
+    }
+}
+
+/// Кэш и очередь маршрутизатора (`roadCache`, `roadFly`, `roadAsk` веба).
+/// Ключ — источник, способ и точки: те же точки пешком — другой вопрос, и
+/// карты Apple — другой ответ. Сбой кладёт `nil`: в этом сеансе кусок не
+/// спрашивают снова и он остаётся прямой.
+@MainActor
+@Observable
+final class RoadBook {
+    private(set) var cache: [String: RoadAnswer?] = [:]
+    @ObservationIgnored private var flying: Set<String> = []
+    @ObservationIgnored private var pending = ""
+    @ObservationIgnored private var wait: Task<Void, Never>?
+
+    static func key(_ source: MapCanvasSource, _ run: RouteRun) -> String {
+        source.rawValue + "|" + run.mode.rawValue + "|" + RoadRouter.key(run.points)
+    }
+
+    /// Ответ на кусок: `nil` — ещё не спрашивали или летит; `.some(nil)` — сбой.
+    func answer(_ source: MapCanvasSource, _ run: RouteRun) -> RoadAnswer?? {
+        cache[Self.key(source, run)]
+    }
+
+    /// Спросить разом всё, что нужно кадру, через 400 мс тишины. Ждём руку, а
+    /// не кусок: тот же набор кусков повторно не перезапускает ожидание.
+    func ask(_ source: MapCanvasSource, _ runs: [RouteRun]) {
+        let keys = runs.map { Self.key(source, $0) }
+        let id = keys.joined(separator: "‖")
+        guard !id.isEmpty, id != pending else { return }
+        pending = id
+        wait?.cancel()
+        wait = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled, let self else { return }
+            for (k, run) in zip(keys, runs) where self.cache[k] == nil && !self.flying.contains(k) {
+                self.flying.insert(k)
+                Task {
+                    let a = await RoadRouter.ask(source: source, mode: run.mode, points: run.points)
+                    self.flying.remove(k)
+                    self.cache[k] = .some(a)
+                }
+            }
+        }
+    }
 }
