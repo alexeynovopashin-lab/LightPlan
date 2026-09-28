@@ -234,6 +234,9 @@ public final class AppModel {
     public var genrePrefs: [Genre: GenrePrefs] { snapshot.genrePrefs }
     /// Часы приложения: у снимка пары — прибитые, как `page.clock` веба.
     public let now: @Sendable () -> Date
+    /// Пояс телефона (веб `deviceZone`): с ним сверяется пояс места съёмки у
+    /// часов плитки дня.
+    let deviceZone: TimeZone
 
     // MARK: - Форма записи (итерация 23; правила — `AppModel+Form`)
     /// Открытая форма записи; `nil` — закрыта.
@@ -269,6 +272,7 @@ public final class AppModel {
         self.snapshot = snapshot
         self.store = store
         self.now = now
+        self.deviceZone = zone
         self.language = language
         self.lexicon = Lexicon(language)
         self.locator = locator

@@ -544,7 +544,7 @@ struct PlaceSheet: View {
 }
 
 /// `:active { opacity: 0.6 }` веба.
-private struct PressFade: ButtonStyle {
+struct PressFade: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.opacity(configuration.isPressed ? 0.6 : 1)
     }

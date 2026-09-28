@@ -15,8 +15,21 @@ extension AppModel {
     }
 
     public func openCard(id: String) {
-        guard snapshot.sessions.contains(where: { $0.id == id }) else { return }
+        guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
         cardId = id
+        Task { await learnZone(of: s) }
+    }
+
+    /// Пояс точки съёмки у геокодера (шаг 3 итерации 25). Без него пояс —
+    /// оценка по долготе: Томск выходит +6 вместо +7, и фаза, «Завершить»,
+    /// часы плитки и студийный час шли на час позже. Узнанный пояс ложится в
+    /// кэш места и в снимок (ключ веба `zones`) — офлайн на съёмке он уже есть.
+    func learnZone(of s: Session) async {
+        guard let p = Stops.skyPoint(of: s, spots: snapshot.spots, studios: snapshot.studios),
+              await place.learnZone(at: GeoCoordinate(latitude: p.latitude, longitude: p.longitude))
+        else { return }
+        snapshot.extra["zones"] = .object(place.zones.entries.mapValues { .string($0) })
+        persist()
     }
 
     public func closeCard() { cardId = nil }
@@ -32,6 +45,22 @@ extension AppModel {
             off = Double(TimeZone(identifier: place.zone.identifier)?.secondsFromGMT(for: now()) ?? 0) / 3600
         }
         return WallTime(moment: Moment(now()), utcOffsetHours: off)
+    }
+
+    /// Минута шкалы съёмки сейчас по часам места (веб `nowMinOf`); `nil` — не
+    /// в сутки съёмки.
+    func nowMinute(of s: Session) -> Int? { s.minute(at: wallNow(at: s)) }
+
+    /// Секунды текущей минуты: у всех поясов они одни и те же.
+    var nowSecond: Int { Int(((nowMs / 1000) % 60 + 60) % 60) }
+
+    /// Метка пояса места у часов плитки (веб `tzTag`): «UTC+3», если пояс
+    /// места расходится с поясом телефона; иначе и у записи без точки — `nil`.
+    func zoneTag(of s: Session) -> String? {
+        guard let p = Stops.skyPoint(of: s, spots: snapshot.spots, studios: snapshot.studios) else { return nil }
+        let there = place.zones.utcOffsetHours(latitude: p.latitude, longitude: p.longitude, on: today)
+        let here = Double(deviceZone.secondsFromGMT(for: now())) / 3600
+        return abs(here - there) < 0.01 ? nil : BlockSheet.tzText(there)
     }
 
     /// Фаза записи сейчас (веб `eventPhase`) — с настройкой «Завершать вручную».

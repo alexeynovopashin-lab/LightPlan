@@ -6,8 +6,8 @@ import LightPlanDomain
 /// экран над вкладками, как `.overlay` веба (`z-index 78`); форма открывается
 /// поверх карточки и, закрывшись, возвращает на неё.
 ///
-/// Шаг 2 — каркас: полоса, лист, нижний ряд, фаза. Шапка со знаком, плитка
-/// дня и студийный час — шаг 3, стопка соседей — шаг 4; порядок блоков
+/// Шаг 2 — каркас: полоса, лист, нижний ряд, фаза. Шаг 3 — шапка со знаком,
+/// плитка дня и студийный час; стопка соседей — шаг 4; порядок блоков
 /// («ползунки», `#cardOrder`) и сами блоки — итерация 26. Справка —
 /// `Light_Plan/docs/card_reference.md`.
 struct CardScreen: View {
@@ -76,17 +76,13 @@ struct CardScreen: View {
 
     // MARK: - Лист
 
-    /// Лист `.card-sheet`. До шага 3 в нём только имя — чтобы было видно,
-    /// чья карточка открыта.
+    /// Лист `.card-sheet`: шапка, плитка дня, студийный час. Опросник — 28,
+    /// сделка, тревоги, погода и остальные блоки — 26–27.
     private func sheet(_ pal: Palette, _ phase: EventPhase) -> some View {
-        let words = PlannerWords(lexicon: t, orgs: app.orgs)
-        let who = words.clientName(s)
-        return VStack(spacing: 0) {
-            Text(who.isEmpty ? words.typeName(s) : who)
-                .font(webFont(29, 700)).tracking(-0.7).foregroundStyle(pal.ink)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .shotNode("card.name")
+        VStack(spacing: 0) {
+            CardHead(app: app, s: s, phase: phase, pal: pal)
+            CardDayTile(app: app, s: s, phase: phase, pal: pal)
+            CardStudio(app: app, s: s, phase: phase, pal: pal)
         }
         .padding(EdgeInsets(top: 18, leading: 12, bottom: 16, trailing: 12))
         .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(pal.sheet2))

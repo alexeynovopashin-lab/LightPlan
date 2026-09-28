@@ -97,6 +97,18 @@ public final class CurrentPlace {
     /// которым нужно закрыть спиннер).
     public func settled() async { await lookupTask?.value }
 
+    /// Настоящий пояс чужой точки — места съёмки в карточке: спросить геокодер
+    /// и запомнить в кэше. Место приложения не меняется. Пояс уже известен —
+    /// вопроса нет; геокодер молчит — остаётся оценка по долготе (итерация 25).
+    /// Возвращает, узнан ли новый пояс.
+    @discardableResult
+    public func learnZone(at c: GeoCoordinate) async -> Bool {
+        guard zones.zone(at: c) == nil,
+              let z = try? await namer.lookup(c).zone else { return false }
+        zones.remember(z, at: c)
+        return zones.zone(at: c) != nil
+    }
+
     private func scheduleNaming(for c: GeoCoordinate) {
         lookupTask?.cancel()                     // ответ про прежнее место уже не нужен
         lookupTask = Task { [namer, debounce] in
