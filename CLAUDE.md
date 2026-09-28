@@ -88,15 +88,32 @@ Build on Alexey's iPhone — for his word at the end of an iteration. Device: **
 (15 Pro Max, `5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F`). Never «iPhone Elena» — not his.
 Free signing team until the Developer Program is paid: the build expires in 7 days, reinstall.
 
+**Branches sit side by side on the phone (Alexey, 2026-09-28).** One bundle id
+for every branch meant each install replaced the previous one: iteration 24
+overwrote the dome fix he was checking. So:
+- `Novopashin.LightPlan` («Light Plan» on the home screen) = `main` only;
+  reinstall it after a merge to `main`.
+- A branch installs as its own app: bundle id `Novopashin.LightPlan.<slug>`,
+  home-screen name `LP <slug>` (`wt/24a` → `wt24a`, «LP 24a»; Latin, short).
+  Tell Alexey the icon name he is checking.
+- Each copy has its own data: seed it there if the check needs data.
+- Branch merged or dropped → uninstall its app (commands below).
+- Free team caps how many apps/App IDs it signs (from Apple docs, not measured
+  here); a signing error about the limit → uninstall closed branches, tell him.
+
 ```
 xcrun devicectl list devices | grep ALno        # "available (paired)" — else ask him to plug in / unlock
+# main: SLUG empty, NAME "Light Plan", BID Novopashin.LightPlan; branch: SLUG=wt24a NAME="LP 24a"
+BID=Novopashin.LightPlan${SLUG:+.$SLUG}
 xcodebuild -project LightPlan.xcodeproj -scheme LightPlan-iOS -configuration Debug \
   -destination 'platform=iOS,id=5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F' \
-  -derivedDataPath /tmp/cc-phone-<branch> -allowProvisioningUpdates build \
+  -derivedDataPath /tmp/cc-phone-<branch> -allowProvisioningUpdates \
+  PRODUCT_BUNDLE_IDENTIFIER=$BID INFOPLIST_KEY_CFBundleDisplayName="$NAME" build \
   > /tmp/cc-phone.log 2>&1; echo "exit=$?"; grep -nE 'error:|BUILD (SUCCEEDED|FAILED)' /tmp/cc-phone.log | head
 xcrun devicectl device install app --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F \
   /tmp/cc-phone-<branch>/Build/Products/Debug-iphoneos/LightPlan.app
-xcrun devicectl device process launch --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F Novopashin.LightPlan
+xcrun devicectl device process launch --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F $BID
+xcrun devicectl device uninstall app --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F $BID   # closed branch
 ```
 
 `launch` fails with «Locked» when the phone is locked — the app is installed anyway; tell him to
