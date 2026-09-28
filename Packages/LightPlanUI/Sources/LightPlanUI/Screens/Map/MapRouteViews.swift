@@ -1,6 +1,7 @@
 import SwiftUI
 import LightPlanCore
 import LightPlanDomain
+import LightPlanMapCanvas
 
 // Режим маршрута «Карты» (итерация 24а): визир, кнопки «Маршрут» и «Моё
 // место», кольцо касания и полоса черновика. Числа — справка веба
@@ -145,43 +146,253 @@ struct RouteNumber: View {
     }
 }
 
-/// Полоса черновика (`#mapRouteBar`), шаг 1 итерации: верхняя строка — знак
-/// `route` 17 / 1,7 латунью и текст. Список, «＋», «✕» и «Сделать съёмкой» —
-/// шаг 2. Плашка: `--bar` на стекле, рамка 1 `--ink-10`, радиус 16, внутри
-/// 8 / 8 / 9.
+/// Строка списка черновика: место и способ перехода к следующей.
+struct RouteRow: Identifiable, Equatable {
+    let id: String
+    let name: String
+    /// К следующей точке — пешком; `nil` у последней: выходить ей некуда.
+    let walk: Bool?
+}
+
+/// Полоса черновика (`#mapRouteBar`, `renderRouteBar`, `renderRouteList`).
+/// Плашка: `--bar` на стекле, рамка 1 `--ink-10`, радиус 16, внутри 8 / 8 / 9,
+/// зазор 7. Верх — знак, счёт, «＋» и «✕»; список строк 28 окном до 121;
+/// низ — «Сделать съёмкой» (мест нет вовсе — «Сохранить это место»). Пока
+/// висит «Вернуть» снятого черновика, она лежит на выключенной кнопке, а
+/// полоса держит прежнюю высоту (`hold`).
 struct RouteBar: View {
-    let count: Int
+    let rows: [RouteRow]
     let hasSpots: Bool
+    /// Есть место не в черновике — «＋» виден.
+    let canAdd: Bool
+    let undo: UndoOffer?
     let lexicon: Lexicon
     let pal: Palette
+    var onAdd: (CGRect) -> Void = { _ in }
+    var onClear: () -> Void = {}
+    var onDrop: (String) -> Void = { _ in }
+    var onWay: (Int) -> Void = { _ in }
+    var onMake: () -> Void = {}
+    var onSave: () -> Void = {}
+    var onUndo: () -> Void = {}
+    var onUndoExpire: (UUID) -> Void = { _ in }
+
+    @State private var height: CGFloat = 0
+    @State private var held: CGFloat?
+    @State private var addFrame: CGRect = .zero
+
+    static let rowH: CGFloat = 28
+    /// Окно списка: 4 строки + 9 (`max-height: 121px`).
+    static let listMax: CGFloat = 121
 
     var body: some View {
+        let count = rows.count
+        let routeUndo = undo.flatMap { $0.isRoute ? $0 : nil }
         VStack(spacing: 7) {
-            HStack(spacing: 9) {
-                Icon("route", size: 17, line: 1.7).foregroundStyle(pal.brass)
-                VStack(alignment: .leading, spacing: 1) {
-                    if count > 0 {
-                        Text(lexicon.count("unit.point", count))
-                            .font(.system(size: 11)).foregroundStyle(pal.ink4)
-                            .shotNode("route.sum", text: lexicon.count("unit.point", count))
-                    } else {
-                        Text(lexicon.t(hasSpots ? "map.routeHint" : "map.routeNoSpots"))
-                            .font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.ink)
-                        Text(lexicon.t(hasSpots ? "map.routeFromSaved" : "map.routeNoSpotsSub"))
-                            .font(.system(size: 11)).foregroundStyle(pal.ink4)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.leading, 5)
-            .frame(minHeight: 28)
+            top(count)
+            if !rows.isEmpty { list }
+            bottom(routeUndo)
         }
         .padding(EdgeInsets(top: 8, leading: 8, bottom: 9, trailing: 8))
+        .frame(minHeight: routeUndo != nil ? held : nil, alignment: .top)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.bar)
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(pal.ink10, lineWidth: 1))
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        .onChange(of: routeUndo?.token) { _, t in if t == nil { held = nil } }
         .shotNode("map.routeBar")
+    }
+
+    // MARK: верх
+
+    private func top(_ count: Int) -> some View {
+        HStack(spacing: 9) {
+            Icon("route", size: 17, line: 1.7).foregroundStyle(pal.brass)
+            VStack(alignment: .leading, spacing: 1) {
+                if count > 0 {
+                    // Км и минуты — только от маршрутизатора (шаг 3).
+                    Text(lexicon.count("unit.point", count))
+                        .font(.system(size: 11)).foregroundStyle(pal.ink4)
+                        .shotNode("route.sum", text: lexicon.count("unit.point", count))
+                } else {
+                    Text(lexicon.t(hasSpots ? "map.routeHint" : "map.routeNoSpots"))
+                        .font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.ink)
+                        .shotNode("route.sum", text: lexicon.t(hasSpots ? "map.routeHint" : "map.routeNoSpots"))
+                    Text(lexicon.t(hasSpots ? "map.routeFromSaved" : "map.routeNoSpotsSub"))
+                        .font(.system(size: 11)).foregroundStyle(pal.ink4)
+                }
+            }
+            Spacer(minLength: 0)
+            // Кнопкам нечего делать — они уходят, а не гаснут.
+            if canAdd {
+                Button { onAdd(addFrame) } label: {
+                    Icon("plus", size: 15, line: 2).foregroundStyle(pal.brass)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(pal.pressBrass))
+                }
+                .buttonStyle(.plain)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("mapScreen")) } action: { addFrame = $0 }
+                .accessibilityLabel(lexicon.t("map.routeAdd"))
+                .shotNode("route.add")
+            }
+            if count > 0 {
+                Button {
+                    held = height
+                    onClear()
+                } label: {
+                    Icon("close", size: 15, line: 1.7).foregroundStyle(pal.ink4)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(pal.ink10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(lexicon.t("map.routeClear"))
+                .shotNode("route.clear")
+            }
+        }
+        .padding(.leading, 5)
+        .frame(minHeight: 28)
+    }
+
+    // MARK: список
+
+    private var list: some View {
+        let full = CGFloat(rows.count) * Self.rowH + CGFloat(max(0, rows.count - 1))
+        let scrolls = full > Self.listMax
+        return ScrollView(.vertical) {
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { i, r in
+                    if i > 0 { Rectangle().fill(pal.hairline).frame(height: 1) }
+                    row(i, r)
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: min(full, Self.listMax))
+        // Строки уходят под низ окна — маска 16 (`mask-image` веба).
+        .mask {
+            VStack(spacing: 0) {
+                Color.black
+                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: scrolls ? 16 : 0)
+            }
+        }
+        .shotNode("route.list")
+    }
+
+    private func row(_ i: Int, _ r: RouteRow) -> some View {
+        HStack(spacing: 0) {
+            // Номер-кнопка 28; перестановка удержанием — шаг 3.
+            Text(String(i + 1))
+                .font(.system(size: 9.5, weight: .bold).monospacedDigit())
+                .foregroundStyle(pal.surface)
+                .frame(width: 15, height: 15)
+                .background(Circle().fill(pal.brass))
+                .frame(width: 28, height: 28)
+            Text(r.name).font(.system(size: 13.5)).foregroundStyle(pal.ink).lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let walk = r.walk {
+                Button { onWay(i) } label: {
+                    Icon(walk ? "hiker" : "car", size: 16, line: 1.6)
+                        .foregroundStyle(walk ? pal.brass : pal.ink7)
+                        .frame(width: 30, height: 28).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(lexicon.t(walk ? "map.wayWalk" : "map.wayDrive"))
+                .shotNode("route.way.\(i + 1)")
+            }
+            Button { onDrop(r.id) } label: {
+                Icon("close", size: 13, line: 1.8).foregroundStyle(pal.ink7)
+                    .frame(width: 34, height: 28).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(lexicon.t("map.routeDrop"))
+        }
+        .frame(height: Self.rowH)
+        .shotNode("route.row.\(i + 1)", text: r.name)
+    }
+
+    // MARK: низ
+
+    @ViewBuilder
+    private func bottom(_ routeUndo: UndoOffer?) -> some View {
+        if !hasSpots {
+            Button(action: onSave) {
+                HStack(spacing: 8) {
+                    Icon("bookmark", size: 16, line: 1.6)
+                    Text(lexicon.t("map.routeSaveHere")).font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundStyle(pal.brass)
+                .frame(maxWidth: .infinity).padding(.vertical, 10)
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(pal.brassDark, lineWidth: 1))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .shotNode("route.save")
+        } else {
+            let on = !rows.isEmpty
+            Button(action: onMake) {
+                Text(lexicon.t("map.routeMake")).font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(on ? pal.surface : pal.ink5)
+                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? pal.brass : pal.ink10))
+            }
+            .buttonStyle(.plain)
+            .disabled(!on)
+            .overlay { if let u = routeUndo { undoPlate(u) } }
+            .shotNode("route.make")
+        }
+    }
+
+    /// «Маршрут снят · 3 точки» и «Вернуть» — на выключенной кнопке, 6 с.
+    private func undoPlate(_ u: UndoOffer) -> some View {
+        HStack(spacing: 12) {
+            Text(u.text).font(.system(size: 13)).foregroundStyle(pal.ink4).lineLimit(1)
+                .shotNode("undo.text", text: u.text)
+            Spacer(minLength: 0)
+            Button(action: onUndo) {
+                Text(lexicon.t("plan.undo")).font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(pal.brass).padding(.vertical, 2)
+            }
+            .buttonStyle(.plain)
+            .shotNode("undo.btn")
+        }
+        .padding(.horizontal, 15)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.overlay3))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1))
+        .transition(.opacity)
+        .task(id: u.token) {
+            try? await Task.sleep(for: .seconds(UndoOffer.seconds))
+            onUndoExpire(u.token)
+        }
+    }
+}
+
+/// Линия черновика на холсте (`placeRoutePath`): пока дороги нет — прямая
+/// штрихом, 2,2 латунью .45, `dash 6 6`. Слой под булавками, над вуалью.
+/// Одно место дважды подряд — не переезд (нулевой отрезок и так не виден).
+struct RoutePathLayer: View {
+    let spots: [Spot]
+    let feed: MapCameraFeed
+    let fallback: MapCanvasCamera
+    let anchor: CGPoint
+    let pal: Palette
+
+    var body: some View {
+        let cam = feed.camera ?? fallback
+        Path { p in
+            for (i, sp) in spots.enumerated() {
+                guard let la = sp.latitude, let lo = sp.longitude else { continue }
+                let d = MapSpots.offset(latitude: la, longitude: lo, camera: cam)
+                let pt = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
+                if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+            }
+        }
+        .stroke(pal.brass.opacity(0.45), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [6, 6]))
+        .allowsHitTesting(false)
+        .shotNode("route.line")
     }
 }

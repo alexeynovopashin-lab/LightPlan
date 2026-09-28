@@ -55,6 +55,11 @@ struct MapScreenView: View {
     /// Веер «Мои места» и рамка его кнопки в шапке: веер встаёт под ней.
     @State private var fanOpen = false
     @State private var listFrame: CGRect = .zero
+    /// Веер открыт от «＋» черновика (24а): приписки и тап в черновик.
+    @State private var fanRoute = false
+    /// «Моё место» не нашло телефон — строка в шапке вместо имени места
+    /// (`$("mLocName").textContent = m` веба), до смены места.
+    @State private var hereError: String?
     /// Режим маршрута (24а, `routeMode` веба): низ — полоса черновика, тап
     /// ставит точку. Не сохраняется: сохраняется сам черновик (`mapRoute`).
     @State private var routeMode = false
@@ -161,6 +166,12 @@ struct MapScreenView: View {
 
                     // Булавки своих мест — над вуалью и под прибором: город ночью
                     // темнеет, свои точки — нет. Слой — квадрат ротора, как холст.
+                    if routeMode && app.routeSpots.count > 1 {
+                        RoutePathLayer(spots: app.routeSpots, feed: feed, fallback: fallbackCamera(place),
+                                       anchor: anchor, pal: pal)
+                            .frame(width: side, height: side)
+                            .position(x: size.width / 2, y: size.height / 2)
+                    }
                     if layers.spots {
                         MapSpotsLayer(spots: app.spots, feed: feed, fallback: fallbackCamera(place),
                                       anchor: anchor, here: app.place.coordinate, pal: pal,
@@ -227,8 +238,7 @@ struct MapScreenView: View {
                     if routeMode {
                         // Полоса черновика (`.route-bar`: поля 12 / 16 / 0) — над
                         // картой без стекла низа во всю ширину.
-                        RouteBar(count: app.routeSpots.count, hasSpots: !app.spots.isEmpty,
-                                 lexicon: app.lexicon, pal: pal)
+                        routeBar(pal)
                             .padding(.horizontal, 16)
                             .padding(.bottom, safe.bottom)
                             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: {
@@ -282,6 +292,7 @@ struct MapScreenView: View {
             .ignoresSafeArea()
         }
         .onChange(of: timebar.touches) { showChip(.drag, life: 1.2) }
+        .onChange(of: light.locationName) { hereError = nil }
         .sensoryFeedback(.impact(weight: .medium), trigger: spotDrops)
         // Центр компаса стал булавкой-визиром или вернулся в круг (слово
         // Алексея 24.09: «тактильная отдача, значок трансформируется»).
@@ -375,7 +386,7 @@ struct MapScreenView: View {
         Button { app.placeSheetOpen = true } label: {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(light.locationName)
+                Text(hereError ?? light.locationName)
                     .font(.system(size: 16, weight: .semibold)).tracking(-0.2)
                     .foregroundStyle(pal.ink)
                     .shotNode("header.name", text: light.locationName)
@@ -412,6 +423,7 @@ struct MapScreenView: View {
             HStack(spacing: 0) {
                 if !app.spots.isEmpty && !routeMode {
                     MapListButton(lexicon: app.lexicon, pal: pal) {
+                        fanRoute = false
                         withAnimation(.easeOut(duration: 0.16)) { fanOpen = true }
                     }
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { listFrame = $0 }
@@ -660,8 +672,14 @@ struct MapScreenView: View {
         ZStack(alignment: .topTrailing) {
             Color.clear.contentShape(Rectangle())
                 .onTapGesture { withAnimation(.easeOut(duration: 0.16)) { fanOpen = false } }
-            SpotFan(spots: app.spots, here: app.place.coordinate, pal: pal) { sp in
+            SpotFan(spots: app.spots, here: app.place.coordinate, pal: pal, deco: fanRoute ? routeDeco : { _ in nil }) { sp in
                 fanOpen = false
+                // Из «＋» черновика — в черновик или из него; карта не едет.
+                if fanRoute {
+                    app.dropRouteUndo()
+                    if app.routeToggle(id: sp.id) { land(sp.id) }
+                    return
+                }
                 guard let la = sp.latitude, let lo = sp.longitude else { return }
                 app.movePlace(to: GeoCoordinate(latitude: la, longitude: lo))
             }
@@ -703,12 +721,14 @@ struct MapScreenView: View {
     /// кадра — новое место открывает полосу имени с клавиатурой.
     private func routeTap(_ hit: Spot?, screen: CGPoint?) {
         if let sp = hit {
+            app.dropRouteUndo()
             if app.routeToggle(id: sp.id) { land(sp.id) }
             openBar(sp, edit: true, quiet: true)
             return
         }
         if barSpot != nil { closeBar(); return }
         if let screen { ring(at: screen) }
+        app.dropRouteUndo()
         let r = app.routeAddHere()
         land(r.spot.id)
         if r.isNew { openBar(r.spot, edit: false, quiet: false) }
@@ -754,6 +774,8 @@ struct MapScreenView: View {
         guard routeMode != on, !dockOut else { return }
         withAnimation(.timingCurve(0.33, 1, 0.68, 1, duration: 0.38)) { sight = on }
         if barSpot != nil { closeBar() }
+        fanOpen = false
+        if !on { app.dropRouteUndo() }
         let ease = Animation.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24)
         withAnimation(ease) { dockOut = true }
         Task { @MainActor in
@@ -764,6 +786,50 @@ struct MapScreenView: View {
             try? await Task.sleep(for: .milliseconds(340))
             glide = false
         }
+    }
+
+    /// Полоса черновика и её кнопки.
+    private func routeBar(_ pal: Palette) -> some View {
+        let pts = app.routeSpots
+        let inRoute = Set(app.mapRoute)
+        let rows = pts.enumerated().map { i, sp in
+            RouteRow(id: sp.id, name: sp.name.isEmpty ? sp.coordinate.text : sp.name,
+                     walk: i + 1 < pts.count ? app.isWalk(from: sp.id, to: pts[i + 1].id) : nil)
+        }
+        return RouteBar(rows: rows, hasSpots: !app.spots.isEmpty,
+                        canAdd: app.spots.contains { !inRoute.contains($0.id) },
+                        undo: app.undo, lexicon: app.lexicon, pal: pal,
+                        onAdd: { f in
+                            listFrame = f
+                            fanRoute = true
+                            withAnimation(.easeOut(duration: 0.16)) { fanOpen = true }
+                        },
+                        onClear: { withAnimation(.easeOut(duration: 0.2)) { app.clearRoute() } },
+                        onDrop: { id in app.dropRouteUndo(); app.routeToggle(id: id) },
+                        onWay: { i in
+                            guard i + 1 < pts.count else { return }
+                            app.toggleWalk(from: pts[i].id, to: pts[i + 1].id)
+                        },
+                        onMake: {
+                            let tb = app.light.timebar.machine
+                            if app.makeRouteShoot(day: tb.selectedDate, minute: tb.viewMinute) { setRouteMode(false) }
+                        },
+                        onSave: { saveTapped() },
+                        onUndo: { withAnimation(.easeOut(duration: 0.2)) { app.takeUndo() } },
+                        onUndoExpire: { t in withAnimation(.easeOut(duration: 0.2)) { app.expireUndo(t) } })
+    }
+
+    /// Приписки веера от «＋» (`openSpotFan(..., deco)`): у места в черновике —
+    /// номер, у остальных — «+2,4 км» от последней точки по прямой.
+    private func routeDeco(_ sp: Spot) -> FanDeco? {
+        if let n = app.routeNumber(of: sp.id) { return .number(n) }
+        guard let last = app.routeSpots.last, last.id != sp.id,
+              let la = sp.latitude, let lo = sp.longitude,
+              let lla = last.latitude, let llo = last.longitude else { return nil }
+        let km = kmBetween(GeoCoordinate(latitude: lla, longitude: llo), GeoCoordinate(latitude: la, longitude: lo))
+        let nt = NumberText(language: app.language)
+        let n = km < 10 ? nt.num(km, digits: 1) : nt.num(km.rounded(), digits: 0)
+        return .side("+" + app.lexicon.t("pro.distKm", ["n": n]))
     }
 
     private func routeButton(_ pal: Palette, darkCanvas: Bool) -> some View {
@@ -777,7 +843,12 @@ struct MapScreenView: View {
     /// телефон. Разрешение спрашивается здесь же, как у листа места.
     private func hereButton(_ pal: Palette, darkCanvas: Bool) -> some View {
         MapRoundButton(pal: pal, darkCanvas: darkCanvas, on: false, label: app.lexicon.t("map.myPlace"),
-                       node: "map.here", action: { Task { await app.locateHere() } }) {
+                       node: "map.here", action: {
+            Task {
+                if case .fix = await app.locateHere() { hereError = nil }
+                else { hereError = app.lexicon.t("loc.errNotFound") }
+            }
+        }) {
             MapHereGlyph().stroke(style: StrokeStyle(lineWidth: 1.8 * 18 / 24, lineCap: .round, lineJoin: .round))
         }
     }

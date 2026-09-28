@@ -147,7 +147,8 @@ struct UndoBar: View {
     var body: some View {
         let pal = Palette(scheme)
         ZStack {
-            if let u = app.undo {
+            // Черновик маршрута держит свою полосу — на «Сделать съёмкой» (24а).
+            if let u = app.undo, !u.isRoute {
                 HStack(spacing: 12) {
                     Text(u.text).font(.system(size: 13)).foregroundStyle(pal.ink4).lineLimit(1)
                         .shotNode("undo.text", text: u.text)

@@ -395,10 +395,19 @@ struct MapListButton: View {
 /// `--ink-4`; место, где стоим, — латунью с заливкой 0,25), имя 15 и
 /// уточнение 11 `--ink-4`, поле 11 × 12, зазор 10. Выбор отдаётся наружу:
 /// веер не знает, кто его открыл.
+/// Приписка строки веера.
+enum FanDeco: Equatable {
+    case number(Int)
+    case side(String)
+}
+
 struct SpotFan: View {
     let spots: [Spot]
     let here: GeoCoordinate
     let pal: Palette
+    /// Приписка строки у «＋» черновика (`openSpotFan(..., deco)`): номер
+    /// места в черновике или «+2,4 км» от последней точки.
+    var deco: (Spot) -> FanDeco? = { _ in nil }
     let pick: (Spot) -> Void
 
     var body: some View {
@@ -444,6 +453,18 @@ struct SpotFan: View {
                 }
             }
             Spacer(minLength: 0)
+            switch deco(sp) {
+            case .number(let n)?:
+                Text(String(n))
+                    .font(.system(size: 9.5, weight: .bold).monospacedDigit())
+                    .foregroundStyle(pal.surface)
+                    .frame(width: 15, height: 15)
+                    .background(Circle().fill(pal.brass))
+            case .side(let t)?:
+                Text(t).font(.system(size: 10)).foregroundStyle(pal.ink5)
+            case nil:
+                EmptyView()
+            }
         }
         .padding(.vertical, 11).padding(.horizontal, 12)
         .contentShape(Rectangle())

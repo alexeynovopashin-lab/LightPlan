@@ -91,4 +91,71 @@ struct MapRouteTests {
         #expect(second.mapRoute == ["b", "a"])
         #expect(second.snapshotForTests.extra["mapWalk"] == .object(["b>a": .number(1)]))
     }
+
+    // MARK: - Шаг 2: полоса
+
+    /// Три места Барнаула в черновике, по 1 км друг от друга.
+    private func threeInRoute() -> (AppModel, [String]) {
+        let app = model()
+        var ids: [String] = []
+        for (i, lat) in [53.3480, 53.3570, 53.3660].enumerated() {
+            app.moveFromMap(latitude: lat, longitude: 83.7760)
+            ids.append(app.routeAddHere(now: Date(timeIntervalSince1970: 1_790_000_000 + Double(i))).spot.id)
+        }
+        return (app, ids)
+    }
+
+    @Test func walkIsKeyedByPairLikeTheWeb() {
+        let (app, ids) = threeInRoute()
+        #expect(!app.isWalk(from: ids[0], to: ids[1]))
+        app.toggleWalk(from: ids[0], to: ids[1])
+        #expect(app.isWalk(from: ids[0], to: ids[1]))
+        #expect(!app.isWalk(from: ids[1], to: ids[2]))
+        guard case .object(let o)? = app.snapshot.extra["mapWalk"] else { Issue.record("нет mapWalk"); return }
+        #expect(o == [ids[0] + ">" + ids[1]: .number(1)])
+        app.toggleWalk(from: ids[0], to: ids[1])
+        #expect(app.mapWalk.isEmpty)
+    }
+
+    @Test func clearOffersUndoAndUndoReturnsOnlyLiveSpots() {
+        let (app, ids) = threeInRoute()
+        app.clearRoute()
+        #expect(app.mapRoute.isEmpty && app.spots.count == 3)
+        #expect(app.undo?.isRoute == true)
+        #expect(app.undo?.text == "Маршрут снят · 3 точки")
+        // Место удалили, пока висела полоса, — возвращаются только живые.
+        app.snapshot.spots.removeAll { $0.id == ids[1] }
+        app.takeUndo()
+        #expect(app.mapRoute == [ids[0], ids[2]])
+        #expect(app.undo == nil)
+    }
+
+    @Test func newPointDropsRouteUndo() {
+        let (app, _) = threeInRoute()
+        app.clearRoute()
+        app.dropRouteUndo()
+        #expect(app.undo == nil)
+    }
+
+    @Test func makeShootPutsSpotsInOrderWithoutHoursAndKeepsDraft() {
+        let (app, ids) = threeInRoute()
+        app.toggleWalk(from: ids[1], to: ids[2])
+        app.lastFormGenre = .wedding
+        let day = CivilDate(year: 2026, month: 10, day: 3)
+        #expect(app.makeRouteShoot(day: day, minute: 600))
+        guard let f = app.form else { Issue.record("форма не открылась"); return }
+        #expect(f.genre == .wedding)
+        #expect(f.route.map(\.spotId) == ids)
+        #expect(f.route.allSatisfy { $0.start == nil && $0.end == nil && $0.name.isEmpty })
+        #expect(f.route.map(\.walk) == [false, true, false])
+        #expect(f.sessionPlace.latitude == app.spots.first { $0.id == ids[0] }?.latitude)
+        #expect(app.mapRoute == ids)
+    }
+
+    @Test func kmBetweenMatchesHaversine() {
+        let a = GeoCoordinate(latitude: 53.3480, longitude: 83.7760)
+        let b = GeoCoordinate(latitude: 53.3570, longitude: 83.7760)
+        #expect(abs(kmBetween(a, b) - 1.00075) < 0.0001)
+    }
 }
+

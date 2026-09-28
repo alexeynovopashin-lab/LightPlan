@@ -613,6 +613,10 @@ extension AppModel {
         case .block(let b, let i):
             Bin.restoreBlock(b, at: i, in: &snapshot, now: nowMs)
             persist()
+        case .route(let ids):
+            // Место могли удалить за эти секунды — возвращаем только живые.
+            let live = Set(snapshot.spots.map(\.id))
+            setMapRoute(ids.filter(live.contains))
         }
     }
 

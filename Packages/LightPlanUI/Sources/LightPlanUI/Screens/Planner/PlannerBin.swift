@@ -100,6 +100,8 @@ public struct UndoOffer: Equatable, Sendable {
     public enum What: Equatable, Sendable {
         case session(id: String)
         case block(Block, index: Int)
+        /// Снятый черновик маршрута «Карты» (24а): id по порядку.
+        case route(ids: [String])
     }
     public let what: What
     public let text: String
@@ -107,6 +109,8 @@ public struct UndoOffer: Equatable, Sendable {
     public let token = UUID()
 
     public static let seconds: Double = 6
+
+    public var isRoute: Bool { if case .route = what { true } else { false } }
 }
 
 /// Заготовка листа «Занять время»: правится в листе и пишется только по
