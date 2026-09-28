@@ -73,6 +73,13 @@ struct MapSpotsLayer: View {
     let anchor: CGPoint
     let here: GeoCoordinate
     let pal: Palette
+    /// Режим маршрута (24а): номера мест черновика; точка под головкой — обычная
+    /// булавка, не колечко (головка сама стала булавкой-визиром).
+    var numbers: [String: Int] = [:]
+    var routing = false
+    /// Какая булавка только что встала в черновик и который раз — движение
+    /// постановки (`markLand`).
+    var landing: (id: String, tick: Int)?
 
     var body: some View {
         let cam = feed.camera ?? fallback
@@ -81,7 +88,8 @@ struct MapSpotsLayer: View {
                 let d = MapSpots.offset(latitude: sp.latitude!, longitude: sp.longitude!, camera: cam)
                 let tip = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
                 if MapSpots.onScreen(tip, in: g.size) {
-                    SpotMark(spot: sp, here: sp.coordinate.isSameSpot(as: here), pal: pal,
+                    SpotMark(spot: sp, here: !routing && sp.coordinate.isSameSpot(as: here), pal: pal,
+                             number: numbers[sp.id], landTick: landing?.id == sp.id ? landing!.tick : 0,
                              onLabel: { feed.labelWidths[sp.id] = $0 })
                         .position(tip)
                 }
@@ -98,7 +106,13 @@ private struct SpotMark: View {
     let spot: Spot
     let here: Bool
     let pal: Palette
+    let number: Int?
+    let landTick: Int
     let onLabel: (CGFloat) -> Void
+    /// Счётчик движений: у только что заведённого места знак рождается уже с
+    /// меткой постановки, и перемены, на которую откликнулся бы аниматор, нет.
+    @State private var lands = 0
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         // Нулевая рамка с остриём в начале координат, как `.spot-mark` веба.
@@ -114,8 +128,14 @@ private struct SpotMark: View {
             PinGlyph(pinned: spot.pinned == true, pal: pal)
                 .frame(width: 24 * MapSpots.glyphScale, height: 24 * MapSpots.glyphScale)
                 .scaleEffect(here ? 0.25 : 1, anchor: UnitPoint(x: 12.0 / 24, y: 21.0 / 24))
+                .modifier(SpotLand(tick: lands))
                 .opacity(here ? 0 : 1)
                 .offset(x: -12 * MapSpots.glyphScale, y: -21 * MapSpots.glyphScale)
+            if let number {
+                RouteNumber(n: number, pal: pal)
+                    .modifier(NumberLand(tick: lands))
+                    .offset(x: RouteNumber.center.x - 7.5, y: RouteNumber.center.y - 7.5)
+            }
             // Плашка та же, что у атрибуции: тон `--bar-2` на встроенном
             // стекле (20д); не шире 132, длинное имя обрезается многоточием.
             Text(spot.name.isEmpty ? spot.coordinate.text : spot.name)
@@ -135,6 +155,66 @@ private struct SpotMark: View {
         }
         .animation(.spring(response: 0.38, dampingFraction: 0.62), value: here)
         .frame(width: 0, height: 0, alignment: .topLeading)
+        .onAppear { if landTick > 0, !still { lands += 1 } }
+        .onChange(of: landTick) { _, v in if v > 0, !still { lands += 1 } }
+    }
+}
+
+/// `spot-land` веба: 0,52 с, ось — остриё; каждый отрезок ключей со своей
+/// кривой `cubic-bezier(.2, .7, .3, 1)`, как `animation-timing-function` CSS.
+private struct SpotLand: ViewModifier {
+    let tick: Int
+    private struct V { var scale = 1.0; var angle = 0.0 }
+    private static let curve = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.2, y: 0.7),
+                                                endControlPoint: UnitPoint(x: 0.3, y: 1))
+
+    func body(content: Content) -> some View {
+        content.keyframeAnimator(initialValue: V(), trigger: tick) { view, v in
+            view.scaleEffect(v.scale, anchor: UnitPoint(x: 12.0 / 24, y: 21.0 / 24))
+                .rotationEffect(.degrees(v.angle), anchor: UnitPoint(x: 12.0 / 24, y: 21.0 / 24))
+        } keyframes: { _ in
+            KeyframeTrack(\.scale) {
+                MoveKeyframe(2.2)
+                LinearKeyframe(1.3, duration: 0.52 * 0.38, timingCurve: Self.curve)
+                LinearKeyframe(1.06, duration: 0.52 * 0.24, timingCurve: Self.curve)
+                LinearKeyframe(0.97, duration: 0.52 * 0.20, timingCurve: Self.curve)
+                LinearKeyframe(1, duration: 0.52 * 0.18, timingCurve: Self.curve)
+            }
+            KeyframeTrack(\.angle) {
+                MoveKeyframe(-10)
+                LinearKeyframe(7, duration: 0.52 * 0.38, timingCurve: Self.curve)
+                LinearKeyframe(-4, duration: 0.52 * 0.24, timingCurve: Self.curve)
+                LinearKeyframe(2, duration: 0.52 * 0.20, timingCurve: Self.curve)
+                LinearKeyframe(0, duration: 0.52 * 0.18, timingCurve: Self.curve)
+            }
+        }
+    }
+}
+
+/// `no-land`: номер приходит следом — задержка 0,16 с, 0,3 с, `scale .2 →
+/// 1.18 → 1`, прозрачность 0 → 1 к 60 %; до начала — невидим (`backwards`).
+private struct NumberLand: ViewModifier {
+    let tick: Int
+    private struct V { var scale = 1.0; var opacity = 1.0 }
+    private static let curve = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.2, y: 0.7),
+                                                endControlPoint: UnitPoint(x: 0.3, y: 1))
+
+    func body(content: Content) -> some View {
+        content.keyframeAnimator(initialValue: V(), trigger: tick) { view, v in
+            view.scaleEffect(v.scale).opacity(v.opacity)
+        } keyframes: { _ in
+            KeyframeTrack(\.scale) {
+                MoveKeyframe(0.2)
+                LinearKeyframe(0.2, duration: 0.16)
+                LinearKeyframe(1.18, duration: 0.3 * 0.6, timingCurve: Self.curve)
+                LinearKeyframe(1, duration: 0.3 * 0.4, timingCurve: Self.curve)
+            }
+            KeyframeTrack(\.opacity) {
+                MoveKeyframe(0)
+                LinearKeyframe(0, duration: 0.16)
+                LinearKeyframe(1, duration: 0.3 * 0.6, timingCurve: Self.curve)
+            }
+        }
     }
 }
 

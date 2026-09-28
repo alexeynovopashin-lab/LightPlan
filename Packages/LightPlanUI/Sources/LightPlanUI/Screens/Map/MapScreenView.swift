@@ -55,6 +55,18 @@ struct MapScreenView: View {
     /// Веер «Мои места» и рамка его кнопки в шапке: веер встаёт под ней.
     @State private var fanOpen = false
     @State private var listFrame: CGRect = .zero
+    /// Режим маршрута (24а, `routeMode` веба): низ — полоса черновика, тап
+    /// ставит точку. Не сохраняется: сохраняется сам черновик (`mapRoute`).
+    @State private var routeMode = false
+    /// Визир — головка булавкой. Меняется сразу по нажатию, а низ — после
+    /// подмены: так у веба (`sightMorph` до `swapMapDock`).
+    @State private var sight = false
+    @State private var routeBarTop: CGFloat = 700
+    /// Булавка, только что вставшая в черновик, и счёт постановок.
+    @State private var landing: (id: String, tick: Int)?
+    /// Кольца касания в точках экрана — вне ротора.
+    @State private var rings: [(id: Int, at: CGPoint)] = []
+    @State private var ringSeq = 0
 
     init(app: AppModel) {
         self.app = app
@@ -95,7 +107,9 @@ struct MapScreenView: View {
                               height: g.size.height + safe.top + safe.bottom)
             // Низ окна: верх дока, а в голом холсте — верх панели вкладок
             // (`measureMapOptic`: барабаны и читалка сняты, остаётся таб-бар).
-            let floor = bare ? size.height - safe.bottom : dockTop
+            let floor = routeMode ? routeBarTop : bare ? size.height - safe.bottom : dockTop
+            // Живой низ кружков карты (`--ctl-bot`).
+            let ctlBot = routeMode ? routeBarTop : bare ? floor : readoutTop
             let cy = (headerBottom + floor) / 2
             ZStack(alignment: .topLeading) {
                 // Ротор (`.map-rotor`): карта, вуаль и прибор одним слоем —
@@ -123,7 +137,10 @@ struct MapScreenView: View {
                                               // Карту двинули пальцем — полоса точки уходит.
                                               if cam.byHand, barSpot != nil { closeBar() }
                                           },
-                                          onTap: { tapMap($0, anchor: anchor, side: side) })
+                                          onTap: { p in
+                                              tapMap(p, anchor: anchor, side: side,
+                                                     screen: screenPoint(p, side: side, size: size, cy: cy))
+                                          })
                                 .background(ground)
                         }
                     }
@@ -146,7 +163,8 @@ struct MapScreenView: View {
                     // темнеет, свои точки — нет. Слой — квадрат ротора, как холст.
                     if layers.spots {
                         MapSpotsLayer(spots: app.spots, feed: feed, fallback: fallbackCamera(place),
-                                      anchor: anchor, here: app.place.coordinate, pal: pal)
+                                      anchor: anchor, here: app.place.coordinate, pal: pal,
+                                      numbers: routeNumbers, routing: routeMode, landing: landing)
                             .frame(width: side, height: side)
                             .position(x: size.width / 2, y: size.height / 2)
                     }
@@ -155,7 +173,7 @@ struct MapScreenView: View {
                                       onTapMoon: { tap(.tapMoon(az: $0, alt: $1)) })
                         // Прибор гаснет вместе с уходящим низом, но не едет:
                         // он лежит на карте, а не в доке (`#mapLight`).
-                        .opacity(dockOut ? 0 : 1)
+                        .opacity(dockOut || routeMode ? 0 : 1)
                     #if DEBUG
                     // Метка севера сценария компаса (21а): в роторе, в 120 pt к северу
                     // от оси — `Tools/rotor.js` мерит по ней угол на снимке.
@@ -170,6 +188,8 @@ struct MapScreenView: View {
 
                 pin(pal).position(x: size.width / 2, y: cy)
 
+                ForEach(rings, id: \.id) { r in MapTapRing(pal: pal).position(r.at) }
+
                 Text("© CARTO · © OpenStreetMap")
                     .font(.system(size: 9)).tracking(0.2)
                     .foregroundStyle(pal.ink7)
@@ -183,10 +203,17 @@ struct MapScreenView: View {
                     .allowsHitTesting(false)
 
                 layersButton(pal, on: layers.sun || layers.moon || layers.mw, darkCanvas: darkCanvas)
-                    .position(x: 12 + 17, y: (bare ? floor : readoutTop) - 12 - 17)
+                    .position(x: 12 + 17, y: ctlBot - 12 - 17)
+
+                // Справа: «Моё место» (`#mapHere`, 12 над низом) и над ним
+                // «Маршрут» (`#mapRouteBtn`, 54 над низом).
+                hereButton(pal, darkCanvas: darkCanvas)
+                    .position(x: size.width - 12 - 17, y: ctlBot - 12 - 17)
+                routeButton(pal, darkCanvas: darkCanvas)
+                    .position(x: size.width - 12 - 17, y: ctlBot - 54 - 17)
 
                 // Возврат низа — по центру, там, где панель была (`.map-bare-btn`).
-                if bare {
+                if bare && !routeMode {
                     bareButton(pal, darkCanvas: darkCanvas)
                         .position(x: size.width / 2, y: floor - 12 - 17)
                 }
@@ -197,7 +224,20 @@ struct MapScreenView: View {
                 VStack(spacing: 0) {
                     header(light, telemetry, pal, top: safe.top)
                     Spacer(minLength: 0).allowsHitTesting(false)
-                    if !bare {
+                    if routeMode {
+                        // Полоса черновика (`.route-bar`: поля 12 / 16 / 0) — над
+                        // картой без стекла низа во всю ширину.
+                        RouteBar(count: app.routeSpots.count, hasSpots: !app.spots.isEmpty,
+                                 lexicon: app.lexicon, pal: pal)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, safe.bottom)
+                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: {
+                                routeBarTop = $0
+                            }
+                            .offset(y: dockOut ? 26 : 0)
+                            .opacity(dockOut ? 0 : 1)
+                            .transition(.identity)
+                    } else if !bare {
                         dock(light, telemetry, summary(date: date, minute: minute, solar: solar, place: place, clock: clock),
                              pal, cy: cy).padding(.bottom, safe.bottom)
                             .offset(y: dockOut ? 26 : 0)
@@ -243,6 +283,9 @@ struct MapScreenView: View {
         }
         .onChange(of: timebar.touches) { showChip(.drag, life: 1.2) }
         .sensoryFeedback(.impact(weight: .medium), trigger: spotDrops)
+        // Центр компаса стал булавкой-визиром или вернулся в круг (слово
+        // Алексея 24.09: «тактильная отдача, значок трансформируется»).
+        .sensoryFeedback(.impact(weight: .medium), trigger: sight)
         // Фокус в поле — отсчёт снят; ушёл — имя записано (`blur` веба).
         .onChange(of: barFocus) { _, focused in
             if focused { holdBar() } else if barSpot != nil { commitBar() }
@@ -260,6 +303,8 @@ struct MapScreenView: View {
             if app.startChapter == "bare" { app.startChapter = nil; bare = true }
             // …и открывает «Мои места» (`--chapter fan`, шаг 5 итерации 24).
             if app.startChapter == "fan" { app.startChapter = nil; fanOpen = true }
+            // …и включает режим маршрута (`--chapter route`, 24а) — сразу, без подмены.
+            if app.startChapter == "route" { app.startChapter = nil; routeMode = true; sight = true }
         }
         #if DEBUG
         .task { await shotHeading() }
@@ -365,13 +410,15 @@ struct MapScreenView: View {
         // перед ней вплотную — «Мои места» (`.map-list`, с первым местом).
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 0) {
-                if !app.spots.isEmpty {
+                if !app.spots.isEmpty && !routeMode {
                     MapListButton(lexicon: app.lexicon, pal: pal) {
                         withAnimation(.easeOut(duration: 0.16)) { fanOpen = true }
                     }
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { listFrame = $0 }
                 }
                 MapSaveButton(on: app.spotHere != nil, lexicon: app.lexicon, pal: pal, action: { saveTapped() })
+                    .opacity(routeMode ? 0 : 1)
+                    .allowsHitTesting(!routeMode)
             }
             .padding(.top, top + 24 - 6)
             .padding(.trailing, 24 - 8)
@@ -636,15 +683,103 @@ struct MapScreenView: View {
     /// Тап по холсту (`lmap.on("click")`): по булавке — переезд на точку и
     /// тихая полоса с её именем; мимо — открытая полоса закрывается и больше
     /// ничего. Точка под головкой в тап не идёт: ехать некуда.
-    private func tapMap(_ p: CGPoint, anchor: CGPoint, side: CGFloat) {
-        guard let id = MapSpots.hit(p, marks: spotMarks(anchor: anchor, side: side)),
-              let sp = app.spots.first(where: { $0.id == id }),
-              let la = sp.latitude, let lo = sp.longitude else {
+    private func tapMap(_ p: CGPoint, anchor: CGPoint, side: CGFloat, screen: CGPoint? = nil) {
+        let hit = MapSpots.hit(p, marks: spotMarks(anchor: anchor, side: side))
+            .flatMap { id in app.spots.first { $0.id == id } }
+        if routeMode { routeTap(hit, screen: screen); return }
+        guard let sp = hit, let la = sp.latitude, let lo = sp.longitude else {
             if barSpot != nil { closeBar() }
             return
         }
         app.moveFromMap(latitude: la, longitude: lo)
         openBar(sp, edit: true, quiet: true)
+    }
+
+    // MARK: - Маршрут (24а)
+
+    /// Тап в режиме набора (`lmap.on("click")` веба). По булавке — в черновик
+    /// или из него и тихая полоса имени, карта не едет. Мимо: открыта полоса
+    /// имени — только закрыть её; иначе кольцо под пальцем и точка в центре
+    /// кадра — новое место открывает полосу имени с клавиатурой.
+    private func routeTap(_ hit: Spot?, screen: CGPoint?) {
+        if let sp = hit {
+            if app.routeToggle(id: sp.id) { land(sp.id) }
+            openBar(sp, edit: true, quiet: true)
+            return
+        }
+        if barSpot != nil { closeBar(); return }
+        if let screen { ring(at: screen) }
+        let r = app.routeAddHere()
+        land(r.spot.id)
+        if r.isNew { openBar(r.spot, edit: false, quiet: false) }
+    }
+
+    /// Постановка (`markLand`): движение булавки, отдача и щелчок закладки.
+    private func land(_ id: String) {
+        landing = (id, (landing?.tick ?? 0) + 1)
+        spotDrops += 1
+        MapClick.play()
+    }
+
+    private func ring(at p: CGPoint) {
+        ringSeq += 1
+        let id = ringSeq
+        rings.append((id, p))
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(460))
+            rings.removeAll { $0.id == id }
+        }
+    }
+
+    /// Номера черновика по живым местам.
+    private var routeNumbers: [String: Int] {
+        guard routeMode else { return [:] }
+        var out: [String: Int] = [:]
+        for (i, sp) in app.routeSpots.enumerated() { out[sp.id] = i + 1 }
+        return out
+    }
+
+    /// Точка холста (квадрат ротора, без поворота) — в точку экрана: квадрат
+    /// стоит серединой в середине экрана и повёрнут вокруг головки.
+    private func screenPoint(_ p: CGPoint, side: CGFloat, size: CGSize, cy: CGFloat) -> CGPoint {
+        let x = p.x + (size.width - side) / 2 - size.width / 2
+        let y = p.y + (size.height - side) / 2 - cy
+        let a = -rotor.angle * .pi / 180
+        return CGPoint(x: size.width / 2 + x * cos(a) - y * sin(a), y: cy + x * sin(a) + y * cos(a))
+    }
+
+    /// `setRouteMode`: визир — сразу, низ — подменой (`swapMapDock`), как у
+    /// голого холста. Полоса имени и веер уходят.
+    private func setRouteMode(_ on: Bool) {
+        guard routeMode != on, !dockOut else { return }
+        withAnimation(.timingCurve(0.33, 1, 0.68, 1, duration: 0.38)) { sight = on }
+        if barSpot != nil { closeBar() }
+        let ease = Animation.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24)
+        withAnimation(ease) { dockOut = true }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(240))
+            glide = true
+            withAnimation(.timingCurve(0.22, 0.61, 0.36, 1, duration: 0.3)) { routeMode = on }
+            withAnimation(ease) { dockOut = false }
+            try? await Task.sleep(for: .milliseconds(340))
+            glide = false
+        }
+    }
+
+    private func routeButton(_ pal: Palette, darkCanvas: Bool) -> some View {
+        MapRoundButton(pal: pal, darkCanvas: darkCanvas, on: routeMode, label: app.lexicon.t("map.route"),
+                       node: "map.routeBtn", action: { setRouteMode(!routeMode) }) {
+            Icon("route", size: 18, line: 1.8)
+        }
+    }
+
+    /// «Моё место» (`detectLocation`): карта и место приложения — туда, где
+    /// телефон. Разрешение спрашивается здесь же, как у листа места.
+    private func hereButton(_ pal: Palette, darkCanvas: Bool) -> some View {
+        MapRoundButton(pal: pal, darkCanvas: darkCanvas, on: false, label: app.lexicon.t("map.myPlace"),
+                       node: "map.here", action: { Task { await app.locateHere() } }) {
+            MapHereGlyph().stroke(style: StrokeStyle(lineWidth: 1.8 * 18 / 24, lineCap: .round, lineJoin: .round))
+        }
     }
 
     /// Булавки на кадре в координатах холста — их острия ловят тап.
@@ -793,9 +928,11 @@ struct MapScreenView: View {
     /// (`KnobGlass`, 20д), 20 pt — как головка булавки, которая из него
     /// вырастает (20г: «окружность как у центра компаса»). Прежде — светлый
     /// шарик 13 pt с кольцами до тех же 20.
+    ///
+    /// 24а: в режиме маршрута головка перетекает в булавку (`SightHead`) за
+    /// 0,38 с — остриё встаёт туда, где встанет точка.
     private func pin(_ pal: Palette) -> some View {
-        KnobGlass(shape: Circle(), pal: pal)
-            .frame(width: MapSpots.headDiameter, height: MapSpots.headDiameter)
+        SightHead(t: sight ? 1 : 0, pal: pal)
             .shotNode("map.pin")
             .allowsHitTesting(false)
     }
@@ -868,7 +1005,7 @@ private struct HeadingGlyph: Shape {
 /// `mapGlass` поверх системного стекла, тема стекла — по холсту под ним.
 /// `interactive` даёт отклик на нажатие, как у системного стекла; свой блик
 /// и тень не рисуются — у стекла они свои.
-private struct MapGlassCircle: ViewModifier {
+struct MapGlassCircle: ViewModifier {
     let pal: Palette
     let darkCanvas: Bool
 

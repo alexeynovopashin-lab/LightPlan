@@ -110,6 +110,14 @@ public final class AppModel {
     @discardableResult
     public func toggleSpotHere(now: Date = Date()) -> Spot? {
         if let here = spotHere { removeSpot(id: here.id, now: now); return nil }
+        let sp = insertSpotHere(now: now)
+        persist()
+        return sp
+    }
+
+    /// Новое место под головкой первым в списке — у закладки и у точки
+    /// маршрута (`routeNewSpot` веба) один рецепт. Без записи на диск.
+    func insertSpotHere(now: Date) -> Spot {
         let c = place.coordinate
         let name = place.isNameStale ? nil : place.name
         let city = name?.city ?? ""
@@ -122,7 +130,6 @@ public final class AppModel {
         sp.pinned = true
         sp.modifiedAt = Self.ms(now)
         snapshot.spots.insert(sp, at: 0)
-        persist()
         return sp
     }
 
