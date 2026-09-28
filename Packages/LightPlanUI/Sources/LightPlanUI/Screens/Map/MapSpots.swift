@@ -43,6 +43,13 @@ enum MapSpots {
     static let labelMax: CGFloat = 132
     static let labelHeight: CGFloat = 15
 
+    /// Места, чьи булавки ловят тап (`spotAtPoint`). Точка под головкой в
+    /// переезд не идёт — ехать некуда; в наборе маршрута она берётся наравне
+    /// со всеми (`all = routeMode`), её знак на это время возвращён.
+    static func tappable(_ spots: [Spot], here: GeoCoordinate, routing: Bool) -> [Spot] {
+        spots.filter { $0.latitude != nil && $0.longitude != nil && (routing || !$0.coordinate.isSameSpot(as: here)) }
+    }
+
     /// Попадание тапа (`spotAtPoint`): тело с полем 6, подпись с полем 4;
     /// две булавки внахлёст — ближняя к центру задетой части.
     static func hit(_ tap: CGPoint, marks: [(id: String, tip: CGPoint, labelWidth: CGFloat)]) -> String? {
@@ -79,7 +86,7 @@ struct MapSpotsLayer: View {
     var routing = false
     /// Какая булавка только что встала в черновик и который раз — движение
     /// постановки (`markLand`).
-    var landing: (id: String, tick: Int)?
+    var landing: SpotLandingMark?
 
     var body: some View {
         let cam = feed.camera ?? fallback
@@ -89,7 +96,7 @@ struct MapSpotsLayer: View {
                 let tip = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
                 if MapSpots.onScreen(tip, in: g.size) {
                     SpotMark(spot: sp, here: !routing && sp.coordinate.isSameSpot(as: here), pal: pal,
-                             number: numbers[sp.id], landTick: landing?.id == sp.id ? landing!.tick : 0,
+                             number: numbers[sp.id], landTick: landing?.tick(for: sp.id, now: .now) ?? 0,
                              onLabel: { feed.labelWidths[sp.id] = $0 })
                         .position(tip)
                 }
@@ -178,6 +185,21 @@ private struct SpotMark: View {
 /// `spot-land` — падение с `scale 2.2` за 0,52 с; натив ушёл от него:
 /// «слишком быстрая, дёрганая», «покачивается относительно середины, а должна
 /// воткнуться и покачиваться относительно нижней острой точки».
+/// Постановка булавки: какая точка, какой раз и когда. Движение идёт, пока
+/// постановка свежа (`SpotLanding.total`): знак, вернувшийся на кадр позже —
+/// сдвинули карту, сменили вкладку, — заново не садится (у веба класс `land`
+/// снимается по `animationend`).
+struct SpotLandingMark: Equatable {
+    let id: String
+    let tick: Int
+    let at: Date
+
+    /// Счётчик движения для знака `spot` в момент `now`; 0 — движения нет.
+    func tick(for spot: String, now: Date) -> Int {
+        spot == id && now.timeIntervalSince(at) < SpotLanding.total ? tick : 0
+    }
+}
+
 enum SpotLanding {
     /// Вход: булавка опускается на `lift` единиц холста 24 (×1,43 pt) с разгоном.
     static let push = 0.12
@@ -291,6 +313,57 @@ final class MapCameraFeed {
 /// Полоса имени точки (`#spotNameBar`): знак, поле имени и под ним координаты
 /// сохранённого — доказательство, что записано место под булавкой, а не
 /// место телефона; корзина терракотой и галочка латунью.
+/// Полоса имени точки без вида: чья она, что набрано и чьё поле держит фокус
+/// (`openSpotName`, `commitSpotName` веба). Фокус живёт в виде, здесь —
+/// кому писать набранное; отдельно, чтобы проверять тестом.
+struct SpotNameDraft: Equatable {
+    /// Точка, чья полоса открыта.
+    private(set) var spot: String?
+    /// Набранное в поле.
+    var text = ""
+    /// Точка, чьё поле держит фокус.
+    private(set) var typing: String?
+
+    /// Имя, которое надо записать.
+    struct Rename: Equatable {
+        let id: String
+        let name: String
+    }
+
+    /// Открыть полосу точки `id` с пустым полем. Поле в фокусе — набранное
+    /// сперва пишется прежней точке: у веба тап по холсту снимает фокус, и
+    /// `blur` записывает имя раньше, чем откроется новая полоса. `keyboard` —
+    /// поле новой полосы получит фокус; тихая полоса его не берёт, и уход
+    /// фокуса прежнего поля её не пишет и не закрывает.
+    mutating func open(_ id: String, focused: Bool, keyboard: Bool) -> Rename? {
+        let was = focused ? spot.map { Rename(id: $0, name: text) } : nil
+        spot = id
+        text = ""
+        typing = keyboard ? id : nil
+        return was
+    }
+
+    /// Поле получило фокус.
+    mutating func focus() { typing = spot }
+
+    /// Поле потеряло фокус: имя пишется, только если полоса всё ещё той
+    /// точки, чьё поле держало фокус.
+    mutating func blur() -> Rename? {
+        defer { typing = nil }
+        guard let t = typing, t == spot else { return nil }
+        return commit()
+    }
+
+    /// Галочка, «Готово»: полоса закрывается, набранное — её точке.
+    mutating func commit() -> Rename? {
+        defer { spot = nil }
+        return spot.map { Rename(id: $0, name: text) }
+    }
+
+    /// Закрыть без записи: корзина, погасшая тихая полоса.
+    mutating func drop() { spot = nil; typing = nil }
+}
+
 struct SpotNameBar: View {
     @Binding var text: String
     var focus: FocusState<Bool>.Binding

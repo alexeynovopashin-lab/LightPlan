@@ -151,11 +151,39 @@ struct MapRouteTests {
         #expect(app.undo == nil)
     }
 
+    /// Точка под визиром в наборе маршрута ловит тап наравне со всеми (веб
+    /// `spotAtPoint(…, all = routeMode)`), и тап снимает её с черновика. Вне
+    /// набора — нет: ехать некуда. Ревью 24а, № 1: булавку, поставленную под
+    /// визиром, было не снять — тап уходил мимо и ставил её же заново.
+    @Test func spotUnderSightIsTappableOnlyWhileRouting() {
+        let (app, ids) = threeInRoute()
+        let here = app.place.coordinate
+        let under = app.spots.first { $0.coordinate.isSameSpot(as: here) }
+        #expect(under?.id == ids[2])
+
+        let routing = MapSpots.tappable(app.spots, here: here, routing: true).map(\.id)
+        #expect(Set(routing) == Set(ids))
+        let plain = MapSpots.tappable(app.spots, here: here, routing: false).map(\.id)
+        #expect(Set(plain) == Set(ids[0 ..< 2]))
+
+        #expect(app.routeToggle(id: ids[2]) == false)
+        #expect(app.mapRoute == Array(ids[0 ..< 2]))
+    }
+
+    /// Новая точка сама гасит «Вернуть» (веб: `dropRouteUndo` внутри
+    /// `routeNewSpot` и `routeToggle`): иначе «Вернуть» после неё заменило бы
+    /// черновик прежним и молча стёрло новую точку. Ревью 24а, № 6.
     @Test func newPointDropsRouteUndo() {
-        let (app, _) = threeInRoute()
+        let (app, ids) = threeInRoute()
         app.clearRoute()
-        app.dropRouteUndo()
+        app.routeAddHere()
         #expect(app.undo == nil)
+        #expect(app.mapRoute.count == 1)
+
+        app.clearRoute()
+        app.routeToggle(id: ids[0])
+        #expect(app.undo == nil)
+        #expect(app.mapRoute == [ids[0]])
     }
 
     @Test func makeShootPutsSpotsInOrderWithoutHoursAndKeepsDraft() {
@@ -241,5 +269,66 @@ struct MapRouteTests {
         #expect(answer?.line.count == 3 && answer?.line[1].latitude == 53.345)
         #expect(answer?.km == 2.45 && answer?.min == 6)
         #expect(RoadRouter.parseOSRM(Data(#"{"code":"DistanceExceeded"}"#.utf8)) == nil)
+    }
+
+    // MARK: - Ревью 24а (шаг 1 итерации 25)
+
+    /// № 3: у карт Apple кусок собирается из переходов, и переход кэшируется по
+    /// паре точек и способу (справка 24а): точка в конце куска спрашивает один
+    /// новый переход, а не все заново — 8 точек по одной стоили 28 запросов
+    /// вместо 7. Сбой не кэшируется: предел частоты Apple проходит.
+    @Test func appleLegsAreCachedByPairAndFailuresAreNot() async {
+        var calls: [String] = [], fail = false
+        let legs = RoadLegs { mode, a, b in
+            calls.append("\(mode.rawValue) \(a.latitude)>\(b.latitude)")
+            if fail { return nil }
+            return RoadLeg(line: [a, b], meters: 1000, seconds: 60)
+        }
+        let p = [53.30, 53.31, 53.32, 53.33].map { MapCanvasCenter(latitude: $0, longitude: 83.7) }
+        let two = await legs.run(mode: .car, points: Array(p[0 ..< 2]))
+        #expect(two?.km == 1 && two?.line.count == 2)
+        let three = await legs.run(mode: .car, points: Array(p[0 ..< 3]))
+        #expect(three?.km == 2 && three?.min == 2 && three?.line.count == 3)
+        #expect(calls.count == 2)
+        // Пешком — другой вопрос.
+        _ = await legs.run(mode: .foot, points: Array(p[0 ..< 2]))
+        #expect(calls.count == 3)
+        // Отказ перехода: куска нет, и в кэш ничего не легло.
+        fail = true
+        #expect(await legs.run(mode: .car, points: Array(p[2 ..< 4])) == nil)
+        fail = false
+        #expect(await legs.run(mode: .car, points: Array(p[2 ..< 4]))?.km == 1)
+        #expect(calls.count == 5)
+    }
+
+    /// № 2: набранное имя пишется своей точке. Тап по другой булавке, пока
+    /// поле в фокусе, сперва записывает имя прежней (у веба `blur` раньше
+    /// `openSpotName`), а уход фокуса после этого не пишет новую точку и не
+    /// закрывает её тихую полосу.
+    @Test func typedNameGoesToItsOwnSpotWhenAnotherPinIsTapped() {
+        var bar = SpotNameDraft()
+        #expect(bar.open("A", focused: false, keyboard: true) == nil)
+        bar.focus()
+        bar.text = "Мост"
+        let r = bar.open("B", focused: true, keyboard: false)
+        #expect(r == .init(id: "A", name: "Мост"))
+        #expect(bar.blur() == nil)
+        #expect(bar.spot == "B")
+        // Уход фокуса у своей полосы пишет её точке и закрывает полосу.
+        bar.focus()
+        bar.text = "Ресторан"
+        #expect(bar.blur() == .init(id: "B", name: "Ресторан"))
+        #expect(bar.spot == nil)
+    }
+
+    /// № 4: булавка садится один раз. Постановка свежа, пока идёт движение
+    /// (`SpotLanding.total`); вернувшаяся на кадр позже — стоит (у веба класс
+    /// `land` снимается по `animationend`).
+    @Test func landedPinDoesNotLandAgainWhenItComesBack() {
+        let t0 = Date(timeIntervalSince1970: 1_790_000_000)
+        let m = SpotLandingMark(id: "A", tick: 3, at: t0)
+        #expect(m.tick(for: "A", now: t0.addingTimeInterval(0.1)) == 3)
+        #expect(m.tick(for: "B", now: t0.addingTimeInterval(0.1)) == 0)
+        #expect(m.tick(for: "A", now: t0.addingTimeInterval(SpotLanding.total + 0.1)) == 0)
     }
 }

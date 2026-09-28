@@ -37,9 +37,11 @@ extension AppModel {
     /// Тап мимо булавки в режиме набора (`routeNewSpot`): точка — в центре
     /// кадра, то есть под головкой. Там уже сохранённое место — оно идёт в
     /// черновик; нет — заводится новое, как у закладки. `isNew` — открыть
-    /// полосу имени. Одно место дважды в черновик не встаёт.
+    /// полосу имени. Одно место дважды в черновик не встаёт. «Вернуть»
+    /// черновика гаснет здесь же, как у веба, а не у каждого, кто зовёт.
     @discardableResult
     public func routeAddHere(now: Date = Date()) -> (spot: Spot, isNew: Bool) {
+        dropRouteUndo()
         let old = spotHere
         let sp = old ?? insertSpotHere(now: now)
         var ids = mapRoute
@@ -52,6 +54,7 @@ extension AppModel {
     /// из черновика. `true` — положили (у постановки есть движение, у снятия нет).
     @discardableResult
     public func routeToggle(id: String) -> Bool {
+        dropRouteUndo()
         var ids = mapRoute
         if let i = ids.firstIndex(of: id) {
             ids.remove(at: i)

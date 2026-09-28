@@ -79,33 +79,79 @@ public enum RoadRouter {
 
     // MARK: MapKit — карты Apple
 
-    /// `MKDirections` строит путь A → B, а не цепочку: кусок спрашивается
-    /// переходами по одному, подряд (не разом — у Apple предел частоты,
-    /// `MKError.loadingThrottled`). Не ответил один переход — нет куска.
+    /// Переход A → B картами Apple.
+    @MainActor
+    static func askAppleLeg(mode: RoadMode, from a: MapCanvasCenter, to b: MapCanvasCenter) async -> RoadLeg? {
+        let req = MKDirections.Request()
+        req.source = item(a)
+        req.destination = item(b)
+        req.transportType = mode == .foot ? .walking : .automobile
+        guard let route = try? await MKDirections(request: req).calculate().routes.first else { return nil }
+        let n = route.polyline.pointCount
+        var cs = [CLLocationCoordinate2D](repeating: CLLocationCoordinate2D(), count: n)
+        route.polyline.getCoordinates(&cs, range: NSRange(location: 0, length: n))
+        return RoadLeg(line: cs.map { MapCanvasCenter(latitude: $0.latitude, longitude: $0.longitude) },
+                       meters: route.distance, seconds: route.expectedTravelTime)
+    }
+
     @MainActor
     private static func askApple(mode: RoadMode, points: [MapCanvasCenter]) async -> RoadAnswer? {
-        var line: [MapCanvasCenter] = []
-        var meters = 0.0, seconds = 0.0
-        for i in 0 ..< points.count - 1 {
-            let req = MKDirections.Request()
-            req.source = item(points[i])
-            req.destination = item(points[i + 1])
-            req.transportType = mode == .foot ? .walking : .automobile
-            guard let route = try? await MKDirections(request: req).calculate().routes.first else { return nil }
-            let n = route.polyline.pointCount
-            var cs = [CLLocationCoordinate2D](repeating: CLLocationCoordinate2D(), count: n)
-            route.polyline.getCoordinates(&cs, range: NSRange(location: 0, length: n))
-            let seg = cs.map { MapCanvasCenter(latitude: $0.latitude, longitude: $0.longitude) }
-            line += line.isEmpty ? seg : Array(seg.dropFirst())
-            meters += route.distance
-            seconds += route.expectedTravelTime
-        }
-        guard line.count >= 2 else { return nil }
-        return RoadAnswer(line: line, km: meters / 1000, min: Int((seconds / 60).rounded()))
+        await RoadLegs.shared.run(mode: mode, points: points)
     }
 
     @MainActor
     private static func item(_ p: MapCanvasCenter) -> MKMapItem {
         MKMapItem(location: CLLocation(latitude: p.latitude, longitude: p.longitude), address: nil)
+    }
+}
+
+/// Переход A → B картами Apple: линия, метры, секунды.
+public struct RoadLeg: Equatable, Sendable {
+    public let line: [MapCanvasCenter]
+    public let meters: Double
+    public let seconds: Double
+    public init(line: [MapCanvasCenter], meters: Double, seconds: Double) {
+        self.line = line
+        self.meters = meters
+        self.seconds = seconds
+    }
+}
+
+/// Кусок картами Apple: `MKDirections` строит путь A → B, а не цепочку, и
+/// кусок спрашивается переходами по одному, подряд (не разом — у Apple предел
+/// частоты, `MKError.loadingThrottled`). Не ответил один переход — нет куска.
+/// Переход кэшируется по паре точек и способу (справка 24а): точка в конце
+/// куска спрашивает один новый переход, а не все заново. Сбой не кэшируется —
+/// предел частоты проходит; сам кусок при сбое в сеансе не переспрашивают
+/// (`RoadBook`, как веб).
+@MainActor
+public final class RoadLegs {
+    public typealias Ask = @MainActor (RoadMode, MapCanvasCenter, MapCanvasCenter) async -> RoadLeg?
+
+    public static let shared = RoadLegs { await RoadRouter.askAppleLeg(mode: $0, from: $1, to: $2) }
+
+    private let ask: Ask
+    private var cache: [String: RoadLeg] = [:]
+
+    public init(ask: @escaping Ask) {
+        self.ask = ask
+    }
+
+    public func run(mode: RoadMode, points: [MapCanvasCenter]) async -> RoadAnswer? {
+        guard points.count >= 2 else { return nil }
+        var line: [MapCanvasCenter] = []
+        var meters = 0.0, seconds = 0.0
+        for i in 0 ..< points.count - 1 {
+            let key = mode.rawValue + "|" + RoadRouter.key([points[i], points[i + 1]])
+            let got: RoadLeg?
+            if let hit = cache[key] { got = hit } else { got = await ask(mode, points[i], points[i + 1]) }
+            guard let leg = got else { return nil }
+            cache[key] = leg
+            line += line.isEmpty ? leg.line : Array(leg.line.dropFirst())
+            meters += leg.meters
+            seconds += leg.seconds
+        }
+        guard line.count >= 2 else { return nil }
+        return RoadAnswer(line: line, km: meters / 1000, min: Int((seconds / 60).rounded()))
     }
 }

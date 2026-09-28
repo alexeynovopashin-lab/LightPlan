@@ -48,8 +48,7 @@ struct MapScreenView: View {
     @State private var feed = MapCameraFeed()
     /// Полоса имени точки: какая точка названа, набранное, обратный отсчёт
     /// «тихой» полосы (`snbTimer`, 5 с).
-    @State private var barSpot: String?
-    @State private var barText = ""
+    @State private var bar = SpotNameDraft()
     @State private var barTimer: Task<Void, Never>?
     @FocusState private var barFocus: Bool
     /// Веер «Мои места» и рамка его кнопки в шапке: веер встаёт под ней.
@@ -68,7 +67,7 @@ struct MapScreenView: View {
     @State private var sight = false
     @State private var routeBarTop: CGFloat = 700
     /// Булавка, только что вставшая в черновик, и счёт постановок.
-    @State private var landing: (id: String, tick: Int)?
+    @State private var landing: SpotLandingMark?
     /// Точки, чья булавка ещё садится: их строки полоса покажет после
     /// постановки (слово Алексея 28.09: «две анимации одновременно сбивают»).
     @State private var rowLag: Set<String> = []
@@ -146,7 +145,7 @@ struct MapScreenView: View {
                                           onCamera: { cam in
                                               feed.camera = cam
                                               // Карту двинули пальцем — полоса точки уходит.
-                                              if cam.byHand, barSpot != nil { closeBar() }
+                                              if cam.byHand, bar.spot != nil { closeBar() }
                                           },
                                           onTap: { p in
                                               tapMap(p, anchor: anchor, side: side,
@@ -266,8 +265,8 @@ struct MapScreenView: View {
             }
             .overlay(alignment: .top) {
                 // Полоса имени — у верха окна прибора, над картой и кружками.
-                if let id = barSpot, let sp = app.spots.first(where: { $0.id == id }) {
-                    SpotNameBar(text: $barText, focus: $barFocus, coord: sp.coordinate.text, lexicon: app.lexicon,
+                if let id = bar.spot, let sp = app.spots.first(where: { $0.id == id }) {
+                    SpotNameBar(text: $bar.text, focus: $barFocus, coord: sp.coordinate.text, lexicon: app.lexicon,
                                 pal: pal, onDelete: deleteBar, onDone: commitBar, onTouch: holdBar)
                         .padding(.horizontal, 10)
                         .padding(.top, headerBottom + 10)
@@ -313,7 +312,7 @@ struct MapScreenView: View {
         .sensoryFeedback(.impact(weight: .medium), trigger: sight)
         // Фокус в поле — отсчёт снят; ушёл — имя записано (`blur` веба).
         .onChange(of: barFocus) { _, focused in
-            if focused { holdBar() } else if barSpot != nil { commitBar() }
+            if focused { holdBar(); bar.focus() } else if let r = bar.blur() { holdBar(); app.renameSpot(id: r.id, to: r.name) }
         }
         // Уходя с карты, гасим датчик — он не нужен нигде больше (веб так же).
         .onDisappear { northUp() }
@@ -690,7 +689,6 @@ struct MapScreenView: View {
                 fanOpen = false
                 // Из «＋» черновика — в черновик или из него; карта не едет.
                 if fanRoute {
-                    app.dropRouteUndo()
                     if app.routeToggle(id: sp.id) { land(sp.id) }
                     return
                 }
@@ -720,7 +718,7 @@ struct MapScreenView: View {
             .flatMap { id in app.spots.first { $0.id == id } }
         if routeMode { routeTap(hit, screen: screen); return }
         guard let sp = hit, let la = sp.latitude, let lo = sp.longitude else {
-            if barSpot != nil { closeBar() }
+            if bar.spot != nil { closeBar() }
             return
         }
         app.moveFromMap(latitude: la, longitude: lo)
@@ -738,17 +736,15 @@ struct MapScreenView: View {
     /// точки ставят подряд, и каждая вторая стоила бы лишнего тапа.
     private func routeTap(_ hit: Spot?, screen: CGPoint?) {
         if let sp = hit {
-            app.dropRouteUndo()
             if app.routeToggle(id: sp.id) { land(sp.id) }
             openBar(sp, edit: true, quiet: true)
             return
         }
-        if barSpot != nil {
+        if bar.spot != nil {
             if barFocus { closeBar(); return }
             closeBar()
         }
         if let screen { ring(at: screen) }
-        app.dropRouteUndo()
         let had = Set(app.mapRoute)
         let r = app.routeAddHere()
         land(r.spot.id, newRow: !had.contains(r.spot.id))
@@ -759,7 +755,7 @@ struct MapScreenView: View {
     /// Строка новой точки в полосе ждёт, пока булавка сядет
     /// (`SpotLanding.total`); точка, уже стоявшая в черновике, строку не прячет.
     private func land(_ id: String, newRow: Bool = true) {
-        landing = (id, (landing?.tick ?? 0) + 1)
+        landing = SpotLandingMark(id: id, tick: (landing?.tick ?? 0) + 1, at: .now)
         spotDrops += 1
         MapClick.play()
         guard newRow else { return }
@@ -802,7 +798,7 @@ struct MapScreenView: View {
     private func setRouteMode(_ on: Bool) {
         guard routeMode != on, !dockOut else { return }
         withAnimation(.timingCurve(0.33, 1, 0.68, 1, duration: 0.38)) { sight = on }
-        if barSpot != nil { closeBar() }
+        if bar.spot != nil { closeBar() }
         fanOpen = false
         if !on { app.dropRouteUndo() }
         let ease = Animation.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24)
@@ -856,7 +852,7 @@ struct MapScreenView: View {
                             withAnimation(.easeOut(duration: 0.16)) { fanOpen = true }
                         },
                         onClear: { withAnimation(.easeOut(duration: 0.2)) { app.clearRoute() } },
-                        onDrop: { id in app.dropRouteUndo(); app.routeToggle(id: id) },
+                        onDrop: { id in app.routeToggle(id: id) },
                         onMove: { from, to in app.moveRoute(from: from, to: to) },
                         onWay: { i in
                             guard i + 1 < pts.count else { return }
@@ -911,8 +907,8 @@ struct MapScreenView: View {
         let cam = feed.camera ?? fallbackCamera(app.light.timebar.place)
         let here = app.place.coordinate
         let bounds = CGSize(width: side, height: side)
-        return app.spots.compactMap { sp in
-            guard let la = sp.latitude, let lo = sp.longitude, !sp.coordinate.isSameSpot(as: here) else { return nil }
+        return MapSpots.tappable(app.spots, here: here, routing: routeMode).compactMap { sp in
+            guard let la = sp.latitude, let lo = sp.longitude else { return nil }
             let d = MapSpots.offset(latitude: la, longitude: lo, camera: cam)
             let tip = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
             guard MapSpots.onScreen(tip, in: bounds) else { return nil }
@@ -982,7 +978,7 @@ struct MapScreenView: View {
         var seen: [String: Bool] = [:]
         for (key, wait) in [("bar1", 1.0), ("bar4", 3.0), ("bar6_5", 2.5)] {
             try? await Task.sleep(for: .seconds(wait))
-            seen[key] = barSpot == id
+            seen[key] = bar.spot == id
         }
         seen["moved"] = app.place.coordinate.isSameSpot(as: app.spots.first { $0.id == id }?.coordinate ?? .init(latitude: 0, longitude: 0))
         let json = try? JSONSerialization.data(withJSONObject: seen, options: [.sortedKeys])
@@ -1005,8 +1001,11 @@ struct MapScreenView: View {
     /// за точка»: клавиатура не поднимается, полоса гаснет через 5 с.
     private func openBar(_ sp: Spot, edit: Bool, quiet: Bool, keyboard: Bool = true) {
         holdBar()
-        barSpot = sp.id
-        barText = edit ? sp.name : ""
+        // Набранное в прежней полосе — прежней точке, раньше, чем откроется новая.
+        if let r = bar.open(sp.id, focused: barFocus, keyboard: !quiet && keyboard) {
+            app.renameSpot(id: r.id, to: r.name)
+        }
+        if edit { bar.text = app.spots.first { $0.id == sp.id }?.name ?? sp.name }
         if quiet {
             barFocus = false
             barTimer = Task { @MainActor in
@@ -1024,23 +1023,22 @@ struct MapScreenView: View {
     /// Закрытие без записи (`closeSpotName`); набранное записывает уход фокуса.
     private func closeBar() {
         holdBar()
-        if barFocus { barFocus = false } else { barSpot = nil }
+        if barFocus { barFocus = false } else { bar.drop() }
     }
 
     /// Галочка, «Готово» клавиатуры, уход фокуса (`commitSpotName`).
     private func commitBar() {
-        guard let id = barSpot else { return }
+        guard let r = bar.commit() else { return }
         holdBar()
-        barSpot = nil
         barFocus = false
-        app.renameSpot(id: id, to: barText)
+        app.renameSpot(id: r.id, to: r.name)
     }
 
     /// Корзина (`spotNameDel`): точка уходит, набранное не пишется.
     private func deleteBar() {
-        guard let id = barSpot else { return }
+        guard let id = bar.spot else { return }
         holdBar()
-        barSpot = nil
+        bar.drop()
         barFocus = false
         app.removeSpot(id: id)
     }
