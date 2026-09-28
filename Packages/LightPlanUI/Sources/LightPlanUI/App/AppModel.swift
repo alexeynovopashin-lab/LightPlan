@@ -122,9 +122,12 @@ public final class AppModel {
     /// Пока имя нового места в пути (0,9 с после сдвига карты и ответ
     /// геокодера), берётся прежнее — как `geoCity` веба; иначе точка,
     /// поставленная сразу после сдвига, получала координаты (Алексей 28.09).
+    /// Но только если прежнее получено не дальше `nearNameKm`: у веба точка
+    /// в Томске сразу после переезда из Москвы звалась бы «Москва».
     func insertSpotHere(now: Date) -> Spot {
         let c = place.coordinate
-        let name = place.name
+        let near = !place.isNameStale || place.nameOrigin.map { kmBetween($0, c) <= Self.nearNameKm } == true
+        let name = near ? place.name : nil
         let city = name?.city ?? ""
         var sp = Spot(id: Self.newSpotId(now), name: Self.uniqueSpotName(city, in: snapshot.spots) ?? c.text,
                       latitude: Self.round5(c.latitude), longitude: Self.round5(c.longitude))
@@ -173,6 +176,8 @@ public final class AppModel {
         let tail = String((0..<4).map { _ in "0123456789abcdefghijklmnopqrstuvwxyz".randomElement()! })
         return "p" + String(ms(now), radix: 36) + tail
     }
+
+    static let nearNameKm = 5.0
 
     /// `uniqueSpotName` веба: имя занято — «Томск 2», «Томск 3»…; пустое — `nil`.
     static func uniqueSpotName(_ base: String, in spots: [Spot]) -> String? {

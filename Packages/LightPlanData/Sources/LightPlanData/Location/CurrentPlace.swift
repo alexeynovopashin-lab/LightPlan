@@ -19,6 +19,9 @@ public final class CurrentPlace {
     public private(set) var name: PlaceName?
     public private(set) var zone: ZoneID
     public private(set) var isNameStale = false
+    /// Для какого места получено нынешнее имя (`nil` — имени нет): прежнее
+    /// имя годится новой точке, только пока она рядом.
+    public private(set) var nameOrigin: GeoCoordinate?
     /// Чем кончилась последняя просьба «найди меня»; для подсказки на экране.
     public private(set) var lastDeviceResult: DeviceFix?
     /// Кэш настоящих зон — хранить его будет итерация 12.
@@ -45,6 +48,7 @@ public final class CurrentPlace {
                 namer: PlaceNamer, locator: any DeviceLocating, debounce: Duration = .milliseconds(900)) {
         self.coordinate = initial
         self.name = name
+        self.nameOrigin = name == nil ? nil : initial
         self.zones = zones
         self.zone = zones.zoneOrEstimate(at: initial)
         self.namer = namer
@@ -69,6 +73,7 @@ public final class CurrentPlace {
         move(to: c)
         self.knownName = knownName
         name = knownName
+        nameOrigin = c
         isNameStale = false
     }
 
@@ -109,6 +114,7 @@ public final class CurrentPlace {
     private func apply(_ found: PlaceLookup, for c: GeoCoordinate) {
         guard c == coordinate else { return }
         name = found.name ?? knownName
+        nameOrigin = name == nil ? nil : c
         isNameStale = false
         if let z = found.zone {
             zones.remember(z, at: c)
