@@ -61,6 +61,35 @@ struct SightHead: View, @preconcurrency Animatable {
     }
 }
 
+/// Визир уступает место булавке, стоящей ровно под его остриём (ближе
+/// `cover` pt): садящаяся под ним булавка спорила с ним, а стоящая под ним
+/// давала два стекла одно на другом — булавка белела скачком, когда визир
+/// возвращался (Алексей 28.09, кадры симулятора). Сдвинули карту — визир
+/// отделяется от булавки на первом же кадре жеста: камеру читает сам, как
+/// слой булавок, и экран на каждом кадре не пересобирается.
+struct SightSlot: View {
+    let t: Double
+    let feed: MapCameraFeed
+    let fallback: MapCanvasCamera
+    /// Булавки, которые визир уступает; пусто — визир виден всегда.
+    let spots: [Spot]
+    let pal: Palette
+
+    /// Место точки — пять знаков после запятой, до ~0,5 м: при крупном
+    /// приближении булавка встаёт на 1–3 pt в стороне от острия.
+    static let cover: CGFloat = 3
+
+    var body: some View {
+        let cam = feed.camera ?? fallback
+        let covered = spots.contains { sp in
+            guard let la = sp.latitude, let lo = sp.longitude else { return false }
+            let d = MapSpots.offset(latitude: la, longitude: lo, camera: cam)
+            return abs(d.x) < Self.cover && abs(d.y) < Self.cover
+        }
+        SightHead(t: t, pal: pal).opacity(covered ? 0 : 1)
+    }
+}
+
 /// Знак `.map-here` «Моё место» (`#mapHere`): кольцо r 4 и четыре риски.
 struct MapHereGlyph: Shape {
     func path(in rect: CGRect) -> Path {

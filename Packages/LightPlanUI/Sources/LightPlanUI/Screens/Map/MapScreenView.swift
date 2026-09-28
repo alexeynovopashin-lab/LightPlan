@@ -204,7 +204,8 @@ struct MapScreenView: View {
                 .frame(width: size.width, height: size.height)
                 .rotationEffect(.degrees(-rotor.angle), anchor: UnitPoint(x: 0.5, y: cy / max(1, size.height)))
 
-                pin(pal).position(x: size.width / 2, y: cy)
+                pin(pal, place: place, spots: routeMode && layers.spots ? app.spots : [])
+                    .position(x: size.width / 2, y: cy)
 
                 ForEach(rings, id: \.id) { r in MapTapRing(pal: pal).position(r.at) }
 
@@ -756,7 +757,7 @@ struct MapScreenView: View {
 
     /// Постановка (`markLand`): движение булавки, отдача и щелчок закладки.
     /// Строка новой точки в полосе ждёт, пока булавка сядет
-    /// (`SpotLanding.pin`); точка, уже стоявшая в черновике, строку не прячет.
+    /// (`SpotLanding.total`); точка, уже стоявшая в черновике, строку не прячет.
     private func land(_ id: String, newRow: Bool = true) {
         landing = (id, (landing?.tick ?? 0) + 1)
         spotDrops += 1
@@ -764,7 +765,7 @@ struct MapScreenView: View {
         guard newRow else { return }
         rowLag.insert(id)
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(SpotLanding.pin))
+            try? await Task.sleep(for: .seconds(SpotLanding.total))
             rowLag.remove(id)
         }
     }
@@ -1053,8 +1054,9 @@ struct MapScreenView: View {
     ///
     /// 24а: в режиме маршрута головка перетекает в булавку (`SightHead`) за
     /// 0,38 с — остриё встаёт туда, где встанет точка.
-    private func pin(_ pal: Palette) -> some View {
-        SightHead(t: sight ? 1 : 0, pal: pal)
+    /// Булавка ровно под визиром садится и стоит без него (`SightSlot`).
+    private func pin(_ pal: Palette, place: Place, spots: [Spot]) -> some View {
+        SightSlot(t: sight ? 1 : 0, feed: feed, fallback: fallbackCamera(place), spots: spots, pal: pal)
             .shotNode("map.pin")
             .allowsHitTesting(false)
     }

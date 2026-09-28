@@ -125,10 +125,22 @@ private struct SpotMark: View {
                 .frame(width: 22, height: 22)
                 .scaleEffect(here ? 1 : 0.3)
                 .offset(x: -11, y: -11)
-            PinGlyph(pinned: spot.pinned == true, pal: pal)
-                .frame(width: 24 * MapSpots.glyphScale, height: 24 * MapSpots.glyphScale)
+            // Посадка — контуром, а не `scaleEffect` / `rotationEffect` всей
+            // булавки: встроенное стекло точку опоры преобразования не держит
+            // (кадры симулятора 28.09: корпус раздувался втрое и уходил от
+            // острия, латунная точка — нет), а новый контур на каждом кадре
+            // оно рисует верно — так же сделан визир (`SightHead`).
+            KeyframeAnimator(initialValue: SpotLanding.total, trigger: lands) { t in
+                let pose = SpotLanding.pose(t)
+                PinGlyph(pinned: spot.pinned == true, pal: pal, angle: pose.angle, lift: pose.lift)
+                    .frame(width: 24 * MapSpots.glyphScale, height: 24 * MapSpots.glyphScale)
+            } keyframes: { _ in
+                KeyframeTrack {
+                    MoveKeyframe(0)
+                    LinearKeyframe(SpotLanding.total, duration: SpotLanding.total)
+                }
+            }
                 .scaleEffect(here ? 0.25 : 1, anchor: UnitPoint(x: 12.0 / 24, y: 21.0 / 24))
-                .modifier(SpotLand(tick: lands))
                 .opacity(here ? 0 : 1)
                 .offset(x: -12 * MapSpots.glyphScale, y: -21 * MapSpots.glyphScale)
             if let number {
@@ -160,48 +172,36 @@ private struct SpotMark: View {
     }
 }
 
-/// Посадка точки маршрута: булавка, номер следом, строка в полосе — после.
-/// У веба `spot-land` 0,52 с и `no-land` 0,16 + 0,3 с; натив в `pace` раз
-/// медленнее, пропорции те же (Алексей 28.09 на телефоне: «слишком быстрая,
-/// дёрганая, надо увеличить время»).
+/// Посадка точки маршрута (Алексей 28.09 на телефоне): булавка входит в
+/// карту и качается на острие, как булавка с тяжёлой головкой, воткнутая в
+/// пробку; номер — следом, строка в полосе — когда булавка встала. У веба
+/// `spot-land` — падение с `scale 2.2` за 0,52 с; натив ушёл от него:
+/// «слишком быстрая, дёрганая», «покачивается относительно середины, а должна
+/// воткнуться и покачиваться относительно нижней острой точки».
 enum SpotLanding {
-    static let pace = 1.5
-    static let pin = 0.52 * pace
-}
+    /// Вход: булавка опускается на `lift` единиц холста 24 (×1,43 pt) с разгоном.
+    static let push = 0.12
+    static let lift = 2.5
+    /// Качание: затухающий маятник — угол `swing · e^(−s/decay) · sin(2πs/period)`.
+    /// Скорость на поворотах гаснет плавно, без рывка кривой на каждом ключе.
+    static let sway = 0.84
+    static let swing = 12.0
+    static let period = 0.32
+    static let decay = 0.28
+    static let total = push + sway
 
-/// `spot-land` веба, ось — остриё; каждый отрезок ключей со своей
-/// кривой `cubic-bezier(.2, .7, .3, 1)`, как `animation-timing-function` CSS.
-private struct SpotLand: ViewModifier {
-    let tick: Int
-    private struct V { var scale = 1.0; var angle = 0.0 }
-    private static let curve = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.2, y: 0.7),
-                                                endControlPoint: UnitPoint(x: 0.3, y: 1))
-
-    func body(content: Content) -> some View {
-        content.keyframeAnimator(initialValue: V(), trigger: tick) { view, v in
-            view.scaleEffect(v.scale, anchor: UnitPoint(x: 12.0 / 24, y: 21.0 / 24))
-                .rotationEffect(.degrees(v.angle), anchor: UnitPoint(x: 12.0 / 24, y: 21.0 / 24))
-        } keyframes: { _ in
-            KeyframeTrack(\.scale) {
-                MoveKeyframe(2.2)
-                LinearKeyframe(1.3, duration: SpotLanding.pin * 0.38, timingCurve: Self.curve)
-                LinearKeyframe(1.06, duration: SpotLanding.pin * 0.24, timingCurve: Self.curve)
-                LinearKeyframe(0.97, duration: SpotLanding.pin * 0.20, timingCurve: Self.curve)
-                LinearKeyframe(1, duration: SpotLanding.pin * 0.18, timingCurve: Self.curve)
-            }
-            KeyframeTrack(\.angle) {
-                MoveKeyframe(-10)
-                LinearKeyframe(7, duration: SpotLanding.pin * 0.38, timingCurve: Self.curve)
-                LinearKeyframe(-4, duration: SpotLanding.pin * 0.24, timingCurve: Self.curve)
-                LinearKeyframe(2, duration: SpotLanding.pin * 0.20, timingCurve: Self.curve)
-                LinearKeyframe(0, duration: SpotLanding.pin * 0.18, timingCurve: Self.curve)
-            }
-        }
+    /// Поза в момент `t` от начала: угол в градусах (по часовой) и подъём.
+    static func pose(_ t: Double) -> (angle: Double, lift: Double) {
+        if t >= total { return (0, 0) }
+        if t < push { let u = t / push; return (0, lift * (1 - u * u)) }
+        let s = t - push
+        return (swing * exp(-s / decay) * sin(2 * .pi * s / period), 0)
     }
 }
 
-/// `no-land`: номер приходит следом — задержка 0,16 с, 0,3 с (× `pace`), `scale .2 →
-/// 1.18 → 1`, прозрачность 0 → 1 к 60 %; до начала — невидим (`backwards`).
+/// `no-land`: номер приходит, когда булавка вошла (`SpotLanding.push`), за
+/// 0,45 с, `scale .2 → 1.18 → 1`, прозрачность 0 → 1 к 60 %; до начала —
+/// невидим (`backwards`).
 private struct NumberLand: ViewModifier {
     let tick: Int
     private struct V { var scale = 1.0; var opacity = 1.0 }
@@ -214,14 +214,14 @@ private struct NumberLand: ViewModifier {
         } keyframes: { _ in
             KeyframeTrack(\.scale) {
                 MoveKeyframe(0.2)
-                LinearKeyframe(0.2, duration: 0.16 * SpotLanding.pace)
-                LinearKeyframe(1.18, duration: 0.3 * SpotLanding.pace * 0.6, timingCurve: Self.curve)
-                LinearKeyframe(1, duration: 0.3 * SpotLanding.pace * 0.4, timingCurve: Self.curve)
+                LinearKeyframe(0.2, duration: SpotLanding.push)
+                LinearKeyframe(1.18, duration: 0.45 * 0.6, timingCurve: Self.curve)
+                LinearKeyframe(1, duration: 0.45 * 0.4, timingCurve: Self.curve)
             }
             KeyframeTrack(\.opacity) {
                 MoveKeyframe(0)
-                LinearKeyframe(0, duration: 0.16 * SpotLanding.pace)
-                LinearKeyframe(1, duration: 0.3 * SpotLanding.pace * 0.6, timingCurve: Self.curve)
+                LinearKeyframe(0, duration: SpotLanding.push)
+                LinearKeyframe(1, duration: 0.45 * 0.6, timingCurve: Self.curve)
             }
         }
     }
@@ -233,22 +233,37 @@ private struct NumberLand: ViewModifier {
 private struct PinGlyph: View {
     let pinned: Bool
     let pal: Palette
+    /// Поза посадки (`SpotLanding.pose`): поворот вокруг острия и подъём.
+    var angle = 0.0
+    var lift = 0.0
 
     var body: some View {
         let k = MapSpots.glyphScale
+        let head = CGPoint(x: 12, y: 10).applying(PinDrop.pose(angle, lift))
         ZStack(alignment: .topLeading) {
-            KnobGlass(shape: PinDrop(), pal: pal)
+            KnobGlass(shape: PinDrop(angle: angle, lift: lift), pal: pal)
             Group {
                 if pinned { Circle().fill(pal.brass) } else { Circle().stroke(pal.brass, lineWidth: 1.5) }
             }
             .frame(width: 2 * 2.6 * k, height: 2 * 2.6 * k)
-            .offset(x: (12 - 2.6) * k, y: (10 - 2.6) * k)
+            .offset(x: (head.x - 2.6) * k, y: (head.y - 2.6) * k)
         }
     }
 }
 
 /// Капля знака `pin` (24 × 24): круглая головка r 7 в (12, 10) и остриё (12, 21).
 private struct PinDrop: Shape {
+    var angle = 0.0
+    var lift = 0.0
+
+    /// Поворот на `angle`° вокруг острия (12, 21) и подъём на `lift` — в
+    /// единицах холста 24.
+    static func pose(_ angle: Double, _ lift: Double) -> CGAffineTransform {
+        CGAffineTransform(translationX: 12, y: 21 - lift)
+            .rotated(by: angle * .pi / 180)
+            .translatedBy(x: -12, y: -21)
+    }
+
     func path(in rect: CGRect) -> Path {
         let k = min(rect.width, rect.height) / 24
         var p = Path()
@@ -258,7 +273,8 @@ private struct PinDrop: Shape {
         p.addCurve(to: CGPoint(x: 5, y: 10), control1: CGPoint(x: 8.134, y: 3), control2: CGPoint(x: 5, y: 6.134))
         p.addCurve(to: CGPoint(x: 12, y: 21), control1: CGPoint(x: 5, y: 14.7), control2: CGPoint(x: 12, y: 21))
         p.closeSubpath()
-        return p.applying(CGAffineTransform(scaleX: k, y: k)).offsetBy(dx: rect.minX, dy: rect.minY)
+        return p.applying(Self.pose(angle, lift)).applying(CGAffineTransform(scaleX: k, y: k))
+            .offsetBy(dx: rect.minX, dy: rect.minY)
     }
 }
 
