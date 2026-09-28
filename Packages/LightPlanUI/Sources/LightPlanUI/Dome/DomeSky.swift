@@ -82,10 +82,12 @@ struct DomeSky: Sendable, Equatable {
         init(_ e: Double, _ light: (SkyColor, SkyColor), _ dark: (SkyColor, SkyColor)) {
             self.e = e
             self.light = light
-            // “One tone darker”: 15% lower RGB channels than the accepted sketch.
+            // Below the accepted sketch: “one tone darker” was ×0.85; on the phone
+            // the day blue still read too bright (Alexey, 28.09). ×0.6 gives about
+            // half the light of ×0.85 — close to one stop.
             func dim(_ c: SkyColor) -> SkyColor {
-                SkyColor(Int((Double(c.r) * 0.85).rounded()), Int((Double(c.g) * 0.85).rounded()),
-                         Int((Double(c.b) * 0.85).rounded()))
+                SkyColor(Int((Double(c.r) * 0.6).rounded()), Int((Double(c.g) * 0.6).rounded()),
+                         Int((Double(c.b) * 0.6).rounded()))
             }
             self.dark = (dim(dark.0), dim(dark.1))
         }

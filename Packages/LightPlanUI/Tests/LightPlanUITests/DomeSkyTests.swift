@@ -42,7 +42,7 @@ struct DomeSkyTests {
     @Test func approvedNavyNightAndDarkerDarkTheme() {
         #expect(sky(-24).zenith == SkyColor(18,35,66))
         #expect(sky(-24).horizon == SkyColor(28,50,84))
-        #expect(sky(6, light: false).zenith == SkyColor(15,32,57))
+        #expect(sky(6, light: false).zenith == SkyColor(11,23,40))
         #expect(sky(-24, light: false).zenith == SkyColor(0,0,0))
         for e in [-18.0, -24, -90] {
             let light = sky(e), dark = sky(e, light: false)
@@ -53,6 +53,21 @@ struct DomeSkyTests {
             let star = LightPalette.lerp(light.horizon, SkyColor(203,215,234), opacity)
             #expect((DomeSky.luminance(star) + 0.05) / (DomeSky.luminance(light.horizon) + 0.05) > 2.5)
         }
+    }
+
+    /// Alexey on the phone, 28.09: the dark theme's day blue was still too bright
+    /// after "one tone darker". It now gives about half the light of that build.
+    @Test func darkThemeDayBlueIsMutedAboutOneStop() {
+        let day = sky(40, light: false)
+        #expect(day.zenith == SkyColor(13,28,47))
+        #expect(day.horizon == SkyColor(25,47,70))
+        // What fc78cbd painted at +40°, judged too bright.
+        let seen = (zenith: SkyColor(18,39,66), horizon: SkyColor(36,66,99))
+        for ratio in [DomeSky.luminance(day.zenith) / DomeSky.luminance(seen.zenith),
+                      DomeSky.luminance(day.horizon) / DomeSky.luminance(seen.horizon)] {
+            #expect(ratio > 0.45 && ratio < 0.6)
+        }
+        #expect(sky(40).zenith == SkyColor(207,225,235))
     }
 
     @Test func darkAstronomicalNightIsBlackIncludingHorizonGlow() {
