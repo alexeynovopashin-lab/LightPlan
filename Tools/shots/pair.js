@@ -87,6 +87,17 @@ const SHEET_SPOTS = [
   { id: 'p_shot_a', name: 'Нагорный парк', address: 'ул. Гоголя, 2', lat: 53.3334, lon: 83.8035, pinned: true },
   { id: 'p_shot_b', name: '', address: '', lat: 53.35, lon: 83.75, pinned: true }
 ];
+/* Веер «Мои места» (шаг 5 итерации 24, `--chapter fan`): три места, первое —
+   там, где стоит карта пары (дом `me` сида, Барнаул), — его строка латунью;
+   у второго уточнение второй строкой, у третьего — нет. Имена «набраны
+   рукой» (`named`): безымянную точку под головкой веб переименовывает ответом
+   геокодера («Барнаул» / «Алтайский край»), а натив этого пока не умеет —
+   расхождение записано в плане, пара сверяет веер, а не его. */
+const FAN_SPOTS = [
+  { id: 'p_fan_here', name: 'Барнаул, центр', address: '', lat: 53.3548, lon: 83.7698, pinned: true, named: true },
+  { id: 'p_fan_park', name: 'Нагорный парк', sub: 'вход с Гоголя', address: 'ул. Гоголя, 2', lat: 53.3334, lon: 83.8035, pinned: true, named: true },
+  { id: 'p_fan_obi', name: 'Берег Оби', address: '', lat: 53.3405, lon: 83.8127, pinned: true, named: true }
+];
 const OUT = path.resolve(args.out || path.join(os.tmpdir(), 'lp-shots', sim.nameFor(ROOT).replace(/\W+/g, '-')));
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -301,6 +312,7 @@ function markdown(results) {
     if (screen === 'map') {
       s.mapLayers = { sun: true, moon: true, mw: mode === 'astro', compass: true, spots: true };
       s.mapFold = fold !== 'open';
+      if (chapter === 'fan') s.spots = FAN_SPOTS;
     }
     const seedFile = path.join(dir, 'seed.json');
     fs.writeFileSync(seedFile, JSON.stringify(s));
@@ -359,6 +371,8 @@ function markdown(results) {
     if (screen === 'map' && !args['no-spot']) add(screen, theme, mode, moments[0], 'paper', 'spot');
     // Голый холст: низ убран свайпом, кружок возврата по центру (21б).
     if (screen === 'map' && !args['no-bare']) add(screen, theme, mode, moments[0], 'paper', 'bare');
+    // «Мои места» в шапке: веер открыт тапом по кнопке (шаг 5 итерации 24).
+    if (screen === 'map' && !args['no-fan']) add(screen, theme, mode, moments[0], 'paper', 'fan');
     if (screen === 'light' && mode === 'astro' && theme === 'light') {
       for (const slot of slots) if (slot !== 'paper') add(screen, theme, mode, moments[0], slot);
     }

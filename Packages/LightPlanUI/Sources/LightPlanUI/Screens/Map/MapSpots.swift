@@ -287,3 +287,95 @@ struct MapSaveButton: View {
         .shotNode("map.save")
     }
 }
+
+/// `.map-list` шапки «Карты» — «Мои места»: та же кнопка 44 и знак 20, что у
+/// закладки, стоит перед ней вплотную и видна с первым сохранённым местом
+/// (`renderSpotMark` веба). Знак — булавка `pin`, `--ink-6`, линия 1,7.
+struct MapListButton: View {
+    let lexicon: Lexicon
+    let pal: Palette
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Icon("pin", size: 20, line: 1.7)
+                .foregroundStyle(pal.ink6)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(lexicon.t("loc.myPlaces"))
+        .shotNode("map.list")
+    }
+}
+
+/// Веер «Мои места» (`#spotFan`, `openSpotFan` веба): сплошной лист `--sheet`
+/// без стекла (в таблице стекла § 5.4 его нет), радиус 16, поле 6, ширина
+/// 216–280, до 320 в высоту — дальше прокрутка. Строка: знак 18 (линия 1,6,
+/// `--ink-4`; место, где стоим, — латунью с заливкой 0,25), имя 15 и
+/// уточнение 11 `--ink-4`, поле 11 × 12, зазор 10. Выбор отдаётся наружу:
+/// веер не знает, кто его открыл.
+struct SpotFan: View {
+    let spots: [Spot]
+    let here: GeoCoordinate
+    let pal: Palette
+    let pick: (Spot) -> Void
+
+    var body: some View {
+        ScrollView(.vertical) {
+            VStack(spacing: 0) {
+                ForEach(spots) { sp in
+                    Button { pick(sp) } label: { row(sp) }
+                        .buttonStyle(FanRowStyle(pal: pal))
+                }
+            }
+            .padding(6)
+        }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(minWidth: 216, maxWidth: 280)
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(maxHeight: 320)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.55), radius: 20, x: 0, y: 18)
+        .shotNode("map.fan")
+    }
+
+    private func row(_ sp: Spot) -> some View {
+        let on = sp.latitude != nil && sp.coordinate.isSameSpot(as: here)
+        let art = Icon.common(sp.icon ?? "pin")
+        let k: CGFloat = 18 / 24
+        return HStack(spacing: 10) {
+            ZStack {
+                ForEach(art.parts.indices, id: \.self) { i in
+                    let shape = IconOutline(path: art.parts[i].path)
+                    shape.fill(on ? pal.brass.opacity(0.25) : .clear)
+                    shape.stroke(on ? pal.brass : pal.ink4,
+                                 style: StrokeStyle(lineWidth: 1.6 * k, lineCap: .round, lineJoin: .round))
+                }
+            }
+            .frame(width: 18, height: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(sp.name).font(.system(size: 15)).foregroundStyle(pal.ink).lineLimit(1)
+                if !sp.sub.isEmpty {
+                    Text(sp.sub).font(.system(size: 11)).foregroundStyle(pal.ink4).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 11).padding(.horizontal, 12)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Нажатая строка веера — `--press` в скруглении 11 (`button:active`).
+private struct FanRowStyle: ButtonStyle {
+    let pal: Palette
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(configuration.isPressed ? pal.press : .clear))
+    }
+}

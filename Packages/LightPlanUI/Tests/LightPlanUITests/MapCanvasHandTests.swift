@@ -52,5 +52,14 @@ struct MapCanvasHandTests {
         #expect(C.mustPlace(elsewhere, given: pinched, camera: pinched))
         #expect(C.mustPlace(elsewhere, given: nil, camera: nil))
     }
+
+    /// Шаг 5 итерации 24: переезд снаружи (булавка, «Мои места», город)
+    /// держит приближение пальца; уровень 14 — только у первого кадра холста.
+    @Test func mapLibreMoveKeepsZoom() {
+        typealias C = MapLibreCanvas.Coordinator
+        #expect(C.placeZoom(first: true, current: 0, initial: 14) == 14)
+        #expect(C.placeZoom(first: false, current: 16.4, initial: 14) == 16.4)
+        #expect(C.placeZoom(first: false, current: 11, initial: 14) == 11)
+    }
     #endif
 }

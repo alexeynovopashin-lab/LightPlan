@@ -66,7 +66,8 @@ struct MapLibreCanvas: UIViewRepresentable {
         if force || Coordinator.mustPlace(center, given: c.given, camera: c.center) {
             c.center = center
             view.setCenter(CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
-                           zoomLevel: zoom, animated: false)
+                           zoomLevel: Coordinator.placeZoom(first: force, current: view.zoomLevel, initial: zoom),
+                           animated: false)
         }
         c.given = center
     }
@@ -99,6 +100,14 @@ struct MapLibreCanvas: UIViewRepresentable {
         static func mustPlace(_ center: MapCanvasCenter, given: MapCanvasCenter?,
                               camera: MapCanvasCenter?) -> Bool {
             center != given && center != camera
+        }
+
+        /// Крупность переезда (`jumpTo({center, zoom: lmap.getZoom()})` веба):
+        /// уровень 14 — только первый кадр холста, дальше переезд к булавке,
+        /// месту из «Моих мест» или городу держит то приближение, что оставил
+        /// палец. Прежде каждый переезд возвращал 14 (шаг 5 итерации 24).
+        static func placeZoom(first: Bool, current: Double, initial: Double) -> Double {
+            first ? initial : current
         }
 
         private static let handReasons: MLNCameraChangeReason = [.gesturePan, .gesturePinch, .gestureZoomIn,

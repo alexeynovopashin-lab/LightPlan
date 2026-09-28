@@ -16,6 +16,10 @@ struct MapKitCanvas: View {
     @State private var camera: MapCameraPosition = .automatic
     @State private var width: CGFloat = 440
     @State private var placed: MapCanvasCenter?
+    /// Крупность, на которой камера стоит сейчас: переезд её держит. В
+    /// ящике, а не в `@State`: камера пишет её на каждом кадре жеста, и
+    /// перерисовывать холст из-за этого незачем.
+    @State private var live = LiveZoom()
 
     var body: some View {
         Map(position: $camera, interactionModes: panEnabled ? [.pan, .zoom] : [.zoom]) { }
@@ -36,6 +40,7 @@ struct MapKitCanvas: View {
                 let span = max(1e-9, ctx.region.span.longitudeDelta)
                 let z = log2(Double(width) * 360 / (512 * span))
                 let moved = MapCanvasCenter(latitude: c.latitude, longitude: c.longitude)
+                live.zoom = z
                 onCamera(MapCanvasCamera(center: moved, zoom: z, byHand: Self.byHand(moved, placed: placed)))
             }
             .onAppear { place() }
@@ -60,11 +65,16 @@ struct MapKitCanvas: View {
     }
 
     /// Ширина кадра в метрах — от уровня веба, чтобы крупность совпала с
-    /// MapLibre числом, а не на глаз.
+    /// MapLibre числом, а не на глаз. Уровень 14 — только первый кадр, дальше
+    /// переезд держит приближение пальца (`jumpTo` веба с `getZoom()`).
     private func place() {
         placed = center
-        let across = Double(width) * MapCanvasView.metersPerPoint(zoom: zoom, latitude: center.latitude)
+        let across = Double(width) * MapCanvasView.metersPerPoint(zoom: live.zoom ?? zoom, latitude: center.latitude)
         camera = .region(MKCoordinateRegion(center: .init(latitude: center.latitude, longitude: center.longitude),
                                             latitudinalMeters: across, longitudinalMeters: across))
     }
+}
+
+private final class LiveZoom {
+    var zoom: Double?
 }

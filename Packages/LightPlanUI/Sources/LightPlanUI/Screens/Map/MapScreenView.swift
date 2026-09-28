@@ -1,6 +1,7 @@
 import SwiftUI
 import LightPlanCore
 import LightPlanDomain
+import LightPlanData
 import LightPlanMapCanvas
 
 /// Экран «Карта» (итерация 20а): холст во весь экран, над ним ночная вуаль,
@@ -51,6 +52,9 @@ struct MapScreenView: View {
     @State private var barText = ""
     @State private var barTimer: Task<Void, Never>?
     @FocusState private var barFocus: Bool
+    /// Веер «Мои места» и рамка его кнопки в шапке: веер встаёт под ней.
+    @State private var fanOpen = false
+    @State private var listFrame: CGRect = .zero
 
     init(app: AppModel) {
         self.app = app
@@ -212,6 +216,9 @@ struct MapScreenView: View {
                 }
             }
             .overlay {
+                if fanOpen { spotFan(pal, size: size) }
+            }
+            .overlay {
                 if layersOpen {
                     ZStack(alignment: .bottomLeading) {
                         // Скрим — тап мимо меню закрывает его (`#mapLayersScrim`).
@@ -251,6 +258,8 @@ struct MapScreenView: View {
             if app.startChapter == "compass" { app.startChapter = nil; rotor.setLive(true) }
             // …и убирает низ (`--chapter bare`, 21б) — сразу, без подмены.
             if app.startChapter == "bare" { app.startChapter = nil; bare = true }
+            // …и открывает «Мои места» (`--chapter fan`, шаг 5 итерации 24).
+            if app.startChapter == "fan" { app.startChapter = nil; fanOpen = true }
         }
         #if DEBUG
         .task { await shotHeading() }
@@ -352,11 +361,20 @@ struct MapScreenView: View {
         .padding(.horizontal, 24)
         .padding(.top, top + 24)
         .padding(.bottom, 16)
-        // Закладка в правом углу шапки (`.map-save`, поля −6 сверху и −8 справа).
+        // Закладка в правом углу шапки (`.map-save`, поля −6 сверху и −8 справа),
+        // перед ней вплотную — «Мои места» (`.map-list`, с первым местом).
         .overlay(alignment: .topTrailing) {
-            MapSaveButton(on: app.spotHere != nil, lexicon: app.lexicon, pal: pal, action: { saveTapped() })
-                .padding(.top, top + 24 - 6)
-                .padding(.trailing, 24 - 8)
+            HStack(spacing: 0) {
+                if !app.spots.isEmpty {
+                    MapListButton(lexicon: app.lexicon, pal: pal) {
+                        withAnimation(.easeOut(duration: 0.16)) { fanOpen = true }
+                    }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { listFrame = $0 }
+                }
+                MapSaveButton(on: app.spotHere != nil, lexicon: app.lexicon, pal: pal, action: { saveTapped() })
+            }
+            .padding(.top, top + 24 - 6)
+            .padding(.trailing, 24 - 8)
         }
         .background { glass(pal, outside: [.top, .horizontal]) }
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair).frame(height: 1) }
@@ -585,6 +603,34 @@ struct MapScreenView: View {
     /// место приложения на уровне веба 14.
     private func fallbackCamera(_ place: Place) -> MapCanvasCamera {
         MapCanvasCamera(center: MapCanvasCenter(latitude: place.latitude, longitude: place.longitude), zoom: 14)
+    }
+
+    /// Веер «Мои места» (`openSpotFan` веба): правым краем к кнопке, 6 под ней;
+    /// не влез снизу — раскрывается вверх; от краёв экрана не ближе 10. Скрим
+    /// прозрачный (`.spot-scrim`): тап мимо закрывает веер и больше ничего.
+    /// Выбор увозит карту на место (`gotoLocation`), приближение остаётся.
+    private func spotFan(_ pal: Palette, size: CGSize) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Color.clear.contentShape(Rectangle())
+                .onTapGesture { withAnimation(.easeOut(duration: 0.16)) { fanOpen = false } }
+            SpotFan(spots: app.spots, here: app.place.coordinate, pal: pal) { sp in
+                fanOpen = false
+                guard let la = sp.latitude, let lo = sp.longitude else { return }
+                app.movePlace(to: GeoCoordinate(latitude: la, longitude: lo))
+            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fanHeight = $0 }
+            .padding(.trailing, max(10, size.width - listFrame.maxX))
+            .padding(.top, fanTop(size))
+            .transition(.scale(scale: 0.94).combined(with: .offset(y: -6)).combined(with: .opacity))
+        }
+    }
+
+    @State private var fanHeight: CGFloat = 0
+
+    private func fanTop(_ size: CGSize) -> CGFloat {
+        let below = listFrame.maxY + 6
+        if below + fanHeight <= size.height - 10 { return below }
+        return max(10, listFrame.minY - fanHeight - 6)
     }
 
     /// Тап по холсту (`lmap.on("click")`): по булавке — переезд на точку и
