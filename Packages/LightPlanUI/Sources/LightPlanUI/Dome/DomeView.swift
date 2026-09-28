@@ -205,7 +205,6 @@ public struct DomeView: View {
         let g = DomeGeometry.self
         context.drawLayer { layer in
             layer.clip(to: Path(CGRect(x: 0, y: 0, width: CGFloat(g.viewWidth), height: CGFloat(g.horizonY))))
-            if astro { layer.clip(to: skyPath()) }
             // Небо неспешно вращается вокруг центра купола вместе со сдвигом
             // времени — та же формула, что в вебе (`0.25°` в минуту).
             let angle = (t - sun.mint) * 0.25 * .pi / 180

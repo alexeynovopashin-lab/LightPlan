@@ -35,7 +35,10 @@ struct DomeSky: Sendable, Equatable {
         let pal = e < 8 ? forecast : nil
         glowColor = pal.map { LightPalette.lerp(state.color, $0.horizon, near * 0.75) } ?? state.color
         let themeGain = lightTheme ? 0.65 + 0.35 * Self.clamp((6 - e) / 12) : 1
-        glowOpacity = state.glow * (pal.map { 0.35 + $0.life * 0.85 } ?? 1) * themeGain
+        // The dark-theme sky reaches true black at astronomical night. Fade
+        // its residual horizon glow too, otherwise it still paints a blue patch.
+        let nightFade = lightTheme ? 1 : Self.clamp((e + 18) / 6)
+        glowOpacity = state.glow * (pal.map { 0.35 + $0.life * 0.85 } ?? 1) * themeGain * nightFade
     }
 
     /// Centre-line sample of the same gradient and elliptical forecast mask as Canvas.
@@ -88,8 +91,8 @@ struct DomeSky: Sendable, Equatable {
         }
     }
     private static let stops: [Stop] = [
-        Stop(-24, (SkyColor(18,35,66), SkyColor(28,50,84)), (SkyColor(4,8,20), SkyColor(7,13,30))),
-        Stop(-18, (SkyColor(20,40,74), SkyColor(32,58,94)), (SkyColor(5,10,25), SkyColor(10,18,38))),
+        Stop(-24, (SkyColor(18,35,66), SkyColor(28,50,84)), (SkyColor(0,0,0), SkyColor(0,0,0))),
+        Stop(-18, (SkyColor(20,40,74), SkyColor(32,58,94)), (SkyColor(0,0,0), SkyColor(0,0,0))),
         Stop(-12, (SkyColor(38,65,110), SkyColor(68,100,141)), (SkyColor(8,16,36), SkyColor(18,30,55))),
         Stop(-6, (SkyColor(98,130,171), SkyColor(149,176,202)), (SkyColor(16,28,49), SkyColor(24,40,68))),
         Stop(0, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,35,63), SkyColor(30,57,90))),

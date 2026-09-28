@@ -43,7 +43,7 @@ struct DomeSkyTests {
         #expect(sky(-24).zenith == SkyColor(18,35,66))
         #expect(sky(-24).horizon == SkyColor(28,50,84))
         #expect(sky(6, light: false).zenith == SkyColor(15,32,57))
-        #expect(sky(-24, light: false).zenith == SkyColor(3,7,17))
+        #expect(sky(-24, light: false).zenith == SkyColor(0,0,0))
         for e in [-18.0, -24, -90] {
             let light = sky(e), dark = sky(e, light: false)
             #expect(DomeSky.luminance(light.horizon) < 0.06)
@@ -53,6 +53,26 @@ struct DomeSkyTests {
             let star = LightPalette.lerp(light.horizon, SkyColor(203,215,234), opacity)
             #expect((DomeSky.luminance(star) + 0.05) / (DomeSky.luminance(light.horizon) + 0.05) > 2.5)
         }
+    }
+
+    @Test func darkAstronomicalNightIsBlackIncludingHorizonGlow() {
+        for morning in [true, false] {
+            for palette in [nil, bright] {
+                for e in stride(from: -90.0, through: -18, by: 0.5) {
+                    let night = sky(e, light: false, morning: morning, palette: palette)
+                    #expect(night.zenith == SkyColor(0,0,0))
+                    #expect(night.horizon == SkyColor(0,0,0))
+                    #expect(night.forecastOpacity == 0 && night.glowOpacity == 0)
+                    for fraction in [0.0, 0.5, 1] {
+                        #expect(night.background(at: fraction) == SkyColor(0,0,0))
+                        #expect(night.ink(at: fraction) == SkyColor(255,255,255))
+                    }
+                }
+            }
+        }
+        #expect(sky(-18 + 0.001, light: false).glowOpacity < 0.00002)
+        #expect(sky(-18, light: true).glowOpacity > 0)
+        #expect(sky(-24, light: true).zenith == SkyColor(18,35,66))
     }
 
     @Test func twilightIsContinuousAndMonotonicallyDarker() {
