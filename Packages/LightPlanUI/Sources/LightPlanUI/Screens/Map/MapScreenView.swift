@@ -69,6 +69,9 @@ struct MapScreenView: View {
     @State private var routeBarTop: CGFloat = 700
     /// Булавка, только что вставшая в черновик, и счёт постановок.
     @State private var landing: (id: String, tick: Int)?
+    /// Точки, чья булавка ещё садится: их строки полоса покажет после
+    /// постановки (слово Алексея 28.09: «две анимации одновременно сбивают»).
+    @State private var rowLag: Set<String> = []
     /// Кольца касания в точках экрана — вне ротора.
     @State private var rings: [(id: Int, at: CGPoint)] = []
     @State private var ringSeq = 0
@@ -726,9 +729,12 @@ struct MapScreenView: View {
     // MARK: - Маршрут (24а)
 
     /// Тап в режиме набора (`lmap.on("click")` веба). По булавке — в черновик
-    /// или из него и тихая полоса имени, карта не едет. Мимо: открыта полоса
-    /// имени — только закрыть её; иначе кольцо под пальцем и точка в центре
-    /// кадра — новое место открывает полосу имени с клавиатурой.
+    /// или из него и тихая полоса имени, карта не едет. Мимо: поднята
+    /// клавиатура — только убрать её; иначе кольцо под пальцем и точка в
+    /// центре кадра — новое место открывает тихую полосу имени.
+    /// Отступление от веба (слово Алексея 28.09): у веба новая точка
+    /// поднимает клавиатуру, а тап при открытой полосе только закрывает её —
+    /// точки ставят подряд, и каждая вторая стоила бы лишнего тапа.
     private func routeTap(_ hit: Spot?, screen: CGPoint?) {
         if let sp = hit {
             app.dropRouteUndo()
@@ -736,19 +742,31 @@ struct MapScreenView: View {
             openBar(sp, edit: true, quiet: true)
             return
         }
-        if barSpot != nil { closeBar(); return }
+        if barSpot != nil {
+            if barFocus { closeBar(); return }
+            closeBar()
+        }
         if let screen { ring(at: screen) }
         app.dropRouteUndo()
+        let had = Set(app.mapRoute)
         let r = app.routeAddHere()
-        land(r.spot.id)
-        if r.isNew { openBar(r.spot, edit: false, quiet: false) }
+        land(r.spot.id, newRow: !had.contains(r.spot.id))
+        if r.isNew { openBar(r.spot, edit: false, quiet: true) }
     }
 
     /// Постановка (`markLand`): движение булавки, отдача и щелчок закладки.
-    private func land(_ id: String) {
+    /// Строка новой точки в полосе ждёт, пока булавка сядет (`spot-land`
+    /// 0,52 с); точка, уже стоявшая в черновике, строку не прячет.
+    private func land(_ id: String, newRow: Bool = true) {
         landing = (id, (landing?.tick ?? 0) + 1)
         spotDrops += 1
         MapClick.play()
+        guard newRow else { return }
+        rowLag.insert(id)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(520))
+            rowLag.remove(id)
+        }
     }
 
     private func ring(at p: CGPoint) {
@@ -819,13 +837,16 @@ struct MapScreenView: View {
 
     /// Полоса черновика и её кнопки.
     private func routeBar(_ pal: Palette) -> some View {
-        let pts = app.routeSpots
+        // Садящиеся точки — всегда в хвосте черновика: номера строк и порядок
+        // перестановки у остальных не сдвигаются.
+        let pts = app.routeSpots.filter { !rowLag.contains($0.id) }
         let inRoute = Set(app.mapRoute)
         let rows = pts.enumerated().map { i, sp in
             RouteRow(id: sp.id, name: sp.name.isEmpty ? sp.coordinate.text : sp.name,
                      walk: i + 1 < pts.count ? app.isWalk(from: sp.id, to: pts[i + 1].id) : nil)
         }
-        return RouteBar(rows: rows, dist: routeDist(), hasSpots: !app.spots.isEmpty,
+        // Счёт садящейся точки уже в дороге — «2 точки · км трёх» не пишем.
+        return RouteBar(rows: rows, dist: rowLag.isEmpty ? routeDist() : nil, hasSpots: !app.spots.isEmpty,
                         canAdd: app.spots.contains { !inRoute.contains($0.id) },
                         undo: app.undo, lexicon: app.lexicon, pal: pal,
                         onAdd: { f in
