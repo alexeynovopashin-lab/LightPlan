@@ -29,7 +29,7 @@ import LightPlanDomain
 /// куда писать, на каком угле ротор встал (`MapScreenView.shotHeading`).
 /// Лист места (21в): `LPShotSheet loc` открывает «Где снимаем» над экраном,
 /// `LPShotWay` — путь (`addr` | `geo`), без него — развилка. «Съёмки» (22):
-/// `LPShotSheet year | year12 | stats | search` — слой, `bin` — корзина,
+/// `LPShotSheet year | year12 | stats | search` — слой, `bin` — корзина, `card` — карточка,
 /// `blk` — «Занять время» на выбранный день.
 public struct ShotScenario: Sendable {
     public enum Screen: String, Sendable { case light, map, planner, settings }
@@ -109,6 +109,11 @@ extension AppModel {
         app.startChapter = s.chapter
         // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.
         if s.screen == .light, s.chapter == "pick" { app.light.pickerOpen = true }
+        // Карточка (25): `LPShotSheet card`, запись — `LPShotWay <id>` (без него — первая съёмка дня).
+        if s.sheet == "card" {
+            let id = s.way ?? app.sessions.first { $0.day == app.planner.selected && $0.kind == .shoot }?.id
+            if let id { app.openCard(id: id) }
+        }
         // Форма записи (23): `LPShotSheet form`, жанр — `LPShotWay` (без него — последний). Черновик
         // только в памяти: прогон не должен писать на диск симулятора.
         if s.sheet == "form" {

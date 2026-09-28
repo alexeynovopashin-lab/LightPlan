@@ -51,6 +51,13 @@ private struct Shell: View {
             screen(.map) { MapScreenView(app: app) }
             screen(.planner) { PlannerScreenView(app: app) }
             screen(.settings) { SettingsView(app: app) }
+            // Карточка события (25) — над вкладками и панелью, как `#cardOverlay`
+            // веба; форма и листы открываются поверх неё.
+            if let s = app.card {
+                CardScreen(app: app, s: s)
+                    .transition(.move(edge: .bottom))
+                    .zIndex(1)
+            }
             // Затемнение под листом места (`.scrim` веба, чёрный 0,55): лист
             // iOS 26 на неполной высоте экран под собой не затемняет.
             Color.black.opacity(app.placeSheetOpen ? 0.55 : 0)
@@ -59,11 +66,12 @@ private struct Shell: View {
                 .animation(.easeOut(duration: 0.3), value: app.placeSheetOpen)
             // «Вернуть» после удаления (22) — над любой вкладкой, 14 над панелью.
             UndoBar(app: app)
+                .zIndex(2)
         }
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
         // из неё видно 84 − низ зоны, остальное уходит под полосу.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !app.chapterOpen && !app.plannerPageOpen {
+            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil {
                 GeometryReader { geo in
                     TabBarView(tab: $app.tab, lexicon: app.lexicon)
                         .shotNode("tabbar")

@@ -164,6 +164,8 @@ private struct WeekRow: View {
                 .foregroundStyle(pal.ink4)
         }
         .padding(.horizontal, 12).padding(.vertical, 9)
+        .contentShape(Rectangle())
+        .onTapGesture { withAnimation(overlaySlide) { app.openCard(id: s.id) } }
     }
 
     /// Раскрытый день (`.wk-more`): рассвет, закат, золотой час и погода.

@@ -323,7 +323,8 @@ struct PlannerDayList: View {
                 Spacer(minLength: 0)
             } else if let s = it.session {
                 let soft = it.kind != .shoot
-                let past = !soft && EventPhase.of(s, now: WallTime(day: f.today, minutes: app.nowMinute), manualEnd: false) == .after
+                // Часы места съёмки и «Завершать вручную», как у веба (`past3`).
+                let past = !soft && app.phase(of: s) == .after
                 icon(s, it, pal)
                 if !past {
                     Text(f.fmt(Double(it.start)) + (soft ? " – " + f.fmt(Double(it.end)) : ""))
@@ -439,7 +440,8 @@ struct PlannerDayStates: View {
     }
 }
 
-/// Действие строки дня: занятость открывается тапом, запись держат для веера.
+/// Действие строки дня: занятость открывается тапом; запись — тап открывает
+/// карточку (25), удержание — веер.
 struct RowAct: ViewModifier {
     let app: AppModel
     let it: DayItem
@@ -449,7 +451,9 @@ struct RowAct: ViewModifier {
         if let b = it.block {
             content.onTapGesture { app.openBlockSheet(editing: b.id) }
         } else if let s = it.session {
-            content.modifier(FanHold(id: s.id, fan: $fan))
+            content
+                .onTapGesture { withAnimation(overlaySlide) { app.openCard(id: s.id) } }
+                .modifier(FanHold(id: s.id, fan: $fan))
         } else {
             content
         }

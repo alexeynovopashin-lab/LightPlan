@@ -207,6 +207,8 @@ public final class AppModel {
     public var binOpen = false
     /// Лист «Занять время» (веб `#blkSheet`) с заготовкой; `nil` — закрыт.
     public var blockSheet: BlockDraft?
+    /// Открытая карточка — id записи (итерация 25, `AppModel+Card`).
+    var cardId: String?
     /// Сводка дня свёрнута (`dayFold` снимка) — единственное, что планировщик
     /// помнит между запусками.
     public var dayFold: Bool {
@@ -361,6 +363,7 @@ public final class AppModel {
         change(&settings)
         guard settings != before else { return }
         settings.apply(to: &snapshot)
+        if before.manualEnd, !settings.manualEnd { clearFinishMarks() }
         persist()
 
         light.proMode = settings.pro

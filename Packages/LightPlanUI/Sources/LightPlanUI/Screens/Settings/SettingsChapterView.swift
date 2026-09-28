@@ -145,7 +145,27 @@ struct SettingsChapterView: View {
         SetNote(text: t.t("set.travelNote", ["n": t.count("unit.min", s.travelMin)]))
         foreign("set.music")
         foreign("set.playlists")
-        foreign("set.finish")
+        finish
+    }
+
+    /// «Завершение съёмки» (`#manualEndToggle`, итерация 25): тумблер и
+    /// пояснение. Выключение снимает все отметки «Завершить» (`AppModel.update`).
+    @ViewBuilder private var finish: some View {
+        let pal = Palette(colorScheme)
+        SecLabel(text: t.t("set.finish"))
+        HStack(spacing: 12) {
+            Text(t.t("set.manualEnd")).font(.system(size: 15)).foregroundStyle(pal.ink)
+            Spacer(minLength: 0)
+            Toggle("", isOn: binding(\.manualEnd))
+                .labelsHidden().tint(pal.brass)
+                .frame(height: 31)
+                .shotNode("finish.toggle", text: s.manualEnd ? "on" : "off")
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 15)
+        .padding(.bottom, 16)
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+        SetNote(text: t.t("set.manualEndNote"))
     }
 
     // MARK: - Язык и регион

@@ -139,7 +139,9 @@ public struct Session: Sendable, Hashable, Identifiable {
     public var telLog: [TelLogEntry] = []
     /// `rep` — сведения о группе повтора.
     public var repeatInfo: Repeat?
-    /// `doneAt` — съёмку завершили кнопкой: минута суток по часам телефона.
+    /// `doneAt` — съёмку завершили кнопкой: минута шкалы съёмки по часам места
+    /// (00:31 вторых суток — 1471), та же, с которой сравнивает фаза. Веб пишет
+    /// минуту суток телефона — в чужом поясе ошибка эталона (25, шаг 2).
     public var doneAt: Int?
     /// `icsSig` — отпечаток события чужого календаря: по нему не ввозят дважды.
     public var icsSignature: String?

@@ -37,15 +37,19 @@ public struct AppSettings: Sendable, Equatable {
     /// практика записана, — так же и здесь.
     public var practicePicked: Bool
     public var home: HomeCity
+    /// «Завершать вручную» (веб `manualEnd`, по умолчанию выключено).
+    public var manualEnd: Bool
 
     public init(pro: Bool = false, theme: Theme = .dark, ribbonMode: RibbonMode = .drum,
                 drumSlot: DrumSlot = .paper, timeStep: Int = 5, travelMin: Int = 40,
                 tempUnit: TempUnit = .c, clock: Clock = .auto, currency: Currency = .rub,
-                practice: Practice = .ru, practicePicked: Bool = false, home: HomeCity = HomeCity()) {
+                practice: Practice = .ru, practicePicked: Bool = false, home: HomeCity = HomeCity(),
+                manualEnd: Bool = false) {
         self.pro = pro; self.theme = theme; self.ribbonMode = ribbonMode; self.drumSlot = drumSlot
         self.timeStep = timeStep; self.travelMin = travelMin; self.tempUnit = tempUnit
         self.clock = clock; self.currency = currency; self.practice = practice
         self.practicePicked = practicePicked; self.home = home
+        self.manualEnd = manualEnd
     }
 
     /// Прочитать из снимка по правилам веба. `zone` — пояс телефона, по
@@ -68,6 +72,7 @@ public struct AppSettings: Sendable, Equatable {
             practice = Self.guessPractice(zone: zone.identifier) ?? .ru; practicePicked = false
         }
         home = HomeCity(me: s.extra["me"])
+        manualEnd = s.manualEnd
     }
 
     /// Записать в снимок. Прочие поля снимка и прочие ключи `me` (номер,
@@ -87,6 +92,7 @@ public struct AppSettings: Sendable, Equatable {
         // но читает признак выбора отдельно — здесь его нести негде).
         s.practice = practicePicked ? practice.rawValue : nil
         s.extra["me"] = home.merged(into: s.extra["me"])
+        s.manualEnd = manualEnd
     }
 
     /// Практика по часовому поясу — порт `guessPractice` веба: пояс — это

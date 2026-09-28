@@ -35,6 +35,9 @@ public struct Snapshot: Sendable, Hashable {
     public var mapLabels: Bool = false
     public var mapLayers: [String: Bool]?
     public var dayFold: Bool = false
+    /// «Завершать вручную» (настройки «Съёмок», веб `manualEnd`): съёмка
+    /// кончается нажатием «Завершить», а не записанным концом.
+    public var manualEnd: Bool = false
     public var practice: String?
     public var genres: [Genre] = []
     public var genrePrefs: [Genre: GenrePrefs] = [:]
@@ -58,7 +61,7 @@ extension Snapshot: Codable {
     enum CodingKeys: String, CodingKey, CaseIterable {
         case sessions, orgs, blocks, spots, studios, trashed
         case loc, theme, clock, tempUnit, currency, timeStep, travelMin
-        case pro, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold
+        case pro, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold, manualEnd
         case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment
         case cardOrder, cardOff, sync
     }
@@ -96,6 +99,7 @@ extension Snapshot: Codable {
         mapLabels = try c.decodeIfPresent(Bool.self, forKey: .mapLabels) ?? false
         mapLayers = try c.decodeIfPresent([String: Bool].self, forKey: .mapLayers)
         dayFold = try c.decodeIfPresent(Bool.self, forKey: .dayFold) ?? false
+        manualEnd = try c.decodeIfPresent(Bool.self, forKey: .manualEnd) ?? false
         practice = try c.decodeIfPresent(String.self, forKey: .practice)
         genres = try c.decodeLenientArray(Genre.self, forKey: .genres)
         genrePrefs = try c.decodeLenientDictionary(keyedBy: Genre.self, valueType: GenrePrefs.self, forKey: .genrePrefs)
@@ -141,6 +145,7 @@ extension Snapshot: Codable {
         try c.encode(mapLabels, forKey: .mapLabels)
         try c.encodeIfPresent(mapLayers, forKey: .mapLayers)
         try c.encode(dayFold, forKey: .dayFold)
+        try c.encode(manualEnd, forKey: .manualEnd)
         try c.encodeIfPresent(practice, forKey: .practice)
         try c.encodeLenientArray(genres, forKey: .genres)
         try c.encodeLenientDictionary(genrePrefs, forKey: .genrePrefs)

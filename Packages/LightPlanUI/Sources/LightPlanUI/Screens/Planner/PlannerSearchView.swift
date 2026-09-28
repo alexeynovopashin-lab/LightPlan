@@ -3,8 +3,8 @@ import LightPlanCore
 import LightPlanDomain
 
 /// Поиск по съёмкам (веб `#searchOverlay`, итерация 22): клиент, имя съёмки,
-/// место, город. Ищет на каждой букве. Тап по найденному у веба открывает
-/// карточку — её ещё нет (итерация 25), до неё открывается день записи.
+/// место, город. Ищет на каждой букве. Тап по найденному открывает карточку
+/// (25); «Съёмки» под ней встают на день записи.
 struct PlannerSearchView: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
@@ -81,6 +81,7 @@ struct PlannerSearchView: View {
             nav.lentaOpen = false
             nav.year12Open = false
             nav.statsOpen = false
+            withAnimation(overlaySlide) { app.openCard(id: s.id) }
         } label: {
             HStack(spacing: 10) {
                 Text(f.dates.dMonShort(f.date(s.day))).font(webFont(16).monospacedDigit()).foregroundStyle(pal.brass)
