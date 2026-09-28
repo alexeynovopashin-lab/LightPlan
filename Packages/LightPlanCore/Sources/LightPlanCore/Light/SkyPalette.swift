@@ -6,7 +6,7 @@ import Foundation
 /// выйдет небо, а «свинец» — это когда цвета не будет.
 ///
 /// В вебе палитра красит две вещи: плашку неба в сводке и зарево у горизонта
-/// купола. Здесь пока только второе (`HorizonGlow`).
+/// купола. В нативе её также использует подложка купола «Астро» (`DomeSky` в UI).
 public struct SkyPalette: Sendable, Equatable {
     public let zenith: SkyColor
     public let high: SkyColor
