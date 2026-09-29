@@ -142,6 +142,36 @@ private func d(_ y: Int, _ m: Int, _ day: Int) -> CivilDate { CivilDate(year: y,
         #expect(lanes[1]?.columns == 1)
     }
 
+    /// Слово Алексея с телефона (27.6б): «Анна и Игорь» 00:00–23:59 и «Выходные»
+    /// на весь день — карточки легли друг на друга, тап шёл в занятое время.
+    /// Веб (замер беты) кладёт их так же: обе 370 pt шириной, y одинаков, тап
+    /// в занятое. Раскладка та же, чинится порядок отрисовки и зона нажатия.
+    @Test func allDayBusyDoesNotCoverWholeDayShoot() {
+        let day = d(2026, 9, 29)
+        var wed = shoot("wed", day, 0, 1439)
+        wed.end = 1439
+        var off = Block(id: "we", kind: .off, from: d(2026, 9, 28))
+        off.allDay = true; off.days = 2
+        let items = DayItem.items(on: day, sessions: [wed], blocks: [off], eventsLayer: false)
+        // Сортировка: свадьба (конец 1439) раньше занятости (конец 1440).
+        #expect(items.map(\.kind) == [.shoot, .busy])
+        let lanes = DayLanes.layout(items)
+        #expect(lanes[0]?.columns == 1 && lanes[0]?.column == 0)
+        #expect(lanes[1] == nil)
+        #expect(abs((lanes[0]?.bottom ?? 0) - 911.4) < 0.1)
+        // Занятость — фон: рисуется первой, свадьба над ней и ловит тап.
+        #expect(DayLanes.drawOrder(items) == [1, 0])
+    }
+
+    @Test func drawOrderKeepsOthersInPlace() {
+        let day = d(2026, 9, 24)
+        var off = Block(id: "v", kind: .off, from: d(2026, 9, 23))
+        off.allDay = true; off.days = 3
+        let items = DayItem.items(on: day, sessions: [shoot("a", day, 600, 60), shoot("b", day, 660, 60)],
+                                  blocks: [off], eventsLayer: false)
+        #expect(DayLanes.drawOrder(items) == [0, 1, 2])
+    }
+
     @Test func nightShootGivesTailToNextDay() {
         let day = d(2026, 9, 24)
         let s = shoot("n", day, 22 * 60, 5 * 60)

@@ -119,8 +119,8 @@ struct PlannerDayBody: View {
             }
             .padding(.horizontal, 24)
             // Блоки.
-            ForEach(Array(items.enumerated()), id: \.element.id) { i, it in
-                event(it, index: i, slot: slots[i], pal: pal)
+            ForEach(DayLanes.drawOrder(items), id: \.self) { i in
+                event(items[i], index: i, slot: slots[i], pal: pal)
             }
             // Узлы начала — после всех блоков, чтобы ранний не ушёл под поздний.
             ForEach(Array(items.enumerated()), id: \.element.id) { _, it in dot(it, pal) }
