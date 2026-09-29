@@ -120,5 +120,8 @@ if [ -n "$errors" ]; then
 fi
 echo "границы слоёв: ок ($packages пакетов, $files файлов)"
 
+# Защита телефона (26т): основное приложение не из main — ошибка сборки.
+"$root/Tools/check_phone_id.sh" || exit 1
+
 # Стекло без подделки (20д) — та же фаза сборки, чтобы не заводить вторую.
 exec "$root/Tools/check_glass.sh"

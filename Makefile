@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: help parity blocks lang icons domain shots mapstyle mapref planner year tapspot pinch rotor sims glass
+.PHONY: phone checkstep help parity blocks lang icons domain shots mapstyle mapref planner year tapspot pinch rotor sims glass
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -24,6 +24,8 @@ help:
 	@echo "make rotor    ротор «Карты» под подставным компасом: восемь углов, клина пустоты нет (21а, ~1 мин)"
 	@echo "make sims     симулятор этой ветки; ARGS=--prune удаляет симуляторы веток, которых нет (21а)"
 	@echo "make glass    стекло без подделки: ни системного материала, ни нарисованного блика вне Timebar/ (20д; идёт и фазой сборки)"
+	@echo "make phone    сборка на iPhone Алексея: ARGS=\"install\" | \"uninstall\" | \"list\"; ветка ставит своё приложение «LP <ветка>» (26т)"
+	@echo "make checkstep ветка шага против базы: четыре строки да/нет, любое «нет» — код 1; ARGS=\"wt/26 [main] --type код\" (26т)"
 	@echo "make shots    пары снимков веб / натив «Света», «Карты», «Съёмок» и «Настроек» и сверка числами (19б, 20а, 21)"
 
 # Файлы, которые пишет сам generate.js. Другие цели (lang, domain, локация)
@@ -147,3 +149,11 @@ sims:
 # Итерация 20д: там, где у веба имитация стекла, — только встроенное стекло.
 glass:
 	@Tools/check_glass.sh
+
+# Итерация 26т: сборка на телефон одним скриптом (имя и идентификатор из ветки).
+phone:
+	@Tools/phone.sh $(ARGS)
+
+# Итерация 26т: проверка шага — четыре строки да/нет.
+checkstep:
+	@Tools/check_step.sh $(ARGS)
