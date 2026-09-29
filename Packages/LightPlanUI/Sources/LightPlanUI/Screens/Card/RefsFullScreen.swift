@@ -103,7 +103,7 @@ struct RefsFullScreen: View {
     @ViewBuilder private func section(_ title: String, _ frames: [RefFrame], first: Bool, _ pal: Palette) -> some View {
         if !frames.isEmpty {
             Text("\(title) · \(frames.count)").textCase(.uppercase).tracking(1.2).font(webFont(10, 600))
-                .foregroundStyle(pal.ink7)
+                .foregroundStyle(pal.ink7).frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 2).padding(.top, first ? 8 : 22).padding(.bottom, 6)
             grid(frames, pal)
         }
@@ -227,22 +227,52 @@ private struct RefViewerLayer: View {
 
     private func refBox(_ r: CGRect) -> RefBox { RefBox(x: r.minX, y: r.minY, w: r.width, h: r.height) }
 
+    /// Панели `.rv-bar`: сверху ✕ (белый, без круга, коробка 26) и счётчик 12,5; внизу
+    /// теги кадра слева и подсказка 11 справа. Поля 18, сверху и снизу 14; градиенты
+    /// .55 и .6 к прозрачному (справка 27, замер пары).
     private func chrome(_ pal: Palette) -> some View {
-        VStack {
-            HStack {
-                FormBarButton(node: "refs.viewer.close", kind: .close, label: t.t("card.close")) { close() }
-                Spacer()
+        let frame = app.refViewerFrameId.flatMap { id in app.refSections(s).flat.first { $0.id == id } }
+        return VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Button { close() } label: {
+                    Icon("close", size: 18, line: 2).foregroundStyle(.white).frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).shotNode("refs.viewer.close")
+                .accessibilityLabel(t.t("card.close"))
+                Spacer(minLength: 0)
                 if let c = app.refsFull?.pager?.counter {
-                    Text(c).font(webFont(14)).foregroundStyle(pal.ink3).shotNode("refs.viewer.counter", text: c)
+                    Text(c).font(webFont(12.5)).monospacedDigit().foregroundStyle(.white.opacity(0.82))
+                        .shotNode("refs.viewer.counter", text: c)
                 }
             }
-            .padding(.horizontal, 24).padding(.top, 8)
+            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 14)
+            .background(LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .top))
             Spacer()
-            if (app.refsFull?.pager?.count ?? 0) >= 2 {
-                Text(t.t("mb.viewerHint")).font(webFont(12)).foregroundStyle(pal.ink6).padding(.bottom, 30)
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    ForEach(frame?.tags ?? [], id: \.self) { code in
+                        Text(tagName(code)).font(webFont(11.5)).foregroundStyle(.white)
+                            .padding(.horizontal, 11).padding(.vertical, 6)
+                            .background(Capsule().fill(.white.opacity(0.14)))
+                    }
+                }
+                Spacer(minLength: 0)
+                if (app.refsFull?.pager?.count ?? 0) >= 2 {
+                    Text(t.t("mb.viewerHint")).font(webFont(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                }
             }
+            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 14)
+            .background(LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .bottom))
         }
         .transition(.opacity)
+    }
+
+    private func tagName(_ code: String) -> String {
+        let v = t.t("tag.\(code)")
+        return v == "tag.\(code)" ? code : v
     }
 
     private func gestures(_ pal: Palette) -> some Gesture {
