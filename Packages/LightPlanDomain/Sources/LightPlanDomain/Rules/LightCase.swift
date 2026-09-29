@@ -64,7 +64,11 @@ public enum LightCase: Hashable, Sendable {
     public static func of(_ s: Session, route: [RoutePoint], spots: [Spot], studios: [Studio],
                           evening: (GeoPoint?, CivilDate) -> EveningLight,
                           skyIsBad: (CivilDate) -> Bool) -> LightCase? {
-        guard s.wishes.contains(where: \.asksLight) else { return nil }
+        // О золотом часе спрашивает только «Закат»: у «Звёзд» и «Луны» своя
+        // строка (`NightLight`). Веб (`LIGHT_WISH`) судит по золотому часу все
+        // три — съёмка звёзд в 22:00 слышала «мимо золотого часа, сдвиньте».
+        // Алексей 29.09: «да, убрать, звездам не нужен свет».
+        guard s.wishes.contains(.sunset) else { return nil }
         let at = Stops.skyPoint(of: s, spots: spots, studios: studios)
         let gate = evening(at, s.day)
         guard gate.goldenB != nil, gate.blueB != nil else { return nil }

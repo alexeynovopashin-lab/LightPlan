@@ -76,6 +76,9 @@ public final class AppModel {
     public var spotCount: Int { snapshot.spots.count }
     /// Засветка места по атласу Лоренца — строка «Засветка» сводки карты.
     public let glow: GlowStore
+    /// Прогноз по точкам съёмки для карточки (веб `ptFetch`): свой, отдельный
+    /// от прогноза места «Света».
+    public let pointWeather: PointWeather
     /// Датчик направления для живого компаса карты; `nil` — тесты и пары.
     let heading: (any HeadingSource)?
     /// Сводка карты свёрнута (`mapFold` снимка): кто свернул, не хочет видеть
@@ -212,6 +215,12 @@ public final class AppModel {
     /// Открытые свёртки карточки (маршрут, документы): держатся, пока открыта
     /// эта карточка (итерация 26; у веба закрывались при любой перерисовке).
     var cardFolds: Set<CardBlock> = []
+    /// Ночь места в сутки для строки «Звёзды» и дуги луны: окно Млечного Пути
+    /// считается перебором суток шагом 5 минут, карточка же перерисовывается
+    /// раз в минуту. Кэш вне наблюдения — запись в него из тела вида не
+    /// будит перерисовку.
+    @ObservationIgnored var nightCache: [String: StarNight] = [:]
+    @ObservationIgnored var moonCache: [String: [ClosedRange<Int>]] = [:]
     /// Сводка дня свёрнута (`dayFold` снимка) — единственное, что планировщик
     /// помнит между запусками.
     public var dayFold: Bool {
@@ -312,6 +321,7 @@ public final class AppModel {
         self.planner = PlannerState(today: Self.today(in: place.place, now: now()))
 
         let weather = WeatherStore(place: place.place, source: weatherSource)
+        self.pointWeather = PointWeather(source: weatherSource)
         self.glow = GlowStore(place: place.place, source: glowSource)
         let timebar = TimebarState(place: place.place, date: Self.today(in: place.place, now: now()), weather: weather,
                                    language: language, ribbonMode: Self.ribbon(settings.ribbonMode),

@@ -1,22 +1,67 @@
 {
   "ru": {
     "blk.removed": "{name} · убрано",
-    "year.nextYear": "Следующий год"
+    "year.nextYear": "Следующий год",
+    "light.inStars": "«{name}» попадает в окно Млечного Пути: {range}. Небо тёмное, ядро поднялось, луна не мешает.",
+    "light.missStars": "Окно Млечного Пути {range} — ближайшая точка «{name}» мимо на {gap}. Сдвиньте, если звёзды важны.",
+    "light.starsMoon": "Млечного Пути в эту ночь не будет: луна освещена на {p}% и стоит над горизонтом, пока видно ядро.",
+    "light.starsLow": "Млечного Пути в эту ночь не будет: в тёмное время ядро не поднимается выше 10°.",
+    "light.starsNoDark": "Млечного Пути в эту ночь не будет: небо не темнеет, солнце не уходит ниже −18°.",
+    "light.inMoon": "«{name}» — луна над горизонтом {range}, освещена на {p}%.",
+    "light.missMoon": "Луна над горизонтом {range} — ближайшая точка «{name}» мимо на {gap}. Сдвиньте, если луна важна.",
+    "light.moonNone": "Луна в эти сутки не всходит.",
+    "card.wxNoData": "Данных о погоде пока нет: прогноз появится за 16 дней до съёмки."
   },
   "en": {
     "blk.removed": "{name} · removed",
-    "year.nextYear": "Next year"
+    "year.nextYear": "Next year",
+    "light.inStars": "“{name}” falls in the Milky Way window: {range}. Dark sky, the core is up, the moon is out of the way.",
+    "light.missStars": "Milky Way window {range} — the nearest stop, “{name}”, misses it by {gap}. Shift it if the stars matter.",
+    "light.starsMoon": "No Milky Way tonight: the moon is {p}% lit and up while the core is visible.",
+    "light.starsLow": "No Milky Way tonight: in the dark hours the core stays below 10°.",
+    "light.starsNoDark": "No Milky Way tonight: the sky never gets dark, the sun stays above −18°.",
+    "light.inMoon": "“{name}” — the moon is up {range}, {p}% lit.",
+    "light.missMoon": "Moon up {range} — the nearest stop, “{name}”, misses it by {gap}. Shift it if the moon matters.",
+    "light.moonNone": "The moon does not rise this day.",
+    "card.wxNoData": "No weather data yet: the forecast appears 16 days before the shoot."
   },
   "es": {
     "blk.removed": "{name} · quitado",
-    "year.nextYear": "Año siguiente"
+    "year.nextYear": "Año siguiente",
+    "light.inStars": "«{name}» cae en la ventana de la Vía Láctea: {range}. Cielo oscuro, el núcleo alto, la luna no molesta.",
+    "light.missStars": "Ventana de la Vía Láctea {range}: el punto más cercano, «{name}», queda fuera por {gap}. Muévalo si las estrellas importan.",
+    "light.starsMoon": "Esta noche no habrá Vía Láctea: la luna está iluminada al {p}% y sobre el horizonte mientras se ve el núcleo.",
+    "light.starsLow": "Esta noche no habrá Vía Láctea: en las horas oscuras el núcleo no sube de 10°.",
+    "light.starsNoDark": "Esta noche no habrá Vía Láctea: el cielo no oscurece, el sol no baja de −18°.",
+    "light.inMoon": "«{name}»: la luna está sobre el horizonte {range}, iluminada al {p}%.",
+    "light.missMoon": "Luna sobre el horizonte {range}: el punto más cercano, «{name}», queda fuera por {gap}. Muévalo si la luna importa.",
+    "light.moonNone": "La luna no sale este día.",
+    "card.wxNoData": "Aún no hay datos del tiempo: el pronóstico aparece 16 días antes de la sesión."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
-    "year.nextYear": "翌年"
+    "year.nextYear": "翌年",
+    "light.inStars": "「{name}」は天の川の撮影枠 {range} に入っています。空は暗く、銀河中心は昇り、月も邪魔しません。",
+    "light.missStars": "天の川の撮影枠は {range}。最も近い「{name}」は {gap} ずれています。星が大事なら時間を動かしてください。",
+    "light.starsMoon": "今夜は天の川は見えません。銀河中心が見える間、月（輝面 {p}%）が出ています。",
+    "light.starsLow": "今夜は天の川は見えません。暗い時間帯に銀河中心が 10° より上に昇りません。",
+    "light.starsNoDark": "今夜は天の川は見えません。空が暗くならず、太陽が −18° より下がりません。",
+    "light.inMoon": "「{name}」— 月は {range} に地平線の上、輝面 {p}%。",
+    "light.missMoon": "月が出ているのは {range}。最も近い「{name}」は {gap} ずれています。月が大事なら時間を動かしてください。",
+    "light.moonNone": "この日は月が昇りません。",
+    "card.wxNoData": "天気のデータはまだありません。予報は撮影の 16 日前から出ます。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
-    "year.nextYear": "下一年"
+    "year.nextYear": "下一年",
+    "light.inStars": "“{name}”落在银河窗口内：{range}。天色暗，银心已升起，月亮不碍事。",
+    "light.missStars": "银河窗口 {range}——最近的点“{name}”偏离 {gap}。若星空重要，请调整时间。",
+    "light.starsMoon": "今晚看不到银河：银心可见时月亮在地平线上，亮面 {p}%。",
+    "light.starsLow": "今晚看不到银河：天黑时银心升不过 10°。",
+    "light.starsNoDark": "今晚看不到银河：天不会全黑，太阳不低于 −18°。",
+    "light.inMoon": "“{name}”——月亮在地平线上 {range}，亮面 {p}%。",
+    "light.missMoon": "月亮在地平线上 {range}——最近的点“{name}”偏离 {gap}。若月亮重要，请调整时间。",
+    "light.moonNone": "这一天月亮不升起。",
+    "card.wxNoData": "暂无天气数据：拍摄前 16 天会出现预报。"
   }
 }

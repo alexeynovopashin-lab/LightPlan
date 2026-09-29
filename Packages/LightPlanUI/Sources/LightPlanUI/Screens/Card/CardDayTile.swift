@@ -116,7 +116,8 @@ struct CardDayTile: View {
                 rich(x.left).font(webFont(12.5)).foregroundStyle(pal.ink4)
                     .shotNode("card.dayLeft", text: x.plainLeft).padding(.top, 3)
                 if !route.isEmpty {
-                    CardLane(app: app, s: s, route: route, phase: phase, pal: pal)
+                    CardLane(app: app, s: s, route: route, golden: app.laneGolden(s, route: route, phase: phase),
+                             phase: phase, pal: pal)
                         .padding(.top, 12)
                 }
             }
@@ -183,8 +184,24 @@ struct CardLane: View {
     let app: AppModel
     let s: Session
     let route: [RoutePoint]
+    /// Минута «Золотого» (`lane.golden`): начало вечернего золотого часа,
+    /// когда свет есть и не плохой (итерация 26, шаг 3).
+    let golden: Int?
     let phase: EventPhase
     let pal: Palette
+
+    /// Место «Золотого» среди точек: после точек того же часа.
+    private var goldenIndex: Int? {
+        golden.map { g in route.firstIndex { ($0.start ?? .max) > g } ?? route.count }
+    }
+
+    /// Точки ленты с «Золотым».
+    private var pts: [RoutePoint] {
+        guard let g = golden, let i = goldenIndex else { return route }
+        var out = route
+        out.insert(RoutePoint(start: g, name: app.lexicon.t("lane.golden")), at: i)
+        return out
+    }
 
     /// Меньше стольких pt на точку — лента подвижная (веб `LANE_FIT`).
     static let fit: CGFloat = 40
@@ -193,43 +210,46 @@ struct CardLane: View {
     var body: some View {
         let nowMin = app.nowMinute(of: s)
         // Текущая — последняя начатая, только «во время».
-        let cur = phase == .during ? DayTileText.current(route, nowMin) : -1
+        // «Золотой» текущей не бывает: считается по точкам маршрута.
+        let c0 = phase == .during ? DayTileText.current(route, nowMin) : -1
+        let cur = c0 >= 0 && goldenIndex.map { $0 <= c0 } == true ? c0 + 1 : c0
+        let pts = pts
         // Опора — где «сейчас»: текущая, иначе последняя пройденная, иначе начало.
-        let anchor = cur >= 0 ? cur : max(0, route.indices.last { past($0, nowMin) } ?? 0)
+        let anchor = cur >= 0 ? cur : max(0, pts.indices.last { past(pts, $0, nowMin) } ?? 0)
         GeometryReader { g in
-            let scroll = g.size.width / CGFloat(route.count) < Self.fit
-            let w = scroll ? Self.column : g.size.width / CGFloat(route.count)
+            let scroll = g.size.width / CGFloat(pts.count) < Self.fit
+            let w = scroll ? Self.column : g.size.width / CGFloat(pts.count)
             if scroll {
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
-                        track(w, nowMin, cur)
+                        track(pts, w, nowMin, cur)
                     }
                     .onAppear { proxy.scrollTo(anchor, anchor: .center) }
                 }
             } else {
-                track(w, nowMin, cur)
+                track(pts, w, nowMin, cur)
             }
         }
         .frame(height: 26 + 14 + 6 + 13 + 2 + 12)
-        .shotNode("card.lane", text: "\(route.count)")
+        .shotNode("card.lane", text: "\(pts.count)")
     }
 
-    private func past(_ i: Int, _ nowMin: Int?) -> Bool {
+    private func past(_ pts: [RoutePoint], _ i: Int, _ nowMin: Int?) -> Bool {
         if phase == .after { return true }
-        guard let nowMin, let t = route[i].start else { return false }
+        guard let nowMin, let t = pts[i].start else { return false }
         return t <= nowMin
     }
 
-    private func track(_ w: CGFloat, _ nowMin: Int?, _ cur: Int) -> some View {
+    private func track(_ pts: [RoutePoint], _ w: CGFloat, _ nowMin: Int?, _ cur: Int) -> some View {
         HStack(spacing: 0) {
-            ForEach(route.indices, id: \.self) { i in
-                point(i, w, now: i == cur, past: i != cur && past(i, nowMin)).id(i)
+            ForEach(pts.indices, id: \.self) { i in
+                point(pts, i, w, now: i == cur, past: i != cur && past(pts, i, nowMin)).id(i)
             }
         }
     }
 
-    private func point(_ i: Int, _ w: CGFloat, now: Bool, past: Bool) -> some View {
-        let r = route[i], n = route.count
+    private func point(_ pts: [RoutePoint], _ i: Int, _ w: CGFloat, now: Bool, past: Bool) -> some View {
+        let r = pts[i], n = pts.count, gold = i == goldenIndex
         // Концы ленты прижаты к краям плитки: точка и нить — в 13 pt от края.
         let edge: HorizontalAlignment = n > 1 && i == 0 ? .leading : n > 1 && i == n - 1 ? .trailing : .center
         let dotX: CGFloat = edge == .leading ? 13 : edge == .trailing ? w - 13 : w / 2
@@ -237,8 +257,11 @@ struct CardLane: View {
         let studio = app.studios.contains { $0.id == r.studioId }
         let alignment: Alignment = edge == .leading ? .leading : edge == .trailing ? .trailing : .center
         return VStack(alignment: edge, spacing: 0) {
-            Icon(point: r.name, place: place, studio: studio, size: 20, line: 1.4)
-                .foregroundStyle(now ? pal.ink : past ? pal.brass : pal.ink5b)
+            Group {
+                if gold { Icon("golden", size: 20, line: 1.4) }
+                else { Icon(point: r.name, place: place, studio: studio, size: 20, line: 1.4) }
+            }
+                .foregroundStyle(now ? pal.ink : past || gold ? pal.brass : pal.ink5b)
                 .frame(width: 26, height: 26)
                 .overlay(Circle().strokeBorder(now ? pal.green : .clear, lineWidth: 1.4))
             Canvas { ctx, size in
@@ -257,7 +280,7 @@ struct CardLane: View {
             }
             .frame(width: w, height: 14)
             Text(r.start.map { PlannerFacts(app: app, dark: pal.dark).fmt(Double($0)) } ?? "")
-                .font(webFont(11)).monospacedDigit().foregroundStyle(now ? pal.ink : pal.ink3)
+                .font(webFont(11)).monospacedDigit().foregroundStyle(now ? pal.ink : gold ? pal.brass : pal.ink3)
                 .padding(.top, 6)
             Text(Self.word(r.name)).font(webFont(9.5)).tracking(-0.2).foregroundStyle(pal.ink7)
                 .lineLimit(1).truncationMode(.tail)

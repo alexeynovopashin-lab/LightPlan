@@ -2772,6 +2772,41 @@
         }
       }
     },
+    "card.wxNoData" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Данных о погоде пока нет: прогноз появится за 16 дней до съёмки."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No weather data yet: the forecast appears 16 days before the shoot."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay datos del tiempo: el pronóstico aparece 16 días antes de la sesión."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天気のデータはまだありません。予報は撮影の 16 日前から出ます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无天气数据：拍摄前 16 天会出现预报。"
+          }
+        }
+      }
+    },
     "card.wxOtherPlace" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -16350,6 +16385,76 @@
         }
       }
     },
+    "light.inMoon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{name}» — луна над горизонтом {range}, освещена на {p}%."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}” — the moon is up {range}, {p}% lit."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{name}»: la luna está sobre el horizonte {range}, iluminada al {p}%."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「{name}」— 月は {range} に地平線の上、輝面 {p}%。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}”——月亮在地平线上 {range}，亮面 {p}%。"
+          }
+        }
+      }
+    },
+    "light.inStars" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{name}» попадает в окно Млечного Пути: {range}. Небо тёмное, ядро поднялось, луна не мешает."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}” falls in the Milky Way window: {range}. Dark sky, the core is up, the moon is out of the way."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{name}» cae en la ventana de la Vía Láctea: {range}. Cielo oscuro, el núcleo alto, la luna no molesta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「{name}」は天の川の撮影枠 {range} に入っています。空は暗く、銀河中心は昇り、月も邪魔しません。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}”落在银河窗口内：{range}。天色暗，银心已升起，月亮不碍事。"
+          }
+        }
+      }
+    },
     "light.missGolden" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -16381,6 +16486,216 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "黄金时刻{range}——最近点“{name}”错过{gap}。如果光线重要，请调整。"
+          }
+        }
+      }
+    },
+    "light.missMoon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Луна над горизонтом {range} — ближайшая точка «{name}» мимо на {gap}. Сдвиньте, если луна важна."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moon up {range} — the nearest stop, “{name}”, misses it by {gap}. Shift it if the moon matters."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luna sobre el horizonte {range}: el punto más cercano, «{name}», queda fuera por {gap}. Muévalo si la luna importa."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月が出ているのは {range}。最も近い「{name}」は {gap} ずれています。月が大事なら時間を動かしてください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月亮在地平线上 {range}——最近的点“{name}”偏离 {gap}。若月亮重要，请调整时间。"
+          }
+        }
+      }
+    },
+    "light.missStars" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окно Млечного Пути {range} — ближайшая точка «{name}» мимо на {gap}. Сдвиньте, если звёзды важны."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Milky Way window {range} — the nearest stop, “{name}”, misses it by {gap}. Shift it if the stars matter."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ventana de la Vía Láctea {range}: el punto más cercano, «{name}», queda fuera por {gap}. Muévalo si las estrellas importan."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天の川の撮影枠は {range}。最も近い「{name}」は {gap} ずれています。星が大事なら時間を動かしてください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银河窗口 {range}——最近的点“{name}”偏离 {gap}。若星空重要，请调整时间。"
+          }
+        }
+      }
+    },
+    "light.moonNone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Луна в эти сутки не всходит."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The moon does not rise this day."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La luna no sale este día."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この日は月が昇りません。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这一天月亮不升起。"
+          }
+        }
+      }
+    },
+    "light.starsLow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Млечного Пути в эту ночь не будет: в тёмное время ядро не поднимается выше 10°."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Milky Way tonight: in the dark hours the core stays below 10°."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta noche no habrá Vía Láctea: en las horas oscuras el núcleo no sube de 10°."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今夜は天の川は見えません。暗い時間帯に銀河中心が 10° より上に昇りません。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今晚看不到银河：天黑时银心升不过 10°。"
+          }
+        }
+      }
+    },
+    "light.starsMoon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Млечного Пути в эту ночь не будет: луна освещена на {p}% и стоит над горизонтом, пока видно ядро."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Milky Way tonight: the moon is {p}% lit and up while the core is visible."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta noche no habrá Vía Láctea: la luna está iluminada al {p}% y sobre el horizonte mientras se ve el núcleo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今夜は天の川は見えません。銀河中心が見える間、月（輝面 {p}%）が出ています。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今晚看不到银河：银心可见时月亮在地平线上，亮面 {p}%。"
+          }
+        }
+      }
+    },
+    "light.starsNoDark" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Млечного Пути в эту ночь не будет: небо не темнеет, солнце не уходит ниже −18°."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Milky Way tonight: the sky never gets dark, the sun stays above −18°."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta noche no habrá Vía Láctea: el cielo no oscurece, el sol no baja de −18°."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今夜は天の川は見えません。空が暗くならず、太陽が −18° より下がりません。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今晚看不到银河：天不会全黑，太阳不低于 −18°。"
           }
         }
       }

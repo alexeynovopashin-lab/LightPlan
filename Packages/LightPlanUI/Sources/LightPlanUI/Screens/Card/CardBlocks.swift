@@ -6,8 +6,8 @@ import LightPlanDomain
 
 /// Блоки листа в порядке группы жанров (`AppModel.cardBlocks`). Не-блоки —
 /// тревоги, студийный час — стоят над контейнером всегда, куда бы фотограф
-/// ни переставил остальное. Готовы плитка дня и наложение (25); остальные
-/// блоки — заглушки до шагов 3–4: знак и имя из списка перестановки.
+/// ни переставил остальное. Готовы плитка дня и наложение (25), свет и
+/// погода (26, шаг 3); остальные — заглушки до шага 4: знак и имя.
 struct CardBlocks: View {
     let app: AppModel
     let s: Session
@@ -20,6 +20,8 @@ struct CardBlocks: View {
             switch b {
             case .day: CardDayTile(app: app, s: s, phase: phase, pal: pal, tick: tick)
             case .clash: CardClash(app: app, s: s, phase: phase, pal: pal)
+            case .light: CardLightBlock(app: app, s: s, phase: phase, pal: pal)
+            case .weather: CardWeatherBlock(app: app, s: s, phase: phase, pal: pal)
             case .docs: CardFold(app: app, block: b, pal: pal) {
                 ForEach(Array(s.docs.enumerated()), id: \.offset) { _, d in
                     Text(d.name ?? d.url ?? "").font(webFont(15)).foregroundStyle(pal.ink2)

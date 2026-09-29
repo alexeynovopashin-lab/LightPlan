@@ -36,6 +36,8 @@ struct CardScreen: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         CardStack(app: app, s: s, pal: pal) { sheet(pal, phase, ctx.date) }
+                        // Пожелание к небу не сбудется — строка под листом.
+                        CardWishMissed(app: app, s: s, phase: phase, pal: pal)
                         acts(pal)
                     }
                     .padding(.horizontal, 24)
@@ -98,6 +100,8 @@ struct CardScreen: View {
     private func sheet(_ pal: Palette, _ phase: EventPhase, _ tick: Date) -> some View {
         VStack(spacing: 0) {
             CardHead(app: app, s: s, phase: phase, pal: pal, tick: tick)
+            // Сдвиг времени на ленте — не блок: стоит над студийным часом.
+            CardMoved(app: app, s: s, pal: pal)
             // Студийный час — над переставляемыми блоками: веб переносит блоки
             // в конец `#cdEventBlocks`, а не-блоки (тревоги, студия, звонок
             // администратору) остаются выше — «читается первой, куда бы

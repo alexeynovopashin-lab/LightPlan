@@ -58,7 +58,7 @@ struct OverlapsAndLightParityTests {
     }
 
     @Test func lightCaseMatchesBeta() {
-        var bad: [String] = [], counts: [String: Int] = [:]
+        var bad: [String] = [], counts: [String: Int] = [:], quiet = 0
         let rows = f["lights"].array!
         for r in rows {
             let s = DomainOracle.session(r["s"])
@@ -66,8 +66,15 @@ struct OverlapsAndLightParityTests {
             let got = LightCase.of(s, route: route, spots: DomainOracle.spots, studios: DomainOracle.studios,
                                    evening: Self.evening, skyIsBad: DomainOracle.skyIsBad)
             let w = r["light"]
-            counts[w["k"].string ?? "null", default: 0] += 1
             let ok: Bool
+            // Натив сознательно расходится с вебом: без «Заката» о золотом
+            // часе не говорит (DECISIONS 29.09, итерация 26).
+            if !s.wishes.contains(.sunset) {
+                if got != nil { bad.append("\(r["s"]): без «Заката» свет \(String(describing: got))") }
+                if !w.isNull { quiet += 1 }
+                continue
+            }
+            counts[w["k"].string ?? "null", default: 0] += 1
             switch got {
             case nil: ok = w.isNull
             case .badSky(let p, _)?: ok = w["k"].string == "light.waitedSunset" && p?.name == w["name"].string
@@ -79,6 +86,7 @@ struct OverlapsAndLightParityTests {
             if !ok { bad.append("\(r["s"]): \(String(describing: got)) вместо \(w)") }
         }
         #expect(bad.isEmpty, "свет: \(bad.count) расхождений из \(rows.count)\n  \(bad.prefix(5).joined(separator: "\n  "))")
+        #expect(quiet > 20, "в эталоне мало звёзд и луны без заката, где веб говорил о золотом часе: \(quiet)")
         for k in ["null", "light.waitedSunset", "light.inGolden", "light.missGolden"] {
             #expect((counts[k] ?? 0) > 20, "в эталоне мало случаев «\(k)»: \(counts[k] ?? 0)")
         }

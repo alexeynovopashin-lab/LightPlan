@@ -12,12 +12,13 @@ extension AppModel {
 
     private func cardGroup(_ s: Session) -> GenreGroup { GenreProfile(s.genre).group }
 
-    /// Есть ли у блока что показать. Свет, погода и место — шаги 3–4: до них
-    /// блоков нет.
+    /// Есть ли у блока что показать. Место — шаг 4: до него блока нет.
     func cardBlockHasData(_ b: CardBlock, _ s: Session, phase: EventPhase) -> Bool {
         if let v = CardPresence.byRecord(b, s, phase: phase, practice: dealPractice, among: snapshot.sessions) { return v }
         switch b {
         case .clash: return cardClash(s, phase: phase) != nil
+        case .light: return !cardSays(s, phase: phase).isEmpty
+        case .weather: return cardWeather(s, phase: phase) != nil
         default: return false
         }
     }

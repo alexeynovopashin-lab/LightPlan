@@ -18,6 +18,7 @@ extension AppModel {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
         if cardId != id { cardFolds = [] }
         cardId = id
+        askCardWeather(s)
         Task { await learnZone(of: s) }
     }
 
