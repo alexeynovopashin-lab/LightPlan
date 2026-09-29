@@ -168,8 +168,12 @@ struct DomainRulesParityTests {
             let phase = EventPhase(rawValue: r["phase"].string!)!
             let order = CardOrder.order(genre: g, saved: saved), shown = CardOrder.shown(genre: g, saved: saved, phase: phase)
             // Заказ после съёмки: веб выносит четыре блока вперёд, натив — нет (слово Алексея 29.09, ошибка веба).
+            // Свой ожидаемый порядок натива: ровно порядок группы (`orderFor` веба), без выноса вперёд.
             let pinned = phase == .after && GenreProfile(g).group == .client
-            if order.map(\.rawValue) != r["orderFor"].strings! || (!pinned && shown.map(\.rawValue) != r["shown"].strings!) {
+            // Двойник в правке веб переносит узлом: остаётся последний.
+            let lastWins = r["orderFor"].strings!.enumerated().filter { i, k in !r["orderFor"].strings![(i + 1)...].contains(k) }.map(\.element)
+            let want = pinned ? lastWins : r["shown"].strings!
+            if order.map(\.rawValue) != r["orderFor"].strings! || shown.map(\.rawValue) != want {
                 bad.append("\(r["genre"]) \(r["saved"]) \(phase): \(order) / \(shown)")
             }
         }
