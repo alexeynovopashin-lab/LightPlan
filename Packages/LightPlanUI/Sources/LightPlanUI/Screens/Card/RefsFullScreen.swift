@@ -14,8 +14,8 @@ struct RefsFullScreen: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.openURL) private var openURL
     @State private var tiles: [String: CGRect] = [:]
-    /// Ширина сетки (экран минус поля 24) — по ней колонки и высоты плиток.
-    @State private var gridW: CGFloat = 345
+    /// Ширина сетки (экран минус поля 16, `.rf-grid`) — по ней колонки и высоты плиток.
+    @State private var gridW: CGFloat = 361
 
     private var t: Lexicon { app.lexicon }
 
@@ -32,11 +32,11 @@ struct RefsFullScreen: View {
                             Text(t.t("refs.empty")).font(webFont(14)).foregroundStyle(pal.ink6)
                                 .padding(.top, 20)
                         }
-                        section(t.t("refs.own"), sec.own, pal)
-                        section(t.t("refs.set", ["genre": genreName]), sec.set, pal)
+                        section(t.t("refs.own"), sec.own, first: true, pal)
+                        section(t.t("refs.set", ["genre": genreName]), sec.set, first: sec.own.isEmpty, pal)
                     }
-                    .padding(.horizontal, 24).padding(.bottom, 40)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width - 48 } action: { gridW = $0 }
+                    .padding(.horizontal, 16).padding(.bottom, 30)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width - 32 } action: { gridW = $0 }
                 }
             }
             if app.refsFull?.pager != nil { RefViewerLayer(app: app, s: s, tiles: tiles) }
@@ -61,7 +61,7 @@ struct RefsFullScreen: View {
                 withAnimation(overlaySlide) { app.closeRefsFull() }
             }
         }
-        .padding(.horizontal, 24).padding(.bottom, 8)
+        .padding(.horizontal, 16).padding(.bottom, 10)
     }
 
     @ViewBuilder private func folders(_ pal: Palette) -> some View {
@@ -74,9 +74,9 @@ struct RefsFullScreen: View {
                         chip(tagName(code), on: app.refsFull?.tag == code, pal) { app.setRefFolder(code) }
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 16)
             }
-            .padding(.bottom, 12)
+            .padding(.bottom, 10)
         }
     }
 
@@ -97,14 +97,14 @@ struct RefsFullScreen: View {
 
     // MARK: сетка
 
-    @ViewBuilder private func section(_ title: String, _ frames: [RefFrame], _ pal: Palette) -> some View {
+    /// Подпись раздела — `.mb-grid-lbl`: 10, заглавными, разрядка 1,2, вес 600, вместе со
+    /// счётом одной строкой; над первым разделом 8, над вторым 14 + хвост 8 предыдущей
+    /// сетки; под подписью 6 (`#rfGrid .mb-grid`).
+    @ViewBuilder private func section(_ title: String, _ frames: [RefFrame], first: Bool, _ pal: Palette) -> some View {
         if !frames.isEmpty {
-            HStack {
-                Text(title).font(webFont(12)).foregroundStyle(pal.ink6)
-                Text("· \(frames.count)").font(webFont(12)).foregroundStyle(pal.ink7)
-                Spacer(minLength: 0)
-            }
-            .padding(.top, 16).padding(.bottom, 8)
+            Text("\(title) · \(frames.count)").textCase(.uppercase).tracking(1.2).font(webFont(10, 600))
+                .foregroundStyle(pal.ink7)
+                .padding(.horizontal, 2).padding(.top, first ? 8 : 22).padding(.bottom, 6)
             grid(frames, pal)
         }
     }
