@@ -48,12 +48,20 @@ extension KeyedDecodingContainer {
     /// Словарь код → список кодов (веб `cardOrder{}`, `cardOff{}`): и ключ
     /// группы, и элемент списка — коды, оба снисходительные. Правка блоков
     /// карточки — не то, из-за чего стоит терять всю запись.
+    ///
+    /// Пустые значения пропускаются: веб сохраняет порядок блоков по всем
+    /// детям контейнера, и у не-блоков (тревоги, студийный час) в файл уходит
+    /// `null` — `{"event":[null,null,"day",…]}` (итерация 26, шаг 1). Группа,
+    /// записанная целиком как `null`, — правки нет.
     public func decodeLenientDictionaryOfArrays<Code: RawRepresentable & Sendable, Element: RawRepresentable & Sendable>(
         keyedBy keyType: Code.Type, elementType: Element.Type, forKey key: Key
     ) throws -> [Code: [Element]] where Code.RawValue == String, Element.RawValue == String {
-        guard let raw = try decodeIfPresent([String: [String]].self, forKey: key) else { return [:] }
+        guard let raw = try decodeIfPresent([String: [String?]?].self, forKey: key) else { return [:] }
         var out: [Code: [Element]] = [:]
-        for (k, list) in raw { if let code = Code(rawValue: k) { out[code] = list.compactMap(Element.init(rawValue:)) } }
+        for (k, list) in raw {
+            guard let code = Code(rawValue: k), let list else { continue }
+            out[code] = list.compactMap { $0.flatMap(Element.init(rawValue:)) }
+        }
         return out
     }
 }
