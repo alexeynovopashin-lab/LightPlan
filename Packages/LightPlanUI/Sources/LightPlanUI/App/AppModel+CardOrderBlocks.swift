@@ -170,17 +170,6 @@ extension AppModel {
         }
     }
 
-    /// Свёрнутая строка маршрута: «7 точек · 11:00 – 23:00» (конец — конец
-    /// последней точки, иначе её начало).
-    func cardRouteFold(_ s: Session) -> CardRouteFold? {
-        let route = s.timedRoute
-        guard let first = route.first?.start, let last = route.last else { return nil }
-        let f = PlannerFacts(app: self, dark: false)
-        let end = last.end ?? last.start ?? first
-        return CardRouteFold(title: lexicon.t("card.route"),
-                             sub: lexicon.count("unit.point", route.count) + " · " + f.range(Double(first), Double(end)))
-    }
-
     // MARK: Место и дальше
 
     private func shortPlace(_ p: String) -> String {

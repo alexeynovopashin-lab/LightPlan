@@ -33,7 +33,15 @@ struct CardBlocks: View {
             case .light: CardLightBlock(app: app, s: s, phase: phase, pal: pal)
             case .place: CardPanesBlock(app: app, s: s, phase: phase, pal: pal)
             case .weather: CardWeatherBlock(app: app, s: s, phase: phase, pal: pal)
-            case .route: CardRouteRow(app: app, s: s, pal: pal)
+            case .route:
+                if let r = app.cardRouteFold(s) {
+                    CardFold(app: app, block: b, sub: r.sub, pal: pal) {
+                        let lines = app.cardRouteLines(s)
+                        ForEach(Array(lines.enumerated()), id: \.offset) { i, l in
+                            CardRouteLineView(line: l, first: i == 0, pal: pal)
+                        }
+                    }
+                }
             case .brief: CardTextBlock(block: b, icon: "note_edit", tint: pal.blue, label: app.lexicon.t("cdBlock.brief"),
                                        lines: [s.brief], lineGap: 1.45, pal: pal)
             case .models: CardTextBlock(block: b, icon: "guests", tint: pal.brass, label: app.cardModelsTitle(s),
@@ -369,27 +377,33 @@ struct CardDocLine: View {
     }
 }
 
-/// Маршрут дня — свёрнутая строка: «Маршрут дня» и «7 точек · 11:00 – 23:00».
-/// Тело со строками точек — итерация 27, поэтому стрелки пока нет.
-struct CardRouteRow: View {
-    let app: AppModel
-    let s: Session
+/// Строка ленты маршрута (`.sc-item`): знак 26, время 50, имя с местом,
+/// справа слово света. Прошедшая бледная (0,45), текущая — имя чернилами и
+/// зелёный знак. Между строками щель, у первой её нет.
+struct CardRouteLineView: View {
+    let line: CardRouteLine
+    let first: Bool
     let pal: Palette
 
     var body: some View {
-        if let r = app.cardRouteFold(s) {
-            PaneShell(pal: pal, node: "card.block.route") {
-                HStack(spacing: 12) {
-                    paneBadge("route", pal.brass, pal)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(r.title).font(webFont(15)).foregroundStyle(pal.ink).lineLimit(1)
-                        Text(r.sub).font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1).padding(.top, 2)
-                            .shotNode("card.routeSub", text: r.sub)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+        HStack(spacing: 10) {
+            Icon(line.sign, size: 18, line: 1.4).foregroundStyle(line.state == .now ? pal.green : pal.ink5b)
+                .frame(width: 26, alignment: .leading)
+            Text(line.time).font(webFont(14)).monospacedDigit().foregroundStyle(pal.ink3)
+                .frame(width: 50, alignment: .leading)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(line.name).font(webFont(15)).foregroundStyle(line.state == .now ? pal.ink : pal.ink2)
+                if let p = line.place { Text(p).font(webFont(11.5)).foregroundStyle(pal.ink7) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let w = line.word {
+                Text(w).font(webFont(11.5)).foregroundStyle(line.blue ? pal.blue : pal.brass)
             }
         }
+        .padding(.vertical, 9)
+        .opacity(line.state == .past ? 0.45 : 1)
+        .overlay(alignment: .top) { if !first { Rectangle().fill(pal.surface).frame(height: 1) } }
+        .shotNode("card.routeRow", text: "\(line.state)")
     }
 }
 

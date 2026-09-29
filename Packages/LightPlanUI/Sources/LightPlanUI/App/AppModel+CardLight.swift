@@ -201,15 +201,22 @@ extension AppModel {
 
     // MARK: Свет у точки (`pointLight`)
 
-    /// Знак света в минуту `t` (от полуночи первого дня) у точки `p`: говорит
-    /// только тон «отлично». Вечер в пределах `goldB − 10` — уже золотой.
-    func pointLight(_ s: Session, _ p: GeoPoint?, _ t: Int) -> (icon: String, blue: Bool)? {
+    /// Код света в минуту `t` у точки `p`, если он «отлично» (веб `pointLight`):
+    /// золотой час, рассвет, закат, синий час. Вечер в пределах `goldB − 10` —
+    /// уже золотой. Утро, день и ночь молчат.
+    func pointLightCode(_ s: Session, _ p: GeoPoint?, _ t: Int) -> LightCode? {
         let k = dayIndex(t), m = t - k * 1440
         let sun = cardSun(p, s.date(ofDay: k))
-        if let b = sun.goldenB, Double(m) >= b - LightCase.goldEarly, Double(m) < b { return ("golden", false) }
+        if let b = sun.goldenB, Double(m) >= b - LightCase.goldEarly, Double(m) < b { return .golden }
         let st = sun.state(at: Double(m))
-        guard st.tone == .excellent else { return nil }
-        switch st.code {
+        return st.tone == .excellent ? st.code : nil
+    }
+
+    /// Знак света в минуту `t` (от полуночи первого дня) у точки `p`: говорит
+    /// только тон «отлично».
+    func pointLight(_ s: Session, _ p: GeoPoint?, _ t: Int) -> (icon: String, blue: Bool)? {
+        guard let code = pointLightCode(s, p, t) else { return nil }
+        switch code {
         case .golden: return ("golden", false)
         case .dawn, .dawning: return ("sunrise", false)
         case .blue: return ("sunset", true)
