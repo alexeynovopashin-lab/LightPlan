@@ -45,7 +45,7 @@ struct CardBlocks: View {
                     CardFold(app: app, block: b, sub: r.sub, pal: pal) {
                         let lines = app.cardRouteLines(s)
                         ForEach(Array(lines.enumerated()), id: \.offset) { i, l in
-                            CardRouteLineView(line: l, first: i == 0, pal: pal)
+                            CardRouteLineView(line: l, first: i == 0, index: i, pal: pal)
                         }
                     }
                 }
@@ -400,6 +400,7 @@ struct CardDocLine: View {
 struct CardRouteLineView: View {
     let line: CardRouteLine
     let first: Bool
+    var index = 0
     let pal: Palette
 
     var body: some View {
@@ -420,12 +421,13 @@ struct CardRouteLineView: View {
         .padding(.vertical, 9)
         .opacity(line.state == .past ? 0.45 : 1)
         .overlay(alignment: .top) { if !first { Rectangle().fill(pal.surface).frame(height: 1) } }
-        .shotNode("card.routeRow", text: "\(line.state)")
+        .shotNode("card.routeRow.\(index)", text: "\(line.state)")
     }
 }
 
 /// Свёртка (`.fold`: маршрут, документы): заголовок-кнопка, шеврон
-/// поворачивается на 180° за 0,35 с, тело — без анимации высоты. Открытая
+/// поворачивается на 180° за 0,35 с, тело — без анимации высоты, поля `0 14 13`
+/// (`.fold-body`, замер пары 27: было 4, тело короче веба на 9). Открытая
 /// держится, пока карточка открыта (`AppModel.cardFolds`).
 struct CardFold<Content: View>: View {
     let app: AppModel
@@ -454,7 +456,7 @@ struct CardFold<Content: View>: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            if open { VStack(spacing: 0) { content() }.padding(.horizontal, 14).padding(.bottom, 4) }
+            if open { VStack(spacing: 0) { content() }.padding(.horizontal, 14).padding(.bottom, 13) }
         }
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shotNode("card.block.\(block.rawValue)", text: open ? "open" : "shut")
