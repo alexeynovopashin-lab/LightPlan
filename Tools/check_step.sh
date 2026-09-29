@@ -70,7 +70,7 @@ else
   extra=""
   [ "$pushed" != "$(git rev-parse "$branch")" ] && extra=" (локально ветка впереди отправленного: $(git rev-list --count "$pushed..$branch" 2>/dev/null || echo '?') коммитов, они без ревью)"
   auth=(); [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
-  api() { curl -sS -m 30 "${auth[@]}" -H 'Accept: application/vnd.github+json' -o "$2" -w '%{http_code}' "https://api.github.com/repos/$repo/$1" 2>/dev/null; }
+  api() { curl -sS -m 30 ${auth[@]+"${auth[@]}"} -H 'Accept: application/vnd.github+json' -o "$2" -w '%{http_code}' "https://api.github.com/repos/$repo/$1" 2>/dev/null; }
   tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
   c1="$(api "commits/$pushed/comments?per_page=100" "$tmp/c.json")"
   c2="$(api "actions/runs?head_sha=$pushed&per_page=20" "$tmp/r.json")"
@@ -111,9 +111,13 @@ elif [ "$run_tests" = 0 ]; then
   row "?" "4. не проверялась: это сборка, запускать с --tests"
 else
   tfiles="$(git diff --name-only --diff-filter=AM "$mb" "$branch" -- 'Packages/*/Tests/*.swift')"
-  names="$(git diff -U0 "$mb" "$branch" -- 'Packages/*/Tests/*.swift' | grep -E '^\+' | grep -oE 'func test[A-Za-z0-9_]+' | sed 's/^func //' | sort -u)"
+  # Новые тесты: `@Test` (Swift Testing) над func и `func test…` (XCTest).
+  names="$(git diff -U0 "$mb" "$branch" -- 'Packages/*/Tests/*.swift' | grep -E '^\+' | awk '
+    /@Test/ { flag = 1 }
+    match($0, /func [A-Za-z0-9_]+/) { n = substr($0, RSTART + 5, RLENGTH - 5); if (flag || n ~ /^test/) print n; flag = 0 }
+  ' | sort -u)"
   if [ -z "$tfiles" ] || [ -z "$names" ]; then
-    row нет "4. в диффе нет новых тестов пакетов (func test…) — нечего проверять на старом коде"
+    row нет "4. в диффе нет новых тестов пакетов (@Test или func test…) — нечего проверять на старом коде"
   else
     wt="$(mktemp -d)/base"
     git worktree add -q --detach "$wt" "$mb" 2>/dev/null || { row нет "4. не смог поднять папку с родительским коммитом"; wt=""; }

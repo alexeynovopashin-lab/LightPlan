@@ -101,20 +101,25 @@ overwrote the dome fix he was checking. So:
 - Free team caps how many apps/App IDs it signs (from Apple docs, not measured
   here); a signing error about the limit → uninstall closed branches, tell him.
 
+One script does all of it — do not hand-build for the phone:
+
 ```
-xcrun devicectl list devices | grep ALno        # "available (paired)" — else ask him to plug in / unlock
-# main: SLUG empty, NAME "Light Plan", BID Novopashin.LightPlan; branch: SLUG=wt24a NAME="LP 24a"
-BID=Novopashin.LightPlan${SLUG:+.$SLUG}
-xcodebuild -project LightPlan.xcodeproj -scheme LightPlan-iOS -configuration Debug \
-  -destination 'platform=iOS,id=5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F' \
-  -derivedDataPath /tmp/cc-phone-<branch> -allowProvisioningUpdates \
-  PRODUCT_BUNDLE_IDENTIFIER=$BID INFOPLIST_KEY_CFBundleDisplayName="$NAME" build \
-  > /tmp/cc-phone.log 2>&1; echo "exit=$?"; grep -nE 'error:|BUILD (SUCCEEDED|FAILED)' /tmp/cc-phone.log | head
-xcrun devicectl device install app --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F \
-  /tmp/cc-phone-<branch>/Build/Products/Debug-iphoneos/LightPlan.app
-xcrun devicectl device process launch --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F $BID
-xcrun devicectl device uninstall app --device 5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F $BID   # closed branch
+make phone ARGS="install"          # name + bundle id from the branch, build, install, launch
+make phone ARGS="list"             # what stands on the phone, from which branch @ commit
+make phone ARGS="uninstall 24a"    # closed branch (uninstall --main only from Alexey's word)
+make checkstep ARGS="wt/26 main --type код --tests"   # step check: four lines yes/no
 ```
+
+`Tools/phone.sh`: `main` → «Light Plan»; any other branch → `LP <rest>` with its own id;
+`--main` from a branch is refused (exit 2); the phone must be «available (paired)» (else exit 3 —
+ask him to plug in and unlock); prints what stands and from which commit. Second barrier,
+independent of the script: the build phase (`Tools/check_phone_id.sh` via `check_boundaries.sh`)
+fails a device build (`PLATFORM_NAME=iphoneos`) with `Novopashin.LightPlan` from any branch but
+`main`; simulator and Mac are not checked. Never pass the main id by hand from a branch.
+`Tools/check_step.sh <branch> [<base>] [--type код|данные|документы] [--tests]`: commit ahead,
+non-empty diff, GPT review of the last pushed commit present and not red (public GitHub API,
+`curl`), new tests fail on the parent commit (`--tests` = a build; without it the line says
+«не проверялась», exit 2). Any «нет» → exit 1. Run it before the report.
 
 `launch` fails with «Locked» when the phone is locked — the app is installed anyway; tell him to
 open it. Say which build it is (commit) and what to check, in product words.
