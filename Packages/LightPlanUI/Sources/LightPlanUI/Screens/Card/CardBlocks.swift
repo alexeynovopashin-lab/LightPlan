@@ -191,27 +191,41 @@ struct CardPanesBlock: View {
     }
 
     private func pane(_ p: CardPane) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            paneBadge(p.icon, pal.brass, pal)
-            VStack(alignment: .leading, spacing: 0) {
-                if let k = p.label { paneKey(k, pal) }
-                if let t = p.title {
-                    Text(t).font(webFont(15)).foregroundStyle(pal.ink).lineLimit(1).padding(.top, p.label == nil ? 0 : 2)
+        // «Дальше»: мелкая строка под всем рядом (знак + текст), на всю ширину плитки, mt 8;
+        // час — `--brass`. Пара мерила 4 pt ниже веба: строка стояла в колонке текста и обрезалась.
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                paneBadge(p.icon, pal.brass, pal)
+                VStack(alignment: .leading, spacing: 0) {
+                    if let k = p.label { paneKey(k, pal) }
+                    if let t = p.title {
+                        Text(t).font(webFont(15)).foregroundStyle(pal.ink).lineLimit(1).padding(.top, p.label == nil ? 0 : 2)
+                    }
+                    if let v = p.value { Text(v).font(webFont(17)).monospacedDigit().foregroundStyle(pal.ink) }
+                    if p.kind != .next, let sub = p.sub {
+                        Text(sub).font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1).padding(.top, 2)
+                    }
                 }
-                if let v = p.value { Text(v).font(webFont(17)).monospacedDigit().foregroundStyle(pal.ink) }
-                if p.kind == .next, let sub = p.sub {
-                    Text(sub).font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1).padding(.top, 8)
-                } else if let sub = p.sub {
-                    Text(sub).font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1).padding(.top, 2)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let w = p.weather { weather(w) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if let w = p.weather { weather(w) }
+            if p.kind == .next, let sub = p.sub { nextLine(sub, at: p.at).padding(.top, 8) }
         }
         .padding(.horizontal, 14).padding(.vertical, 13)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shotNode("card.pane.\(String(describing: p.kind))")
+    }
+
+    private func nextLine(_ sub: String, at: String?) -> some View {
+        let base = Text(sub).foregroundStyle(pal.ink6)
+        guard let at, let r = sub.range(of: at, options: .backwards) else {
+            return base.font(webFont(12)).lineLimit(1)
+        }
+        return (Text(String(sub[..<r.lowerBound])).foregroundStyle(pal.ink6)
+            + Text(at).foregroundStyle(pal.brass)
+            + Text(String(sub[r.upperBound...])).foregroundStyle(pal.ink6))
+            .font(webFont(12)).lineLimit(1)
     }
 
     /// Справа у места: знак и градус (19), слово неба (12).
@@ -254,6 +268,9 @@ struct CardTextBlock: View {
                         ForEach(Array(lines.enumerated()), id: \.offset) { _, l in
                             Text(l).font(webFont(13)).foregroundStyle(pal.ink2)
                                 .lineSpacing(13 * (lineGap - 1.19))
+                                // Межстрочье CSS — на каждой строке, `lineSpacing` — только между ними:
+                                // полшага сверху и снизу добирают высоту (пара: блок был ниже веба на 2,5).
+                                .padding(.vertical, 13 * (lineGap - 1.19) / 2)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -282,6 +299,7 @@ struct CardMoneyBlock: View {
                         (Text(m.income).font(webFont(17)).foregroundStyle(pal.ink)
                             + Text(m.expenseNote.map { " " + $0 } ?? "").font(webFont(12)).foregroundStyle(pal.ink6))
                             .monospacedDigit()
+                            .padding(.top, 2) // `.pn-v { margin-top: 2px }`
                         if let p = m.prepayNote {
                             Text(p).font(webFont(12)).foregroundStyle(pal.ink6).padding(.top, 3)
                                 .fixedSize(horizontal: false, vertical: true)
