@@ -21,17 +21,21 @@ struct CardScreen: View {
     var body: some View {
         let pal = Palette(scheme)
         // Фаза переключается сама, пока карточка открыта: раз в минуту —
-        // шаг, с которым меняется минута шкалы.
-        TimelineView(.everyMinute) { _ in
+        // шаг, с которым меняется минута шкалы. Момент такта уходит в плитки
+        // входом: без него SwiftUI видит те же `app`, `s`, `phase` и тела
+        // плиток не пересчитывает — часы плитки дня и студийный час стояли
+        // (телефон, 29.09: «40 минут и не двигается»).
+        TimelineView(.everyMinute) { ctx in
             let phase = app.phase(of: s)
-            // Поля слоя — 24 (`.overlay { padding: 0 24px }`), полоса — как у
-            // формы: 46 от верха экрана, 8 под кнопками (`.form-bar`), и стоит
-            // на месте, пока лист едет под ней (`position: sticky`).
+            // Поля слоя — 24 (`.overlay { padding: 0 24px }`); полоса стоит на
+            // месте, пока лист едет под ней (`position: sticky`), и начинается
+            // под вырезом экрана: на 46 от верха, как у формы, средняя кнопка
+            // уходила под островок на 4 pt (телефон, 29.09).
             VStack(spacing: 0) {
                 bar(pal)
                 ScrollView {
                     VStack(spacing: 0) {
-                        CardStack(app: app, s: s, pal: pal) { sheet(pal, phase) }
+                        CardStack(app: app, s: s, pal: pal) { sheet(pal, phase, ctx.date) }
                         acts(pal)
                     }
                     .padding(.horizontal, 24)
@@ -42,7 +46,6 @@ struct CardScreen: View {
                 // (`openCard(i, false, …)` сбрасывает прокрутку).
                 .id(s.id)
             }
-            .ignoresSafeArea(.container, edges: .top)
             .shotNode("card.phase", text: phase.rawValue)
         }
         .background(pal.surface.ignoresSafeArea())
@@ -67,6 +70,8 @@ struct CardScreen: View {
                     .frame(width: 18, height: 18)
                     .frame(width: 40, height: 40)
                     .glassEffect(.regular, in: Circle())
+                    // Нажатие ловит весь круг, а не только линии знака.
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .shotNode("card.add")
@@ -83,23 +88,25 @@ struct CardScreen: View {
             }
         }
         .padding(.horizontal, 24)
-        .padding(.top, 46)
         .padding(.bottom, 8)
     }
 
     // MARK: - Лист
 
-    /// Лист `.card-sheet`: шапка, плитка дня, студийный час. Опросник — 28,
-    /// сделка, тревоги, погода и остальные блоки — 26–27.
-    private func sheet(_ pal: Palette, _ phase: EventPhase) -> some View {
+    /// Лист `.card-sheet`: шапка, студийный час, плитка дня, наложение.
+    /// Опросник — 28, сделка, тревоги, погода и остальные блоки — 26–27.
+    private func sheet(_ pal: Palette, _ phase: EventPhase, _ tick: Date) -> some View {
         VStack(spacing: 0) {
-            CardHead(app: app, s: s, phase: phase, pal: pal)
+            CardHead(app: app, s: s, phase: phase, pal: pal, tick: tick)
             // Студийный час — над переставляемыми блоками: веб переносит блоки
             // в конец `#cdEventBlocks`, а не-блоки (тревоги, студия, звонок
             // администратору) остаются выше — «читается первой, куда бы
             // фотограф ни переставил остальное».
-            CardStudio(app: app, s: s, phase: phase, pal: pal)
-            CardDayTile(app: app, s: s, phase: phase, pal: pal)
+            CardStudio(app: app, s: s, phase: phase, pal: pal, tick: tick)
+            CardDayTile(app: app, s: s, phase: phase, pal: pal, tick: tick)
+            // Наложение — сразу под плиткой дня (блок `clash` веба), не после
+            // съёмки (Алексей, телефон 29.09: в форме видно, в карточке нет).
+            CardClash(app: app, s: s, phase: phase, pal: pal)
         }
         .padding(EdgeInsets(top: 18, leading: 12, bottom: 16, trailing: 12))
         // Тень вверх и кант по кромке — у листа всегда, и без стопки

@@ -99,6 +99,8 @@ struct CardDayTile: View {
     let s: Session
     let phase: EventPhase
     let pal: Palette
+    /// Такт карточки (раз в минуту): часы места и «осталось» пересчитываются.
+    let tick: Date
 
     var body: some View {
         let x = DayTileText(s, phase: phase, app: app)

@@ -89,6 +89,8 @@ struct CardHead: View {
     let s: Session
     let phase: EventPhase
     let pal: Palette
+    /// Такт карточки: слово «завтра» у даты меняется в полночь.
+    let tick: Date
     @Environment(\.openURL) private var openURL
 
     /// Ступени кегля имени (веб `TITLE_SIZES`): не влезло и в 21 — переносится.

@@ -137,6 +137,40 @@ struct CardStackTests {
         #expect(!PeekText(rec(a, "t_next"), card: rec(a, "sd_sep_clash_a"), app: a).over)
     }
 
+    // MARK: - Наложение в карточке (веб `renderClash`)
+
+    /// 26.09 «Олег Дан» 14:00–15:30 и «Семья Ким» 15:00–16:30: в карточке —
+    /// первое наложение словами формы, до и во время съёмки.
+    @Test func clashLineBeforeAndDuring() {
+        for iso in ["2026-09-26T12:00:00+07:00", "2026-09-26T14:30:00+07:00"] {
+            let a = app(iso)
+            let s = rec(a, "sd_sep_clash_a")
+            let w = a.cardClash(s, phase: a.phase(of: s))
+            #expect(w?.title == "Время пересекается")
+            #expect(w?.message.contains("Семья Ким") == true)
+        }
+    }
+
+    /// После съёмки молчит; у записи без наложений строки нет.
+    @Test func clashLineSilentAfterAndAlone() {
+        let a = app("2026-09-26T17:00:00+07:00")
+        let s = rec(a, "sd_sep_clash_a")
+        #expect(a.phase(of: s) == .after)
+        #expect(a.cardClash(s, phase: .after) == nil)
+        let b = app()
+        let wed = rec(b, "sd_sep_wed")
+        #expect(b.cardClash(wed, phase: b.phase(of: wed)) == nil)
+    }
+
+    /// Наложений два — «И ещё 1.» в конце (веб `card.clashMore`).
+    @Test func clashLineCountsTheRest() {
+        let a = app("2026-09-26T12:00:00+07:00") { snap in
+            snap.sessions.append(copy(snap, "sd_sep_clash_b", as: "t_third", start: 870, end: 900))
+        }
+        let s = rec(a, "sd_sep_clash_a")
+        #expect(a.cardClash(s, phase: .before)?.message.hasSuffix("И ещё 1.") == true)
+    }
+
     // MARK: - Тап
 
     /// Тап по краю открывает соседа листом; прежняя карточка уходит в стопку.

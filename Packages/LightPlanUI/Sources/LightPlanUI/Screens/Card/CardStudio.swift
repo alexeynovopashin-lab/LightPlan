@@ -65,19 +65,20 @@ struct StudioTileState {
 /// Студийный час (`#cdStudio`): кольцо 104 pt, внутри час выхода и остаток,
 /// справа студия с залом, окно аренды и номер администратора. Последние
 /// 15 минут счёт идёт по секундам.
+///
+/// Такт — секунда всегда: двоеточие в остатке мигает раз в секунду
+/// (Алексей, телефон 29.09 — у веба не мигает; веб перерисовывает плитку
+/// раз в 20 с, а по секундам — только последние 15 минут).
 struct CardStudio: View {
     let app: AppModel
     let s: Session
     let phase: EventPhase
     let pal: Palette
+    /// Такт карточки (раз в минуту): появиться плитка может и без своего такта.
+    let tick: Date
 
     var body: some View {
-        let st = StudioTileState.of(s, phase: phase, app: app)
-        if let st, st.seconds <= StudioHour.fine * 60 {
-            TimelineView(.periodic(from: .now, by: 1)) { _ in content }
-        } else {
-            content
-        }
+        TimelineView(.periodic(from: .now, by: 1)) { _ in content }
     }
 
     @ViewBuilder private var content: some View {
@@ -87,6 +88,16 @@ struct CardStudio: View {
         } else if let tel {
             telRow(tel).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 9)
         }
+    }
+
+    /// Остаток с двоеточием, которое гаснет на нечётной секунде; место под
+    /// него держится — цифры не прыгают.
+    private func blink(_ clock: String, _ color: Color) -> Text {
+        guard let i = clock.firstIndex(of: ":") else { return Text(clock).foregroundStyle(color) }
+        let on = app.nowSecond % 2 == 0
+        return Text(clock[..<i]).foregroundStyle(color)
+            + Text(":").foregroundStyle(on ? color : .clear)
+            + Text(clock[clock.index(after: i)...]).foregroundStyle(color)
     }
 
     private func tint(_ st: StudioTileState) -> (arc: Color, num: Color, at: Color) {
@@ -113,8 +124,8 @@ struct CardStudio: View {
                         Text(st.exitAt).monospacedDigit()
                     }
                     .font(webFont(10.5)).foregroundStyle(c.at)
-                    Text(st.clock).font(webFont(25, 700)).tracking(-0.8).monospacedDigit()
-                        .foregroundStyle(c.num).shotNode("card.studioNum", text: st.clock)
+                    blink(st.clock, c.num).font(webFont(25, 700)).tracking(-0.8).monospacedDigit()
+                        .shotNode("card.studioNum", text: st.clock)
                 }
             }
             .frame(width: 104, height: 104)
@@ -123,6 +134,9 @@ struct CardStudio: View {
                     // `line-height: 1.3` — шаг строк 19,5; у SF свой шаг 1,19
                     // кегля, добавляется разница (пара шага 4: было 40,5 на 37,5).
                     .lineSpacing(15 * (1.3 - 1.19))
+                    // В такте `TimelineView` имя без этого резалось многоточием
+                    // в одну строку вместо переноса (симулятор, 29.09).
+                    .fixedSize(horizontal: false, vertical: true)
                     .shotNode("card.studioName", text: st.title)
                 Text(st.span).font(webFont(13.5)).monospacedDigit().foregroundStyle(pal.ink3).padding(.top, 3)
                 if let tel { telRow(tel, inside: true) }

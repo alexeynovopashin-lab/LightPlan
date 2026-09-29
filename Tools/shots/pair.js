@@ -461,6 +461,12 @@ function markdown(results) {
     if (sc.chapter === 'route') for (const [k, r] of Object.entries(web.nodes)) if (r.visible === false) delete nat.nodes[k];
     // Карточка длиннее экрана: ниже его края у веба тоже не в счёт.
     if (sc.card) for (const [k, r] of Object.entries(web.nodes)) if (r.y >= 956) delete web.nodes[k];
+    /* Полоса карточки у натива — под вырезом экрана (29.09: на 46 от верха
+       «＋» уходил под островок), у Chromium пары выреза нет. Сверка — от «✕»:
+       всё натива поднимается на разницу, сама разница — в строке прогона. */
+    const lift = sc.card && nat.nodes['card.back'] && web.nodes['card.back']
+      ? nat.nodes['card.back'].y - web.nodes['card.back'].y : 0;
+    if (lift) console.log(`${sc.name}: полоса натива ниже на ${lift} pt (вырез), сверка от «✕»`);
     if (sc.card) console.log(`${sc.name}: ${sc.at}, фаза натива ${natPhase}` + (natPhase === sc.phase ? '' : ` — ждали ${sc.phase}`));
     if (keep) for (const [k, r] of Object.entries(web.nodes)) {
       // Лента прокручена к месяцу: ушедшее за край экрана у веба тоже не в счёт.
@@ -470,6 +476,8 @@ function markdown(results) {
     // приложение её прячет — под главой панель не сверяется.
     if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(web.nodes)) if (/^tab(bar|\.)/.test(k)) delete web.nodes[k];
     const cmp = await compare(page, sc.dir, web, nat, 3);
+    // Цвета взяты с кадров как есть, смещение по высоте — от «✕» (см. выше).
+    if (lift) { cmp.lift = lift; for (const r of cmp.rows) if (r.d) r.d[1] = +(r.d[1] - lift).toFixed(1); }
     await pairImage(page, sc.dir, web, nat);
     /* Лист места (21в): системный лист iOS 26 на неполной высоте — парящая
        карточка, всё в ней уменьшено в (ширина листа / 440) раз (замер:

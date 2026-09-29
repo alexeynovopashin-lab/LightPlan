@@ -120,6 +120,10 @@ struct FormBarButton: View {
                 face.background(Circle().fill(pal.ink))
             }
         }
+        // Нажатие ловит весь круг: стекло нажатий не ловит, и «✕» срабатывал,
+        // только если палец попал в линию креста (телефон, 29.09 — «кнопка
+        // глючит»; симулятор: внутри круга мимо линии — не закрывает).
+        .contentShape(Circle())
         .buttonStyle(.plain)
         .shotNode(node)
         .accessibilityLabel(label)
