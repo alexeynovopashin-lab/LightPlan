@@ -38,8 +38,11 @@ struct PeekText {
         genre = p.kind == .meet ? f.t.t("plan.meet") : f.words.typeName(p)
         name = f.words.clientName(p)
         time = f.fmt(Double(p.start)) + " – " + f.fmt(Double(p.endMinute))
-        // Минуты — каждой записи в своих сутках, как у веба (`s.min`, `shootEnd`).
-        over = p.start < s.endMinute && s.start < p.endMinute
+        // Минуты соседа — на шкале дня карточки: вчерашняя съёмка через полночь
+        // начинается «до нуля». Веб сравнивает `s.min` без дат — ошибка эталона
+        // (ревью GPT к 4224ce1).
+        let d = p.day.days(since: s.day) * 1440
+        over = p.start + d < s.endMinute && s.start < p.endMinute + d
     }
 }
 

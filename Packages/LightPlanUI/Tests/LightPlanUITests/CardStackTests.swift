@@ -137,6 +137,22 @@ struct CardStackTests {
         #expect(!PeekText(rec(a, "t_next"), card: rec(a, "sd_sep_clash_a"), app: a).over)
     }
 
+    /// Через полночь (ревью GPT к 4224ce1): минуты соседа — на шкале дня
+    /// карточки. Веб сравнивает `s.min` без дат — ошибка эталона, не переносим.
+    @Test func edgeOverlapAcrossMidnightOnTheCardDayScale() {
+        let a = app { snap in
+            // 25.09 23:00 – 26.09 02:00.
+            snap.sessions.append(copy(snap, "sd_sep_wed", as: "t_night", day: Self.sep26.adding(days: -1),
+                                      start: 1380, end: 1560))
+            // 26.09 00:30 – 01:30 — внутри ночной съёмки.
+            snap.sessions.append(copy(snap, "sd_sep_clash_b", as: "t_small", start: 30, end: 90))
+            // 26.09 23:10 – 23:50 — на минуты вчерашних 23:00 без даты похоже, но не пересекается.
+            snap.sessions.append(copy(snap, "sd_sep_clash_b", as: "t_late", start: 1390, end: 1430))
+        }
+        #expect(PeekText(rec(a, "t_night"), card: rec(a, "t_small"), app: a).over)
+        #expect(!PeekText(rec(a, "t_night"), card: rec(a, "t_late"), app: a).over)
+    }
+
     // MARK: - Наложение в карточке (веб `renderClash`)
 
     /// 26.09 «Олег Дан» 14:00–15:30 и «Семья Ким» 15:00–16:30: в карточке —
