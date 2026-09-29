@@ -132,6 +132,10 @@ public final class RoadLegs {
 
     private let ask: Ask
     private var cache: [String: RoadLeg] = [:]
+    /// Переход, который уже спрашивают: второй кусок ждёт этот ответ, а не
+    /// спрашивает Apple снова — `@MainActor` не мешает двум промахам по кэшу
+    /// между `await` (ревью GPT к 4224ce1).
+    private var flying: [String: Task<RoadLeg?, Never>] = [:]
 
     public init(ask: @escaping Ask) {
         self.ask = ask
@@ -144,7 +148,17 @@ public final class RoadLegs {
         for i in 0 ..< points.count - 1 {
             let key = mode.rawValue + "|" + RoadRouter.key([points[i], points[i + 1]])
             let got: RoadLeg?
-            if let hit = cache[key] { got = hit } else { got = await ask(mode, points[i], points[i + 1]) }
+            if let hit = cache[key] {
+                got = hit
+            } else if let t = flying[key] {
+                got = await t.value
+            } else {
+                let (a, b) = (points[i], points[i + 1])
+                let t = Task { await self.ask(mode, a, b) }
+                flying[key] = t
+                got = await t.value
+                flying[key] = nil
+            }
             guard let leg = got else { return nil }
             cache[key] = leg
             line += line.isEmpty ? leg.line : Array(leg.line.dropFirst())

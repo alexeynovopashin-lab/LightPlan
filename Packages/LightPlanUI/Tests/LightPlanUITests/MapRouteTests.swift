@@ -301,6 +301,24 @@ struct MapRouteTests {
         #expect(calls.count == 5)
     }
 
+    /// Ревью GPT к 4224ce1: два куска разом (точку добавили, пока первый ещё
+    /// ждёт Apple) не спрашивают общий переход дважды — второй ждёт летящий
+    /// ответ. Предел частоты Apple считает каждый запрос.
+    @Test func concurrentRunsShareTheLegInFlight() async {
+        var calls: [String] = []
+        let legs = RoadLegs { mode, a, b in
+            calls.append("\(mode.rawValue) \(a.latitude)>\(b.latitude)")
+            try? await Task.sleep(for: .milliseconds(50))
+            return RoadLeg(line: [a, b], meters: 1000, seconds: 60)
+        }
+        let p = [53.30, 53.31, 53.32].map { MapCanvasCenter(latitude: $0, longitude: 83.7) }
+        async let two = legs.run(mode: .car, points: Array(p[0 ..< 2]))
+        async let three = legs.run(mode: .car, points: p)
+        let (a, b) = await (two, three)
+        #expect(a?.km == 1 && b?.km == 2)
+        #expect(calls.count == 2)   // A→B и B→C — по разу
+    }
+
     /// № 2: набранное имя пишется своей точке. Тап по другой булавке, пока
     /// поле в фокусе, сперва записывает имя прежней (у веба `blur` раньше
     /// `openSpotName`), а уход фокуса после этого не пишет новую точку и не
