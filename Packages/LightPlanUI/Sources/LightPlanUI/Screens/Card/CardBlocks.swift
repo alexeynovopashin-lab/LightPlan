@@ -24,6 +24,13 @@ struct CardBlocks: View {
         }
     }
 
+    @Environment(\.openURL) private var openURL
+
+    /// Тап по документу: ссылка уходит в браузер, остальное решает модель.
+    private func open(_ d: Attachment) {
+        if case .url(let u) = app.openCardDoc(d) { openURL(u) }
+    }
+
     @ViewBuilder private var blocks: some View {
         ForEach(app.cardBlocks(s, phase: phase), id: \.self) { b in
             switch b {
@@ -48,14 +55,18 @@ struct CardBlocks: View {
                                         lines: app.cardModels(s), lineGap: 1.5, pal: pal)
             case .docs: CardFold(app: app, block: b, sub: app.cardDocsCount(s), pal: pal) {
                 ForEach(Array(app.cardDocRows(s).enumerated()), id: \.offset) { i, d in
-                    CardDocLine(row: d, first: i == 0, pal: pal)
+                    CardDocLine(row: d, first: i == 0, pal: pal) { open(s.docs[i]) }
+                }
+                if let m = app.cardDocMessage {
+                    Text(m).font(webFont(12.5)).foregroundStyle(pal.warnInk).frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 9).shotNode("card.docMessage", text: m)
                 }
             }
             case .notes: CardTextBlock(block: b, icon: "note", tint: pal.blue, label: app.lexicon.t("card.notes"),
                                        lines: [s.notes], lineGap: 1.45, pal: pal)
             case .delivery: CardDeliveryBlock(app: app, s: s, pal: pal)
             case .money: CardMoneyBlock(app: app, s: s, pal: pal)
-            case .refs: EmptyView()
+            case .refs: CardRefsBlock(app: app, s: s, pal: pal)
             }
         }
     }
@@ -356,13 +367,18 @@ struct CardDeliveryBlock: View {
 // MARK: - Документы и маршрут
 
 /// Строка документа: знак `doc`, имя (15) и вид (12). Знак и имя — во всю
-/// оставшуюся ширину, не в узком столбце (ошибка 15 справки). Открытие — 27.
+/// оставшуюся ширину, не в узком столбце (ошибка 15 справки). Тап — открыть.
 struct CardDocLine: View {
     let row: CardDocRow
     let first: Bool
     let pal: Palette
+    var onOpen: () -> Void = {}
 
     var body: some View {
+        Button(action: onOpen) { line }.buttonStyle(.plain)
+    }
+
+    private var line: some View {
         HStack(spacing: 12) {
             Icon("doc", size: 18, line: 1.5).foregroundStyle(pal.ink5b).frame(width: 26)
             VStack(alignment: .leading, spacing: 1) {
@@ -372,6 +388,7 @@ struct CardDocLine: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 9)
+        .contentShape(Rectangle())
         .overlay(alignment: .top) { if !first { Rectangle().fill(pal.surface).frame(height: 1) } }
         .shotNode("card.docRow")
     }

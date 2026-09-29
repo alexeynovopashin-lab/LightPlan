@@ -16,7 +16,7 @@ extension AppModel {
 
     public func openCard(id: String) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
-        if cardId != id { cardFolds = []; cardTuning = false }
+        if cardId != id { cardFolds = []; cardTuning = false; cardDocMessage = nil }
         cardId = id
         askCardWeather(s)
         Task { await learnZone(of: s) }
@@ -38,6 +38,7 @@ extension AppModel {
         if let id = cardId, let s = snapshot.sessions.first(where: { $0.id == id }) { acknowledgeForecast(s) }
         cardId = nil
         cardFolds = []
+        cardDocMessage = nil
         cardTuning = false
     }
 

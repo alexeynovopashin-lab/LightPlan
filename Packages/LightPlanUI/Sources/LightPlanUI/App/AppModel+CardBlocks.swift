@@ -20,6 +20,7 @@ extension AppModel {
         case .light: return !cardSays(s, phase: phase).isEmpty
         case .weather: return cardWeather(s, phase: phase) != nil
         case .place: return !cardPanes(s, phase: phase).isEmpty
+        case .refs: return phase != .after && !cardRefs(s).isEmpty
         default: return false
         }
     }

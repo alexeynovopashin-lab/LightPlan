@@ -115,8 +115,8 @@ public enum CardPresence {
         case .day: true
         case .deal: DealChain.isShown(genre: s.genre, practice: practice)
         case .route: phase != .after && s.kind.isWork && s.route.contains { $0.start != nil && !$0.name.isEmpty }
-        // Подборок кадров в нативе нет — 27/28.
-        case .refs: false
+        // Решает подборка кадров — она в снимке как «прочее» (`AppModel.cardRefs`).
+        case .refs: nil
         case .brief: !s.brief.isEmpty
         case .models: s.models.split(separator: "\n").contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         case .docs: !s.docs.isEmpty

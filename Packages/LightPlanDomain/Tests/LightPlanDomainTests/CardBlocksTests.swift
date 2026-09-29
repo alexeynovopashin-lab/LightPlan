@@ -83,7 +83,7 @@ struct CardBlocksTests {
         #expect(has(.brief, s) == true)
         #expect(has(.notes, s) == true)
         #expect(has(.docs, s) == false)
-        #expect(has(.refs, s) == false)
+        #expect(has(.refs, s) == nil)   // кадры лежат в снимке, решает `AppModel.cardRefs` (27)
         #expect(has(.money, s) == false)
         s.expense = 300
         #expect(has(.money, s) == true)
