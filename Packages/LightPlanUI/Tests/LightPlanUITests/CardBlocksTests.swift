@@ -66,7 +66,8 @@ struct CardBlocksTests {
     @Test func defaultOrderShowsOnlyBlocksWithData() {
         let app = model()
         #expect(blocks(app, "p") == [.day, .notes, .delivery, .money])
-        #expect(blocks(app, "p2") == [.day, .route, .notes, .delivery, .money])
+        // Маршрут с названной точкой — у дня есть место (плитка «Место и дальше»).
+        #expect(blocks(app, "p2") == [.day, .place, .route, .notes, .delivery, .money])
         #expect(blocks(app, "c") == [.deal, .day, .brief, .docs, .notes, .delivery, .money])
     }
 
@@ -87,7 +88,7 @@ struct CardBlocksTests {
     @Test func groupOrderDoesNotTouchOtherGroup() {
         let app = model()
         app.moveCardBlock(.money, to: 0, for: rec(app, "p"))
-        #expect(blocks(app, "p2") == [.money, .day, .route, .notes, .delivery])
+        #expect(blocks(app, "p2") == [.money, .day, .place, .route, .notes, .delivery])
         #expect(blocks(app, "w") == [.day, .notes, .delivery, .money])
         #expect(blocks(app, "c") == [.deal, .day, .brief, .docs, .notes, .delivery, .money])
         #expect(Set(app.snapshotForTests.cardOrder.keys) == [.people])
@@ -100,8 +101,8 @@ struct CardBlocksTests {
         #expect(app.phase(of: rec(app, "c")) == .after)
         #expect(blocks(app, "c") == [.deal, .docs, .money, .delivery, .day, .brief, .notes])
         #expect(blocks(app, "p") == [.day, .notes, .delivery, .money])
-        // Перестановка правит порядок группы, без выноса.
-        #expect(app.cardOrderRows(rec(app, "c"), phase: .after) == [.deal, .day, .brief, .docs, .notes, .delivery, .money])
+        // Список перестановки стоит так же, как карточка (решение Алексея 29.09: как в бете).
+        #expect(app.cardOrderRows(rec(app, "c"), phase: .after) == [.deal, .docs, .money, .delivery, .day, .brief, .notes])
     }
 
     @Test func offBlockStaysInRowsAndResetClearsGroup() {

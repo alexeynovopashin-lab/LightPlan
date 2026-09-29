@@ -35,6 +35,7 @@ extension AppModel {
     }
 
     public func closeCard() {
+        if let id = cardId, let s = snapshot.sessions.first(where: { $0.id == id }) { acknowledgeForecast(s) }
         cardId = nil
         cardFolds = []
     }

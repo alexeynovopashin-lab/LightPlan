@@ -138,6 +138,24 @@ struct CardWeatherBlock: View {
     }
 }
 
+/// «Прогноз переменился» (`#cdShift`): над сдвигом времени и студийным часом;
+/// янтарный свет, как у наложения. Гаснет, когда карточку закрыли.
+struct CardShiftLine: View {
+    let app: AppModel
+    let s: Session
+    let phase: EventPhase
+    let pal: Palette
+
+    var body: some View {
+        if let sh = app.cardShift(s, phase: phase) {
+            CardSayPlate(icon: "warn", tint: pal.brassDeep,
+                         text: Text(sh.title + ".").foregroundStyle(pal.ink) + Text(" " + sh.text).foregroundStyle(pal.ink3),
+                         glow: (226, 164, 76), pal: pal, node: "card.shift")
+                .padding(.top, 9)
+        }
+    }
+}
+
 /// «Время сдвинуто в календаре» (`#cdMoved`): над студийным часом, все фазы;
 /// «✕» стирает отметку.
 struct CardMoved: View {

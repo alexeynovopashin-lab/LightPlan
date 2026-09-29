@@ -100,7 +100,9 @@ struct CardScreen: View {
     private func sheet(_ pal: Palette, _ phase: EventPhase, _ tick: Date) -> some View {
         VStack(spacing: 0) {
             CardHead(app: app, s: s, phase: phase, pal: pal, tick: tick)
-            // Сдвиг времени на ленте — не блок: стоит над студийным часом.
+            // Тревога прогноза и сдвиг времени на ленте — не блоки: стоят над
+            // студийным часом, тревога выше.
+            CardShiftLine(app: app, s: s, phase: phase, pal: pal)
             CardMoved(app: app, s: s, pal: pal)
             // Студийный час — над переставляемыми блоками: веб переносит блоки
             // в конец `#cdEventBlocks`, а не-блоки (тревоги, студия, звонок

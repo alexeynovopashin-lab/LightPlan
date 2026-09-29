@@ -12,13 +12,14 @@ extension AppModel {
 
     private func cardGroup(_ s: Session) -> GenreGroup { GenreProfile(s.genre).group }
 
-    /// Есть ли у блока что показать. Место — шаг 4: до него блока нет.
+    /// Есть ли у блока что показать.
     func cardBlockHasData(_ b: CardBlock, _ s: Session, phase: EventPhase) -> Bool {
         if let v = CardPresence.byRecord(b, s, phase: phase, practice: dealPractice, among: snapshot.sessions) { return v }
         switch b {
         case .clash: return cardClash(s, phase: phase) != nil
         case .light: return !cardSays(s, phase: phase).isEmpty
         case .weather: return cardWeather(s, phase: phase) != nil
+        case .place: return !cardPanes(s, phase: phase).isEmpty
         default: return false
         }
     }
@@ -33,10 +34,11 @@ extension AppModel {
     }
 
     /// Строки перестановки: блоки с данными, выключенные тоже (чтобы было чем
-    /// вернуть), в порядке группы — без выноса «после»: правится порядок
-    /// группы, он общий для всех фаз.
+    /// вернуть), в том порядке, в каком их ставит карточка — у заказа после
+    /// съёмки сделка, документы, гонорар и сдача впереди (Алексей 29.09: как в
+    /// бете). Перетащенный блок в порядок группы встаёт сам, вынос не пишется.
     public func cardOrderRows(_ s: Session, phase: EventPhase) -> [CardBlock] {
-        CardOrder.full(genre: s.genre, saved: snapshot.cardOrder).filter { cardBlockHasData($0, s, phase: phase) }
+        CardOrder.shown(genre: s.genre, saved: snapshot.cardOrder, phase: phase).filter { cardBlockHasData($0, s, phase: phase) }
     }
 
     /// Блок перетащили на место `j` в списке перестановки. Хранится у группы.

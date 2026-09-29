@@ -52,7 +52,7 @@ extension AppModel {
 
     func cardSun(_ p: GeoPoint?, _ d: CivilDate) -> SolarDay { SolarDay(date: d, place: cardPlace(p)) }
 
-    private func anchor(_ s: Session) -> GeoPoint? { Stops.skyPoint(of: s, spots: snapshot.spots, studios: snapshot.studios) }
+    func anchor(_ s: Session) -> GeoPoint? { Stops.skyPoint(of: s, spots: snapshot.spots, studios: snapshot.studios) }
 
     /// Точки дня «что во сколько» у работы; у встречи и события — нет.
     private func lightRoute(_ s: Session) -> [RoutePoint] { s.kind.isWork ? s.timedRoute : [] }
