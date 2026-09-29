@@ -46,9 +46,11 @@ dirty=""; [ -n "$(git -C "$root" status --porcelain --untracked-files=no 2>/dev/
 branch_app() {
   local b="$1" rest s
   if [ "$b" = "main" ]; then echo "|Light Plan"; return; fi
-  rest="${b#wt/}"; rest="${rest#*/}"
   [ "$b" = "HEAD" ] && die "ветка не выбрана (detached HEAD) — на телефон только из ветки или main" 2
-  s="wt$(printf '%s' "$rest" | tr -cd 'A-Za-z0-9')"
+  case "$b" in
+    wt/*) rest="${b#wt/}"; s="wt$(printf '%s' "$rest" | tr -cd 'A-Za-z0-9')" ;;
+    *)    rest="$b";       s="br$(printf '%s' "$b" | tr -cd 'A-Za-z0-9')" ;;   # release/26 ≠ wt/26
+  esac
   echo "$s|LP $rest"
 }
 
@@ -64,6 +66,11 @@ case "$cmd" in
     bid="$MAIN_BID${slug:+.$slug}"
     if [ "$want_main" = 1 ] && [ "$branch" != "main" ]; then
       die "основное приложение «Light Plan» ($MAIN_BID) ставится только из main, сейчас ветка $branch. Из ветки — без --main: получится «$name»." 2
+    fi
+    # Этот идентификатор уже занят другой веткой (`wt/a-b` и `wt/ab` сводятся к одному слагу) — не затирать.
+    owner="$(grep -F "$bid"$'\t' "$RECORD" 2>/dev/null | tail -1 | cut -f2)"
+    if [ -n "$owner" ] && [ "$owner" != "$branch" ] && [ "$bid" != "$MAIN_BID" ]; then
+      die "идентификатор $bid уже занят веткой $owner — установка затёрла бы её приложение. Сначала phone.sh uninstall ${bid##*.}, если та ветка закрыта." 2
     fi
     [ "$dry" = 1 ] && echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid" && exit 0
     need_phone
@@ -90,7 +97,12 @@ case "$cmd" in
   uninstall)
     if [ "$want_main" = 1 ]; then bid="$MAIN_BID"
     elif [ -n "$slug_arg" ]; then
-      s="$(printf '%s' "${slug_arg#wt/}" | tr -cd 'A-Za-z0-9')"; case "$s" in wt*) ;; *) s="wt$s" ;; esac
+      # Слаг («wt26», «br…») или сама ветка («wt/26», «26»).
+      case "$slug_arg" in
+        wt[A-Za-z0-9]*|br[A-Za-z0-9]*) s="$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
+        wt/*) IFS='|' read -r s _ < <(branch_app "$slug_arg") ;;
+        *)    s="wt$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
+      esac
       bid="$MAIN_BID.$s"
     else
       IFS='|' read -r slug name < <(branch_app "$branch"); bid="$MAIN_BID${slug:+.$slug}"
@@ -98,7 +110,8 @@ case "$cmd" in
     fi
     [ "$dry" = 1 ] && echo "dry-run: снять $bid" && exit 0
     need_phone
-    xcrun devicectl device uninstall app --device "$DEVICE_ID" "$bid" 2>&1 | tail -3
+    xcrun devicectl device uninstall app --device "$DEVICE_ID" "$bid" > /tmp/cc-phone-uninstall.log 2>&1 \
+      || { tail -3 /tmp/cc-phone-uninstall.log; die "не снято: $bid (devicectl вернул ошибку)" 5; }
     echo "снято: $bid"
     ;;
 

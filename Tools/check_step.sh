@@ -55,7 +55,9 @@ else row нет "1. в ветке нет коммитов впереди $base";
 
 # 2. Дифф без сгенерированного.
 mb="$(git merge-base "$base" "$branch")"
-nfiles="$(git diff --name-only "$mb" "$branch" -- . "${EXCL[@]}" | wc -l | tr -d ' ')"
+# Для «данных» и «документов» json и Fixtures — это и есть содержание шага: отбрасываем только то, что пишет генератор кода.
+if [ "$type" = "код" ]; then excl=("${EXCL[@]}"); else excl=(':(exclude)*.generated.swift' ':(exclude)*.xcstrings' ':(exclude)*.pbxproj'); fi
+nfiles="$(git diff --name-only "$mb" "$branch" -- . "${excl[@]}" | wc -l | tr -d ' ')"
 if [ "$nfiles" -gt 0 ]; then row да "2. дифф без сгенерированного: $nfiles файлов"
 else row нет "2. дифф без сгенерированного пустой (в ветке только данные или ничего)"; fi
 
@@ -67,14 +69,18 @@ if [ -z "$pushed" ]; then
   row нет "3. ветка не отправлена в GitHub — ревью GPT ещё не было"
 else
   short="${pushed:0:7}"
-  extra=""
-  [ "$pushed" != "$(git rev-parse "$branch")" ] && extra=" (локально ветка впереди отправленного: $(git rev-list --count "$pushed..$branch" 2>/dev/null || echo '?') коммитов, они без ревью)"
+  extra=""; unpushed=0
+  if [ "$pushed" != "$(git rev-parse "$branch")" ]; then
+    unpushed=1; extra=" (локально ветка впереди отправленного: $(git rev-list --count "$pushed..$branch" 2>/dev/null || echo '?') коммитов без ревью)"
+  fi
   auth=(); [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
   api() { curl -sS -m 30 ${auth[@]+"${auth[@]}"} -H 'Accept: application/vnd.github+json' -o "$2" -w '%{http_code}' "https://api.github.com/repos/$repo/$1" 2>/dev/null; }
   tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
   c1="$(api "commits/$pushed/comments?per_page=100" "$tmp/c.json")"
   c2="$(api "actions/runs?head_sha=$pushed&per_page=20" "$tmp/r.json")"
-  if [ "$c1" != 200 ] || [ "$c2" != 200 ]; then
+  if [ "$unpushed" = 1 ]; then
+    row нет "3. в ветке есть неотправленные коммиты — ревью GPT смотрело только $short$extra"
+  elif [ "$c1" != 200 ] || [ "$c2" != 200 ]; then
     row нет "3. GitHub ответил $c1/$c2 (лимит без ключа? задать GITHUB_TOKEN) — ревью к $short не проверено"
   else
     body="$(jq -r '[.[] | select(.body | test("^(### Второе мнение OpenAI|ℹ️ Ревью не нужно|⛔ Ревью не было)"))] | last | .body // empty' "$tmp/c.json" | head -1)"
@@ -128,22 +134,26 @@ else
       pkgs="$(printf '%s\n' "$tfiles" | sed -E 's#^(Packages/[^/]+)/.*#\1#' | sort -u)"
       total="$(printf '%s\n' "$names" | wc -l | tr -d ' ')"
       filt="$(printf '%s\n' "$names" | paste -sd'|' -)"
-      failed_any=0; built_any=0; detail=""
+      failed_any=0; built_any=0; unverified=0; detail=""
       while IFS= read -r p; do
         log="/tmp/cc-checkstep-$(basename "$p").log"
         ( cd "$wt/$p" && swift test --filter "$filt" ) > "$log" 2>&1; code=$?
         if [ $code -ne 0 ]; then
-          failed_any=1
-          if grep -qE 'error:.*(cannot find|has no member|no such module|extra argument|missing argument)' "$log" && ! grep -qE "Test Case .* failed|✘ Test" "$log"; then
-            detail="$detail $(basename "$p"): не собирается на старом коде;"
+          # Падение считаем только подтверждённое: тест назван в журнале как упавший, либо сборка
+          # не находит нового API (тест на новое поведение). Прочее — окружение, «не проверено».
+          if grep -qE "Test Case .* failed|✘ Test|✘ Suite" "$log"; then
+            failed_any=1; detail="$detail $(basename "$p"): падают ($(grep -cE "Test Case .* failed|✘ Test" "$log"));"
+          elif grep -qE 'error:.*(cannot find|has no member|no such module|extra argument|missing argument|cannot be used)' "$log"; then
+            failed_any=1; detail="$detail $(basename "$p"): не собирается на старом коде (нового API нет) — слабее падения;"
           else
-            detail="$detail $(basename "$p"): падают ($(grep -cE "Test Case .* failed|✘ Test" "$log"));"
+            unverified=1; detail="$detail $(basename "$p"): swift test упал не по тесту, см. журнал;"
           fi
         else
           built_any=1; detail="$detail $(basename "$p"): ПРОХОДЯТ на старом коде;"
         fi
       done <<<"$pkgs"
       if [ "$built_any" = 1 ]; then row нет "4. новые тесты ($total) проходят и на родительском коде — они ничего не доказывают:$detail журнал /tmp/cc-checkstep-*.log"
+      elif [ "$unverified" = 1 ]; then row "?" "4. не удалось проверить: журнал /tmp/cc-checkstep-*.log —$detail"
       elif [ "$failed_any" = 1 ]; then row да "4. новые тесты ($total) падают на родительском коммите ${mb:0:7}:$detail"
       fi
     fi
