@@ -1,5 +1,8 @@
 # Второе мнение по коду итераций: модель OpenAI читает изменения ветки и
 # пишет замечания. Не блокирует ничего — это совет, а не проверка.
+# Одно исключение: пустой дифф, а код пуша уже в main — ревью потерялось
+# (main ушёл раньше ветки, 24а, 28.09). Тогда запуск красный и комментарий к
+# коммиту; пустой дифф без этого (в пуше только данные) — жёлтая пометка.
 #
 # Когда запускается:
 #   - сам, при каждом пуше в ветку итерации wt/<nn> — смотрит только этот пуш;
@@ -50,6 +53,7 @@ jobs:
           INPUT_BRANCH: ${{ inputs.branch }}
         run: |
           set -euo pipefail
+          FROM_MAIN=no
           git fetch -q origin main
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if ! printf '%s' "$INPUT_BRANCH" | grep -qE '^[A-Za-z0-9._/-]+$'; then
@@ -58,12 +62,14 @@ jobs:
             git fetch -q origin "$INPUT_BRANCH"
             HEAD_SHA=$(git rev-parse FETCH_HEAD)
             BASE=$(git merge-base origin/main "$HEAD_SHA")
+            FROM_MAIN=yes
             SCOPE="вся ветка $INPUT_BRANCH против main"
           else
             HEAD_SHA="$AFTER"
             if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
                || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
               BASE=$(git merge-base origin/main "$HEAD_SHA")
+              FROM_MAIN=yes
             else
               BASE="$BEFORE"
             fi
@@ -80,13 +86,38 @@ jobs:
           head -c "$LIMIT" /tmp/full.diff > /tmp/review.diff
           TRUNC=""
           if [ "$BYTES" -gt "$LIMIT" ]; then TRUNC="обрезано: $BYTES байт, показано $LIMIT"; fi
+          IN_MAIN=no
+          if [ "$FROM_MAIN" = "yes" ] && git merge-base --is-ancestor "$HEAD_SHA" origin/main; then
+            IN_MAIN=yes
+          fi
           {
+            echo "in_main=$IN_MAIN"
             echo "head_sha=$HEAD_SHA"
             echo "base_sha=$BASE"
             echo "scope=$SCOPE"
             echo "bytes=$BYTES"
             echo "trunc=$TRUNC"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Empty diff
+        if: steps.diff.outputs.bytes == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.diff.outputs.head_sha }}
+          BASE_SHA: ${{ steps.diff.outputs.base_sha }}
+          SCOPE: ${{ steps.diff.outputs.scope }}
+          IN_MAIN: ${{ steps.diff.outputs.in_main }}
+        run: |
+          set -euo pipefail
+          if [ "$IN_MAIN" = "yes" ]; then
+            MSG="⛔ Ревью не было — $SCOPE: дифф ${BASE_SHA:0:7}..${HEAD_SHA:0:7} пустой, код уже в main. Порядок: ветка → комментарий ревью → main. Запусти Run workflow на эту ветку против коммита до слияния или разбери изменения отдельно."
+          else
+            MSG="ℹ️ Ревью не нужно — $SCOPE: в пуше только сгенерированное и данные (*.json, *.xcstrings, Fixtures…), кода нет."
+          fi
+          echo "$MSG" >> "$GITHUB_STEP_SUMMARY"
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/comments" -f body="$MSG" > /dev/null
+          if [ "$IN_MAIN" = "yes" ]; then echo "::error::$MSG"; exit 1; fi
+          echo "::warning::$MSG"
 
       - name: Ask OpenAI
         if: steps.diff.outputs.bytes != '0'
