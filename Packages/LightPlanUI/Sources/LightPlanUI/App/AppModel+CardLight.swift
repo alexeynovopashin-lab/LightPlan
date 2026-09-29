@@ -225,18 +225,20 @@ extension AppModel {
     /// места прогноза не ждёт — блока нет (DECISIONS 29.09, шаг 1).
     func cardWeather(_ s: Session, phase: EventPhase) -> CardWeather? {
         guard phase != .after, let a = anchor(s) else { return nil }
-        var cols: [(t: Int, p: GeoPoint, aside: Bool)]
+        var cols: [(t: Int, p: GeoPoint, aside: Bool, own: Bool)]
         let route = lightRoute(s)
         if route.isEmpty {
-            cols = LightCase.hours(of: s).map { ($0, a, false) }
+            cols = LightCase.hours(of: s).map { ($0, a, false, false) }
         } else {
             cols = route.prefix(6).map { r in
-                (r.start ?? 0, Stops.place(of: r, spots: snapshot.spots, studios: snapshot.studios)?.point ?? a, false)
+                let own = Stops.place(of: r, spots: snapshot.spots, studios: snapshot.studios)?.point
+                return (r.start ?? 0, own ?? a, false, own != nil)
             }
         }
         guard cols.count >= 2 else { return nil }
         if cols.count < 3 {
-            cols = [(cols[0].t - 60, cols[0].p, true)] + cols + [(cols[cols.count - 1].t + 60, cols[cols.count - 1].p, true)]
+            cols = [(cols[0].t - 60, cols[0].p, true, cols[0].own)] + cols
+                + [(cols[cols.count - 1].t + 60, cols[cols.count - 1].p, true, cols[cols.count - 1].own)]
         }
         guard forecastReaches(s.day) else { return .noData }
         if case .empty? = pointWeather.state(at: cardPlace(a)) { return .noData }
@@ -244,7 +246,9 @@ extension AppModel {
         let out = cols.map { c -> WxColumn in
             let k = dayIndex(c.t)
             let light = pointLight(s, c.p, c.t)
-            guard let (day, hours) = pointDay(c.p, s.date(ofDay: k)) ?? pointDay(a, s.date(ofDay: k)) else {
+            // Точка со своими координатами ждёт своего прогноза и якорь не берёт:
+            // чужая погода под своим временем врала бы (ревью GPT к шагу 3).
+            guard let (day, hours) = pointDay(c.p, s.date(ofDay: k)) ?? (c.own ? nil : pointDay(a, s.date(ofDay: k))) else {
                 return WxColumn(minute: c.t, aside: c.aside, sky: nil, temp: "—", cloud: "—",
                                 light: light?.icon, blue: light?.blue ?? false)
             }

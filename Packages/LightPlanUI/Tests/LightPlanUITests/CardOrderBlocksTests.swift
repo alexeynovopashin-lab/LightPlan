@@ -374,4 +374,25 @@ struct CardOrderBlocksTests {
         #expect(app.snapshotForTests.extra == before)
         _ = s
     }
+
+    // MARK: - Ревью GPT к шагу 3: погода чужого места
+
+    /// Точка со своими координатами, чей прогноз ещё не пришёл, не берёт
+    /// прогноз якоря — прочерк; точка без координат берёт якорь, как у веба.
+    @Test func columnOfPointWithOwnCoordinatesNeverBorrowsAnchorForecast() async {
+        var s = Self.shootAt(day: 21)
+        s.route = [RoutePoint(start: 1080, name: "Сбор"),
+                   RoutePoint(start: 1140, name: "Казань", placeText: "Казань", spotId: "k"),
+                   RoutePoint(start: 1200, name: "Финал")]
+        var snap = Self.snap([s])
+        snap.spots = [Spot(id: "k", name: "Казань", latitude: 55.79, longitude: 49.12)]
+        let app = model(snap, rain: false)
+        let sess = rec(app, "a")
+        app.pointWeather.ask(app.cardPlace(app.anchor(sess)))      // якорь пришёл, Казань — нет
+        await app.pointWeather.settled()
+        guard case .columns(let cols)? = app.cardWeather(sess, phase: .before) else { Issue.record("нет колонок"); return }
+        #expect(cols.map(\.minute) == [1080, 1140, 1200])
+        #expect(cols[0].sky != nil && cols[2].sky != nil)          // без своих координат — якорь
+        #expect(cols[1].sky == nil && cols[1].temp == "—")         // своя точка ждёт своего прогноза
+    }
 }
