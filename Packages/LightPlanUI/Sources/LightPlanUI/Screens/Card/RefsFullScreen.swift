@@ -149,7 +149,7 @@ struct RefsFullScreen: View {
         .buttonStyle(.plain)
         .opacity(hidden ? 0 : 1)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("refs")) } action: { tiles[f.id] = $0 }
-        .shotNode("refs.tile", text: f.id)
+        .shotNode("refs.tile.\(app.refSections(s).flat.firstIndex { $0.id == f.id } ?? 0)", text: f.id)
     }
 
     private func linkTile(_ url: String, _ pal: Palette) -> some View {

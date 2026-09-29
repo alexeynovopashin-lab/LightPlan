@@ -97,7 +97,23 @@ const LAYER_SHEETS = { bin: 1, blk: 1 };
    `meet` — встреча (26), без маршрута и сдачи.
    Часть — `--cards people,stack`, `--phases during`. */
 const CARDS = { event: 'sd_sep_wed', people: 'sd_sep_clash_a', client: 'sd_sep_inter', own: 'sd_aug_land' };
-const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet'];
+/* Маршрут и референсы (27): свадьба из 12 точек (08:00 – 20:30), два документа,
+   четыре кадра (два своих, три в наборе жанра, один лежит в обоих), часы — 18:00
+   суток съёмки. `r27route` — лента точек раскрыта, `r27refs` — строка «Референсы»,
+   `r27full` — полный экран (сетка, заглушки), `r27view` — просмотрщик первого кадра. */
+const R27 = { r27route: { fold: 'route' }, r27refs: {}, r27full: { refs: 'full' }, r27view: { refs: 'view' } };
+const R27_ROUTE = [[480, 540, 'Сборы невесты', 'Гостиница «Магистрат»'], [600, 640, 'Сборы жениха', 'Гостиница «Магистрат»'],
+  [660, 720, 'Выездная регистрация', 'Парк у реки'], [780, 900, 'Пара в студии', 'Томсон, зал Эдисон'],
+  [840, 870, 'Обед', 'Ресторан «Соль»'], [900, 960, 'Прогулка', 'Дом с драконами'], [960, 990, 'Фотозона', 'Ресторан «Соль»'],
+  [1000, 1060, 'Банкет', 'Ресторан «Соль»'], [1100, 1130, 'Первый танец', 'Ресторан «Соль»'],
+  [1150, 1180, 'Прогулка на закате', 'Набережная'], [1180, 1200, 'Букет невесты', 'Набережная'], [1230, 1260, 'Торт', 'Ресторан «Соль»']]
+  .map(([t, t2, n, p]) => ({ t, t2, n, p, placeId: null, studioId: n === 'Пара в студии' ? 'sd_st_tomson' : null,
+    hallId: n === 'Пара в студии' ? 'sd_h_edison' : null }));
+const R27_SHOTS = ['a', 'b', 'c', 'd'].map((x, i) => ({ id: 'sh_r27_' + x, k: 'img', im: 'sh_r27_' + x, w: 800, h: [1200, 900, 1000, 1400][i],
+  tags: [['bride'], ['couple', 'evening'], ['walk'], ['details']][i] }));
+const R27_BOARDS = [{ id: 'bd_r27_own', kind: 'shoot', sid: 'sd_sep_wed', genre: 'wedding', items: ['sh_r27_a', 'sh_r27_b'], name: null, cover: null },
+  { id: 'bd_r27_set', kind: 'tpl', genre: 'wedding', items: ['sh_r27_b', 'sh_r27_c', 'sh_r27_d'], name: null, cover: null }];
+const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet', ...Object.keys(R27)];
 const phases = (args.phases || 'before,during,after').split(',');
 // Стена часов Барнаула (+7, без перехода) в минуту `m` суток записи `iso`.
 const wallAt = (iso, m) => new Date(Date.parse(iso) + 7 * 3600e3 + m * 60e3).toISOString().slice(0, 16);
@@ -179,7 +195,8 @@ async function nativeShot(udid, sc, dir) {
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     ...(sc.layer ? ['-LPShotSheet', sc.layer] : []),
     ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
-    ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card, ...(sc.tune ? ['-LPShotTune', '1'] : [])] : []),
+    ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card, ...(sc.tune ? ['-LPShotTune', '1'] : []),
+      ...(sc.fold ? ['-LPShotFold', sc.fold] : []), ...(sc.refs ? ['-LPShotRefs', sc.refs] : [])] : []),
     '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
   // Первый запуск после установки идёт до 20 с (замер 19б), следующие — 3–4 с.
@@ -201,7 +218,8 @@ function webShot(sc, dir, safe) {
     ...(sc.form ? ['--sheet', 'form', '--way', sc.form] : []),
     ...(sc.layer ? ['--sheet', sc.layer] : []),
     ...(sc.sheet ? ['--sheet', 'loc', ...(sc.sheet !== 'fork' ? ['--way', sc.sheet] : [])] : []),
-    ...(sc.card ? ['--sheet', 'card', '--way', sc.card, ...(sc.tune ? ['--tune'] : [])] : []),
+    ...(sc.card ? ['--sheet', 'card', '--way', sc.card, ...(sc.tune ? ['--tune'] : []),
+      ...(sc.fold ? ['--fold', sc.fold] : []), ...(sc.refs ? ['--refs', sc.refs] : [])] : []),
     '--scale', '3', '--out', path.join(dir, 'web.png'), '--report', path.join(dir, 'web.json')]);
   return JSON.parse(fs.readFileSync(path.join(dir, 'web.json'), 'utf8'));
 }
@@ -378,7 +396,7 @@ function markdown(results) {
   }
   if (screens.includes('card') && !args['only-sheets'] && !args['only-forms'] && !args['only-layers']) {
     for (const g of cards) for (const ph of CARDS[g] ? phases : g === 'tune' ? ['before'] : ['during']) for (const theme of themes) {
-      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : CARDS[g] || 'sd_sep_clash_a';
+      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : R27[g] ? CARDS.event : CARDS[g] || 'sd_sep_clash_a';
       const name = ['card', g, ph, theme].join('-');
       const dir = path.join(OUT, name);
       fs.mkdirSync(dir, { recursive: true });
@@ -392,16 +410,21 @@ function markdown(results) {
           { ...b, id: 'shot_st_late', min: 1140, end: 1200, dur: 60, contact: 'Ольга Верх', persons: [] }];
       }
       if (g === 'finish') s.manualEnd = true;
+      if (R27[g]) {
+        const w = s.sessions.find(x => x.id === id);
+        w.route = R27_ROUTE; w.min = 480; w.dur = 840; w.end = 1320;
+        s.shots = R27_SHOTS; s.boards = R27_BOARDS;
+      }
       if (g === 'meet') {
         const b = s.sessions.find(x => x.id === 'sd_sep_clash_b');
         s.sessions = [...s.sessions, { ...b, id: 'shot_meet', kind: 'meet', min: 600, end: 645, dur: 45, contact: 'Анна Лис', persons: [] }];
       }
       const rec = s.sessions.find(x => x.id === id);
       const end = rec.end != null ? rec.end : rec.min + (rec.dur || 90);
-      const at = wallAt(rec.date, ph === 'before' ? rec.min - 120 : ph === 'during' ? rec.min + 30 : end + 60);
+      const at = wallAt(rec.date, R27[g] ? 1080 : ph === 'before' ? rec.min - 120 : ph === 'during' ? rec.min + 30 : end + 60);
       const seedFile = path.join(dir, 'seed.json');
       fs.writeFileSync(seedFile, JSON.stringify(s));
-      list.push({ name, dir, screen: 'planner', theme, moment: 'day', at, card: id, phase: ph, seed: seedFile, tune: g === 'tune' });
+      list.push({ name, dir, screen: 'planner', theme, moment: 'day', at, card: id, phase: ph, seed: seedFile, tune: g === 'tune', ...(R27[g] || {}) });
     }
   }
   if (args['only-sheets'] || args.forms && args['only-forms'] || args['only-layers']) screens.length = 0;
@@ -460,7 +483,7 @@ function markdown(results) {
     // Под карточкой «Съёмки» живы и пишут рамки — сверяется только карточка. Фаза
     // натива (`card.phase`) — словом в строке прогона: у веба такого узла нет.
     const natPhase = sc.card && nat.nodes['card.phase'] ? nat.nodes['card.phase'].text : null;
-    if (sc.card) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('card.') || k === 'card.phase') delete nat.nodes[k];
+    if (sc.card) for (const k of Object.keys(nat.nodes)) if (!(k.startsWith('card.') || k.startsWith('refs.')) || k === 'card.phase') delete nat.nodes[k];
     // Под слоем «Съёмки» живы и пишут рамки — сверяется только слой (и панель вкладок над ним).
     const keep = sc.layer && (k => LAYER_NODES[sc.layer].test(k) || (!LAYER_SHEETS[sc.layer] && /^tab(bar|\.)/.test(k)));
     if (keep) for (const k of Object.keys(nat.nodes)) if (!keep(k)) delete nat.nodes[k];

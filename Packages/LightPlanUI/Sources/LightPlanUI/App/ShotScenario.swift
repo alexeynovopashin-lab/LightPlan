@@ -115,6 +115,14 @@ extension AppModel {
             if let id { app.openCard(id: id) }
             // Лист перестановки (26): `LPShotTune 1` — как после тапа по «ползункам».
             if id != nil, UserDefaults.standard.bool(forKey: "LPShotTune") { app.toggleCardTuning() }
+            // Свёртка маршрута (27): `LPShotFold route` — как после тапа по строке «Маршрут дня».
+            if id != nil, UserDefaults.standard.string(forKey: "LPShotFold") == "route" { app.toggleCardFold(.route) }
+            // Референсы (27): `LPShotRefs full` — полный экран, `view` — ещё и первый кадр в просмотрщике.
+            if let id, let mode = UserDefaults.standard.string(forKey: "LPShotRefs"),
+               let sess = app.sessions.first(where: { $0.id == id }) {
+                app.openRefsFull(sess)
+                if mode == "view", let f = app.refSections(sess).viewable.first { _ = app.openRefFrame(f.id, in: sess) }
+            }
         }
         // Форма записи (23): `LPShotSheet form`, жанр — `LPShotWay` (без него — последний). Черновик
         // только в памяти: прогон не должен писать на диск симулятора.
