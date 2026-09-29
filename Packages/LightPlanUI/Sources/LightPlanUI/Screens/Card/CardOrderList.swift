@@ -84,12 +84,6 @@ struct CardOrderList: View {
         .shotNode("card.order.row.\(b.rawValue)")
     }
 
-    /// Место, зажатое границами блока: у заказа после съёмки вынесенные вперёд строки на месте.
-    private func clamped(_ j: Int, _ b: CardBlock, _ rows: [CardBlock]) -> Int {
-        let r = CardOrder.slots(of: b, listed: rows, genre: s.genre, phase: phase)
-        return min(max(j, r.lowerBound), r.upperBound)
-    }
-
     /// Ручка 56×56, две линии 20×20: тянуть можно только за неё, иначе жест
     /// спорит с прокруткой листа.
     private func handle(_ b: CardBlock, rows: [CardBlock]) -> some View {
@@ -98,7 +92,6 @@ struct CardOrderList: View {
             p.move(to: CGPoint(x: 4, y: 15)); p.addLine(to: CGPoint(x: 20, y: 15))
         }
         .stroke(pal.ink7, style: StrokeStyle(lineWidth: 1.8, lineCap: .round))
-        .opacity(CardOrder.slots(of: b, listed: rows, genre: s.genre, phase: phase).count == 1 && rows.count > 1 ? 0.35 : 1)
         .frame(width: 24, height: 24)
         .frame(width: 56, height: 56)
         .contentShape(Rectangle())
@@ -106,10 +99,10 @@ struct CardOrderList: View {
             DragGesture(minimumDistance: CardOrderDrag.threshold, coordinateSpace: .global)
                 .onChanged { g in
                     if hand != b, let i = rows.firstIndex(of: b) { hand = b; handStart = i; handSlot = i }
-                    handSlot = clamped(CardOrderDrag.slot(start: handStart, dy: g.translation.height, count: rows.count), b, rows)
+                    handSlot = CardOrderDrag.slot(start: handStart, dy: g.translation.height, count: rows.count)
                 }
                 .onEnded { g in
-                    let j = clamped(CardOrderDrag.slot(start: handStart, dy: g.translation.height, count: rows.count), b, rows)
+                    let j = CardOrderDrag.slot(start: handStart, dy: g.translation.height, count: rows.count)
                     hand = nil
                     app.moveCardBlock(b, to: j, for: s)
                 }

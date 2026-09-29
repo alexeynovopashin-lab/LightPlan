@@ -167,7 +167,9 @@ struct DomainRulesParityTests {
             if !r["saved"].isNull { saved[GenreProfile(g).group] = blocks(r["saved"]) }
             let phase = EventPhase(rawValue: r["phase"].string!)!
             let order = CardOrder.order(genre: g, saved: saved), shown = CardOrder.shown(genre: g, saved: saved, phase: phase)
-            if order.map(\.rawValue) != r["orderFor"].strings! || shown.map(\.rawValue) != r["shown"].strings! {
+            // Заказ после съёмки: веб выносит четыре блока вперёд, натив — нет (слово Алексея 29.09, ошибка веба).
+            let pinned = phase == .after && GenreProfile(g).group == .client
+            if order.map(\.rawValue) != r["orderFor"].strings! || (!pinned && shown.map(\.rawValue) != r["shown"].strings!) {
                 bad.append("\(r["genre"]) \(r["saved"]) \(phase): \(order) / \(shown)")
             }
         }

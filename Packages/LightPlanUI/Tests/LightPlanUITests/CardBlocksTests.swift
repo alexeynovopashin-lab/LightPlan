@@ -94,15 +94,15 @@ struct CardBlocksTests {
         #expect(Set(app.snapshotForTests.cardOrder.keys) == [.people])
     }
 
-    /// `AFTER_FIRST`: после съёмки у заказа сделка, документы, гонорар, сдача
-    /// выходят вперёд поверх порядка; у портрета — нет.
-    @Test func afterFirstLiftsPapersAndMoneyForClient() {
+    /// Слово Алексея 29.09: закрепления веба (`AFTER_FIRST`) нет — после съёмки порядок
+    /// тот же, что до неё, у любой группы.
+    @Test func afterPhaseKeepsSameOrderForClient() {
         let app = model(at: "2026-09-25T12:00:00+03:00")
         #expect(app.phase(of: rec(app, "c")) == .after)
-        #expect(blocks(app, "c") == [.deal, .docs, .money, .delivery, .day, .brief, .notes])
+        #expect(blocks(app, "c") == [.deal, .day, .brief, .docs, .notes, .delivery, .money])
         #expect(blocks(app, "p") == [.day, .notes, .delivery, .money])
-        // Список перестановки стоит так же, как карточка (решение Алексея 29.09: как в бете).
-        #expect(app.cardOrderRows(rec(app, "c"), phase: .after) == [.deal, .docs, .money, .delivery, .day, .brief, .notes])
+        // Список перестановки стоит так же, как карточка (решение Алексея 29.09).
+        #expect(app.cardOrderRows(rec(app, "c"), phase: .after) == [.deal, .day, .brief, .docs, .notes, .delivery, .money])
     }
 
     @Test func offBlockStaysInRowsAndResetClearsGroup() {

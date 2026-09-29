@@ -37,8 +37,9 @@ public enum CardOrder {
         .models, .notes, .delivery, .money, .route, .refs,
     ]
 
-    /// Что выходит вперёд у заказа после съёмки (веб `AFTER_FIRST`): съёмка
-    /// прошла, а счёт и акт ещё нет.
+    /// Что веб выносит вперёд у заказа после съёмки (`AFTER_FIRST`). В нативе НЕ
+    /// применяется: Алексей 29.09 назвал закрепление ошибкой — плитки двигаются
+    /// свободно в любой фазе. Таблица нужна только для сверки с вебом.
     public static let afterFirst: [CardBlock] = [.deal, .docs, .money, .delivery]
 
     /// Порядок группы без правки фотографа.
@@ -56,17 +57,12 @@ public enum CardOrder {
         return out
     }
 
-    /// Блоки в том порядке, в каком карточка их ставит (веб `applyOrder`). У
-    /// заказа в фазе «после» бумаги и деньги выходят вперёд поверх любого
-    /// порядка. Блок, записанный в правке дважды, стоит на последнем месте:
-    /// веб переносит узел, а не копирует его.
+    /// Блоки в том порядке, в каком карточка их ставит (веб `applyOrder`), но без
+    /// выноса вперёд у заказа после съёмки — свободно, как поставил фотограф.
+    /// Блок, записанный в правке дважды, стоит на последнем месте: веб переносит
+    /// узел, а не копирует его.
     public static func shown(genre: Genre?, saved: [GenreGroup: [CardBlock]], phase: EventPhase) -> [CardBlock] {
-        var list = order(genre: genre, saved: saved)
-        if phase == .after && GenreProfile(genre).group == .client {
-            let first = afterFirst.filter { list.contains($0) }
-            list = first + list.filter { !first.contains($0) }
-        }
-        return lastWins(list)
+        lastWins(order(genre: genre, saved: saved))
     }
 
     /// Порядок группы целиком, без дублей и без выноса «после» — то, что
@@ -83,17 +79,6 @@ public enum CardOrder {
             out.append(b)
         }
         return out
-    }
-
-    /// Места списка перестановки, куда блок можно опустить. У заказа после съёмки
-    /// первые строки (`afterFirst`) вынесены вперёд поверх любого порядка: выше них
-    /// ничего не встанет, а сами они стоят на месте (пятая плитка дня «не поднималась»,
-    /// а на четвёртое место уезжала в конец — 29.09, слова Алексея с телефона).
-    public static func slots(of b: CardBlock, listed: [CardBlock], genre: Genre?, phase: EventPhase) -> ClosedRange<Int> {
-        guard let i = listed.firstIndex(of: b) else { return 0...max(0, listed.count - 1) }
-        guard phase == .after, GenreProfile(genre).group == .client else { return 0...(listed.count - 1) }
-        let pinned = listed.prefix { afterFirst.contains($0) }.count
-        return afterFirst.contains(b) ? i...i : pinned...(listed.count - 1)
     }
 
     /// Перенос одного блока перетаскиванием (шаг 2 итерации 26). `listed` —
