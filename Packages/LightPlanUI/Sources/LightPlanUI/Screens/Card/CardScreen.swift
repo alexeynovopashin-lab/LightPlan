@@ -84,7 +84,6 @@ struct CardScreen: View {
                 Spacer(minLength: 10)
             }
             HStack(spacing: 10) {
-                tuneButton(pal)
                 if s.kind != .event && !app.cardTuning {
                     Button { app.openForm(editing: s.id) } label: {
                         Text(t.t("card.fill")).font(webFont(15, 600)).foregroundStyle(pal.brassDeep)
@@ -94,6 +93,7 @@ struct CardScreen: View {
                     .buttonStyle(.plain)
                     .shotNode("card.edit")
                 }
+                tuneButton(pal)
             }
         }
         .padding(.horizontal, 24)
