@@ -14,7 +14,8 @@ enum CardOrderDrag {
 
     static func slot(start: Int, dy: CGFloat, count: Int) -> Int {
         guard count > 0 else { return 0 }
-        return min(max(start + Int((dy / step).rounded()), 0), count - 1)
+        // `Math.round` веба: половина уходит вверх, и −0,5 даёт 0, а не −1 (ревью GPT).
+        return min(max(start + Int(((dy / step) + 0.5).rounded(.down)), 0), count - 1)
     }
 
     /// Строки, как они стоят, пока блок в руке: он «перескакивает по местам»,

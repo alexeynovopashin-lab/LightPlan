@@ -61,6 +61,10 @@ struct CardTuneTests {
         #expect(CardOrderDrag.slot(start: 2, dy: 0, count: 4) == 2)
         #expect(CardOrderDrag.slot(start: 2, dy: 31, count: 4) == 2)      // меньше полшага — на месте
         #expect(CardOrderDrag.slot(start: 2, dy: 33, count: 4) == 3)      // больше полшага — на шаг
+        // Ровно половина шага: как `Math.round` веба — вниз на шаг, вверх остаётся на месте.
+        #expect(CardOrderDrag.slot(start: 2, dy: 32, count: 4) == 3)
+        #expect(CardOrderDrag.slot(start: 2, dy: -32, count: 4) == 2)
+        #expect(CardOrderDrag.slot(start: 2, dy: -32.5, count: 4) == 1)
         #expect(CardOrderDrag.slot(start: 2, dy: -70, count: 4) == 1)
         #expect(CardOrderDrag.slot(start: 2, dy: -900, count: 4) == 0)    // зажато сверху
         #expect(CardOrderDrag.slot(start: 2, dy: 900, count: 4) == 3)     // и снизу
