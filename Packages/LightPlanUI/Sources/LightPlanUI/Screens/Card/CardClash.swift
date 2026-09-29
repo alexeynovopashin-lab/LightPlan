@@ -38,11 +38,14 @@ struct CardClash: View {
                     .frame(width: 16, height: 16).padding(.top, 1)
                 (Text(w.title + ".").foregroundStyle(pal.ink) + Text(" " + w.message).foregroundStyle(pal.ink3))
                     .font(webFont(13.5))
-                    // `line-height: 1.45` — шаг 19,6 при родном у SF 16,1.
+                    // `line-height: 1.45` — шаг 19,6 при родном у SF 16,1: разница
+                    // между строками и по половине сверху и снизу (пара шага 4:
+                    // плашка 58 против 61).
                     .lineSpacing(13.5 * (1.45 - 1.19))
+                    .padding(.vertical, 13.5 * (1.45 - 1.19) / 2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .shotNode("card.clashText", text: w.title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.vertical, 11).padding(.horizontal, 14)
             .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
