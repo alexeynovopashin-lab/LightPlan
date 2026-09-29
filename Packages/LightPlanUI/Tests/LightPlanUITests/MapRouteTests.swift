@@ -303,18 +303,24 @@ struct MapRouteTests {
 
     /// Ревью GPT к 4224ce1: два куска разом (точку добавили, пока первый ещё
     /// ждёт Apple) не спрашивают общий переход дважды — второй ждёт летящий
-    /// ответ. Предел частоты Apple считает каждый запрос.
+    /// ответ. Предел частоты Apple считает каждый запрос. Первый ответ держим,
+    /// пока второй кусок не дошёл до своего первого перехода, — без опоры на
+    /// время (второе ревью GPT, к d367a6a).
     @Test func concurrentRunsShareTheLegInFlight() async {
         var calls: [String] = []
+        var hold: CheckedContinuation<Void, Never>?
         let legs = RoadLegs { mode, a, b in
             calls.append("\(mode.rawValue) \(a.latitude)>\(b.latitude)")
-            try? await Task.sleep(for: .milliseconds(50))
+            if calls.count == 1 { await withCheckedContinuation { hold = $0 } }
             return RoadLeg(line: [a, b], meters: 1000, seconds: 60)
         }
         let p = [53.30, 53.31, 53.32].map { MapCanvasCenter(latitude: $0, longitude: 83.7) }
-        async let two = legs.run(mode: .car, points: Array(p[0 ..< 2]))
-        async let three = legs.run(mode: .car, points: p)
-        let (a, b) = await (two, three)
+        let two = Task { await legs.run(mode: .car, points: Array(p[0 ..< 2])) }
+        while hold == nil { await Task.yield() }
+        let three = Task { await legs.run(mode: .car, points: p) }
+        for _ in 0 ..< 50 { await Task.yield() }
+        hold?.resume()
+        let (a, b) = (await two.value, await three.value)
         #expect(a?.km == 1 && b?.km == 2)
         #expect(calls.count == 2)   // A→B и B→C — по разу
     }
