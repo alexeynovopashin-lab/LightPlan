@@ -359,10 +359,20 @@ public final class AppModel {
             .map { $0.appendingPathComponent("LightPlan", isDirectory: true) }
         let store = dir.map { Store(directory: $0) }
         var snapshot = Snapshot()
+        // Тестовый засев (Алексей, 29.09): у копии ветки при первом запуске, пока файла данных
+        // ещё нет, — записи сезона из прототипа; потом это обычные данные, их не обнуляем.
+        // Основное приложение «Light Plan» (`Novopashin.LightPlan`) не засеивается.
+        let seeded = dir.map { !FileManager.default.fileExists(atPath: $0.appendingPathComponent("light-plan.json").path) }
+            ?? false
         if let store {
             // Не разобрался файл — пустой снимок в памяти, файл не трогаем,
             // пока человек сам что-нибудь не поменяет.
             snapshot = (try? await store.load()) ?? Snapshot()
+            if seeded, Bundle.main.bundleIdentifier != "Novopashin.LightPlan",
+               let seed = TestSeed.snapshot() {
+                snapshot = seed
+                try? await store.saveNow(seed)
+            }
         }
         let language = AppLanguage.current
         let locale = Locale(identifier: language)
