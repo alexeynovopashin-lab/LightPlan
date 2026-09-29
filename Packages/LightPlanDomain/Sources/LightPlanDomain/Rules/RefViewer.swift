@@ -131,6 +131,14 @@ public enum RefHome {
             || t.x + t.w < viewport.x - s || t.x > viewport.x + viewport.w + s { return nil }
         return t
     }
+
+    /// Где кадр сейчас: открытым — вписан в экран; закрывается в плитку — на
+    /// плитке; плитка за краем — остаётся на месте (уменьшается и гаснет, не
+    /// летит к плитке, которой не видно); до раскрытия — на плитке открытия.
+    public static func rect(open: Bool, shrinkingInPlace: Bool, home: RefBox?, start: RefBox?, fit: RefBox) -> RefBox {
+        if shrinkingInPlace { return fit }
+        return open ? fit : (home ?? start ?? fit)
+    }
 }
 
 /// Две колонки сетки (`column-count: 2`): кадры идут по порядку, первая колонка

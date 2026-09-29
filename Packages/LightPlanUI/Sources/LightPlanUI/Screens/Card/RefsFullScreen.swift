@@ -194,17 +194,20 @@ private struct RefViewerLayer: View {
             let frame = app.refSections(s).flat.first { $0.id == id }
             let fit = fitRect(frame, in: geo.size)
             let start = tiles[id]
-            let rect = (shown && !shrinking) ? fit : (goingHome ?? start ?? fit)
+            let box = RefHome.rect(open: shown, shrinkingInPlace: shrinking, home: goingHome.map(refBox),
+                                   start: start.map(refBox), fit: refBox(fit))
+            let rect = CGRect(x: box.x, y: box.y, width: box.w, height: box.h)
+            let open = shown && !shrinking
             ZStack {
-                pal.overlay2.opacity(shown && !shrinking ? 1 : 0).ignoresSafeArea()
-                RefPlaceholder(pal: pal, radius: shown && !shrinking ? 0 : 9)
+                pal.overlay2.opacity(open ? 1 : 0).ignoresSafeArea()
+                RefPlaceholder(pal: pal, radius: open ? 0 : 9)
                     .frame(width: rect.width, height: rect.height)
-                    .scaleEffect(scale * dragScale)
+                    .scaleEffect(scale * dragScale * (shrinking ? 0.82 : 1))
                     .offset(x: rect.midX - full.midX + drag.width * 0.9 + pan.width,
                             y: rect.midY - full.midY + max(0, drag.height) * 0.9 + min(0, drag.height) * 0.25 + pan.height)
-                    .opacity(start == nil && !shown ? 0 : 1)
+                    .opacity((start == nil && !shown) || shrinking ? 0 : 1)
                     .gesture(gestures(pal))
-                if shown && !shrinking { chrome(pal) }
+                if open { chrome(pal) }
             }
             .onAppear { vp = geo.size; withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.26)) { shown = true } }
         }
@@ -221,6 +224,8 @@ private struct RefViewerLayer: View {
 
     /// Пока идёт смах вниз: `1 − dy/900`, не меньше 0,82, с dy > 60.
     private var dragScale: CGFloat { drag.height > 60 ? max(0.82, 1 - drag.height / 900) : 1 }
+
+    private func refBox(_ r: CGRect) -> RefBox { RefBox(x: r.minX, y: r.minY, w: r.width, h: r.height) }
 
     private func chrome(_ pal: Palette) -> some View {
         VStack {

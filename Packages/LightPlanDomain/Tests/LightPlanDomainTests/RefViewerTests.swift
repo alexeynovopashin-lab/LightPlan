@@ -122,4 +122,21 @@ struct RefViewerTests {
         #expect(RefLink.tail("https://www.pinterest.com/pin/123/") == "pin/123")
         #expect(RefLink.tail("https://site.ru/") == "www.site.ru".replacingOccurrences(of: "www.", with: ""))
     }
+
+    /// Ревью GPT к b506d34: плитка за краем — кадр не улетает к ней, а остаётся.
+    @Test func farTileMeansShrinkInPlaceNotFlightToTheTile() {
+        let fit = RefBox(x: 0, y: 100, w: 393, h: 600)
+        let far = RefBox(x: 20, y: 5000, w: 170, h: 200)
+        #expect(RefHome.rect(open: true, shrinkingInPlace: true, home: nil, start: far, fit: fit) == fit)
+        #expect(RefHome.rect(open: false, shrinkingInPlace: true, home: nil, start: far, fit: fit) == fit)
+    }
+
+    @Test func flightRectFollowsOpenAndHome() {
+        let fit = RefBox(x: 0, y: 100, w: 393, h: 600)
+        let start = RefBox(x: 20, y: 300, w: 170, h: 200)
+        let home = RefBox(x: 200, y: 300, w: 170, h: 200)
+        #expect(RefHome.rect(open: false, shrinkingInPlace: false, home: nil, start: start, fit: fit) == start)
+        #expect(RefHome.rect(open: true, shrinkingInPlace: false, home: nil, start: start, fit: fit) == fit)
+        #expect(RefHome.rect(open: false, shrinkingInPlace: false, home: home, start: start, fit: fit) == home)
+    }
 }
