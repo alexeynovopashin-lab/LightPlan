@@ -81,29 +81,29 @@ struct CardOrderBlocksTests {
     // MARK: - Порядок «после» у заказа
 
     /// Режим перестановки показывает блоки так же, как карточка: у заказа
-    /// после съёмки сделка, документы, гонорар и сдача впереди (решение
-    /// Алексея 29.09 — как в бете).
-    @Test func rowsLiftPapersAndMoneyForClientAfterShoot() {
+    /// после съёмки порядок тот же, что до неё: вынос вперёд убран
+    /// (слово Алексея 29.09, в вебе это ошибка).
+    @Test func rowsKeepOrderForClientAfterShoot() {
         let app = model(Self.snap([Self.order(), Self.portrait()]), at: "2026-09-25T12:00:00+03:00")
         let c = rec(app, "c")
         #expect(app.phase(of: c) == .after)
-        #expect(app.cardOrderRows(c, phase: .after) == [.deal, .docs, .money, .delivery, .day, .brief, .notes])
+        #expect(app.cardOrderRows(c, phase: .after) == [.deal, .day, .brief, .docs, .notes, .delivery, .money])
         #expect(app.cardOrderRows(c, phase: .after) == app.cardBlocks(c, phase: .after))
-        // Портрет и заказ до съёмки — без выноса.
+        // Портрет и заказ до съёмки — так же.
         let p = rec(app, "p")
         #expect(app.cardOrderRows(p, phase: .after) == [.day, .delivery])
         #expect(app.cardOrderRows(c, phase: .before) == [.deal, .day, .brief, .docs, .notes, .delivery, .money])
     }
 
     /// Перетащили заметки наверх списка «после»: в порядок группы уходит
-    /// только этот блок, остальные стоят где стояли; на карточке вынос вперёд
-    /// всё равно держится (как в бете).
+    /// только этот блок, остальные стоят где стояли; на карточке порядок такой же,
+    /// как в списке.
     @Test func dragInAfterListMovesOnlyThatBlock() {
         let app = model(Self.snap([Self.order()]), at: "2026-09-25T12:00:00+03:00")
         let c = rec(app, "c")
         app.moveCardBlock(.notes, to: 0, for: c)
         #expect(app.cardOrderRows(c, phase: .before) == [.notes, .deal, .day, .brief, .docs, .delivery, .money])
-        #expect(app.cardOrderRows(c, phase: .after) == [.deal, .docs, .money, .delivery, .notes, .day, .brief])
+        #expect(app.cardOrderRows(c, phase: .after) == [.notes, .deal, .day, .brief, .docs, .delivery, .money])
         #expect(app.cardBlocks(c, phase: .after) == app.cardOrderRows(c, phase: .after))
     }
 
