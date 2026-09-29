@@ -66,6 +66,17 @@ public enum CardOrder {
             let first = afterFirst.filter { list.contains($0) }
             list = first + list.filter { !first.contains($0) }
         }
+        return lastWins(list)
+    }
+
+    /// Порядок группы целиком, без дублей и без выноса «после» — то, что
+    /// хранится и что правит перестановка.
+    public static func full(genre: Genre?, saved: [GenreGroup: [CardBlock]]) -> [CardBlock] {
+        lastWins(order(genre: genre, saved: saved))
+    }
+
+    /// Дубль стоит на последнем месте: веб переносит узел, а не копирует его.
+    private static func lastWins(_ list: [CardBlock]) -> [CardBlock] {
         var out: [CardBlock] = []
         for b in list {
             out.removeAll { $0 == b }
@@ -74,9 +85,48 @@ public enum CardOrder {
         return out
     }
 
+    /// Перенос одного блока перетаскиванием (шаг 2 итерации 26). `listed` —
+    /// строки перестановки до переноса, `j` — место, куда блок встал, `full` —
+    /// порядок группы. Двигается только перенесённый блок: вниз он встаёт сразу
+    /// за строкой, мимо которой прошёл последней, вверх — сразу перед ней.
+    /// Блоки, которых в этой съёмке нет, остаются где были — у веба они
+    /// уезжали в конец (справка, ошибка 2).
+    public static func move(_ b: CardBlock, to j: Int, listed: [CardBlock], order full: [CardBlock]) -> [CardBlock] {
+        guard let i = listed.firstIndex(of: b), i != j, listed.indices.contains(j) else { return full }
+        let passed = listed[j]
+        var out = full.filter { $0 != b }
+        guard let k = out.firstIndex(of: passed) else { return full }
+        out.insert(b, at: j > i ? k + 1 : k)
+        return out
+    }
+
     /// Выключен ли блок у группы жанра (веб `blockOff`): «показывать ли вообще» —
     /// отдельная ось от «где стоит».
     public static func isOff(_ block: CardBlock, genre: Genre?, off: [GenreGroup: [CardBlock]]) -> Bool {
         off[GenreProfile(genre).group]?.contains(block) ?? false
+    }
+}
+
+/// Есть ли у записи что показать в блоке (веб: блок без данных не существует
+/// ни в карточке, ни в списке перестановки; `docs/12`, инвариант 15).
+public enum CardPresence {
+    /// По самой записи. `nil` — решает прибор, а не запись: наложение, свет,
+    /// погода, место (шаги 3–4 итерации 26).
+    public static func byRecord(_ b: CardBlock, _ s: Session, phase: EventPhase,
+                                practice: Practice, among sessions: [Session]) -> Bool? {
+        switch b {
+        case .clash, .light, .weather, .place: nil
+        case .day: true
+        case .deal: DealChain.isShown(genre: s.genre, practice: practice)
+        case .route: phase != .after && s.kind.isWork && s.route.contains { $0.start != nil && !$0.name.isEmpty }
+        // Подборок кадров в нативе нет — 27/28.
+        case .refs: false
+        case .brief: !s.brief.isEmpty
+        case .models: s.models.split(separator: "\n").contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        case .docs: !s.docs.isEmpty
+        case .notes: !s.notes.isEmpty
+        case .delivery: s.kind.isWork && GenreProfile(s.genre).spec.delivery
+        case .money: Money.income(of: s, among: sessions) > 0 || s.expense > 0
+        }
     }
 }

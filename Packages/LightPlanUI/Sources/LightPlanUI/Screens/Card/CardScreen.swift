@@ -103,10 +103,9 @@ struct CardScreen: View {
             // администратору) остаются выше — «читается первой, куда бы
             // фотограф ни переставил остальное».
             CardStudio(app: app, s: s, phase: phase, pal: pal, tick: tick)
-            CardDayTile(app: app, s: s, phase: phase, pal: pal, tick: tick)
-            // Наложение — сразу под плиткой дня (блок `clash` веба), не после
-            // съёмки (Алексей, телефон 29.09: в форме видно, в карточке нет).
-            CardClash(app: app, s: s, phase: phase, pal: pal)
+            // Переставляемые блоки: плитка дня, наложение (сразу под ней по
+            // умолчанию — Алексей, телефон 29.09) и остальные (итерация 26).
+            CardBlocks(app: app, s: s, phase: phase, pal: pal, tick: tick)
         }
         .padding(EdgeInsets(top: 18, leading: 12, bottom: 16, trailing: 12))
         // Тень вверх и кант по кромке — у листа всегда, и без стопки

@@ -16,6 +16,7 @@ extension AppModel {
 
     public func openCard(id: String) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
+        if cardId != id { cardFolds = [] }
         cardId = id
         Task { await learnZone(of: s) }
     }
@@ -32,7 +33,10 @@ extension AppModel {
         persist()
     }
 
-    public func closeCard() { cardId = nil }
+    public func closeCard() {
+        cardId = nil
+        cardFolds = []
+    }
 
     /// Настенные часы места съёмки сейчас (веб `nowAt(shootAt(s))`): в поездке
     /// они расходятся с часами телефона. Запись без точки живёт по поясу места

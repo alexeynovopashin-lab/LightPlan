@@ -209,6 +209,9 @@ public final class AppModel {
     public var blockSheet: BlockDraft?
     /// Открытая карточка — id записи (итерация 25, `AppModel+Card`).
     var cardId: String?
+    /// Открытые свёртки карточки (маршрут, документы): держатся, пока открыта
+    /// эта карточка (итерация 26; у веба закрывались при любой перерисовке).
+    var cardFolds: Set<CardBlock> = []
     /// Сводка дня свёрнута (`dayFold` снимка) — единственное, что планировщик
     /// помнит между запусками.
     public var dayFold: Bool {
