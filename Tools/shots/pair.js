@@ -435,6 +435,9 @@ function markdown(results) {
   const browser = await chromium.launch();
   const page = await browser.newPage();
   const results = [];
+  // Фаза карточки — проверка, а не замер: несовпадение роняет прогон в конце
+  // (ревью GPT к 4224ce1), пары и отчёт до этого снимаются все.
+  const phaseMiss = [];
   for (const sc of list) {
     const nat = await nativeShot(dev.udid, sc, sc.dir);
     // Под главой корень остаётся в стеке и пишет свои рамки — сверяется
@@ -468,6 +471,7 @@ function markdown(results) {
       ? nat.nodes['card.back'].y - web.nodes['card.back'].y : 0;
     if (lift) console.log(`${sc.name}: полоса натива ниже на ${lift} pt (вырез), сверка от «✕»`);
     if (sc.card) console.log(`${sc.name}: ${sc.at}, фаза натива ${natPhase}` + (natPhase === sc.phase ? '' : ` — ждали ${sc.phase}`));
+    if (sc.card && natPhase !== sc.phase) phaseMiss.push(`${sc.name}: ${natPhase}, ждали ${sc.phase}`);
     if (keep) for (const [k, r] of Object.entries(web.nodes)) {
       // Лента прокручена к месяцу: ушедшее за край экрана у веба тоже не в счёт.
       if (!keep(k) || r.visible !== false && (r.y >= 956 || r.y + r.h <= 0)) delete web.nodes[k];
@@ -509,4 +513,5 @@ function markdown(results) {
   fs.writeFileSync(path.join(OUT, 'report.md'), markdown(results));
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(results, null, 1));
   console.log('отчёт: ' + path.join(OUT, 'report.md'));
+  if (phaseMiss.length) throw new Error('фаза карточки не совпала у ' + phaseMiss.length + ':\n' + phaseMiss.join('\n'));
 })().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });
