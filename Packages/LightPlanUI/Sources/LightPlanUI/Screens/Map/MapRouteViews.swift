@@ -221,6 +221,11 @@ struct RouteBar: View {
     @State private var held: CGFloat?
     @State private var addFrame: CGRect = .zero
     @State private var drag: RowDrag?
+    /// Палец держит строку. Система сбрасывает это сама, когда жест прерван
+    /// (шторка, звонок, уход в фон) — там `onEnded` не приходит, и строка
+    /// оставалась поднятой до перезапуска (замечание 5 ревью 24а; телефон и
+    /// симулятор, 29.09).
+    @GestureState private var holding = false
     @State private var lifts = 0
     @State private var scroll = ScrollPosition(edge: .top)
     @State private var scrollY: CGFloat = 0
@@ -336,6 +341,7 @@ struct RouteBar: View {
         .scrollPosition($scroll)
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollY = y }
         .scrollDisabled(drag != nil)
+        .onChange(of: holding) { _, on in if !on { drop() } }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
         .frame(height: window)
@@ -414,6 +420,7 @@ struct RouteBar: View {
     private func hold(_ i: Int, window: CGFloat, full: CGFloat) -> some Gesture {
         LongPressGesture(minimumDuration: 0.25, maximumDistance: 8)
             .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("rbList")))
+            .updating($holding) { v, on, _ in if case .second(true, _) = v { on = true } }
             .onChanged { v in
                 guard case .second(true, let g) = v else { return }
                 if drag == nil {
@@ -431,11 +438,16 @@ struct RouteBar: View {
                 d.to = max(0, min(rows.count - 1, Int(((CGFloat(i) * Self.pitch + d.dy) / Self.pitch).rounded())))
                 drag = d
             }
-            .onEnded { _ in
-                guard let d = drag else { return }
-                drag = nil
-                if d.to != d.from { onMove(d.from, d.to) }
-            }
+            .onEnded { _ in drop() }
+    }
+
+    /// Строку отпустили — или жест прервала система: встаёт туда, куда её
+    /// дотащили, как у веба (`pointercancel` → `rbDragEnd`). Второй вызов
+    /// (конец жеста и сброс `holding` приходят оба) ничего не делает.
+    private func drop() {
+        guard let d = drag else { return }
+        drag = nil
+        if d.to != d.from { onMove(d.from, d.to) }
     }
 
     // MARK: низ
