@@ -106,4 +106,40 @@ struct CardBlocksTests {
     @Test func instrumentBlocksAskCaller() {
         for b in [CardBlock.clash, .light, .weather, .place] { #expect(has(b, shoot()) == nil) }
     }
+
+    // MARK: - Заказ после съёмки: вынесенные вперёд строки (слова Алексея, 29.09)
+
+    private var clientGenre: Genre { Genre.allCases.first { GenreProfile($0).group == .client }! }
+
+    /// Как на телефоне: «Плитка дня» пятая из семи. Опустить её на любое место выше
+    /// вынесенных строк нельзя — раньше `move` клал её в конец порядка группы, и на месте,
+    /// куда её отпустили, она не оказывалась.
+    @Test func afterPhasePinnedRowsHoldTheTop() {
+        let g = clientGenre
+        let listed = CardOrder.shown(genre: g, saved: [:], phase: .after)
+            .filter { [.deal, .docs, .money, .delivery, .day, .place, .brief].contains($0) }
+        #expect(listed == [.deal, .docs, .money, .delivery, .day, .place, .brief])
+        // Старое поведение: на четвёртое место — и плитка дня уезжала последней.
+        let full = CardOrder.full(genre: g, saved: [:])
+        let old = CardOrder.move(.day, to: 3, listed: listed, order: full)
+        let shown = CardOrder.shown(genre: g, saved: [.client: old], phase: .after)
+            .filter { listed.contains($0) }
+        #expect(shown.last == .day)
+        // Теперь границы: выше вынесенных строк — некуда, вынесенные стоят на месте.
+        #expect(CardOrder.slots(of: .day, listed: listed, genre: g, phase: .after) == 4...6)
+        #expect(CardOrder.slots(of: .money, listed: listed, genre: g, phase: .after) == 2...2)
+        // До съёмки границ нет.
+        #expect(CardOrder.slots(of: .day, listed: listed, genre: g, phase: .before) == 0...6)
+    }
+
+    /// Внутри свободной части перенос работает и виден на карточке.
+    @Test func afterPhaseFreePartMoves() {
+        let g = clientGenre
+        let listed = CardOrder.shown(genre: g, saved: [:], phase: .after)
+            .filter { [.deal, .docs, .money, .delivery, .day, .place, .brief].contains($0) }
+        let full = CardOrder.full(genre: g, saved: [:])
+        let out = CardOrder.move(.brief, to: 4, listed: listed, order: full)
+        let shown = CardOrder.shown(genre: g, saved: [.client: out], phase: .after).filter { listed.contains($0) }
+        #expect(shown == [.deal, .docs, .money, .delivery, .brief, .day, .place])
+    }
 }

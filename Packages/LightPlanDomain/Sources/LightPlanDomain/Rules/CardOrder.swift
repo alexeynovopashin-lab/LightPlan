@@ -85,6 +85,17 @@ public enum CardOrder {
         return out
     }
 
+    /// Места списка перестановки, куда блок можно опустить. У заказа после съёмки
+    /// первые строки (`afterFirst`) вынесены вперёд поверх любого порядка: выше них
+    /// ничего не встанет, а сами они стоят на месте (пятая плитка дня «не поднималась»,
+    /// а на четвёртое место уезжала в конец — 29.09, слова Алексея с телефона).
+    public static func slots(of b: CardBlock, listed: [CardBlock], genre: Genre?, phase: EventPhase) -> ClosedRange<Int> {
+        guard let i = listed.firstIndex(of: b) else { return 0...max(0, listed.count - 1) }
+        guard phase == .after, GenreProfile(genre).group == .client else { return 0...(listed.count - 1) }
+        let pinned = listed.prefix { afterFirst.contains($0) }.count
+        return afterFirst.contains(b) ? i...i : pinned...(listed.count - 1)
+    }
+
     /// Перенос одного блока перетаскиванием (шаг 2 итерации 26). `listed` —
     /// строки перестановки до переноса, `j` — место, куда блок встал, `full` —
     /// порядок группы. Двигается только перенесённый блок: вниз он встаёт сразу
