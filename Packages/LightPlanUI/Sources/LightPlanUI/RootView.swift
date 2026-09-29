@@ -57,6 +57,12 @@ private struct Shell: View {
                 CardScreen(app: app, s: s)
                     .transition(.move(edge: .bottom))
                     .zIndex(1)
+                // Полный экран референсов (27) — поверх карточки, `z-index 92` веба.
+                if app.refsFull != nil {
+                    RefsFullScreen(app: app, s: s)
+                        .transition(.move(edge: .bottom))
+                        .zIndex(1.5)
+                }
             }
             // Затемнение под листом места (`.scrim` веба, чёрный 0,55): лист
             // iOS 26 на неполной высоте экран под собой не затемняет.

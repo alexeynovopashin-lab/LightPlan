@@ -10,14 +10,22 @@ public struct RefFrame: Sendable, Hashable {
     public var path: String?
     public var url: String?
     public var tags: [String]
+    /// Размеры картинки (веб `w`, `h`) — по ним плитка сетки берёт пропорции.
+    public var w: Double?
+    public var h: Double?
     /// Лежит в подборке этой съёмки (веб `own`), а не только в наборе жанра.
     public var own: Bool
 
     public init(id: String, kind: Kind = .img, im: String? = nil, path: String? = nil,
-                url: String? = nil, tags: [String] = [], own: Bool = false) {
+                url: String? = nil, tags: [String] = [], w: Double? = nil, h: Double? = nil,
+                own: Bool = false) {
         self.id = id; self.kind = kind; self.im = im; self.path = path; self.url = url
-        self.tags = tags; self.own = own
+        self.tags = tags; self.w = w; self.h = h; self.own = own
     }
+
+    /// Открывается в просмотрщике: картинка с именем блоба или путём в облаке
+    /// (веб: кадр без `im` и `path` не открывается, ссылка — в браузер).
+    public var isViewable: Bool { kind == .img && (im != nil || path != nil) }
 }
 
 /// Подборка (веб `boards[]`): `shoot` — съёмки `sid`, `tpl` — папка набора жанра.

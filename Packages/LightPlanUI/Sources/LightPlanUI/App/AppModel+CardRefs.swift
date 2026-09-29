@@ -37,8 +37,11 @@ extension AppModel {
             guard let id = o["id"]?.stringValue ?? im else { return nil }
             var tags: [String] = []
             if case .array(let t)? = o["tags"] { tags = t.compactMap(\.stringValue) }
+            var w: Double?, h: Double?
+            if case .number(let n)? = o["w"] { w = n }
+            if case .number(let n)? = o["h"] { h = n }
             return RefFrame(id: id, kind: RefFrame.Kind(rawValue: o["k"]?.stringValue ?? "img") ?? .img,
-                            im: im, path: o["path"]?.stringValue, url: o["url"]?.stringValue, tags: tags)
+                            im: im, path: o["path"]?.stringValue, url: o["url"]?.stringValue, tags: tags, w: w, h: h)
         }
     }
 
@@ -83,5 +86,93 @@ extension AppModel {
         if d.source == .link, let u = d.url, let url = URL(string: u), url.scheme != nil { return .url(url) }
         if d.path != nil { cardDocMessage = lexicon.t("doc.openFail"); return .failed }
         return .none
+    }
+}
+
+// MARK: - Полный экран референсов (итерация 27, шаг 4)
+
+/// Состояние экрана: открытая съёмка, папка, просмотрщик. Кадры просмотрщика —
+/// id в том порядке, что на экране на миг открытия (свои, набор, с фильтром).
+struct RefsFullState: Equatable {
+    var sessionId: String
+    var tag: String?
+    var viewerIds: [String] = []
+    var pager: RefPager?
+}
+
+/// Что вышло из тапа по плитке.
+enum RefTileOpen: Equatable {
+    case viewer
+    case url(URL)
+    case none
+}
+
+extension AppModel {
+
+    func openRefsFull(_ s: Session) {
+        guard !cardRefs(s).isEmpty else { return }
+        refsFull = RefsFullState(sessionId: s.id)
+    }
+
+    func closeRefsFull() { refsFull = nil }
+
+    func setRefFolder(_ tag: String?) {
+        guard refsFull != nil else { return }
+        refsFull?.tag = tag
+    }
+
+    func refSections(_ s: Session) -> RefSections {
+        RefSections(frames: cardRefs(s), tag: refsFull?.tag)
+    }
+
+    /// Тап по плитке (веб `openRefAt`): картинка — в просмотрщик, ссылка — в
+    /// браузер, кадр без байтов и пути не открывается.
+    @discardableResult
+    func openRefFrame(_ id: String, in s: Session) -> RefTileOpen {
+        let sec = refSections(s)
+        guard let f = sec.flat.first(where: { $0.id == id }) else { return .none }
+        if f.kind == .link, let u = f.url, let url = URL(string: u), url.scheme != nil { return .url(url) }
+        let list = sec.viewable
+        guard let at = list.firstIndex(where: { $0.id == id }) else { return .none }
+        refsFull?.viewerIds = list.map(\.id)
+        refsFull?.pager = RefPager(count: list.count, start: at)
+        return .viewer
+    }
+
+    /// Кадр, на котором остановился просмотрщик.
+    var refViewerFrameId: String? {
+        guard let st = refsFull, let p = st.pager, st.viewerIds.indices.contains(p.index) else { return nil }
+        return st.viewerIds[p.index]
+    }
+
+    /// Жест целого кадра по сдвигу кадра; `true` — кадр сменился.
+    @discardableResult
+    func refViewerSwipe(dx: Double, dy: Double) -> RefPager.Swipe {
+        let d = RefPager.decide(dx: dx, dy: dy)
+        _ = refsFull?.pager?.apply(d)
+        return d
+    }
+
+    /// Просмотрщик закрыт; ответ — кадр, в чью плитку он летит (тот, на котором
+    /// остановились, а не с которого открывали: ошибка веба 21).
+    @discardableResult
+    func closeRefViewer() -> String? {
+        let home = refViewerFrameId
+        refsFull?.pager = nil
+        refsFull?.viewerIds = []
+        return home
+    }
+
+    /// Строка под заголовком: «Имя клиента · Банкет» (текущая точка, если есть).
+    func refsFullSub(_ s: Session) -> String {
+        var parts: [String] = []
+        let name = PlannerWords(lexicon: lexicon, orgs: orgs).clientName(s)
+        if !name.isEmpty { parts.append(name) }
+        let route = s.timedRoute
+        if let now = nowMinute(of: s) {
+            let i = DayTileText.current(route, now)
+            if i >= 0 { parts.append(route[i].name) }
+        }
+        return parts.joined(separator: " · ")
     }
 }

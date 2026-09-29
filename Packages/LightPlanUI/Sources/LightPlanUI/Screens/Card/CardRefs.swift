@@ -7,7 +7,7 @@ import LightPlanDomain
 /// Одна строка: знак `camera`, «Референсы» (или «Референсы: Банкет»), «N кадров
 /// · набор жанра и съёмки», стрелка вправо — это переход, а не раскрытие. Полосы
 /// миниатюр нет (решение Алексея 29.09: у веба её тело не видно, ошибка 20).
-/// Переход на полный экран — шаг 4.
+/// Тап открывает полный экран (шаг 4).
 struct CardRefsBlock: View {
     let app: AppModel
     let s: Session
@@ -15,22 +15,28 @@ struct CardRefsBlock: View {
 
     var body: some View {
         if let r = app.cardRefsRow(s) {
-            HStack(spacing: 12) {
-                Icon(CardBlock.refs.iconName, size: 19, line: 1.6).foregroundStyle(pal.brass)
-                    .frame(width: 38, height: 38)
-                    .background(pal.badgeBg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(r.title).font(webFont(15)).foregroundStyle(pal.ink).lineLimit(1)
-                    Text(r.sub).font(webFont(12)).foregroundStyle(pal.ink6).padding(.top, 2).lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.ink4)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 13)
-            .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shotNode("card.block.refs", text: "\(r.count)")
-            .padding(.top, 9)
+            Button { withAnimation(overlaySlide) { app.openRefsFull(s) } } label: { row(r) }
+                .buttonStyle(.plain)
+                .shotNode("card.block.refs", text: "\(r.count)")
+                .padding(.top, 9)
         }
+    }
+
+    private func row(_ r: CardRefsRow) -> some View {
+        HStack(spacing: 12) {
+            Icon(CardBlock.refs.iconName, size: 19, line: 1.6).foregroundStyle(pal.brass)
+                .frame(width: 38, height: 38)
+                .background(pal.badgeBg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            VStack(alignment: .leading, spacing: 0) {
+                Text(r.title).font(webFont(15)).foregroundStyle(pal.ink).lineLimit(1)
+                Text(r.sub).font(webFont(12)).foregroundStyle(pal.ink6).padding(.top, 2).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.ink4)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 13)
+        .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

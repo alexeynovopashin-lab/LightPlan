@@ -217,6 +217,8 @@ public final class AppModel {
     var cardFolds: Set<CardBlock> = []
     /// «Файл не открылся» — строка в самой карточке под документами (шаг 3, 27).
     var cardDocMessage: String?
+    /// Полный экран референсов над карточкой (шаг 4, 27); `nil` — закрыт.
+    var refsFull: RefsFullState?
     /// Режим «ползунков» (веб `#cardOrder`): блоки свёрнуты в строки перестановки.
     /// Закрытие карточки и переход к другой выводят из режима (шаг 5а, 26).
     var cardTuning = false

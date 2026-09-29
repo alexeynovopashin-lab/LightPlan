@@ -135,4 +135,115 @@ struct CardRefsTests {
         app.closeCard()
         #expect(app.cardDocMessage == nil)
     }
+
+    // MARK: полный экран (шаг 4)
+
+    @Test func tapOnRowOpensFullScreenWithFramesInScreenOrder() {
+        let s = wedding(); let app = model(s)
+        app.openRefsFull(s)
+        #expect(app.refsFull?.sessionId == "w")
+        #expect(app.refSections(s).own.map(\.id) == ["a", "b"])
+        #expect(app.refSections(s).set.map(\.id) == ["c", "d"])
+    }
+
+    @Test func fullScreenDoesNotOpenWithoutFramesAndClosesWithCard() {
+        let s = wedding()
+        let none = model(s, own: [], set: [])
+        none.openRefsFull(s)
+        #expect(none.refsFull == nil)
+        let app = model(s)
+        app.openCard(id: "w"); app.openRefsFull(s)
+        app.closeCard()
+        #expect(app.refsFull == nil)
+    }
+
+    /// Ошибка веба 21: открыли с 1-й плитки, пролистали до 3-й — закрытие
+    /// возвращает в 3-ю плитку, а не в ту, с которой открывали.
+    @Test func closingReturnsToTheTileWePagedTo() {
+        let s = wedding(); let app = model(s)
+        app.openRefsFull(s)
+        #expect(app.openRefFrame("a", in: s) == .viewer)
+        #expect(app.refViewerFrameId == "a")
+        #expect(app.refViewerSwipe(dx: -80, dy: 0) == .next)
+        #expect(app.refViewerSwipe(dx: -80, dy: 0) == .next)
+        #expect(app.refsFull?.pager?.index == 2)
+        #expect(app.closeRefViewer() == "c")
+        #expect(app.refsFull?.pager == nil)
+        #expect(app.refsFull != nil)   // сетка осталась открытой
+    }
+
+    @Test func pagingWrapsAtBothEnds() {
+        let s = wedding(); let app = model(s)
+        app.openRefsFull(s)
+        _ = app.openRefFrame("d", in: s)
+        _ = app.refViewerSwipe(dx: -70, dy: 0)
+        #expect(app.refViewerFrameId == "a")
+        _ = app.refViewerSwipe(dx: 70, dy: 0)
+        #expect(app.refViewerFrameId == "d")
+    }
+
+    @Test func oneFrameHasNothingToPageTo() {
+        let s = wedding(); let app = model(s, own: ["a"], set: [])
+        app.openRefsFull(s)
+        _ = app.openRefFrame("a", in: s)
+        _ = app.refViewerSwipe(dx: -100, dy: 0)
+        #expect(app.refViewerFrameId == "a")
+        #expect(app.refsFull?.pager?.counter == nil)
+        #expect(app.closeRefViewer() == "a")
+    }
+
+    @Test func pullDownClosesButShortPullStays() {
+        let s = wedding(); let app = model(s)
+        app.openRefsFull(s); _ = app.openRefFrame("b", in: s)
+        #expect(app.refViewerSwipe(dx: 0, dy: 100) == .stay)
+        #expect(app.refsFull?.pager != nil)
+        #expect(app.refViewerSwipe(dx: 0, dy: 110) == .close)
+    }
+
+    @Test func folderFilterNarrowsTheListPagingFollows() {
+        let s = wedding()
+        var snap = Snapshot()
+        snap.sessions = [s]
+        snap.extra["shots"] = .array([
+            .object(["id": .string("a"), "im": .string("a"), "tags": .array([.string("Пара")])]),
+            .object(["id": .string("b"), "im": .string("b"), "tags": .array([.string("Сборы")])]),
+            .object(["id": .string("c"), "im": .string("c"), "tags": .array([.string("couple")])])])
+        snap.extra["boards"] = .array([board("shoot", ["a", "b"], sid: "w"), board("tpl", ["c"])])
+        let now = ISO8601DateFormatter().date(from: "2026-09-20T09:00:00+03:00")!
+        let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
+                           locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
+                           weatherSource: NoWeather(), now: { now })
+        app.openRefsFull(s)
+        app.setRefFolder("couple")
+        #expect(app.refSections(s).flat.map(\.id) == ["a", "c"])
+        _ = app.openRefFrame("c", in: s)
+        #expect(app.refsFull?.pager?.count == 2)   // b под фильтр не попал
+    }
+
+    @Test func linkOpensInBrowserAndFrameWithoutBytesDoesNot() {
+        let s = wedding()
+        var snap = Snapshot()
+        snap.sessions = [s]
+        snap.extra["shots"] = .array([
+            .object(["id": .string("l"), "k": .string("link"), "url": .string("https://pin.example.com/x")]),
+            .object(["id": .string("n"), "k": .string("img")]),
+            .object(["id": .string("a"), "im": .string("a")])])
+        snap.extra["boards"] = .array([board("shoot", ["l", "n", "a"], sid: "w")])
+        let now = ISO8601DateFormatter().date(from: "2026-09-20T09:00:00+03:00")!
+        let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
+                           locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
+                           weatherSource: NoWeather(), now: { now })
+        app.openRefsFull(s)
+        #expect(app.openRefFrame("l", in: s) == .url(URL(string: "https://pin.example.com/x")!))
+        #expect(app.openRefFrame("n", in: s) == .none)
+        #expect(app.refsFull?.pager == nil)
+        #expect(app.openRefFrame("a", in: s) == .viewer)
+        #expect(app.refsFull?.pager?.count == 1)   // ссылка и кадр без байтов не листаются
+    }
+
+    @Test func subtitleNamesClientAndCurrentPoint() {
+        var s = wedding(); s.contact = "Анна"
+        let app = model(s, at: "2026-09-20T18:00:00+03:00")
+        #expect(app.refsFullSub(s) == "Анна · Банкет")
+    }
 }
