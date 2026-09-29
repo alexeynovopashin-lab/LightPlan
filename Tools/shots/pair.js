@@ -93,9 +93,11 @@ const LAYER_SHEETS = { bin: 1, blk: 1 };
    внахлёст (people), интерьер в студии у организации (client), пейзаж на
    рассвете (own). `stack` — 26-е с четырьмя соседями: ступени краёв стопки;
    `finish` — портрет «во время» с «Завершать вручную»: кнопка в нижнем ряду.
+   `tune` — заказ до съёмки в режиме перестановки (26, лист «ползунков»),
+   `meet` — встреча (26), без маршрута и сдачи.
    Часть — `--cards people,stack`, `--phases during`. */
 const CARDS = { event: 'sd_sep_wed', people: 'sd_sep_clash_a', client: 'sd_sep_inter', own: 'sd_aug_land' };
-const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish'];
+const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet'];
 const phases = (args.phases || 'before,during,after').split(',');
 // Стена часов Барнаула (+7, без перехода) в минуту `m` суток записи `iso`.
 const wallAt = (iso, m) => new Date(Date.parse(iso) + 7 * 3600e3 + m * 60e3).toISOString().slice(0, 16);
@@ -177,7 +179,7 @@ async function nativeShot(udid, sc, dir) {
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     ...(sc.layer ? ['-LPShotSheet', sc.layer] : []),
     ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
-    ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card] : []),
+    ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card, ...(sc.tune ? ['-LPShotTune', '1'] : [])] : []),
     '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
   // Первый запуск после установки идёт до 20 с (замер 19б), следующие — 3–4 с.
@@ -199,7 +201,7 @@ function webShot(sc, dir, safe) {
     ...(sc.form ? ['--sheet', 'form', '--way', sc.form] : []),
     ...(sc.layer ? ['--sheet', sc.layer] : []),
     ...(sc.sheet ? ['--sheet', 'loc', ...(sc.sheet !== 'fork' ? ['--way', sc.sheet] : [])] : []),
-    ...(sc.card ? ['--sheet', 'card', '--way', sc.card] : []),
+    ...(sc.card ? ['--sheet', 'card', '--way', sc.card, ...(sc.tune ? ['--tune'] : [])] : []),
     '--scale', '3', '--out', path.join(dir, 'web.png'), '--report', path.join(dir, 'web.json')]);
   return JSON.parse(fs.readFileSync(path.join(dir, 'web.json'), 'utf8'));
 }
@@ -375,8 +377,8 @@ function markdown(results) {
     list.push({ name, dir, screen: 'planner', theme, moment: 'day', scope: 'month', layer, seed: seedFile });
   }
   if (screens.includes('card') && !args['only-sheets'] && !args['only-forms'] && !args['only-layers']) {
-    for (const g of cards) for (const ph of CARDS[g] ? phases : ['during']) for (const theme of themes) {
-      const id = CARDS[g] || 'sd_sep_clash_a';
+    for (const g of cards) for (const ph of CARDS[g] ? phases : g === 'tune' ? ['before'] : ['during']) for (const theme of themes) {
+      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : CARDS[g] || 'sd_sep_clash_a';
       const name = ['card', g, ph, theme].join('-');
       const dir = path.join(OUT, name);
       fs.mkdirSync(dir, { recursive: true });
@@ -390,12 +392,16 @@ function markdown(results) {
           { ...b, id: 'shot_st_late', min: 1140, end: 1200, dur: 60, contact: 'Ольга Верх', persons: [] }];
       }
       if (g === 'finish') s.manualEnd = true;
+      if (g === 'meet') {
+        const b = s.sessions.find(x => x.id === 'sd_sep_clash_b');
+        s.sessions = [...s.sessions, { ...b, id: 'shot_meet', kind: 'meet', min: 600, end: 645, dur: 45, contact: 'Анна Лис', persons: [] }];
+      }
       const rec = s.sessions.find(x => x.id === id);
       const end = rec.end != null ? rec.end : rec.min + (rec.dur || 90);
       const at = wallAt(rec.date, ph === 'before' ? rec.min - 120 : ph === 'during' ? rec.min + 30 : end + 60);
       const seedFile = path.join(dir, 'seed.json');
       fs.writeFileSync(seedFile, JSON.stringify(s));
-      list.push({ name, dir, screen: 'planner', theme, moment: 'day', at, card: id, phase: ph, seed: seedFile });
+      list.push({ name, dir, screen: 'planner', theme, moment: 'day', at, card: id, phase: ph, seed: seedFile, tune: g === 'tune' });
     }
   }
   if (args['only-sheets'] || args.forms && args['only-forms'] || args['only-layers']) screens.length = 0;

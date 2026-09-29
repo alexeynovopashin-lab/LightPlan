@@ -113,6 +113,8 @@ extension AppModel {
         if s.sheet == "card" {
             let id = s.way ?? app.sessions.first { $0.day == app.planner.selected && $0.kind == .shoot }?.id
             if let id { app.openCard(id: id) }
+            // Лист перестановки (26): `LPShotTune 1` — как после тапа по «ползункам».
+            if id != nil, UserDefaults.standard.bool(forKey: "LPShotTune") { app.toggleCardTuning() }
         }
         // Форма записи (23): `LPShotSheet form`, жанр — `LPShotWay` (без него — последний). Черновик
         // только в памяти: прогон не должен писать на диск симулятора.
