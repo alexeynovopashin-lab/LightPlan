@@ -99,9 +99,9 @@ case "$cmd" in
     elif [ -n "$slug_arg" ]; then
       # Слаг («wt26», «br…») или сама ветка («wt/26», «26»).
       case "$slug_arg" in
+        */*)                           IFS='|' read -r s _ < <(branch_app "$slug_arg") ;;   # полное имя ветки — как при установке
         wt[A-Za-z0-9]*|br[A-Za-z0-9]*) s="$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
-        wt/*) IFS='|' read -r s _ < <(branch_app "$slug_arg") ;;
-        *)    s="wt$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
+        *)                             s="wt$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
       esac
       bid="$MAIN_BID.$s"
     else
