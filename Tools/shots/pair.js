@@ -411,8 +411,10 @@ function markdown(results) {
       }
       if (g === 'finish') s.manualEnd = true;
       if (R27[g]) {
-        const w = s.sessions.find(x => x.id === id);
-        w.route = R27_ROUTE; w.min = 480; w.dur = 840; w.end = 1320;
+        // Копия записи: `s` — поверхностная, правка общего объекта протекла бы в другие сценарии (ревью GPT к 7d3362c).
+        const at = s.sessions.findIndex(x => x.id === id);
+        s.sessions = s.sessions.map((x, i) => i !== at ? x
+          : { ...x, route: R27_ROUTE, min: 480, dur: 840, end: 1320 });
         s.shots = R27_SHOTS; s.boards = R27_BOARDS;
       }
       if (g === 'meet') {
