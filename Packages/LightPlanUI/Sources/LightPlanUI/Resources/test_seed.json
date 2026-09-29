@@ -654,8 +654,8 @@
    "id": "sd_sep_wed",
    "mt": 1790143200000,
    "date": "2026-09-23T17:00:00.000Z",
-   "min": 660,
-   "dur": 660,
+   "min": 480,
+   "dur": 840,
    "end": 1320,
    "type": "wedding",
    "contact": "Лена и Тимур",
@@ -720,10 +720,28 @@
    "playlist": null,
    "route": [
     {
-     "t": 660,
-     "t2": 750,
-     "n": "Сборы",
+     "t": 480,
+     "t2": 540,
+     "n": "Сборы невесты",
      "p": "Гостиница «Магистрат»",
+     "placeId": null,
+     "studioId": null,
+     "hallId": null
+    },
+    {
+     "t": 600,
+     "t2": 640,
+     "n": "Сборы жениха",
+     "p": "Гостиница «Магистрат»",
+     "placeId": null,
+     "studioId": null,
+     "hallId": null
+    },
+    {
+     "t": 660,
+     "t2": 720,
+     "n": "Выездная регистрация",
+     "p": "Парк у реки",
      "placeId": null,
      "studioId": null,
      "hallId": null
@@ -738,17 +756,17 @@
      "hallId": "sd_h_edison"
     },
     {
-     "t": 930,
-     "t2": 990,
-     "n": "Роспись",
-     "p": "ЗАГС на Розы Люксембург",
+     "t": 840,
+     "t2": 870,
+     "n": "Обед",
+     "p": "Ресторан «Соль»",
      "placeId": null,
      "studioId": null,
      "hallId": null
     },
     {
-     "t": 1020,
-     "t2": 1140,
+     "t": 900,
+     "t2": 960,
      "n": "Прогулка",
      "p": "Дом с драконами",
      "placeId": null,
@@ -756,9 +774,54 @@
      "hallId": null
     },
     {
-     "t": 1170,
-     "t2": 1320,
+     "t": 960,
+     "t2": 990,
+     "n": "Фотозона",
+     "p": "Ресторан «Соль»",
+     "placeId": null,
+     "studioId": null,
+     "hallId": null
+    },
+    {
+     "t": 1000,
+     "t2": 1060,
      "n": "Банкет",
+     "p": "Ресторан «Соль»",
+     "placeId": null,
+     "studioId": null,
+     "hallId": null
+    },
+    {
+     "t": 1100,
+     "t2": 1130,
+     "n": "Первый танец",
+     "p": "Ресторан «Соль»",
+     "placeId": null,
+     "studioId": null,
+     "hallId": null
+    },
+    {
+     "t": 1150,
+     "t2": 1180,
+     "n": "Прогулка на закате",
+     "p": "Набережная",
+     "placeId": null,
+     "studioId": null,
+     "hallId": null
+    },
+    {
+     "t": 1180,
+     "t2": 1200,
+     "n": "Букет невесты",
+     "p": "Набережная",
+     "placeId": null,
+     "studioId": null,
+     "hallId": null
+    },
+    {
+     "t": 1230,
+     "t2": 1260,
+     "n": "Торт",
      "p": "Ресторан «Соль»",
      "placeId": null,
      "studioId": null,
@@ -1671,6 +1734,75 @@
    "lat": 56.489,
    "lon": 84.96,
    "mt": 1790143200000
+  }
+ ],
+ "shots": [
+  {
+   "id": "sh_r27_a",
+   "k": "img",
+   "im": "sh_r27_a",
+   "w": 800,
+   "h": 1200,
+   "tags": [
+    "bride"
+   ]
+  },
+  {
+   "id": "sh_r27_b",
+   "k": "img",
+   "im": "sh_r27_b",
+   "w": 800,
+   "h": 900,
+   "tags": [
+    "couple",
+    "evening"
+   ]
+  },
+  {
+   "id": "sh_r27_c",
+   "k": "img",
+   "im": "sh_r27_c",
+   "w": 800,
+   "h": 1000,
+   "tags": [
+    "walk"
+   ]
+  },
+  {
+   "id": "sh_r27_d",
+   "k": "img",
+   "im": "sh_r27_d",
+   "w": 800,
+   "h": 1400,
+   "tags": [
+    "details"
+   ]
+  }
+ ],
+ "boards": [
+  {
+   "id": "bd_r27_own",
+   "kind": "shoot",
+   "sid": "sd_sep_wed",
+   "genre": "wedding",
+   "items": [
+    "sh_r27_a",
+    "sh_r27_b"
+   ],
+   "name": null,
+   "cover": null
+  },
+  {
+   "id": "bd_r27_set",
+   "kind": "tpl",
+   "genre": "wedding",
+   "items": [
+    "sh_r27_b",
+    "sh_r27_c",
+    "sh_r27_d"
+   ],
+   "name": null,
+   "cover": null
   }
  ]
 }
