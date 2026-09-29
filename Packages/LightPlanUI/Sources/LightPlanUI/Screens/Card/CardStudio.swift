@@ -66,9 +66,11 @@ struct StudioTileState {
 /// справа студия с залом, окно аренды и номер администратора. Последние
 /// 15 минут счёт идёт по секундам.
 ///
-/// Такт — секунда всегда: двоеточие в остатке мигает раз в секунду
-/// (Алексей, телефон 29.09 — у веба не мигает; веб перерисовывает плитку
-/// раз в 20 с, а по секундам — только последние 15 минут).
+/// Такт — полсекунды всегда: двоеточие в остатке мигает в такт секунде —
+/// загорается вместе со сменой секунды, через полсекунды гаснет, и так
+/// каждую секунду (Алексей, телефон 29.09: «если секунда — целая, точки —
+/// две целых», мигать через такт неверно). У веба не мигает; веб
+/// перерисовывает плитку раз в 20 с, а по секундам — только последние 15 минут.
 struct CardStudio: View {
     let app: AppModel
     let s: Session
@@ -78,23 +80,27 @@ struct CardStudio: View {
     let tick: Date
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { _ in content }
+        // Такты — на целой секунде и на половине: начало отсчёта — ближайшая
+        // прошедшая целая секунда, иначе двоеточие мигало бы невпопад смене цифр.
+        let whole = Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))
+        TimelineView(.periodic(from: whole, by: 0.5)) { ctx in
+            content(colon: ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1) < 0.25)
+        }
     }
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private func content(colon: Bool) -> some View {
         let tel = StudioTileState.tel(s, app: app)
         if let st = StudioTileState.of(s, phase: phase, app: app) {
-            tile(st, tel)
+            tile(st, tel, colon: colon)
         } else if let tel {
             telRow(tel).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 9)
         }
     }
 
-    /// Остаток с двоеточием, которое гаснет на нечётной секунде; место под
-    /// него держится — цифры не прыгают.
-    private func blink(_ clock: String, _ color: Color) -> Text {
+    /// Остаток с двоеточием: `on` — первая половина секунды. Место под
+    /// двоеточие держится — цифры не прыгают.
+    private func blink(_ clock: String, _ color: Color, on: Bool) -> Text {
         guard let i = clock.firstIndex(of: ":") else { return Text(clock).foregroundStyle(color) }
-        let on = app.nowSecond % 2 == 0
         return Text(clock[..<i]).foregroundStyle(color)
             + Text(":").foregroundStyle(on ? color : .clear)
             + Text(clock[clock.index(after: i)...]).foregroundStyle(color)
@@ -108,7 +114,7 @@ struct CardStudio: View {
         }
     }
 
-    private func tile(_ st: StudioTileState, _ tel: (shown: String, dial: String)?) -> some View {
+    private func tile(_ st: StudioTileState, _ tel: (shown: String, dial: String)?, colon: Bool) -> some View {
         let c = tint(st)
         return HStack(spacing: 14) {
             ZStack {
@@ -124,7 +130,7 @@ struct CardStudio: View {
                         Text(st.exitAt).monospacedDigit()
                     }
                     .font(webFont(10.5)).foregroundStyle(c.at)
-                    blink(st.clock, c.num).font(webFont(25, 700)).tracking(-0.8).monospacedDigit()
+                    blink(st.clock, c.num, on: colon).font(webFont(25, 700)).tracking(-0.8).monospacedDigit()
                         .shotNode("card.studioNum", text: st.clock)
                 }
             }
