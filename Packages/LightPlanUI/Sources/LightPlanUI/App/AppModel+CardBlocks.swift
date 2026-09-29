@@ -78,6 +78,9 @@ extension AppModel {
         persist()
     }
 
+    /// «Ползунки» и «Готово»: вход и выход из режима перестановки.
+    public func toggleCardTuning() { cardTuning.toggle() }
+
     public func isCardFoldOpen(_ b: CardBlock) -> Bool { cardFolds.contains(b) }
 
     public func toggleCardFold(_ b: CardBlock) {

@@ -17,6 +17,14 @@ struct CardBlocks: View {
     let tick: Date
 
     var body: some View {
+        if app.cardTuning {
+            CardOrderList(app: app, s: s, phase: phase, pal: pal)
+        } else {
+            blocks
+        }
+    }
+
+    @ViewBuilder private var blocks: some View {
         ForEach(app.cardBlocks(s, phase: phase), id: \.self) { b in
             switch b {
             case .deal: CardDealBlock(app: app, s: s, pal: pal)

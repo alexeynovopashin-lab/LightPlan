@@ -16,7 +16,7 @@ extension AppModel {
 
     public func openCard(id: String) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
-        if cardId != id { cardFolds = [] }
+        if cardId != id { cardFolds = []; cardTuning = false }
         cardId = id
         askCardWeather(s)
         Task { await learnZone(of: s) }
@@ -38,6 +38,7 @@ extension AppModel {
         if let id = cardId, let s = snapshot.sessions.first(where: { $0.id == id }) { acknowledgeForecast(s) }
         cardId = nil
         cardFolds = []
+        cardTuning = false
     }
 
     /// Настенные часы места съёмки сейчас (веб `nowAt(shootAt(s))`): в поездке

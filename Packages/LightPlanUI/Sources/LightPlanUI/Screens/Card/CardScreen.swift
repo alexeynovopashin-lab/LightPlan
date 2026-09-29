@@ -66,31 +66,54 @@ struct CardScreen: View {
                 withAnimation(overlaySlide) { app.closeCard() }
             }
             Spacer(minLength: 10)
-            Button { app.openForm(day: s.day) } label: {
-                PlanGlyph(kind: .add)
-                    .stroke(pal.ink3, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                    .frame(width: 18, height: 18)
-                    .frame(width: 40, height: 40)
-                    .glassEffect(.regular, in: Circle())
-                    // Нажатие ловит весь круг, а не только линии знака.
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .shotNode("card.add")
-            .accessibilityLabel(t.t("card.addShoot"))
-            Spacer(minLength: 10)
-            if s.kind != .event {
-                Button { app.openForm(editing: s.id) } label: {
-                    Text(t.t("card.fill")).font(webFont(15, 600)).foregroundStyle(pal.brassDeep)
-                        .padding(.horizontal, 15).padding(.vertical, 9)
-                        .background(Capsule().fill(pal.press))
+            // Режим перестановки прячет «＋» и «Заполнить»: палец, ведущий блок,
+            // не должен встретить лишнего (веб, замечание Алексея).
+            if !app.cardTuning {
+                Button { app.openForm(day: s.day) } label: {
+                    PlanGlyph(kind: .add)
+                        .stroke(pal.ink3, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                        .frame(width: 18, height: 18)
+                        .frame(width: 40, height: 40)
+                        .glassEffect(.regular, in: Circle())
+                        // Нажатие ловит весь круг, а не только линии знака.
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .shotNode("card.edit")
+                .shotNode("card.add")
+                .accessibilityLabel(t.t("card.addShoot"))
+                Spacer(minLength: 10)
+            }
+            HStack(spacing: 10) {
+                tuneButton(pal)
+                if s.kind != .event && !app.cardTuning {
+                    Button { app.openForm(editing: s.id) } label: {
+                        Text(t.t("card.fill")).font(webFont(15, 600)).foregroundStyle(pal.brassDeep)
+                            .padding(.horizontal, 15).padding(.vertical, 9)
+                            .background(Capsule().fill(pal.press))
+                    }
+                    .buttonStyle(.plain)
+                    .shotNode("card.edit")
+                }
             }
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 8)
+    }
+
+    /// «Ползунки» (`#cardOrder`): круглая 40×40 стеклянная; в режиме залита
+    /// `--ink`, знак `--surface`. Повторный тап — выход.
+    private func tuneButton(_ pal: Palette) -> some View {
+        Button { withAnimation(.easeInOut(duration: 0.26)) { app.toggleCardTuning() } } label: {
+            Icon("sliders", size: 18, line: 1.8)
+                .foregroundStyle(app.cardTuning ? pal.surface : pal.ink3)
+                .frame(width: 40, height: 40)
+                .background { if app.cardTuning { Circle().fill(pal.ink) } }
+                .glassEffect(.regular, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("card.tune", text: app.cardTuning ? "on" : "off")
+        .accessibilityLabel(t.t("card.tune"))
     }
 
     // MARK: - Лист
@@ -141,7 +164,8 @@ struct CardScreen: View {
                 .shotNode("card.finish")
             }
             Spacer(minLength: 0)
-            Button {
+            // В режиме перестановки «Удалить» скрыта — как «＋» и «Заполнить».
+            if !app.cardTuning { Button {
                 let id = s.id
                 withAnimation(overlaySlide) { app.closeCard() }
                 app.trashSession(id: id)
@@ -154,7 +178,7 @@ struct CardScreen: View {
                     .background(Capsule().fill(pal.badBg))
             }
             .buttonStyle(PressFade())
-            .shotNode("card.delete")
+            .shotNode("card.delete") }
         }
         .padding(.top, 22).padding(.bottom, 4)   // `.card-acts`: gap 12, margin 22/0/4
     }
