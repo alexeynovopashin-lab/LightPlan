@@ -47,7 +47,7 @@ struct CardOrderList: View {
         VStack(spacing: 8) {
             ForEach(shown, id: \.self) { b in row(b, rows: rows) }
         }
-        .padding(.top, 9)
+        // Первая строка встаёт вплотную к шапке, как у веба: пара мерила +10.
         .shotNode("card.order.list")
         footer
     }
