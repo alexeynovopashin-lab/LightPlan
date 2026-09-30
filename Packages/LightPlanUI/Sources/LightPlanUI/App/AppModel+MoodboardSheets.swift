@@ -86,6 +86,10 @@ extension AppModel {
     /// Жанр, чьи слова подсказывает лист кадра.
     func mbSheetGenre(_ b: RefBoard) -> String? { mbFolderGenre(b) }
 
+    /// Жанр строки «Добавить в подборку «жанр»» — только у подборки съёмки, и по нынешней записи, а не по
+    /// жанру, записанному на подборке при создании: жанр съёмки могли поменять (ревью GPT к `7b1aac7`).
+    func mbItemToGenreTarget(_ b: RefBoard) -> String? { b.kind == .shoot ? mbFolderGenre(b) : nil }
+
     /// «Смотреть фото» на листе кадра: просмотрщик по картинкам папки в порядке сетки.
     func mbOpenViewer(_ shot: String) {
         if let sc = mbFolderScene(mbLibrary()) { _ = openMbFrame(shot, shown: sc.shown) }

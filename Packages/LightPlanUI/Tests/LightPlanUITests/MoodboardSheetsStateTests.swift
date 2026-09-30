@@ -251,6 +251,15 @@ struct MoodboardSheetsStateTests {
         #expect(app.mb.sheet == nil)
     }
 
+    @Test func itemSheetGenreFollowsTheShootNotTheGenreStoredOnTheBoard() {
+        let app = model()
+        #expect(app.mbItemToGenreTarget(lib(app).board("sh")!) == "wedding")
+        app.snapshot.sessions[0].genre = .portrait                       // жанр съёмки поменяли, подборка помнит старый
+        #expect(lib(app).board("sh")?.genre == "wedding")
+        #expect(app.mbItemToGenreTarget(lib(app).board("sh")!) == "portrait")
+        #expect(app.mbItemToGenreTarget(lib(app).board("tpl")!) == nil)  // у жанровой папки строки нет
+    }
+
     @Test func itemSheetRemoveTakesFrameOutAndClosesViewer() {
         let app = model(); app.openMbFolder(boardId: "sh")
         app.openMbItem(shot: "c")

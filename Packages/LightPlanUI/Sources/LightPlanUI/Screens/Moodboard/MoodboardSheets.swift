@@ -418,7 +418,7 @@ private struct MbItemSheet: View {
                 typedField(pal, t)
                 FormGroup {
                     if !overView || f.kind == .link { open(f, pal, t) }
-                    if b.kind == .shoot, let g = b.genre {
+                    if let g = app.mbItemToGenreTarget(b) {
                         MbRow(title: t.t("mb.moveTo", ["genre": app.mbGenreName(g).lowercased()]), node: "mbs.item.toGenre") {
                             app.mbItemToGenre(shot: shot, genre: g)
                         }
