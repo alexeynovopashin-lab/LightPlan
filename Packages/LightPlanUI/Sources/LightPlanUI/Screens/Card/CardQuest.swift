@@ -151,10 +151,9 @@ struct QuestSheet: View {
                 Text(t.t("quest.sub")).font(webFont(13)).foregroundStyle(pal.ink4).padding(.top, 5)
                     .fixedSize(horizontal: false, vertical: true)
                 if let url, let m = QuestQR.matrix(url.absoluteString) {
-                    QuestQRView(modules: m).frame(maxWidth: .infinity).padding(.top, 16)
-                        .shotNode("quest.qr", text: "\(m.count)")
+                    QuestQRView(modules: m).shotNode("quest.qr", text: "\(m.count)").frame(maxWidth: .infinity).padding(.top, 20)
                 }
-                send(pal, url).padding(.top, 16)
+                send(pal, url).padding(.top, 24)
                 if app.quest.copied {
                     Text(t.t("quest.copiedTitle") + ". " + t.t("quest.copiedText")).font(webFont(12)).foregroundStyle(pal.ink4)
                         .padding(.top, 8).fixedSize(horizontal: false, vertical: true).shotNode("quest.copied")
@@ -166,12 +165,12 @@ struct QuestSheet: View {
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .background(pal.brass, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
-                .buttonStyle(PressFade()).padding(.top, 10).shotNode("quest.apply")
+                .buttonStyle(PressFade()).shotNode("quest.apply").padding(.top, 10)
                 Button { app.closeQuest() } label: {
                     Text(t.t("pick.done")).font(webFont(14)).foregroundStyle(pal.ink4)
                         .frame(maxWidth: .infinity, minHeight: 45).contentShape(Rectangle())
                 }
-                .buttonStyle(.plain).padding(.top, 10).shotNode("quest.done")
+                .buttonStyle(.plain).shotNode("quest.done").padding(.top, 10)
             }
             .padding(.horizontal, 24).padding(.bottom, 34)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
