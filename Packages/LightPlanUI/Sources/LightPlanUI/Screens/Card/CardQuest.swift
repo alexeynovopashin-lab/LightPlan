@@ -115,17 +115,29 @@ struct CardQuestRow: View {
 
 extension View {
     /// Лист опросника поверх любого экрана (`RootView`): открыт, пока `app.quest.isOpen`.
-    func questSheet(_ app: AppModel) -> some View {
-        sheet(isPresented: Binding(get: { app.quest.isOpen }, set: { if !$0 { app.closeQuest() } })) {
-            QuestSheet(app: app)
-        }
+    func questSheet(_ app: AppModel) -> some View { modifier(QuestSheetHost(app: app)) }
+}
+
+/// Носитель листа: высоту окна берёт у экрана под собой — лист по бете 729 из 956, а не на весь экран.
+private struct QuestSheetHost: ViewModifier {
+    let app: AppModel
+    @State private var windowHeight: CGFloat = 956
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.size.height + $0.safeAreaInsets.top + $0.safeAreaInsets.bottom } action: { windowHeight = $0 }
+            .sheet(isPresented: Binding(get: { app.quest.isOpen }, set: { if !$0 { app.closeQuest() } })) {
+                QuestSheet(app: app, windowHeight: windowHeight)
+            }
     }
 }
 
 struct QuestSheet: View {
     @Bindable var app: AppModel
+    let windowHeight: CGFloat
     @Environment(\.colorScheme) private var scheme
     @FocusState private var pasting: Bool
+    @State private var contentHeight: CGFloat = 729
 
     var body: some View {
         let pal = Palette(scheme), t = app.lexicon
@@ -162,9 +174,10 @@ struct QuestSheet: View {
                 .buttonStyle(.plain).padding(.top, 10).shotNode("quest.done")
             }
             .padding(.horizontal, 24).padding(.bottom, 34)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
         .scrollBounceBehavior(.basedOnSize)
-        .presentationDetents([.large])
+        .presentationDetents([.height(min(contentHeight, windowHeight * 0.86))])
         .presentationDragIndicator(.hidden)
         .shotNode("quest.sheet")
     }
