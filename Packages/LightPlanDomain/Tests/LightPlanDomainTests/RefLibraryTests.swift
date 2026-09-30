@@ -185,4 +185,37 @@ struct RefLibraryTests {
                                             newId: { "x" }) == false)
         #expect(RefLibrary(extra: extra).boards.count == 2)
     }
+
+    // MARK: - Ревью GPT к 1f449e1
+
+    @Test func oddFieldsSurviveReadWrite() {
+        let shot = obj(["id": .string("a"), "k": .string("video"), "tags": .array([.string("x"), .number(3)]),
+                        "w": .string("широко")])
+        let board = obj(["id": .string("b"), "kind": .string("tpl"), "genre": .string("wedding"),
+                         "items": .array([.string("a"), .null]), "sort": .number(1e300),
+                         "keep": obj(["at": .number(1)]), "name": .number(5), "cover": .null])
+        let extra: [String: JSONValue] = ["shots": .array([shot]), "boards": .array([board])]
+        var out = extra
+        RefLibrary(extra: extra).write(into: &out)
+        #expect(out == extra)                            // неизвестный k, чужие элементы, sort 1e300, keep без mode
+        #expect(RefLibrary(extra: extra).boards[0].sort == 0)
+    }
+
+    @Test func unknownBoardHoldsShotAgainstDrop() {
+        let strange = obj(["id": .string("q"), "kind": .string("album"), "items": .array([.string("zz_0")])])
+        var extra: [String: JSONValue] = ["boards": .array([strange])]
+        var lib = measured()
+        lib.write(into: &extra)
+        extra["boards"] = .array(RefLibrary(extra: extra).boards.map(\.json) + [strange])
+        var back = RefLibrary(extra: extra)
+        #expect(back.isUsed("zz_0"))
+        let gone = back.dropWithShots("w")
+        #expect(!gone.contains("zz_0") && back.shot("zz_0") != nil)
+    }
+
+    @Test func moveToSameBoardDoesNotAddForeignShot() {
+        var lib = measured()
+        let added = lib.move(["zz_15"], from: "w", to: "w", remove: true)   // zz_15 в «Свадьбе» не лежит
+        #expect(added.isEmpty && lib.board("w")?.items.contains("zz_15") == false)
+    }
 }

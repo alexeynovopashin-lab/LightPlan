@@ -40,7 +40,13 @@ public struct RefLibrary: Sendable, Hashable {
     public func board(_ id: String) -> RefBoard? { boards.first { $0.id == id } }
     public func shot(_ id: String) -> RefFrame? { shots.first { $0.id == id } }
     /// Кадр лежит хотя бы в одной подборке (веб `shotUsed`).
-    public func isUsed(_ shotId: String) -> Bool { boards.contains { $0.items.contains(shotId) } }
+    /// Сырые подборки неизвестного рода тоже держат кадр: их ссылку рвать нельзя.
+    public func isUsed(_ shotId: String) -> Bool {
+        boards.contains { $0.items.contains(shotId) } || foreignBoards.contains { v in
+            guard case .object(let o) = v, case .array(let a)? = o["items"] else { return false }
+            return a.contains(.string(shotId))
+        }
+    }
     /// Папки жанра в порядке полки; основная — первая (веб `boardsOfGenre`, `boardTpl`).
     public func folders(ofGenre g: String) -> [RefBoard] { boards.filter { $0.kind == .tpl && $0.genre == g } }
 
@@ -73,9 +79,10 @@ public struct RefLibrary: Sendable, Hashable {
     @discardableResult
     public mutating func move(_ shotIds: [String], from: String?, to: String, remove: Bool, now: Double? = nil) -> [String] {
         guard board(to) != nil else { return [] }
+        if remove, from == to { return [] }              // в ту же подборку — ничего, что бы ни лежало в списке
         var added: [String] = []
         for id in shotIds where put(id, into: to, now: now) { added.append(id) }
-        if remove, let from, from != to, board(from) != nil {
+        if remove, let from, board(from) != nil {
             for id in shotIds { take(id, from: from, now: now) }
             prune(from)
         }
