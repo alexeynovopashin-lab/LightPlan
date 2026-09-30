@@ -13,7 +13,17 @@ struct MoodboardState: Equatable {
     var shelf: String?
     var query = ""
     var tag: String?
-    var isOpen: Bool { galleryOpen || shelf != nil }
+    /// Открытая папка — id её подборки; поле, раздел и выбор живут, пока папка открыта
+    /// (веб: `mbOpen`, `mbTag`, `mbPicked` — `openMbFolder` и «назад» их сбрасывают).
+    var folder: String?
+    var folderQuery = ""
+    var folderTag: String?
+    var folderSearchOpen = false
+    var pick: MbPick?
+    /// Просмотрщик папки: список кадров на момент открытия (только картинки, в порядке сетки).
+    var viewerIds: [String] = []
+    var pager: RefPager?
+    var isOpen: Bool { galleryOpen || shelf != nil || folder != nil }
 }
 
 /// Названия плитки: заголовок и подпись (веб `mbTitle`, `mbSubTile`).
@@ -98,15 +108,18 @@ extension AppModel {
     func openMbShelf(_ genre: String) { mb.shelf = genre }
     func closeMbShelf() { mb.shelf = nil }
 
-    /// Тап по плитке: жанр с несколькими папками — полка; папка — экран папки (шаг 5б).
+    /// Тап по плитке: жанр с несколькими папками — полка; папка — экран папки.
     func openMbFolder(_ f: MbFolder) {
-        if case .shelf(let g) = Moodboard.openTarget(f, in: mbLibrary()) { openMbShelf(g) }
+        switch Moodboard.openTarget(f, in: mbLibrary()) {
+        case .shelf(let g): openMbShelf(g)
+        case .folder(let id): openMbFolder(boardId: id)
+        }
     }
 
     // MARK: правка подборок (операции шага 4 — записываются сразу)
 
     /// Одна правка библиотеки: разбор, действие, запись в снимок, сохранение.
-    private func mbEdit<T>(_ body: (inout RefLibrary, Double) -> T) -> T {
+    func mbEdit<T>(_ body: (inout RefLibrary, Double) -> T) -> T {
         var lib = mbLibrary()
         let r = body(&lib, Double(nowMs))
         lib.write(into: &snapshot.extra)

@@ -39,11 +39,20 @@ struct RefsFullScreen: View {
                     .onGeometryChange(for: CGFloat.self) { $0.size.width - 32 } action: { gridW = $0 }
                 }
             }
-            if app.refsFull?.pager != nil { RefViewerLayer(app: app, s: s, tiles: tiles) }
+            if app.refsFull?.pager != nil { RefViewerLayer(app: app, source: viewerSource(sec), tiles: tiles) }
         }
         .coordinateSpace(name: "refs")
         .background(pal.surface.ignoresSafeArea())
         .shotNode("refs.full", text: "\(sec.flat.count)")
+    }
+
+    /// Что просмотрщику знать о кадре и листании: этот экран держит состояние в `refsFull`.
+    private func viewerSource(_ sec: RefSections) -> RefViewerSource {
+        let id = app.refViewerFrameId
+        return RefViewerSource(frameId: id, frame: id.flatMap { id in sec.flat.first { $0.id == id } },
+                               pager: app.refsFull?.pager,
+                               swipe: { dx, dy in app.refViewerSwipe(dx: dx, dy: dy) },
+                               close: { app.closeRefViewer() })
     }
 
     private var genreName: String { s.genre.map { t.t("genre.\($0.rawValue)") } ?? "" }
@@ -169,9 +178,19 @@ struct RefsFullScreen: View {
 /// справки: листание от 60 pt сдвига кадра, закрытие вниз от 110, щипок 1–6,
 /// касание — лестница выхода. Закрытие летит в плитку кадра, на котором
 /// остановились; плитка ушла за край больше чем на 40 pt — уменьшается на месте.
-private struct RefViewerLayer: View {
+/// Откуда просмотрщик берёт кадр и листание: полный экран референсов (`refsFull`) и папка
+/// мудборда держат состояние в разных местах, а вид у них один.
+struct RefViewerSource {
+    var frameId: String?
+    var frame: RefFrame?
+    var pager: RefPager?
+    var swipe: (Double, Double) -> Void
+    var close: () -> Void
+}
+
+struct RefViewerLayer: View {
     @Bindable var app: AppModel
-    let s: Session
+    let source: RefViewerSource
     let tiles: [String: CGRect]
     @Environment(\.colorScheme) private var scheme
     @State private var drag: CGSize = .zero
@@ -190,8 +209,8 @@ private struct RefViewerLayer: View {
         let pal = Palette(scheme)
         GeometryReader { geo in
             let full = CGRect(origin: .zero, size: geo.size)
-            let id = app.refViewerFrameId ?? ""
-            let frame = app.refSections(s).flat.first { $0.id == id }
+            let id = source.frameId ?? ""
+            let frame = source.frame
             let fit = fitRect(frame, in: geo.size)
             let start = tiles[id]
             let box = RefHome.rect(open: shown, shrinkingInPlace: shrinking, home: goingHome.map(refBox),
@@ -231,7 +250,7 @@ private struct RefViewerLayer: View {
     /// теги кадра слева и подсказка 11 справа. Поля 18, сверху и снизу 14; градиенты
     /// .55 и .6 к прозрачному (справка 27, замер пары).
     private func chrome(_ pal: Palette) -> some View {
-        let frame = app.refViewerFrameId.flatMap { id in app.refSections(s).flat.first { $0.id == id } }
+        let frame = source.frame
         return VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Button { close() } label: {
@@ -241,7 +260,7 @@ private struct RefViewerLayer: View {
                 .buttonStyle(.plain).shotNode("refs.viewer.close")
                 .accessibilityLabel(t.t("card.close"))
                 Spacer(minLength: 0)
-                if let c = app.refsFull?.pager?.counter {
+                if let c = source.pager?.counter {
                     Text(c).font(webFont(12.5)).monospacedDigit().foregroundStyle(.white.opacity(0.82))
                         .shotNode("refs.viewer.counter", text: c)
                 }
@@ -259,7 +278,7 @@ private struct RefViewerLayer: View {
                     }
                 }
                 Spacer(minLength: 0)
-                if (app.refsFull?.pager?.count ?? 0) >= 2 {
+                if (source.pager?.count ?? 0) >= 2 {
                     Text(t.t("mb.viewerHint")).font(webFont(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
                 }
             }
@@ -297,7 +316,7 @@ private struct RefViewerLayer: View {
                     switch d {
                     case .close: close()
                     case .next, .previous:
-                        _ = app.refViewerSwipe(dx: d == .next ? -RefPager.pageShift : RefPager.pageShift, dy: 0)
+                        source.swipe(d == .next ? -RefPager.pageShift : RefPager.pageShift, 0)
                         withAnimation(.timingCurve(0.22, 0.61, 0.36, 1, duration: 0.26)) { drag = .zero }
                     case .stay: withAnimation(.easeOut(duration: 0.26)) { drag = .zero }
                     }
@@ -314,7 +333,7 @@ private struct RefViewerLayer: View {
     /// Закрытие: кадр летит в плитку кадра, на котором остановились, или
     /// уменьшается на месте; потом просмотрщик снимается.
     private func close() {
-        let id = app.refViewerFrameId
+        let id = source.frameId
         let view = CGRect(origin: .zero, size: vp)
         let tile = id.flatMap { tiles[$0] }
         let target = RefHome.target(tile: tile.map { RefBox(x: $0.minX, y: $0.minY, w: $0.width, h: $0.height) },
@@ -323,6 +342,6 @@ private struct RefViewerLayer: View {
             if target != nil { goingHome = tile; shown = false } else { shrinking = true }
             drag = .zero; scale = 1; pan = .zero
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.27) { app.closeRefViewer() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.27) { source.close() }
     }
 }

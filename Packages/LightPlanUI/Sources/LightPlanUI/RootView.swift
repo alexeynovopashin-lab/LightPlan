@@ -75,6 +75,11 @@ private struct Shell: View {
                     .transition(.move(edge: .trailing))
                     .zIndex(1.3)
             }
+            if app.mb.folder != nil {
+                MoodboardFolder(app: app)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1.4)
+            }
             // Затемнение под листом места (`.scrim` веба, чёрный 0,55): лист
             // iOS 26 на неполной высоте экран под собой не затемняет.
             Color.black.opacity(app.placeSheetOpen ? 0.55 : 0)

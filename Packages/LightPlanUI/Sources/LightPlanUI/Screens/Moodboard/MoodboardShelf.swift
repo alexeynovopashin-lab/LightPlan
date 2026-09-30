@@ -5,7 +5,7 @@ import LightPlanDomain
 // MARK: - Полка жанра (`#mbShelfOverlay`, итерация 28, шаг 5а)
 
 /// Только когда в жанре больше одной папки: заголовок жанра, «N папок · M кадров»,
-/// плитки папок и «Новая папка» последней. Тап по папке — экран папки (шаг 5б).
+/// плитки папок и «Новая папка» последней. Тап по папке — экран папки.
 struct MoodboardShelf: View {
     @Bindable var app: AppModel
     let genre: String
@@ -36,7 +36,9 @@ struct MoodboardShelf: View {
                         let n = b.items.filter { id in lib.shots.contains { $0.id == id } }.count
                         MbTile(boardId: b.id, genre: genre, count: n,
                                title: Moodboard.title(of: b, genreName: genreName),
-                               sub: t.count("unit.frame", n), node: "mb.folder.\(i)") {}
+                               sub: t.count("unit.frame", n), node: "mb.folder.\(i)") {
+                            withAnimation(overlaySlide) { app.openMbFolder(boardId: b.id) }
+                        }
                     }
                     MbAddTile(title: t.t("mb.newFolder"), node: "mb.shelfAdd") { name = ""; asking = true }
                 }
