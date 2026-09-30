@@ -248,6 +248,12 @@ import LightPlanDomain
         #expect(glued == nil, "берётся первый ответ и его ссылка")
         guard case .answer(_, let prefixed) = QuestParse.receive("https://a.org/?r=old1https://x.org/beta/?ans=\(code)") else { Issue.record("не разобрал"); return }
         #expect(prefixed == nil, "знак ссылки, что стоит вплотную перед этой, — чужой")
+        guard case .answer(_, let upper) = QuestParse.receive("https://a.org/?r=old1&z=1HTTPS://x.org/beta/?ans=\(code)") else { Issue.record("не разобрал"); return }
+        #expect(upper == nil, "схема в любом регистре")
+        guard case .answer(_, let frag) = QuestParse.receive("https://x.org/beta/?ans=\(code)#preview&r=other") else { Issue.record("не разобрал"); return }
+        #expect(frag == nil, "знак во фрагменте после «#» — не параметр запроса")
+        guard case .answer(_, let beforeFrag) = QuestParse.receive("https://x.org/beta/?ans=\(code)&r=k3x9#top") else { Issue.record("не разобрал"); return }
+        #expect(beforeFrag == "k3x9")
         // Промежуточный параметр с точкой или %, что дописал мессенджер, ссылку не рвёт.
         guard case .answer(_, let mid) = QuestParse.receive("https://x.org/beta/?r=k3x9&source=photo.story&ans=\(code)") else { Issue.record("не разобрал"); return }
         #expect(mid == "k3x9")

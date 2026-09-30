@@ -56,7 +56,7 @@ public enum QuestParse {
 
     /// Знак записи `r`: тот же вид, что пропускает страница (`^[a-z0-9]{1,32}$`), чужое — отбрасывается.
     /// Ищется только в той же ссылке, что и `ans`: ссылка — участок вокруг него без пробелов и без `; , ( ) < > " '`,
-    /// обрезанный по началу соседнего `http://` или `https://` (две ссылки вплотную). Промежуточные параметры,
+    /// обрезанный по началу соседнего `http://` или `https://` в любом регистре (две ссылки вплотную) и по `#`. Промежуточные параметры,
     /// что дописал мессенджер (`source=photo.story`, `%20`), ссылку не рвут (ревью GPT к faaca1a, ee940f1, 6e55097).
     public static func recordId(in text: String) -> String? {
         guard let re = try? NSRegularExpression(pattern: #"[?&]ans=[A-Za-z0-9_-]+"#),
@@ -69,11 +69,13 @@ public enum QuestParse {
         // Соседняя ссылка вплотную: начало своей — последнее «http(s)://» до `ans`, конец — первое после его начала.
         for scheme in ["https://", "http://"] {
             var from = lo
-            while let s = text.range(of: scheme, range: from..<hi) {
+            while let s = text.range(of: scheme, options: .caseInsensitive, range: from..<hi) {
                 if s.lowerBound <= r.lowerBound { lo = max(lo, s.lowerBound) } else { hi = min(hi, s.lowerBound); break }
                 from = s.upperBound
             }
         }
+        // `#` — уже не строка запроса: знак во фрагменте не в счёт.
+        if let hash = text[r.upperBound..<hi].firstIndex(of: "#") { hi = hash }
         return firstMatch(#"[?&]r=([a-z0-9]{1,32})(?![A-Za-z0-9_-])"#, in: String(text[lo..<hi]))
     }
 
