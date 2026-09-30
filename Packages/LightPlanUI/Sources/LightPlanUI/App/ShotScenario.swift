@@ -150,6 +150,27 @@ extension AppModel {
         if ["year", "year12", "stats", "search"].contains(s.sheet ?? "") { app.startChapter = s.sheet }
         if s.sheet == "bin" { app.binOpen = true }
         if s.sheet == "blk" { app.openBlockSheet(day: app.planner.selected) }
+        // Итерация 28: мудборды, организации, «Контакты», опросник, встреча. `LPShotWay` — жанр полки,
+        // код подборки, код организации или записи; без него — первая из засева.
+        switch s.sheet {
+        case "mbgallery": app.openMbGallery()
+        case "mbshelf": app.openMbShelf(s.way ?? "wedding")
+        case "mbfolder": if let id = s.way { app.openMbFolder(boardId: id) }
+        case "orgs": app.openOrgs()
+        case "orgcard": if let id = s.way ?? app.orgs.first?.id { app.openOrgCard(id: id) }
+        case "contacts": app.openContacts()
+        case "quest":
+            if let sess = app.sessions.first(where: { $0.id == s.way }) ?? app.sessions.first(where: { $0.kind == .shoot }) {
+                app.openQuest(for: sess)
+            }
+        case "meet":
+            app.draftStore = MemoryDraftStore()
+            Task { @MainActor in
+                await app.light.weather.settled()
+                app.openForm(day: app.planner.selected, mode: .meet)
+            }
+        default: break
+        }
         if s.sheet == "loc" {
             app.placeSheetStart = s.way.flatMap(PlaceSheetForm.Way.init(rawValue:)) ?? .fork
             app.placeSheetOpen = true
