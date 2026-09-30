@@ -282,6 +282,8 @@ public final class AppModel {
     /// Снимок как есть — для тестов записи (могилы, ссылки маршрутов).
     var snapshotForTests: Snapshot { snapshot }
     private let store: Store?
+    /// Файлы картинок мудборда (шаг 5г); `nil` — в тестах без диска и до `live()`.
+    var refImages: RefImageStore?
     private let locator: any DeviceLocating
 
     init(snapshot: Snapshot, store: Store?, language: String, zone: TimeZone = .current,
@@ -388,11 +390,14 @@ public final class AppModel {
         }
         let language = AppLanguage.current
         let locale = Locale(identifier: language)
-        return AppModel(snapshot: snapshot, store: store, language: language,
+        let model = AppModel(snapshot: snapshot, store: store, language: language,
                         locator: CoreLocationProvider(), geocoder: AppleReverseGeocoder(locale: locale),
                         cityLookup: AppleCityLookup(locale: locale), placeSearch: ApplePlaceSearch(locale: locale),
                         weatherSource: OpenMeteoSource(),
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading())
+        // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
+        model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
+        return model
     }
 
     // MARK: - Правка настроек

@@ -25,6 +25,8 @@ struct MoodboardState: Equatable {
     var pager: RefPager?
     /// Открытый лист мудборда (шаг 5в): меню, «Добавить в…», «Новая подборка», обложка, карточка, кадр.
     var sheet: MbSheet?
+    /// Системный выбор «Фото» открыт (шаг 5г): его просят кнопка «Фото» и лист «+».
+    var photoPicker = false
     var isOpen: Bool { galleryOpen || shelf != nil || folder != nil }
 }
 
@@ -123,10 +125,13 @@ extension AppModel {
     /// Одна правка библиотеки: разбор, действие, запись в снимок, сохранение.
     @discardableResult
     func mbEdit<T>(_ body: (inout RefLibrary, Double) -> T) -> T {
-        var lib = mbLibrary()
+        let before = mbLibrary()
+        var lib = before
         let r = body(&lib, Double(nowMs))
         lib.write(into: &snapshot.extra)
         persist()
+        // Кадр ушёл из последней подборки — его файл тоже (шаг 5г); чужой кадр не задет.
+        for name in RefLibrary.orphanImages(before: before, after: lib) { refImages?.delete(name) }
         return r
     }
 

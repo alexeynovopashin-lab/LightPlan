@@ -16,6 +16,8 @@ enum MbSheet: Equatable {
     case add(MbAddMode)
     case loneConfirm(shot: String, board: String)
     case new
+    case addWhat
+    case addLink
     case cover(String)
     case board(String)
     case item(shot: String, board: String, overView: Bool)
@@ -40,6 +42,8 @@ extension AppModel {
     func openMbAdd(shot: String) { mb.sheet = .add(MbAddMode(shot: shot)) }
     func openMbNewFolder(genre: String) { mb.sheet = .newFolder(genre: genre) }
     func closeMbSheet() { mb.sheet = nil }
+    /// Плитка «+» в папке: лист «Что добавим» с двумя строками (веб `openMbAddWhat`).
+    func openMbAddWhat() { mb.sheet = .addWhat }
 
     /// «Добавить в…» / «Переместить…» из выбора в папке (веб `mbSelAdd`, `mbSelMove`).
     func openMbAddPicked(move: Bool) {

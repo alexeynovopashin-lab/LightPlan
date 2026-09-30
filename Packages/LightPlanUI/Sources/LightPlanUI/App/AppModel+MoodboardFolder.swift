@@ -1,6 +1,7 @@
 import Foundation
 import LightPlanCore
 import LightPlanDomain
+import LightPlanData
 
 // MARK: - Папка мудборда (итерация 28, шаг 5б)
 
@@ -130,4 +131,47 @@ extension AppModel {
     }
 
     func closeMbViewer() { mb.pager = nil; mb.viewerIds = [] }
+}
+
+// MARK: - «Фото» и «Ссылка» (итерация 28, шаг 5г)
+
+extension AppModel {
+
+    /// Кнопка «Фото» (и строка листа «+»): лист закрыт, системный выбор открывается следом.
+    func requestMbPhotoPicker() {
+        guard mb.folder != nil else { return }
+        mb.sheet = nil
+        mb.photoPicker = true
+    }
+
+    /// Выбранные кадры: файл ложится под новым именем `im`, потом кадр — в открытую папку
+    /// (веб `useRefBoard`). Не разобралась картинка или не записался файл — кадра нет. Ответ — id новых кадров.
+    @discardableResult
+    func mbAddPhotos(_ blobs: [Data]) -> [String] {
+        guard let board = mb.folder, let images = refImages else { return [] }
+        var added: [String] = []
+        for data in blobs {
+            guard let size = RefImageStore.pixelSize(of: data) else { continue }
+            let im = UUID().uuidString.lowercased()
+            guard images.save(data, as: im) else { continue }
+            let tag = mb.folderTag
+            let id = mbEdit { lib, now in lib.addPhoto(im: im, w: size.w, h: size.h, to: board, tag: tag, now: now) }
+            if let id { added.append(id) } else { images.delete(im) }
+        }
+        return added
+    }
+
+    /// Кнопка «Ссылка» — лист с адресом (веб `askLink`).
+    func openMbAddLink() { mb.sheet = .addLink }
+
+    /// Адрес из листа: кадр-ссылка ложится в открытую папку. Мусор не пишется, лист остаётся; дубль
+    /// в этой подборке — лист закрывается, второй плитки нет.
+    @discardableResult
+    func mbAddLink(_ raw: String) -> RefLinkAdd {
+        guard let board = mb.folder else { return .invalid }
+        let tag = mb.folderTag
+        let r = mbEdit { lib, now in lib.addLink(raw, to: board, id: UUID().uuidString.lowercased(), tag: tag, now: now) }
+        if r != .invalid { mb.sheet = nil }
+        return r
+    }
 }

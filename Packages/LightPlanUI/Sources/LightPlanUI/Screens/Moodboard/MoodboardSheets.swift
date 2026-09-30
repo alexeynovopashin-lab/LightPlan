@@ -30,6 +30,8 @@ struct MbSheetContent: View {
             case .add(let mode)?: MbAddSheet(app: app, mode: mode)
             case .loneConfirm(let shot, let board)?: MbLoneSheet(app: app, shot: shot, board: board)
             case .new?: MbNewSheet(app: app)
+            case .addWhat?: MbAddWhatSheet(app: app)
+            case .addLink?: MbAddLinkSheet(app: app)
             case .cover(let id)?: MbCoverSheet(app: app, boardId: id)
             case .board(let id)?: MbBoardSheet(app: app, boardId: id)
             case .item(let shot, let board, let over)?: MbItemSheet(app: app, shot: shot, board: board, overView: over)
@@ -245,6 +247,32 @@ private struct MbNewFolderSheet: View {
         let t = app.lexicon
         AskTextSheet(title: t.t("mb.newFolderAsk"), ok: t.t("mb.pickDone"), cancel: t.t("ask.cancel"), keyboard: .default) { name in
             if let name { app.mbCreateFolder(genre: genre, name: name) } else { app.mb.sheet = nil }
+        }
+    }
+}
+
+// MARK: - «Фото / Ссылка» (плитка «+», `openMbAddWhat`) и адрес ссылки
+
+private struct MbAddWhatSheet: View {
+    @Bindable var app: AppModel
+    var body: some View {
+        let t = app.lexicon
+        MbSheetFrame(title: t.t("mb.addWhat"), node: "mbs.addWhat") {
+            FormGroup {
+                MbRow(title: t.t("ref.photo"), node: "mbs.addWhat.photo") { app.requestMbPhotoPicker() }
+                MbRow(title: t.t("ref.link"), node: "mbs.addWhat.link") { app.openMbAddLink() }
+            }
+            MbCancel(app: app, back: nil)
+        }
+    }
+}
+
+private struct MbAddLinkSheet: View {
+    @Bindable var app: AppModel
+    var body: some View {
+        let t = app.lexicon
+        AskTextSheet(title: t.t("ref.linkAsk"), ok: t.t("mb.pickDone"), cancel: t.t("ask.cancel")) { raw in
+            if let raw { app.mbAddLink(raw) } else { app.mb.sheet = nil }
         }
     }
 }

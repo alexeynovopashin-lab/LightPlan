@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import LightPlanCore
 import LightPlanDomain
 
@@ -9,7 +10,8 @@ import LightPlanDomain
 /// Картинок нет до 30 (решение Алексея 1Б): ссылка — квадрат «сайт / хвост пути», остальное — штриховка.
 /// Шестерёнка открывает меню подборки (лист, шаг 5в); в выборе — «Добавить в…», «Переместить…», «Убрать N»;
 /// долгий тап по кадру и тап по ссылке без картинки — лист кадра; долгий тап по обложке — лист обложки.
-/// Плитка «+» и «Фото/Ссылка» — файлов и картинок нет до 30 (решение Алексея 1Б), в 5в не входят.
+/// Плитка «+» (лист «Фото / Ссылка») последней в сетке и кнопки «Фото» / «Ссылка» внизу — шаг 5г
+/// (решение Алексея 30.09, «кнопка Фото должна работать»); картинки в плитках вместо штриховки — 5д.
 struct MoodboardFolder: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
@@ -22,6 +24,7 @@ struct MoodboardFolder: View {
     @State private var window: CGFloat = 800
     @State private var position = ScrollPosition(edge: .top)
     @State private var confirmRemove = false
+    @State private var picked: [PhotosPickerItem] = []
     @FocusState private var focused: Bool
 
     private var t: Lexicon { app.lexicon }
@@ -62,7 +65,7 @@ struct MoodboardFolder: View {
                 if !sc.sections.isEmpty { rail(sc, pal) }
                 gridLabel(sc, pal)
                 grid(sc, pal)
-                if app.mb.pick != nil { pickActions(pal) }
+                if app.mb.pick != nil { pickActions(pal) } else { addRow(pal) }
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
             .onGeometryChange(for: CGFloat.self) { $0.size.width - 48 - 30 } action: { gridW = $0 }
@@ -74,6 +77,17 @@ struct MoodboardFolder: View {
                     window: $0.containerSize.height)
         } action: { _, m in offset = m.offset; scrollable = m.scrollable; window = m.window }
         .overlay(alignment: .bottomTrailing) { jump(pal) }
+        .photosPicker(isPresented: Binding(get: { app.mb.photoPicker }, set: { app.mb.photoPicker = $0 }),
+                      selection: $picked, matching: .images, photoLibrary: .shared())
+        .onChange(of: picked) { _, items in
+            guard !items.isEmpty else { return }
+            picked = []
+            Task {
+                var blobs: [Data] = []
+                for item in items { if let d = try? await item.loadTransferable(type: Data.self) { blobs.append(d) } }
+                app.mbAddPhotos(blobs)
+            }
+        }
         .alert(t.t("mb.selDelTitle", ["n": "\(app.mb.pick?.count ?? 0)"]), isPresented: $confirmRemove) {
             Button(t.t("ask.cancel"), role: .cancel) {}
             Button(t.t("mb.selDelOk"), role: .destructive) { app.mbRemovePicked() }
@@ -236,24 +250,58 @@ struct MoodboardFolder: View {
     private func masonry(_ sc: MbFolderScene, _ pal: Palette) -> some View {
         let w = (gridW - 8) / 2
         let frames = sc.shown
-        let hs = frames.map { MbFolderView.tileHeight($0, width: Double(w)) }
+        let adds = MbFolderView.showsAddTile(filtered: sc.filtered, picking: app.mb.pick != nil, shownCount: frames.count)
+        let hs = frames.map { MbFolderView.tileHeight($0, width: Double(w)) } + (adds ? [Double(w)] : [])
         let n = RefColumns.firstColumnCount(heights: hs)
         func col(_ a: ArraySlice<Double>) -> Double { a.reduce(0, +) + Double(max(0, a.count - 1)) * 8 }
+        // «+» — последний в порядке колонок: в первой, если она вместила всё, иначе последней во второй.
+        func column(_ range: Range<Int>) -> some View {
+            VStack(spacing: 8) {
+                ForEach(Array(range), id: \.self) { i in
+                    Group {
+                        if i < frames.count { tile(frames[i], sc, pal) } else { addTile(pal) }
+                    }
+                    .frame(width: w, height: CGFloat(hs[i]))
+                }
+                Spacer(minLength: 0)
+            }
+        }
         return HStack(alignment: .top, spacing: 8) {
-            column(Array(frames[..<n]), Array(hs[..<n]), w, sc, pal)
-            column(Array(frames[n...]), Array(hs[n...]), w, sc, pal)
+            column(0..<n)
+            column(n..<hs.count)
         }
         .frame(height: CGFloat(max(col(hs[..<n]), col(hs[n...]))), alignment: .top)
         .shotNode("mb.fgrid", text: "\(frames.count)")
     }
 
-    private func column(_ frames: [RefFrame], _ hs: [Double], _ w: CGFloat, _ sc: MbFolderScene, _ pal: Palette) -> some View {
-        VStack(spacing: 8) {
-            ForEach(Array(frames.enumerated()), id: \.element.id) { i, f in
-                tile(f, sc, pal).frame(width: w, height: CGFloat(hs[i]))
+    /// Плитка «+»: пунктир 1 `#1C1913`, радиус 10; тап — лист «Фото / Ссылка» (`openMbAddWhat`).
+    private func addTile(_ pal: Palette) -> some View {
+        Button { focused = false; app.openMbAddWhat() } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(pal.press, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                Icon("plus", size: 22, line: 1.8).foregroundStyle(pal.ink6)
             }
-            Spacer(minLength: 0)
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
+        .buttonStyle(.plain).accessibilityLabel(t.t("mb.addWhat")).shotNode("mb.addTile")
+    }
+
+    /// Внизу две кнопки «Фото» и «Ссылка» (`#mbAddRow`, `padding 12 15`, gap 8; 158×39, радиус 10, 14).
+    private func addRow(_ pal: Palette) -> some View {
+        func button(_ title: String, node: String, _ go: @escaping () -> Void) -> some View {
+            Button { focused = false; go() } label: {
+                Text(title).font(webFont(14)).foregroundStyle(pal.ink3)
+                    .frame(maxWidth: .infinity).frame(height: 39)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(pal.sheet))
+            }
+            .buttonStyle(.plain).shotNode(node, text: title)
+        }
+        return HStack(spacing: 8) {
+            button(t.t("ref.photo"), node: "mb.addPhoto") { app.requestMbPhotoPicker() }
+            button(t.t("ref.link"), node: "mb.addLink") { app.openMbAddLink() }
+        }
+        .padding(.top, 12).padding(.horizontal, 15)
     }
 
     private func tile(_ f: RefFrame, _ sc: MbFolderScene, _ pal: Palette) -> some View {
