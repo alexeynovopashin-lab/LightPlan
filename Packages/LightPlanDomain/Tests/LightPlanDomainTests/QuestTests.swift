@@ -243,6 +243,16 @@ import LightPlanDomain
         }
         guard case .answer(_, let own) = QuestParse.receive("(https://x.org/beta/?ans=\(code)&r=k3x9), спасибо") else { Issue.record("не разобрал"); return }
         #expect(own == "k3x9", "скобка и запятая вокруг своей ссылки не мешают")
+        // Без разделителя вообще: одна ссылка кончается там, где начинается следующая.
+        guard case .answer(_, let glued) = QuestParse.receive("https://x.org/beta/?ans=\(code) https://x.org/beta/?r=zzz https://x.org/beta/?ans=\(code)&r=own1") else { Issue.record("не разобрал"); return }
+        #expect(glued == nil, "берётся первый ответ и его ссылка")
+        guard case .answer(_, let prefixed) = QuestParse.receive("https://a.org/?r=old1https://x.org/beta/?ans=\(code)") else { Issue.record("не разобрал"); return }
+        #expect(prefixed == nil, "знак ссылки, что стоит вплотную перед этой, — чужой")
+        // Промежуточный параметр с точкой или %, что дописал мессенджер, ссылку не рвёт.
+        guard case .answer(_, let mid) = QuestParse.receive("https://x.org/beta/?r=k3x9&source=photo.story&ans=\(code)") else { Issue.record("не разобрал"); return }
+        #expect(mid == "k3x9")
+        guard case .answer(_, let tail) = QuestParse.receive("https://x.org/beta/?ans=\(code)&utm=a%20b.c&r=k3x9") else { Issue.record("не разобрал"); return }
+        #expect(tail == "k3x9")
         // Знак стоит до ответа в той же ссылке — годится.
         guard case .answer(_, let before) = QuestParse.receive("Вот https://x.org/beta/?r=k3x9&ans=\(code) спасибо") else { Issue.record("не разобрал"); return }
         #expect(before == "k3x9")

@@ -55,17 +55,25 @@ public enum QuestParse {
     }
 
     /// Знак записи `r`: тот же вид, что пропускает страница (`^[a-z0-9]{1,32}$`), чужое — отбрасывается.
-    /// Ищется только в той же строке запроса, что и `ans`: участок из знаков `?`, `&`, `=`, букв, цифр, `_`, `-` вокруг
-    /// него. Пробел, `;`, `,`, `/`, `:` его обрывают, поэтому знак второй ссылки, даже вплотную, ответу первой не
-    /// достанется (ревью GPT к faaca1a и ee940f1).
+    /// Ищется только в той же ссылке, что и `ans`: ссылка — участок вокруг него без пробелов и без `; , ( ) < > " '`,
+    /// обрезанный по началу соседнего `http://` или `https://` (две ссылки вплотную). Промежуточные параметры,
+    /// что дописал мессенджер (`source=photo.story`, `%20`), ссылку не рвут (ревью GPT к faaca1a, ee940f1, 6e55097).
     public static func recordId(in text: String) -> String? {
         guard let re = try? NSRegularExpression(pattern: #"[?&]ans=[A-Za-z0-9_-]+"#),
               let m = re.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let r = Range(m.range, in: text) else { return nil }
-        func inQuery(_ c: Character) -> Bool { (c.isASCII && (c.isLetter || c.isNumber)) || "?&=_-".contains(c) }
+        func stops(_ c: Character) -> Bool { c.isWhitespace || ";,()<>\"'".contains(c) }
         var lo = r.lowerBound, hi = r.upperBound
-        while lo > text.startIndex, inQuery(text[text.index(before: lo)]) { lo = text.index(before: lo) }
-        while hi < text.endIndex, inQuery(text[hi]) { hi = text.index(after: hi) }
+        while lo > text.startIndex, !stops(text[text.index(before: lo)]) { lo = text.index(before: lo) }
+        while hi < text.endIndex, !stops(text[hi]) { hi = text.index(after: hi) }
+        // Соседняя ссылка вплотную: начало своей — последнее «http(s)://» до `ans`, конец — первое после его начала.
+        for scheme in ["https://", "http://"] {
+            var from = lo
+            while let s = text.range(of: scheme, range: from..<hi) {
+                if s.lowerBound <= r.lowerBound { lo = max(lo, s.lowerBound) } else { hi = min(hi, s.lowerBound); break }
+                from = s.upperBound
+            }
+        }
         return firstMatch(#"[?&]r=([a-z0-9]{1,32})(?![A-Za-z0-9_-])"#, in: String(text[lo..<hi]))
     }
 
