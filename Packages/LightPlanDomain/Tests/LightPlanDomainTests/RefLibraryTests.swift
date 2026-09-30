@@ -218,4 +218,21 @@ struct RefLibraryTests {
         let added = lib.move(["zz_15"], from: "w", to: "w", remove: true)   // zz_15 в «Свадьбе» не лежит
         #expect(added.isEmpty && lib.board("w")?.items.contains("zz_15") == false)
     }
+
+    @Test func editingListKeepsForeignElementsAndHonoursRemoval() {
+        let board = obj(["id": .string("b"), "kind": .string("tpl"), "genre": .string("wedding"),
+                         "items": .array([.string("a"), .null, .string("c")])])
+        let shot = obj(["id": .string("a"), "tags": .array([.string("x"), .number(3)])])
+        var lib = RefLibrary(extra: ["boards": .array([board]), "shots": .array([shot])])
+        lib.put("d", into: "b")
+        lib.take("a", from: "b")
+        lib.shots[0].tags = []                           // последний тег снят — он не возвращается
+        var out: [String: JSONValue] = [:]
+        lib.write(into: &out)
+        guard case .array(let bs)? = out["boards"], case .object(let bo) = bs[0], case .array(let items)? = bo["items"],
+              case .array(let ss)? = out["shots"], case .object(let so) = ss[0], case .array(let tags)? = so["tags"]
+        else { Issue.record("нет полей"); return }
+        #expect(items == [.null, .string("c"), .string("d")])
+        #expect(tags == [.number(3)])
+    }
 }

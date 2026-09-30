@@ -26,9 +26,20 @@ private extension Dictionary where Key == String, Value == JSONValue {
         return s
     }
 
-    /// Записать список строк: сырой массив с чужими элементами уходит, если строки не менялись.
+    /// Записать список строк. Есть сырой массив с чужими элементами — они остаются на местах,
+    /// а строки собираются заново: снятые уходят (даже последняя), новые дописываются в конец.
     mutating func putStrings(_ key: String, _ list: [String], keepEmpty: Bool) {
-        if case .array(let a)? = self[key], a.compactMap(\.str) == list { return }
+        if case .array(let raw)? = self[key] {
+            if raw.compactMap(\.str) == list { return }
+            var rest = list
+            var out: [JSONValue] = []
+            for v in raw {
+                guard let s = v.str else { out.append(v); continue }
+                if let i = rest.firstIndex(of: s) { out.append(v); rest.remove(at: i) }
+            }
+            self[key] = .array(out + rest.map { .string($0) })
+            return
+        }
         if list.isEmpty && !keepEmpty { return }
         self[key] = .array(list.map { .string($0) })
     }
