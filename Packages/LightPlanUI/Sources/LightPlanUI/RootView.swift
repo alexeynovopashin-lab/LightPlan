@@ -80,6 +80,19 @@ private struct Shell: View {
                     .transition(.move(edge: .trailing))
                     .zIndex(1.4)
             }
+            // Организации (28, шаг 6): список из настроек и карточка поверх него.
+            if app.org.listOpen {
+                OrgListScreen(app: app)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1.5)
+            }
+            if let id = app.org.cardId {
+                OrgCardScreen(app: app, id: id, backTitle: app.lexicon.t("org.tabOrgs")) {
+                    withAnimation(overlaySlide) { app.closeOrgCard() }
+                }
+                .transition(.move(edge: .trailing))
+                .zIndex(1.6)
+            }
             // Затемнение под листом места (`.scrim` веба, чёрный 0,55): лист
             // iOS 26 на неполной высоте экран под собой не затемняет.
             Color.black.opacity(app.placeSheetOpen ? 0.55 : 0)
@@ -93,7 +106,7 @@ private struct Shell: View {
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
         // из неё видно 84 − низ зоны, остальное уходит под полосу.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil && !app.mb.isOpen {
+            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil && !app.mb.isOpen && !app.org.isOpen {
                 GeometryReader { geo in
                     TabBarView(tab: $app.tab, lexicon: app.lexicon)
                         .shotNode("tabbar")

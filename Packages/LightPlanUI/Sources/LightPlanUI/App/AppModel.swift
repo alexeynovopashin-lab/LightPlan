@@ -165,13 +165,18 @@ public final class AppModel {
                 snapshot.sessions[s].route[r].spotId = nil
             }
         }
+        bury(id, now: now)
+        snapshot.spots.remove(at: i)
+        persist()
+    }
+
+    /// Могила удалённой записи (веб `bury`): слияние двух устройств иначе вернуло бы её.
+    func bury(_ id: String, now: Date) {
         var graves: [JSONValue] = []
         if case .array(let g)? = snapshot.extra["graves"] { graves = g }
         graves.removeAll { if case .object(let o) = $0, o["id"] == .string(id) { true } else { false } }
         graves.append(.object(["id": .string(id), "del": .number(Double(Self.ms(now)))]))
         snapshot.extra["graves"] = .array(graves)
-        snapshot.spots.remove(at: i)
-        persist()
     }
 
     /// `newSpotId` веба: «p» + время и четыре случайных знака в base36.
@@ -221,6 +226,8 @@ public final class AppModel {
     var refsFull: RefsFullState?
     /// Мудборд (28, шаг 5а): галерея, полка, поле поиска и выбранный чип — состояние руки, в запись не идёт.
     var mb = MoodboardState()
+    /// Организации (итерация 28, шаг 6): список, карточка, черновик новой.
+    var org = OrgState()
     /// Режим «ползунков» (веб `#cardOrder`): блоки свёрнуты в строки перестановки.
     /// Закрытие карточки и переход к другой выводят из режима (шаг 5а, 26).
     var cardTuning = false

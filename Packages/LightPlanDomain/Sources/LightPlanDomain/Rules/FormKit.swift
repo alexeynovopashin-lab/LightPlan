@@ -54,10 +54,8 @@ extension EventForm {
     /// Ссылка на документ (веб `#docLink` + `askUrl`): без схемы — `https://`;
     /// вид — выбранный чипсом, иначе угаданный по адресу. Пустая — ничего.
     public mutating func addDocLink(_ raw: String, kind: DocKind?) {
-        var url = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !url.isEmpty else { return }
-        if url.range(of: "^https?://", options: [.regularExpression, .caseInsensitive]) == nil { url = "https://" + url }
-        docs.append(Attachment(source: .link, url: url, kind: kind ?? DocKind.guess(fileName: url)))
+        guard let d = Attachment.link(raw, kind: kind) else { return }
+        docs.append(d)
     }
 
     /// Крестик у документа. Файл на Диске не стирается: «Отмена» должна вернуть
@@ -65,6 +63,17 @@ extension EventForm {
     public mutating func removeDoc(at i: Int) {
         guard docs.indices.contains(i) else { return }
         docs.remove(at: i)
+    }
+}
+
+extension Attachment {
+    /// Документ-ссылка (веб `askUrl`): без схемы — `https://`; вид — выбранный, иначе
+    /// угаданный по адресу. Пустая строка — `nil`. Общий для формы и карточки организации.
+    public static func link(_ raw: String, kind: DocKind?) -> Attachment? {
+        var url = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return nil }
+        if url.range(of: "^https?://", options: [.regularExpression, .caseInsensitive]) == nil { url = "https://" + url }
+        return Attachment(source: .link, url: url, kind: kind ?? DocKind.guess(fileName: url))
     }
 }
 

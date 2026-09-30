@@ -28,7 +28,7 @@ struct SettingsChapterView: View {
             case .shoots: shoots
             case .alerts: foreign("set.feedback"); foreign("set.notify")
             case .places: places
-            case .store: moodboardRow; foreign("set.orgsDocs"); binRow
+            case .store: moodboardRow; orgsRow; binRow
             case .data: foreign("set.data"); foreign("set.icsImport"); foreign("cloud.title")
             case .locale: locale
             case .about: about
@@ -268,6 +268,15 @@ struct SettingsChapterView: View {
         }
         .buttonStyle(.plain)
         .shotNode("item.mb", text: t.t("set.moodboards"))
+    }
+
+    /// «Организации и документы» (веб `#orgsSetRow`): знак «документ», справа только шеврон; открывает список.
+    private var orgsRow: some View {
+        Button { withAnimation(overlaySlide) { app.openOrgs() } } label: {
+            SetItemRow(icon: "doc", title: t.t("set.orgsDocs"), value: "")
+        }
+        .buttonStyle(.plain)
+        .shotNode("item.orgs", text: t.t("set.orgsDocs"))
     }
 
     private var binRow: some View {

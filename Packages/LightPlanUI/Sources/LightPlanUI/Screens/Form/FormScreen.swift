@@ -503,10 +503,13 @@ struct FormScreen: View {
 }
 
 /// Выбор организации: существующие и «новая» строкой. Организация — отдельная
-/// запись с постоянным ключом (`docs/12`), её карточка и правка — итерация 28.
+/// запись с постоянным ключом (`docs/12`). Заведённая здесь остаётся в листе, чтобы
+/// можно было «Открыть карточку» и дозаполнить реквизиты, не уходя из формы (слово
+/// Алексея 4-3, итерация 28): быстрый ввод остаётся лёгким, а дозаполнить — рядом.
 struct OrgPickSheet: View {
     @Bindable var app: AppModel
     @State private var name = ""
+    @State private var cardOpen = false
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
 
@@ -519,7 +522,7 @@ struct OrgPickSheet: View {
                     ForEach(app.orgs) { o in
                         Button { choose(o) } label: {
                             HStack {
-                                Text(o.name).font(.system(size: 16)).foregroundStyle(pal.ink)
+                                Text(app.orgTitle(o)).font(.system(size: 16)).foregroundStyle(pal.ink)
                                 Spacer()
                                 if o.id == app.form?.orgId { Icon("check", size: 18, line: 2).foregroundStyle(pal.brass) }
                             }
@@ -538,6 +541,13 @@ struct OrgPickSheet: View {
                     .padding(15).frame(minHeight: 52)
                 }
                 if app.form?.orgId != nil {
+                    Button { cardOpen = true } label: {
+                        Text(t.t("org.openCard")).font(.system(size: 15, weight: .medium)).foregroundStyle(pal.brass)
+                            .frame(maxWidth: .infinity).frame(height: 48)
+                            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).shotNode("pick.openCard", text: t.t("org.openCard"))
                     Button(t.t("form.change")) { app.setFormOrg(nil); dismiss() }
                         .font(.system(size: 14)).foregroundStyle(pal.ink4)
                 }
@@ -545,12 +555,20 @@ struct OrgPickSheet: View {
             .padding(24)
         }
         .presentationDetents([.medium, .large])
+        .sheet(isPresented: $cardOpen, onDismiss: { if let id = app.form?.orgId { app.settleOrg(id) } }) {
+            if let id = app.form?.orgId {
+                OrgCardScreen(app: app, id: id, backTitle: t.t("nav.back"), canOpenShoot: false) { cardOpen = false }
+            }
+        }
     }
 
     private func choose(_ o: Org) { app.setFormOrg(o); dismiss() }
+
+    /// Новая организация — только имя; выбирается сразу, лист остаётся с кнопкой «Открыть карточку».
     private func addNew() {
         let v = name.trimmingCharacters(in: .whitespaces)
         guard !v.isEmpty else { return }
-        app.setFormOrg(app.addOrg(name: v)); dismiss()
+        app.setFormOrg(app.addOrg(name: v))
+        name = ""
     }
 }

@@ -10,7 +10,9 @@
     "light.inMoon": "«{name}» — луна над горизонтом {range}, освещена на {p}%.",
     "light.missMoon": "Луна над горизонтом {range} — ближайшая точка «{name}» мимо на {gap}. Сдвиньте, если луна важна.",
     "light.moonNone": "Луна в эти сутки не всходит.",
-    "card.wxNoData": "Данных о погоде пока нет: прогноз появится за 16 дней до съёмки."
+    "card.wxNoData": "Данных о погоде пока нет: прогноз появится за 16 дней до съёмки.",
+    "org.openCard": "Открыть карточку",
+    "org.shotBtn": "Снимок"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -23,7 +25,9 @@
     "light.inMoon": "“{name}” — the moon is up {range}, {p}% lit.",
     "light.missMoon": "Moon up {range} — the nearest stop, “{name}”, misses it by {gap}. Shift it if the moon matters.",
     "light.moonNone": "The moon does not rise this day.",
-    "card.wxNoData": "No weather data yet: the forecast appears 16 days before the shoot."
+    "card.wxNoData": "No weather data yet: the forecast appears 16 days before the shoot.",
+    "org.openCard": "Open company card",
+    "org.shotBtn": "Screenshot"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -36,7 +40,9 @@
     "light.inMoon": "«{name}»: la luna está sobre el horizonte {range}, iluminada al {p}%.",
     "light.missMoon": "Luna sobre el horizonte {range}: el punto más cercano, «{name}», queda fuera por {gap}. Muévalo si la luna importa.",
     "light.moonNone": "La luna no sale este día.",
-    "card.wxNoData": "Aún no hay datos del tiempo: el pronóstico aparece 16 días antes de la sesión."
+    "card.wxNoData": "Aún no hay datos del tiempo: el pronóstico aparece 16 días antes de la sesión.",
+    "org.openCard": "Abrir ficha",
+    "org.shotBtn": "Captura"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -49,7 +55,9 @@
     "light.inMoon": "「{name}」— 月は {range} に地平線の上、輝面 {p}%。",
     "light.missMoon": "月が出ているのは {range}。最も近い「{name}」は {gap} ずれています。月が大事なら時間を動かしてください。",
     "light.moonNone": "この日は月が昇りません。",
-    "card.wxNoData": "天気のデータはまだありません。予報は撮影の 16 日前から出ます。"
+    "card.wxNoData": "天気のデータはまだありません。予報は撮影の 16 日前から出ます。",
+    "org.openCard": "詳細を開く",
+    "org.shotBtn": "スクリーンショット"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -62,6 +70,8 @@
     "light.inMoon": "“{name}”——月亮在地平线上 {range}，亮面 {p}%。",
     "light.missMoon": "月亮在地平线上 {range}——最近的点“{name}”偏离 {gap}。若月亮重要，请调整时间。",
     "light.moonNone": "这一天月亮不升起。",
-    "card.wxNoData": "暂无天气数据：拍摄前 16 天会出现预报。"
+    "card.wxNoData": "暂无天气数据：拍摄前 16 天会出现预报。",
+    "org.openCard": "打开详情",
+    "org.shotBtn": "截图"
   }
 }
