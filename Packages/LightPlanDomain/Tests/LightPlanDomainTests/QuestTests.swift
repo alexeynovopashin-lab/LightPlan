@@ -236,6 +236,13 @@ import LightPlanDomain
         let two = "Первая https://x.org/beta/?ans=\(code) вторая https://x.org/beta/?ans=e30&r=zzz"
         guard case .answer(_, let id) = QuestParse.receive(two) else { Issue.record("не разобрал"); return }
         #expect(id == nil)
+        // Вплотную, через знак препинания: границей служит и он, не только пробел.
+        for sep in [";", ",", ")", "\n", " | "] {
+            guard case .answer(_, let near) = QuestParse.receive("https://x.org/beta/?ans=\(code)\(sep)https://x.org/beta/?r=zzz") else { Issue.record("не разобрал"); return }
+            #expect(near == nil, "разделитель «\(sep)»")
+        }
+        guard case .answer(_, let own) = QuestParse.receive("(https://x.org/beta/?ans=\(code)&r=k3x9), спасибо") else { Issue.record("не разобрал"); return }
+        #expect(own == "k3x9", "скобка и запятая вокруг своей ссылки не мешают")
         // Знак стоит до ответа в той же ссылке — годится.
         guard case .answer(_, let before) = QuestParse.receive("Вот https://x.org/beta/?r=k3x9&ans=\(code) спасибо") else { Issue.record("не разобрал"); return }
         #expect(before == "k3x9")

@@ -55,15 +55,17 @@ public enum QuestParse {
     }
 
     /// Знак записи `r`: тот же вид, что пропускает страница (`^[a-z0-9]{1,32}$`), чужое — отбрасывается.
-    /// Ищется только в той же ссылке, что и `ans` (участок без пробелов вокруг него): в сообщении бывают две ссылки,
-    /// и знак одной не должен достаться ответу другой (ревью GPT к faaca1a).
+    /// Ищется только в той же строке запроса, что и `ans`: участок из знаков `?`, `&`, `=`, букв, цифр, `_`, `-` вокруг
+    /// него. Пробел, `;`, `,`, `/`, `:` его обрывают, поэтому знак второй ссылки, даже вплотную, ответу первой не
+    /// достанется (ревью GPT к faaca1a и ee940f1).
     public static func recordId(in text: String) -> String? {
         guard let re = try? NSRegularExpression(pattern: #"[?&]ans=[A-Za-z0-9_-]+"#),
               let m = re.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let r = Range(m.range, in: text) else { return nil }
+        func inQuery(_ c: Character) -> Bool { (c.isASCII && (c.isLetter || c.isNumber)) || "?&=_-".contains(c) }
         var lo = r.lowerBound, hi = r.upperBound
-        while lo > text.startIndex, !text[text.index(before: lo)].isWhitespace { lo = text.index(before: lo) }
-        while hi < text.endIndex, !text[hi].isWhitespace { hi = text.index(after: hi) }
+        while lo > text.startIndex, inQuery(text[text.index(before: lo)]) { lo = text.index(before: lo) }
+        while hi < text.endIndex, inQuery(text[hi]) { hi = text.index(after: hi) }
         return firstMatch(#"[?&]r=([a-z0-9]{1,32})(?![A-Za-z0-9_-])"#, in: String(text[lo..<hi]))
     }
 
