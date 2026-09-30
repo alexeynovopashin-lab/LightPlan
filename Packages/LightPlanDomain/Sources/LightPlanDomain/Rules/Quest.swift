@@ -55,8 +55,16 @@ public enum QuestParse {
     }
 
     /// Знак записи `r`: тот же вид, что пропускает страница (`^[a-z0-9]{1,32}$`), чужое — отбрасывается.
+    /// Ищется только в той же ссылке, что и `ans` (участок без пробелов вокруг него): в сообщении бывают две ссылки,
+    /// и знак одной не должен достаться ответу другой (ревью GPT к faaca1a).
     public static func recordId(in text: String) -> String? {
-        firstMatch(#"[?&]r=([a-z0-9]{1,32})(?![A-Za-z0-9_-])"#, in: text)
+        guard let re = try? NSRegularExpression(pattern: #"[?&]ans=[A-Za-z0-9_-]+"#),
+              let m = re.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let r = Range(m.range, in: text) else { return nil }
+        var lo = r.lowerBound, hi = r.upperBound
+        while lo > text.startIndex, !text[text.index(before: lo)].isWhitespace { lo = text.index(before: lo) }
+        while hi < text.endIndex, !text[hi].isWhitespace { hi = text.index(after: hi) }
+        return firstMatch(#"[?&]r=([a-z0-9]{1,32})(?![A-Za-z0-9_-])"#, in: String(text[lo..<hi]))
     }
 
     /// Ссылка или вставленный текст → ответ. Один путь и для ссылки, и для вставки.
@@ -211,13 +219,28 @@ public enum QuestMerge {
         let block = parts.joined(separator: "\n\n")
 
         // Тот же ответ уже в заметках: второй блок не дописываем, расхождения тоже (они стоят под первым).
+        // Ответ, где нет ничего кроме имён пары, блока не даёт — тогда повтор узнаётся по абзацу расхождений.
+        let clashPart = clash.isEmpty ? "" : t("quest.clash") + "\n" + clash.joined(separator: "\n")
         let was = f.notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        let repeated = !block.isEmpty && was.contains(block)
+        let seen = block.isEmpty ? clashPart : block
+        let repeated = !seen.isEmpty && containsWhole(was, seen)
         if !repeated {
-            if !clash.isEmpty { parts.append(t("quest.clash") + "\n" + clash.joined(separator: "\n")) }
+            if !clashPart.isEmpty { parts.append(clashPart) }
             if !parts.isEmpty { f.notes = (was.isEmpty ? "" : was + "\n\n") + parts.joined(separator: "\n\n") }
         }
         return QuestReport(form: f, clash: clash, alreadyApplied: repeated, truncated: a.truncated)
+    }
+
+    /// `piece` стоит в `text` целыми абзацами: до него начало текста или пустая строка, после — конец или пустая строка.
+    /// Простой `contains` принял бы новый ответ «Х» за уже применённый «ХХ» (ревью GPT к faaca1a).
+    static func containsWhole(_ text: String, _ piece: String) -> Bool {
+        var from = text.startIndex
+        while let r = text.range(of: piece, range: from..<text.endIndex) {
+            let before = text[..<r.lowerBound], after = text[r.upperBound...]
+            if (before.isEmpty || before.hasSuffix("\n\n")) && (after.isEmpty || after.hasPrefix("\n\n")) { return true }
+            from = text.index(after: r.lowerBound)
+        }
+        return false
     }
 
     /// Веб `questDate`: `2027-06-15` → словами; не дата — как пришло. Несуществующее число (30 февраля) — тоже как

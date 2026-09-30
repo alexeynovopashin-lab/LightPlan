@@ -204,6 +204,46 @@ import LightPlanDomain
         #expect(!r.alreadyApplied, "не тот же блок — дописываем целиком, ничего не теряя")
     }
 
+    // Ревью GPT к faaca1a.
+
+    @Test func aShortAnswerIsNotMistakenForALongerOneAlreadyThere() {
+        let long = Self.apply(Self.answer(["w": "ХХ"]))
+        let short = Self.apply(Self.answer(["w": "Х"]), long.form)
+        #expect(!short.alreadyApplied, "«Х» — новый ответ, а не «ХХ» во второй раз")
+        #expect(short.form.notes == "Пожелания: ХХ\n\nПожелания: Х")
+        let again = Self.apply(Self.answer(["w": "Х"]), short.form)
+        #expect(again.alreadyApplied && again.form.notes == short.form.notes, "а теперь это уже повтор")
+    }
+
+    @Test func aBlockInsideALongerParagraphIsNotARepeat() {
+        let r = Self.apply(Self.answer(["w": "Х"]), QuestForm(notes: "Мои: Пожелания: Х и ещё"))
+        #expect(!r.alreadyApplied && r.form.notes.hasSuffix("\n\nПожелания: Х"))
+    }
+
+    @Test func aNameOnlyMismatchIsNotAppendedTwice() {
+        let a = Self.answer(["b": "Мария"])
+        let once = Self.apply(a, QuestForm(p1Name: "Анна"))
+        #expect(once.form.notes == "Не сходится с опросом:\nНевеста: Анна / Мария" && !once.alreadyApplied)
+        let twice = Self.apply(a, once.form)
+        #expect(twice.alreadyApplied && twice.form.notes == once.form.notes, "ответ из одного имени: повтор узнаётся по абзацу расхождений")
+        #expect(twice.clash == ["Невеста: Анна / Мария"], "показать расхождение подписью формы можно и на повторе")
+    }
+
+    @Test func recordIdComesFromTheSameLinkAsTheAnswer() throws {
+        let pair = try #require(QuestFixtures.links.first { $0.name == "pairOnly" })
+        let code = try #require(QuestParse.code(in: pair.url))
+        // Две ссылки в сообщении: знак второй не принадлежит ответу первой.
+        let two = "Первая https://x.org/beta/?ans=\(code) вторая https://x.org/beta/?ans=e30&r=zzz"
+        guard case .answer(_, let id) = QuestParse.receive(two) else { Issue.record("не разобрал"); return }
+        #expect(id == nil)
+        // Знак стоит до ответа в той же ссылке — годится.
+        guard case .answer(_, let before) = QuestParse.receive("Вот https://x.org/beta/?r=k3x9&ans=\(code) спасибо") else { Issue.record("не разобрал"); return }
+        #expect(before == "k3x9")
+        // Знак другой ссылки, что стоит раньше, тоже не в счёт.
+        guard case .answer(_, let other) = QuestParse.receive("https://x.org/beta/?r=aaa и https://x.org/beta/?ans=\(code)") else { Issue.record("не разобрал"); return }
+        #expect(other == nil)
+    }
+
     @Test func truncationIsReportedThroughApply() throws {
         let cut = try #require(QuestFixtures.links.first { $0.name == "cut601" })
         let r = Self.apply(QuestAnswer(values: cut.expected, truncated: cut.truncated))
