@@ -64,6 +64,19 @@ struct MoodboardAddStateTests {
         FileManager.default.temporaryDirectory.appendingPathComponent("lp-mbadd-" + UUID().uuidString, isDirectory: true)
     }
 
+    @Test func faceOfLinkWithItsPictureIsThePhotoAndOfBareLinkTheInscription() {
+        let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
+        let app = model(dir: dir)
+        RefImageStore(directory: dir).save(png(20, 20), as: "lk")
+        let pic = RefFrame(id: "lk", kind: .link, im: "lk", url: "https://example.org/a")
+        let bare = RefFrame(id: "bare", kind: .link, url: "https://example.org/b")
+        #expect(app.refFace(pic) == .photo("lk"))                                 // плитка полного экрана не прячет её за надписью
+        #expect(app.refFace(bare) == .link("https://example.org/b"))
+        #expect(app.refFace(RefFrame(id: "gone", kind: .img, im: "gone")) == .placeholder)
+        app.refImages = nil
+        #expect(app.refFace(pic) == .placeholder)                                 // без хранилища — штриховка
+    }
+
     @Test func photoSavedAsFileAndFrameInOpenFolder() {
         let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
         let app = model(dir: dir)

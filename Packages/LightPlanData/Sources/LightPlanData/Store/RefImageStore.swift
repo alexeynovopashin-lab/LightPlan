@@ -25,6 +25,16 @@ public struct RefImageStore: Sendable {
         url(name).map { FileManager.default.fileExists(atPath: $0.path) } ?? false
     }
 
+    /// Отпечаток файла — размер и время правки; пустой, пока файла нет. Кэш картинок держит его в ключе,
+    /// чтобы замена файла под тем же именем не показывала старую картинку (ревью GPT к d0535cd).
+    public func stamp(_ name: String) -> String? {
+        guard let u = url(name),
+              let a = try? FileManager.default.attributesOfItem(atPath: u.path),
+              let size = (a[.size] as? NSNumber)?.int64Value else { return nil }
+        let t = (a[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        return "\(size)-\(Int64(t * 1000))"
+    }
+
     public func read(_ name: String) -> Data? { url(name).flatMap { try? Data(contentsOf: $0) } }
 
     /// Записать; то же имя — заменить. Небезопасное имя — `false`.

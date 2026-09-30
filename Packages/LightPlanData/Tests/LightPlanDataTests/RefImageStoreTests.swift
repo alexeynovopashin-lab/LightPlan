@@ -71,6 +71,19 @@ struct RefImageStoreTests {
         #expect(s.image("junk", maxPixel: 100) == nil && s.image("junk", maxPixel: nil) == nil)
     }
 
+    @Test func stampChangesWhenTheFileIsReplacedUnderTheSameName() {
+        let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
+        let s = RefImageStore(directory: dir)
+        #expect(s.stamp("a") == nil)                                              // файла нет — отпечатка нет
+        s.save(Self.png(30, 20), as: "a")
+        let first = s.stamp("a")
+        #expect(first != nil && first == s.stamp("a"))
+        s.save(Self.png(60, 40), as: "a")
+        #expect(s.stamp("a") != first)                                            // другая картинка — другой ключ кэша
+        s.delete("a")
+        #expect(s.stamp("a") == nil && s.stamp("../a") == nil)
+    }
+
     @Test func pixelSizeOfImage() {
         let size = RefImageStore.pixelSize(of: Self.png(30, 20))
         #expect(size?.w == 30 && size?.h == 20)

@@ -153,12 +153,15 @@ public struct RefLibrary: Sendable, Hashable {
         return MergeUndo(from: boards[i], fromIndex: i, toId: toId, toItems: to.items, toMt: to.mt)
     }
 
-    /// Вернуть подборку на место, а целевой — прежние кадры. Целевую за эти секунды могли удалить —
-    /// тогда возвращается только исчезнувшая. Ответ — вернулась ли она.
+    /// Вернуть подборку на место, а у целевой — убрать то, что принесло слияние (кадры исчезнувшей,
+    /// которых у целевой не было). Правки за эти секунды — кадр, положенный в целевую, или снятый из
+    /// неё, — остаются (ревью GPT к d0535cd; веб возвращал старый список целиком и затирал их).
+    /// Целевую могли удалить — тогда возвращается только исчезнувшая. Ответ — вернулась ли она.
     @discardableResult
     public mutating func undoMerge(_ m: MergeUndo) -> Bool {
         if let i = boards.firstIndex(where: { $0.id == m.toId }) {
-            boards[i].items = m.toItems
+            let brought = Set(m.from.items).subtracting(m.toItems)
+            boards[i].items.removeAll { brought.contains($0) }
             boards[i].mt = m.toMt
         }
         guard !boards.contains(where: { $0.id == m.from.id }) else { return false }

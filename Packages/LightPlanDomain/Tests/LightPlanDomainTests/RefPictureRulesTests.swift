@@ -66,6 +66,18 @@ struct RefPictureRulesTests {
         #expect(lib.shots == before.shots)
     }
 
+    @Test func undoMergeKeepsEditsMadeToTheTargetInTheMeantime() {
+        var lib = library()
+        lib.shots.append(RefFrame(id: "n", im: "n"))
+        let memory = lib.mergeUndo("t2", into: "t1")!                 // t1: a, b; t2: b, c → t1: a, b, c
+        lib.merge("t2", into: "t1")
+        lib.put("n", into: "t1")                                      // за шесть секунд положили кадр в целевую
+        lib.take("a", from: "t1")                                     // и сняли другой
+        lib.undoMerge(memory)
+        #expect(lib.board("t1")?.items == ["b", "n"])                 // пришедшее «c» ушло, чужие правки целы
+        #expect(lib.board("t2")?.items == ["b", "c"])
+    }
+
     @Test func undoMergeKeepsTheOriginalBoardId() {
         var lib = library()
         let memory = lib.mergeUndo("t1", into: "t3")!

@@ -42,6 +42,11 @@ extension AppModel {
 
     func mbLibrary() -> RefLibrary { RefLibrary(extra: snapshot.extra) }
 
+    /// Чем рисуется кадр: файл на телефоне, надпись «сайт / хвост пути» или штриховка (шаг 5д).
+    func refFace(_ f: RefFrame) -> RefFrame.Face {
+        f.face(hasFile: { refImages?.exists($0) ?? false })
+    }
+
     /// Плитки ленты: съёмки с кадрами и по полке на включённый жанр.
     func mbFolders(_ lib: RefLibrary) -> [MbFolder] {
         Moodboard.folders(library: lib, sessions: sessions, genresOn: Set(Moodboard.enabledGenres(snapshot.genres).map(\.rawValue)))

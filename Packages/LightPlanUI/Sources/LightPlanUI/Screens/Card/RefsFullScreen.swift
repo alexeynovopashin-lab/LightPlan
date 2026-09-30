@@ -149,7 +149,7 @@ struct RefsFullScreen: View {
             case .viewer, .none: break
             }
         } label: {
-            if f.kind == .link, let u = f.url {
+            if case .link(let u) = app.refFace(f) {
                 linkTile(u, pal)
             } else {
                 RefPicture(frame: f, images: app.refImages, pal: pal)
