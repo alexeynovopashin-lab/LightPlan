@@ -219,6 +219,8 @@ public final class AppModel {
     var cardDocMessage: String?
     /// Полный экран референсов над карточкой (шаг 4, 27); `nil` — закрыт.
     var refsFull: RefsFullState?
+    /// Мудборд (28, шаг 5а): галерея, полка, поле поиска и выбранный чип — состояние руки, в запись не идёт.
+    var mb = MoodboardState()
     /// Режим «ползунков» (веб `#cardOrder`): блоки свёрнуты в строки перестановки.
     /// Закрытие карточки и переход к другой выводят из режима (шаг 5а, 26).
     var cardTuning = false
@@ -379,7 +381,7 @@ public final class AppModel {
             }
         }
         // Пустая жанровая папка на каждый включённый жанр — один раз, пишется сразу (веб `mbSeeded`).
-        if RefLibrary.seedGenreFolders(in: &snapshot.extra, genres: snapshot.genres.map(\.rawValue),
+        if RefLibrary.seedGenreFolders(in: &snapshot.extra, genres: Moodboard.enabledGenres(snapshot.genres).map(\.rawValue),
                                        newId: { UUID().uuidString.lowercased() },
                                        now: Date().timeIntervalSince1970 * 1000) {
             try? await store?.saveNow(snapshot)

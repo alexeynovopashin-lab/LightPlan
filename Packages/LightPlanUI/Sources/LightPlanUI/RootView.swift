@@ -64,6 +64,17 @@ private struct Shell: View {
                         .zIndex(1.5)
                 }
             }
+            // Галерея и полка мудборда (28) — слои поверх вкладок, `z-index 80` веба.
+            if app.mb.galleryOpen {
+                MoodboardGallery(app: app)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1.2)
+            }
+            if let g = app.mb.shelf {
+                MoodboardShelf(app: app, genre: g)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1.3)
+            }
             // Затемнение под листом места (`.scrim` веба, чёрный 0,55): лист
             // iOS 26 на неполной высоте экран под собой не затемняет.
             Color.black.opacity(app.placeSheetOpen ? 0.55 : 0)
@@ -77,7 +88,7 @@ private struct Shell: View {
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
         // из неё видно 84 − низ зоны, остальное уходит под полосу.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil {
+            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil && !app.mb.isOpen {
                 GeometryReader { geo in
                     TabBarView(tab: $app.tab, lexicon: app.lexicon)
                         .shotNode("tabbar")

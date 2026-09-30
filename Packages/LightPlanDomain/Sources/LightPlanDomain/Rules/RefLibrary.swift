@@ -130,6 +130,17 @@ public struct RefLibrary: Sendable, Hashable {
         return moved
     }
 
+    /// Новая папка в жанре — всегда со своим именем (веб `boardAddFolder`): безымянных
+    /// папок в одном жанре не отличить. Пустое имя — ничего не делает (веб `mbNewFolder`).
+    @discardableResult
+    public mutating func addFolder(genre: String, name: String, id: String, now: Double? = nil) -> RefBoard? {
+        let n = name.trimmingCharacters(in: .whitespaces)
+        guard !n.isEmpty, !genre.isEmpty else { return nil }
+        let b = RefBoard(id: id, kind: .tpl, genre: genre, name: n, mt: now)
+        boards.append(b)
+        return b
+    }
+
     // MARK: - Первый запуск
 
     /// Пустая жанровая папка на каждый включённый жанр, один раз (веб `mbSeeded`,

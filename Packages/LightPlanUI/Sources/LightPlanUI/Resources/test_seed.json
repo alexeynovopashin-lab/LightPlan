@@ -1894,6 +1894,57 @@
    "tags": [
     "details"
    ]
+  },
+  {
+   "id": "sh_mb_1",
+   "k": "link",
+   "url": "https://www.pinterest.com/pin/1001/",
+   "tags": [
+    "bride",
+    "couple"
+   ]
+  },
+  {
+   "id": "sh_mb_2",
+   "k": "link",
+   "url": "https://www.pinterest.com/pin/1002/",
+   "tags": [
+    "details"
+   ]
+  },
+  {
+   "id": "sh_mb_3",
+   "k": "link",
+   "url": "https://example.org/gallery/park-walk",
+   "tags": [
+    "walk",
+    "couple"
+   ]
+  },
+  {
+   "id": "sh_mb_4",
+   "k": "link",
+   "url": "https://www.pinterest.com/pin/1004/",
+   "tags": [
+    "bride"
+   ]
+  },
+  {
+   "id": "sh_mb_5",
+   "k": "link",
+   "url": "https://www.pinterest.com/pin/1005/",
+   "tags": [
+    "evening",
+    "couple"
+   ]
+  },
+  {
+   "id": "sh_mb_6",
+   "k": "link",
+   "url": "https://www.pinterest.com/pin/1006/",
+   "tags": [
+    "gathering"
+   ]
   }
  ],
  "boards": [
@@ -1917,6 +1968,51 @@
     "sh_r27_b",
     "sh_r27_c",
     "sh_r27_d"
+   ],
+   "name": null,
+   "cover": null
+  },
+  {
+   "id": "bd_mb_p1",
+   "kind": "tpl",
+   "genre": "portrait",
+   "items": [
+    "sh_mb_1",
+    "sh_mb_2",
+    "sh_mb_3"
+   ],
+   "name": null,
+   "cover": null
+  },
+  {
+   "id": "bd_mb_p2",
+   "kind": "tpl",
+   "genre": "portrait",
+   "items": [
+    "sh_mb_3",
+    "sh_mb_4"
+   ],
+   "name": "Женский портрет",
+   "cover": null
+  },
+  {
+   "id": "bd_mb_love",
+   "kind": "tpl",
+   "genre": "lovestory",
+   "items": [
+    "sh_mb_5"
+   ],
+   "name": null,
+   "cover": null
+  },
+  {
+   "id": "bd_mb_love_own",
+   "kind": "shoot",
+   "sid": "sd_sep_love",
+   "genre": "lovestory",
+   "items": [
+    "sh_mb_5",
+    "sh_mb_6"
    ],
    "name": null,
    "cover": null
