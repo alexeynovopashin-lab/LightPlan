@@ -228,6 +228,11 @@ public final class AppModel {
     var mb = MoodboardState()
     /// Организации (итерация 28, шаг 6): список, карточка, черновик новой.
     var org = OrgState()
+    /// Опросник клиенту (28, шаг 9): лист, вставка, строка под полем.
+    var quest = QuestState()
+    /// Ответы клиентов, что ждут сохранения записи (шаг 8); файл — в папке приложения.
+    var questDrafts = QuestDrafts()
+    var questDraftStore: QuestDraftStore?
     /// Режим «ползунков» (веб `#cardOrder`): блоки свёрнуты в строки перестановки.
     /// Закрытие карточки и переход к другой выводят из режима (шаг 5а, 26).
     var cardTuning = false
@@ -404,6 +409,14 @@ public final class AppModel {
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading())
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
+        // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
+        if let dir {
+            let qs = QuestDraftStore(directory: dir)
+            var drafts = qs.load()
+            if drafts.prune(now: Date()) { qs.save(drafts) }
+            model.questDraftStore = qs
+            model.questDrafts = drafts
+        }
         return model
     }
 

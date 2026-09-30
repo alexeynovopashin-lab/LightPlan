@@ -32870,6 +32870,41 @@
         }
       }
     },
+    "quest.cut" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ответ обрезан до {n} знаков"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "answer cut to {n} characters"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "respuesta recortada a {n} caracteres"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回答は{n}文字で切り詰められました"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回答已截断至{n}个字符"
+          }
+        }
+      }
+    },
     "quest.date" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -76,6 +76,7 @@ extension AppModel {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
         formIsDraft = false
         form = EventForm.editing(s, home: settings.currency)
+        reapplyQuestDraft(for: id)
     }
 
     /// Жанры, включённые в «Моих жанрах». Пустой список снимка — включены все (веб: «изначально включены все»).
@@ -176,6 +177,7 @@ extension AppModel {
         }
         draftTask?.cancel()
         if f.isNew { draftStore.save(nil) }
+        releaseQuestDraft(recordId: s.id, wasNew: f.isNew)
         persist()
         form = nil
         formIsDraft = false
