@@ -155,6 +155,9 @@ extension AppModel {
         var s = f.session(orgName: org?.name, and: lexicon.t("card.and"), studios: snapshot.studios,
                           spots: snapshot.spots, warning: formWishWarning(f), money: money,
                           homeCity: homeCityName, now: now())
+        // Номер, пропавший из записи при этой правке, уходит в её архив (веб `telRetire`).
+        let gone = retireSessionTels(s)
+        if !gone.isEmpty { s.telLog = gone }
         // Повтор: копии заводятся один раз, здесь, и дальше живут сами (веб `repMake`).
         var copies: [Session] = []
         if f.repeatOn, let rule = f.repeatRule {

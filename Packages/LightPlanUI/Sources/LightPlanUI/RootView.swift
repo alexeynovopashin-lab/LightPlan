@@ -35,7 +35,9 @@ public struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             // Ушли в фон — отложенная запись дописывается сейчас: система
             // может закрыть приложение, не дождавшись дебаунса.
-            if phase == .background, let app { Task { await app.flush() } }
+            // Открытая карточка организации сверяет номера и в фоне: закрытие может не наступить
+            // (ошибка веба 29 — ушедший номер писался только при «Назад»).
+            if phase == .background, let app { app.commitOrgTels(); Task { await app.flush() } }
         }
     }
 }
@@ -83,6 +85,12 @@ private struct Shell: View {
             // Организации (28, шаг 6): список из настроек и карточка поверх него.
             if app.org.listOpen {
                 OrgListScreen(app: app)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1.5)
+            }
+            // «Контакты» (28, шаг 7): слой из профиля настроек.
+            if app.org.contactsOpen {
+                ContactsScreen(app: app)
                     .transition(.move(edge: .trailing))
                     .zIndex(1.5)
             }

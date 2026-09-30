@@ -398,8 +398,8 @@ struct PlannerDayList: View {
 }
 
 /// Три действия дня (веб `#dayStates`) — в месяце, под списком. «Занять» —
-/// лист занятости на весь выбранный день (22); формы съёмки и встречи —
-/// итерации 23–24.
+/// лист занятости на весь выбранный день (22); «Съёмка» и «Встреча» открывают
+/// форму дня (28, шаг 7).
 struct PlannerDayStates: View {
     let f: PlannerFacts
     @Environment(\.colorScheme) private var scheme
@@ -419,7 +419,15 @@ struct PlannerDayStates: View {
     private func state(_ k: PlanGlyph.Kind, _ key: String, on: Bool, ink: Color, label: Color, weight: Int,
                        node: String, _ pal: Palette) -> some View {
         Button {
-            if k == .lock { f.app.openBlockSheet(day: f.app.planner.selected) }
+            let day = f.app.planner.selected
+            switch k {
+            case .lock: f.app.openBlockSheet(day: day)
+            // «Съёмка» — форма дня со временем от света; «Встреча» — та же форма в режиме встречи, 14:00
+            // («в кафе идут к двум», не свет; веб `#planMeet`).
+            case .add: f.app.openForm(day: day)
+            case .meet: f.app.openForm(day: day, start: 14 * 60, fromLight: false, mode: .meet)
+            default: break
+            }
         } label: {
             VStack(spacing: 2) {
                 PlanGlyph(kind: k)

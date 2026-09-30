@@ -21,8 +21,12 @@ struct OrgState: Equatable {
     var shelfKind: DocKind?
     /// Слово в «Назад» списка.
     var backKey = "nav.settings"
+    /// Открыт ли экран «Контакты» (настройки → профиль): слой стоит рядом со списком организаций.
+    var contactsOpen = false
+    /// Номера открытой карточки до правки — по ним при закрытии видно, какой ушёл (веб `orgTelSnap`).
+    var telSnap: [PhoneBook.Tel] = []
 
-    var isOpen: Bool { listOpen || cardId != nil }
+    var isOpen: Bool { listOpen || cardId != nil || contactsOpen }
 }
 
 extension AppModel {
@@ -46,20 +50,24 @@ extension AppModel {
         let o = Org(id: Self.newRecordId(now()))
         org.draft = o
         org.docKind = nil
+        org.telSnap = []
         org.cardId = o.id
     }
 
     func openOrgCard(id: String) {
-        guard orgRecord(id) != nil else { return }
+        guard let o = orgRecord(id) else { return }
         org.docKind = nil
+        org.telSnap = PhoneBook.tels(of: o, country: telCountry)
         org.cardId = id
     }
 
     /// «Назад» из карточки: пустая организация без съёмок не остаётся (ошибка веба 24).
     func closeOrgCard() {
+        commitOrgTels()
         if let id = org.cardId { settleOrg(id) }
         org.cardId = nil
         org.docKind = nil
+        org.telSnap = []
     }
 
     /// Организация по ключу: из данных или черновик.
@@ -132,7 +140,7 @@ extension AppModel {
         bury(id, now: now())
         dropFormOrg(id)
         persist()
-        if org.cardId == id { org.cardId = nil; org.docKind = nil }
+        if org.cardId == id { org.cardId = nil; org.docKind = nil; org.telSnap = [] }
     }
 
     /// Тап по съёмке организации: карточка организации и список закрываются, открывается

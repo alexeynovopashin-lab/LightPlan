@@ -38,6 +38,8 @@ struct CardScreen: View {
                         CardStack(app: app, s: s, pal: pal) { sheet(pal, phase, ctx.date) }
                         // Пожелание к небу не сбудется — строка под листом.
                         CardWishMissed(app: app, s: s, phase: phase, pal: pal)
+                        // Встреча кончается решением: «Назначить съёмку» или пометка, что съёмка назначена (28, шаг 7).
+                        CardGrow(app: app, s: s, pal: pal)
                         acts(pal)
                     }
                     .padding(.horizontal, 24)

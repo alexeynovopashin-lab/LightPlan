@@ -44,7 +44,7 @@ struct SettingsChapterView: View {
         SetNote(text: t.t("set.myCityNote"))
         // «Мой телефон», «ID приложения», «Прежние ID» — итерация 23; контакты — 28.
         ProfilePhoneSection(app: app)
-        foreign("set.contacts")
+        contactsRow
     }
 
     // MARK: - Вид
@@ -277,6 +277,16 @@ struct SettingsChapterView: View {
         }
         .buttonStyle(.plain)
         .shotNode("item.orgs", text: t.t("set.orgsDocs"))
+    }
+
+    /// «Контакты» (веб `#phonesRow`): справа число номеров или «нет», под строкой пояснение.
+    @ViewBuilder private var contactsRow: some View {
+        Button { withAnimation(overlaySlide) { app.openContacts() } } label: {
+            SetItemRow(icon: nil, title: t.t("set.contacts"), value: app.contactsValue)
+        }
+        .buttonStyle(.plain)
+        .shotNode("item.contacts", text: app.contactsValue)
+        SetNote(text: t.t("set.contactsNote"))
     }
 
     private var binRow: some View {
