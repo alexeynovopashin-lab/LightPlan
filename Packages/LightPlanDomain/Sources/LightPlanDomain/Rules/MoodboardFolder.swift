@@ -104,7 +104,7 @@ public enum MbFolderView {
     }
 
     /// Ссылка без картинки — плитка-надпись «сайт / хвост пути» (веб `k === "link" && !im`).
-    public static func isBareLink(_ f: RefFrame) -> Bool { f.kind == .link && f.im == nil }
+    public static func isBareLink(_ f: RefFrame) -> Bool { f.kind == .link && (f.im ?? "").isEmpty }
 
     /// Кадры просмотрщика: только картинки, в порядке сетки на экране (веб `imgList`).
     public static func viewerList(_ shown: [RefFrame]) -> [RefFrame] { shown.filter(\.isViewable) }

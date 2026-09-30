@@ -111,6 +111,13 @@ struct MoodboardFolderTests {
         #expect(!MbFolderView.isBareLink(linkWithPic))
     }
 
+    /// Ревью GPT к e86c946: у веба `!im` охватывает и пустую строку — ссылка с `im: ""` тоже плитка-надпись.
+    @Test func linkWithEmptyImageNameIsStillBareLink() {
+        let empty = RefFrame(id: "e", kind: .link, im: "", url: "https://a.b/c")
+        #expect(MbFolderView.isBareLink(empty))
+        #expect(MbFolderView.tileHeight(empty, width: 158) == 158)
+    }
+
     @Test func viewerListIsPicturesInScreenOrder() {
         let r = MbFolderView.shown(list(), tag: nil, query: "", sort: 1, tagName: name)
         #expect(ids(MbFolderView.viewerList(r)) == ["e", "d", "b"])
