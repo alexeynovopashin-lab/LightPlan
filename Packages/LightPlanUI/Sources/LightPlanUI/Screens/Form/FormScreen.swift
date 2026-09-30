@@ -541,7 +541,7 @@ struct OrgPickSheet: View {
                     .padding(15).frame(minHeight: 52)
                 }
                 if app.form?.orgId != nil {
-                    Button { cardOpen = true } label: {
+                    Button { app.org.docKind = nil; cardOpen = true } label: {
                         Text(t.t("org.openCard")).font(.system(size: 15, weight: .medium)).foregroundStyle(pal.brass)
                             .frame(maxWidth: .infinity).frame(height: 48)
                             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))

@@ -51,8 +51,6 @@ struct OrgCardScreen: View {
         .scrollIndicators(.hidden)
         .background(pal.surface.ignoresSafeArea())
         .shotNode("org.card", text: o.name)
-        // Вид бумаги — на одну карточку: из листа формы она открывается без `openOrgCard`.
-        .onAppear { app.org.docKind = nil }
         .sheet(isPresented: $askingLink) {
             AskTextSheet(title: t.t("org.docLinkAsk"), ok: t.t("ask.ok"), cancel: t.t("ask.cancel")) { url in
                 askingLink = false
