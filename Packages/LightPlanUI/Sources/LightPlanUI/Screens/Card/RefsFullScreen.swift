@@ -152,7 +152,7 @@ struct RefsFullScreen: View {
             if f.kind == .link, let u = f.url {
                 linkTile(u, pal)
             } else {
-                RefPlaceholder(pal: pal)
+                RefPicture(frame: f, images: app.refImages, pal: pal)
             }
         }
         .buttonStyle(.plain)
@@ -186,6 +186,8 @@ struct RefViewerSource {
     var pager: RefPager?
     var swipe: (Double, Double) -> Void
     var close: () -> Void
+    /// Только в папке мудборда: строка тегов внизу — дверь в лист кадра (веб `refViewEdit`); иначе подпись.
+    var editTags: ((String) -> Void)?
 }
 
 struct RefViewerLayer: View {
@@ -219,7 +221,7 @@ struct RefViewerLayer: View {
             let open = shown && !shrinking
             ZStack {
                 pal.overlay2.opacity(open ? 1 : 0).ignoresSafeArea()
-                RefPlaceholder(pal: pal, radius: open ? 0 : 9)
+                RefPicture(frame: frame, images: app.refImages, pal: pal, radius: open ? 0 : 9, original: true)
                     .frame(width: rect.width, height: rect.height)
                     .scaleEffect(scale * dragScale * (shrinking ? 0.82 : 1))
                     .offset(x: rect.midX - full.midX + drag.width * 0.9 + pan.width,
@@ -270,13 +272,7 @@ struct RefViewerLayer: View {
                 .ignoresSafeArea(edges: .top))
             Spacer()
             HStack(spacing: 10) {
-                HStack(spacing: 8) {
-                    ForEach(frame?.tags ?? [], id: \.self) { code in
-                        Text(tagName(code)).font(webFont(11.5)).foregroundStyle(.white)
-                            .padding(.horizontal, 11).padding(.vertical, 6)
-                            .background(Capsule().fill(.white.opacity(0.14)))
-                    }
-                }
+                tagRow(frame)
                 Spacer(minLength: 0)
                 if (source.pager?.count ?? 0) >= 2 {
                     Text(t.t("mb.viewerHint")).font(webFont(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
@@ -287,6 +283,32 @@ struct RefViewerLayer: View {
                 .ignoresSafeArea(edges: .bottom))
         }
         .transition(.opacity)
+    }
+
+    /// Чипы тегов кадра; с `editTags` вся строка нажимается и открывает лист кадра, у кадра без тегов
+    /// на её месте «+ тег» (веб `renderRvBars`).
+    @ViewBuilder private func tagRow(_ frame: RefFrame?) -> some View {
+        let chips = RefViewerTags.chips(frame?.tags ?? [], editable: source.editTags != nil)
+        let row = HStack(spacing: 8) {
+            ForEach(Array(chips.enumerated()), id: \.offset) { _, chip in
+                switch chip {
+                case .tag(let code):
+                    Text(tagName(code)).font(webFont(11.5)).foregroundStyle(.white)
+                        .padding(.horizontal, 11).padding(.vertical, 6)
+                        .background(Capsule().fill(.white.opacity(0.14)))
+                case .add:
+                    Text(t.t("mb.addTag")).font(webFont(11.5)).foregroundStyle(.white.opacity(0.82))
+                        .padding(.horizontal, 11).padding(.vertical, 6)
+                        .overlay(Capsule().strokeBorder(.white.opacity(0.34), lineWidth: 1))
+                }
+            }
+        }
+        if let edit = source.editTags, let id = source.frameId, !chips.isEmpty {
+            Button { edit(id) } label: { row.contentShape(Rectangle()) }
+                .buttonStyle(.plain).shotNode("refs.viewer.tags")
+        } else {
+            row
+        }
     }
 
     private func tagName(_ code: String) -> String {

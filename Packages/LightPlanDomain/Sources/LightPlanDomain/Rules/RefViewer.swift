@@ -195,3 +195,18 @@ public enum RefLink {
         return p.isEmpty ? host : String(p.prefix(42))
     }
 }
+
+/// Строка тегов внизу просмотрщика (веб `renderRvBars`): теги кадра; там, где их можно править
+/// (папка мудборда), она нажимается, а у кадра без тегов стоит «+ тег» — иначе нажимать было бы не
+/// на что. Где править нельзя, остаётся подписью, и пустая строка не рисуется.
+public enum RefViewerTags {
+    public enum Chip: Equatable, Sendable {
+        case tag(String)
+        case add
+    }
+
+    public static func chips(_ tags: [String], editable: Bool) -> [Chip] {
+        if !tags.isEmpty { return tags.map(Chip.tag) }
+        return editable ? [.add] : []
+    }
+}

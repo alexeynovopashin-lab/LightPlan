@@ -205,6 +205,38 @@ struct MoodboardSheetsStateTests {
         #expect(lib(app).board("tpl")?.items == ["d", "a"])
     }
 
+    @Test func mergeOffersUndoAndTakingItBringsTheBoardAndOldFramesBack() {
+        let app = model()
+        var extra = app.snapshot.extra
+        var l = lib(app)
+        l.boards.append(RefBoard(id: "t2", kind: .tpl, genre: "wedding", items: ["a"], name: "На море"))
+        l.write(into: &extra); app.snapshot.extra = extra
+        let before = lib(app).boards
+        app.mbConfirmMerge(from: "t2", into: "tpl")
+        #expect(app.undo != nil && app.undo?.text.contains("На море") == false)   // в подписи — целевая, не исчезнувшая
+        #expect(lib(app).board("t2") == nil && lib(app).board("tpl")?.items == ["d", "a"])
+        app.takeUndo()
+        #expect(lib(app).boards == before && app.undo == nil)
+    }
+
+    @Test func mergeOfAlreadyPresentFramesSaysSoAndStillOffersUndo() {
+        let app = model()
+        var extra = app.snapshot.extra
+        var l = lib(app)
+        l.boards.append(RefBoard(id: "t2", kind: .tpl, genre: "wedding", items: ["d"], name: "Копия"))   // «d» уже в жанровой
+        l.write(into: &extra); app.snapshot.extra = extra
+        app.mbConfirmMerge(from: "t2", into: "tpl")
+        #expect(app.undo?.text == app.lexicon.t("mb.mergedIntoNone", ["name": app.mbBoardTitle(lib(app).board("tpl")!)]))
+        app.takeUndo()
+        #expect(lib(app).board("t2")?.items == ["d"])
+    }
+
+    @Test func tagsRowOfViewerOpensTheFrameSheetOverTheView() {
+        let app = model(); app.openMbFolder(boardId: "sh")
+        app.openMbItem(shot: "b", overView: true)
+        #expect(app.mb.sheet == .item(shot: "b", board: "sh", overView: true))
+    }
+
     @Test func menuSheetOfShootFolderHasNoNewFolderAndNoMerge() {
         let app = model()
         let l = lib(app)

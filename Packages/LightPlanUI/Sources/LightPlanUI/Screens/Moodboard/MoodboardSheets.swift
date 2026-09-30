@@ -363,7 +363,7 @@ private struct MbCoverSheet: View {
                 .buttonStyle(.plain).shotNode("mbs.cover.auto", text: cur == nil ? "on" : "off")
                 ForEach(pics, id: \.id) { f in
                     Button { app.mbSetCover(f.id, of: boardId) } label: {
-                        RefPlaceholder(pal: pal, radius: 10).aspectRatio(1, contentMode: .fit)
+                        RefPicture(frame: f, images: app.refImages, pal: pal, radius: 10).aspectRatio(1, contentMode: .fit)
                             .overlay(alignment: .topTrailing) { if cur == f.id { tick(pal) } }
                     }
                     .buttonStyle(.plain).shotNode("mbs.cover.\(f.id)")

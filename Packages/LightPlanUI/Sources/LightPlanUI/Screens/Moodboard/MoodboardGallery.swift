@@ -171,7 +171,7 @@ struct MoodboardGallery: View {
                     .aspectRatio(1, contentMode: .fit)
                     .background(pal.sheet, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                 } else {
-                    RefPlaceholder(pal: pal).aspectRatio(1, contentMode: .fit)
+                    RefPicture(frame: fr, images: app.refImages, pal: pal).aspectRatio(1, contentMode: .fit)
                 }
             }
             .contentShape(Rectangle())

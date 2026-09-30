@@ -682,6 +682,8 @@ extension AppModel {
             // Место могли удалить за эти секунды — возвращаем только живые.
             let live = Set(snapshot.spots.map(\.id))
             setMapRoute(ids.filter(live.contains))
+        case .merge(let m):
+            mbEdit { lib, _ in lib.undoMerge(m) }
         }
     }
 

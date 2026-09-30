@@ -136,6 +136,36 @@ public struct RefLibrary: Sendable, Hashable {
         return moved
     }
 
+    /// Что помнит «Вернуть» после «Объединить» (веб `mbMergeBoards`): сама исчезающая подборка,
+    /// её место в списке и то, чем был `to.items`. Воскрешать по новому `id` нельзя — оборвались бы
+    /// ссылки на старый.
+    public struct MergeUndo: Sendable, Hashable {
+        public var from: RefBoard
+        public var fromIndex: Int
+        public var toId: String
+        public var toItems: [String]
+        public var toMt: Double?
+    }
+
+    /// Слепок для отката; снимать до `merge`. Нет обеих подборок или они одна — `nil`.
+    public func mergeUndo(_ fromId: String, into toId: String) -> MergeUndo? {
+        guard fromId != toId, let i = boards.firstIndex(where: { $0.id == fromId }), let to = board(toId) else { return nil }
+        return MergeUndo(from: boards[i], fromIndex: i, toId: toId, toItems: to.items, toMt: to.mt)
+    }
+
+    /// Вернуть подборку на место, а целевой — прежние кадры. Целевую за эти секунды могли удалить —
+    /// тогда возвращается только исчезнувшая. Ответ — вернулась ли она.
+    @discardableResult
+    public mutating func undoMerge(_ m: MergeUndo) -> Bool {
+        if let i = boards.firstIndex(where: { $0.id == m.toId }) {
+            boards[i].items = m.toItems
+            boards[i].mt = m.toMt
+        }
+        guard !boards.contains(where: { $0.id == m.from.id }) else { return false }
+        boards.insert(m.from, at: min(m.fromIndex, boards.count))
+        return true
+    }
+
     /// Новая папка в жанре — всегда со своим именем (веб `boardAddFolder`): безымянных
     /// папок в одном жанре не отличить. Пустое имя — ничего не делает (веб `mbNewFolder`).
     @discardableResult

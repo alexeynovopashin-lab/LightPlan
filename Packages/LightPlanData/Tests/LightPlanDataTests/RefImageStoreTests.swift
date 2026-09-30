@@ -46,6 +46,31 @@ struct RefImageStoreTests {
         #expect(siblings == ["img"] && s.names().isEmpty)
     }
 
+    @Test func imageIsShrunkToTheTileSideAndNeverGrown() {
+        let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
+        let s = RefImageStore(directory: dir)
+        s.save(Self.png(400, 200), as: "big")
+        s.save(Self.png(30, 20), as: "small")
+        let tile = s.image("big", maxPixel: 100)
+        #expect(tile?.width == 100 && tile?.height == 50)                         // длинная сторона — 100, пропорции целы
+        let whole = s.image("big", maxPixel: nil)
+        #expect(whole?.width == 400 && whole?.height == 200)                      // просмотрщик берёт оригинал
+        let tiny = s.image("small", maxPixel: 640)
+        #expect(tiny?.width == 30 && tiny?.height == 20)                          // меньше плитки — не растягиваем
+    }
+
+    @Test func imageAppliesTheExifTurnAndAnswersNilWithoutAFile() {
+        let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
+        let s = RefImageStore(directory: dir)
+        s.save(Self.png(30, 20, orientation: 6), as: "side")
+        let img = s.image("side", maxPixel: nil)
+        #expect(img?.width == 20 && img?.height == 30)                            // лежал боком, показывается прямо
+        #expect(s.image("nope", maxPixel: 100) == nil)
+        #expect(s.image("../x", maxPixel: 100) == nil)
+        s.save(Data([1, 2, 3]), as: "junk")
+        #expect(s.image("junk", maxPixel: 100) == nil && s.image("junk", maxPixel: nil) == nil)
+    }
+
     @Test func pixelSizeOfImage() {
         let size = RefImageStore.pixelSize(of: Self.png(30, 20))
         #expect(size?.w == 30 && size?.h == 20)

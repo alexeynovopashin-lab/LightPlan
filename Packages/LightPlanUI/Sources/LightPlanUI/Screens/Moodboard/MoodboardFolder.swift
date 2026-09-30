@@ -35,7 +35,7 @@ struct MoodboardFolder: View {
         if let sc = app.mbFolderScene(lib) {
             ZStack {
                 content(sc, pal)
-                if app.mb.pager != nil { RefViewerLayer(app: app, source: viewerSource(sc), tiles: tiles) }
+                if app.mb.pager != nil { RefViewerLayer(app: app, source: viewerSource(sc, lib), tiles: tiles) }
             }
             .coordinateSpace(name: "mbf")
             .background(pal.surface.ignoresSafeArea())
@@ -45,12 +45,14 @@ struct MoodboardFolder: View {
         }
     }
 
-    private func viewerSource(_ sc: MbFolderScene) -> RefViewerSource {
+    private func viewerSource(_ sc: MbFolderScene, _ lib: RefLibrary) -> RefViewerSource {
         let id = app.mbViewerFrameId
-        return RefViewerSource(frameId: id, frame: id.flatMap { id in sc.list.first { $0.id == id } },
+        // Тег могли снять из листа поверх кадра: при фильтре по нему кадра нет в сетке, но он в фонде.
+        return RefViewerSource(frameId: id, frame: id.flatMap { id in sc.list.first { $0.id == id } ?? lib.shot(id) },
                                pager: app.mb.pager,
                                swipe: { dx, dy in app.mbViewerSwipe(dx: dx, dy: dy) },
-                               close: { app.closeMbViewer() })
+                               close: { app.closeMbViewer() },
+                               editTags: { app.openMbItem(shot: $0, overView: true) })
     }
 
     // MARK: полотно
@@ -317,7 +319,7 @@ struct MoodboardFolder: View {
         // Удержание 0,42 с — лист кадра; сдвиг больше 8 pt его отменяет (веб `MB_HOLD`). В выборе — только отметка.
         return ZStack(alignment: .topTrailing) {
             if MbFolderView.isBareLink(f), let u = f.url { linkTile(u, pal) }
-            else { RefPlaceholder(pal: pal, radius: 10).opacity(picked ? 0.55 : 1) }
+            else { RefPicture(frame: f, images: app.refImages, pal: pal, radius: 10).opacity(picked ? 0.55 : 1) }
             if picked { check(pal) }
         }
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))

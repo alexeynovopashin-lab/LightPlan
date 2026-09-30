@@ -45,6 +45,27 @@ public struct RefImageStore: Sendable {
         ((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []).sorted()
     }
 
+    /// Картинка файла с поворотом из EXIF; `maxPixel` — длинная сторона, до которой её уменьшить
+    /// при чтении (плитке не нужен оригинал: он в десятки раз больше по памяти). `nil` — целиком,
+    /// для просмотрщика. Нет файла или он не картинка — `nil`. Синхронно: звать не с главного потока.
+    public func image(_ name: String, maxPixel: Int?) -> CGImage? {
+        guard let u = url(name), let src = CGImageSourceCreateWithURL(u as CFURL, nil) else { return nil }
+        var side = maxPixel ?? 0
+        if side <= 0 {
+            guard let p = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+                  let w = (p[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,
+                  let h = (p[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue else { return nil }
+            side = max(w, h)
+        }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: side,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary)
+    }
+
     /// Размеры в пикселях с учётом поворота из EXIF (снимок с телефона лежит боком, а показывается прямо).
     public static func pixelSize(of data: Data) -> (w: Double, h: Double)? {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),

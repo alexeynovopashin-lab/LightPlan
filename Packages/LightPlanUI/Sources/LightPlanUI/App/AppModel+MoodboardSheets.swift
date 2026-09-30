@@ -54,9 +54,9 @@ extension AppModel {
     /// Обложка папки: лист есть, только когда в папке есть кадры (веб: долгий тап по обложке).
     func openMbCover() { if let id = mb.folder { mb.sheet = .cover(id) } }
 
-    func openMbItem(shot: String) {
+    func openMbItem(shot: String, overView: Bool = false) {
         guard let board = mb.folder else { return }
-        mb.sheet = .item(shot: shot, board: board, overView: false)
+        mb.sheet = .item(shot: shot, board: board, overView: overView)
     }
 
     // MARK: чтение
@@ -128,9 +128,16 @@ extension AppModel {
     /// «Объединить с…» после подтверждения: стоим внутри исчезающей подборки — выходим из неё до слияния
     /// (веб `mbMergeBoards`).
     func mbConfirmMerge(from: String, into: String) {
+        let memory = mbLibrary().mergeUndo(from, into: into)
         if mb.folder == from { closeFolderNoPrune() }
-        mbMerge(from, into: into)
+        let moved = mbMerge(from, into: into)
         mb.sheet = nil
+        // Полоса «Вернуть» на 6 секунд (веб `showUndo(..., "merge")`): подборка и прежние кадры целевой.
+        guard let memory, let to = mbLibrary().board(into) else { return }
+        let name = mbBoardTitle(to)
+        let text = moved.isEmpty ? lexicon.t("mb.mergedIntoNone", ["name": name])
+                                 : lexicon.t("mb.mergedInto", ["n": lexicon.count("unit.frame", moved.count), "name": name])
+        undo = UndoOffer(what: .merge(memory), text: text)
     }
 
     /// «Удалить подборку» из карточки (веб `mbBoardDel`): из папки выходим до удаления.

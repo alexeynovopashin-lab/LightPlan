@@ -28,9 +28,30 @@ public struct RefFrame: Sendable, Hashable {
         self.tags = tags; self.w = w; self.h = h; self.own = own; self.mt = mt; self.extra = extra
     }
 
-    /// Открывается в просмотрщике: картинка с именем блоба или путём в облаке
-    /// (веб: кадр без `im` и `path` не открывается, ссылка — в браузер).
-    public var isViewable: Bool { kind == .img && (im != nil || path != nil) }
+    /// Открывается в просмотрщике (веб `openRefAt`): ссылка без своей картинки — в браузер;
+    /// иначе нужно непустое имя блоба `im` или путь в облаке `path`. Пустая строка — не имя
+    /// (веб проверяет `!r.im`); ссылка со своей картинкой (`og:image`) открывается как кадр.
+    public var isViewable: Bool {
+        let hasIm = !(im ?? "").isEmpty
+        if kind == .link && !hasIm { return false }
+        return hasIm || !(path ?? "").isEmpty
+    }
+
+    /// Чем плитка рисует кадр (итерация 28, шаг 5д): файл картинки, если он лежит на телефоне;
+    /// ссылка без картинки — надпись «сайт / хвост пути»; иначе штриховка.
+    public enum Face: Sendable, Hashable {
+        case photo(String)
+        case link(String)
+        case placeholder
+    }
+
+    public func face(hasFile: (String) -> Bool) -> Face {
+        if let im, !im.isEmpty {
+            return hasFile(im) ? .photo(im) : .placeholder
+        }
+        if kind == .link, let url, !url.isEmpty { return .link(url) }
+        return .placeholder
+    }
 }
 
 /// Подборка (веб `boards[]`): `shoot` — съёмки `sid`, `tpl` — папка набора жанра.

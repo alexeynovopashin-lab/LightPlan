@@ -102,6 +102,8 @@ public struct UndoOffer: Equatable, Sendable {
         case block(Block, index: Int)
         /// Снятый черновик маршрута «Карты» (24а): id по порядку.
         case route(ids: [String])
+        /// «Объединить» подборки мудборда (28, 5д): исчезнувшая подборка и прежние кадры целевой.
+        case merge(RefLibrary.MergeUndo)
     }
     public let what: What
     public let text: String
