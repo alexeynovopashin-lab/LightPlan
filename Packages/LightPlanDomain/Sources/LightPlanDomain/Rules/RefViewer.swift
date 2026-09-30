@@ -171,7 +171,8 @@ public enum RefColumns {
         for n in 0...heights.count {
             if n > 0 { acc += heights[n - 1] }
             let gap = abs(acc - (total - acc))
-            if gap < bestGap { bestGap = gap; best = n }
+            // При равенстве колонка шире: так делит `column-count` (11 равных плиток — 6 и 5, не 5 и 6).
+            if gap <= bestGap { bestGap = gap; best = n }
         }
         return best
     }

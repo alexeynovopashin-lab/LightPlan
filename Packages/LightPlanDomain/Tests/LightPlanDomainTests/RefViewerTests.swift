@@ -111,6 +111,8 @@ struct RefViewerTests {
     @Test func columnsSplitWhereHeightsAreClosest() {
         #expect(RefColumns.firstColumnCount(heights: [100, 100, 100, 100]) == 2)
         #expect(RefColumns.firstColumnCount(heights: [300, 100, 100, 100]) == 1)
+        // Замер пары 28: десять кадров и «+» одной высоты `column-count` делит 6 и 5, а не 5 и 6.
+        #expect(RefColumns.firstColumnCount(heights: Array(repeating: 177, count: 11)) == 6)
         #expect(RefColumns.firstColumnCount(heights: [100]) == 1 || RefColumns.firstColumnCount(heights: [100]) == 0)
         #expect(RefColumns.firstColumnCount(heights: []) == 0)
         #expect(RefColumns.height(w: 200, h: 300, width: 100) == 150)
