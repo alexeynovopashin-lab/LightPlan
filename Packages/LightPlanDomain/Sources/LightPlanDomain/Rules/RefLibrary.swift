@@ -153,19 +153,23 @@ public struct RefLibrary: Sendable, Hashable {
         return MergeUndo(from: boards[i], fromIndex: i, toId: toId, toItems: to.items, toMt: to.mt)
     }
 
+    /// Откат — тоже правка: с `now` отметка `mt` у обеих подборок становится свежей, иначе другое
+    /// устройство со слиянием по `mt` оставило бы у себя результат слияния (ревью GPT ко 8786b57).
     /// Вернуть подборку на место, а у целевой — убрать то, что принесло слияние (кадры исчезнувшей,
     /// которых у целевой не было). Правки за эти секунды — кадр, положенный в целевую, или снятый из
     /// неё, — остаются (ревью GPT к d0535cd; веб возвращал старый список целиком и затирал их).
     /// Целевую могли удалить — тогда возвращается только исчезнувшая. Ответ — вернулась ли она.
     @discardableResult
-    public mutating func undoMerge(_ m: MergeUndo) -> Bool {
+    public mutating func undoMerge(_ m: MergeUndo, now: Double? = nil) -> Bool {
         if let i = boards.firstIndex(where: { $0.id == m.toId }) {
             let brought = Set(m.from.items).subtracting(m.toItems)
             boards[i].items.removeAll { brought.contains($0) }
-            boards[i].mt = m.toMt
+            if let now { boards[i].mt = now }
         }
         guard !boards.contains(where: { $0.id == m.from.id }) else { return false }
-        boards.insert(m.from, at: min(m.fromIndex, boards.count))
+        var back = m.from
+        if let now { back.mt = now }
+        boards.insert(back, at: min(m.fromIndex, boards.count))
         return true
     }
 

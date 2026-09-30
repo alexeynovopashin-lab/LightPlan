@@ -216,7 +216,9 @@ struct MoodboardSheetsStateTests {
         #expect(app.undo != nil && app.undo?.text.contains("На море") == false)   // в подписи — целевая, не исчезнувшая
         #expect(lib(app).board("t2") == nil && lib(app).board("tpl")?.items == ["d", "a"])
         app.takeUndo()
-        #expect(lib(app).boards == before && app.undo == nil)
+        let shape = { (bs: [RefBoard]) in bs.map { [$0.id, $0.name ?? "", $0.items.joined(separator: ",")] } }
+        #expect(shape(lib(app).boards) == shape(before) && app.undo == nil)          // откат — свежая правка: отметки `mt` новые
+        #expect(lib(app).board("tpl")?.mt != before.first { $0.id == "tpl" }?.mt)
     }
 
     @Test func mergeOfAlreadyPresentFramesSaysSoAndStillOffersUndo() {

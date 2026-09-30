@@ -58,11 +58,11 @@ struct RefPictureRulesTests {
         let before = library()
         var lib = before
         let memory = lib.mergeUndo("t2", into: "t1")!
-        lib.merge("t2", into: "t1", now: 9)
+        lib.merge("t2", into: "t1")
         #expect(lib.board("t2") == nil && lib.board("t1")?.items == ["a", "b", "c"])
         let back = lib.undoMerge(memory)
         #expect(back)
-        #expect(lib.boards == before.boards)                                      // в том числе порядок и отметка правки
+        #expect(lib.boards == before.boards)                                      // в том числе порядок и отметка правки (без `now` отметки не трогаются)
         #expect(lib.shots == before.shots)
     }
 
@@ -76,6 +76,15 @@ struct RefPictureRulesTests {
         lib.undoMerge(memory)
         #expect(lib.board("t1")?.items == ["b", "n"])                 // пришедшее «c» ушло, чужие правки целы
         #expect(lib.board("t2")?.items == ["b", "c"])
+    }
+
+    @Test func undoMergeIsAFreshEditForDeviceMerge() {
+        var lib = library()
+        let memory = lib.mergeUndo("t2", into: "t1")!
+        lib.merge("t2", into: "t1", now: 10)                          // слияние: t1.mt = 10
+        lib.undoMerge(memory, now: 50)
+        #expect(lib.board("t1")?.mt == 50 && lib.board("t2")?.mt == 50)   // старые 1 и 2 не возвращаются: откат должен «победить» слияние
+        #expect(lib.board("t1")?.items == ["a", "b"] && lib.board("t2")?.items == ["b", "c"])
     }
 
     @Test func undoMergeKeepsTheOriginalBoardId() {

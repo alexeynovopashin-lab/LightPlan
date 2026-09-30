@@ -84,6 +84,18 @@ struct RefImageStoreTests {
         #expect(s.stamp("a") == nil && s.stamp("../a") == nil)
     }
 
+    @Test func stampChangesEvenForSameSizeAndSameModificationTime() throws {
+        let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
+        let s = RefImageStore(directory: dir)
+        s.save(Data([1, 2, 3]), as: "a")
+        let path = dir.appendingPathComponent("a").path
+        let when = try #require(FileManager.default.attributesOfItem(atPath: path)[.modificationDate] as? Date)
+        let first = s.stamp("a")
+        s.save(Data([4, 5, 6]), as: "a")                                          // тот же размер, запись атомарна
+        try FileManager.default.setAttributes([.modificationDate: when], ofItemAtPath: path)   // и то же время правки
+        #expect(s.stamp("a") != first)
+    }
+
     @Test func pixelSizeOfImage() {
         let size = RefImageStore.pixelSize(of: Self.png(30, 20))
         #expect(size?.w == 30 && size?.h == 20)

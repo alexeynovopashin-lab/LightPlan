@@ -683,7 +683,7 @@ extension AppModel {
             let live = Set(snapshot.spots.map(\.id))
             setMapRoute(ids.filter(live.contains))
         case .merge(let m):
-            mbEdit { lib, _ in lib.undoMerge(m) }
+            mbEdit { lib, now in lib.undoMerge(m, now: now) }
         }
     }
 
