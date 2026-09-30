@@ -232,7 +232,24 @@ struct RefLibraryTests {
         guard case .array(let bs)? = out["boards"], case .object(let bo) = bs[0], case .array(let items)? = bo["items"],
               case .array(let ss)? = out["shots"], case .object(let so) = ss[0], case .array(let tags)? = so["tags"]
         else { Issue.record("нет полей"); return }
-        #expect(items == [.null, .string("c"), .string("d")])
+        #expect(items == [.string("c"), .null, .string("d")])
         #expect(tags == [.number(3)])
+    }
+
+    @Test func reorderIsWrittenInListOrder() {
+        let board = obj(["id": .string("b"), "kind": .string("tpl"), "genre": .string("wedding"),
+                         "items": .array([.string("a"), .null, .string("b"), .string("c")])])
+        var lib = RefLibrary(extra: ["boards": .array([board])])
+        lib.boards[0].items = ["c", "a", "b"]            // перестановка пальцем (29)
+        var out: [String: JSONValue] = [:]
+        lib.write(into: &out)
+        guard case .array(let bs)? = out["boards"], case .object(let bo) = bs[0], case .array(let items)? = bo["items"]
+        else { Issue.record("нет items"); return }
+        #expect(items == [.string("c"), .null, .string("a"), .string("b")])   // чужой элемент на своём индексе
+        var plain = RefLibrary(shots: [], boards: [RefBoard(id: "p", kind: .tpl, genre: "x", items: ["a", "b"])])
+        plain.boards[0].items = ["b", "a"]
+        var out2: [String: JSONValue] = [:]
+        plain.write(into: &out2)
+        #expect(RefLibrary(extra: out2).boards[0].items == ["b", "a"])
     }
 }
