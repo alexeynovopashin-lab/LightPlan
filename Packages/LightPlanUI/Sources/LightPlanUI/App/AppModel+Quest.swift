@@ -117,6 +117,7 @@ extension AppModel {
     @discardableResult
     func openQuestLink(_ url: URL) -> QuestOutcome? {
         guard QuestFlow.isAppLink(url) else { return nil }
+        closeQuest()
         return receiveQuest(url.absoluteString, into: nil)
     }
 
