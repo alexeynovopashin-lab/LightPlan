@@ -39,6 +39,15 @@ const args = {};
 process.argv.slice(2).forEach((a, i, all) => {
   if (a.startsWith('--')) args[a.slice(2)] = all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : '1';
 });
+if (args.help) {
+  console.log(`Пара снимков «веб / натив» (Tools/shots/pair.js). Запуск из корня натива; ничего не строит и не снимает с --help.
+  --screens light,map,planner,settings,card,m28   какие экраны (по умолчанию все)
+  --themes dark,light   --moments day,golden,night,dawn   --modes simple,astro   --scopes month,week,day
+  --m28 mbgallery,mbshelf,mbfolder,orgs,orgcard,contacts,quest,meet   экраны итерации 28 (мудборды, организации, «Контакты», опросник, встреча); только они: --screens m28
+  --cards / --phases / --forms / --layers / --sheets / --chapters   перебор отдельных экранов (см. шапку файла)
+  --skip-build   --out <папка>   --forecast <файл>   --no-sheets --no-pick   --help   эта справка`);
+  process.exit(0);
+}
 const FORECAST = path.resolve(args.forecast || path.join(FX, 'forecast_barnaul.json'));
 
 /* Сценарий пары. Место — Барнаул: пояс машины Алексея тот же (+7), а
@@ -54,7 +63,7 @@ const MOMENTS = { day: '2026-09-23T13:00', golden: '2026-09-23T18:50', night: '2
 const OFFSET = '+07:00';
 const BUNDLE = 'Novopashin.LightPlan';
 
-const screens = (args.screens || 'light,map,planner,settings,card').split(',');
+const screens = (args.screens || 'light,map,planner,settings,card,m28').split(',');
 /* Виды «Съёмок» (итерация 21). Режим и момент им не нужны: одна пара на вид
    и тему, в 13:00 — рядом съёмка «прямо сейчас» и черта «сейчас» на ленте. */
 const scopes = (args.scopes || 'month,week,day').split(',');
@@ -116,6 +125,35 @@ const R27_BOARDS = [{ id: 'bd_r27_own', kind: 'shoot', sid: 'sd_sep_wed', genre:
 const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet', ...Object.keys(R27)];
 const phases = (args.phases || 'before,during,after').split(',');
 // Стена часов Барнаула (+7, без перехода) в минуту `m` суток записи `iso`.
+/* Мудборды, организации, «Контакты», опросник, встреча (итерация 28, шаг 10б). Кадры — ссылки
+   без картинок (у обеих сторон одна заглушка), 19 штук по подборкам, как в замере беты 30.09:
+   «Свадьба» 10 кадров со всеми семью разделами и вторая папка «На море» (2 кадра, один общий),
+   у съёмки свадьбы своя подборка из трёх; портрет, пейзаж и интерьер — по две–три ссылки.
+   Организации — из засева планировщика, бумаги ссылками у двух. Часы 13:00 23 сентября. */
+const M28_WED_TAGS = ['couple', 'bride', 'groom', 'walk', 'evening', 'details', 'gathering'];
+const m28link = (id, n, tags) => ({ id, k: 'link', url: 'https://ru.pinterest.com/pin/' + n + '/', tags });
+const M28_SHOTS = [
+  ...Array.from({ length: 10 }, (_, i) => m28link('sh_m28_w' + i, 100 + i, [M28_WED_TAGS[i % 7]])),
+  m28link('sh_m28_s0', 200, ['couple']), m28link('sh_m28_s1', 201, ['evening']),
+  m28link('sh_m28_p0', 300, ['light']), m28link('sh_m28_p1', 301, []), m28link('sh_m28_p2', 302, []),
+  m28link('sh_m28_l0', 400, []), m28link('sh_m28_l1', 401, []),
+  m28link('sh_m28_i0', 500, []), m28link('sh_m28_i1', 501, ['light'])];
+const M28_BOARDS = [
+  { id: 'bd_m28_own', kind: 'shoot', sid: 'sd_sep_wed', genre: 'wedding', items: ['sh_m28_w0', 'sh_m28_w1', 'sh_m28_w4'], name: null, cover: null },
+  { id: 'bd_m28_wed', kind: 'tpl', genre: 'wedding', items: Array.from({ length: 10 }, (_, i) => 'sh_m28_w' + i), name: null, cover: null },
+  { id: 'bd_m28_sea', kind: 'tpl', genre: 'wedding', items: ['sh_m28_s0', 'sh_m28_s1', 'sh_m28_w3'], name: 'На море', cover: null },
+  { id: 'bd_m28_por', kind: 'tpl', genre: 'portrait', items: ['sh_m28_p0', 'sh_m28_p1', 'sh_m28_p2'], name: null, cover: null },
+  { id: 'bd_m28_lan', kind: 'tpl', genre: 'landscape', items: ['sh_m28_l0', 'sh_m28_l1'], name: null, cover: null },
+  { id: 'bd_m28_int', kind: 'tpl', genre: 'architecture', items: ['sh_m28_i0', 'sh_m28_i1'], name: null, cover: null }];
+const M28_DOCS = { sd_org_agency: [{ k: 'link', url: 'https://disk.yandex.ru/d/agency-contract', kind: 'acceptance' },
+  { k: 'link', url: 'https://disk.yandex.ru/d/agency-release', kind: 'release' }],
+  sd_org_rest: [{ k: 'link', url: 'https://disk.yandex.ru/d/rest-act', kind: 'acceptance' }] };
+/* Экран → откуда веб и натив открывают, какие узлы сверяются (по имени). */
+const M28 = { mbgallery: { re: /^mb\.(?!strip|head|s\.)/ }, mbshelf: { way: 'wedding', re: /^mb\.(?!strip|head|s\.)/ },
+  mbfolder: { way: 'bd_m28_wed', shelf: 'wedding', re: /^mb\.(?!strip|head|s\.)/ }, orgs: { re: /^org\./ },
+  orgcard: { way: 'sd_org_agency', re: /^(org|orgc)\./ }, contacts: { re: /^contacts\./ },
+  quest: { way: 'sd_sep_wed', re: /^quest\./ }, meet: { re: /^(form|kit)\./ } };
+const m28 = args.m28 ? args.m28.split(',') : Object.keys(M28);
 const wallAt = (iso, m) => new Date(Date.parse(iso) + 7 * 3600e3 + m * 60e3).toISOString().slice(0, 16);
 const SHEET_SPOTS = [
   { id: 'p_shot_a', name: 'Нагорный парк', address: 'ул. Гоголя, 2', lat: 53.3334, lon: 83.8035, pinned: true },
@@ -194,6 +232,7 @@ async function nativeShot(udid, sc, dir) {
     ...(args['form-scroll'] ? ['-LPShotFormScroll', args['form-scroll']] : []),
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     ...(sc.layer ? ['-LPShotSheet', sc.layer] : []),
+    ...(sc.m28 ? ['-LPShotSheet', sc.m28, ...(sc.way ? ['-LPShotWay', sc.way] : [])] : []),
     ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
     ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card, ...(sc.tune ? ['-LPShotTune', '1'] : []),
       ...(sc.fold ? ['-LPShotFold', sc.fold] : []), ...(sc.refs ? ['-LPShotRefs', sc.refs] : [])] : []),
@@ -217,6 +256,7 @@ function webShot(sc, dir, safe) {
     ...(sc.chapter ? ['--chapter', sc.chapter] : []),
     ...(sc.form ? ['--sheet', 'form', '--way', sc.form] : []),
     ...(sc.layer ? ['--sheet', sc.layer] : []),
+    ...(sc.m28 ? ['--sheet', sc.m28, ...(sc.way ? ['--way', sc.way] : []), ...(sc.shelf ? ['--shelf', sc.shelf] : [])] : []),
     ...(sc.sheet ? ['--sheet', 'loc', ...(sc.sheet !== 'fork' ? ['--way', sc.sheet] : [])] : []),
     ...(sc.card ? ['--sheet', 'card', '--way', sc.card, ...(sc.tune ? ['--tune'] : []),
       ...(sc.fold ? ['--fold', sc.fold] : []), ...(sc.refs ? ['--refs', sc.refs] : [])] : []),
@@ -429,6 +469,18 @@ function markdown(results) {
       list.push({ name, dir, screen: 'planner', theme, moment: 'day', at, card: id, phase: ph, seed: seedFile, tune: g === 'tune', ...(R27[g] || {}) });
     }
   }
+  if (screens.includes('m28') && !args['only-sheets'] && !args['only-forms'] && !args['only-layers']) {
+    for (const g of m28) for (const theme of themes) {
+      const name = ['m28', g, theme].join('-');
+      const dir = path.join(OUT, name);
+      fs.mkdirSync(dir, { recursive: true });
+      const s = { ...plannerSeed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum', shots: M28_SHOTS, boards: M28_BOARDS,
+        orgs: plannerSeed.orgs.map(o => M28_DOCS[o.id] ? { ...o, docs: M28_DOCS[o.id] } : o) };
+      const seedFile = path.join(dir, 'seed.json');
+      fs.writeFileSync(seedFile, JSON.stringify(s));
+      list.push({ name, dir, screen: 'planner', theme, moment: 'day', scope: 'month', m28: g, ...M28[g], seed: seedFile });
+    }
+  }
   if (args['only-sheets'] || args.forms && args['only-forms'] || args['only-layers']) screens.length = 0;
   if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
     add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope);
@@ -436,7 +488,7 @@ function markdown(results) {
        колонки ленты на экране, а не только в стенде `make planner` */
     if (scope === 'day') add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope, 5);
   }
-  for (const screen of screens.filter(x => x !== 'planner' && x !== 'card')) for (const mode of modes) for (const theme of themes) {
+  for (const screen of screens.filter(x => x !== 'planner' && x !== 'card' && x !== 'm28')) for (const mode of modes) for (const theme of themes) {
     // «Настройки» от момента не зависят — одна пара на тему и режим.
     for (const moment of screen === 'settings' ? [moments[0]] : moments) {
       for (const fold of screen === 'map' ? folds : ['shut']) add(screen, theme, mode, moment, 'paper', null, 'drum', fold);
@@ -477,7 +529,7 @@ function markdown(results) {
     // Соседняя вкладка тоже жива и пишет рамки за краем экрана — не в счёт.
     // Форма (24) — длинный лист в прокрутке: её узлы ниже края экрана у обеих
     // сторон в координатах непрокрученной формы, их и сверяем.
-    if (!sc.form) for (const [k, r] of Object.entries(nat.nodes)) if (r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) delete nat.nodes[k];
+    if (!sc.form && sc.m28 !== 'meet') for (const [k, r] of Object.entries(nat.nodes)) if (r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) delete nat.nodes[k];
     // Под листом места экран жив и пишет рамки — сверяется только лист.
     if (sc.sheet) for (const k of Object.keys(nat.nodes)) if (!k.startsWith('loc.')) delete nat.nodes[k];
     // Под формой «Съёмки» живы и пишут рамки — сверяется только форма.
@@ -486,6 +538,8 @@ function markdown(results) {
     // натива (`card.phase`) — словом в строке прогона: у веба такого узла нет.
     const natPhase = sc.card && nat.nodes['card.phase'] ? nat.nodes['card.phase'].text : null;
     if (sc.card) for (const k of Object.keys(nat.nodes)) if (!(k.startsWith('card.') || k.startsWith('refs.')) || k === 'card.phase') delete nat.nodes[k];
+    // Экраны 28 лежат поверх «Съёмок»: сверяется только их разметка (имена — `M28[..].re`).
+    if (sc.m28) for (const k of Object.keys(nat.nodes)) if (!sc.re.test(k)) delete nat.nodes[k];
     // Под слоем «Съёмки» живы и пишут рамки — сверяется только слой (и панель вкладок над ним).
     const keep = sc.layer && (k => LAYER_NODES[sc.layer].test(k) || (!LAYER_SHEETS[sc.layer] && /^tab(bar|\.)/.test(k)));
     if (keep) for (const k of Object.keys(nat.nodes)) if (!keep(k)) delete nat.nodes[k];
@@ -493,6 +547,7 @@ function markdown(results) {
     // Режим маршрута (24а): прибор, закладка и сводка у натива гаснут
     // прозрачностью (затухание подмены), а рамки пишут — у веба они скрыты.
     if (sc.chapter === 'route') for (const [k, r] of Object.entries(web.nodes)) if (r.visible === false) delete nat.nodes[k];
+    if (sc.m28 && sc.m28 !== 'meet') for (const [k, r] of Object.entries(web.nodes)) if (r.y >= 956 || r.x >= 440) delete web.nodes[k];
     // Карточка длиннее экрана: ниже его края у веба тоже не в счёт.
     if (sc.card) for (const [k, r] of Object.entries(web.nodes)) if (r.y >= 956) delete web.nodes[k];
     /* Полоса карточки у натива — под вырезом экрана (29.09: на 46 от верха
@@ -518,7 +573,7 @@ function markdown(results) {
        карточка, всё в ней уменьшено в (ширина листа / 440) раз (замер:
        424 / 440 = 0,964). Сверка раскладки — смещения от верха листа,
        делённые на этот масштаб. */
-    const sheetKey = sc.sheet ? 'loc.sheet' : LAYER_SHEETS[sc.layer] ? sc.layer + '.sheet' : null;
+    const sheetKey = sc.m28 === 'quest' ? 'quest.sheet' : sc.sheet ? 'loc.sheet' : LAYER_SHEETS[sc.layer] ? sc.layer + '.sheet' : null;
     if (sheetKey && web.nodes[sheetKey] && nat.nodes[sheetKey]) {
       const ns = nat.nodes[sheetKey], ws = web.nodes[sheetKey], k = ns.w / 440;
       let worst = { v: 0, name: '—' };

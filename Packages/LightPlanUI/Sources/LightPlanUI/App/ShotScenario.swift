@@ -82,8 +82,13 @@ extension AppModel {
     /// пишет), часы с прибитого момента идут дальше своим ходом — как
     /// `page.clock.install` у веба.
     static func shot(_ s: ShotScenario) -> AppModel {
-        let snapshot = (try? Data(contentsOf: s.seed)).flatMap { try? JSONDecoder().decode(Snapshot.self, from: $0) }
+        var snapshot = (try? Data(contentsOf: s.seed)).flatMap { try? JSONDecoder().decode(Snapshot.self, from: $0) }
             ?? Snapshot()
+        // Экраны мудборда (28): первый запуск заводит пустую папку каждому жанру, как на телефоне и в вебе (`mbSeeded`).
+        if ["mbgallery", "mbshelf", "mbfolder"].contains(s.sheet ?? "") {
+            _ = RefLibrary.seedGenreFolders(in: &snapshot.extra, genres: Moodboard.enabledGenres(snapshot.genres).map(\.rawValue),
+                                            newId: { UUID().uuidString.lowercased() })
+        }
         let start = Date(), fixed = s.now
         let name = (try? Data(contentsOf: s.name ?? URL(fileURLWithPath: "/dev/null")))
             .flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
@@ -153,7 +158,7 @@ extension AppModel {
         // Итерация 28: мудборды, организации, «Контакты», опросник, встреча. `LPShotWay` — жанр полки,
         // код подборки, код организации или записи; без него — первая из засева.
         switch s.sheet {
-        case "mbgallery": app.openMbGallery()
+        case "mbgallery": app.openMbGallery(backKey: "nav.settings")   // дверь веба: строка «Мудборды» в «Настройках»
         case "mbshelf": app.openMbShelf(s.way ?? "wedding")
         case "mbfolder": if let id = s.way { app.openMbFolder(boardId: id) }
         case "orgs": app.openOrgs()
@@ -167,7 +172,7 @@ extension AppModel {
             app.draftStore = MemoryDraftStore()
             Task { @MainActor in
                 await app.light.weather.settled()
-                app.openForm(day: app.planner.selected, mode: .meet)
+                app.openForm(day: app.planner.selected, start: 14 * 60, fromLight: false, mode: .meet)
             }
         default: break
         }
