@@ -22,7 +22,6 @@ struct OrgListScreen: View {
                 OverlayBack(title: t.t(app.org.backKey), node: "org.back") {
                     withAnimation(overlaySlide) { app.closeOrgs() }
                 }
-                .padding(.top, 6)
                 segment(pal).padding(.top, 14)
                 if app.org.tab == .orgs { orgs(pal) } else { shelf(pal) }
             }
@@ -55,26 +54,27 @@ struct OrgListScreen: View {
     // MARK: организации
 
     @ViewBuilder private func orgs(_ pal: Palette) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 10) {
             if app.orgs.isEmpty {
                 (Text(t.t("org.emptyHead")).foregroundStyle(pal.ink3) + Text(" " + t.t("org.empty")).foregroundStyle(pal.ink4))
                     .font(.system(size: 14)).lineSpacing(5)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
                     .shotNode("org.empty")
             }
-            ForEach(app.orgs) { o in row(o, pal) }
+            ForEach(Array(app.orgs.enumerated()), id: \.element.id) { i, o in row(o, i, pal) }
         }
         .padding(.top, 10)
         Button { withAnimation(overlaySlide) { app.newOrg() } } label: {
             Text(t.t("org.add")).font(webFont(14.5)).foregroundStyle(pal.ink4)
                 .frame(maxWidth: .infinity).frame(height: 31).contentShape(Rectangle())
         }
-        .buttonStyle(.plain).padding(.top, 12)
+        .buttonStyle(.plain)
         .shotNode("org.add", text: t.t("org.add"))
+        .padding(.top, 12)
     }
 
     /// `.org-item`: плитка знака 34, название 15, подпись 12, шеврон; 392×64, скругление 16, поле 14.
-    private func row(_ o: Org, _ pal: Palette) -> some View {
+    private func row(_ o: Org, _ i: Int, _ pal: Palette) -> some View {
         Button { withAnimation(overlaySlide) { app.openOrgCard(id: o.id) } } label: {
             HStack(spacing: 14) {
                 Icon("city", size: 18, line: 1.6).foregroundStyle(pal.ink4)
@@ -92,7 +92,7 @@ struct OrgListScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .shotNode("org.row", text: app.orgTitle(o))
+        .shotNode("org.row.\(i)", text: app.orgTitle(o))
     }
 
     // MARK: полка бумаг
@@ -113,8 +113,8 @@ struct OrgListScreen: View {
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
                 .shotNode("org.docsEmpty")
         } else {
-            VStack(spacing: 4) {
-                ForEach(Array(list.enumerated()), id: \.offset) { _, d in docRow(d, pal) }
+            VStack(spacing: 8) {
+                ForEach(Array(list.enumerated()), id: \.offset) { i, d in docRow(d, i, pal) }
             }
             .padding(.top, 12)
         }
@@ -139,16 +139,16 @@ struct OrgListScreen: View {
     }
 
     /// `.doc-row`: слева вид, дальше имя или хвост ссылки, справа вес или сайт; под строкой — кому и когда.
-    private func docRow(_ d: OrgBook.ShelfDoc, _ pal: Palette) -> some View {
+    private func docRow(_ d: OrgBook.ShelfDoc, _ i: Int, _ pal: Palette) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Button { open(d.doc) } label: {
                 HStack(spacing: 10) {
                     Text(d.isRequisite ? t.t("doc.req") : (d.kind.map(app.docKindName) ?? DocLabel.ext(d.doc.name ?? "") ?? t.t("doc.file")))
-                        .font(.system(size: 10, weight: .bold)).tracking(0.4).textCase(.uppercase)
-                        .foregroundStyle(pal.brass).lineLimit(1)
-                    Text(DocLabel.sub(d.doc, anyWord: t.t("doc.any"))).font(webFont(13.3)).foregroundStyle(pal.ink3).lineLimit(1)
+                        .font(webFont(11)).tracking(0.2)
+                        .foregroundStyle(pal.brass).lineLimit(1).frame(minWidth: 56, alignment: .leading)
+                    Text(DocLabel.sub(d.doc, anyWord: t.t("doc.any"))).font(webFont(14)).foregroundStyle(pal.ink).lineLimit(1)
                     Spacer(minLength: 0)
-                    Text(app.docTrailing(d.doc)).font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1)
+                    Text(app.docTrailing(d.doc)).font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
                 }
                 .padding(.horizontal, 14).frame(height: 41)
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
@@ -160,7 +160,7 @@ struct OrgListScreen: View {
                 Text(who).font(webFont(11)).foregroundStyle(pal.ink7).padding(.horizontal, 14).padding(.bottom, 6)
             }
         }
-        .shotNode("org.docRow")
+        .shotNode("org.docRow.\(i)")
     }
 
     private func open(_ d: Attachment) {

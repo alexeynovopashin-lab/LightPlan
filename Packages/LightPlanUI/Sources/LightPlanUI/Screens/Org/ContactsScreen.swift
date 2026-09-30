@@ -24,14 +24,13 @@ struct ContactsScreen: View {
                 OverlayBack(title: t.t("nav.back"), node: "contacts.back") {
                     withAnimation(overlaySlide) { app.closeContacts() }
                 }
-                .padding(.top, 6)
                 header(links, pal)
                 if list.isEmpty {
                     Text(t.t("ph.empty")).font(.system(size: 13)).lineSpacing(5).foregroundStyle(pal.ink7)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14).padding(.horizontal, 2)
                         .shotNode("contacts.empty")
                 }
-                ForEach(list, id: \.key) { g in group(g, pal) }
+                ForEach(Array(list.enumerated()), id: \.element.key) { gi, g in group(g, gi, pal) }
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
         }
@@ -49,13 +48,13 @@ struct ContactsScreen: View {
         }
         .font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)
         .foregroundStyle(pal.ink7)
-        .padding(.top, 18).padding(.horizontal, 4).padding(.bottom, 9)
+        .padding(.top, 30).padding(.horizontal, 4).padding(.bottom, 0)
     }
 
     // MARK: группа-номер
 
     /// `.ph-row`: радиус 16, поля 13/14/8; сверху номер 16 pt, метки и звонок, ниже — «где встречается».
-    private func group(_ g: PhoneBook.Group, _ pal: Palette) -> some View {
+    private func group(_ g: PhoneBook.Group, _ gi: Int, _ pal: Palette) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Text(TelFormat.format(g.phone, country: app.telCountry, pasted: true))
@@ -65,17 +64,17 @@ struct ContactsScreen: View {
                 if g.mine { tag(t.t("ph.mine"), pal.green) }
                 if g.isLink { tag(t.t("ph.link"), pal.brass) }
                 if !g.live { tag(t.t("ph.past"), pal.ink7, line: pal.hair2) }
-                if g.live { call(g, pal) }
+                if g.live { call(g, gi, pal) }
             }
             VStack(spacing: 0) {
-                ForEach(Array(g.rows.enumerated()), id: \.offset) { i, r in row(r, first: i == 0, pal) }
+                ForEach(Array(g.rows.enumerated()), id: \.offset) { i, r in row(r, gi: gi, i: i, pal) }
             }
             .padding(.top, 6)
         }
         .padding(.top, 13).padding(.horizontal, 14).padding(.bottom, 8)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
+        .shotNode("contacts.group.\(gi)", text: g.key)
         .padding(.top, 12)
-        .shotNode("contacts.group", text: g.key)
     }
 
     /// `.ph-tag`: 10 pt, прописные, разрядка 0,6, рамка 1, радиус 6, поле 3/6.
@@ -87,19 +86,19 @@ struct ContactsScreen: View {
     }
 
     /// `.ph-call`: 32×32, знак 18, `tel:` с международным номером.
-    private func call(_ g: PhoneBook.Group, _ pal: Palette) -> some View {
+    private func call(_ g: PhoneBook.Group, _ gi: Int, _ pal: Palette) -> some View {
         Button {
             if let u = URL(string: "tel:" + TelFormat.e164(g.phone, country: app.telCountry)) { openURL(u) }
         } label: {
             Icon("call", size: 18, line: 1.6).foregroundStyle(pal.ink5).frame(width: 32, height: 32).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .shotNode("contacts.call")
+        .shotNode("contacts.call.\(gi)")
         .accessibilityLabel(TelFormat.format(g.phone, country: app.telCountry, pasted: true))
     }
 
     /// `.ph-card`: знак жанра или города 15, заголовок 13, справа «роль · имя» 11; строки разделены линией.
-    private func row(_ r: PhoneBook.Row, first: Bool, _ pal: Palette) -> some View {
+    private func row(_ r: PhoneBook.Row, gi: Int, i: Int, _ pal: Palette) -> some View {
         Button { withAnimation(overlaySlide) { app.openContact(r) } } label: {
             HStack(spacing: 9) {
                 sign(r, pal)
@@ -107,12 +106,12 @@ struct ContactsScreen: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(app.contactWho(r)).font(.system(size: 11)).foregroundStyle(pal.ink7).lineLimit(1).fixedSize()
             }
-            .padding(.vertical, 8)
-            .overlay(alignment: .top) { if !first { Rectangle().fill(pal.surface).frame(height: 1) } }
+            .padding(.vertical, 8).frame(height: 32)
+            .overlay(alignment: .top) { if i != 0 { Rectangle().fill(pal.surface).frame(height: 1) } }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .shotNode("contacts.row", text: app.contactTitle(r) + "|" + app.contactWho(r))
+        .shotNode("contacts.row.\(gi).\(i)", text: app.contactTitle(r) + "|" + app.contactWho(r))
     }
 
     @ViewBuilder private func sign(_ r: PhoneBook.Row, _ pal: Palette) -> some View {

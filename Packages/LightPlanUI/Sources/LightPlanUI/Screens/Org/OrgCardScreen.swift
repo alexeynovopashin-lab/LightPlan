@@ -30,7 +30,7 @@ struct OrgCardScreen: View {
         let o = app.orgRecord(id) ?? Org(id: id)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                OverlayBack(title: backTitle, node: "orgc.back", action: onBack).padding(.top, 6)
+                OverlayBack(title: backTitle, node: "orgc.back", action: onBack)
                 label(t.t("org.one"), pal).shotNode("orgc.label")
                 FormGroup(node: "orgc.group") {
                     FormTextField(placeholder: t.t("org.namePh"), text: text(\.name), kind: .text)
@@ -154,8 +154,8 @@ struct OrgCardScreen: View {
                     .font(.system(size: 13)).lineSpacing(4).padding(.top, 12).padding(.horizontal, 4)
                     .shotNode("orgc.docsEmpty")
             } else {
-                VStack(spacing: 4) {
-                    ForEach(Array(list.enumerated()), id: \.offset) { _, d in docRow(d, pal) }
+                VStack(spacing: 8) {
+                    ForEach(Array(list.enumerated()), id: \.offset) { i, d in docRow(d, i, pal) }
                 }
                 .padding(.top, 8)
             }
@@ -179,19 +179,19 @@ struct OrgCardScreen: View {
     }
 
     /// Строка бумаги 392×41: свои — с ✕, бумаги съёмок — с пометкой «съёмка {дата}» и без него.
-    private func docRow(_ d: OrgBook.OrgDoc, _ pal: Palette) -> some View {
+    private func docRow(_ d: OrgBook.OrgDoc, _ n: Int, _ pal: Palette) -> some View {
         let kind = OrgBook.kind(of: d.doc)
         let top = kind.map(app.docKindName)
             ?? (d.doc.source == .link ? DocLabel.host(d.doc.url ?? "", linkWord: t.t("ref.link")) : (DocLabel.ext(d.doc.name ?? "") ?? t.t("doc.file")))
-        return HStack(spacing: 10) {
+        let row = HStack(spacing: 11) {
             Button { open(d.doc) } label: {
-                HStack(spacing: 10) {
-                    Text(top).font(.system(size: 10, weight: .bold)).tracking(0.4).textCase(.uppercase)
-                        .foregroundStyle(pal.brass).lineLimit(1)
-                    Text(DocLabel.sub(d.doc, anyWord: t.t("doc.any"))).font(webFont(13.3)).foregroundStyle(pal.ink3).lineLimit(1)
+                HStack(spacing: 11) {
+                    Text(top).font(webFont(11)).tracking(0.2)
+                        .foregroundStyle(pal.brass).lineLimit(1).frame(minWidth: 56, alignment: .leading)
+                    Text(DocLabel.sub(d.doc, anyWord: t.t("doc.any"))).font(webFont(14)).foregroundStyle(pal.ink).lineLimit(1)
                     Spacer(minLength: 0)
-                    Text(d.day.map { t.t("org.fromShoot") + " " + dayText($0) } ?? app.docTrailing(d.doc))
-                        .font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1)
+                    Text(app.docTrailing(d.doc))
+                        .font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
                 }
                 .contentShape(Rectangle())
             }
@@ -200,12 +200,21 @@ struct OrgCardScreen: View {
                 Button { app.removeOrgDoc(id, at: i) } label: {
                     Text("✕").font(.system(size: 13)).foregroundStyle(pal.ink4).frame(width: 28, height: 28)
                 }
-                .buttonStyle(.plain).shotNode("orgc.docDel")
+                .buttonStyle(.plain).shotNode("orgc.docDel.\(n)")
             }
         }
         .padding(.horizontal, 14).frame(height: 41)
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
-        .shotNode("orgc.docRow")
+        .shotNode("orgc.docRow.\(n)")
+        // Бумага съёмки: дата отдельной строкой под рядом, без года (веб `.org-empty` под `.doc-row`).
+        return VStack(spacing: 0) {
+            row
+            if let day = d.day {
+                let f = PlannerFacts(app: app, dark: true)
+                Text(t.t("org.fromShoot") + " " + f.dates.dMon(f.date(day))).font(webFont(13)).foregroundStyle(pal.ink6)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 14).padding(.top, 2)
+            }
+        }
     }
 
     private func open(_ d: Attachment) {
@@ -223,13 +232,13 @@ struct OrgCardScreen: View {
     private func shoots(_ o: Org, _ pal: Palette) -> some View {
         let list = OrgBook.shoots(of: o.id, in: app.sessions)
         let words = PlannerWords(lexicon: t, orgs: app.orgs)
-        return VStack(spacing: 4) {
+        return VStack(spacing: 10) {
             if list.isEmpty {
                 Text(t.t("org.noShoots")).font(.system(size: 14)).foregroundStyle(pal.ink4)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4).padding(.horizontal, 4)
                     .shotNode("orgc.noShoots")
             }
-            ForEach(list) { s in
+            ForEach(Array(list.enumerated()), id: \.element.id) { si, s in
                 Button { if canOpenShoot { withAnimation(overlaySlide) { app.openOrgShoot(s.id) } } } label: {
                     HStack(spacing: 14) {
                         Group {
@@ -250,7 +259,7 @@ struct OrgCardScreen: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .shotNode("orgc.shoot", text: s.id)
+                .shotNode("orgc.shoot.\(si)", text: s.id)
             }
         }
     }
