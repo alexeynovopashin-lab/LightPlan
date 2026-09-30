@@ -128,18 +128,19 @@ struct MoodboardFolder: View {
 
     /// Обложка 58×58, радиус 14, тот же градиент и знак, что у плитки; справа заголовок 22/650 и подпись 14.
     private func head(_ sc: MbFolderScene, _ pal: Palette) -> some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             MbCover(boardId: sc.board.id, genre: sc.genre, radius: 14, mark: 0.42, stroke: 1.5)
                 .frame(width: 58, height: 58).shotNode("mb.folderHero")
                 .onLongPressGesture(minimumDuration: 0.42, maximumDistance: 8) {
                     if !app.mbLibrary().coverCandidates(sc.board.id).isEmpty { app.openMbCover() }
                 }
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(sc.title).font(webFont(22, 650)).tracking(-0.5).foregroundStyle(pal.ink).lineLimit(1)
                     .shotNode("mb.folderTitle", text: sc.title)
                 Text(sc.sub).font(webFont(14)).foregroundStyle(pal.ink4).lineLimit(1)
                     .shotNode("mb.folderSub", text: sc.sub)
             }
+            .padding(.top, 9)
             Spacer(minLength: 0)
         }
         .padding(.top, 10)
@@ -196,7 +197,6 @@ struct MoodboardFolder: View {
                 }
             }
         }
-        .padding(.top, 10)
         .frame(height: 44, alignment: .top)
         .shotNode("mb.ftags", text: "\(sc.sections.count)")
     }
@@ -412,12 +412,12 @@ struct MoodboardFolder: View {
             Button {
                 withAnimation(.easeInOut(duration: 0.35)) { position.scrollTo(edge: down ? .bottom : .top) }
             } label: {
-                Icon("chevron", size: 18, line: 2.2).rotationEffect(.degrees(down ? 90 : -90)).foregroundStyle(pal.ink4)
-                    .frame(width: 40, height: 40).glassEffect(.regular, in: Circle())
+                Icon("chevron", size: 18, line: 2.2).rotationEffect(.degrees(down ? 90 : -90)).foregroundStyle(pal.ink3)
+                    .frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
             }
             .buttonStyle(.plain).accessibilityLabel(t.t(down ? "mb.jumpEnd" : "mb.jumpTop"))
-            .padding(.trailing, 20).padding(.bottom, 24)
             .shotNode("mb.fjump", text: down ? "down" : "up")
+            .padding(.trailing, 24).padding(.bottom, 24)
         }
     }
 }

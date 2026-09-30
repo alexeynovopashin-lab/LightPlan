@@ -23,7 +23,6 @@ struct MoodboardShelf: View {
                 OverlayBack(title: t.t("set.moodboards"), node: "mb.shelfBack") {
                     withAnimation(overlaySlide) { app.closeMbShelf() }
                 }
-                .padding(.top, 6)
                 Text(genreName).font(webFont(22, 650)).tracking(-0.5).foregroundStyle(pal.ink)
                     .padding(.top, 10).shotNode("mb.shelfTitle", text: genreName)
                 Text(t.count("unit.folder", shelf.folders.count) + " · " + t.count("unit.frame", shelf.frameCount))

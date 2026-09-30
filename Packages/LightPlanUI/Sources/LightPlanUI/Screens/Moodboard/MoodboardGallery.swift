@@ -31,7 +31,6 @@ struct MoodboardGallery: View {
                 OverlayBack(title: t.t(app.mb.backKey), node: "mb.back") {
                     withAnimation(overlaySlide) { app.closeMbGallery() }
                 }
-                .padding(.top, 6)
                 field(pal)
                 if !counts.isEmpty { chips(counts, tag, pal) }
                 if Moodboard.isSearching(query: app.mb.query, tag: tag) {
@@ -69,8 +68,8 @@ struct MoodboardGallery: View {
             .focused($focused)
             .padding(.horizontal, 15).frame(height: 46)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.sheet))
-            .padding(.top, 14)
             .shotNode("mb.search")
+            .padding(.top, 14)
     }
 
     /// Чипы всех слов фонда со счётчиками, переносятся по строкам (веб `.rf-tag`, gap 7).
@@ -105,13 +104,13 @@ struct MoodboardGallery: View {
         let folders = app.mbFolders(lib)
         let shoots = Moodboard.galleryShoots(folders, sessions: app.sessions)
         let sets = folders.filter { $0.kind == .genre }
-        MbSectionLabel(text: t.t("nav.shoots"), top: 18)
+        MbSectionLabel(text: t.t("nav.shoots"), top: 30)
         if shoots.isEmpty {
             Text(t.t("mb.noShootFolders")).font(webFont(14)).foregroundStyle(pal.ink6).padding(.vertical, 8)
         } else {
             MbTileGrid { ForEach(Array(shoots.enumerated()), id: \.element.id) { tile($1, $0, lib, node: "mb.gs") } }
         }
-        MbSectionLabel(text: t.t("mb.sets"), top: 18)
+        MbSectionLabel(text: t.t("mb.sets"), top: 48)
         MbTileGrid {
             MbAddTile(title: t.t("mb.newTitle"), node: "mb.gadd") { focused = false; app.openMbNew() }
             ForEach(Array(sets.enumerated()), id: \.element.id) { tile($1, $0, lib, node: "mb.gg") }

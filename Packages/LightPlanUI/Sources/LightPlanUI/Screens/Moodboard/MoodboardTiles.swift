@@ -132,9 +132,9 @@ struct MbAddTile: View {
             VStack(alignment: .leading, spacing: 0) {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(pal.ink10, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                    .overlay { Icon("plus", size: 24, line: 1.6).foregroundStyle(pal.ink5) }
+                    .overlay { Icon("plus", size: 26, line: 1.6).foregroundStyle(pal.ink5) }
                     .aspectRatio(1, contentMode: .fit)
-                Text(title).font(webFont(12.5, 600)).foregroundStyle(pal.ink4).lineLimit(1).padding(.top, 7)
+                Text(title).font(webFont(12.5, 500)).foregroundStyle(pal.ink5).lineLimit(1).padding(.top, 7)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
