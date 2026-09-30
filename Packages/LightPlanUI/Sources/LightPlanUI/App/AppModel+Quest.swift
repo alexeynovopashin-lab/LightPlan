@@ -31,6 +31,8 @@ enum QuestOutcome: Equatable {
     case noAnswer
     /// Код не читается (`quest.badTitle`).
     case bad
+    /// Открыта форма другой записи: её правки не трогаем, ответ лежит в черновике до открытия записи (ревью GPT к fde8c6c).
+    case held
 }
 
 extension AppModel {
@@ -107,6 +109,7 @@ extension AppModel {
         let out = receiveQuest(quest.paste, into: quest.recordId)
         switch out {
         case .applied: closeQuest()
+        case .held: closeQuest()
         case .noAnswer: quest.message = lexicon.t("quest.pasteBad")
         case .bad: quest.message = lexicon.t("quest.badTitle")
         }
@@ -136,9 +139,14 @@ extension AppModel {
                 questDrafts.hold(code: code, for: known, at: now())
                 questDraftStore?.save(questDrafts)
             }
+            // Форма открыта: подменить её значило бы потерять несохранённое. Та же запись — ответ ложится на неё,
+            // чужая — ответ ждёт в черновике (ляжет, когда запись откроют).
+            if let open = form {
+                guard open.id == known else { return .held }
+                return .applied(clash: layQuest(a))
+            }
             if let known { openForm(editing: known) } else { openQuestMeeting() }
-            let clash = layQuest(a)
-            return .applied(clash: clash)
+            return .applied(clash: layQuest(a))
         }
     }
 

@@ -37,9 +37,11 @@ struct QuestSheetTests {
         snap.sessions = [s]
         snap.practice = "ru"
         let now = ISO8601DateFormatter().date(from: "2026-09-22T12:00:00+03:00")!
-        return AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
-                        locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
-                        weatherSource: NoWeather(), now: { now })
+        let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
+                           locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
+                           weatherSource: NoWeather(), now: { now })
+        app.draftStore = MemoryDraftStore()          // черновик формы не должен пережить тест в UserDefaults
+        return app
     }
 
     /// Код, как его собирает страница: JSON → UTF-8 → base64url без «=».
@@ -153,6 +155,30 @@ struct QuestSheetTests {
         let f = app.form!
         #expect(f.isNew && f.mode == .meet && f.genre == .wedding)
         #expect(f.persons[0].name == "Катя" && f.persons[1].name == "Слава")
+    }
+
+    // MARK: - Открытая форма (ревью GPT к fde8c6c)
+
+    @Test func linkDoesNotReplaceOpenFormOfAnotherRecord() {
+        let app = model()
+        app.openForm(day: CivilDate(year: 2026, month: 9, day: 25), start: 600, fromLight: false, mode: .shoot)
+        app.form!.notes = "набрано руками"
+        let id = app.form!.id
+        let url = URL(string: "lightplan://quest?ans=\(code(["g": "Слава"]))&r=wm1")!
+        #expect(app.openQuestLink(url) == .held)
+        #expect(app.form?.id == id && app.form?.notes == "набрано руками")   // несохранённое цело
+        app.closeForm()
+        app.openForm(editing: "wm1")                                         // ответ ждал в черновике
+        #expect(app.form!.persons[1].name == "Слава")
+    }
+
+    @Test func linkForTheSameOpenRecordLaysOntoIt() {
+        let app = model()
+        app.openForm(editing: "wm1")
+        app.form!.notes = "мои заметки"
+        let url = URL(string: "lightplan://quest?ans=\(code(["g": "Слава"]))&r=wm1")!
+        #expect(app.openQuestLink(url) == .applied(clash: 0))
+        #expect(app.form!.persons[1].name == "Слава" && app.form!.notes == "мои заметки")
     }
 
     // MARK: - Черновик
