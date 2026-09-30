@@ -144,17 +144,18 @@ extension AppModel {
         mb.photoPicker = true
     }
 
-    /// Выбранные кадры: файл ложится под новым именем `im`, потом кадр — в открытую папку
-    /// (веб `useRefBoard`). Не разобралась картинка или не записался файл — кадра нет. Ответ — id новых кадров.
+    /// Выбранные кадры: файл ложится под новым именем `im`, потом кадр — в папку `board`, что была
+    /// открыта при выборе (веб `useRefBoard`): чтение фото долгое, за это время папку могли сменить
+    /// или закрыть (ревью GPT к a2549e7). Не разобралась картинка, не записался файл, подборки уже нет —
+    /// кадра нет и файла нет. Ответ — id новых кадров.
     @discardableResult
-    func mbAddPhotos(_ blobs: [Data]) -> [String] {
-        guard let board = mb.folder, let images = refImages else { return [] }
+    func mbAddPhotos(_ blobs: [Data], to board: String, tag: String? = nil) -> [String] {
+        guard let images = refImages else { return [] }
         var added: [String] = []
         for data in blobs {
             guard let size = RefImageStore.pixelSize(of: data) else { continue }
             let im = UUID().uuidString.lowercased()
             guard images.save(data, as: im) else { continue }
-            let tag = mb.folderTag
             let id = mbEdit { lib, now in lib.addPhoto(im: im, w: size.w, h: size.h, to: board, tag: tag, now: now) }
             if let id { added.append(id) } else { images.delete(im) }
         }

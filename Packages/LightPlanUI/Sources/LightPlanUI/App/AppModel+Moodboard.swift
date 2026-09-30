@@ -129,9 +129,13 @@ extension AppModel {
         var lib = before
         let r = body(&lib, Double(nowMs))
         lib.write(into: &snapshot.extra)
-        persist()
-        // Кадр ушёл из последней подборки — его файл тоже (шаг 5г); чужой кадр не задет.
-        for name in RefLibrary.orphanImages(before: before, after: lib) { refImages?.delete(name) }
+        // Кадр ушёл из последней подборки — его файл тоже (шаг 5г), но только когда снимок без кадра
+        // уже записан; кадр в другой подборке файл держит.
+        let gone = RefLibrary.orphanImages(before: before, after: lib)
+        if gone.isEmpty { persist() } else {
+            let images = refImages
+            persist { for name in gone { images?.delete(name) } }
+        }
         return r
     }
 

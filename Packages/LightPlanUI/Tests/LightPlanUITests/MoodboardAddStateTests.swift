@@ -43,7 +43,7 @@ struct MoodboardAddStateTests {
     }
 
     /// Две жанровые папки: «x» пустая, «y» держит кадр «k» с файлом; открыта «x».
-    private func model(dir: URL) -> AppModel {
+    private func model(dir: URL, store: Store? = nil) -> AppModel {
         var snap = Snapshot()
         snap.extra["shots"] = .array([.object(["id": .string("k"), "k": .string("img"), "im": .string("k")])])
         snap.extra["boards"] = .array([
@@ -52,7 +52,7 @@ struct MoodboardAddStateTests {
                      "name": .string("Вторая")]),
         ])
         let now = ISO8601DateFormatter().date(from: "2026-09-30T09:00:00+03:00")!
-        let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
+        let app = AppModel(snapshot: snap, store: store, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
                            locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
                            weatherSource: NoWeather(), now: { now })
         app.refImages = RefImageStore(directory: dir)
@@ -67,7 +67,7 @@ struct MoodboardAddStateTests {
     @Test func photoSavedAsFileAndFrameInOpenFolder() {
         let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
         let app = model(dir: dir)
-        let ids = app.mbAddPhotos([png(30, 20), png(10, 40)])
+        let ids = app.mbAddPhotos([png(30, 20), png(10, 40)], to: "x")
         #expect(ids.count == 2)
         let lib = app.mbLibrary()
         #expect(lib.board("x")?.items == ids)
@@ -79,7 +79,7 @@ struct MoodboardAddStateTests {
     @Test func notAnImageIsNotSaved() {
         let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
         let app = model(dir: dir)
-        #expect(app.mbAddPhotos([Data([1, 2, 3])]).isEmpty)
+        #expect(app.mbAddPhotos([Data([1, 2, 3])], to: "x").isEmpty)
         #expect(app.mbLibrary().board("x")?.items.isEmpty == true)
         #expect(RefImageStore(directory: dir).names().isEmpty)
     }
@@ -88,7 +88,7 @@ struct MoodboardAddStateTests {
         let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
         let app = model(dir: dir)
         let store = RefImageStore(directory: dir)
-        let id = app.mbAddPhotos([png(4, 3)])[0]
+        let id = app.mbAddPhotos([png(4, 3)], to: "x")[0]
         #expect(store.exists(id))
         // кладём в «y» ещё раз: из «x» уйдёт, из «y» — нет
         app.mbPut(id, into: "y")
@@ -122,5 +122,35 @@ struct MoodboardAddStateTests {
         #expect(app.mb.sheet == .addWhat)
         app.requestMbPhotoPicker()
         #expect(app.mb.sheet == nil && app.mb.photoPicker)
+    }
+
+    /// Ревью GPT к a2549e7 (2): чтение фото долгое — кадры идут в папку, что была открыта при выборе,
+    /// а не в ту, что открыта, когда чтение кончилось.
+    @Test func photosGoToTheFolderChosenNotTheOneOpenNow() {
+        let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
+        let app = model(dir: dir)                 // открыта «x»
+        app.openMbFolder(boardId: "y")            // пока грузились фото, перешли в «y»
+        let ids = app.mbAddPhotos([png(5, 5)], to: "x", tag: "couple")
+        #expect(app.mbLibrary().board("x")?.items == ids && app.mbLibrary().board("y")?.items == ["k"])
+        #expect(app.mbLibrary().shot(ids[0])?.tags == ["couple"])
+        app.mb.folder = nil                       // папку закрыли — подборка есть, кадры всё равно в неё
+        #expect(app.mbAddPhotos([png(5, 5)], to: "x").count == 1)
+        #expect(app.mbAddPhotos([png(5, 5)], to: "gone").isEmpty)         // подборки нет — ни кадра, ни файла
+        #expect(RefImageStore(directory: dir).names().count == 2)
+    }
+
+    /// Ревью GPT к a2549e7 (1): файл уходит, когда снимок без кадра уже на диске, не раньше.
+    @Test func fileGoesOnlyAfterSnapshotIsSaved() async {
+        let dir = temp(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = Store(directory: dir, debounce: .milliseconds(1))
+        let app = model(dir: dir.appendingPathComponent("img", isDirectory: true), store: store)
+        let images = RefImageStore(directory: dir.appendingPathComponent("img", isDirectory: true))
+        images.save(Data([1]), as: "k")
+        app.mbDeleteBoard("y")                    // «k» лежал только в «y»
+        #expect(images.exists("k"), "снимок ещё не записан — файл держится")
+        await app.flush()
+        #expect(!images.exists("k"))
+        let onDisk = (try? String(contentsOf: dir.appendingPathComponent("light-plan.json"), encoding: .utf8)) ?? ""
+        #expect(!onDisk.isEmpty && !onDisk.contains("\"im\":\"k\""))
     }
 }

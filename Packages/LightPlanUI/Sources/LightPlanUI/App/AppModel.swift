@@ -530,12 +530,15 @@ public final class AppModel {
     /// (поймано тестом `startSheetOnceAndSettingsSurviveRestart`).
     private var saving: Task<Void, Never>?
 
-    func persist() {
-        guard let store else { return }
+    /// `after` идёт, когда снимок уже на диске (без диска — сразу): так стирают файлы кадров, что ушли
+    /// из данных, — оборвись приложение раньше, в данных остался бы кадр без картинки (ревью GPT к a2549e7).
+    func persist(then after: (@Sendable () -> Void)? = nil) {
+        guard let store else { after?(); return }
         let snap = snapshot, prev = saving
         saving = Task {
             await prev?.value
             await store.save(snap)
+            if let after { await store.flush(); after() }
         }
     }
 

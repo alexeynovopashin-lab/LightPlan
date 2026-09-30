@@ -80,12 +80,13 @@ struct MoodboardFolder: View {
         .photosPicker(isPresented: Binding(get: { app.mb.photoPicker }, set: { app.mb.photoPicker = $0 }),
                       selection: $picked, matching: .images, photoLibrary: .shared())
         .onChange(of: picked) { _, items in
-            guard !items.isEmpty else { return }
+            guard !items.isEmpty, let board = app.mb.folder else { return }
+            let tag = app.mb.folderTag
             picked = []
             Task {
                 var blobs: [Data] = []
                 for item in items { if let d = try? await item.loadTransferable(type: Data.self) { blobs.append(d) } }
-                app.mbAddPhotos(blobs)
+                app.mbAddPhotos(blobs, to: board, tag: tag)
             }
         }
         .alert(t.t("mb.selDelTitle", ["n": "\(app.mb.pick?.count ?? 0)"]), isPresented: $confirmRemove) {
