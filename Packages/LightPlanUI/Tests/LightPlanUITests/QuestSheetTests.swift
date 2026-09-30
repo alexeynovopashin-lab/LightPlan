@@ -172,6 +172,16 @@ struct QuestSheetTests {
         #expect(app.form!.persons[1].name == "Слава")
     }
 
+    @Test func answerWithoutRecordDoesNotLandInOpenNewForm() {
+        let app = model()
+        app.openForm(day: CivilDate(year: 2026, month: 9, day: 25), start: 600, fromLight: false, mode: .shoot)
+        app.form!.notes = "набрано руками"
+        let url = URL(string: "lightplan://quest?ans=\(code(["g": "Слава"]))")!   // знака записи нет
+        #expect(app.openQuestLink(url) == .held)
+        #expect(app.form?.notes == "набрано руками" && app.form?.persons.first?.name != "Слава")
+        #expect(app.questDrafts.pending(for: nil) != nil)                          // ждёт в черновике «новой встречи»
+    }
+
     @Test func linkForTheSameOpenRecordLaysOntoIt() {
         let app = model()
         app.openForm(editing: "wm1")

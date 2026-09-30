@@ -142,7 +142,7 @@ extension AppModel {
             // Форма открыта: подменить её значило бы потерять несохранённое. Та же запись — ответ ложится на неё,
             // чужая — ответ ждёт в черновике (ляжет, когда запись откроют).
             if let open = form {
-                guard open.id == known else { return .held }
+                guard let known, open.id == known else { return .held }
                 return .applied(clash: layQuest(a))
             }
             if let known { openForm(editing: known) } else { openQuestMeeting() }
