@@ -153,4 +153,17 @@ struct MoodboardAddStateTests {
         let onDisk = (try? String(contentsOf: dir.appendingPathComponent("light-plan.json"), encoding: .utf8)) ?? ""
         #expect(!onDisk.isEmpty && !onDisk.contains("\"im\":\"k\""))
     }
+
+    /// Ревью GPT к 5d9f57e: записалось не всё — файл остаётся, стереть его значило бы оставить в данных кадр без картинки.
+    @Test func fileStaysWhenSnapshotWriteFails() async {
+        let dir = temp(); defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path); try? FileManager.default.removeItem(at: dir) }
+        let store = Store(directory: dir, debounce: .milliseconds(1))
+        let images = RefImageStore(directory: dir.appendingPathComponent("img", isDirectory: true))
+        let app = model(dir: dir.appendingPathComponent("img", isDirectory: true), store: store)
+        images.save(Data([1]), as: "k")
+        try? FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: dir.path)   // писать в папку нельзя
+        app.mbDeleteBoard("y")
+        await app.flush()
+        #expect(images.exists("k"), "запись не прошла — файл держится")
+    }
 }
