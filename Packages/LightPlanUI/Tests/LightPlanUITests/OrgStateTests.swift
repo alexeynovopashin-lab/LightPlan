@@ -194,4 +194,32 @@ struct OrgStateTests {
         app.closeOrgs()
         #expect(app.org.shelfKind == nil && app.org.tab == .orgs)
     }
+
+    // MARK: ревью GPT к a456d3d
+
+    @Test func deletingTheChosenOrgClearsItFromTheOpenForm() {
+        let app = model(orgs: [named("o1", "A")], sessions: [shoot("a", 24, org: "o1")])
+        app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
+        app.setFormOrg(app.orgs[0])
+        #expect(app.form?.orgId == "o1")
+        app.deleteOrg("o1")
+        #expect(app.form?.orgId == nil, "иначе форма запишет ключ удалённой организации в съёмку")
+    }
+
+    @Test func wipingTheChosenOrgInTheSheetCardClearsItFromTheForm() {
+        let app = model()
+        app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
+        let o = app.addOrg(name: "Ромашка")
+        app.setFormOrg(o)
+        app.editOrg(o.id) { $0.name = "" }
+        app.settleOrg(o.id)
+        #expect(app.orgs.isEmpty && app.form?.orgId == nil)
+    }
+
+    @Test func kindPickedInASheetCardDoesNotLeakIntoTheNextOne() {
+        let app = model(orgs: [named("o1", "A")])
+        app.org.docKind = .invoice
+        app.settleOrg("o1")
+        #expect(app.org.docKind == nil, "закрыли карточку из листа формы — вид не остаётся для следующей")
+    }
 }

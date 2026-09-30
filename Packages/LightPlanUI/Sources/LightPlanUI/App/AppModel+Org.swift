@@ -69,12 +69,20 @@ extension AppModel {
 
     /// Пустую убирают из данных (черновик просто забывается), полную оставляют.
     func settleOrg(_ id: String) {
+        org.docKind = nil
         if org.draft?.id == id { org.draft = nil }
         guard let i = snapshot.orgs.firstIndex(where: { $0.id == id }),
               !OrgBook.keeps(snapshot.orgs[i], in: snapshot.sessions) else { return }
         snapshot.orgs.remove(at: i)
         bury(id, now: now())
+        dropFormOrg(id)
         persist()
+    }
+
+    /// Открытая форма не должна держать выбор удалённой организации: сохранение записало бы
+    /// её ключ в съёмку заново (ревью GPT к a456d3d).
+    private func dropFormOrg(_ id: String) {
+        if form?.orgId == id { setFormOrg(nil) }
     }
 
     // MARK: - Правка (пишется сразу, кнопки «Сохранить» нет)
@@ -122,6 +130,7 @@ extension AppModel {
         snapshot.orgs.removeAll { $0.id == id }
         if org.draft?.id == id { org.draft = nil }
         bury(id, now: now())
+        dropFormOrg(id)
         persist()
         if org.cardId == id { org.cardId = nil; org.docKind = nil }
     }
