@@ -25,7 +25,11 @@ enum QuestQR {
         else { return nil }
         ctx.interpolationQuality = .none
         ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return (0..<h).map { y in (0..<w).map { x in px[y * w + x] < 128 } }
+        let all = (0..<h).map { y in (0..<w).map { x in px[y * w + x] < 128 } }
+        // Генератор оставляет вокруг знака своё поле в 1 модуль; поля нужны наши, ровно `quiet`: обрезаем по тёмным.
+        let rows = all.indices.filter { all[$0].contains(true) }, cols = (0..<w).filter { x in all.contains { $0[x] } }
+        guard let r0 = rows.first, let r1 = rows.last, let c0 = cols.first, let c1 = cols.last, r1 - r0 == c1 - c0 else { return nil }
+        return (r0...r1).map { y in Array(all[y][c0...c1]) }
     }
 }
 
