@@ -27,7 +27,7 @@ struct MoodboardGallery: View {
         let tag = Moodboard.activeTag(app.mb.tag, in: counts)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                OverlayBack(title: t.t("nav.shoots"), node: "mb.back") {
+                OverlayBack(title: t.t(app.mb.backKey), node: "mb.back") {
                     withAnimation(overlaySlide) { app.closeMbGallery() }
                 }
                 .padding(.top, 6)

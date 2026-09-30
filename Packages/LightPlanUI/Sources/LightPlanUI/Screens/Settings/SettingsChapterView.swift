@@ -28,7 +28,7 @@ struct SettingsChapterView: View {
             case .shoots: shoots
             case .alerts: foreign("set.feedback"); foreign("set.notify")
             case .places: places
-            case .store: foreign("set.moodboards"); foreign("set.orgsDocs"); binRow
+            case .store: moodboardRow; foreign("set.orgsDocs"); binRow
             case .data: foreign("set.data"); foreign("set.icsImport"); foreign("cloud.title")
             case .locale: locale
             case .about: about
@@ -260,6 +260,16 @@ struct SettingsChapterView: View {
 
     /// Строка «Корзина» (веб `#binSetRow`): видна и пустой — место корзины
     /// должно быть известно заранее.
+    /// «Мудборды» (веб `#mbRow`): справа число плиток ленты или «нет»; открывает галерею.
+    private var moodboardRow: some View {
+        let n = app.mbFolders(app.mbLibrary()).count
+        return Button { withAnimation(overlaySlide) { app.openMbGallery(backKey: "nav.settings") } } label: {
+            SetItemRow(icon: "album", title: t.t("set.moodboards"), value: n == 0 ? t.t("card.none") : String(n))
+        }
+        .buttonStyle(.plain)
+        .shotNode("item.mb", text: t.t("set.moodboards"))
+    }
+
     private var binRow: some View {
         Button { app.binOpen = true } label: {
             SetItemRow(icon: "trash", title: t.t("card.bin"),

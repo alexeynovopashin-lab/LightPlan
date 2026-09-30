@@ -8,6 +8,8 @@ import LightPlanDomain
 /// `#mbShelfOverlay`); поле и чип — два независимых входа поиска (веб `mbActiveTag`).
 struct MoodboardState: Equatable {
     var galleryOpen = false
+    /// Ключ подписи стрелки «назад» галереи: откуда пришли — с «Съёмок» или из «Настроек».
+    var backKey = "nav.shoots"
     var shelf: String?
     var query = ""
     var tag: String?
@@ -87,7 +89,7 @@ extension AppModel {
 
     // MARK: слои
 
-    func openMbGallery() { mb.galleryOpen = true }
+    func openMbGallery(backKey: String = "nav.shoots") { mb.backKey = backKey; mb.galleryOpen = true }
 
     func closeMbGallery() {
         mb.galleryOpen = false; mb.query = ""; mb.tag = nil
