@@ -378,6 +378,12 @@ public final class AppModel {
                 try? await store.saveNow(seed)
             }
         }
+        // Пустая жанровая папка на каждый включённый жанр — один раз, пишется сразу (веб `mbSeeded`).
+        if RefLibrary.seedGenreFolders(in: &snapshot.extra, genres: snapshot.genres.map(\.rawValue),
+                                       newId: { UUID().uuidString.lowercased() },
+                                       now: Date().timeIntervalSince1970 * 1000) {
+            try? await store?.saveNow(snapshot)
+        }
         let language = AppLanguage.current
         let locale = Locale(identifier: language)
         return AppModel(snapshot: snapshot, store: store, language: language,

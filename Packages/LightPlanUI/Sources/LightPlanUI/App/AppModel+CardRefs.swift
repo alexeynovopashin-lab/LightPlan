@@ -28,32 +28,10 @@ private extension JSONValue {
 
 extension AppModel {
 
-    /// Кадры и подборки из снимка: `shots` и `boards` лежат в `extra` как есть.
-    func refFrames() -> [RefFrame] {
-        guard case .array(let a)? = snapshot.extra["shots"] else { return [] }
-        return a.compactMap { v -> RefFrame? in
-            guard case .object(let o) = v else { return nil }
-            let im = o["im"]?.stringValue
-            guard let id = o["id"]?.stringValue ?? im else { return nil }
-            var tags: [String] = []
-            if case .array(let t)? = o["tags"] { tags = t.compactMap(\.stringValue) }
-            var w: Double?, h: Double?
-            if case .number(let n)? = o["w"] { w = n }
-            if case .number(let n)? = o["h"] { h = n }
-            return RefFrame(id: id, kind: RefFrame.Kind(rawValue: o["k"]?.stringValue ?? "img") ?? .img,
-                            im: im, path: o["path"]?.stringValue, url: o["url"]?.stringValue, tags: tags, w: w, h: h)
-        }
-    }
+    /// Кадры и подборки из снимка: `shots` и `boards` лежат в `extra`, разбор — в домене.
+    func refFrames() -> [RefFrame] { RefLibrary(extra: snapshot.extra).shots }
 
-    func refBoards() -> [RefBoard] {
-        guard case .array(let a)? = snapshot.extra["boards"] else { return [] }
-        return a.compactMap { v -> RefBoard? in
-            guard case .object(let o) = v, let k = RefBoard.Kind(rawValue: o["kind"]?.stringValue ?? "") else { return nil }
-            var items: [String] = []
-            if case .array(let t)? = o["items"] { items = t.compactMap(\.stringValue) }
-            return RefBoard(kind: k, sid: o["sid"]?.stringValue, genre: o["genre"]?.stringValue, items: items)
-        }
-    }
+    func refBoards() -> [RefBoard] { RefLibrary(extra: snapshot.extra).boards }
 
     /// Кадры карточки: свои, потом набор жанра (веб `allRefs`).
     func cardRefs(_ s: Session) -> [RefFrame] {

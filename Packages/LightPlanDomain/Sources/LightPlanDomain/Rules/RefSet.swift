@@ -1,4 +1,5 @@
 import Foundation
+import LightPlanCore
 
 /// Кадр референса (веб `shots[]`): что нужно экрану — имя картинки `im`,
 /// путь в облаке, ссылка. Байтов в файле обмена нет (итерация 27, справка).
@@ -15,12 +16,16 @@ public struct RefFrame: Sendable, Hashable {
     public var h: Double?
     /// Лежит в подборке этой съёмки (веб `own`), а не только в наборе жанра.
     public var own: Bool
+    /// Отметка правки для слияния устройств (веб `mt`).
+    public var mt: Double?
+    /// Поля веба, которых Swift не знает (`pending`, новые): при записи уходят как пришли.
+    public var extra: [String: JSONValue]
 
     public init(id: String, kind: Kind = .img, im: String? = nil, path: String? = nil,
                 url: String? = nil, tags: [String] = [], w: Double? = nil, h: Double? = nil,
-                own: Bool = false) {
+                own: Bool = false, mt: Double? = nil, extra: [String: JSONValue] = [:]) {
         self.id = id; self.kind = kind; self.im = im; self.path = path; self.url = url
-        self.tags = tags; self.w = w; self.h = h; self.own = own
+        self.tags = tags; self.w = w; self.h = h; self.own = own; self.mt = mt; self.extra = extra
     }
 
     /// Открывается в просмотрщике: картинка с именем блоба или путём в облаке
@@ -31,13 +36,38 @@ public struct RefFrame: Sendable, Hashable {
 /// Подборка (веб `boards[]`): `shoot` — съёмки `sid`, `tpl` — папка набора жанра.
 public struct RefBoard: Sendable, Hashable {
     public enum Kind: String, Sendable { case shoot, tpl }
+    public var id: String
     public var kind: Kind
     public var sid: String?
     public var genre: String?
     public var items: [String]
+    /// Имя папки; у основной папки жанра `nil` (она и есть жанр).
+    public var name: String?
+    /// Кадр-обложка; `nil` — первый кадр с картинкой.
+    public var cover: String?
+    /// Порядок в папке: 0 вручную, 1 новые сверху, 2 по разделу.
+    public var sort: Int
+    /// Срок «хранения на устройстве» — только сохраняется (решение 30.09, 2А).
+    public var keep: RefKeep?
+    public var mt: Double?
+    public var extra: [String: JSONValue]
 
-    public init(kind: Kind, sid: String? = nil, genre: String? = nil, items: [String] = []) {
-        self.kind = kind; self.sid = sid; self.genre = genre; self.items = items
+    public init(id: String = "", kind: Kind, sid: String? = nil, genre: String? = nil, items: [String] = [],
+                name: String? = nil, cover: String? = nil, sort: Int = 0, keep: RefKeep? = nil,
+                mt: Double? = nil, extra: [String: JSONValue] = [:]) {
+        self.id = id; self.kind = kind; self.sid = sid; self.genre = genre; self.items = items
+        self.name = name; self.cover = cover; self.sort = sort; self.keep = keep
+        self.mt = mt; self.extra = extra
+    }
+}
+
+/// Срок хранения на устройстве (веб `keep`): `mode` — day, half, ever, shoot; `at` — когда выбран.
+public struct RefKeep: Sendable, Hashable {
+    public var mode: String
+    public var at: Double?
+    public var extra: [String: JSONValue]
+    public init(mode: String, at: Double? = nil, extra: [String: JSONValue] = [:]) {
+        self.mode = mode; self.at = at; self.extra = extra
     }
 }
 
