@@ -305,6 +305,11 @@ struct AskTextSheet: View {
     let title: String
     let ok: String
     let cancel: String
+    /// Клавиатура: адрес для ссылки, обычная для имён (мудборд, 28).
+    var keyboard: UIKeyboardType = .URL
+    var initial = ""
+    /// Пустое имя — тоже ответ (переименование снимает имя); по умолчанию пустое = «Отмена».
+    var allowEmpty = false
     let answer: (String?) -> Void
     @State private var text = ""
     @FocusState private var focused: Bool
@@ -319,7 +324,8 @@ struct AskTextSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
             TextField("", text: $text)
                 .font(.system(size: 16)).foregroundStyle(pal.ink)
-                .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                .keyboardType(keyboard).textInputAutocapitalization(keyboard == .URL ? .never : .sentences)
+                .autocorrectionDisabled(keyboard == .URL)
                 .focused($focused).submitLabel(.done).onSubmit { finish() }
                 .padding(.vertical, 14).padding(.horizontal, 15)
                 .background(focused ? pal.press : pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -342,11 +348,14 @@ struct AskTextSheet: View {
         .padding(.horizontal, 24).padding(.bottom, 24)
         .presentationDetents([.height(300)])
         .presentationDragIndicator(.hidden)
-        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { focused = true } }
+        .onAppear {
+            text = initial
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { focused = true }
+        }
     }
 
     private func finish() {
         let v = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        answer(v.isEmpty ? nil : v)
+        answer(v.isEmpty && !allowEmpty ? nil : v)
     }
 }

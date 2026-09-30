@@ -38,14 +38,14 @@ extension AppModel {
     }
 
     /// Жанр папки: у съёмки — жанр записи, у жанровой папки — её жанр (веб `mbGenre`).
-    private func mbFolderGenre(_ b: RefBoard) -> String? {
+    func mbFolderGenre(_ b: RefBoard) -> String? {
         if b.kind == .shoot { return sessions.first { $0.id == b.sid }?.genre?.rawValue ?? b.genre }
         return b.genre
     }
 
     /// Шапка папки (веб `mbTitle`, `mbSub`): съёмка — «Имя клиента» и «Тип · 1 окт 2026 · место»;
     /// жанр — имя жанра и имя папки (у основной — «Жанровая подборка»).
-    private func mbFolderHead(_ b: RefBoard) -> MbLabels {
+    func mbFolderHead(_ b: RefBoard) -> MbLabels {
         let facts = PlannerFacts(app: self, dark: true)
         if b.kind == .shoot, let s = sessions.first(where: { $0.id == b.sid }) {
             let who = facts.words.clientName(s)
@@ -108,7 +108,8 @@ extension AppModel {
     // MARK: просмотрщик
 
     /// Тап по кадру (веб `openRefAt`): картинка — в просмотрщик по списку «только картинки, в
-    /// порядке сетки»; ссылка без картинки — адрес (лист кадра — шаг 5в); пустой кадр молчит.
+    /// порядке сетки»; ссылка без картинки — её адрес (в папке такая ссылка открывает лист кадра —
+    /// это решает экран папки, `MoodboardFolder.tile`); пустой кадр молчит.
     func openMbFrame(_ id: String, shown: [RefFrame]) -> RefTileOpen {
         guard let f = shown.first(where: { $0.id == id }) else { return .none }
         if MbFolderView.isBareLink(f), let u = f.url, let url = URL(string: u), url.scheme != nil { return .url(url) }

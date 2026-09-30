@@ -23,6 +23,8 @@ struct MoodboardState: Equatable {
     /// Просмотрщик папки: список кадров на момент открытия (только картинки, в порядке сетки).
     var viewerIds: [String] = []
     var pager: RefPager?
+    /// Открытый лист мудборда (шаг 5в): меню, «Добавить в…», «Новая подборка», обложка, карточка, кадр.
+    var sheet: MbSheet?
     var isOpen: Bool { galleryOpen || shelf != nil || folder != nil }
 }
 
@@ -102,7 +104,7 @@ extension AppModel {
     func openMbGallery(backKey: String = "nav.shoots") { mb.backKey = backKey; mb.galleryOpen = true }
 
     func closeMbGallery() {
-        mb.galleryOpen = false; mb.query = ""; mb.tag = nil
+        mb.galleryOpen = false; mb.query = ""; mb.tag = nil; mb.pager = nil; mb.viewerIds = []
     }
 
     func openMbShelf(_ genre: String) { mb.shelf = genre }
@@ -119,6 +121,7 @@ extension AppModel {
     // MARK: правка подборок (операции шага 4 — записываются сразу)
 
     /// Одна правка библиотеки: разбор, действие, запись в снимок, сохранение.
+    @discardableResult
     func mbEdit<T>(_ body: (inout RefLibrary, Double) -> T) -> T {
         var lib = mbLibrary()
         let r = body(&lib, Double(nowMs))

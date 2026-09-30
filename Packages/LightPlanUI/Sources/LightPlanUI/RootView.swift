@@ -125,6 +125,7 @@ private struct Shell: View {
         }
         // Корзина и «Занять время» (22): из «Съёмок» и настроек.
         .sheet(isPresented: $app.binOpen) { BinSheet(app: app, windowHeight: windowHeight) }
+        .mbSheets(app)
         // Пока открыта форма, лист «Занять время» показывает она сама (строка «Время в пути»).
         .sheet(item: Binding(get: { app.form == nil ? app.blockSheet : nil }, set: { app.blockSheet = $0 })) { d in
             BlockSheet(app: app, draft: d, windowHeight: windowHeight)

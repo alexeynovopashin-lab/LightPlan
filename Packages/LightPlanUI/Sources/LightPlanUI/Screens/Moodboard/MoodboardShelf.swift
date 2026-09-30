@@ -10,8 +10,6 @@ struct MoodboardShelf: View {
     @Bindable var app: AppModel
     let genre: String
     @Environment(\.colorScheme) private var scheme
-    @State private var asking = false
-    @State private var name = ""
 
     private var t: Lexicon { app.lexicon }
 
@@ -40,19 +38,15 @@ struct MoodboardShelf: View {
                             withAnimation(overlaySlide) { app.openMbFolder(boardId: b.id) }
                         }
                     }
-                    MbAddTile(title: t.t("mb.newFolder"), node: "mb.shelfAdd") { name = ""; asking = true }
+                    MbAddTile(title: t.t("mb.newFolder"), node: "mb.shelfAdd") { app.openMbNewFolder(genre: genre) }
                 }
                 .padding(.top, 14)
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
         }
         .background(pal.surface.ignoresSafeArea())
-        // Имя папки спрашивается сразу: две безымянные папки в одном жанре не отличить (веб `mbNewFolder`).
-        .alert(t.t("mb.newFolderAsk"), isPresented: $asking) {
-            TextField("", text: $name)
-            Button(t.t("ask.cancel"), role: .cancel) {}
-            Button(t.t("mb.pickDone")) { app.mbAddFolder(genre: genre, name: name) }
-        }
+        // Имя папки спрашивает лист (веб `mbNewFolder`): две безымянные папки в одном жанре не отличить;
+        // после имени папка записана и открыта.
         .shotNode("mb.shelf", text: "\(shelf.folders.count)")
     }
 }

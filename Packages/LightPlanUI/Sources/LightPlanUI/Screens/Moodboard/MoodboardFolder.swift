@@ -7,8 +7,9 @@ import LightPlanDomain
 /// Шапка папки, лупа и поле, разделы, подпись, масонри в две колонки, выбор кадров и просмотрщик.
 /// Числа — замер беты (справка 28, п. 2.4 и раздел 4): колонка 158 при отступе 39 от края.
 /// Картинок нет до 30 (решение Алексея 1Б): ссылка — квадрат «сайт / хвост пути», остальное — штриховка.
-/// Шестерёнка пока ведёт к одному пункту — «Выбрать»; остальные пункты меню, «+», «Фото/Ссылка»,
-/// «Добавить в…/Переместить…», лист кадра — шаг 5в.
+/// Шестерёнка открывает меню подборки (лист, шаг 5в); в выборе — «Добавить в…», «Переместить…», «Убрать N»;
+/// долгий тап по кадру и тап по ссылке без картинки — лист кадра; долгий тап по обложке — лист обложки.
+/// Плитка «+» и «Фото/Ссылка» — файлов и картинок нет до 30 (решение Алексея 1Б), в 5в не входят.
 struct MoodboardFolder: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
@@ -54,7 +55,7 @@ struct MoodboardFolder: View {
     private func content(_ sc: MbFolderScene, _ pal: Palette) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                topBar(pal)
+                topBar(sc, pal)
                 head(sc, pal)
                 toolRow(sc, pal)
                 if app.mb.folderSearchOpen { field(pal) }
@@ -85,7 +86,7 @@ struct MoodboardFolder: View {
 
     /// «‹» назад 20×28 и справа дверь «настройки» 30×30 (`.mb-topbar`, y 14, h 38). Дверь «хранение» и
     /// строка «на устройстве / в облаке» — про файлы, их нет до 30 (решения Алексея 1Б, 2А).
-    private func topBar(_ pal: Palette) -> some View {
+    private func topBar(_ sc: MbFolderScene, _ pal: Palette) -> some View {
         HStack(spacing: 0) {
             Button {
                 focused = false
@@ -97,12 +98,11 @@ struct MoodboardFolder: View {
             .buttonStyle(.plain).accessibilityLabel(t.t("card.close")).shotNode("mb.folderBack")
             Spacer(minLength: 0)
             if app.mb.pick == nil {
-                Menu {
-                    Button(t.t("mb.pick")) { app.toggleMbPicking() }
-                } label: {
+                Button { focused = false; app.openMbMenu(sc.board.id) } label: {
                     Icon("sliders", size: 20, line: 1.6).foregroundStyle(pal.ink4)
                         .frame(width: 30, height: 30).contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(t.t("mb.pick")).shotNode("mb.folderCog")
             }
         }
@@ -114,6 +114,9 @@ struct MoodboardFolder: View {
         HStack(spacing: 12) {
             MbCover(boardId: sc.board.id, genre: sc.genre, radius: 14, mark: 0.42, stroke: 1.5)
                 .frame(width: 58, height: 58).shotNode("mb.folderHero")
+                .onLongPressGesture(minimumDuration: 0.42, maximumDistance: 8) {
+                    if !app.mbLibrary().coverCandidates(sc.board.id).isEmpty { app.openMbCover() }
+                }
             VStack(alignment: .leading, spacing: 2) {
                 Text(sc.title).font(webFont(22, 650)).tracking(-0.5).foregroundStyle(pal.ink).lineLimit(1)
                     .shotNode("mb.folderTitle", text: sc.title)
@@ -256,19 +259,26 @@ struct MoodboardFolder: View {
     private func tile(_ f: RefFrame, _ sc: MbFolderScene, _ pal: Palette) -> some View {
         let picked = app.mb.pick?.contains(f.id) ?? false
         let hidden = app.mbViewerFrameId == f.id && app.mb.pager != nil
-        return Button {
+        let tap = {
             if app.mb.pick != nil { app.toggleMbPick(f.id); return }
-            if case .url(let u) = app.openMbFrame(f.id, shown: sc.shown) { openURL(u) }
-        } label: {
-            ZStack(alignment: .topTrailing) {
-                if MbFolderView.isBareLink(f), let u = f.url { linkTile(u, pal) }
-                else { RefPlaceholder(pal: pal, radius: 10).opacity(picked ? 0.55 : 1) }
-                if picked { check(pal) }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            // Ссылка без картинки открывает лист кадра, а не сайт (веб `openMbItem`); адрес — строка листа.
+            if MbFolderView.isBareLink(f) { app.openMbItem(shot: f.id); return }
+            _ = app.openMbFrame(f.id, shown: sc.shown)
         }
-        .buttonStyle(.plain)
+        // Удержание 0,42 с — лист кадра; сдвиг больше 8 pt его отменяет (веб `MB_HOLD`). В выборе — только отметка.
+        return ZStack(alignment: .topTrailing) {
+            if MbFolderView.isBareLink(f), let u = f.url { linkTile(u, pal) }
+            else { RefPlaceholder(pal: pal, radius: 10).opacity(picked ? 0.55 : 1) }
+            if picked { check(pal) }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .gesture(LongPressGesture(minimumDuration: 0.42, maximumDistance: 8).onEnded { _ in
+            if app.mb.pick == nil { app.openMbItem(shot: f.id) }
+        }.exclusively(before: TapGesture().onEnded { tap() }))
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { tap() }
         .opacity(hidden ? 0 : 1)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("mbf")) } action: { tiles[f.id] = $0 }
         .shotNode("mb.ftile.\(sc.shown.firstIndex { $0.id == f.id } ?? 0)", text: f.id)
@@ -322,18 +332,23 @@ struct MoodboardFolder: View {
 
     // MARK: выбор
 
-    /// В выборе вместо «Фото/Ссылка» — действия над выбранным. Здесь пока «Убрать N»; «Добавить в…» и
-    /// «Переместить…» — листы шага 5в, кнопок-пустышек до них нет.
+    /// В выборе вместо «Фото/Ссылка» — три кнопки над выбранным: «Добавить в…», «Переместить…», «Убрать N»
+    /// (`#mbSelActs`, каждая 56 высотой). Пока ничего не отмечено, они приглушены и молчат.
     private func pickActions(_ pal: Palette) -> some View {
         let n = app.mb.pick?.count ?? 0
-        return HStack(spacing: 8) {
-            Button { if n > 0 { confirmRemove = true } } label: {
-                Text(t.t("mb.selDel") + (n > 0 ? " \(n)" : "")).font(webFont(15)).foregroundStyle(Color(hex: 0xB9603D))
+        func button(_ title: String, node: String, color: Color, _ go: @escaping () -> Void) -> some View {
+            Button { if n > 0 { go() } } label: {
+                Text(title).font(webFont(14)).foregroundStyle(color).multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity).frame(height: 56)
                     .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(pal.sheet))
                     .opacity(n > 0 ? 1 : 0.45)
             }
-            .buttonStyle(.plain).shotNode("mb.selDel", text: "\(n)")
+            .buttonStyle(.plain).shotNode(node, text: "\(n)")
+        }
+        return HStack(spacing: 8) {
+            button(t.t("mb.selAdd"), node: "mb.selAdd", color: pal.ink3) { app.openMbAddPicked(move: false) }
+            button(t.t("mb.selMove"), node: "mb.selMove", color: pal.ink3) { app.openMbAddPicked(move: true) }
+            button(t.t("mb.selDel") + (n > 0 ? " \(n)" : ""), node: "mb.selDel", color: Color(hex: 0xB9603D)) { confirmRemove = true }
         }
         .padding(.top, 12).padding(.horizontal, 15)
     }

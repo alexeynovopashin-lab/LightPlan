@@ -91,22 +91,31 @@ struct MbTile: View {
     let title: String
     let sub: String
     var node = ""
+    /// Удержание 0,42 с (веб `MB_HOLD`): у съёмок — карточка подборки; у жанров до 29 удержанию нечего делать.
+    var hold: (() -> Void)? = nil
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let pal = Palette(scheme)
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 0) {
-                MbArt(boardId: boardId, genre: genre, count: count)
-                Text(title).font(webFont(12.5, 600)).foregroundStyle(pal.ink2).lineLimit(1).padding(.top, 7)
-                Text(sub).font(webFont(11)).foregroundStyle(pal.ink5).lineLimit(1).padding(.top, 1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
+        let face = VStack(alignment: .leading, spacing: 0) {
+            MbArt(boardId: boardId, genre: genre, count: count)
+            Text(title).font(webFont(12.5, 600)).foregroundStyle(pal.ink2).lineLimit(1).padding(.top, 7)
+            Text(sub).font(webFont(11)).foregroundStyle(pal.ink5).lineLimit(1).padding(.top, 1)
         }
-        .buttonStyle(.plain)
-        .shotNode(node, text: title)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        if let hold {
+            face
+                .gesture(LongPressGesture(minimumDuration: 0.42, maximumDistance: 8).onEnded { _ in hold() }
+                    .exclusively(before: TapGesture().onEnded { action() }))
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { action() }
+                .shotNode(node, text: title)
+        } else {
+            Button(action: action) { face }.buttonStyle(.plain).shotNode(node, text: title)
+        }
     }
 }
 

@@ -7,7 +7,7 @@ import LightPlanDomain
 /// Поиск, чипы разделов и — либо плитки подборок, либо плоская сетка найденных кадров
 /// (пустое поле и нет чипа — плитки; что-то набрано или выбран чип — кадры). Картинок нет:
 /// ссылки — карточки «сайт / хвост пути», остальное — штриховка (решение Алексея 1Б).
-/// «+» на кадре и лист «Добавить в…» — шаг 5б.
+/// «+» на найденном кадре открывает лист «Добавить в…»; «+ Новая подборка» — лист «Новая подборка» (шаг 5в).
 struct MoodboardGallery: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
@@ -16,6 +16,7 @@ struct MoodboardGallery: View {
     @State private var offset: CGFloat = 0
     @State private var window: CGFloat = 800
     @State private var position = ScrollPosition(edge: .top)
+    @State private var tiles: [String: CGRect] = [:]
     @FocusState private var focused: Bool
 
     private var t: Lexicon { app.lexicon }
@@ -48,6 +49,11 @@ struct MoodboardGallery: View {
                     window: $0.containerSize.height)
         } action: { _, m in offset = m.offset; scrollable = m.scrollable; window = m.window }
         .overlay(alignment: .bottomTrailing) { jump(pal) }
+        .overlay {
+            // Просмотрщик найденных кадров; пока поверх лежит папка, она держит свой (общее состояние `mb.pager`).
+            if app.mb.pager != nil, app.mb.folder == nil { RefViewerLayer(app: app, source: viewerSource(lib), tiles: tiles) }
+        }
+        .coordinateSpace(name: "mbg")
         .background(pal.surface.ignoresSafeArea())
         .shotNode("mb.gallery", text: "\(lib.boards.count)")
     }
@@ -107,7 +113,7 @@ struct MoodboardGallery: View {
         }
         MbSectionLabel(text: t.t("mb.sets"), top: 18)
         MbTileGrid {
-            MbAddTile(title: t.t("mb.newTitle"), node: "mb.gadd") {}
+            MbAddTile(title: t.t("mb.newTitle"), node: "mb.gadd") { focused = false; app.openMbNew() }
             ForEach(Array(sets.enumerated()), id: \.element.id) { tile($1, $0, lib, node: "mb.gg") }
         }
     }
@@ -115,13 +121,21 @@ struct MoodboardGallery: View {
     private func tile(_ fo: MbFolder, _ i: Int, _ lib: RefLibrary, node: String) -> some View {
         let l = app.mbLabels(fo, lib)
         return MbTile(boardId: fo.boardId, genre: fo.genre, count: fo.frameCount, title: l.title, sub: l.sub,
-                      node: "\(node).\(i)") {
+                      node: "\(node).\(i)",
+                      hold: fo.kind == .shoot ? { focused = false; app.openMbBoardCard(fo.boardId) } : nil) {
             focused = false
             withAnimation(overlaySlide) { app.openMbFolder(fo) }
         }
     }
 
     // MARK: плоская сетка найденных кадров
+
+    private func viewerSource(_ lib: RefLibrary) -> RefViewerSource {
+        let id = app.mbViewerFrameId
+        return RefViewerSource(frameId: id, frame: id.flatMap(lib.shot), pager: app.mb.pager,
+                               swipe: { dx, dy in app.mbViewerSwipe(dx: dx, dy: dy) },
+                               close: { app.closeMbViewer() })
+    }
 
     @ViewBuilder private func results(_ lib: RefLibrary, _ tag: String?, _ pal: Palette) -> some View {
         let found = Moodboard.search(lib.shots, query: app.mb.query, tag: tag, tagName: app.mbTagName,
@@ -133,7 +147,7 @@ struct MoodboardGallery: View {
         } else {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
                 ForEach(Array(found.enumerated()), id: \.element.id) { i, fr in
-                    card(fr, pal).shotNode("mb.found.\(i)", text: fr.id)
+                    card(fr, found, pal).shotNode("mb.found.\(i)", text: fr.id)
                 }
             }
             .padding(.top, 14)
@@ -141,24 +155,40 @@ struct MoodboardGallery: View {
         }
     }
 
-    @ViewBuilder private func card(_ fr: RefFrame, _ pal: Palette) -> some View {
-        if fr.kind == .link, fr.im == nil, let url = fr.url {
-            Button {
-                if let u = URL(string: url) { openURL(u) }
-            } label: {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(RefLink.host(url) ?? t.t("ref.link")).font(webFont(13, 600)).foregroundStyle(pal.ink).lineLimit(1)
-                    Text(RefLink.tail(url)).font(webFont(11)).foregroundStyle(pal.ink6).lineLimit(3)
+    /// Карточка найденного кадра: тап — открыть (ссылка без картинки — сайт, картинка — просмотрщик по найденным),
+    /// «+» справа сверху — лист «Добавить в…» (веб `#mbSearchGrid .plus`, 22 pt, латунь).
+    private func card(_ fr: RefFrame, _ found: [RefFrame], _ pal: Palette) -> some View {
+        let hidden = app.mbViewerFrameId == fr.id && app.mb.pager != nil
+        return ZStack(alignment: .topTrailing) {
+            Group {
+                if MbFolderView.isBareLink(fr), let url = fr.url {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(RefLink.host(url) ?? t.t("ref.link")).font(webFont(13, 600)).foregroundStyle(pal.ink).lineLimit(1)
+                        Text(RefLink.tail(url)).font(webFont(11)).foregroundStyle(pal.ink6).lineLimit(3)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .padding(10)
+                    .aspectRatio(1, contentMode: .fit)
+                    .background(pal.sheet, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                } else {
+                    RefPlaceholder(pal: pal).aspectRatio(1, contentMode: .fit)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(10)
-                .aspectRatio(1, contentMode: .fit)
-                .background(pal.sheet, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             }
-            .buttonStyle(.plain)
-        } else {
-            RefPlaceholder(pal: pal).aspectRatio(1, contentMode: .fit)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                focused = false
+                if case .url(let u) = app.openMbFrame(fr.id, shown: found) { openURL(u) }
+            }
+            Button { focused = false; app.openMbAdd(shot: fr.id) } label: {
+                Text("+").font(.system(size: 15)).foregroundStyle(pal.sheet)
+                    .frame(width: 22, height: 22).background(Circle().fill(pal.brass))
+                    .contentShape(Rectangle().inset(by: -11))
+            }
+            .buttonStyle(.plain).padding(.top, 4).padding(.trailing, 4)
+            .shotNode("mb.plus.\(fr.id)")
         }
+        .opacity(hidden ? 0 : 1)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("mbg")) } action: { tiles[fr.id] = $0 }
     }
 
     // MARK: прыжок

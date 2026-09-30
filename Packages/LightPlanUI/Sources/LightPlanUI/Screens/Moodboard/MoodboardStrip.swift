@@ -109,13 +109,13 @@ struct MoodboardStrip: View {
         let r = Moodboard.row(list, withAdd: withAdd)
         return MbTileGrid {
             if withAdd {
-                // Заведение подборки — лист «Новая подборка», шаг 5б.
-                MbAddTile(title: t.t("mb.newTitle"), node: "mb.add") {}
+                MbAddTile(title: t.t("mb.newTitle"), node: "mb.add") { app.openMbNew() }
             }
             ForEach(Array(r.shown.enumerated()), id: \.element.id) { i, fo in
                 let l = app.mbLabels(fo, lib)
                 MbTile(boardId: fo.boardId, genre: fo.genre, count: fo.frameCount, title: l.title, sub: l.sub,
-                       node: "\(node).\(i)") {
+                       node: "\(node).\(i)",
+                       hold: fo.kind == .shoot ? { app.openMbBoardCard(fo.boardId) } : nil) {
                     withAnimation(overlaySlide) { app.openMbFolder(fo) }
                 }
             }

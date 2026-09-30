@@ -36,6 +36,25 @@ public enum RefFolders {
 
     public static func code(_ tag: String) -> String { tagCode[tag] ?? tag }
 
+    /// Все коды разделов, какие знает приложение (веб `allTagCodes`): по ним сверяют набранное.
+    public static var allCodes: [String] {
+        var out: [String] = [], seen = Set<String>()
+        for g in genreTags.keys.sorted() { for c in genreTags[g]! where seen.insert(c).inserted { out.append(c) } }
+        for c in defaultTags where seen.insert(c).inserted { out.append(c) }
+        return out
+    }
+
+    /// Слово, набранное руками, — известный код, если совпало без учёта регистра с русским именем, кодом
+    /// или названием на нынешнем языке; иначе слово проходит строчным (веб `tagCanon`).
+    public static func canon(_ word: String, tagName: (String) -> String) -> String {
+        let w = word.trimmingCharacters(in: .whitespaces)
+        guard !w.isEmpty else { return "" }
+        let low = w.lowercased()
+        if let ru = tagCode.first(where: { $0.key.lowercased() == low }) { return ru.value }
+        for c in allCodes where c.lowercased() == low || tagName(c).lowercased() == low { return c }
+        return low
+    }
+
     /// Папки, в которых есть кадры: сперва из списка жанра (в его порядке),
     /// потом остальные — в порядке первой встречи.
     public static func used(in frames: [RefFrame], genre: String?) -> [String] {

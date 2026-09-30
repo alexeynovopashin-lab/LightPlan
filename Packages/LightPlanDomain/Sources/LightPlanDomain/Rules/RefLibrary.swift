@@ -47,6 +47,12 @@ public struct RefLibrary: Sendable, Hashable {
             return a.contains(.string(shotId))
         }
     }
+    fileprivate func isUsedByForeign(_ shotId: String) -> Bool {
+        foreignBoards.contains { v in
+            guard case .object(let o) = v, case .array(let a)? = o["items"] else { return false }
+            return a.contains(.string(shotId))
+        }
+    }
     /// Папки жанра в порядке полки; основная — первая (веб `boardsOfGenre`, `boardTpl`).
     public func folders(ofGenre g: String) -> [RefBoard] { boards.filter { $0.kind == .tpl && $0.genre == g } }
 
@@ -155,6 +161,92 @@ public struct RefLibrary: Sendable, Hashable {
         }
         lib.write(into: &extra)
         extra["mbSeeded"] = .bool(true)
+        return true
+    }
+}
+
+// MARK: - Листы мудборда (итерация 28, шаг 5в)
+
+extension RefLibrary {
+    /// Кадр лежит в какой-то другой подборке, кроме этой (веб: `boards.some(o !== b && boardHas(o, id))`).
+    /// Сырые подборки неизвестного рода тоже считаются — их ссылку рвать нельзя.
+    public func isUsed(_ shotId: String, except boardId: String) -> Bool {
+        boards.contains { $0.id != boardId && $0.items.contains(shotId) } || isUsedByForeign(shotId)
+    }
+
+    /// Сколько кадров подборки уйдут насовсем вместе с ней — лежат только здесь (веб `openMbBoardSheet`, `lone`).
+    public func loneCount(_ boardId: String) -> Int {
+        guard let b = board(boardId) else { return 0 }
+        return b.items.filter { !isUsed($0, except: boardId) }.count
+    }
+
+    /// Порядок папки: 0 вручную, 1 новые сверху, 2 по разделу; другое число не пишется (веб `b.sort = i`).
+    @discardableResult
+    public mutating func setSort(_ sort: Int, of boardId: String, now: Double? = nil) -> Bool {
+        guard (0...2).contains(sort), let i = boards.firstIndex(where: { $0.id == boardId }) else { return false }
+        boards[i].sort = sort
+        if let now { boards[i].mt = now }
+        return true
+    }
+
+    /// Обложка: id кадра, лежащего в подборке, или `nil` — «Автоматически» (веб `b.cover = …`).
+    /// Кадр не из этой подборки обложкой не становится.
+    @discardableResult
+    public mutating func setCover(_ shotId: String?, of boardId: String, now: Double? = nil) -> Bool {
+        guard let i = boards.firstIndex(where: { $0.id == boardId }) else { return false }
+        if let shotId, !boards[i].items.contains(shotId) { return false }
+        boards[i].cover = shotId
+        if let now { boards[i].mt = now }
+        return true
+    }
+
+    /// Кадры, что можно поставить обложкой: только с картинкой, в порядке подборки (веб `r.im`).
+    public func coverCandidates(_ boardId: String) -> [RefFrame] {
+        guard let b = board(boardId) else { return [] }
+        return MbFolderView.frames(of: b, in: shots).filter { !($0.im ?? "").isEmpty }
+    }
+
+    /// Имя подборки: пробелы по краям срезаются, пусто — имя снято (у папки жанра это значит
+    /// «зовётся жанром», веб `b.name = name || null`).
+    @discardableResult
+    public mutating func rename(_ boardId: String, to name: String, now: Double? = nil) -> Bool {
+        guard let i = boards.firstIndex(where: { $0.id == boardId }) else { return false }
+        let n = name.trimmingCharacters(in: .whitespaces)
+        boards[i].name = n.isEmpty ? nil : n
+        if let now { boards[i].mt = now }
+        return true
+    }
+
+    /// Основная папка жанра — первая; нет ни одной — заводится пустая с этим `id` (веб `boardTpl(g, true)`).
+    /// Ответ — `id` основной папки.
+    @discardableResult
+    public mutating func ensureGenreBoard(_ genre: String, id: String, now: Double? = nil) -> String {
+        if let b = folders(ofGenre: genre).first { return b.id }
+        boards.append(RefBoard(id: id, kind: .tpl, genre: genre, mt: now))
+        return id
+    }
+
+    /// Слово на кадре: стоит (по коду) — снимается со всех записей, не стоит — добавляется кодом.
+    /// Старое русское слово («Пара») и код (`couple`) для кадра одно слово. Ответ — стоит ли теперь.
+    @discardableResult
+    public mutating func toggleTag(_ tag: String, on shotId: String, now: Double? = nil) -> Bool {
+        guard let i = shots.firstIndex(where: { $0.id == shotId }) else { return false }
+        let code = RefFolders.code(tag)
+        let had = shots[i].tags.contains { RefFolders.code($0) == code }
+        if had { shots[i].tags.removeAll { RefFolders.code($0) == code } } else { shots[i].tags.append(code) }
+        if let now { shots[i].mt = now }
+        return !had
+    }
+
+    /// Свой тег из поля: слово приводится к известному коду без учёта регистра, иначе остаётся строчным
+    /// (веб `tagCanon`). Уже стоящий не дублируется. Пустое — ничего.
+    @discardableResult
+    public mutating func addTag(_ word: String, to shotId: String, tagName: (String) -> String, now: Double? = nil) -> Bool {
+        let w = RefFolders.canon(word.replacingOccurrences(of: ",", with: ""), tagName: tagName)
+        guard !w.isEmpty, let i = shots.firstIndex(where: { $0.id == shotId }),
+              !shots[i].tags.contains(where: { RefFolders.code($0) == w }) else { return false }
+        shots[i].tags.append(w)
+        if let now { shots[i].mt = now }
         return true
     }
 }
