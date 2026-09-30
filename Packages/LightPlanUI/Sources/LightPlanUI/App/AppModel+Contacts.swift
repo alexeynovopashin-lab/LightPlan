@@ -125,7 +125,10 @@ extension AppModel {
 
     /// Строка у встречи, ставшей съёмкой: «Съёмка назначена на {дата}».
     func grownLine(_ s: Session) -> String? {
-        guard s.kind != .shoot, let d = s.grewOn else { return nil }
+        guard s.kind != .shoot, let grew = s.grewOn else { return nil }
+        // Дату называет съёмка: фотограф правит её в открывшейся форме, а `grewOn` записан при назначении
+        // (ревью GPT к 21fdb78). Съёмки больше нет — остаётся записанный день.
+        let d = s.grewToId.flatMap { id in snapshot.sessions.first { $0.id == id }?.day } ?? grew
         let facts = PlannerFacts(app: self, dark: true)
         return lexicon.t("card.grownOn", ["d": facts.dates.dMon(facts.date(d))])
     }

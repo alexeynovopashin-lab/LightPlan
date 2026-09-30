@@ -196,6 +196,17 @@ struct ContactsStateTests {
         #expect(app.grownLine(m) == "Съёмка назначена на 4 ноября.")
     }
 
+    @Test func noteFollowsTheShootWhenThePhotographerMovesItsDate() {
+        let app = model(sessions: [meet()])
+        app.growMeet("m1")
+        app.form?.day = day(12, 1)
+        app.saveForm()
+        #expect(app.grownLine(app.sessions.first { $0.id == "m1" }!) == "Съёмка назначена на 1 декабря.", "дата взята у съёмки, не записана при назначении")
+        let shootId = app.sessions.first { $0.kind == .shoot }!.id
+        app.snapshot.sessions.removeAll { $0.id == shootId }
+        #expect(app.grownLine(app.sessions[0]) == "Съёмка назначена на 4 ноября.", "съёмки нет — остаётся записанный день")
+    }
+
     @Test func secondGrowCreatesNoSecondShoot() {
         let app = model(sessions: [meet()])
         app.growMeet("m1")
