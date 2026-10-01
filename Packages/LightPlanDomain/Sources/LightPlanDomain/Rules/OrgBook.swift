@@ -112,8 +112,8 @@ public enum OrgBook {
 
     /// Новая ссылка в документы организации (лист «Ссылка»). Пустая — ничего.
     @discardableResult
-    public static func addLink(_ raw: String, kind: DocKind?, title: String? = nil, to o: inout Org) -> Bool {
-        guard let d = Attachment.link(raw, kind: kind, title: title) else { return false }
+    public static func addLink(_ raw: String, kind: DocKind?, title: String? = nil, date: CivilDate? = nil, to o: inout Org) -> Bool {
+        guard let d = Attachment.link(raw, kind: kind, title: title, date: date) else { return false }
         o.docs.append(d)
         return true
     }
@@ -152,7 +152,7 @@ public enum OrgBook {
         }
         for o in orgs {
             for d in o.docs {
-                out.append(ShelfDoc(doc: d, kind: kind(of: d), isRequisite: false, orgId: o.id, sessionId: nil, day: nil))
+                out.append(ShelfDoc(doc: d, kind: kind(of: d), isRequisite: false, orgId: o.id, sessionId: nil, day: d.date))
             }
             for d in o.requisiteFiles {
                 out.append(ShelfDoc(doc: d, kind: nil, isRequisite: true, orgId: o.id, sessionId: nil, day: nil))

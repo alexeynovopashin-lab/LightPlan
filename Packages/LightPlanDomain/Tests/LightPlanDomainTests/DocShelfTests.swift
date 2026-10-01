@@ -192,4 +192,99 @@ import LightPlanDomain
         #expect(DocsPrefs.from(Data(#"{"layout":"cube","grouping":"x","collapsed":["a"]}"#.utf8)).layout == .list, "незнакомый вид не роняет")
         #expect(DocsPrefs.from(Data("мусор".utf8)) == DocsPrefs())
     }
+
+    // MARK: шаг 12б — таблица, месяцы, имя в группе и вне, поле «Дата»
+
+    static func titles(_ rows: [DocShelf.Row]) -> [String] { rows.map(\.title) }
+
+    @Test func tableSortsByEveryColumnBothWaysWithEmptyCellsLast() {
+        // Названия и организации — латиницей: порядок кириллицы и латиницы зависит от языка устройства.
+        let alpha = { () -> Org in var o = Org(id: "a", name: "Alpha"); o.docs = [Self.link("u/f", kind: .act, title: "a 2")]; return o }()
+        var bravo = Org(id: "b", name: "Bravo"); bravo.docs = [Self.link("u/d", kind: .contract, title: "d")]
+        let sessions = [Self.shoot("s1", Self.day(3), org: "b", docs: [Self.link("u/c", kind: .act, title: "c")]),
+                        Self.shoot("s2", Self.day(20), org: "a", docs: [Self.link("u/B", kind: .invoice, title: "B")]),
+                        Self.shoot("s3", Self.day(10, month: 8), org: nil, client: "Zed", docs: [Self.link("u/n", kind: .contract, title: "a 10")]),
+                        Self.shoot("s5", Self.day(5), org: nil, docs: [Self.link("u/e", kind: .brief, title: "e")])]
+        let w = Self.words(orgs: [alpha, bravo], sessions: sessions)
+        let shelf = OrgBook.shelf(orgs: [alpha, bravo], sessions: sessions)
+        var p = DocsPrefs()
+        func t() -> [String] { Self.titles(DocShelf.table(shelf, prefs: p, words: w)) }
+        #expect(t() == ["B", "e", "c", "a 10", "a 2", "d"], "дата: новые сверху, без даты внизу")
+        p.tapColumn(.date)
+        #expect(t() == ["a 10", "c", "e", "B", "a 2", "d"], "повтор — обратный порядок, без даты всё равно внизу")
+        p.tapColumn(.title)
+        #expect(t() == ["a 2", "a 10", "B", "c", "d", "e"], "название А→Я без учёта регистра, числа по значению")
+        p.tapColumn(.title)
+        #expect(t() == ["e", "d", "c", "B", "a 10", "a 2"])
+        p.tapColumn(.org)
+        #expect(t() == ["B", "a 2", "c", "d", "a 10", "e"], "организация А→Я; без организации — внизу; внутри — новые сверху")
+        p.tapColumn(.org)
+        #expect(t() == ["a 10", "c", "d", "B", "a 2", "e"], "обратный порядок; без организации всё равно внизу")
+        p.tapColumn(.kind)
+        #expect(t() == ["c", "a 2", "e", "a 10", "d", "B"], "вид А→Я; внутри вида — новые сверху")
+        p.tapColumn(.kind)
+        #expect(t() == ["B", "a 10", "d", "e", "c", "a 2"])
+    }
+
+    @Test func tableNamesAreFullAndColumnTapKeepsDirectionRules() {
+        let f = Self.fixture()
+        let rows = DocShelf.table(f.shelf, prefs: DocsPrefs(), words: f.words)
+        #expect(rows.contains { $0.title == "K-invoice · Альфа · 20.9" }, "вне группы имя полное: вид · организация · дата")
+        var p = DocsPrefs()
+        p.tapColumn(.org); #expect(p.sortKey == .org && p.ascending, "организация — сперва А→Я")
+        p.tapColumn(.kind); #expect(p.sortKey == .kind && p.ascending)
+        p.tapColumn(.date); #expect(p.sortKey == .date && !p.ascending, "дата — сперва новые сверху")
+    }
+
+    @Test func nameInsideGroupDropsWhatTheHeaderAlreadySays() {
+        let f = Self.fixture()
+        func group(_ g: DocGrouping, _ label: String) -> [String] {
+            var p = DocsPrefs(); p.grouping = g
+            return Self.titles(DocShelf.groups(f.shelf, prefs: p, practice: .ru, words: f.words).first { $0.label == label }!.rows)
+        }
+        #expect(group(.org, "Альфа") == ["K-invoice · 20.9", "Реквизиты"], "в группе организации — «Вид · дата», без организации")
+        #expect(group(.org, "Яр").contains("K-contract"), "у бумаги без даты и без повтора организации — только вид")
+        #expect(group(.month, "9/2026") == ["K-invoice · Альфа", "K-brief", "Акт Б"], "в месяце — без даты, организация остаётся")
+        #expect(group(.kind, "K-invoice") == ["K-invoice · Альфа · 20.9"], "в группе вида имя полное")
+        #expect(DocShelf.row(f.shelf.first { $0.doc.url == "https://x.io/schet" }!, f.words).title == "K-invoice · Альфа · 20.9", "вне группы — полное")
+    }
+
+    @Test func monthsViewIsNewestMonthFirstNewestPaperFirstAndUndatedLast() {
+        let f = Self.fixture()
+        let g = DocShelf.months(f.shelf, practice: .ru, words: f.words)
+        #expect(g.map(\.label) == ["9/2026", "8/2026", "Без даты"])
+        #expect(g[0].rows.map { $0.shelf.day?.day } == [20, 5, 3], "в месяце — от новых")
+        #expect(g[2].rows.count == 2 && g[2].rows.allSatisfy { $0.shelf.day == nil }, "бумаги без даты — последней группой")
+    }
+
+    @Test func monthsViewIgnoresRememberedTableSort() {
+        // запомненная сортировка таблицы не должна переставлять месяцы
+        let f = Self.fixture()
+        var p = DocsPrefs(); p.layout = .months; p.tapColumn(.title); p.tapColumn(.org)
+        #expect(DocsPrefs.from(p.data()).sortKey == .org, "ключ таблицы запоминается")
+        #expect(DocShelf.months(f.shelf, practice: .ru, words: f.words).first?.rows.map { $0.shelf.day?.day } == [20, 5, 3])
+    }
+
+    @Test func orgPaperDateRoundTripsPlacesPaperInItsMonthAndSortsByIt() throws {
+        var y = Org(id: "y", name: "Яр")
+        let d1 = Att.link("a.io/new", kind: .act, title: "Ноябрьский", date: CivilDate(year: 2026, month: 11, day: 4))!
+        let d2 = Att.link("a.io/late", kind: .act, title: "Конец сентября", date: Self.day(30))!
+        let d3 = Att.link("a.io/none", kind: .act, title: "Без числа")!
+        #expect(OrgBook.addLink("a.io/via", kind: .act, title: "Через addLink", date: Self.day(1), to: &y))
+        y.docs += [d1, d2, d3]
+        #expect(y.docs[0].date == Self.day(1))
+        let sessions = [Self.shoot("s", Self.day(20), org: "y", docs: [Self.link("https://x.io/s", kind: .act, title: "Съёмка")])]
+        let w = Self.words(orgs: [y], sessions: sessions)
+        let shelf = OrgBook.shelf(orgs: [y], sessions: sessions)
+        let g = DocShelf.months(shelf, practice: .ru, words: w)
+        #expect(g.map(\.label) == ["11/2026", "9/2026", "Без даты"], "бумага с датой встаёт в свой месяц")
+        #expect(Self.titles(g[1].rows) == ["Конец сентября", "Съёмка", "Через addLink"], "и сортируется по ней вместе со съёмками")
+        #expect(g[2].rows.map(\.title) == ["Без числа"])
+        let back = try JSONDecoder().decode(Att.self, from: JSONEncoder().encode(d1))
+        #expect(back.date == CivilDate(year: 2026, month: 11, day: 4))
+        let enc = String(decoding: try JSONEncoder().encode(d3), as: UTF8.self)
+        #expect(!enc.contains("date"), "пустая дата в данные не пишется")
+        #expect(try JSONDecoder().decode(Att.self, from: Data(#"{"k":"link","url":"https://a.io","date":"мусор"}"#.utf8)).date == nil, "негодная дата читается как «нет даты»")
+        #expect(try JSONDecoder().decode(Att.self, from: Data(#"{"k":"link","url":"https://a.io"}"#.utf8)).date == nil, "старая запись без даты читается")
+    }
 }

@@ -55,6 +55,18 @@ extension AppModel {
                                practice: dealPractice, words: docShelfWords())
     }
 
+    /// Вид Б: таблица одним списком, под выбранными чипами и сортировкой колонки.
+    func docTable() -> [DocShelf.Row] {
+        let all = OrgBook.shelf(orgs: orgs, sessions: sessions)
+        return DocShelf.table(OrgBook.filtered(all, kind: org.shelfKind), prefs: org.docs, words: docShelfWords())
+    }
+
+    /// Вид В: месяцы под выбранными чипами.
+    func docMonths() -> [DocShelf.Group] {
+        let all = OrgBook.shelf(orgs: orgs, sessions: sessions)
+        return DocShelf.months(OrgBook.filtered(all, kind: org.shelfKind), practice: dealPractice, words: docShelfWords())
+    }
+
     /// Слова полки: вид словарём, организация или клиент съёмки, дата и месяц на языке приложения.
     func docShelfWords() -> DocShelfWords {
         let words = PlannerWords(lexicon: lexicon, orgs: orgs)
@@ -189,9 +201,9 @@ extension AppModel {
         editOrg(id) { OrgBook.removePerson(at: i, from: &$0) }
     }
 
-    func addOrgDocLink(_ id: String, _ raw: String, title: String? = nil) {
+    func addOrgDocLink(_ id: String, _ raw: String, title: String? = nil, date: CivilDate? = nil) {
         let kind = org.docKind
-        editOrg(id) { OrgBook.addLink(raw, kind: kind, title: title, to: &$0) }
+        editOrg(id) { OrgBook.addLink(raw, kind: kind, title: title, date: date, to: &$0) }
     }
 
     func removeOrgDoc(_ id: String, at i: Int) {

@@ -303,9 +303,11 @@ public struct Attachment: Sendable, Hashable {
     public var kind: DocKind?
     /// `title` — «Название» бумаги (итерация 28, шаг 12а); пусто — собирается по умолчанию.
     public var title: String?
+    /// `date` — «Дата» бумаги организации (итерация 28, шаг 12б); у бумаги съёмки днём служит день съёмки.
+    public var date: CivilDate?
 
     public init(source: Source, path: String? = nil, name: String? = nil, size: Int? = nil,
-                url: String? = nil, kind: DocKind? = nil, title: String? = nil) {
+                url: String? = nil, kind: DocKind? = nil, title: String? = nil, date: CivilDate? = nil) {
         self.source = source
         self.path = path
         self.name = name
@@ -313,6 +315,7 @@ public struct Attachment: Sendable, Hashable {
         self.url = url
         self.kind = kind
         self.title = title
+        self.date = date
     }
 }
 

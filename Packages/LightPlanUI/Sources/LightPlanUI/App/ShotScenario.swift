@@ -168,7 +168,12 @@ extension AppModel {
             app.openOrgs()
             app.org.tab = .docs
             let parts = (s.way ?? "org").split(separator: "+").map(String.init)
-            app.editDocsPrefs { $0.grouping = parts.first.flatMap(DocGrouping.init(rawValue:)) ?? .org }
+            // Шаг 12б: `table` и `months` — виды Б и В; `kind|org|title` после плюса — сортировка колонки таблицы.
+            app.editDocsPrefs {
+                $0.grouping = parts.first.flatMap(DocGrouping.init(rawValue:)) ?? .org
+                if let l = parts.first.flatMap(DocsLayout.init(rawValue:)) { $0.layout = l }
+                for k in parts.compactMap(DocSortKey.init(rawValue:)) { $0.tapColumn(k) }
+            }
             if parts.contains("fold"), let g = app.docGroups().first { app.editDocsPrefs { $0.toggleGroup(g.id) } }
         case "orgcard": if let id = s.way ?? app.orgs.first?.id { app.openOrgCard(id: id) }
         case "contacts": app.openContacts()

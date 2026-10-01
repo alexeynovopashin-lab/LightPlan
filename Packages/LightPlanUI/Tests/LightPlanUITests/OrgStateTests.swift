@@ -245,7 +245,8 @@ struct OrgStateTests {
         let titles = g.flatMap(\.rows).map(\.title)
         #expect(titles.contains("Счёт за свадьбу"))
         #expect(titles.allSatisfy { !$0.contains("4coX") && !$0.contains("disk.io") }, "хвост ссылки именем не бывает")
-        #expect(titles.contains { $0.hasPrefix(app.docKindName(.contract) + " · Ромашка") }, "вид · организация")
+        #expect(titles.contains(app.docKindName(.contract)), "внутри группы организации имя — без организации (она в заголовке группы)")
+        #expect(app.docTable().contains { $0.title == app.docKindName(.contract) + " · Ромашка" }, "в таблице имя полное: вид · организация")
     }
 
     @Test func docsViewGroupingSortAndCollapsedGroupsSurviveRestart() {
@@ -254,10 +255,11 @@ struct OrgStateTests {
         a.docsPrefsStore = store
         a.openOrgs()
         #expect(a.org.docs == DocsPrefs(), "первый запуск: список, по организации, дата — новые сверху")
-        a.editDocsPrefs { $0.grouping = .month; $0.tapColumn(.title); $0.toggleGroup("org:o1") }
+        a.editDocsPrefs { $0.layout = .table; $0.grouping = .month; $0.tapColumn(.title); $0.toggleGroup("org:o1") }
         let b = model(orgs: [named("o1", "A")])
         b.docsPrefsStore = store
         b.openOrgs()
+        #expect(b.org.docs.layout == .table, "выбранный вид раздела переживает перезапуск")
         #expect(b.org.docs.grouping == .month && b.org.docs.sortKey == .title && b.org.docs.ascending)
         #expect(b.org.docs.collapsed == ["org:o1"], "свёрнутая группа остаётся свёрнутой после перезапуска")
         b.closeOrgs(); b.openOrgs()
@@ -270,6 +272,22 @@ struct OrgStateTests {
         app.addOrgDocLink("o1", "disk.io/x", title: "  Договор 2026 ")
         app.addOrgDocLink("o1", "disk.io/y", title: "")
         #expect(app.orgRecord("o1")?.docs.map(\.title) == ["Договор 2026", nil])
+    }
+
+    @Test func orgPaperWithDateLandsInItsMonthInTheMonthsViewAndSortsTheTableByIt() {
+        let app = model(orgs: [named("o1", "Ромашка")], sessions: [shoot("a", 24, org: "o1")])
+        app.openOrgCard(id: "o1")
+        app.addOrgDocLink("o1", "disk.io/new", title: "Ноябрьский", date: CivilDate(year: 2026, month: 11, day: 4))
+        app.addOrgDocLink("o1", "disk.io/none", title: "Без числа")
+        #expect(app.orgRecord("o1")?.docs.map(\.date) == [CivilDate(year: 2026, month: 11, day: 4), nil], "дата ложится в запись бумаги организации")
+        app.openOrgs()
+        let m = app.docMonths()
+        #expect(m.map(\.id) == ["m:2026-11", "m:none"], "месяц бумаги с датой сверху, «Без даты» последней")
+        #expect(m.first?.rows.map(\.title) == ["Ноябрьский"], "бумага с датой — в своём месяце")
+        #expect(m.last?.rows.map(\.title) == ["Без числа"])
+        app.editDocsPrefs { $0.layout = .table; $0.sortKey = .date; $0.ascending = false }
+        #expect(app.docTable().first?.title == "Ноябрьский", "таблица по дате: бумага с датой впереди съёмок, без даты — внизу")
+        #expect(app.docTable().last?.title == "Без числа")
     }
 
     // MARK: ревью GPT к a456d3d

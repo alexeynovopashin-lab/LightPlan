@@ -299,16 +299,20 @@ struct LinkGlyph: Shape {
     }
 }
 
-/// Лист «ссылка на документ» с двумя полями: ссылка и необязательное «Название» (итерация 28,
-/// шаг 12а). Пустая ссылка — как «Отмена»; пустое название — имя соберётся по умолчанию.
+/// Лист «ссылка на документ» с полями: ссылка, необязательное «Название» (итерация 28, шаг 12а)
+/// и, у бумаги организации, необязательная «Дата» (шаг 12б; `dateWords` — слова строки, `nil` — строки нет).
+/// Пустая ссылка — как «Отмена»; пустое название — имя соберётся по умолчанию; «Без даты» — даты нет.
 struct AskLinkSheet: View {
+    struct DateWords { let label: String; let none: String; let clear: String; let today: CivilDate }
     let title: String
     let titleField: String
     let ok: String
     let cancel: String
-    let answer: ((url: String, title: String)?) -> Void
+    var dateWords: DateWords?
+    let answer: ((url: String, title: String, date: CivilDate?)?) -> Void
     @State private var url = ""
     @State private var name = ""
+    @State private var date: CivilDate?
     @FocusState private var focus: Field?
     @Environment(\.colorScheme) private var scheme
     private enum Field { case url, name }
@@ -326,6 +330,7 @@ struct AskLinkSheet: View {
             field($name, .name, placeholder: titleField, pal).padding(.top, 10)
                 .keyboardType(.default).textInputAutocapitalization(.sentences)
                 .shotNode("ask.link.title")
+            if let w = dateWords { dateRow(w, pal).padding(.top, 10) }
             Button { finish() } label: {
                 Text(ok).font(.system(size: 16, weight: .semibold)).foregroundStyle(pal.onBrass)
                     .frame(maxWidth: .infinity).padding(16)
@@ -341,9 +346,40 @@ struct AskLinkSheet: View {
             .padding(.top, 10)
         }
         .padding(.horizontal, 24).padding(.bottom, 24)
-        .presentationDetents([.height(400)])
+        .presentationDetents([.height(dateWords == nil ? 400 : 468)])
         .presentationDragIndicator(.hidden)
         .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { focus = .url } }
+    }
+
+    /// Строка «Дата»: слева слово, справа «Без даты» (тап ставит сегодня) либо выбор дня и крестик.
+    private func dateRow(_ w: DateWords, _ pal: Palette) -> some View {
+        var utc = Calendar(identifier: .gregorian); utc.timeZone = TimeZone(identifier: "UTC")!
+        let binding = Binding<Date>(
+            get: { let d = date ?? w.today; return utc.date(from: DateComponents(year: d.year, month: d.month, day: d.day, hour: 12)) ?? Date() },
+            set: { let c = utc.dateComponents([.year, .month, .day], from: $0)
+                   if let y = c.year, let m = c.month, let d = c.day { date = CivilDate(year: y, month: m, day: d) } })
+        return HStack(spacing: 10) {
+            Text(w.label).font(.system(size: 16)).foregroundStyle(pal.ink3)
+            Spacer(minLength: 0)
+            if date == nil {
+                Button { date = w.today; focus = nil } label: {
+                    Text(w.none).font(.system(size: 16)).foregroundStyle(pal.ink6).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .shotNode("ask.link.dateNone", text: w.none)
+            } else {
+                DatePicker("", selection: binding, displayedComponents: .date)
+                    .labelsHidden().environment(\.timeZone, TimeZone(identifier: "UTC")!)
+                    .shotNode("ask.link.date", text: String(format: "%04d-%02d-%02d", date!.year, date!.month, date!.day))
+                Button { date = nil } label: {
+                    Icon("close", size: 14, line: 2).foregroundStyle(pal.ink4).frame(width: 32, height: 32).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).accessibilityLabel(w.clear)
+                .shotNode("ask.link.dateClear")
+            }
+        }
+        .padding(.vertical, 8).padding(.horizontal, 15).frame(minHeight: 50)
+        .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func field(_ text: Binding<String>, _ f: Field, placeholder: String, _ pal: Palette) -> some View {
@@ -357,7 +393,7 @@ struct AskLinkSheet: View {
 
     private func finish() {
         let u = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        answer(u.isEmpty ? nil : (u, name))
+        answer(u.isEmpty ? nil : (u, name, date))
     }
 }
 

@@ -35,7 +35,11 @@
     "doc.colDate": "Дата",
     "doc.groupOrg": "По организации",
     "doc.groupMonth": "По месяцу",
-    "doc.groupKind": "По виду"
+    "doc.groupKind": "По виду",
+    "doc.layList": "Список",
+    "doc.layTable": "Таблица",
+    "doc.layMonths": "По месяцам",
+    "doc.dateClear": "Убрать дату"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -73,7 +77,11 @@
     "doc.colDate": "Date",
     "doc.groupOrg": "By organization",
     "doc.groupMonth": "By month",
-    "doc.groupKind": "By kind"
+    "doc.groupKind": "By kind",
+    "doc.layList": "List",
+    "doc.layTable": "Table",
+    "doc.layMonths": "By month",
+    "doc.dateClear": "Clear date"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -111,7 +119,11 @@
     "doc.colDate": "Fecha",
     "doc.groupOrg": "Por organización",
     "doc.groupMonth": "Por mes",
-    "doc.groupKind": "Por tipo"
+    "doc.groupKind": "Por tipo",
+    "doc.layList": "Lista",
+    "doc.layTable": "Tabla",
+    "doc.layMonths": "Por mes",
+    "doc.dateClear": "Quitar fecha"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -149,7 +161,11 @@
     "doc.colDate": "日付",
     "doc.groupOrg": "組織別",
     "doc.groupMonth": "月別",
-    "doc.groupKind": "種類別"
+    "doc.groupKind": "種類別",
+    "doc.layList": "リスト",
+    "doc.layTable": "表",
+    "doc.layMonths": "月ごと",
+    "doc.dateClear": "日付を消す"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -187,6 +203,10 @@
     "doc.colDate": "日期",
     "doc.groupOrg": "按机构",
     "doc.groupMonth": "按月份",
-    "doc.groupKind": "按类型"
+    "doc.groupKind": "按类型",
+    "doc.layList": "列表",
+    "doc.layTable": "表格",
+    "doc.layMonths": "按月",
+    "doc.dateClear": "清除日期"
   }
 }

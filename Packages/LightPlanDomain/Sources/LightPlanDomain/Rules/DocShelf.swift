@@ -9,10 +9,12 @@ public enum DocGrouping: String, Sendable, CaseIterable {
 /// По чему сортируются бумаги внутри группы.
 public enum DocSortKey: String, Sendable {
     case date, title
+    /// Только таблица (12б): вид и организация.
+    case kind, org
 }
 
 /// Вид раздела (слово Алексея 01.10: три вида и переключатель сверху, как в Finder).
-/// В 12а нарисован только список; таблица и месяцы — в 12б.
+/// Список — группы с заголовками; таблица — одна строка на бумагу, сортировка по любой колонке; месяцы — как «Фото».
 public enum DocsLayout: String, Sendable, CaseIterable {
     case list, table, months
 }
@@ -51,9 +53,9 @@ public struct DocsPrefs: Equatable, Sendable, Codable {
     }
 
     /// Тап по заголовку колонки: тот же ключ — меняет направление, другой — берёт его
-    /// с обычным направлением (дата — новые сверху, название — А→Я).
+    /// с обычным направлением (дата — новые сверху, остальные — А→Я).
     public mutating func tapColumn(_ key: DocSortKey) {
-        if sortKey == key { ascending.toggle() } else { sortKey = key; ascending = key == .title }
+        if sortKey == key { ascending.toggle() } else { sortKey = key; ascending = key != .date }
     }
 
     public mutating func toggleGroup(_ id: String) {
@@ -131,12 +133,16 @@ public enum DocShelf {
         return DocLabel.ext(d.doc.name ?? "") ?? w.fileWord
     }
 
-    public static func row(_ d: OrgBook.ShelfDoc, _ w: DocShelfWords) -> Row {
+    /// `within` — в какой группе строка стоит: что заголовок группы уже говорит, имя не повторяет
+    /// (по организации — без организации, по месяцу — без даты; решение 01.10: «Вид · дата» внутри
+    /// группы). Вне группы (таблица, карточка, поиск) — полное «Вид · Организация · дата».
+    public static func row(_ d: OrgBook.ShelfDoc, _ w: DocShelfWords, within: DocGrouping? = nil) -> Row {
         let kind = kindLabel(d, w)
         let owner = w.owner(d)?.label
         let date = d.day.map(w.dateText)
         let own = d.doc.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let title = own.isEmpty ? [kind, owner ?? "", date ?? ""].filter { !$0.isEmpty }.joined(separator: " · ") : own
+        let parts = [kind, within == .org ? "" : owner ?? "", within == .month ? "" : date ?? ""]
+        let title = own.isEmpty ? parts.filter { !$0.isEmpty }.joined(separator: " · ") : own
         return Row(shelf: d, title: title, kindLabel: kind, ownerLabel: owner, dateText: date)
     }
 
@@ -149,7 +155,7 @@ public enum DocShelf {
         var labels: [String: String] = [:]
         var buckets: [String: [Row]] = [:]
         for d in shelf {
-            let r = row(d, w)
+            let r = row(d, w, within: prefs.grouping)
             let (id, label) = key(for: d, grouping: prefs.grouping, words: w)
             if buckets[id] == nil { order.append(id); labels[id] = label }
             buckets[id, default: []].append(r)
@@ -169,6 +175,18 @@ public enum DocShelf {
             }
         }
         return ids.map { Group(id: $0, label: labels[$0]!, rows: sorted(buckets[$0]!, prefs)) }
+    }
+
+    /// Вид Б — таблица: одна строка на бумагу, имя полное, сортировка по колонке из `prefs`.
+    public static func table(_ shelf: [OrgBook.ShelfDoc], prefs: DocsPrefs, words w: DocShelfWords) -> [Row] {
+        sorted(shelf.map { row($0, w) }, prefs)
+    }
+
+    /// Вид В — по месяцам, как «Фото»: новые месяцы сверху, в месяце бумаги от новых, «Без даты» последней.
+    /// Порядок задан видом, а не запомненной сортировкой таблицы.
+    public static func months(_ shelf: [OrgBook.ShelfDoc], practice: Practice, words w: DocShelfWords) -> [Group] {
+        var p = DocsPrefs(); p.grouping = .month; p.sortKey = .date; p.ascending = false
+        return groups(shelf, prefs: p, practice: practice, words: w)
     }
 
     static let privateId = "org:private"
@@ -206,6 +224,26 @@ public enum DocShelf {
             case .title:
                 let c = byTitle(a, b)
                 if c != .orderedSame { return prefs.ascending ? c == .orderedAscending : c == .orderedDescending }
+            case .kind, .org:
+                let (p, q) = prefs.sortKey == .kind ? (a.kindLabel, b.kindLabel as String?) : (a.ownerLabel, b.ownerLabel)
+                switch (p, q) {
+                case (nil, _?): return false
+                case (_?, nil): return true
+                case let (m?, n?):
+                    let c = m.compare(n, options: [.caseInsensitive, .numeric], range: nil, locale: .current)
+                    if c != .orderedSame { return prefs.ascending ? c == .orderedAscending : c == .orderedDescending }
+                case (nil, nil): break
+                }
+                if a.shelf.day != b.shelf.day {
+                    switch (a.shelf.day, b.shelf.day) {
+                    case (nil, _?): return false
+                    case (_?, nil): return true
+                    case let (d?, e?): return d > e
+                    default: break
+                    }
+                }
+                let c = byTitle(a, b)
+                if c != .orderedSame { return c == .orderedAscending }
             case .date:
                 switch (a.shelf.day, b.shelf.day) {
                 case (nil, _?): return false

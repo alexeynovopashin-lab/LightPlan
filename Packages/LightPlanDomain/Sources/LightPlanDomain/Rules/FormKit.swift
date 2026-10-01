@@ -69,13 +69,13 @@ extension EventForm {
 extension Attachment {
     /// Документ-ссылка (веб `askUrl`): без схемы — `https://`; вид — выбранный, иначе
     /// угаданный по адресу. Пустая строка — `nil`. Общий для формы и карточки организации.
-    public static func link(_ raw: String, kind: DocKind?, title: String? = nil) -> Attachment? {
+    public static func link(_ raw: String, kind: DocKind?, title: String? = nil, date: CivilDate? = nil) -> Attachment? {
         var url = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return nil }
         if url.range(of: "^https?://", options: [.regularExpression, .caseInsensitive]) == nil { url = "https://" + url }
         let name = title?.trimmingCharacters(in: .whitespacesAndNewlines)
         return Attachment(source: .link, url: url, kind: kind ?? DocKind.guess(fileName: url),
-                          title: name?.isEmpty == false ? name : nil)
+                          title: name?.isEmpty == false ? name : nil, date: date)
     }
 }
 

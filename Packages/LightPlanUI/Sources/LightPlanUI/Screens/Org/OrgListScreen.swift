@@ -100,7 +100,7 @@ struct OrgListScreen: View {
     @ViewBuilder private func shelf(_ pal: Palette) -> some View {
         let all = OrgBook.shelf(orgs: app.orgs, sessions: app.sessions)
         let chips = OrgBook.shelfKinds(all, practice: app.dealPractice, selected: app.org.shelfKind)
-        let groups = app.docGroups()
+        if !all.isEmpty { layoutSwitch(pal).padding(.top, 12) }
         if !chips.isEmpty {
             FlowLayout(spacing: 7) {
                 ForEach(chips, id: \.kind) { c in kindChip(c.kind, c.count, pal) }
@@ -113,15 +113,46 @@ struct OrgListScreen: View {
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
                 .shotNode("org.docsEmpty")
         } else {
-            grouping(pal).padding(.top, 14)
-            columnHeads(pal).padding(.top, 10)
-            VStack(spacing: 8) {
-                ForEach(groups, id: \.id) { g in group(g, pal) }
+            switch app.org.docs.layout {
+            case .list:
+                grouping(pal).padding(.top, 14)
+                columnHeads(pal).padding(.top, 10)
+                VStack(spacing: 8) {
+                    ForEach(app.docGroups(), id: \.id) { g in group(g, pal) }
+                }
+                .padding(.top, 6)
+            case .table:
+                table(app.docTable(), pal).padding(.top, 14)
+            case .months:
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(app.docMonths(), id: \.id) { g in month(g, pal) }
+                }
+                .padding(.top, 16)
             }
-            .padding(.top, 6)
         }
         if let note {
             Text(note).font(.system(size: 12)).foregroundStyle(pal.ink4).lineSpacing(5).padding(.top, 10)
+        }
+    }
+
+    /// Переключатель видов сверху, как в Finder: три сегмента со знаками — список с группами,
+    /// таблица, по месяцам. Знаки из библиотеки (`view_day` — группа со строками, `view_month` — сетка,
+    /// `view_week` — полосы месяцев); выбранный на `--press`. Вид запоминается (`DocsPrefs.layout`).
+    private func layoutSwitch(_ pal: Palette) -> some View {
+        HStack(spacing: 6) {
+            ForEach([(DocsLayout.list, "view_day", "doc.layList"), (.table, "view_month", "doc.layTable"),
+                     (.months, "view_week", "doc.layMonths")], id: \.0) { lay, icon, key in
+                let on = app.org.docs.layout == lay
+                Button { app.editDocsPrefs { $0.layout = lay } } label: {
+                    Icon(icon, size: 19, line: 1.6).foregroundStyle(on ? pal.ink : pal.ink4)
+                        .frame(maxWidth: .infinity).frame(height: 34)
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? pal.press : Color.clear))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(t.t(key))
+                .shotNode("org.layout." + lay.rawValue, text: on ? "on" : "off")
+            }
         }
     }
 
@@ -185,6 +216,75 @@ struct OrgListScreen: View {
             VStack(spacing: 6) {
                 ForEach(Array(g.rows.enumerated()), id: \.offset) { i, r in docRow(r, i, pal) }
             }
+        }
+    }
+
+    // MARK: вид Б — таблица
+
+    /// Колонки на узком экране: «Вид» 54, «Организация» 76, «Дата» 58 — рядом три отступа по 8;
+    /// «Название» берёт остаток (около 110 из 345) и идёт в две строки, организация — тоже в две,
+    /// дата переносится «20 сен. / 2026». Таблица не прокручивается вбок.
+    private func table(_ rows: [DocShelf.Row], _ pal: Palette) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 8) {
+                tableHead(.kind, "doc.colKind", pal).frame(width: 54, alignment: .leading)
+                tableHead(.title, "doc.title", pal).frame(maxWidth: .infinity, alignment: .leading)
+                tableHead(.org, "org.one", pal).frame(width: 76, alignment: .leading)
+                tableHead(.date, "doc.colDate", pal).frame(width: 58, alignment: .leading)
+            }
+            .padding(.horizontal, 12)
+            VStack(spacing: 6) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { i, r in tableRow(r, i, pal) }
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    private func tableHead(_ key: DocSortKey, _ word: String, _ pal: Palette) -> some View {
+        let on = app.org.docs.sortKey == key
+        return Button { app.editDocsPrefs { $0.tapColumn(key) } } label: {
+            Text(t.t(word) + (on ? (app.org.docs.ascending ? " ↑" : " ↓") : ""))
+                .font(webFont(11, on ? 500 : 400)).foregroundStyle(on ? pal.ink3 : pal.ink6)
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .frame(minHeight: 30, alignment: .leading).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("org.tsort." + key.rawValue, text: on ? (app.org.docs.ascending ? "asc" : "desc") : "")
+    }
+
+    private func tableRow(_ r: DocShelf.Row, _ i: Int, _ pal: Palette) -> some View {
+        Button { open(r.shelf.doc) } label: {
+            HStack(alignment: .center, spacing: 8) {
+                Text(r.kindLabel).font(webFont(11)).foregroundStyle(pal.brass).lineLimit(2).minimumScaleFactor(0.8)
+                    .frame(width: 54, alignment: .leading)
+                Text(r.title).font(webFont(13)).foregroundStyle(pal.ink).lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(r.ownerLabel ?? "—").font(webFont(11.5)).foregroundStyle(pal.ink4).lineLimit(2)
+                    .frame(width: 76, alignment: .leading)
+                Text(r.dateText ?? "—").font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(2)
+                    .frame(width: 58, alignment: .leading)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8).frame(minHeight: 46)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("org.tableRow.\(i)", text: r.title)
+    }
+
+    // MARK: вид В — по месяцам
+
+    /// «Ноябрь 2026» и под ним бумаги месяца от новых, как заголовки в «Фото»; «Без даты» — последней.
+    @ViewBuilder private func month(_ g: DocShelf.Group, _ pal: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(g.label).font(webFont(15, 500)).foregroundStyle(pal.ink).lineLimit(1)
+                Text("· " + t.count("unit.doc", g.rows.count)).font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .frame(height: 30)
+            .shotNode("org.month." + g.id, text: String(g.rows.count))
+            ForEach(Array(g.rows.enumerated()), id: \.offset) { i, r in docRow(r, i, pal) }
         }
     }
 
