@@ -41,6 +41,15 @@ public enum SaveGuard {
         }
     }
 
+    /// Занятое время у съёмки, вернувшейся из корзины: возврат разрешён (это возврат, а не новая постановка), но
+    /// о занятом говорят. Только «Занято» и «Выходной»; встреча и событие занятого не боятся.
+    public static func restoredHit(_ s: Session, blocks: [Block], context: ClashContext) -> BusyHit? {
+        guard s.kind == .shoot else { return nil }
+        var point: GeoPoint?
+        if let la = s.latitude, let lo = s.longitude { point = GeoPoint(la, lo) }
+        return busyHits(day: s.day, start: s.start, end: s.endMinute, point: point, blocks: blocks, context: context).first
+    }
+
     /// Можно ли сохранить форму. Съёмку нельзя ни назвать без даты, ни поставить на занятое время — ни саму, ни копию
     /// повтора. Встреча (разговор) занятого не боится. Правка записи, чьё время не тронуто, не запрещается из-за
     /// занятости, появившейся позже: нельзя дописать заметку к съёмке, которая и так стояла.

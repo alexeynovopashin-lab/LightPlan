@@ -308,6 +308,54 @@ struct ContactsStateTests {
         #expect(app.saveForm() != nil && app.sessions.first { $0.id == "m1" }?.grewOn == day(10, 10))
     }
 
+    // MARK: - Возврат из корзины на занятое время (шаг 28т)
+
+    private func trashed(_ id: String, start: Int, end: Int, kind: RecordKind = .shoot, block: Block? = nil) -> AppModel {
+        var s = session(id, day(10, 10), kind: kind)
+        s.start = start; s.end = end; s.duration = end - start
+        let app = model(sessions: [s])
+        app.snapshot.blocks = [block ?? concert()]
+        app.trashSession(id: id)
+        return app
+    }
+
+    @Test func restoreOnBusyTimeIsAllowedAndNamesWhatIsBusy() {
+        let app = trashed("s", start: 1050, end: 1110)
+        app.restoreSession(id: "s")
+        #expect(app.sessions.count == 1, "возврат разрешён")
+        #expect(app.undo?.what == .notice && app.undo?.text == "время занято: Концерт дочери 18:00\u{00A0}–\u{00A0}21:00", "плашка: \(app.undo?.text ?? "нет")")
+    }
+
+    @Test func undoBarRestoreOnBusyTimeShowsTheSameNotice() {
+        let app = trashed("s", start: 1050, end: 1110)
+        app.takeUndo()
+        #expect(app.sessions.count == 1 && app.undo?.what == .notice && app.undo?.text.contains("Концерт дочери") == true)
+        app.takeUndo()
+        #expect(app.undo == nil, "плашка без кнопки гаснет, ничего не возвращает")
+    }
+
+    @Test func restoreOnFreeTimeShowsNoNoticeAndTouchingEdgeIsFree() {
+        let free = trashed("s", start: 960, end: 1080)
+        free.restoreSession(id: "s")
+        #expect(free.sessions.count == 1 && free.undo == nil, "встала впритык до занятого — плашки нет")
+    }
+
+    @Test func restoreNoticeOnlyForBusyAndOffNotRoadFlightMeet() {
+        for k in [BlockKind.road, .flight] {
+            var b = concert(); b.kind = k
+            let app = trashed("s", start: 1050, end: 1110, block: b)
+            app.restoreSession(id: "s")
+            #expect(app.sessions.count == 1 && app.undo == nil, "\(k): только предупреждение формы, плашки при возврате нет")
+        }
+        var off = concert(); off.kind = .off; off.allDay = true
+        let a = trashed("s", start: 1050, end: 1110, block: off)
+        a.restoreSession(id: "s")
+        #expect(a.undo?.what == .notice, "«Выходной» — плашка")
+        let m = trashed("m", start: 1050, end: 1110, kind: .meet)
+        m.restoreSession(id: "m")
+        #expect(m.undo == nil, "встреча занятого не боится")
+    }
+
     @Test func shootHasNoGrowLine() {
         let app = model(sessions: [session("s", day(10, 5))])
         app.growMeet("s")

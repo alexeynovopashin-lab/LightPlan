@@ -39,7 +39,8 @@
     "doc.layList": "Список",
     "doc.layTable": "Таблица",
     "doc.layMonths": "По месяцам",
-    "doc.dateClear": "Убрать дату"
+    "doc.dateClear": "Убрать дату",
+    "bin.busyBack": "время занято: {name} {when}"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -81,7 +82,8 @@
     "doc.layList": "List",
     "doc.layTable": "Table",
     "doc.layMonths": "By month",
-    "doc.dateClear": "Clear date"
+    "doc.dateClear": "Clear date",
+    "bin.busyBack": "time is busy: {name} {when}"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -123,7 +125,8 @@
     "doc.layList": "Lista",
     "doc.layTable": "Tabla",
     "doc.layMonths": "Por mes",
-    "doc.dateClear": "Quitar fecha"
+    "doc.dateClear": "Quitar fecha",
+    "bin.busyBack": "horario ocupado: {name} {when}"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -165,7 +168,8 @@
     "doc.layList": "リスト",
     "doc.layTable": "表",
     "doc.layMonths": "月ごと",
-    "doc.dateClear": "日付を消す"
+    "doc.dateClear": "日付を消す",
+    "bin.busyBack": "時間が埋まっています：{name} {when}"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -207,6 +211,7 @@
     "doc.layList": "列表",
     "doc.layTable": "表格",
     "doc.layMonths": "按月",
-    "doc.dateClear": "清除日期"
+    "doc.dateClear": "清除日期",
+    "bin.busyBack": "时间已被占用：{name} {when}"
   }
 }

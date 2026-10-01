@@ -670,7 +670,19 @@ extension AppModel {
     public func restoreSession(id: String) {
         guard Bin.restore(id, in: &snapshot, now: nowMs) else { return }
         if undo?.what == .session(id: id) { undo = nil }
+        announceBusy(restored: id)
         persist()
+    }
+
+    /// Съёмка вернулась на занятое время («Занято», «Выходной»): возврат не отменяем, но плашка называет,
+    /// чем занято (слово Алексея 01.10). Плашка без кнопки — вернуть уже нечего.
+    func announceBusy(restored id: String) {
+        guard let s = snapshot.sessions.first(where: { $0.id == id }),
+              let hit = SaveGuard.restoredHit(s, blocks: snapshot.blocks, context: clashContext) else { return }
+        let facts = PlannerFacts(app: self, dark: false)
+        let name = facts.blockLabel(snapshot.blocks[hit.blockIndex])
+        let when = hit.allDay ? "" : facts.range(hit.from.map(Double.init), hit.to.map(Double.init))
+        undo = UndoOffer(what: .notice, text: lexicon.t("bin.busyBack", ["name": name, "when": when]).trimmingCharacters(in: .whitespaces))
     }
 
     /// «Очистить корзину» — после «Стереть». Полоса «Вернуть» съёмки гаснет:
@@ -696,7 +708,9 @@ extension AppModel {
         undo = nil
         switch u.what {
         case .session(let id):
-            if Bin.restore(id, in: &snapshot, now: nowMs) { persist() }
+            if Bin.restore(id, in: &snapshot, now: nowMs) { announceBusy(restored: id); persist() }
+        case .notice:
+            break
         case .block(let b, let i):
             Bin.restoreBlock(b, at: i, in: &snapshot, now: nowMs)
             persist()

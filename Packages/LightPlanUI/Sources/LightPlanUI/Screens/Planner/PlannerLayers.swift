@@ -150,17 +150,17 @@ struct UndoBar: View {
             // Черновик маршрута держит свою полосу — на «Сделать съёмкой» (24а).
             if let u = app.undo, !u.isRoute {
                 HStack(spacing: 12) {
-                    Text(u.text).font(.system(size: 13)).foregroundStyle(pal.ink4).lineLimit(1)
+                    Text(u.text).font(.system(size: 13)).foregroundStyle(pal.ink4).lineLimit(u.what == .notice ? 2 : 1)
                         .shotNode("undo.text", text: u.text)
                     Spacer(minLength: 0)
-                    Button {
+                    if u.what != .notice { Button {
                         withAnimation(.easeOut(duration: 0.2)) { app.takeUndo() }
                     } label: {
                         Text(app.lexicon.t("plan.undo")).font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(pal.brass).padding(.vertical, 2)
                     }
                     .buttonStyle(.plain)
-                    .shotNode("undo.btn")
+                    .shotNode("undo.btn") }
                 }
                 .padding(.vertical, 12).padding(.horizontal, 15)
                 // Матовая, а не прозрачная (Алексей, 26.09): тон веба `--overlay-3` поверх

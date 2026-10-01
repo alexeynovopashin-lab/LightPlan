@@ -386,6 +386,41 @@
         }
       }
     },
+    "bin.busyBack" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "время занято: {name} {when}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "time is busy: {name} {when}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "horario ocupado: {name} {when}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "時間が埋まっています：{name} {when}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时间已被占用：{name} {when}"
+          }
+        }
+      }
+    },
     "bin.clear" : {
       "extractionState" : "manual",
       "localizations" : {
