@@ -100,6 +100,18 @@ import LightPlanCore
         #expect(verdict(f, [concert()]) == .ok, "увёл на свободное — можно")
     }
 
+    @Test func movingThePlaceOfAnUntouchedShootChecksItAgain() {
+        var s = Session(id: "s", kind: .shoot, day: Self.d, start: 1050, end: 1110, duration: 60, genre: .portrait)
+        s.latitude = 56.5; s.longitude = 84.9
+        var f = EventForm.editing(s)
+        let here = GeoPoint(56.5, 84.9)
+        #expect(SaveGuard.verdict(f, blocks: [concert()], context: ctx, point: here) == .ok, "место то же — не трогали")
+        #expect(SaveGuard.verdict(f, blocks: [concert()], context: ctx, point: GeoPoint(55.7, 37.6)) != .ok,
+                "другое место — другой пояс, проверка заново")
+        f.notes = "x"
+        #expect(SaveGuard.verdict(f, blocks: [concert()], context: ctx, point: here) == .ok)
+    }
+
     @Test func shootGrownFromMeetIsAlwaysChecked() {
         var meet = Session(id: "m", kind: .meet, day: Self.d, start: 600, end: 660, duration: 60, genre: .portrait)
         meet.contact = "Ира"

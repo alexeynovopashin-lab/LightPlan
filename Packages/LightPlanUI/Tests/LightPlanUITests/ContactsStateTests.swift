@@ -232,6 +232,22 @@ struct ContactsStateTests {
         #expect(app.grownLine(app.sessions[0]) == "Съёмка назначена на 4 ноября.", "съёмки нет — остаётся записанный день")
     }
 
+    @Test func pickingTheDateRepricesTheLightProposedTimeButNotAHandTypedOne() {
+        let app = model(sessions: [meet()])
+        app.growMeet("m1")
+        let target = day(12, 20)
+        let probe = EventForm.new(id: "", day: target, start: nil, fromLight: true, genre: app.form!.genre, prefs: app.genrePrefs[app.form!.genre],
+                                  light: app.formLight(on: target), step: app.settings.timeStep, home: app.repeatHome,
+                                  genreRate: app.genreRate(app.form!.genre), currency: app.settings.currency)
+        app.pickFormDay(target)
+        #expect(app.form?.start == probe.start && app.form?.day == target && app.form?.dayUnset == false, "время — по свету выбранного дня")
+        let app2 = model(sessions: [meet()])
+        app2.growMeet("m1")
+        app2.form?.setStart(minute: 1000)
+        app2.pickFormDay(target)
+        #expect(app2.form?.start == 1000, "названное руками время остаётся")
+    }
+
     @Test func growDoesNotTouchAnotherFormsDraft() {
         let app = model(sessions: [meet()])
         app.questDrafts.hold(code: "AAA", for: nil, at: Date())

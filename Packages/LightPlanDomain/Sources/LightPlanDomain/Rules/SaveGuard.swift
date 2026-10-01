@@ -50,7 +50,9 @@ public enum SaveGuard {
         let end = f.start + f.duration
         let touched: Bool
         if let b = f.base, f.growFrom == nil {
+            // Место — тоже время: другой пояс сдвигает часы относительно занятого (ревью GPT к c9e7eea).
             touched = b.day != f.day || b.start != f.start || b.endMinute != end
+                || GeoPoint(b.latitude, b.longitude) != point
         } else {
             touched = true
         }

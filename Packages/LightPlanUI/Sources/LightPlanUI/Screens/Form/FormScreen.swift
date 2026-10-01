@@ -248,7 +248,7 @@ struct FormScreen: View {
                         pickDate: { toggle(.startDate) }, pickTime: { toggle(.startTime) }, pal)
                 if picker == .startDate {
                     FormDateGrid(selected: f.day, dates: dates, date: carrier) { d in
-                        edit { $0.setStart(day: d) }; picker = nil
+                        app.pickFormDay(d); picker = nil
                     }
                 }
                 if picker == .startTime {
