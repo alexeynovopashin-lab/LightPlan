@@ -268,8 +268,15 @@ import LightPlanDomain
         #expect(order(p) == plain, "после таблицы с сортировкой по организации список — как по умолчанию")
         p.tapColumn(.kind); p.tapColumn(.kind)
         #expect(order(p) == plain, "и по виду, в любую сторону")
-        p.layout = .list; p.tapColumn(.title)
-        #expect(order(p) != plain || p.sortKey == .title, "тап по «Название» в списке работает как прежде")
+        // название в списке работает как прежде: порядок сверяем с ожидаемым (ревью GPT к b580d8d)
+        var o = Org(id: "o", name: "Org")
+        o.docs = ["b", "A", "c10", "c2"].map { Self.link("u/" + $0, kind: .act, title: $0) }
+        let shelf = OrgBook.shelf(orgs: [o], sessions: [])
+        let w = Self.words(orgs: [o])
+        var q = DocsPrefs(); q.tapColumn(.org); q.tapColumn(.title)
+        #expect(DocShelf.groups(shelf, prefs: q, practice: .ru, words: w)[0].rows.map(\.title) == ["A", "b", "c2", "c10"], "тап по «Название» после таблицы: А→Я, числа по значению")
+        q.tapColumn(.title)
+        #expect(DocShelf.groups(shelf, prefs: q, practice: .ru, words: w)[0].rows.map(\.title) == ["c10", "c2", "b", "A"])
     }
 
     @Test func monthsViewIgnoresRememberedTableSort() {
