@@ -151,6 +151,10 @@ public enum DocShelf {
     /// сверху (при сортировке даты «вверх» — старые); виды — как в практике, потом реквизиты и «Файл».
     public static func groups(_ shelf: [OrgBook.ShelfDoc], prefs: DocsPrefs, practice: Practice,
                               words w: DocShelfWords) -> [Group] {
+        // В списке заголовков «Вид» и «Организация» нет: сортировка таблицы по ним в список не
+        // протекает — там читается как обычная «Дата, новые сверху» (ревью GPT к 92b1a9b).
+        var prefs = prefs
+        if prefs.sortKey == .kind || prefs.sortKey == .org { prefs.sortKey = .date; prefs.ascending = false }
         var order: [String] = []
         var labels: [String: String] = [:]
         var buckets: [String: [Row]] = [:]

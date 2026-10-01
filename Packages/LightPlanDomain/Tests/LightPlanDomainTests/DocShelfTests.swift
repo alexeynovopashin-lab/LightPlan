@@ -257,6 +257,21 @@ import LightPlanDomain
         #expect(g[2].rows.count == 2 && g[2].rows.allSatisfy { $0.shelf.day == nil }, "бумаги без даты — последней группой")
     }
 
+    @Test func listIgnoresTableOnlySortKeysLeftFromTheTable() {
+        // ревью GPT к 92b1a9b: сортировка таблицы по виду или организации не должна менять порядок списка
+        let f = Self.fixture()
+        func order(_ p: DocsPrefs) -> [[String]] {
+            DocShelf.groups(f.shelf, prefs: p, practice: .ru, words: f.words).map { Self.titles($0.rows) }
+        }
+        let plain = order(DocsPrefs())
+        var p = DocsPrefs(); p.tapColumn(.org)
+        #expect(order(p) == plain, "после таблицы с сортировкой по организации список — как по умолчанию")
+        p.tapColumn(.kind); p.tapColumn(.kind)
+        #expect(order(p) == plain, "и по виду, в любую сторону")
+        p.layout = .list; p.tapColumn(.title)
+        #expect(order(p) != plain || p.sortKey == .title, "тап по «Название» в списке работает как прежде")
+    }
+
     @Test func monthsViewIgnoresRememberedTableSort() {
         // запомненная сортировка таблицы не должна переставлять месяцы
         let f = Self.fixture()
