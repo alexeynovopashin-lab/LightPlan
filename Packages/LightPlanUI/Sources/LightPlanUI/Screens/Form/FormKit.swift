@@ -172,9 +172,9 @@ struct FormDocs: View {
             }
         }
         .sheet(isPresented: $asking) {
-            AskTextSheet(title: t.t("doc.linkAsk"), ok: t.t("ask.ok"), cancel: t.t("ask.cancel")) { url in
+            AskLinkSheet(title: t.t("doc.linkAsk"), titleField: t.t("doc.titleOpt"), ok: t.t("ask.ok"), cancel: t.t("ask.cancel")) { a in
                 asking = false
-                if let url { app.addFormDocLink(url, kind: kind) }
+                if let a { app.addFormDocLink(a.url, kind: kind, title: a.title) }
             }
         }
     }
@@ -296,6 +296,68 @@ struct LinkGlyph: Shape {
         p.addLine(to: pt(5.3, 13.5)); arc((5.3, 13.5), (11, 19.2))
         p.addLine(to: pt(12.6, 17.6))
         return p
+    }
+}
+
+/// Лист «ссылка на документ» с двумя полями: ссылка и необязательное «Название» (итерация 28,
+/// шаг 12а). Пустая ссылка — как «Отмена»; пустое название — имя соберётся по умолчанию.
+struct AskLinkSheet: View {
+    let title: String
+    let titleField: String
+    let ok: String
+    let cancel: String
+    let answer: ((url: String, title: String)?) -> Void
+    @State private var url = ""
+    @State private var name = ""
+    @FocusState private var focus: Field?
+    @Environment(\.colorScheme) private var scheme
+    private enum Field { case url, name }
+
+    var body: some View {
+        let pal = Palette(scheme)
+        VStack(alignment: .leading, spacing: 0) {
+            Capsule().fill(pal.edge).frame(width: 38, height: 4).frame(maxWidth: .infinity)
+                .padding(.top, 10).padding(.bottom, 18)
+            Text(title).font(.system(size: 19, weight: .semibold)).tracking(-0.2).foregroundStyle(pal.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            field($url, .url, placeholder: "", pal).padding(.top, 16)
+                .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled(true)
+                .shotNode("ask.link.url")
+            field($name, .name, placeholder: titleField, pal).padding(.top, 10)
+                .keyboardType(.default).textInputAutocapitalization(.sentences)
+                .shotNode("ask.link.title")
+            Button { finish() } label: {
+                Text(ok).font(.system(size: 16, weight: .semibold)).foregroundStyle(pal.onBrass)
+                    .frame(maxWidth: .infinity).padding(16)
+                    .background(pal.brass, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 12)
+            Button { answer(nil) } label: {
+                Text(cancel).font(.system(size: 15)).foregroundStyle(pal.ink3)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 10)
+        }
+        .padding(.horizontal, 24).padding(.bottom, 24)
+        .presentationDetents([.height(400)])
+        .presentationDragIndicator(.hidden)
+        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { focus = .url } }
+    }
+
+    private func field(_ text: Binding<String>, _ f: Field, placeholder: String, _ pal: Palette) -> some View {
+        TextField("", text: text, prompt: Text(placeholder).foregroundColor(pal.ink6))
+            .font(.system(size: 16)).foregroundStyle(pal.ink)
+            .focused($focus, equals: f).submitLabel(f == .url ? .next : .done)
+            .onSubmit { if f == .url { focus = .name } else { finish() } }
+            .padding(.vertical, 14).padding(.horizontal, 15)
+            .background(focus == f ? pal.press : pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func finish() {
+        let u = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        answer(u.isEmpty ? nil : (u, name))
     }
 }
 

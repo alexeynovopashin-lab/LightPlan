@@ -19,6 +19,8 @@ struct OrgState: Equatable {
     var docKind: DocKind?
     /// Вид на общей полке (`#allDocKinds`).
     var shelfKind: DocKind?
+    /// Вид раздела «Документы», группировка, сортировка, свёрнутые группы (итерация 28, шаг 12а).
+    var docs = DocsPrefs()
     /// Слово в «Назад» списка.
     var backKey = "nav.settings"
     /// Открыт ли экран «Контакты» (настройки → профиль): слой стоит рядом со списком организаций.
@@ -36,7 +38,45 @@ extension AppModel {
     func openOrgs(backKey: String = "nav.settings") {
         org.backKey = backKey
         org.tab = .orgs
+        org.docs = DocsPrefs.from(docsPrefsStore.load())
         org.listOpen = true
+    }
+
+    /// Правка вида раздела «Документы»: сразу ложится на диск — вид и свёртки переживают запуск.
+    func editDocsPrefs(_ change: (inout DocsPrefs) -> Void) {
+        change(&org.docs)
+        docsPrefsStore.save(org.docs.data())
+    }
+
+    /// Группы полки под выбранными чипами, группировкой и сортировкой.
+    func docGroups() -> [DocShelf.Group] {
+        let all = OrgBook.shelf(orgs: orgs, sessions: sessions)
+        return DocShelf.groups(OrgBook.filtered(all, kind: org.shelfKind), prefs: org.docs,
+                               practice: dealPractice, words: docShelfWords())
+    }
+
+    /// Слова полки: вид словарём, организация или клиент съёмки, дата и месяц на языке приложения.
+    func docShelfWords() -> DocShelfWords {
+        let words = PlannerWords(lexicon: lexicon, orgs: orgs)
+        let facts = PlannerFacts(app: self, dark: true)
+        let byId = Dictionary(snapshot.sessions.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return DocShelfWords(
+            kindName: { self.docKindName($0) },
+            requisite: lexicon.t("doc.req"), fileWord: lexicon.t("doc.file"),
+            privateClients: lexicon.t("doc.private"), noDate: lexicon.t("doc.noDate"),
+            owner: { d in
+                if let sid = d.sessionId, let s = byId[sid] {
+                    if let id = s.orgId, let o = self.orgRecord(id) { return .init(key: id, label: self.orgTitle(o)) }
+                    let c = words.clientName(s)
+                    return c.isEmpty ? nil : .init(key: "c:" + c.lowercased(), label: c)
+                }
+                if let id = d.orgId, let o = self.orgRecord(id) { return .init(key: id, label: self.orgTitle(o)) }
+                return nil
+            },
+            dateText: { facts.dates.dMonShortYear(facts.date($0)) },
+            monthLabel: { y, m in
+                facts.dates.monthTitle(facts.date(CivilDate(year: y, month: m, day: 1))) + " " + String(y)
+            })
     }
 
     func closeOrgs() {
@@ -149,9 +189,9 @@ extension AppModel {
         editOrg(id) { OrgBook.removePerson(at: i, from: &$0) }
     }
 
-    func addOrgDocLink(_ id: String, _ raw: String) {
+    func addOrgDocLink(_ id: String, _ raw: String, title: String? = nil) {
         let kind = org.docKind
-        editOrg(id) { OrgBook.addLink(raw, kind: kind, to: &$0) }
+        editOrg(id) { OrgBook.addLink(raw, kind: kind, title: title, to: &$0) }
     }
 
     func removeOrgDoc(_ id: String, at i: Int) {

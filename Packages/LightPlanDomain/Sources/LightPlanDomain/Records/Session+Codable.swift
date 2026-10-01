@@ -237,9 +237,9 @@ extension RoutePoint: Codable {
     }
 }
 
-/// `k`, `path`, `name`, `size`, `url`, `kind`.
+/// `k`, `path`, `name`, `size`, `url`, `kind`, `title`.
 extension Attachment: Codable {
-    enum CodingKeys: String, CodingKey { case k, path, name, size, url, kind }
+    enum CodingKeys: String, CodingKey { case k, path, name, size, url, kind, title }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -249,7 +249,8 @@ extension Attachment: Codable {
             name: try c.decodeIfPresent(String.self, forKey: .name),
             size: try c.decodeIfPresent(Int.self, forKey: .size),
             url: try c.decodeIfPresent(String.self, forKey: .url),
-            kind: try c.decodeLenient(DocKind.self, forKey: .kind)
+            kind: try c.decodeLenient(DocKind.self, forKey: .kind),
+            title: try c.decodeIfPresent(String.self, forKey: .title)
         )
     }
 
@@ -261,6 +262,7 @@ extension Attachment: Codable {
         try c.encodeIfPresent(size, forKey: .size)
         try c.encodeIfPresent(url, forKey: .url)
         try c.encodeLenient(kind, forKey: .kind)
+        try c.encodeIfPresent(title, forKey: .title)
     }
 }
 

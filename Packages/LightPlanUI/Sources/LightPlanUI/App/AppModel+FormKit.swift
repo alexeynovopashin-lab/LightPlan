@@ -42,9 +42,9 @@ extension AppModel {
     /// Виды документов по практике (веб `practiceSpec().docs`).
     public var docKinds: [DocKind] { (LightPlanDomain.Practice(rawValue: settings.practice.rawValue) ?? .ru).docKinds }
 
-    public func addFormDocLink(_ url: String, kind: DocKind?) {
+    public func addFormDocLink(_ url: String, kind: DocKind?, title: String? = nil) {
         guard var f = form else { return }
-        f.addDocLink(url, kind: kind)
+        f.addDocLink(url, kind: kind, title: title)
         form = f
         formChanged()
     }

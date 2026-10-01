@@ -48,9 +48,13 @@ import LightPlanDomain
     @Test func docCardWords() {
         let link = Attachment(source: .link, url: "https://www.disk.yandex.ru/d/Folder/%D0%A1%D0%BC%D0%B5%D1%82%D0%B0.pdf/")
         #expect(DocLabel.top(link, kindName: { $0.rawValue }, fileWord: "файл", linkWord: "Ссылка") == "disk.yandex.ru")
-        #expect(DocLabel.sub(link, anyWord: "документ") == "Смета.pdf")
+        #expect(DocLabel.sub(link, anyWord: "документ") == "документ", "сайт уже сверху, хвост адреса именем не бывает")
+        let known = Attachment(source: .link, url: "https://www.disk.yandex.ru/d/4coXjmnBnE7p-g", kind: .contract)
+        #expect(DocLabel.sub(known, anyWord: "документ") == "disk.yandex.ru", "вид сверху — снизу сайт")
+        var named = known; named.title = "Договор с Ромашкой"
+        #expect(DocLabel.sub(named, anyWord: "документ") == "Договор с Ромашкой", "своё название главнее")
         let bare = Attachment(source: .link, url: "https://example.org")
-        #expect(DocLabel.sub(bare, anyWord: "") == "example.org", "пустой путь — сайт")
+        #expect(DocLabel.sub(bare, anyWord: "") == "", "сверху сайт, снизу слова нет")
         let file = Attachment(source: .doc, path: "/LightPlan/docs/akt.PDF", name: "akt.PDF")
         #expect(DocLabel.top(file, kindName: { $0.rawValue }, fileWord: "файл", linkWord: "") == "PDF")
         #expect(DocLabel.top(Attachment(source: .doc, name: "scan"), kindName: { $0.rawValue }, fileWord: "файл", linkWord: "") == "файл")

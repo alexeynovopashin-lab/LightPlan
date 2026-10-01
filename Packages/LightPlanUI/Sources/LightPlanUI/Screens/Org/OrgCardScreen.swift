@@ -52,9 +52,9 @@ struct OrgCardScreen: View {
         .background(pal.surface.ignoresSafeArea())
         .shotNode("org.card", text: o.name)
         .sheet(isPresented: $askingLink) {
-            AskTextSheet(title: t.t("org.docLinkAsk"), ok: t.t("ask.ok"), cancel: t.t("ask.cancel")) { url in
+            AskLinkSheet(title: t.t("org.docLinkAsk"), titleField: t.t("doc.titleOpt"), ok: t.t("ask.ok"), cancel: t.t("ask.cancel")) { a in
                 askingLink = false
-                if let url { app.addOrgDocLink(id, url) }
+                if let a { app.addOrgDocLink(id, a.url, title: a.title) }
             }
         }
     }

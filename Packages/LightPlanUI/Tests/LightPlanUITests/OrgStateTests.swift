@@ -228,6 +228,50 @@ struct OrgStateTests {
         #expect(app.org.shelfKind == nil && app.org.tab == .orgs)
     }
 
+    // MARK: раздел «Документы» (шаг 12а)
+
+    private func linkDoc(_ url: String, kind: DocKind? = nil, title: String? = nil) -> LightPlanDomain.Attachment {
+        LightPlanDomain.Attachment(source: .link, url: url, kind: kind, title: title)
+    }
+
+    @Test func docGroupsFollowOrganizationsAndNameTheirPapersWithoutLinkTails() {
+        var o = named("o1", "Ромашка"); o.docs = [linkDoc("https://disk.io/d/4coXjmnBnE7p-g", kind: .contract)]
+        var s = shoot("a", 24, org: "o1"); s.docs = [linkDoc("https://disk.io/d/zzz", kind: .invoice, title: "Счёт за свадьбу")]
+        var lone = shoot("b", 25, org: nil); lone.contact = "Мария +7 916 000-00-00"; lone.docs = [linkDoc("https://disk.io/q", kind: .act)]
+        let app = model(orgs: [o], sessions: [s, lone])
+        app.openOrgs()
+        let g = app.docGroups()
+        #expect(g.map(\.label) == ["Мария", "Ромашка"], "бумага без организации — в группу клиента съёмки")
+        let titles = g.flatMap(\.rows).map(\.title)
+        #expect(titles.contains("Счёт за свадьбу"))
+        #expect(titles.allSatisfy { !$0.contains("4coX") && !$0.contains("disk.io") }, "хвост ссылки именем не бывает")
+        #expect(titles.contains { $0.hasPrefix(app.docKindName(.contract) + " · Ромашка") }, "вид · организация")
+    }
+
+    @Test func docsViewGroupingSortAndCollapsedGroupsSurviveRestart() {
+        let store = MemoryDraftStore()
+        let a = model(orgs: [named("o1", "A")])
+        a.docsPrefsStore = store
+        a.openOrgs()
+        #expect(a.org.docs == DocsPrefs(), "первый запуск: список, по организации, дата — новые сверху")
+        a.editDocsPrefs { $0.grouping = .month; $0.tapColumn(.title); $0.toggleGroup("org:o1") }
+        let b = model(orgs: [named("o1", "A")])
+        b.docsPrefsStore = store
+        b.openOrgs()
+        #expect(b.org.docs.grouping == .month && b.org.docs.sortKey == .title && b.org.docs.ascending)
+        #expect(b.org.docs.collapsed == ["org:o1"], "свёрнутая группа остаётся свёрнутой после перезапуска")
+        b.closeOrgs(); b.openOrgs()
+        #expect(b.org.docs.collapsed == ["org:o1"], "закрыть и открыть раздел — то же")
+    }
+
+    @Test func newLinkKeepsItsTitleFromTheOrgCard() {
+        let app = model(orgs: [named("o1", "A")])
+        app.openOrgCard(id: "o1")
+        app.addOrgDocLink("o1", "disk.io/x", title: "  Договор 2026 ")
+        app.addOrgDocLink("o1", "disk.io/y", title: "")
+        #expect(app.orgRecord("o1")?.docs.map(\.title) == ["Договор 2026", nil])
+    }
+
     // MARK: ревью GPT к a456d3d
 
     @Test func deletingTheChosenOrgClearsItFromTheOpenForm() {

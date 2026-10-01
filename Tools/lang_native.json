@@ -26,7 +26,16 @@
     "org.rolePh": "Роль: маркетолог, секретарь…",
     "org.personName": "Имя",
     "org.removePerson": "Убрать",
-    "quest.cut": "ответ обрезан до {n} знаков"
+    "quest.cut": "ответ обрезан до {n} знаков",
+    "doc.title": "Название",
+    "doc.titleOpt": "Название (не обязательно)",
+    "doc.private": "Частные клиенты",
+    "doc.noDate": "Без даты",
+    "doc.colKind": "Вид",
+    "doc.colDate": "Дата",
+    "doc.groupOrg": "По организации",
+    "doc.groupMonth": "По месяцу",
+    "doc.groupKind": "По виду"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -55,7 +64,16 @@
     "org.rolePh": "Role: marketer, secretary…",
     "org.personName": "Name",
     "org.removePerson": "Remove",
-    "quest.cut": "answer cut to {n} characters"
+    "quest.cut": "answer cut to {n} characters",
+    "doc.title": "Title",
+    "doc.titleOpt": "Title (optional)",
+    "doc.private": "Private clients",
+    "doc.noDate": "No date",
+    "doc.colKind": "Kind",
+    "doc.colDate": "Date",
+    "doc.groupOrg": "By organization",
+    "doc.groupMonth": "By month",
+    "doc.groupKind": "By kind"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -84,7 +102,16 @@
     "org.rolePh": "Cargo: marketing, secretaria…",
     "org.personName": "Nombre",
     "org.removePerson": "Quitar",
-    "quest.cut": "respuesta recortada a {n} caracteres"
+    "quest.cut": "respuesta recortada a {n} caracteres",
+    "doc.title": "Título",
+    "doc.titleOpt": "Título (opcional)",
+    "doc.private": "Clientes particulares",
+    "doc.noDate": "Sin fecha",
+    "doc.colKind": "Tipo",
+    "doc.colDate": "Fecha",
+    "doc.groupOrg": "Por organización",
+    "doc.groupMonth": "Por mes",
+    "doc.groupKind": "Por tipo"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -113,7 +140,16 @@
     "org.rolePh": "役割：マーケティング、秘書…",
     "org.personName": "名前",
     "org.removePerson": "削除",
-    "quest.cut": "回答は{n}文字で切り詰められました"
+    "quest.cut": "回答は{n}文字で切り詰められました",
+    "doc.title": "名前",
+    "doc.titleOpt": "名前(任意)",
+    "doc.private": "個人のお客様",
+    "doc.noDate": "日付なし",
+    "doc.colKind": "種類",
+    "doc.colDate": "日付",
+    "doc.groupOrg": "組織別",
+    "doc.groupMonth": "月別",
+    "doc.groupKind": "種類別"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -142,6 +178,15 @@
     "org.rolePh": "职务：市场、秘书…",
     "org.personName": "姓名",
     "org.removePerson": "移除",
-    "quest.cut": "回答已截断至{n}个字符"
+    "quest.cut": "回答已截断至{n}个字符",
+    "doc.title": "名称",
+    "doc.titleOpt": "名称(可选)",
+    "doc.private": "个人客户",
+    "doc.noDate": "无日期",
+    "doc.colKind": "类型",
+    "doc.colDate": "日期",
+    "doc.groupOrg": "按机构",
+    "doc.groupMonth": "按月份",
+    "doc.groupKind": "按类型"
   }
 }

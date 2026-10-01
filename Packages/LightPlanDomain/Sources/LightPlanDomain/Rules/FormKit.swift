@@ -53,8 +53,8 @@ extension EventForm {
 
     /// Ссылка на документ (веб `#docLink` + `askUrl`): без схемы — `https://`;
     /// вид — выбранный чипсом, иначе угаданный по адресу. Пустая — ничего.
-    public mutating func addDocLink(_ raw: String, kind: DocKind?) {
-        guard let d = Attachment.link(raw, kind: kind) else { return }
+    public mutating func addDocLink(_ raw: String, kind: DocKind?, title: String? = nil) {
+        guard let d = Attachment.link(raw, kind: kind, title: title) else { return }
         docs.append(d)
     }
 
@@ -69,11 +69,13 @@ extension EventForm {
 extension Attachment {
     /// Документ-ссылка (веб `askUrl`): без схемы — `https://`; вид — выбранный, иначе
     /// угаданный по адресу. Пустая строка — `nil`. Общий для формы и карточки организации.
-    public static func link(_ raw: String, kind: DocKind?) -> Attachment? {
+    public static func link(_ raw: String, kind: DocKind?, title: String? = nil) -> Attachment? {
         var url = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else { return nil }
         if url.range(of: "^https?://", options: [.regularExpression, .caseInsensitive]) == nil { url = "https://" + url }
-        return Attachment(source: .link, url: url, kind: kind ?? DocKind.guess(fileName: url))
+        let name = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Attachment(source: .link, url: url, kind: kind ?? DocKind.guess(fileName: url),
+                          title: name?.isEmpty == false ? name : nil)
     }
 }
 
@@ -87,9 +89,11 @@ public enum DocLabel {
         return ext(d.name ?? "") ?? fileWord
     }
 
-    /// Нижняя строка: у ссылки — последний кусок пути, у файла — имя.
+    /// Нижняя строка: своё «Название»; без него у ссылки — сайт (хвост адреса именем не бывает,
+    /// слово Алексея 01.10), а если сайт уже стоит сверху — `anyWord`; у файла — имя.
     public static func sub(_ d: Attachment, anyWord: String) -> String {
-        if d.source == .link { return tail(d.url ?? "").split(separator: "/").last.map(String.init) ?? "" }
+        if let t = d.title?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty { return t }
+        if d.source == .link { return d.kind != nil ? host(d.url ?? "", linkWord: anyWord) : anyWord }
         return (d.name?.isEmpty == false ? d.name : nil) ?? anyWord
     }
 

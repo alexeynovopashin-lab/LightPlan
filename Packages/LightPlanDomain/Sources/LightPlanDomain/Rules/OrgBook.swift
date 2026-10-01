@@ -112,8 +112,8 @@ public enum OrgBook {
 
     /// Новая ссылка в документы организации (лист «Ссылка»). Пустая — ничего.
     @discardableResult
-    public static func addLink(_ raw: String, kind: DocKind?, to o: inout Org) -> Bool {
-        guard let d = Attachment.link(raw, kind: kind) else { return false }
+    public static func addLink(_ raw: String, kind: DocKind?, title: String? = nil, to o: inout Org) -> Bool {
+        guard let d = Attachment.link(raw, kind: kind, title: title) else { return false }
         o.docs.append(d)
         return true
     }
@@ -134,6 +134,11 @@ public enum OrgBook {
         public var orgId: String?
         public var sessionId: String?
         public var day: CivilDate?
+
+        public init(doc: Attachment, kind: DocKind?, isRequisite: Bool, orgId: String?, sessionId: String?, day: CivilDate?) {
+            self.doc = doc; self.kind = kind; self.isRequisite = isRequisite
+            self.orgId = orgId; self.sessionId = sessionId; self.day = day
+        }
     }
 
     /// Все бумаги: съёмок, организаций, реквизиты-файлы. Свежие сверху по дате съёмки;

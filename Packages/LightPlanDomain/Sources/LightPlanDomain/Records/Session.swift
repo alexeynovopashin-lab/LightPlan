@@ -301,15 +301,18 @@ public struct Attachment: Sendable, Hashable {
     public var url: String?
     /// `kind` — вид документа; незнакомый — `nil`.
     public var kind: DocKind?
+    /// `title` — «Название» бумаги (итерация 28, шаг 12а); пусто — собирается по умолчанию.
+    public var title: String?
 
     public init(source: Source, path: String? = nil, name: String? = nil, size: Int? = nil,
-                url: String? = nil, kind: DocKind? = nil) {
+                url: String? = nil, kind: DocKind? = nil, title: String? = nil) {
         self.source = source
         self.path = path
         self.name = name
         self.size = size
         self.url = url
         self.kind = kind
+        self.title = title
     }
 }
 

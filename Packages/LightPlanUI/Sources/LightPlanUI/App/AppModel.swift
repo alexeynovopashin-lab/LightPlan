@@ -281,6 +281,8 @@ public final class AppModel {
     /// Последний жанр формы: новая форма открывается на нём (веб `shootType`).
     var lastFormGenre: Genre = .portrait
     var draftStore: any DraftStoring = DefaultsDraftStore()
+    /// Вид раздела «Документы», группировка, сортировка и свёрнутые группы — между запусками.
+    var docsPrefsStore: any DraftStoring = DefaultsDraftStore(key: "lightplan.native.docsprefs")
     /// Шлюз студии для «Связать с бронью»; тестам подставляется свой.
     var bookingMatch: any BookingMatching = HTTPBookingMatch()
     /// Город формы, по которому уже спрашивали геокодер (веб `sessionPlace.townAt`).

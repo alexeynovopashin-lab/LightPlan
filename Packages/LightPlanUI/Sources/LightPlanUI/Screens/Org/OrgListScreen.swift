@@ -100,26 +100,91 @@ struct OrgListScreen: View {
     @ViewBuilder private func shelf(_ pal: Palette) -> some View {
         let all = OrgBook.shelf(orgs: app.orgs, sessions: app.sessions)
         let chips = OrgBook.shelfKinds(all, practice: app.dealPractice, selected: app.org.shelfKind)
-        let list = OrgBook.filtered(all, kind: app.org.shelfKind)
+        let groups = app.docGroups()
         if !chips.isEmpty {
             FlowLayout(spacing: 7) {
                 ForEach(chips, id: \.kind) { c in kindChip(c.kind, c.count, pal) }
             }
             .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
         }
-        if list.isEmpty {
+        if all.isEmpty {
             (Text(t.t("doc.allEmptyHead")).foregroundStyle(pal.ink3) + Text(" " + t.t("doc.allEmpty")).foregroundStyle(pal.ink4))
                 .font(.system(size: 14)).lineSpacing(5)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
                 .shotNode("org.docsEmpty")
         } else {
+            grouping(pal).padding(.top, 14)
+            columnHeads(pal).padding(.top, 10)
             VStack(spacing: 8) {
-                ForEach(Array(list.enumerated()), id: \.offset) { i, d in docRow(d, i, pal) }
+                ForEach(groups, id: \.id) { g in group(g, pal) }
             }
-            .padding(.top, 12)
+            .padding(.top, 6)
         }
         if let note {
             Text(note).font(.system(size: 12)).foregroundStyle(pal.ink4).lineSpacing(5).padding(.top, 10)
+        }
+    }
+
+    /// Группировка: организация · месяц · вид. Три слова в ряд, выбранное — на `--press`.
+    private func grouping(_ pal: Palette) -> some View {
+        HStack(spacing: 6) {
+            ForEach([(DocGrouping.org, "doc.groupOrg"), (.month, "doc.groupMonth"), (.kind, "doc.groupKind")], id: \.1) { g, key in
+                let on = app.org.docs.grouping == g
+                Button { app.editDocsPrefs { $0.grouping = g } } label: {
+                    Text(t.t(key)).font(webFont(13, on ? 500 : 400)).foregroundStyle(on ? pal.ink : pal.ink4)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity).frame(height: 32)
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? pal.press : Color.clear))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .shotNode("org.group." + g.rawValue, text: t.t(key))
+            }
+        }
+    }
+
+    /// Заголовки колонок: «Название» и «Дата» сортируют, тот же тап меняет направление.
+    private func columnHeads(_ pal: Palette) -> some View {
+        HStack(spacing: 10) {
+            Text(t.t("doc.colKind")).font(webFont(11)).foregroundStyle(pal.ink6).frame(width: 64, alignment: .leading)
+            head(.title, "doc.title", pal)
+            Spacer(minLength: 0)
+            head(.date, "doc.colDate", pal)
+        }
+        .padding(.horizontal, 14)
+    }
+
+    private func head(_ key: DocSortKey, _ word: String, _ pal: Palette) -> some View {
+        let on = app.org.docs.sortKey == key
+        return Button { app.editDocsPrefs { $0.tapColumn(key) } } label: {
+            Text(t.t(word) + (on ? (app.org.docs.ascending ? " ↑" : " ↓") : ""))
+                .font(webFont(11, on ? 500 : 400)).foregroundStyle(on ? pal.ink3 : pal.ink6)
+                .frame(minHeight: 28).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("org.sort." + key.rawValue, text: on ? (app.org.docs.ascending ? "asc" : "desc") : "")
+    }
+
+    /// Группа как в Finder: «▸ Организация · N бумаг»; тап сворачивает и разворачивает.
+    @ViewBuilder private func group(_ g: DocShelf.Group, _ pal: Palette) -> some View {
+        let open = !app.org.docs.collapsed.contains(g.id)
+        Button { withAnimation(.easeOut(duration: 0.18)) { app.editDocsPrefs { $0.toggleGroup(g.id) } } } label: {
+            HStack(spacing: 8) {
+                Icon("chevron", size: 13, line: 2.4).foregroundStyle(pal.ink4)
+                    .rotationEffect(.degrees(open ? 90 : 0))
+                    .frame(width: 16)
+                Text(g.label).font(webFont(14.5, 500)).foregroundStyle(pal.ink).lineLimit(1)
+                Text("· " + t.count("unit.doc", g.rows.count)).font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .frame(height: 34).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("org.docGroup." + g.id, text: (open ? "open " : "closed ") + String(g.rows.count))
+        if open {
+            VStack(spacing: 6) {
+                ForEach(Array(g.rows.enumerated()), id: \.offset) { i, r in docRow(r, i, pal) }
+            }
         }
     }
 
@@ -138,29 +203,22 @@ struct OrgListScreen: View {
         .shotNode("org.kind." + k.rawValue, text: "\(n)")
     }
 
-    /// `.doc-row`: слева вид, дальше имя или хвост ссылки, справа вес или сайт; под строкой — кому и когда.
-    private func docRow(_ d: OrgBook.ShelfDoc, _ i: Int, _ pal: Palette) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Button { open(d.doc) } label: {
-                HStack(spacing: 10) {
-                    Text(d.isRequisite ? t.t("doc.req") : (d.kind.map(app.docKindName) ?? DocLabel.ext(d.doc.name ?? "") ?? t.t("doc.file")))
-                        .font(webFont(11)).tracking(0.2)
-                        .foregroundStyle(pal.brass).lineLimit(1).frame(minWidth: 56, alignment: .leading)
-                    Text(DocLabel.sub(d.doc, anyWord: t.t("doc.any"))).font(webFont(14)).foregroundStyle(pal.ink).lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text(app.docTrailing(d.doc)).font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
-                }
-                .padding(.horizontal, 14).frame(height: 41)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
-                .contentShape(Rectangle())
+    /// Строка бумаги 392×41: вид · название · дата. Хвост ссылки именем не бывает.
+    private func docRow(_ r: DocShelf.Row, _ i: Int, _ pal: Palette) -> some View {
+        Button { open(r.shelf.doc) } label: {
+            HStack(spacing: 10) {
+                Text(r.kindLabel).font(webFont(11)).tracking(0.2)
+                    .foregroundStyle(pal.brass).lineLimit(1).minimumScaleFactor(0.8).frame(width: 64, alignment: .leading)
+                Text(r.title).font(webFont(14)).foregroundStyle(pal.ink).lineLimit(1)
+                Spacer(minLength: 0)
+                Text(r.dateText ?? "—").font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
             }
-            .buttonStyle(.plain)
-            let who = app.docOwnerLine(d)
-            if !who.isEmpty {
-                Text(who).font(webFont(11)).foregroundStyle(pal.ink7).padding(.horizontal, 14).padding(.bottom, 6)
-            }
+            .padding(.horizontal, 14).frame(height: 41)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
+            .contentShape(Rectangle())
         }
-        .shotNode("org.docRow.\(i)")
+        .buttonStyle(.plain)
+        .shotNode("org.docRow.\(i)", text: r.title)
     }
 
     private func open(_ d: Attachment) {
