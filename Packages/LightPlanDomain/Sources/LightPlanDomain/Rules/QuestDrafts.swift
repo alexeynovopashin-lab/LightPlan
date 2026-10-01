@@ -31,6 +31,23 @@ public struct QuestDrafts: Sendable, Equatable, Codable {
 
     public func pending(for recordId: String?) -> Draft? { items[Self.key(recordId)] }
 
+    /// Ответ, который ждёт фотографа: чья запись (`nil` — ответ без записи, откроется новой встречей) и когда пришёл.
+    public struct Waiting: Sendable, Equatable {
+        public var recordId: String?
+        public var savedAt: Date
+    }
+
+    /// Ответы, ждущие на «Съёмках» (значок «пришёл ответ», слово Алексея 01.10: «значок нужен»): те, что пришли, пока была
+    /// открыта форма другой записи (шаг 9). Черновик записи, которой больше нет, не считается — открывать нечего.
+    /// Давние первыми: тап по значку ведёт к тому, что ждёт дольше всех.
+    public func waiting(existing ids: Set<String>) -> [Waiting] {
+        items.compactMap { key, d -> Waiting? in
+            if key == Self.newKey { return Waiting(recordId: nil, savedAt: d.savedAt) }
+            return ids.contains(key) ? Waiting(recordId: key, savedAt: d.savedAt) : nil
+        }
+        .sorted { $0.savedAt != $1.savedAt ? $0.savedAt < $1.savedAt : ($0.recordId ?? "") < ($1.recordId ?? "") }
+    }
+
     /// Ответ принят (запись сохранена) или отброшен фотографом.
     public mutating func release(_ recordId: String?) { items[Self.key(recordId)] = nil }
 

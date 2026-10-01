@@ -288,6 +288,22 @@ import LightPlanDomain
         #expect(d.pending(for: "")?.code == "BBB", "пустой знак — то же, что нет записи")
     }
 
+    // MARK: - Значок ответов на «Съёмках» (слово Алексея 01.10)
+
+    @Test func waitingAnswersCountOnlyOpenableRecords() {
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+        var d = QuestDrafts()
+        #expect(d.waiting(existing: ["a", "b"]).isEmpty, "нет ответов — нет значка")
+        d.hold(code: "X", for: "b", at: t0.addingTimeInterval(60))
+        d.hold(code: "Y", for: "a", at: t0)
+        d.hold(code: "Z", for: nil, at: t0.addingTimeInterval(120))
+        d.hold(code: "W", for: "gone", at: t0)
+        let w = d.waiting(existing: ["a", "b"])
+        #expect(w.map(\.recordId) == ["a", "b", nil], "давние первыми; запись, которой нет, не считается; ответ без записи — считается")
+        d.release("a")
+        #expect(d.waiting(existing: ["a", "b"]).map(\.recordId) == ["b", nil], "принятый ответ значок гасит")
+    }
+
     @Test func draftsOlderThanThirtyDaysAreDropped() {
         let t0 = Date(timeIntervalSince1970: 1_800_000_000)
         var d = QuestDrafts()

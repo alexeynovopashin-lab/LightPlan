@@ -32870,41 +32870,6 @@
         }
       }
     },
-    "quest.cut" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ответ обрезан до {n} знаков"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "answer cut to {n} characters"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "respuesta recortada a {n} caracteres"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "回答は{n}文字で切り詰められました"
-          }
-        },
-        "zh" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "回答已截断至{n}个字符"
-          }
-        }
-      }
-    },
     "quest.date" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -33951,6 +33916,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "客户问卷"
+          }
+        }
+      }
+    },
+    "quest.waiting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответов клиентов ждёт: {n}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client answers waiting: {n}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Respuestas de clientes pendientes: {n}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "お客様の回答待ち：{n}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待查看的客户回复：{n}"
           }
         }
       }

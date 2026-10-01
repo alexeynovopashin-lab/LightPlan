@@ -180,6 +180,20 @@ extension AppModel {
         return report.clash.count
     }
 
+    /// Ответы, ждущие на «Съёмках»: пришли, пока была открыта форма другой записи (значок, слово Алексея 01.10).
+    var questWaiting: [QuestDrafts.Waiting] {
+        questDrafts.waiting(existing: Set(snapshot.sessions.map(\.id)))
+    }
+
+    /// Тап по значку: открывается запись, чей ответ ждёт дольше всех; ответ ложится на форму сам (`reapplyQuestDraft`).
+    /// Ответ без записи открывается новой встречей. Открытую форму не подменяем — несохранённое не теряем.
+    func openWaitingQuest() {
+        guard form == nil, let first = questWaiting.first else { return }
+        if let id = first.recordId { openForm(editing: id); return }
+        openQuestMeeting()
+        if let d = questDrafts.pending(for: nil), case .success(let a) = QuestParse.decode(d.code) { layQuest(a) }
+    }
+
     /// Запись сохранена — принятый ответ больше не нужен (веб не хранил его вовсе).
     func releaseQuestDraft(recordId: String, wasNew: Bool) {
         questDrafts.release(recordId)

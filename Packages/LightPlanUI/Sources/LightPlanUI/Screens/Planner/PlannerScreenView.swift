@@ -230,6 +230,12 @@ private struct PlanTop: View {
             .buttonStyle(.plain)
 
             HStack(spacing: 8) {
+                let waiting = app.questWaiting.count
+                if waiting > 0 {
+                    Button { app.openWaitingQuest() } label: { questBadge(waiting, pal) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(f.t.t("quest.waiting", ["n": String(waiting)]))
+                }
                 Button { app.openForm(day: app.planner.selected) } label: { action(.add, pal.brass, "plan.add") }
                     .buttonStyle(.plain)
                     .accessibilityLabel(f.t.t("plan.newShoot"))
@@ -247,6 +253,19 @@ private struct PlanTop: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 6)
+    }
+
+    /// Значок «пришёл ответ клиента» (знак `chat` из библиотеки, латунь); число — сколько ответов ждёт. Нет ответов — нет значка.
+    private func questBadge(_ n: Int, _ pal: Palette) -> some View {
+        Icon("chat", size: 22, line: 1.7).foregroundStyle(pal.brass)
+            .frame(width: 34, height: 34)
+            .overlay(alignment: .topTrailing) {
+                Text("\(n)").font(webFont(10, 700)).foregroundStyle(pal.onBrass)
+                    .padding(.horizontal, 4).frame(minWidth: 15, minHeight: 15)
+                    .background(Capsule().fill(pal.brass))
+            }
+            .contentShape(Rectangle())
+            .shotNode("plan.quest")
     }
 
     private func action(_ k: PlanGlyph.Kind, _ c: Color, _ node: String) -> some View {

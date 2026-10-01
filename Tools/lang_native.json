@@ -12,7 +12,8 @@
     "light.moonNone": "Луна в эти сутки не всходит.",
     "card.wxNoData": "Данных о погоде пока нет: прогноз появится за 16 дней до съёмки.",
     "org.openCard": "Открыть карточку",
-    "org.shotBtn": "Снимок"
+    "org.shotBtn": "Снимок",
+    "quest.waiting": "Ответов клиентов ждёт: {n}"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -27,7 +28,8 @@
     "light.moonNone": "The moon does not rise this day.",
     "card.wxNoData": "No weather data yet: the forecast appears 16 days before the shoot.",
     "org.openCard": "Open company card",
-    "org.shotBtn": "Screenshot"
+    "org.shotBtn": "Screenshot",
+    "quest.waiting": "Client answers waiting: {n}"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -42,7 +44,8 @@
     "light.moonNone": "La luna no sale este día.",
     "card.wxNoData": "Aún no hay datos del tiempo: el pronóstico aparece 16 días antes de la sesión.",
     "org.openCard": "Abrir ficha",
-    "org.shotBtn": "Captura"
+    "org.shotBtn": "Captura",
+    "quest.waiting": "Respuestas de clientes pendientes: {n}"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -57,7 +60,8 @@
     "light.moonNone": "この日は月が昇りません。",
     "card.wxNoData": "天気のデータはまだありません。予報は撮影の 16 日前から出ます。",
     "org.openCard": "詳細を開く",
-    "org.shotBtn": "スクリーンショット"
+    "org.shotBtn": "スクリーンショット",
+    "quest.waiting": "お客様の回答待ち：{n}"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -72,6 +76,7 @@
     "light.moonNone": "这一天月亮不升起。",
     "card.wxNoData": "暂无天气数据：拍摄前 16 天会出现预报。",
     "org.openCard": "打开详情",
-    "org.shotBtn": "截图"
+    "org.shotBtn": "截图",
+    "quest.waiting": "待查看的客户回复：{n}"
   }
 }
