@@ -214,7 +214,7 @@ struct CardOrderBlocksTests {
         #expect(app.cardModels(s) == ["Аня", "Оля"])
         #expect(app.cardModelsTitle(s) == "Модели · 2")
         let docs = app.cardDocRows(s)
-        #expect(docs.map(\.name) == ["dogovor.pdf", "смета.xlsx"])
+        #expect(docs.map(\.name) == ["Договор", "смета.xlsx"], "у ссылки именем служит вид, а не хвост адреса")
         #expect(docs.map(\.kind) == ["disk.example.com", "XLSX · 20 КБ"])
         #expect(app.cardDocsCount(s) == "2 документа")
         let r = app.cardRouteFold(s)!

@@ -157,7 +157,10 @@ extension AppModel {
         let nt = NumberText(language: language)
         return s.docs.map { d in
             if d.source == .link {
-                return CardDocRow(name: DocLabel.sub(d, anyWord: lexicon.t("doc.any")),
+                // Сайт стоит в виде; именем служит «Название», а без него — вид бумаги (не хвост адреса).
+                let own = d.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let name = !own.isEmpty ? own : (OrgBook.kind(of: d).map(docKindName) ?? lexicon.t("doc.any"))
+                return CardDocRow(name: name,
                                   kind: DocLabel.host(d.url ?? "", linkWord: lexicon.t("ref.link")))
             }
             var kind = DocLabel.ext(d.name ?? "") ?? lexicon.t("doc.file")
