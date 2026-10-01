@@ -82,6 +82,7 @@ public struct SettingsView: View {
                     }
                     .padding(.top, 2)
                     .shotNode("nav")
+                    if app.showsBuildLine { BuildLine(info: BuildInfo.current(), lexicon: t) }
                 }
             }
             .background(Palette(colorScheme).surface)

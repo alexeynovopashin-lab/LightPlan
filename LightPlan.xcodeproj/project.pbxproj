@@ -118,6 +118,7 @@
 				A70000000000000000000002 /* Sources */,
 				A70000000000000000000003 /* Frameworks */,
 				A70000000000000000000004 /* Resources */,
+				A70000000000000000000021 /* Stamp build info */,
 			);
 			buildRules = (
 			);
@@ -142,6 +143,7 @@
 				A70000000000000000000012 /* Sources */,
 				A70000000000000000000013 /* Frameworks */,
 				A70000000000000000000014 /* Resources */,
+				A70000000000000000000022 /* Stamp build info */,
 			);
 			buildRules = (
 			);
@@ -258,6 +260,44 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
 			shellScript = "\"$SRCROOT/Tools/check_boundaries.sh\"\n";
+		};
+		A70000000000000000000021 /* Stamp build info */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Stamp build info";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "\"$SRCROOT/Tools/build_stamp.sh\"\n";
+		};
+		A70000000000000000000022 /* Stamp build info */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Stamp build info";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "\"$SRCROOT/Tools/build_stamp.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

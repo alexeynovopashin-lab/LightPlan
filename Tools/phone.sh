@@ -14,6 +14,7 @@
 #   wt/26     → «LP 26»,      Novopashin.LightPlan.wt26
 #   wt/24a    → «LP 24a»,     Novopashin.LightPlan.wt24a
 # `--main` просит основное приложение явно; из ветки — отказ (код 2).
+# `list` печатает у каждого приложения ту же запись, что строка «Сборка» в его «Настройках».
 # Телефон должен быть «available (paired)»; нет — код 3, просим подключить и разблокировать.
 # Второй рубеж — Tools/check_boundaries.sh: сборка для телефона с основным
 # идентификатором не из main — ошибка фазы сборки, даже если скрипт обойти.
@@ -124,7 +125,10 @@ case "$cmd" in
     jq -r '.result.apps[]? | select(.bundleIdentifier|startswith("Novopashin.LightPlan")) | [.bundleIdentifier,.name]|@tsv' "$out" \
     | while IFS=$'\t' read -r bid name; do
         rec="$(grep -F "$bid"$'\t' "$RECORD" 2>/dev/null | tail -1)"
-        if [ -n "$rec" ]; then IFS=$'\t' read -r _ b s t <<<"$rec"; echo "  «$name» $bid — $b @ $s, $t"
+        if [ -n "$rec" ]; then
+          IFS=$'\t' read -r _ b s t <<<"$rec"
+          s="${s% (+ не закоммиченное)}"; [ "$s" != "$(cut -f3 <<<"$rec")" ] && s="$s+"   # старая запись: «(+ не закоммиченное)» = «+»
+          echo "  «$name» $bid — Сборка · $("$root/Tools/build_stamp.sh" line "$b" "$s" "${t%% *}")"
         else echo "  «$name» $bid — записи об установке нет (ставилось не скриптом)"; fi
       done
     ;;

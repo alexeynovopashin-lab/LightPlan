@@ -40,7 +40,9 @@
     "doc.layTable": "Таблица",
     "doc.layMonths": "По месяцам",
     "doc.dateClear": "Убрать дату",
-    "bin.busyBack": "время занято: {name} {when}"
+    "bin.busyBack": "время занято: {name} {when}",
+    "set.buildLine": "Сборка · {branch} · {sha} · {date}",
+    "set.buildUnknown": "Сборка · неизвестна"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -83,7 +85,9 @@
     "doc.layTable": "Table",
     "doc.layMonths": "By month",
     "doc.dateClear": "Clear date",
-    "bin.busyBack": "time is busy: {name} {when}"
+    "bin.busyBack": "time is busy: {name} {when}",
+    "set.buildLine": "Build · {branch} · {sha} · {date}",
+    "set.buildUnknown": "Build · unknown"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -126,7 +130,9 @@
     "doc.layTable": "Tabla",
     "doc.layMonths": "Por mes",
     "doc.dateClear": "Quitar fecha",
-    "bin.busyBack": "horario ocupado: {name} {when}"
+    "bin.busyBack": "horario ocupado: {name} {when}",
+    "set.buildLine": "Compilación · {branch} · {sha} · {date}",
+    "set.buildUnknown": "Compilación · desconocida"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -169,7 +175,9 @@
     "doc.layTable": "表",
     "doc.layMonths": "月ごと",
     "doc.dateClear": "日付を消す",
-    "bin.busyBack": "時間が埋まっています：{name} {when}"
+    "bin.busyBack": "時間が埋まっています：{name} {when}",
+    "set.buildLine": "ビルド · {branch} · {sha} · {date}",
+    "set.buildUnknown": "ビルド · 不明"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -212,6 +220,8 @@
     "doc.layTable": "表格",
     "doc.layMonths": "按月",
     "doc.dateClear": "清除日期",
-    "bin.busyBack": "时间已被占用：{name} {when}"
+    "bin.busyBack": "时间已被占用：{name} {when}",
+    "set.buildLine": "构建 · {branch} · {sha} · {date}",
+    "set.buildUnknown": "构建 · 未知"
   }
 }

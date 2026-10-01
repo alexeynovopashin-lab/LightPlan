@@ -38715,6 +38715,76 @@
         }
       }
     },
+    "set.buildLine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сборка · {branch} · {sha} · {date}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build · {branch} · {sha} · {date}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compilación · {branch} · {sha} · {date}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ビルド · {branch} · {sha} · {date}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "构建 · {branch} · {sha} · {date}"
+          }
+        }
+      }
+    },
+    "set.buildUnknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сборка · неизвестна"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build · unknown"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compilación · desconocida"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ビルド · 不明"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "构建 · 未知"
+          }
+        }
+      }
+    },
     "set.calendar" : {
       "extractionState" : "manual",
       "localizations" : {

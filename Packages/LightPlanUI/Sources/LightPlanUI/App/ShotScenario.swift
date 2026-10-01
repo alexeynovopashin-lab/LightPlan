@@ -112,6 +112,7 @@ extension AppModel {
         }
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
         app.startChapter = s.chapter
+        app.showsBuildLine = false
         // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.
         if s.screen == .light, s.chapter == "pick" { app.light.pickerOpen = true }
         // Карточка (25): `LPShotSheet card`, запись — `LPShotWay <id>` (без него — первая съёмка дня).
