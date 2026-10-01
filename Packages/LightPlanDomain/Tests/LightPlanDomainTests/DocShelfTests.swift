@@ -226,10 +226,14 @@ import LightPlanDomain
         #expect(t() == ["B", "a 10", "d", "e", "c", "a 2"])
     }
 
-    @Test func tableNamesAreFullAndColumnTapKeepsDirectionRules() {
+    @Test func tableNameIsKindOrTitleAndColumnTapKeepsDirectionRules() {
         let f = Self.fixture()
         let rows = DocShelf.table(f.shelf, prefs: DocsPrefs(), words: f.words)
-        #expect(rows.contains { $0.title == "K-invoice · Альфа · 20.9" }, "вне группы имя полное: вид · организация · дата")
+        let invoice = rows.first { $0.shelf.doc.url == "https://x.io/schet" }
+        #expect(invoice?.title == "K-invoice", "в таблице без названия имя — только вид: организацию и дату показывают колонки")
+        #expect(invoice?.ownerLabel == "Альфа" && invoice?.dateText == "20.9", "колонки «Организация» и «Дата» читают свои поля")
+        #expect(rows.first { $0.shelf.doc.url == "https://x.io/akt" }?.title == "Акт Б", "своё название главнее вида")
+        #expect(rows.allSatisfy { !$0.title.contains(" · ") }, "в имени строки таблицы нет ни организации, ни даты")
         var p = DocsPrefs()
         p.tapColumn(.org); #expect(p.sortKey == .org && p.ascending, "организация — сперва А→Я")
         p.tapColumn(.kind); #expect(p.sortKey == .kind && p.ascending)
@@ -242,7 +246,7 @@ import LightPlanDomain
             var p = DocsPrefs(); p.grouping = g
             return Self.titles(DocShelf.groups(f.shelf, prefs: p, practice: .ru, words: f.words).first { $0.label == label }!.rows)
         }
-        #expect(group(.org, "Альфа") == ["K-invoice · 20.9", "Реквизиты"], "в группе организации — «Вид · дата», без организации")
+        #expect(group(.org, "Альфа") == ["K-invoice", "Реквизиты"], "в группе организации — «Вид», без организации и без даты: дата в правой колонке (слово Алексея Б)")
         #expect(group(.org, "Яр").contains("K-contract"), "у бумаги без даты и без повтора организации — только вид")
         #expect(group(.month, "9/2026") == ["K-invoice · Альфа", "K-brief", "Акт Б"], "в месяце — без даты, организация остаётся")
         #expect(group(.kind, "K-invoice") == ["K-invoice · Альфа · 20.9"], "в группе вида имя полное")

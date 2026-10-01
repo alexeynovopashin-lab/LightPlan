@@ -134,14 +134,15 @@ public enum DocShelf {
     }
 
     /// `within` — в какой группе строка стоит: что заголовок группы уже говорит, имя не повторяет
-    /// (по организации — без организации, по месяцу — без даты; решение 01.10: «Вид · дата» внутри
-    /// группы). Вне группы (таблица, карточка, поиск) — полное «Вид · Организация · дата».
-    public static func row(_ d: OrgBook.ShelfDoc, _ w: DocShelfWords, within: DocGrouping? = nil) -> Row {
+    /// (по организации — без организации и без даты, дата стоит в правой колонке; по месяцу — без даты).
+    /// `table` — строка таблицы: только вид и название, организацию и дату показывают свои колонки
+    /// (решение 12б, вариант Б). Вне группы и вне таблицы (карточка, поиск) — полное «Вид · Организация · дата».
+    public static func row(_ d: OrgBook.ShelfDoc, _ w: DocShelfWords, within: DocGrouping? = nil, table: Bool = false) -> Row {
         let kind = kindLabel(d, w)
         let owner = w.owner(d)?.label
         let date = d.day.map(w.dateText)
         let own = d.doc.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let parts = [kind, within == .org ? "" : owner ?? "", within == .month ? "" : date ?? ""]
+        let parts = table ? [kind] : [kind, within == .org ? "" : owner ?? "", within == .org || within == .month ? "" : date ?? ""]
         let title = own.isEmpty ? parts.filter { !$0.isEmpty }.joined(separator: " · ") : own
         return Row(shelf: d, title: title, kindLabel: kind, ownerLabel: owner, dateText: date)
     }
@@ -181,9 +182,9 @@ public enum DocShelf {
         return ids.map { Group(id: $0, label: labels[$0]!, rows: sorted(buckets[$0]!, prefs)) }
     }
 
-    /// Вид Б — таблица: одна строка на бумагу, имя полное, сортировка по колонке из `prefs`.
+    /// Вид Б — таблица: одна строка на бумагу, имя — вид и название, сортировка по колонке из `prefs`.
     public static func table(_ shelf: [OrgBook.ShelfDoc], prefs: DocsPrefs, words w: DocShelfWords) -> [Row] {
-        sorted(shelf.map { row($0, w) }, prefs)
+        sorted(shelf.map { row($0, w, table: true) }, prefs)
     }
 
     /// Вид В — по месяцам, как «Фото»: новые месяцы сверху, в месяце бумаги от новых, «Без даты» последней.

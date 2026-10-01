@@ -246,7 +246,9 @@ struct OrgStateTests {
         #expect(titles.contains("Счёт за свадьбу"))
         #expect(titles.allSatisfy { !$0.contains("4coX") && !$0.contains("disk.io") }, "хвост ссылки именем не бывает")
         #expect(titles.contains(app.docKindName(.contract)), "внутри группы организации имя — без организации (она в заголовке группы)")
-        #expect(app.docTable().contains { $0.title == app.docKindName(.contract) + " · Ромашка" }, "в таблице имя полное: вид · организация")
+        let contract = app.docTable().first { $0.title == app.docKindName(.contract) }
+        #expect(contract?.ownerLabel == "Ромашка", "в таблице имя — только вид, организация стоит в своей колонке")
+        #expect(!app.docTable().contains { $0.title.contains(" · ") }, "в имени строки таблицы нет организации и даты")
     }
 
     @Test func docsViewGroupingSortAndCollapsedGroupsSurviveRestart() {
