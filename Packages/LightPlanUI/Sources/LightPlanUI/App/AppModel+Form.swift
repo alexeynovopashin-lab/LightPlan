@@ -149,7 +149,8 @@ extension AppModel {
 
     /// Почему форму сохранить нельзя (`nil` — можно): кнопка тогда не нажимается, причина стоит на экране.
     public func formSaveBlock(_ f: EventForm) -> SaveGuard.Verdict? {
-        let v = SaveGuard.verdict(f)
+        let v = SaveGuard.verdict(f, blocks: snapshot.blocks, context: clashContext,
+                                  point: GeoPoint(f.sessionPlace.latitude, f.sessionPlace.longitude))
         return v == .ok ? nil : v
     }
 

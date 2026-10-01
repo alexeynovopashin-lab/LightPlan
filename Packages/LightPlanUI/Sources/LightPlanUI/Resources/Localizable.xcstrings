@@ -3402,6 +3402,41 @@
         }
       }
     },
+    "clash.dayBusyHard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этот день стоит «{name}». Съёмку на занятый день не сохранить: выберите другую дату."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}” is set for this day. A shoot can’t be saved on a busy day: pick another date."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este día tiene «{name}». No se puede guardar una sesión en un día ocupado: elija otra fecha."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この日は「{name}」が入っています。予定のある日には撮影を保存できません。別の日付を選んでください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这一天已有“{name}”。无法把拍摄保存在已占用的日子：请换一个日期。"
+          }
+        }
+      }
+    },
     "clash.dayBusyM" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3538,6 +3573,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "时间重叠"
+          }
+        }
+      }
+    },
+    "clash.repeatBusyM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{d}: «{name}» {when}. Эту съёмку серии на занятое не сохранить: уберите дату из повтора или выберите другое время."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{d}: “{name}” {when}. This shoot of the series can’t go on busy time: drop the date from the repeat or pick another time."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{d}: «{name}» {when}. Esta sesión de la serie no puede ir en tiempo ocupado: quite la fecha de la repetición o elija otra hora."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{d}：「{name}」{when}。この回は予定のある時間に保存できません。繰り返しから外すか、別の時間を選んでください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{d}：“{name}”{when}。这个系列拍摄无法保存在已占用的时间：请从重复中去掉该日期或换个时间。"
+          }
+        }
+      }
+    },
+    "clash.repeatBusyT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повтор попал на занятое"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A repeat lands on busy time"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una repetición cae en tiempo ocupado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繰り返しが予定と重なります"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重复日期撞上了已占用时间"
+          }
+        }
+      }
+    },
+    "clash.timeBusyHard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{name}» — {when}. Съёмку на занятое время не сохранить: выберите другое время."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}” — {when}. A shoot can’t be saved over busy time: pick another time."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{name}» — {when}. No se puede guardar una sesión en un horario ocupado: elija otra hora."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「{name}」— {when}。予定のある時間には撮影を保存できません。別の時間を選んでください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}”——{when}。无法把拍摄保存在已占用的时间：请换一个时间。"
           }
         }
       }

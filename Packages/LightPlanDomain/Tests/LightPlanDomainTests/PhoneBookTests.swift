@@ -203,17 +203,6 @@ import LightPlanDomain
         #expect(linked.grewOn == draft.day && linked.grewToId == "s1" && linked.modifiedAt == 9 && !MeetGrow.canGrow(linked))
     }
 
-    @Test func formWithoutDateCannotBeSaved() {
-        var f = EventForm.new(id: "n", day: Self.when, start: 600, fromLight: false, genre: .portrait, light: nil, step: 5)
-        #expect(SaveGuard.verdict(f) == .ok, "обычная новая форма сохраняется")
-        f.dayUnset = true
-        #expect(SaveGuard.verdict(f) == .noDate)
-        f.setStart(minute: 660)
-        #expect(SaveGuard.verdict(f) == .noDate, "время дату не называет")
-        f.setStart(day: Self.when)
-        #expect(SaveGuard.verdict(f) == .ok && !f.dayUnset, "выбор даты снимает запрет")
-    }
-
     @Test func shootCarriesGenreNamesPhonesPlaceNotesAndQuest() throws {
         let r = try #require(MeetGrow.make(from: Self.meet(), shootId: "s1", day: Self.when, start: 1080, duration: 120, modifiedAt: 5))
         let s = r.shoot

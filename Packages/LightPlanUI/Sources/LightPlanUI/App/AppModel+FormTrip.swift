@@ -154,7 +154,21 @@ extension AppModel {
     /// Плашка вверху формы (веб `refreshForm`): наложение важнее погоды — первое
     /// из самых тяжёлых, иначе «замысел против прогноза».
     public func formWarning(_ f: EventForm) -> WishWarning? {
-        formClashWarning(f) ?? formWishWarning(f)
+        formBusyWarning(f) ?? formClashWarning(f) ?? formWishWarning(f)
+    }
+
+    /// Занято — запрет, а не совет: плашка называет, чем занято («Концерт — 18:00–21:00»), и что сохранить нельзя.
+    public func formBusyWarning(_ f: EventForm) -> WishWarning? {
+        guard case .busy(let h)? = formSaveBlock(f) else { return nil }
+        let facts = PlannerFacts(app: self, dark: false)
+        let name = facts.blockLabel(snapshot.blocks[h.blockIndex])
+        let when = facts.range(h.from.map(Double.init), h.to.map(Double.init))
+        if h.day != f.day {
+            let d = facts.dates.dMon(facts.date(h.day))
+            return WishWarning(title: lexicon.t("clash.repeatBusyT"), message: lexicon.t("clash.repeatBusyM", ["d": d, "name": name, "when": h.allDay ? "" : when]))
+        }
+        let k = h.allDay ? "dayBusy" : "timeBusy"
+        return WishWarning(title: lexicon.t("clash." + k + "T"), message: lexicon.t("clash." + k + "Hard", ["name": name, "when": when]))
     }
 
     /// Первое наложение словами (веб `clashesFor(…)[0]`). Дороги приложение не

@@ -250,6 +250,44 @@ struct ContactsStateTests {
         #expect(app.form == nil && app.sessions.filter { $0.kind == .shoot }.count == 1)
     }
 
+    // MARK: - Занятое время (слово Алексея 01.10)
+
+    private func concert() -> Block {
+        var b = Block(id: "b1", kind: .busy, from: day(10, 10))
+        b.note = "Концерт дочери"
+        b.start = 1080
+        b.duration = 180
+        return b
+    }
+
+    @Test func shootOnBusyTimeIsNotSavedAndTheFormNamesWhatIsBusy() {
+        let app = model()
+        app.snapshot.blocks = [concert()]
+        app.openForm(day: day(10, 10))
+        app.form?.setStart(minute: 1050)
+        app.form?.duration = 60
+        guard case .busy(let hit)? = app.formSaveBlock(app.form!) else { Issue.record("«Сохранить» должна не нажиматься"); return }
+        #expect(hit.from == 1080 && hit.to == 1260)
+        let w = app.formWarning(app.form!)
+        #expect(w?.message.contains("Концерт дочери") == true && w?.message.contains("18:00") == true && w?.message.contains("21:00") == true,
+                "плашка пишет: Концерт дочери 18:00–21:00")
+        #expect(app.saveForm() == nil && app.sessions.isEmpty && app.form != nil, "съёмка не создана, форма осталась")
+        app.form?.setStart(minute: 960)
+        #expect(app.formSaveBlock(app.form!) == nil && app.saveForm() != nil && app.sessions.count == 1, "ушёл со занятого — сохраняется")
+    }
+
+    @Test func growFromMeetOnBusyTimeKeepsTheMeetAMeet() {
+        let app = model(sessions: [meet()])
+        app.snapshot.blocks = [concert()]
+        app.growMeet("m1")
+        app.form?.setStart(day: day(10, 10))
+        app.form?.setStart(minute: 1100)
+        #expect(app.formSaveBlock(app.form!) != nil && app.saveForm() == nil)
+        #expect(app.sessions.count == 1 && app.sessions[0].grewOn == nil, "встреча не сменила статус")
+        app.form?.setStart(minute: 600)
+        #expect(app.saveForm() != nil && app.sessions.first { $0.id == "m1" }?.grewOn == day(10, 10))
+    }
+
     @Test func shootHasNoGrowLine() {
         let app = model(sessions: [session("s", day(10, 5))])
         app.growMeet("s")
