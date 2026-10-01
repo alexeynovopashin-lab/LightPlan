@@ -168,7 +168,7 @@ extension AppModel {
             app.openOrgs()
             app.org.tab = .docs
             let parts = (s.way ?? "org").split(separator: "+").map(String.init)
-            app.editDocsPrefs { $0.grouping = DocGrouping(rawValue: parts[0]) ?? .org }
+            app.editDocsPrefs { $0.grouping = parts.first.flatMap(DocGrouping.init(rawValue:)) ?? .org }
             if parts.contains("fold"), let g = app.docGroups().first { app.editDocsPrefs { $0.toggleGroup(g.id) } }
         case "orgcard": if let id = s.way ?? app.orgs.first?.id { app.openOrgCard(id: id) }
         case "contacts": app.openContacts()

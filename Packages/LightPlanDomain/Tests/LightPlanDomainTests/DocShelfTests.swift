@@ -124,6 +124,19 @@ import LightPlanDomain
         #expect(rows.first(where: { $0.label == "Альфа" })?.rows.first?.shelf.day == Self.day(20))
     }
 
+    @Test func twoDatedPapersInOneGroupSwapOrderWithDirectionAndUndatedStaysLast() {
+        var o = Org(id: "y", name: "Яр"); o.docs = [Self.link("https://x.io/nodate", kind: .contract, title: "Без даты")]
+        let sessions = [Self.shoot("a", Self.day(3), org: "y", docs: [Self.link("https://x.io/a", kind: .act, title: "Раннее")]),
+                        Self.shoot("b", Self.day(9), org: "y", docs: [Self.link("https://x.io/b", kind: .act, title: "Позднее")])]
+        let shelf = OrgBook.shelf(orgs: [o], sessions: sessions)
+        let w = Self.words(orgs: [o], sessions: sessions)
+        var p = DocsPrefs()
+        func order() -> [String] { DocShelf.groups(shelf, prefs: p, practice: .ru, words: w)[0].rows.map(\.title) }
+        #expect(order() == ["Позднее", "Раннее", "Без даты"], "по умолчанию новые сверху, без даты внизу")
+        p.tapColumn(.date)
+        #expect(p.ascending && order() == ["Раннее", "Позднее", "Без даты"], "тап по «Дата» разворачивает порядок; без даты всё равно внизу")
+    }
+
     @Test func sortsByTitleIgnoringCaseAndTapFlipsDirection() {
         let f = Self.fixture()
         var p = DocsPrefs(); p.grouping = .kind
