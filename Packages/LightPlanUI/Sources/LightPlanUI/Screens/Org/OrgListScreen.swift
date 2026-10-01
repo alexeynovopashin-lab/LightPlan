@@ -177,7 +177,7 @@ struct OrgListScreen: View {
     /// Заголовки колонок: «Название» и «Дата» сортируют, тот же тап меняет направление.
     private func columnHeads(_ pal: Palette) -> some View {
         HStack(spacing: 10) {
-            Text(t.t("doc.colKind")).font(webFont(11)).foregroundStyle(pal.ink6).frame(width: 64, alignment: .leading)
+            Text(t.t("doc.colKind")).font(webFont(11)).foregroundStyle(pal.ink6).frame(width: 72, alignment: .leading)
             head(.title, "doc.title", pal)
             Spacer(minLength: 0)
             head(.date, "doc.colDate", pal)
@@ -255,11 +255,11 @@ struct OrgListScreen: View {
     private func tableRow(_ r: DocShelf.Row, _ i: Int, _ pal: Palette) -> some View {
         Button { open(r.shelf.doc) } label: {
             HStack(alignment: .center, spacing: 8) {
-                Text(r.kindLabel).font(webFont(11)).foregroundStyle(pal.brass).lineLimit(2).minimumScaleFactor(0.8)
+                Text(r.kindLabel).font(webFont(11)).foregroundStyle(pal.brass).fixedSize(horizontal: false, vertical: true)
                     .frame(width: 54, alignment: .leading)
-                Text(r.title).font(webFont(13)).foregroundStyle(pal.ink).lineLimit(2)
+                Text(r.title).font(webFont(13)).foregroundStyle(pal.ink).fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(r.ownerLabel ?? "—").font(webFont(11.5)).foregroundStyle(pal.ink4).lineLimit(2)
+                Text(r.ownerLabel ?? "—").font(webFont(11.5)).foregroundStyle(pal.ink4).fixedSize(horizontal: false, vertical: true)
                     .frame(width: 76, alignment: .leading)
                 Text(r.dateText ?? "—").font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(2)
                     .frame(width: 58, alignment: .leading)
@@ -303,17 +303,17 @@ struct OrgListScreen: View {
         .shotNode("org.kind." + k.rawValue, text: "\(n)")
     }
 
-    /// Строка бумаги 392×41: вид · название · дата. Хвост ссылки именем не бывает.
+    /// Строка бумаги от 41 pt высотой: вид · название · дата; вид и название переносятся на вторую строку, а не режутся «…». Хвост ссылки именем не бывает.
     private func docRow(_ r: DocShelf.Row, _ i: Int, _ pal: Palette) -> some View {
         Button { open(r.shelf.doc) } label: {
             HStack(spacing: 10) {
                 Text(r.kindLabel).font(webFont(11)).tracking(0.2)
-                    .foregroundStyle(pal.brass).lineLimit(1).minimumScaleFactor(0.8).frame(width: 64, alignment: .leading)
-                Text(r.title).font(webFont(14)).foregroundStyle(pal.ink).lineLimit(1)
+                    .foregroundStyle(pal.brass).fixedSize(horizontal: false, vertical: true).frame(width: 72, alignment: .leading)
+                Text(r.title).font(webFont(14)).foregroundStyle(pal.ink).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 Text(r.dateText ?? "—").font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
             }
-            .padding(.horizontal, 14).frame(height: 41)
+            .padding(.horizontal, 14).padding(.vertical, 7).frame(minHeight: 41)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
             .contentShape(Rectangle())
         }
