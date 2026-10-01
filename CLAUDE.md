@@ -105,7 +105,7 @@ One script does all of it — do not hand-build for the phone:
 
 ```
 make phone ARGS="install"          # name + bundle id from the branch, build, install, launch
-make phone ARGS="list"             # what stands on the phone, from which branch @ commit
+make phone ARGS="list"             # what stands on the phone: «Сборка · branch · sha · DD.MM», same line as at the bottom of its Settings (build_stamp phase)
 make phone ARGS="uninstall 24a"    # closed branch (uninstall --main only from Alexey's word)
 make checkstep ARGS="wt/26 main --type код --tests"   # step check: four lines yes/no
 ```
