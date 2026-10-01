@@ -2,8 +2,8 @@
 # Номер сборки (шаг 28в): ветка · коммит · день. Один формат на три места —
 # строка внизу «Настроек», фаза сборки и `make phone ARGS="list"`.
 #
-#   Tools/build_stamp.sh                    фаза сборки: вписать LPBuildBranch/Sha/Date в Info.plist
-#                                           собранного приложения (git — из папки проекта)
+#   Tools/build_stamp.sh                    фаза сборки: положить в приложение build_stamp.plist
+#                                           с LPBuildBranch/Sha/Date (git — из папки проекта)
 #   Tools/build_stamp.sh line <ветка> <коммит> <ГГГГ-ММ-ДД>   строка «main · a8ee911 · 01.10»
 #   Tools/build_stamp.sh selftest           проверка формата
 #
@@ -42,20 +42,23 @@ case "${1:-}" in
     echo "selftest: ок"; exit 0 ;;
 esac
 
-plist="${TARGET_BUILD_DIR:-}/${INFOPLIST_PATH:-}"
-[ -n "${INFOPLIST_PATH:-}" ] && [ -f "$plist" ] || { echo "stamp_build: нет Info.plist собранного приложения ($plist)" >&2; exit 1; }
+# Свой файл в приложении, а не правка Info.plist: системный шаг Info.plist идёт ПОСЛЕ этой фазы и
+# при инкрементальной сборке пересобирает файл заново, стирая вписанное (замер 28в: второй
+# `make phone` из той же папки отдал приложение без ключей).
+dir="${TARGET_BUILD_DIR:-}/${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}"
+[ -n "${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}" ] && [ -d "$dir" ] || { echo "stamp_build: нет папки ресурсов приложения ($dir)" >&2; exit 1; }
+out="$dir/build_stamp.plist"
 pb=/usr/libexec/PlistBuddy
+rm -f "$out"
 
 sha="$(git -C "$root" rev-parse --short HEAD 2>/dev/null)"
 branch="${LP_BRANCH:-$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null)}"
 if [ -z "$sha" ] || [ -z "$branch" ]; then
-  for k in LPBuildBranch LPBuildSha LPBuildDate; do "$pb" -c "Delete :$k" "$plist" 2>/dev/null; done
   echo "stamp_build: не git — сборка будет «неизвестна»"; exit 0
 fi
 sha="$sha$(dirty_mark "$root")"
 day="$(date '+%Y-%m-%d')"
 for kv in "LPBuildBranch=$branch" "LPBuildSha=$sha" "LPBuildDate=$day"; do
-  k="${kv%%=*}"; v="${kv#*=}"
-  "$pb" -c "Set :$k $v" "$plist" 2>/dev/null || "$pb" -c "Add :$k string $v" "$plist" || exit 1
+  "$pb" -c "Add :${kv%%=*} string ${kv#*=}" "$out" > /dev/null || exit 1
 done
 echo "stamp_build: $(line "$branch" "$sha" "$day")"

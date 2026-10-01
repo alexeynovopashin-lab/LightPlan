@@ -52,6 +52,22 @@ struct BuildInfoTests {
         }
     }
 
+    /// Файл штампа рядом с приложением: читается из пакета, нет файла — «неизвестна».
+    @Test func currentReadsStampFileFromBundle() throws {
+        // Bundle(path:) помнит найденное по пути, поэтому у «есть файл» и «нет файла» свои папки.
+        func bundle(withStamp: Bool) throws -> (Bundle, URL) {
+            let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lp-stamp-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            if withStamp { (stamp as NSDictionary).write(to: dir.appendingPathComponent("build_stamp.plist"), atomically: true) }
+            return (try #require(Bundle(path: dir.path)), dir)
+        }
+        let (empty, emptyDir) = try bundle(withStamp: false)
+        let (stamped, stampedDir) = try bundle(withStamp: true)
+        defer { try? FileManager.default.removeItem(at: emptyDir); try? FileManager.default.removeItem(at: stampedDir) }
+        #expect(BuildInfo.current(empty) == nil, "файла нет")
+        #expect(BuildInfo.current(stamped) == BuildInfo(info: stamp))
+    }
+
     /// В буфер уходит строка, что на экране; сам буфер в тесте не трогаем — у тестового хоста нет права.
     @Test(.enabled(if: catalogCompiled, "каталог не скомпилирован: запускать через xcodebuild test"))
     func tapCopiesTheLineOnScreen() {

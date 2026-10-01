@@ -7,8 +7,9 @@ import AppKit
 
 /// Какая сборка стоит на телефоне: ветка, коммит, день сборки (шаг 28в).
 ///
-/// Три ключа в Info.plist пишет фаза сборки `Tools/stamp_build.sh` — из git той
-/// папки, откуда собирали. Сборка без git (архив) или без ключей — «неизвестна»,
+/// Три ключа в `build_stamp.plist` рядом с приложением пишет фаза сборки
+/// `Tools/build_stamp.sh` — из git той папки, откуда собирали (в Info.plist нельзя:
+/// его пересобирает система после фазы). Сборка без git (архив) или без ключей — «неизвестна»,
 /// падать нечему. Тот же формат печатает `make phone ARGS="list"`
 /// (`Tools/build_stamp.sh line`).
 struct BuildInfo: Equatable {
@@ -31,7 +32,8 @@ struct BuildInfo: Equatable {
     }
 
     static func current(_ bundle: Bundle = .main) -> BuildInfo? {
-        BuildInfo(info: bundle.infoDictionary)
+        let file = bundle.url(forResource: "build_stamp", withExtension: "plist")
+        return BuildInfo(info: file.flatMap { NSDictionary(contentsOf: $0) as? [String: Any] })
     }
 
     /// `ГГГГ-ММ-ДД` → `ДД.ММ`; иной вид даты остаётся как есть.

@@ -86,9 +86,9 @@ case "$cmd" in
     [ $code -eq 0 ] || die "сборка не прошла (exit=$code), журнал $log" 4
     xcrun devicectl device install app --device "$DEVICE_ID" "$dd/Build/Products/Debug-iphoneos/LightPlan.app" \
       > "$log.install" 2>&1 || { tail -5 "$log.install"; die "установка не прошла (лимит бесплатной команды? тогда снять закрытые ветки: phone.sh list / uninstall)" 5; }
-    # В записи — штамп собранного приложения (то же, что строка в его «Настройках»), а не «сейчас»:
+    # В записи — штамп собранного приложения (то же, что строка в его «Настройках»; файл build_stamp.plist), а не «сейчас»:
     # установка в другой день или с новым неотслеженным файлом не разводит `list` и экран (ревью GPT 28в).
-    pl="$dd/Build/Products/Debug-iphoneos/LightPlan.app/Info.plist"
+    pl="$dd/Build/Products/Debug-iphoneos/LightPlan.app/build_stamp.plist"
     st_sha="$(/usr/libexec/PlistBuddy -c 'Print :LPBuildSha' "$pl" 2>/dev/null)"
     st_day="$(/usr/libexec/PlistBuddy -c 'Print :LPBuildDate' "$pl" 2>/dev/null)"
     printf '%s\t%s\t%s\t%s\n' "$bid" "$branch" "${st_sha:-$sha$dirty}" "${st_day:-$(date '+%Y-%m-%d')} $(date '+%H:%M')" >> "$RECORD"
