@@ -34,9 +34,9 @@ struct OrgCardScreen: View {
                 label(t.t("org.one"), pal).shotNode("orgc.label")
                 FormGroup(node: "orgc.group") {
                     FormTextField(placeholder: t.t("org.namePh"), text: text(\.name), kind: .text)
-                    FormTextField(placeholder: t.t("form.person"), text: text(\.person), kind: .name)
-                    FormTextField(placeholder: t.t("form.phone"), text: phone(o), kind: .phone)
                 }
+                label(t.t("org.people"), pal)
+                people(o, pal)
                 label(t.t("doc.req"), pal)
                 requisites(o, pal)
                 label(t.t("org.docs"), pal)
@@ -68,6 +68,59 @@ struct OrgCardScreen: View {
 
     private func phone(_ o: Org) -> Binding<String> {
         Binding(get: { app.orgRecord(id)?.phone ?? "" }, set: { app.setOrgPhone(id, $0) })
+    }
+
+    // MARK: люди (Директор, Контактное лицо, «+ Добавить»; слово Алексея 01.10 — отход от беты)
+
+    /// Строка: слева роль словом, справа имя и телефон. Директор и контактное лицо — постоянные; остальные
+    /// добавляются «+ Добавить» с ролью, которую фотограф набирает сам, и убираются крестиком.
+    private func people(_ o: Org, _ pal: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FormGroup(node: "orgc.people") {
+                fixedPerson(t.t("org.director"), name: text(\.director), phone: Binding(
+                    get: { app.orgRecord(id)?.directorPhone ?? "" }, set: { app.setDirectorPhone(id, $0) }), pal)
+                fixedPerson(t.t("form.person"), name: text(\.person), phone: phone(o), pal)
+                ForEach(Array(o.staff.indices), id: \.self) { i in staffPerson(i, pal) }
+            }
+            Button { app.addOrgPerson(id) } label: {
+                Text(t.t("org.addPerson")).font(.system(size: 15)).foregroundStyle(pal.brass)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).frame(height: 44)
+                    .background(pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .shotNode("orgc.addPerson", text: t.t("org.addPerson"))
+        }
+    }
+
+    private func fixedPerson(_ role: String, name: Binding<String>, phone: Binding<String>, _ pal: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(role).font(.system(size: 12)).foregroundStyle(pal.ink4).padding(.horizontal, 15).padding(.top, 10)
+            FormTextField(placeholder: t.t("org.personName"), text: name, kind: .name)
+            FormTextField(placeholder: t.t("form.phone"), text: phone, kind: .phone)
+        }
+    }
+
+    private func staffPerson(_ i: Int, _ pal: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
+                FormTextField(placeholder: t.t("org.rolePh"), text: staffText(i, \.role), kind: .text)
+                Button { app.removeOrgPerson(id, at: i) } label: {
+                    Icon("close", size: 16, line: 2).foregroundStyle(pal.ink4).frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(t.t("org.removePerson"))
+            }
+            FormTextField(placeholder: t.t("org.personName"), text: staffText(i, \.name), kind: .name)
+            FormTextField(placeholder: t.t("form.phone"),
+                          text: Binding(get: { app.orgRecord(id)?.staff[safe: i]?.phone ?? "" },
+                                        set: { app.setOrgPersonPhone(id, at: i, $0) }), kind: .phone)
+        }
+    }
+
+    private func staffText(_ i: Int, _ key: WritableKeyPath<OrgPerson, String>) -> Binding<String> {
+        Binding(get: { app.orgRecord(id)?.staff[safe: i]?[keyPath: key] ?? "" },
+                set: { v in app.editOrgPerson(id, at: i) { $0[keyPath: key] = v } })
     }
 
     /// `.g-label`: 10 / 600, прописные, разрядка 1,2 — над группой, у края 4.

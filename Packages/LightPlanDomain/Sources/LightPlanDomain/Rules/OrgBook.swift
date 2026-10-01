@@ -42,7 +42,8 @@ public enum OrgBook {
     /// ни реквизитов, ни бумаг.
     public static func isBlank(_ o: Org) -> Bool {
         func empty(_ s: String) -> Bool { s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        return empty(o.name) && empty(o.person) && empty(o.phone) && empty(o.requisites)
+        return empty(o.name) && empty(o.person) && empty(o.phone) && empty(o.director) && empty(o.directorPhone)
+            && o.staff.allSatisfy(\.isBlank) && empty(o.requisites)
             && o.docs.isEmpty && o.requisiteFiles.isEmpty
     }
 
@@ -51,6 +52,17 @@ public enum OrgBook {
     public static func keeps(_ o: Org, in sessions: [Session]) -> Bool {
         !isBlank(o) || sessions.contains { $0.orgId == o.id }
     }
+
+    // MARK: - Люди организации (слово Алексея 01.10)
+
+    public static func addPerson(to o: inout Org) { o.staff.append(OrgPerson()) }
+
+    public static func removePerson(at i: Int, from o: inout Org) {
+        if o.staff.indices.contains(i) { o.staff.remove(at: i) }
+    }
+
+    /// Пустые строки «+ Добавить» при закрытии карточки не остаются.
+    public static func pruneBlankPeople(_ o: inout Org) { o.staff.removeAll(where: \.isBlank) }
 
     // MARK: - Удаление
 

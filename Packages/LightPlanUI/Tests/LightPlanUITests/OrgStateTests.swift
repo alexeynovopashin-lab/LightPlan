@@ -51,6 +51,39 @@ struct OrgStateTests {
 
     // MARK: пустая организация не остаётся (ошибка веба 24)
 
+    // MARK: люди организации (слово Алексея 01.10)
+
+    @Test func addedPeopleLandInContactsWithTheirRoleWords() {
+        let app = model(orgs: [named("o1", "Агентство")])
+        app.openOrgCard(id: "o1")
+        app.editOrg("o1") { $0.director = "Пётр Иванов" }
+        app.setDirectorPhone("o1", "9162223344")
+        app.editOrg("o1") { $0.person = "Ольга" }
+        app.setOrgPhone("o1", "9161112233")
+        app.addOrgPerson("o1")
+        app.editOrgPerson("o1", at: 0) { $0.role = "маркетолог"; $0.name = "Анна" }
+        app.setOrgPersonPhone("o1", at: 0, "9163334455")
+        app.closeOrgCard()
+        let rows = app.contacts.flatMap(\.rows)
+        #expect(Set(rows.map { app.contactRole($0) }) == ["Директор", "Контактное лицо", "маркетолог"], "роли — словами")
+        #expect(app.orgRecord("o1")?.directorPhone == "8 916 222-33-44", "телефон директора причёсан, как остальные")
+    }
+
+    @Test func blankPersonRowIsDroppedOnCloseAndMakesNoOrgFromADraft() {
+        let app = model()
+        app.newOrg()
+        let id = app.org.cardId!
+        app.addOrgPerson(id)
+        #expect(app.orgs.isEmpty, "пустая строка организацию не создаёт")
+        app.closeOrgCard()
+        #expect(app.orgs.isEmpty)
+        let app2 = model(orgs: [named("o1", "А")])
+        app2.openOrgCard(id: "o1")
+        app2.addOrgPerson("o1")
+        app2.closeOrgCard()
+        #expect(app2.orgRecord("o1")?.staff.isEmpty == true)
+    }
+
     @Test func plusOrgOpensADraftAndLeavesTheDataUntouched() {
         let app = model()
         app.newOrg()

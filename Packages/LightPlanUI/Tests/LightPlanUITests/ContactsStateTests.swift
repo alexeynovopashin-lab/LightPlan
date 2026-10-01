@@ -72,7 +72,7 @@ struct ContactsStateTests {
         let rows = app.contacts.flatMap(\.rows)
         let words = rows.map { app.contactWho($0) }
         #expect(words.contains("Невеста · Настя") && words.contains("Жених · Ваня"), "роли пары — слова жанра: \(words)")
-        #expect(words.contains("Контактное лицо · Мария") && words.contains("Организация · Ольга"))
+        #expect(words.contains("Контактное лицо · Мария") && words.contains("Контактное лицо · Ольга"), "контактное лицо организации — той же ролью, что у заказа (слово Алексея 01.10)")
         #expect(!words.contains { $0.contains("Имя клиента") }, "подсказка поля — не роль (ошибка веба 25)")
         #expect(rows.filter { app.contactWho($0).contains("Настя") }.count == 1, "клиент = невеста — одна строка (ошибка 26)")
     }

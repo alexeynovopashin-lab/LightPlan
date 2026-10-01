@@ -19,7 +19,14 @@
     "clash.timeBusyHard": "«{name}» — {when}. Съёмку на занятое время не сохранить: выберите другое время.",
     "clash.dayBusyHard": "На этот день стоит «{name}». Съёмку на занятый день не сохранить: выберите другую дату.",
     "clash.repeatBusyT": "Повтор попал на занятое",
-    "clash.repeatBusyM": "{d}: «{name}» {when}. Эту съёмку серии на занятое не сохранить: уберите дату из повтора или выберите другое время."
+    "clash.repeatBusyM": "{d}: «{name}» {when}. Эту съёмку серии на занятое не сохранить: уберите дату из повтора или выберите другое время.",
+    "org.people": "Люди",
+    "org.director": "Директор",
+    "org.addPerson": "+ Добавить",
+    "org.rolePh": "Роль: маркетолог, секретарь…",
+    "org.personName": "Имя",
+    "org.removePerson": "Убрать",
+    "quest.cut": "ответ обрезан до {n} знаков"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -41,7 +48,14 @@
     "clash.timeBusyHard": "“{name}” — {when}. A shoot can’t be saved over busy time: pick another time.",
     "clash.dayBusyHard": "“{name}” is set for this day. A shoot can’t be saved on a busy day: pick another date.",
     "clash.repeatBusyT": "A repeat lands on busy time",
-    "clash.repeatBusyM": "{d}: “{name}” {when}. This shoot of the series can’t go on busy time: drop the date from the repeat or pick another time."
+    "clash.repeatBusyM": "{d}: “{name}” {when}. This shoot of the series can’t go on busy time: drop the date from the repeat or pick another time.",
+    "org.people": "People",
+    "org.director": "Director",
+    "org.addPerson": "+ Add",
+    "org.rolePh": "Role: marketer, secretary…",
+    "org.personName": "Name",
+    "org.removePerson": "Remove",
+    "quest.cut": "answer cut to {n} characters"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -63,7 +77,14 @@
     "clash.timeBusyHard": "«{name}» — {when}. No se puede guardar una sesión en un horario ocupado: elija otra hora.",
     "clash.dayBusyHard": "Este día tiene «{name}». No se puede guardar una sesión en un día ocupado: elija otra fecha.",
     "clash.repeatBusyT": "Una repetición cae en tiempo ocupado",
-    "clash.repeatBusyM": "{d}: «{name}» {when}. Esta sesión de la serie no puede ir en tiempo ocupado: quite la fecha de la repetición o elija otra hora."
+    "clash.repeatBusyM": "{d}: «{name}» {when}. Esta sesión de la serie no puede ir en tiempo ocupado: quite la fecha de la repetición o elija otra hora.",
+    "org.people": "Personas",
+    "org.director": "Director",
+    "org.addPerson": "+ Añadir",
+    "org.rolePh": "Cargo: marketing, secretaria…",
+    "org.personName": "Nombre",
+    "org.removePerson": "Quitar",
+    "quest.cut": "respuesta recortada a {n} caracteres"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -85,7 +106,14 @@
     "clash.timeBusyHard": "「{name}」— {when}。予定のある時間には撮影を保存できません。別の時間を選んでください。",
     "clash.dayBusyHard": "この日は「{name}」が入っています。予定のある日には撮影を保存できません。別の日付を選んでください。",
     "clash.repeatBusyT": "繰り返しが予定と重なります",
-    "clash.repeatBusyM": "{d}：「{name}」{when}。この回は予定のある時間に保存できません。繰り返しから外すか、別の時間を選んでください。"
+    "clash.repeatBusyM": "{d}：「{name}」{when}。この回は予定のある時間に保存できません。繰り返しから外すか、別の時間を選んでください。",
+    "org.people": "担当者",
+    "org.director": "代表",
+    "org.addPerson": "+ 追加",
+    "org.rolePh": "役割：マーケティング、秘書…",
+    "org.personName": "名前",
+    "org.removePerson": "削除",
+    "quest.cut": "回答は{n}文字で切り詰められました"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -107,6 +135,13 @@
     "clash.timeBusyHard": "“{name}”——{when}。无法把拍摄保存在已占用的时间：请换一个时间。",
     "clash.dayBusyHard": "这一天已有“{name}”。无法把拍摄保存在已占用的日子：请换一个日期。",
     "clash.repeatBusyT": "重复日期撞上了已占用时间",
-    "clash.repeatBusyM": "{d}：“{name}”{when}。这个系列拍摄无法保存在已占用的时间：请从重复中去掉该日期或换个时间。"
+    "clash.repeatBusyM": "{d}：“{name}”{when}。这个系列拍摄无法保存在已占用的时间：请从重复中去掉该日期或换个时间。",
+    "org.people": "联系人",
+    "org.director": "负责人",
+    "org.addPerson": "+ 添加",
+    "org.rolePh": "职务：市场、秘书…",
+    "org.personName": "姓名",
+    "org.removePerson": "移除",
+    "quest.cut": "回答已截断至{n}个字符"
   }
 }

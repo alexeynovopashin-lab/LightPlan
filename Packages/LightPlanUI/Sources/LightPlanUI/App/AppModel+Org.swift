@@ -63,6 +63,9 @@ extension AppModel {
 
     /// «Назад» из карточки: пустая организация без съёмок не остаётся (ошибка веба 24).
     func closeOrgCard() {
+        if let id = org.cardId, orgRecord(id)?.staff.contains(where: \.isBlank) == true {
+            editOrg(id) { OrgBook.pruneBlankPeople(&$0) }
+        }
         commitOrgTels()
         if let id = org.cardId { settleOrg(id) }
         org.cardId = nil
@@ -118,6 +121,32 @@ extension AppModel {
         // Страна читает снимок — до правки, не внутри неё (два доступа к `snapshot` разом).
         let typed = TelFormat.typed(raw, previousDigits: old, country: telCountry)
         editOrg(id) { $0.phone = typed }
+    }
+
+    /// Телефон директора: причёсывается, как остальные.
+    func setDirectorPhone(_ id: String, _ raw: String) {
+        let old = (orgRecord(id)?.directorPhone ?? "").filter(\.isNumber).count
+        let typed = TelFormat.typed(raw, previousDigits: old, country: telCountry)
+        editOrg(id) { $0.directorPhone = typed }
+    }
+
+    /// «+ Добавить»: новая строка человека; роль набирает фотограф («маркетолог», «секретарь»).
+    func addOrgPerson(_ id: String) {
+        editOrg(id) { OrgBook.addPerson(to: &$0) }
+    }
+
+    func editOrgPerson(_ id: String, at i: Int, _ body: (inout OrgPerson) -> Void) {
+        editOrg(id) { if $0.staff.indices.contains(i) { body(&$0.staff[i]) } }
+    }
+
+    func setOrgPersonPhone(_ id: String, at i: Int, _ raw: String) {
+        let old = (orgRecord(id)?.staff[safe: i]?.phone ?? "").filter(\.isNumber).count
+        let typed = TelFormat.typed(raw, previousDigits: old, country: telCountry)
+        editOrgPerson(id, at: i) { $0.phone = typed }
+    }
+
+    func removeOrgPerson(_ id: String, at i: Int) {
+        editOrg(id) { OrgBook.removePerson(at: i, from: &$0) }
     }
 
     func addOrgDocLink(_ id: String, _ raw: String) {

@@ -39,8 +39,11 @@ extension AppModel {
             }
             return lexicon.t("form.person")
         case PhoneBook.Field.client: return lexicon.t("who.client")
-        case PhoneBook.Field.org: return lexicon.t("org.one")
-        default: return lexicon.t("form.person")
+        case PhoneBook.Field.org: return lexicon.t("form.person")
+        case PhoneBook.Field.director: return lexicon.t("org.director")
+        default:
+            if let role = PhoneBook.Field.staffRole(r.field), !role.isEmpty { return role }
+            return lexicon.t("form.person")
         }
     }
 

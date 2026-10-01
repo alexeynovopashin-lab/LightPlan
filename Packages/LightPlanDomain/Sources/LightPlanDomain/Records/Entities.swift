@@ -1,6 +1,30 @@
 import Foundation
 import LightPlanCore
 
+/// Человек организации сверх директора и контактного лица: «+ Добавить» с ролью словом (итерация 28, слово Алексея
+/// 01.10: «маркетолог, секретарь»). Роль набирает фотограф, справочника ролей нет.
+public struct OrgPerson: Sendable, Hashable, Codable {
+    public var role: String = ""
+    public var name: String = ""
+    public var phone: String = ""
+    public init(role: String = "", name: String = "", phone: String = "") {
+        self.role = role
+        self.name = name
+        self.phone = phone
+    }
+    enum CodingKeys: String, CodingKey { case role = "r", name = "n", phone = "p" }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        role = try c.decodeIfPresent(String.self, forKey: .role) ?? ""
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
+    }
+    /// Пустая строка (ничего не вписано) в данные не идёт.
+    public var isBlank: Bool {
+        [role, name, phone].allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+}
+
 /// Организация (веб `orgs[]`): отдельная запись с постоянным ключом. Название
 /// правится, контактное лицо меняется, а история съёмок не рвётся
 /// (`docs/12_CARD_ARCHITECTURE.md`, «Организация как сущность»).
@@ -9,10 +33,16 @@ public struct Org: Sendable, Hashable, Identifiable {
     public var id: String
     /// `name`.
     public var name: String = ""
-    /// `person` — текущее контактное лицо.
+    /// `person` — «Контактное лицо» (строка карточки организации; как в вебе).
     public var person: String = ""
-    /// `phone`.
+    /// `phone` — телефон контактного лица.
     public var phone: String = ""
+    /// `dir` — «Директор» (итерация 28, слово Алексея 01.10; веб этого поля не знает).
+    public var director: String = ""
+    /// `dirTel` — телефон директора.
+    public var directorPhone: String = ""
+    /// `staff` — остальные люди организации: роль словом («маркетолог», «секретарь»), имя, телефон.
+    public var staff: [OrgPerson] = []
     /// `req` — реквизиты одним полем, как их прислали: приложение их не разбирает.
     public var requisites: String = ""
     /// `reqFiles` — реквизиты файлом или снимком.

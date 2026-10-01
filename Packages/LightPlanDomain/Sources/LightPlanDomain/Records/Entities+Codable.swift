@@ -4,7 +4,7 @@ import LightPlanCore
 /// Ключи снимка — из комментариев `Entities.swift` (итерация 12, тот же
 /// приём, что у `Session+Codable.swift`).
 extension Org: Codable {
-    enum CodingKeys: String, CodingKey { case id, name, person, phone, req, reqFiles, docs, telLog, mt }
+    enum CodingKeys: String, CodingKey { case id, name, person, phone, dir, dirTel, staff, req, reqFiles, docs, telLog, mt }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -12,6 +12,9 @@ extension Org: Codable {
                   name: try c.decodeIfPresent(String.self, forKey: .name) ?? "")
         person = try c.decodeIfPresent(String.self, forKey: .person) ?? ""
         phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
+        director = try c.decodeIfPresent(String.self, forKey: .dir) ?? ""
+        directorPhone = try c.decodeIfPresent(String.self, forKey: .dirTel) ?? ""
+        staff = try c.decodeIfPresent([OrgPerson].self, forKey: .staff) ?? []
         requisites = try c.decodeIfPresent(String.self, forKey: .req) ?? ""
         requisiteFiles = try c.decodeIfPresent([Attachment].self, forKey: .reqFiles) ?? []
         docs = try c.decodeIfPresent([Attachment].self, forKey: .docs) ?? []
@@ -25,6 +28,10 @@ extension Org: Codable {
         try c.encode(name, forKey: .name)
         try c.encode(person, forKey: .person)
         try c.encode(phone, forKey: .phone)
+        // Новые поля — только когда заполнены: пустая организация пишется байт в байт как у веба.
+        if !director.isEmpty { try c.encode(director, forKey: .dir) }
+        if !directorPhone.isEmpty { try c.encode(directorPhone, forKey: .dirTel) }
+        if !staff.isEmpty { try c.encode(staff, forKey: .staff) }
         try c.encode(requisites, forKey: .req)
         try c.encode(requisiteFiles, forKey: .reqFiles)
         try c.encode(docs, forKey: .docs)

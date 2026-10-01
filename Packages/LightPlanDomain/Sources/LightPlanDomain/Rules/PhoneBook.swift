@@ -16,6 +16,16 @@ public enum PhoneBook {
         /// Контактное лицо заказчика.
         public static let contact = "person"
         public static let org = "org"
+        /// Директор организации.
+        public static let director = "director"
+        /// Префикс человека организации с ролью словом: `staff:маркетолог`. Роль едет в поле, как поле едет в архив
+        /// ушедших номеров (`telLog.f`), — отдельной записи для роли не нужно.
+        public static let staffPrefix = "staff:"
+
+        public static func staff(_ role: String) -> String { staffPrefix + role }
+        public static func staffRole(_ field: String) -> String? {
+            field.hasPrefix(staffPrefix) ? String(field.dropFirst(staffPrefix.count)) : nil
+        }
     }
 
     /// Прежних номеров у одной карточки не больше (веб `TEL_LOG_MAX`).
@@ -44,9 +54,12 @@ public enum PhoneBook {
         return out.filter { TelFormat.isReal($0.phone, country: country) }
     }
 
-    /// Номер организации (веб `orgTels`).
+    /// Номера организации (веб `orgTels` + люди карточки): контактное лицо, директор и остальные со своей ролью.
     public static func tels(of o: Org, country: TelCountry) -> [Tel] {
-        TelFormat.isReal(o.phone, country: country) ? [Tel(field: Field.org, phone: o.phone, name: o.person)] : []
+        var out = [Tel(field: Field.org, phone: o.phone, name: o.person),
+                   Tel(field: Field.director, phone: o.directorPhone, name: o.director)]
+        for p in o.staff { out.append(Tel(field: Field.staff(p.role.trimmingCharacters(in: .whitespaces)), phone: p.phone, name: p.name)) }
+        return out.filter { TelFormat.isReal($0.phone, country: country) }
     }
 
     // MARK: - Ушедший номер (веб `telRetire`)
@@ -116,8 +129,8 @@ public enum PhoneBook {
     private static func weight(_ field: String) -> Int {
         switch field {
         case Field.personOne, Field.personTwo: 3
-        case Field.contact, Field.org: 2
-        default: 1
+        case Field.contact, Field.org, Field.director: 2
+        default: field.hasPrefix(Field.staffPrefix) ? 2 : 1
         }
     }
 
