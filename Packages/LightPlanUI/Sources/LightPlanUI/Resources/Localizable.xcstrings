@@ -10567,6 +10567,41 @@
         }
       }
     },
+    "form.growNoDate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Съёмка по встрече: выберите дату. Пока даты нет, встреча остаётся встречей."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shoot from a meeting: pick a date. Until you do, the meeting stays a meeting."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesión desde una reunión: elija la fecha. Hasta entonces, la reunión sigue siendo una reunión."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打ち合わせから撮影を作成：日付を選んでください。選ぶまでは打ち合わせのままです。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由会面安排拍摄：请选择日期。选定之前，它仍是会面。"
+          }
+        }
+      }
+    },
     "form.guestsAria" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11578,6 +11613,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择"
+          }
+        }
+      }
+    },
+    "form.pickDate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать дату"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick a date"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir fecha"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日付を選ぶ"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择日期"
           }
         }
       }

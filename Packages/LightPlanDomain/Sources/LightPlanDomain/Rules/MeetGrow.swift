@@ -11,20 +11,15 @@ public enum MeetGrow {
     /// иначе у одной встречи две съёмки, а в календаре — одна пометка.
     public static func canGrow(_ s: Session) -> Bool { s.kind != .shoot && s.grewOn == nil }
 
-    /// Подсказка даты: разговор сегодня, съёмка позже (веб: +30 дней). Условная — фотограф называет свою
-    /// (ошибка веба 30: форма показывала её как названную).
-    public static let suggestedDays = 30
-
     public struct Result: Sendable {
         public var meet: Session
         public var shoot: Session
     }
 
-    /// `nil` — назначить нельзя (уже назначена или это не встреча). `start` и `duration` — то, что
-    /// подсказал бы свет для нового дня; съёмка встаёт на `day`.
-    public static func make(from meet: Session, shootId: String, day: CivilDate, start: Int, duration: Int,
-                            modifiedAt: Int64?) -> Result? {
-        guard canGrow(meet) else { return nil }
+    /// Съёмка из данных встречи, ещё не названная датой: переезжают жанр, имена, телефоны, организация, место и заметки.
+    /// `day` — якорь для подсказок света (день встречи), не дата съёмки: её называет фотограф в форме. Встречу
+    /// не трогает — она остаётся встречей, пока съёмка не сохранена (`link`).
+    public static func draft(from meet: Session, shootId: String, day: CivilDate, start: Int, duration: Int) -> Session {
         var s = Session(id: shootId, kind: .shoot, day: day, start: start, end: start + duration,
                         duration: duration, genre: meet.genre)
         s.contact = meet.contact
@@ -49,11 +44,24 @@ public enum MeetGrow {
         s.questSent = meet.questSent
         s.fromMeetOn = meet.day
         s.fromMeetId = meet.id
-        s.modifiedAt = modifiedAt
+        return s
+    }
+
+    /// Съёмка сохранена — встреча получает пометку: день съёмки и её знак (по знаку, а не по дате: дату можно поправить).
+    public static func link(_ meet: Session, to shoot: Session, modifiedAt: Int64?) -> Session {
         var m = meet
-        m.grewOn = day
-        m.grewToId = shootId
+        m.grewOn = shoot.day
+        m.grewToId = shoot.id
         m.modifiedAt = modifiedAt
-        return Result(meet: m, shoot: s)
+        return m
+    }
+
+    /// `nil` — назначить нельзя (уже назначена или это не встреча). Целиком, без формы: съёмка встаёт на `day`.
+    public static func make(from meet: Session, shootId: String, day: CivilDate, start: Int, duration: Int,
+                            modifiedAt: Int64?) -> Result? {
+        guard canGrow(meet) else { return nil }
+        var s = draft(from: meet, shootId: shootId, day: day, start: start, duration: duration)
+        s.modifiedAt = modifiedAt
+        return Result(meet: link(meet, to: s, modifiedAt: modifiedAt), shoot: s)
     }
 }

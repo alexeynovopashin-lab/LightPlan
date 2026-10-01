@@ -110,7 +110,13 @@ public struct EventForm: Equatable, Sendable {
 
     /// Исходная запись при правке; `nil` — новая.
     public var base: Session?
-    public var isNew: Bool { base == nil }
+    /// Встреча, из которой назначают съёмку («Назначить съёмку»): форма — новая съёмка с её данными; встреча станет
+    /// «съёмка назначена» только при сохранении (слово Алексея 01.10: до даты она остаётся встречей).
+    public var growFrom: String?
+    /// Дата не названа: «Назначить съёмку» не ставит дату за фотографа (слово Алексея 01.10). Пока она не выбрана,
+    /// сохранить нельзя; выбор даты снимает отметку. `day` тогда только якорь для подсказок света.
+    public var dayUnset = false
+    public var isNew: Bool { base == nil || growFrom != nil }
 
     // MARK: - Открытие
 
@@ -261,7 +267,7 @@ public struct EventForm: Equatable, Sendable {
 
     /// Начало правят руками: предложенное светом перестаёт быть предложенным, длительность остаётся.
     public mutating func setStart(day d: CivilDate? = nil, minute m: Int? = nil) {
-        if let d { day = d }
+        if let d { day = d; dayUnset = false }
         if let m {
             start = m
             timeIsProposed = false

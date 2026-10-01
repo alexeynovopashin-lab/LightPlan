@@ -106,6 +106,8 @@ struct FormBarButton: View {
     var node = ""
     let kind: Kind
     let label: String
+    /// `false` — «Сохранить» не нажимается (дата не названа, время занято); причина стоит на экране формы.
+    var enabled = true
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
     var body: some View {
@@ -125,6 +127,8 @@ struct FormBarButton: View {
         // глючит»; симулятор: внутри круга мимо линии — не закрывает).
         .contentShape(Circle())
         .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.3)
         .shotNode(node)
         .accessibilityLabel(label)
     }

@@ -122,7 +122,7 @@ extension AppModel {
     /// руками ничего не набрано, черновика нет, а старый стирается.
     public func writeDraft() {
         draftTask?.cancel()
-        guard let f = form, f.isNew else { return }
+        guard let f = form, f.isNew, f.growFrom == nil else { return }
         draftStore.save(f.hasTypedContent ? f.draftData() : nil)
     }
 
@@ -147,10 +147,16 @@ extension AppModel {
         formNote = nil
     }
 
+    /// Почему форму сохранить нельзя (`nil` — можно): кнопка тогда не нажимается, причина стоит на экране.
+    public func formSaveBlock(_ f: EventForm) -> SaveGuard.Verdict? {
+        let v = SaveGuard.verdict(f)
+        return v == .ok ? nil : v
+    }
+
     /// Галочка (веб `#fSave`): формы без обязательных полей — пустая тоже сохраняется.
     @discardableResult
     public func saveForm() -> Session? {
-        guard let f = form else { return nil }
+        guard let f = form, formSaveBlock(f) == nil else { return nil }
         let org = f.orgId.flatMap { id in snapshot.orgs.first { $0.id == id } }
         let money = formMoney(f)
         var s = f.session(orgName: org?.name, and: lexicon.t("card.and"), studios: snapshot.studios,
@@ -172,12 +178,15 @@ extension AppModel {
             snapshot.sessions.append(s)
         }
         snapshot.sessions.append(contentsOf: copies)
+        finishGrow(from: f, shoot: s)
         if let e = f.monthSumEdit(money), s.pay == .monthly, let g = f.monthGroup?.group {
             addMonthSum(MonthSum(month: e.month, sum: e.sum, at: Int64((now().timeIntervalSince1970 * 1000).rounded(.down))), group: g)
         }
         draftTask?.cancel()
-        if f.isNew { draftStore.save(nil) }
-        releaseQuestDraft(recordId: s.id, wasNew: f.isNew)
+        // Съёмка из встречи — новая запись, но чужого черновика (другой новой формы, ответа без записи) не трогает.
+        let fresh = f.isNew && f.growFrom == nil
+        if fresh { draftStore.save(nil) }
+        releaseQuestDraft(recordId: s.id, wasNew: fresh)
         persist()
         form = nil
         formIsDraft = false

@@ -181,17 +181,39 @@ struct ContactsStateTests {
         return m
     }
 
-    @Test func growMakesAShootKeepsTheMeetAndOpensTheForm() {
+    @Test func growOpensADatelessFormAndChangesNothingYet() {
         let app = model(sessions: [meet()])
         app.openCard(id: "m1")
         app.growMeet("m1")
-        #expect(app.sessions.count == 2)
+        #expect(app.sessions.count == 1, "до сохранения в календаре ничего не появилось")
+        let m = app.sessions[0]
+        #expect(m.kind == .meet && m.grewOn == nil && m.grewToId == nil, "встреча остаётся встречей, без пометки")
+        let f = app.form
+        #expect(app.cardId == nil && f?.growFrom == "m1" && f?.dayUnset == true && f?.isNew == true && f?.mode == .shoot)
+        #expect(f?.contact == "Ирина" && f?.clientPhone == "8 916 123-45-67" && f?.sessionPlace.name == "Кафе" && f?.notes == "обсудить свет",
+                "данные встречи в форме")
+        #expect(app.formSaveBlock(f!) == .noDate, "«Сохранить» не нажимается, пока нет даты")
+        #expect(app.saveForm() == nil && app.sessions.count == 1 && app.form != nil, "сохранение без даты ничего не создаёт")
+        #expect(app.grownLine(m) == nil)
+    }
+
+    @Test func closingTheDatelessFormLeavesTheMeetAlone() {
+        let app = model(sessions: [meet()])
+        app.growMeet("m1")
+        app.closeForm()
+        #expect(app.form == nil && app.sessions.count == 1 && app.sessions[0].grewOn == nil && MeetGrow.canGrow(app.sessions[0]))
+    }
+
+    @Test func pickingTheDateUnlocksSaveAndOnlyThenTheMeetIsMarked() {
+        let app = model(sessions: [meet()])
+        app.growMeet("m1")
+        app.form?.setStart(day: day(11, 4))
+        #expect(app.form?.dayUnset == false && app.formSaveBlock(app.form!) == nil)
+        let saved = app.saveForm()
+        #expect(saved?.day == day(11, 4) && app.sessions.count == 2)
         let m = app.sessions.first { $0.id == "m1" }!, s = app.sessions.first { $0.kind == .shoot }!
-        #expect(m.kind == .meet && m.grewOn == s.day && m.grewToId == s.id, "встреча остаётся с пометкой")
-        #expect(s.day == day(11, 4), "подсказка: встреча + 30 дней")
-        #expect(s.contact == "Ирина" && s.clientPhone == "8 916 123-45-67" && s.place == "Кафе" && s.notes == "обсудить свет")
-        #expect(s.fromMeetId == "m1")
-        #expect(app.cardId == nil && app.form?.id == s.id && app.form?.isNew == false, "форма новой съёмки открыта, дату называет фотограф")
+        #expect(m.kind == .meet && m.grewOn == s.day && m.grewToId == s.id, "пометка — только после сохранения")
+        #expect(s.fromMeetId == "m1" && s.contact == "Ирина" && s.clientPhone == "8 916 123-45-67" && s.place == "Кафе")
         #expect(app.planner.selected == s.day)
         #expect(app.grownLine(m) == "Съёмка назначена на 4 ноября.")
     }
@@ -199,20 +221,33 @@ struct ContactsStateTests {
     @Test func noteFollowsTheShootWhenThePhotographerMovesItsDate() {
         let app = model(sessions: [meet()])
         app.growMeet("m1")
-        app.form?.day = day(12, 1)
+        app.form?.setStart(day: day(11, 4))
+        app.saveForm()
+        let shootId = app.sessions.first { $0.kind == .shoot }!.id
+        app.openForm(editing: shootId)
+        app.form?.setStart(day: day(12, 1))
         app.saveForm()
         #expect(app.grownLine(app.sessions.first { $0.id == "m1" }!) == "Съёмка назначена на 1 декабря.", "дата взята у съёмки, не записана при назначении")
-        let shootId = app.sessions.first { $0.kind == .shoot }!.id
         app.snapshot.sessions.removeAll { $0.id == shootId }
         #expect(app.grownLine(app.sessions[0]) == "Съёмка назначена на 4 ноября.", "съёмки нет — остаётся записанный день")
+    }
+
+    @Test func growDoesNotTouchAnotherFormsDraft() {
+        let app = model(sessions: [meet()])
+        app.questDrafts.hold(code: "AAA", for: nil, at: Date())
+        app.growMeet("m1")
+        app.form?.setStart(day: day(11, 4))
+        app.saveForm()
+        #expect(app.questDrafts.pending(for: nil)?.code == "AAA", "ответ без записи не принадлежит этой съёмке")
     }
 
     @Test func secondGrowCreatesNoSecondShoot() {
         let app = model(sessions: [meet()])
         app.growMeet("m1")
-        app.closeForm()
+        app.form?.setStart(day: day(11, 4))
+        app.saveForm()
         app.growMeet("m1")
-        #expect(app.sessions.filter { $0.kind == .shoot }.count == 1)
+        #expect(app.form == nil && app.sessions.filter { $0.kind == .shoot }.count == 1)
     }
 
     @Test func shootHasNoGrowLine() {

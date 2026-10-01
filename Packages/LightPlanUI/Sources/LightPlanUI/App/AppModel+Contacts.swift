@@ -102,25 +102,35 @@ extension AppModel {
 
     // MARK: - Встреча → съёмка
 
-    /// «Назначить съёмку»: порождает съёмку на дату встречи + 30 дней (подсказка), встреча остаётся с пометкой,
-    /// форма новой съёмки открывается сразу — дату называет фотограф. Повторное назначение ничего не создаёт.
+    /// «Назначить съёмку»: открывает форму новой съёмки с данными встречи, **без даты** — её называет фотограф
+    /// (слово Алексея 01.10: «нельзя ставить дату за пользователя, нет даты — нет сохранения в календаре, нет смены
+    /// статуса из встречи в съёмку»). Пока форма не сохранена, встреча остаётся встречей, в календаре ничего не
+    /// появляется; закрыл форму — ничего не было. Сохранение — `saveForm` (`finishGrow`).
     func growMeet(_ id: String) {
-        guard let m = snapshot.sessions.first(where: { $0.id == id }), MeetGrow.canGrow(m) else { return }
-        let when = m.day.adding(days: MeetGrow.suggestedDays)
+        guard form == nil, let m = snapshot.sessions.first(where: { $0.id == id }), MeetGrow.canGrow(m) else { return }
         let genre = m.genre ?? lastFormGenre
-        // Время и длительность — как подсказала бы форма для этого дня.
-        let probe = EventForm.new(id: "", day: when, start: nil, fromLight: true, genre: genre, prefs: genrePrefs[genre],
-                                  light: formLight(on: when), step: settings.timeStep, home: repeatHome,
+        // Время и длительность — как подсказала бы форма; день встречи — только якорь света, не дата съёмки.
+        let probe = EventForm.new(id: "", day: m.day, start: nil, fromLight: true, genre: genre, prefs: genrePrefs[genre],
+                                  light: formLight(on: m.day), step: settings.timeStep, home: repeatHome,
                                   genreRate: genreRate(genre), currency: settings.currency)
-        guard let r = MeetGrow.make(from: m, shootId: Self.newRecordId(now()), day: when, start: probe.start,
-                                    duration: probe.duration, modifiedAt: nowMs),
-              let i = snapshot.sessions.firstIndex(where: { $0.id == id }) else { return }
-        snapshot.sessions[i] = r.meet
-        snapshot.sessions.append(r.shoot)
-        persist()
+        let shoot = MeetGrow.draft(from: m, shootId: Self.newRecordId(now()), day: m.day, start: probe.start,
+                                   duration: probe.duration)
+        var f = EventForm.editing(shoot, home: settings.currency)
+        f.growFrom = m.id
+        f.dayUnset = true
+        f.timeIsProposed = probe.timeIsProposed
+        f.timeFromLight = probe.timeFromLight
         closeCard()
-        planner.goToday(when)
-        openForm(editing: r.shoot.id)
+        formIsDraft = false
+        form = f
+        formNote = lexicon.t("form.growNoDate")
+    }
+
+    /// Съёмка из встречи сохранена: встреча получает пометку «съёмка назначена» (только здесь).
+    func finishGrow(from f: EventForm, shoot: Session) {
+        guard let id = f.growFrom, let i = snapshot.sessions.firstIndex(where: { $0.id == id }) else { return }
+        snapshot.sessions[i] = MeetGrow.link(snapshot.sessions[i], to: shoot, modifiedAt: nowMs)
+        planner.goToday(shoot.day)
     }
 
     /// Строка у встречи, ставшей съёмкой: «Съёмка назначена на {дата}».

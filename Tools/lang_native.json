@@ -13,7 +13,9 @@
     "card.wxNoData": "Данных о погоде пока нет: прогноз появится за 16 дней до съёмки.",
     "org.openCard": "Открыть карточку",
     "org.shotBtn": "Снимок",
-    "quest.waiting": "Ответов клиентов ждёт: {n}"
+    "quest.waiting": "Ответов клиентов ждёт: {n}",
+    "form.pickDate": "Выбрать дату",
+    "form.growNoDate": "Съёмка по встрече: выберите дату. Пока даты нет, встреча остаётся встречей."
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -29,7 +31,9 @@
     "card.wxNoData": "No weather data yet: the forecast appears 16 days before the shoot.",
     "org.openCard": "Open company card",
     "org.shotBtn": "Screenshot",
-    "quest.waiting": "Client answers waiting: {n}"
+    "quest.waiting": "Client answers waiting: {n}",
+    "form.pickDate": "Pick a date",
+    "form.growNoDate": "Shoot from a meeting: pick a date. Until you do, the meeting stays a meeting."
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -45,7 +49,9 @@
     "card.wxNoData": "Aún no hay datos del tiempo: el pronóstico aparece 16 días antes de la sesión.",
     "org.openCard": "Abrir ficha",
     "org.shotBtn": "Captura",
-    "quest.waiting": "Respuestas de clientes pendientes: {n}"
+    "quest.waiting": "Respuestas de clientes pendientes: {n}",
+    "form.pickDate": "Elegir fecha",
+    "form.growNoDate": "Sesión desde una reunión: elija la fecha. Hasta entonces, la reunión sigue siendo una reunión."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -61,7 +67,9 @@
     "card.wxNoData": "天気のデータはまだありません。予報は撮影の 16 日前から出ます。",
     "org.openCard": "詳細を開く",
     "org.shotBtn": "スクリーンショット",
-    "quest.waiting": "お客様の回答待ち：{n}"
+    "quest.waiting": "お客様の回答待ち：{n}",
+    "form.pickDate": "日付を選ぶ",
+    "form.growNoDate": "打ち合わせから撮影を作成：日付を選んでください。選ぶまでは打ち合わせのままです。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -77,6 +85,8 @@
     "card.wxNoData": "暂无天气数据：拍摄前 16 天会出现预报。",
     "org.openCard": "打开详情",
     "org.shotBtn": "截图",
-    "quest.waiting": "待查看的客户回复：{n}"
+    "quest.waiting": "待查看的客户回复：{n}",
+    "form.pickDate": "选择日期",
+    "form.growNoDate": "由会面安排拍摄：请选择日期。选定之前，它仍是会面。"
   }
 }
