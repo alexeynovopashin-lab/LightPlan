@@ -151,14 +151,14 @@ extension AppModel {
     /// даты подсказка пересчитывается по свету выбранного дня (ревью GPT к c9e7eea); названное руками время не трогаем.
     public func pickFormDay(_ d: CivilDate) {
         guard var f = form else { return }
-        let reprice = f.dayUnset && f.timeIsProposed
+        let reprice = (f.dayUnset || f.growFrom != nil) && f.timeIsProposed
         f.setStart(day: d)
         if reprice {
             let probe = EventForm.new(id: "", day: d, start: nil, fromLight: true, genre: f.genre, prefs: genrePrefs[f.genre],
                                       light: formLight(on: d), step: settings.timeStep, home: repeatHome,
                                       genreRate: genreRate(f.genre), currency: settings.currency)
+            // Длительность не трогаем: её могли поправить до выбора даты (ревью GPT к 8ce02b5).
             f.start = probe.start
-            f.duration = probe.duration
             f.timeIsProposed = probe.timeIsProposed
             f.timeFromLight = probe.timeFromLight
         }

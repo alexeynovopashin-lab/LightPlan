@@ -239,8 +239,12 @@ struct ContactsStateTests {
         let probe = EventForm.new(id: "", day: target, start: nil, fromLight: true, genre: app.form!.genre, prefs: app.genrePrefs[app.form!.genre],
                                   light: app.formLight(on: target), step: app.settings.timeStep, home: app.repeatHome,
                                   genreRate: app.genreRate(app.form!.genre), currency: app.settings.currency)
+        app.form?.duration = 90
         app.pickFormDay(target)
         #expect(app.form?.start == probe.start && app.form?.day == target && app.form?.dayUnset == false, "время — по свету выбранного дня")
+        #expect(app.form?.duration == 90, "длительность, поправленная до выбора даты, остаётся")
+        app.pickFormDay(day(12, 21))
+        #expect(app.form?.day == day(12, 21) && app.form?.duration == 90, "вторая смена даты тоже пересчитывает подсказку и не трогает длительность")
         let app2 = model(sessions: [meet()])
         app2.growMeet("m1")
         app2.form?.setStart(minute: 1000)
