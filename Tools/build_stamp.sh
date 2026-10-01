@@ -20,11 +20,25 @@ line() { # ветка коммит ГГГГ-ММ-ДД
   printf '%s · %s · %s\n' "$1" "$2" "$d"
 }
 
+# «+», если в сборку может войти то, чего нет в коммите: правка отслеживаемого или новый,
+# ещё не добавленный файл исходников (ревью GPT 28в). Игнорируемое (.build, DerivedData) не в счёт.
+dirty_mark() { # папка репозитория
+  [ -n "$(git -C "$1" status --porcelain -- Packages App-iOS App-macOS Config Tools LightPlan.xcodeproj 2>/dev/null)" ] && printf '+'
+}
+
 case "${1:-}" in
   line) line "${2:?ветка}" "${3:?коммит}" "${4:?день}"; exit 0 ;;
   selftest)
     [ "$(line main a8ee911 2026-10-01)" = "main · a8ee911 · 01.10" ] || { echo "selftest: формат разошёлся" >&2; exit 1; }
     [ "$(line wt/28v a8ee911+ 2026-10-01)" = "wt/28v · a8ee911+ · 01.10" ] || { echo "selftest: ветка с косой чертой" >&2; exit 1; }
+    t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
+    git -C "$t" init -q && mkdir -p "$t/Packages" && echo a > "$t/Packages/a.swift" \
+      && git -C "$t" add . && git -C "$t" -c user.name=t -c user.email=t@t commit -qm t
+    [ -z "$(dirty_mark "$t")" ] || { echo "selftest: чистая папка помечена «+»" >&2; exit 1; }
+    echo b > "$t/Packages/b.swift"
+    [ "$(dirty_mark "$t")" = "+" ] || { echo "selftest: новый неотслеживаемый файл не помечен «+»" >&2; exit 1; }
+    rm "$t/Packages/b.swift"; echo c >> "$t/Packages/a.swift"
+    [ "$(dirty_mark "$t")" = "+" ] || { echo "selftest: правка отслеживаемого файла не помечена «+»" >&2; exit 1; }
     echo "selftest: ок"; exit 0 ;;
 esac
 
@@ -38,7 +52,7 @@ if [ -z "$sha" ] || [ -z "$branch" ]; then
   for k in LPBuildBranch LPBuildSha LPBuildDate; do "$pb" -c "Delete :$k" "$plist" 2>/dev/null; done
   echo "stamp_build: не git — сборка будет «неизвестна»"; exit 0
 fi
-[ -n "$(git -C "$root" status --porcelain --untracked-files=no 2>/dev/null)" ] && sha="$sha+"
+sha="$sha$(dirty_mark "$root")"
 day="$(date '+%Y-%m-%d')"
 for kv in "LPBuildBranch=$branch" "LPBuildSha=$sha" "LPBuildDate=$day"; do
   k="${kv%%=*}"; v="${kv#*=}"
