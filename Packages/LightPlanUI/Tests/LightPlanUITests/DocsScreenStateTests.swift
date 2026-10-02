@@ -177,6 +177,12 @@ struct DocsScreenStateTests {
         #expect(r.title.isEmpty, "вид уже слева, в названии его нет — \(r.title)")
     }
 
+    @Test func binRowKeepsOwnTitleEvenIfItEqualsTheKindWord() {
+        let t1 = TrashedDoc(doc: link("x.io/1", kind: .invoice, title: "Счёт"), from: .mine, index: 0, deletedAt: 1_000)
+        let app = model { _ in ([], [], [], [t1]) }
+        #expect(app.docBinRows()[0].row.title == "Счёт", "своё название не прячем")
+    }
+
     // MARK: поиск (шаг 3б)
 
     private func searchApp() -> AppModel {

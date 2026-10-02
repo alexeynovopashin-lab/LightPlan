@@ -50,6 +50,10 @@ struct DocDraft: Equatable {
         !url.trimmingCharacters(in: .whitespaces).isEmpty || !title.trimmingCharacters(in: .whitespaces).isEmpty || kind != nil
     }
 
+    /// «Добавить» требует хоть что-то (`canSave`); «Сохранить» правки — нет: бумага уже есть, и менять можно
+    /// одну дату или привязку. У бумаги-ссылки правка по-прежнему не оставляет её пустой.
+    func canSubmit(editing: Bool) -> Bool { editing && !linkEditable ? true : canSave }
+
     mutating func pickKind(_ k: DocKind?) { kind = k; kindTouched = true }
 
     /// Ссылка вставлена или набрана: пока вид не выбран рукой — угадывается по ней (`DocKind.guess`).
@@ -290,7 +294,8 @@ extension AppModel {
         return DocSections.bin(docLibrary).map { t in
             var row = DocShelf.row(.init(doc: t.doc, kind: OrgBook.kind(of: t.doc), isRequisite: false, orgId: nil, sessionId: nil, day: nil), words)
             // Без своего названия у строки остаётся один вид: слева он уже стоит, второй раз его не пишем.
-            if row.title == row.kindLabel { row.title = "" }
+            // Своё название, даже совпавшее со словом вида («Счёт»), остаётся.
+            if (t.doc.title ?? "").isEmpty, row.title == row.kindLabel { row.title = "" }
             return (t, row)
         }
     }

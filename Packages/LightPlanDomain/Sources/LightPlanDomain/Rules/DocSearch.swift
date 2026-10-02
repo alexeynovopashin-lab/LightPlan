@@ -6,7 +6,7 @@ import Foundation
 public enum DocSearch {
 
     /// Без учёта регистра, `ё` = `е`, лишние пробелы не в счёт.
-    static func fold(_ s: String) -> String {
+    public static func fold(_ s: String) -> String {
         s.lowercased().replacingOccurrences(of: "ё", with: "е")
     }
 

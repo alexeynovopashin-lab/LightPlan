@@ -67,10 +67,10 @@ struct DocEditSheet: View {
                 Button(action: submit) {
                     Text(t.t(editing ? "doc.save" : "ask.ok")).font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(pal.onBrass).frame(maxWidth: .infinity).padding(16)
-                        .background(pal.brass.opacity(draft.canSave ? 1 : 0.35), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(pal.brass.opacity(draft.canSubmit(editing: editing) ? 1 : 0.35), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
-                .buttonStyle(.plain).disabled(!draft.canSave)
-                .padding(.top, 18).shotNode("doc.sheet.ok", text: draft.canSave ? "on" : "off")
+                .buttonStyle(.plain).disabled(!draft.canSubmit(editing: editing))
+                .padding(.top, 18).shotNode("doc.sheet.ok", text: draft.canSubmit(editing: editing) ? "on" : "off")
                 Button { app.closeDocSheet() } label: {
                     Text(t.t("ask.cancel")).font(.system(size: 15)).foregroundStyle(pal.ink3)
                         .frame(maxWidth: .infinity).padding(.vertical, 14).contentShape(Rectangle())

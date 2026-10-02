@@ -166,6 +166,57 @@ struct DocsEditStateTests {
         #expect(app.docLibrary.myDocs.first?.id == id, "и обратно в «Мои»")
     }
 
+    @Test func movingOutOfShootKeepsTheDayPickedInTheFormNotTheShootDay() {
+        let app = model(two)
+        let id = app.docLibrary.sessions[0].docs[0].id
+        let shootDay = app.docLibrary.sessions[0].day
+        let picked = shootDay.adding(days: -9)
+        var d = app.docDraft(for: id)!
+        d.owner = .mine; d.date = picked
+        #expect(app.saveDoc(id, d))
+        #expect(app.docLibrary.myDocs.first { $0.id == id }?.date == picked, "выбранный день, не день съёмки")
+        // Дату не трогали — день съёмки по-прежнему переезжает вместе с бумагой.
+        var e = app.docDraft(for: app.docLibrary.orgs[0].docs[0].id)!
+        e.owner = .session("a")
+        let oid = app.docLibrary.orgs[0].docs[0].id
+        #expect(app.saveDoc(oid, e))
+        var f = app.docDraft(for: oid)!
+        f.owner = .org("o1")
+        #expect(app.saveDoc(oid, f))
+        #expect(app.docLibrary.orgs[0].docs.first { $0.id == oid }?.date == shootDay, "без выбора — день съёмки")
+    }
+
+    @Test func movingOutOfShootToOrgKeepsThePickedDay() {
+        let app = model(two)
+        let id = app.docLibrary.sessions[0].docs[0].id
+        let picked = app.docLibrary.sessions[0].day.adding(days: 4)
+        var d = app.docDraft(for: id)!
+        d.owner = .org("o1"); d.date = picked
+        #expect(app.saveDoc(id, d))
+        #expect(app.docLibrary.orgs[0].docs.first { $0.id == id }?.date == picked)
+    }
+
+    @Test func existingFileSavesWithoutKindTitleOrLink() {
+        var d = DocDraft(kind: nil, title: "", url: "", date: nil, owner: .mine)
+        d.linkEditable = false
+        #expect(d.canSubmit(editing: true), "у существующего файла необязательных полей может не быть")
+        #expect(!d.canSubmit(editing: false), "новую пустую бумагу по-прежнему не заводим")
+        var l = DocDraft(owner: .mine)
+        l.linkEditable = true
+        #expect(!l.canSubmit(editing: false))
+    }
+
+    @Test func pickerSearchFoldsYoLikeTheShelfSearch() {
+        let app = model { today in
+            var s = shoot("p", today, docs: [])
+            s.contact = "Пётр"
+            let org = Org(id: "e", name: "Ёлка")
+            return ([s], [org], [], [])
+        }
+        for q in ["Пётр", "Петр", "петр"] { #expect(app.docSessionChoices(matching: q).map(\.id) == ["p"], "съёмка по «\(q)»") }
+        for q in ["Ёлка", "Елка", "елк"] { #expect(app.docOrgChoices(matching: q).map(\.id) == ["e"], "организация по «\(q)»") }
+    }
+
     @Test func requisiteFileCannotBeEditedButCanBeDeleted() {
         let app = model { t in
             var o = Org(id: "o1", name: "Яр")

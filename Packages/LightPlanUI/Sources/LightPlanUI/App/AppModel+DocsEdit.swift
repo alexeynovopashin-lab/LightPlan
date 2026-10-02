@@ -48,7 +48,7 @@ extension AppModel {
         let tokens = DocSearch.tokens(q)
         guard !tokens.isEmpty else { return all }
         return all.filter { s in
-            let hay = docSessionTitle(s).lowercased()
+            let hay = DocSearch.fold(docSessionTitle(s))
             return tokens.allSatisfy { hay.contains($0) }
         }
     }
@@ -57,7 +57,7 @@ extension AppModel {
         let all = docLibrary.orgs.sorted { orgTitle($0).localizedCaseInsensitiveCompare(orgTitle($1)) == .orderedAscending }
         let tokens = DocSearch.tokens(q)
         guard !tokens.isEmpty else { return all }
-        return all.filter { o in tokens.allSatisfy { orgTitle(o).lowercased().contains($0) } }
+        return all.filter { o in tokens.allSatisfy { DocSearch.fold(orgTitle(o)).contains($0) } }
     }
 
     /// Привязка словами: «Без привязки (Мои)», строка съёмки, название организации.
@@ -93,7 +93,11 @@ extension AppModel {
         guard let (from, _) = lib.locate(id) else { return false }
         let e = DocLibrary.Edit(kind: draft.kind, title: draft.title, url: draft.url, date: draft.date)
         guard lib.edit(id, e, now: nowMs) else { return false }
-        if from != draft.owner { _ = lib.move(id, to: draft.owner, now: nowMs) }
+        if from != draft.owner {
+            _ = lib.move(id, to: draft.owner, now: nowMs)
+            // Из съёмки бумага уходит с днём съёмки; день, выбранный в форме, главнее этого наследства.
+            if from.isSession, draft.date != nil { _ = lib.edit(id, e, now: nowMs) }
+        }
         snapshot.docLibrary = lib
         docsNav.sheet = nil
         refreshPaper(id)
