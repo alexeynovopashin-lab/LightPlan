@@ -169,6 +169,14 @@ struct DocsScreenStateTests {
         #expect(app.docDeletedText(t2).hasPrefix("удалена "))
     }
 
+    @Test func binRowWithoutOwnTitleShowsKindOnce() {
+        let t1 = TrashedDoc(doc: link("x.io/1", kind: .invoice), from: .mine, index: 0, deletedAt: 1_000)
+        let app = model { _ in ([], [], [], [t1]) }
+        let r = app.docBinRows()[0].row
+        #expect(r.kindLabel == "Счёт")
+        #expect(r.title.isEmpty, "вид уже слева, в названии его нет — \(r.title)")
+    }
+
     // MARK: поиск (шаг 3б)
 
     private func searchApp() -> AppModel {

@@ -288,7 +288,10 @@ extension AppModel {
     func docBinRows() -> [(trashed: TrashedDoc, row: DocShelf.Row)] {
         let words = docShelfWords()
         return DocSections.bin(docLibrary).map { t in
-            (t, DocShelf.row(.init(doc: t.doc, kind: OrgBook.kind(of: t.doc), isRequisite: false, orgId: nil, sessionId: nil, day: nil), words))
+            var row = DocShelf.row(.init(doc: t.doc, kind: OrgBook.kind(of: t.doc), isRequisite: false, orgId: nil, sessionId: nil, day: nil), words)
+            // Без своего названия у строки остаётся один вид: слева он уже стоит, второй раз его не пишем.
+            if row.title == row.kindLabel { row.title = "" }
+            return (t, row)
         }
     }
 

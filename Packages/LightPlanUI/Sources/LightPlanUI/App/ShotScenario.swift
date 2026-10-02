@@ -166,7 +166,7 @@ extension AppModel {
         case "docs":
             // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),
             // после плюса — вид (`list|table|months`), `q=слово` — запрос поиска (шаг 3б), `paper` — открыть
-            // первую бумагу раздела или результата, `trash`, `add`, `edit` — см. ниже; без `LPShotWay` — список разделов.
+            // первую бумагу раздела или результата, `deal` — первую бумагу съёмки с блоком сделки, `trash`, `add`, `edit` — см. ниже; без `LPShotWay` — список разделов.
             app.docsPrefsStore = MemoryDraftStore()
             app.openDocs()
             let parts = (s.way ?? "").split(separator: "+").map(String.init)
@@ -179,6 +179,11 @@ extension AppModel {
             if parts.contains("trash") { for d in app.docArea(.recent).prefix(2) { app.trashDoc(d.doc.id) }; app.undo = nil }
             if parts.contains("add") { app.openDocAdd() }
             if parts.contains("edit"), let d = app.docArea(app.docsNav.section ?? .recent).first { app.openDocEdit(d.doc.id) }
+            // `deal` — бумага съёмки, у которой блок сделки показывается (звено цепочки, «Закрывает звено…»).
+            if parts.contains("deal"), let d = app.docArea(.recent).first(where: { x in
+                x.sessionId.flatMap { id in app.docLibrary.sessions.first { $0.id == id } }
+                    .map { DealChain.isShown(genre: $0.genre, practice: app.dealPractice) } ?? false
+            }) { app.openDocPaper(d) }
             if parts.contains("paper"), let d = app.docSearching ? app.docSearchResults().first : app.docArea(app.docsNav.section ?? .recent).first {
                 app.openDocPaper(d)
             }
