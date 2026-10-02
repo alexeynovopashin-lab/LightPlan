@@ -3,14 +3,11 @@ import LightPlanCore
 import LightPlanData
 import LightPlanDomain
 
-/// Состояние экранов организаций (веб `#orgOverlay`, `#orgCard`): список с двумя
-/// половинами, карточка, выбранный вид бумаг. Новая организация живёт черновиком и
+/// Состояние экранов организаций (веб `#orgOverlay`, `#orgCard`): список, карточка, выбранный вид бумаг. Новая организация живёт черновиком и
 /// попадает в данные, когда в ней появилось хоть что-то (ошибка веба 24: «+ Организация»
 /// клала пустую запись, и она оставалась «Без названия» навсегда).
 struct OrgState: Equatable {
-    enum Tab { case orgs, docs }
     var listOpen = false
-    var tab: Tab = .orgs
     /// Открытая в слое карточка; у черновика — его id.
     var cardId: String?
     /// Новая организация, ещё не в данных.
@@ -37,7 +34,6 @@ extension AppModel {
 
     func openOrgs(backKey: String = "nav.settings") {
         org.backKey = backKey
-        org.tab = .orgs
         org.docs = DocsPrefs.from(docsPrefsStore.load())
         org.listOpen = true
     }
@@ -93,7 +89,6 @@ extension AppModel {
 
     func closeOrgs() {
         org.listOpen = false
-        org.tab = .orgs
         org.shelfKind = nil
     }
 

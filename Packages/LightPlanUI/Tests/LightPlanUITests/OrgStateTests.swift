@@ -225,7 +225,7 @@ struct OrgStateTests {
         app.openOrgs()
         app.org.shelfKind = .invoice
         app.closeOrgs()
-        #expect(app.org.shelfKind == nil && app.org.tab == .orgs)
+        #expect(app.org.shelfKind == nil)
     }
 
     // MARK: раздел «Документы» (шаг 12а)

@@ -273,10 +273,10 @@ struct SettingsChapterView: View {
     /// «Организации и документы» (веб `#orgsSetRow`): знак «документ», справа только шеврон; открывает список.
     private var orgsRow: some View {
         Button { withAnimation(overlaySlide) { app.openOrgs() } } label: {
-            SetItemRow(icon: "doc", title: t.t("set.orgsDocs"), value: "")
+            SetItemRow(icon: "city", title: t.t("org.tabOrgs"), value: "")
         }
         .buttonStyle(.plain)
-        .shotNode("item.orgs", text: t.t("set.orgsDocs"))
+        .shotNode("item.orgs", text: t.t("org.tabOrgs"))
     }
 
     /// «Контакты» (веб `#phonesRow`): справа число номеров или «нет», под строкой пояснение.

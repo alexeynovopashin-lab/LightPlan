@@ -82,6 +82,13 @@ private struct Shell: View {
                     .transition(.move(edge: .trailing))
                     .zIndex(1.4)
             }
+            // «Документы» (28д, шаг 3а): экран под полосой мудборда. Ниже карточки съёмки (zIndex 1): тап по
+            // строке «Требуют внимания» открывает карточку поверх, «Назад» возвращает сюда.
+            if app.docsNav.isOpen {
+                DocsScreen(app: app)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(0.9)
+            }
             // Организации (28, шаг 6): список из настроек и карточка поверх него.
             if app.org.listOpen {
                 OrgListScreen(app: app)
@@ -114,7 +121,7 @@ private struct Shell: View {
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
         // из неё видно 84 − низ зоны, остальное уходит под полосу.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil && !app.mb.isOpen && !app.org.isOpen {
+            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil && !app.mb.isOpen && !app.org.isOpen && !app.docsNav.isOpen {
                 GeometryReader { geo in
                     TabBarView(tab: $app.tab, lexicon: app.lexicon)
                         .shotNode("tabbar")

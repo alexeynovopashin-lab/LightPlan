@@ -39,8 +39,9 @@ public struct PlannerScreenView: View {
                 case .week: PlannerWeekBody(app: app, f: f)
                 case .day: PlannerDayBody(app: app, f: f, fan: $fan)
                 }
-                // Полоса мудборда — внизу «Съёмок», под лентой дня и кнопками (28).
-                MoodboardStrip(app: app, f: f).padding(.bottom, 30)
+                // Полоса мудборда — внизу «Съёмок», под лентой дня и кнопками (28); под ней — «Документы» (28д).
+                MoodboardStrip(app: app, f: f)
+                DocsStrip(app: app).padding(.bottom, 30)
             }
             .frame(maxWidth: .infinity, alignment: .top)
         }

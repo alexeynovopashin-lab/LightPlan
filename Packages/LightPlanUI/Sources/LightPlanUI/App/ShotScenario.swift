@@ -164,18 +164,13 @@ extension AppModel {
         case "mbfolder": if let id = s.way { app.openMbFolder(boardId: id) }
         case "orgs": app.openOrgs()
         case "docs":
-            // Раздел «Документы» (шаг 12а): `LPShotWay` — группировка `org|month|kind`, `+fold` — первая группа свёрнута.
+            // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),
+            // после плюса — вид (`list|table|months`); без него — список разделов.
             app.docsPrefsStore = MemoryDraftStore()
-            app.openOrgs()
-            app.org.tab = .docs
-            let parts = (s.way ?? "org").split(separator: "+").map(String.init)
-            // Шаг 12б: `table` и `months` — виды Б и В; `kind|org|title` после плюса — сортировка колонки таблицы.
-            app.editDocsPrefs {
-                $0.grouping = parts.first.flatMap(DocGrouping.init(rawValue:)) ?? .org
-                if let l = parts.first.flatMap(DocsLayout.init(rawValue:)) { $0.layout = l }
-                for k in parts.compactMap(DocSortKey.init(rawValue:)) { $0.tapColumn(k) }
-            }
-            if parts.contains("fold"), let g = app.docGroups().first { app.editDocsPrefs { $0.toggleGroup(g.id) } }
+            app.openDocs()
+            let parts = (s.way ?? "").split(separator: "+").map(String.init)
+            if let sec = parts.first.flatMap(DocSection.init(rawValue:)) { app.openDocSection(sec) }
+            if let l = parts.dropFirst().first.flatMap(DocsLayout.init(rawValue:)) { app.editDocsPrefs { $0.layout = l } }
         case "orgcard": if let id = s.way ?? app.orgs.first?.id { app.openOrgCard(id: id) }
         case "contacts": app.openContacts()
         case "quest":
