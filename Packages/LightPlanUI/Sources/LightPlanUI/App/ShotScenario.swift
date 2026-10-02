@@ -166,7 +166,7 @@ extension AppModel {
         case "docs":
             // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),
             // после плюса — вид (`list|table|months`), `q=слово` — запрос поиска (шаг 3б), `paper` — открыть
-            // первую бумагу раздела или результата; без `LPShotWay` — список разделов.
+            // первую бумагу раздела или результата, `trash`, `add`, `edit` — см. ниже; без `LPShotWay` — список разделов.
             app.docsPrefsStore = MemoryDraftStore()
             app.openDocs()
             let parts = (s.way ?? "").split(separator: "+").map(String.init)
@@ -175,6 +175,10 @@ extension AppModel {
                 if let l = DocsLayout(rawValue: p) { app.editDocsPrefs { $0.layout = l } }
                 if p.hasPrefix("q=") { app.docsNav.query = String(p.dropFirst(2)) }
             }
+            // Шаг 4: `trash` — две первые бумаги в корзину (кадр корзины), `add` — лист «+», `edit` — правка первой бумаги.
+            if parts.contains("trash") { for d in app.docArea(.recent).prefix(2) { app.trashDoc(d.doc.id) }; app.undo = nil }
+            if parts.contains("add") { app.openDocAdd() }
+            if parts.contains("edit"), let d = app.docArea(app.docsNav.section ?? .recent).first { app.openDocEdit(d.doc.id) }
             if parts.contains("paper"), let d = app.docSearching ? app.docSearchResults().first : app.docArea(app.docsNav.section ?? .recent).first {
                 app.openDocPaper(d)
             }
