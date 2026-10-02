@@ -15,6 +15,41 @@ struct DocsNav: Equatable {
     var paper: OrgBook.ShelfDoc?
     /// Сообщение экрана бумаги: «Файл не открылся» (облака нет до итерации 30).
     var paperNote: String?
+    /// Лист быстрого «+» или правки бумаги (шаг 4).
+    var sheet: DocSheet?
+}
+
+/// Лист бумаги: новая («+») или правка существующей — по знаку бумаги.
+enum DocSheet: Equatable, Identifiable {
+    case add
+    case edit(id: String)
+    var id: String { if case .edit(let i) = self { "edit:" + i } else { "add" } }
+}
+
+/// Поля листа «+» и правки: правятся в листе и пишутся только по «Добавить» / «Сохранить».
+struct DocDraft: Equatable {
+    var kind: DocKind?
+    /// Вид выбран рукой (в том числе «Без вида»): ссылка его больше не угадывает.
+    var kindTouched = false
+    var title = ""
+    var url = ""
+    var date: CivilDate?
+    var owner: LightPlanDomain.DocOwner = .mine
+    /// Бумага-ссылка: у файла поля ссылки нет, править её нельзя.
+    var linkEditable = true
+
+    /// Нужно хоть что-то: ссылка, название или вид — пустую бумагу не заводим.
+    var canSave: Bool {
+        !url.trimmingCharacters(in: .whitespaces).isEmpty || !title.trimmingCharacters(in: .whitespaces).isEmpty || kind != nil
+    }
+
+    mutating func pickKind(_ k: DocKind?) { kind = k; kindTouched = true }
+
+    /// Ссылка вставлена или набрана: пока вид не выбран рукой — угадывается по ней (`DocKind.guess`).
+    mutating func setURL(_ raw: String) {
+        url = raw
+        if !kindTouched { kind = DocKind.guess(fileName: raw) }
+    }
 }
 
 extension AppModel {

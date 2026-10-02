@@ -106,9 +106,15 @@ public struct UndoOffer: Equatable, Sendable {
         case merge(RefLibrary.MergeUndo)
         /// Плашка без «Вернуть»: съёмка вернулась на занятое время.
         case notice
+        /// «Добавлено: …» с «Отменить» (28д.4): бумага убирается совсем, минуя корзину документов.
+        case docAdded(id: String)
+        /// «Бумага в корзине документов» с «Вернуть» (28д.4).
+        case docTrashed(id: String)
     }
     public let what: What
     public let text: String
+    /// Слово кнопки на полосе: «Вернуть» у удалений, «Отменить» у «Добавлено».
+    public var actionKey = "plan.undo"
     /// Знак показа: одинаковый текст двух удалений подряд — два показа.
     public let token = UUID()
 

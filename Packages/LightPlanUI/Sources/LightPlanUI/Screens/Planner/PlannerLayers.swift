@@ -156,7 +156,7 @@ struct UndoBar: View {
                     if u.what != .notice { Button {
                         withAnimation(.easeOut(duration: 0.2)) { app.takeUndo() }
                     } label: {
-                        Text(app.lexicon.t("plan.undo")).font(.system(size: 13, weight: .semibold))
+                        Text(app.lexicon.t(u.actionKey)).font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(pal.brass).padding(.vertical, 2)
                     }
                     .buttonStyle(.plain)

@@ -84,6 +84,7 @@ struct DocRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .docRowMenu(app, row)
         .shotNode("docs.row.\(index)", text: row.title)
     }
 }
@@ -143,6 +144,7 @@ struct DocTable: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .docRowMenu(app, r)
         .shotNode("docs.tableRow.\(i)", text: r.title)
     }
 }
@@ -164,6 +166,17 @@ struct DocMonth: View {
             .frame(height: 30)
             .shotNode("docs.month." + group.id, text: String(group.rows.count))
             ForEach(Array(group.rows.enumerated()), id: \.offset) { i, r in DocRow(app: app, row: r, index: i) }
+        }
+    }
+}
+
+extension View {
+    /// Долгое нажатие на строке бумаги: «Удалить» уводит бумагу в корзину документов (полоса «Вернуть»).
+    func docRowMenu(_ app: AppModel, _ row: DocShelf.Row) -> some View {
+        contextMenu {
+            Button(role: .destructive) { withAnimation(.easeOut(duration: 0.2)) { app.trashDoc(row.shelf.doc.id) } } label: {
+                Label(app.lexicon.t("doc.paperDelete"), systemImage: "trash")
+            }
         }
     }
 }

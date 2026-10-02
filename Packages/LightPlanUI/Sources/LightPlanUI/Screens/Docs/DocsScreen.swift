@@ -7,7 +7,7 @@ import LightPlanDomain
 /// Верхний уровень: восемь разделов строками, как папки Finder; тап — раздел (`DocsSectionView`).
 /// Каркас как у «Организаций»: поля 24, сверху 14, снизу 34, фон `surface`. Поле поиска — под заголовком
 /// (шаг 3б): пока в нём есть слова, вместо разделов — результаты по всей полке. Тап по бумаге —
-/// экран бумаги (`DocPaperScreen`) поверх корня и раздела. «+» — шаг 4.
+/// экран бумаги (`DocPaperScreen`) поверх корня и раздела. «+» — в шапке, лист `DocEditSheet` (шаг 4).
 struct DocsScreen: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
@@ -30,6 +30,7 @@ struct DocsScreen: View {
         }
         .background(pal.surface.ignoresSafeArea())
         .animation(overlaySlide, value: app.docsNav.section)
+        .sheet(item: $app.docsNav.sheet) { DocEditSheet(app: app, mode: $0) }
     }
 
     /// «Назад» экрана бумаги ведёт туда, откуда пришли: в раздел или в «Документы».
@@ -45,8 +46,13 @@ struct DocsScreen: View {
                 OverlayBack(title: t.t("nav.shoots"), node: "docs.back") {
                     withAnimation(overlaySlide) { app.closeDocs() }
                 }
-                Text(t.t("doc.stripTitle")).font(webFont(26, 650)).tracking(-0.4).foregroundStyle(pal.ink)
-                    .padding(.top, 10).accessibilityAddTraits(.isHeader)
+                HStack(spacing: 12) {
+                    Text(t.t("doc.stripTitle")).font(webFont(26, 650)).tracking(-0.4).foregroundStyle(pal.ink)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 0)
+                    DocPlusButton(app: app)
+                }
+                .padding(.top, 10)
                 DocsSearchField(app: app).padding(.top, 14)
                 if app.docSearching {
                     DocsResults(app: app)

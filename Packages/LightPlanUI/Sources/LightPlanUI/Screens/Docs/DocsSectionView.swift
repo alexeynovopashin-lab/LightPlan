@@ -7,11 +7,14 @@ import LightPlanDomain
 /// Содержимое одного раздела. Область и группы задаёт раздел, три вида (список · таблица · по месяцам)
 /// и их выбор — как в 12б, один на все разделы. «Требуют внимания» и «Корзина» — не полка бумаг:
 /// у них свои строки и нет переключателя видов. Поиск (шаг 3б) идёт по всей полке и подменяет
-/// содержимое раздела результатами. Правка, удаление и возврат из корзины — шаг 4.
+/// содержимое раздела результатами. Корзина: «Вернуть», «Удалить навсегда» и «Очистить корзину» с вопросом (шаг 4).
 struct DocsSectionView: View {
     @Bindable var app: AppModel
     let section: DocSection
     @Environment(\.colorScheme) private var scheme
+    /// Бумага, которую просят стереть навсегда, и вопрос про всю корзину.
+    @State private var purging: String?
+    @State private var clearing = false
 
     private var t: Lexicon { app.lexicon }
     private var isShelf: Bool { section != .attention && section != .bin }
@@ -23,8 +26,13 @@ struct DocsSectionView: View {
                 OverlayBack(title: t.t("doc.stripTitle"), node: "docs.sec.back") {
                     app.closeDocSection()
                 }
-                Text(app.docSectionTitle(section)).font(webFont(26, 650)).tracking(-0.4).foregroundStyle(pal.ink)
-                    .padding(.top, 10).accessibilityAddTraits(.isHeader)
+                HStack(spacing: 12) {
+                    Text(app.docSectionTitle(section)).font(webFont(26, 650)).tracking(-0.4).foregroundStyle(pal.ink)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 0)
+                    if isShelf { DocPlusButton(app: app) }
+                }
+                .padding(.top, 10)
                 if section != .bin { DocsSearchField(app: app).padding(.top, 14) }
                 if app.docSearching && section != .bin { DocsResults(app: app) } else { content(pal) }
             }
@@ -111,29 +119,60 @@ struct DocsSectionView: View {
 
     // MARK: «Корзина»
 
-    /// Удалённые бумаги по `deletedAt`, новые сверху; вместо даты — «удалена 28 сен». Кнопка «Вернуть»
-    /// и лист строки — шаг 3б и дальше.
+    /// Удалённые бумаги по `deletedAt`, новые сверху: строка «вид · название · удалена 28 сен» и под ней
+    /// «Вернуть» и «Удалить навсегда» (с вопросом). Внизу — «Очистить корзину» (с вопросом).
     @ViewBuilder private func bin(_ pal: Palette) -> some View {
         let rows = app.docBinRows()
         if rows.isEmpty {
             emptyPlate("trash", "doc.emptyBin", pal)
         } else {
             VStack(spacing: 6) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { i, x in
-                    HStack(spacing: 10) {
-                        Text(x.row.kindLabel).font(webFont(11)).tracking(0.2)
-                            .foregroundStyle(pal.brass).fixedSize(horizontal: false, vertical: true).frame(width: 72, alignment: .leading)
-                        Text(x.row.title).font(webFont(14)).foregroundStyle(pal.ink).fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
-                        Text(app.docDeletedText(x.trashed)).font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
+                ForEach(Array(rows.enumerated()), id: \.element.trashed.doc.id) { i, x in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 10) {
+                            Text(x.row.kindLabel).font(webFont(11)).tracking(0.2)
+                                .foregroundStyle(pal.brass).fixedSize(horizontal: false, vertical: true).frame(width: 72, alignment: .leading)
+                            Text(x.row.title).font(webFont(14)).foregroundStyle(pal.ink).fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                            Text(app.docDeletedText(x.trashed)).font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
+                        }
+                        HStack(spacing: 18) {
+                            binAction(t.t("doc.binRestore"), "docs.binRestore.\(i)", pal.brass) { withAnimation(.easeOut(duration: 0.2)) { app.restoreDoc(x.trashed.doc.id) } }
+                            binAction(t.t("doc.binForever"), "docs.binForever.\(i)", pal.badInk) { purging = x.trashed.doc.id }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.leading, 82)
                     }
-                    .padding(.horizontal, 14).padding(.vertical, 7).frame(minHeight: 41)
+                    .padding(.horizontal, 14).padding(.top, 7).padding(.bottom, 2).frame(minHeight: 41)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
                     .shotNode("docs.binRow.\(i)", text: x.row.title)
                 }
             }
             .padding(.top, 18)
+            Button { clearing = true } label: {
+                Text(t.t("doc.binClear")).font(webFont(14.5, 500)).foregroundStyle(pal.badInk)
+                    .frame(maxWidth: .infinity).frame(height: 46)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).padding(.top, 14).shotNode("docs.binClear")
+            .alert(t.t("doc.binForever"), isPresented: Binding(get: { purging != nil }, set: { if !$0 { purging = nil } }),
+                   presenting: purging) { id in
+                Button(t.t("doc.binForever"), role: .destructive) { app.purgeDoc(id) }
+                Button(t.t("ask.cancel"), role: .cancel) {}
+            } message: { _ in Text(t.t("doc.binForeverAsk")) }
+            .alert(t.t("doc.binClear"), isPresented: $clearing) {
+                Button(t.t("doc.binClear"), role: .destructive) { app.clearDocBin() }
+                Button(t.t("ask.cancel"), role: .cancel) {}
+            } message: { Text(t.t("doc.binClearAsk")) }
         }
+    }
+
+    private func binAction(_ title: String, _ node: String, _ color: Color, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Text(title).font(webFont(12.5, 500)).foregroundStyle(color).frame(minHeight: 30).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).shotNode(node)
     }
 
     // MARK: полка бумаг

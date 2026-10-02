@@ -724,6 +724,10 @@ extension AppModel {
             setMapRoute(ids.filter(live.contains))
         case .merge(let m):
             mbEdit { lib, now in lib.undoMerge(m, now: now) }
+        case .docAdded(let id):
+            discardDoc(id)
+        case .docTrashed(let id):
+            restoreDoc(id, keepOffer: true)
         }
     }
 

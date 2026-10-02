@@ -67,6 +67,45 @@ public struct DocLibrary: Sendable, Hashable {
         return true
     }
 
+    // MARK: - Править
+
+    /// Что правит лист бумаги: вид, название, ссылка, день. `nil` у вида — «Без вида».
+    public struct Edit: Sendable, Hashable {
+        public var kind: DocKind?
+        public var title: String
+        public var url: String
+        public var date: CivilDate?
+        public init(kind: DocKind? = nil, title: String = "", url: String = "", date: CivilDate? = nil) {
+            self.kind = kind; self.title = title; self.url = url; self.date = date
+        }
+    }
+
+    /// «Править»: вид, название, ссылка (у бумаги-ссылки; у файла ссылки нет), день (у бумаги съёмки
+    /// своего дня нет). Пустое название — имя соберётся по умолчанию; даты за человека не ставим. `at` —
+    /// «сейчас». `false` — бумаги нет или это реквизиты-файл (их не правят, только удаляют).
+    @discardableResult
+    public mutating func edit(_ id: String, _ e: Edit, now ms: Int64) -> Bool {
+        guard let (owner, index) = locate(id), owner.isDocShelf else { return false }
+        func apply(_ a: inout Attachment) {
+            a.kind = e.kind
+            a.title = Attachment.cleanTitle(e.title)
+            if a.source == .link { a.url = Attachment.normalizedURL(e.url) }
+            a.date = owner.isSession ? nil : e.date
+            a.at = ms
+        }
+        switch owner {
+        case .mine: apply(&myDocs[index])
+        case .session(let sid):
+            guard let i = sessions.firstIndex(where: { $0.id == sid }) else { return false }
+            apply(&sessions[i].docs[index])
+        case .org(let oid):
+            guard let i = orgs.firstIndex(where: { $0.id == oid }) else { return false }
+            apply(&orgs[i].docs[index])
+        case .orgRequisite: return false
+        }
+        return true
+    }
+
     // MARK: - Корзина документов
 
     /// «Удалить»: бумага уходит в начало корзины с хозяином, местом и временем. У бумаги съёмки в
@@ -102,6 +141,14 @@ public struct DocLibrary: Sendable, Hashable {
         guard let k = trashedDocs.firstIndex(where: { $0.doc.id == id }) else { return false }
         trashedDocs.remove(at: k)
         return true
+    }
+
+    /// «Отменить» на плашке «Добавлено»: бумага только что создана, поэтому уходит совсем, минуя корзину —
+    /// оттуда, где лежит сейчас (человек мог успеть её перенести). `false` — бумаги нет нигде.
+    @discardableResult
+    public mutating func discard(_ id: String) -> Bool {
+        if let (owner, _) = locate(id), take(id, from: owner) != nil { return true }
+        return purge(id)
     }
 
     /// «Очистить корзину документов» (после вопроса): автоочистки по сроку нет.
@@ -173,4 +220,26 @@ extension DocOwner {
     /// Куда бумагу можно класть и откуда переносить: реквизиты-файл — только удалить и вернуть.
     var isDocShelf: Bool { if case .orgRequisite = self { false } else { true } }
     var isSession: Bool { if case .session = self { true } else { false } }
+}
+
+extension Attachment {
+    /// Название без пробелов по краям; пусто — `nil`.
+    static func cleanTitle(_ raw: String) -> String? {
+        let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : t
+    }
+
+    /// Адрес как его вставили: без `http(s)://` дописывается `https://`; пусто — `nil`.
+    static func normalizedURL(_ raw: String) -> String? {
+        let u = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !u.isEmpty else { return nil }
+        return u.range(of: "^https?://", options: [.regularExpression, .caseInsensitive]) == nil ? "https://" + u : u
+    }
+
+    /// Бумага из быстрого «+»: ссылка не обязательна, вид — тот, что выбрал человек, и «Без вида» не
+    /// угадывается заново (в отличие от `Attachment.link` формы заказа). Без ссылки бумага — запись
+    /// с видом и названием.
+    public static func paper(url raw: String, kind: DocKind?, title: String, date: CivilDate? = nil) -> Attachment {
+        Attachment(source: .link, url: normalizedURL(raw), kind: kind, title: cleanTitle(title), date: date)
+    }
 }

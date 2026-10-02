@@ -6,8 +6,9 @@ import LightPlanDomain
 
 /// Что за бумага: вид, название, дата, к чему привязана (съёмка, организация, реквизиты или «Мои»);
 /// у бумаги съёмки — её звено в цепочке сделки (тот же блок, что в карточке съёмки). Ссылка
-/// открывается в браузере, файл без облака — сообщением (облако — итерация 30). Править, привязывать
-/// и удалять здесь нельзя — шаг 4. Каркас как у раздела: поля 24, сверху 14, снизу 34, фон `surface`.
+/// открывается в браузере, файл без облака — сообщением (облако — итерация 30). «Править» открывает лист
+/// бумаги (вид, название, ссылка, день, привязка), «Удалить» уводит её в корзину документов (шаг 4;
+/// у реквизитов-файла правки нет). Каркас как у раздела: поля 24, сверху 14, снизу 34, фон `surface`.
 struct DocPaperScreen: View {
     @Bindable var app: AppModel
     let doc: OrgBook.ShelfDoc
@@ -84,6 +85,7 @@ struct DocPaperScreen: View {
 
     private func source(_ p: AppModel.DocPaper) -> String {
         if doc.doc.source == .link {
+            if doc.doc.url == nil { return t.t("doc.srcNone") }
             let host = DocLabel.host(doc.doc.url ?? "")
             return host.isEmpty ? t.t("doc.srcLinkBare") : t.t("doc.srcLink", ["host": host])
         }
@@ -105,14 +107,26 @@ struct DocPaperScreen: View {
 
     @ViewBuilder private func actions(_ p: AppModel.DocPaper, _ pal: Palette) -> some View {
         VStack(spacing: 8) {
-            button(t.t("doc.paperOpen"), "docs.paper.open", pal) {
-                if let u = p.url { app.docsNav.paperNote = nil; openURL(u) } else { app.noteDocNotOpened() }
+            if p.url != nil || doc.doc.source != .link {
+                button(t.t("doc.paperOpen"), "docs.paper.open", pal) {
+                    if let u = p.url { app.docsNav.paperNote = nil; openURL(u) } else { app.noteDocNotOpened() }
+                }
+            }
+            if p.owner != .requisites {
+                button(t.t("doc.paperEdit"), "docs.paper.edit", pal) { app.openDocEdit(doc.doc.id) }
             }
             if let sid = p.sessionId {
                 button(t.t("doc.paperOpenShoot"), "docs.paper.shoot", pal) {
                     withAnimation(overlaySlide) { app.openCard(id: sid) }
                 }
             }
+            Button { withAnimation(overlaySlide) { app.trashDoc(doc.doc.id) } } label: {
+                Text(t.t("doc.paperDelete")).font(webFont(14.5, 500)).foregroundStyle(pal.badInk)
+                    .frame(maxWidth: .infinity).frame(height: 46)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).padding(.top, 10).shotNode("docs.paper.delete")
         }
     }
 
