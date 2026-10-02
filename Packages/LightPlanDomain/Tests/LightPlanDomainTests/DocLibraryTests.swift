@@ -173,6 +173,23 @@ import LightPlanDomain
         #expect(l.sessions[0].docs.map(\.id) == ["s-b"])
     }
 
+    @Test func shootPaperKeepsItsDayThroughTheBinWhenTheShootIsGone() {
+        var l = Self.lib()
+        l.trash("s-a", now: 1)
+        #expect(l.trashedDocs[0].doc.date == Self.d1, "день съёмки едет в корзину вместе с бумагой")
+        l.sessions = []
+        let r = l.restore("s-a", now: 2)
+        #expect(r == .mine(lost: .session("s1")))
+        #expect(l.myDocs.first?.date == Self.d1, "в «Мои» — со своей датой, не «Без даты»")
+    }
+
+    @Test func shootPaperReturnsToItsShootWithoutOwnDate() {
+        var l = Self.lib()
+        l.trash("s-a", now: 1)
+        let r = l.restore("s-a", now: 2)
+        #expect(r == .home && l.sessions[0].docs[0].date == nil)
+    }
+
     @Test func requisiteFileReturnsToRequisites() {
         var l = Self.lib()
         l.trash("o-req", now: 1)

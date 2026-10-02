@@ -69,10 +69,13 @@ public struct DocLibrary: Sendable, Hashable {
 
     // MARK: - Корзина документов
 
-    /// «Удалить»: бумага уходит в начало корзины с хозяином, местом и временем.
+    /// «Удалить»: бумага уходит в начало корзины с хозяином, местом и временем. У бумаги съёмки в
+    /// корзину едет и её день (в `date`): съёмки к возврату может не быть, и в «Мои» бумага должна
+    /// прийти со своей датой (ревью GPT к e7dc414); в съёмку она вернётся без неё, как и была.
     @discardableResult
     public mutating func trash(_ id: String, now ms: Int64) -> Bool {
-        guard let (owner, index) = locate(id), let d = take(id, from: owner) else { return false }
+        guard let (owner, index) = locate(id), var d = take(id, from: owner) else { return false }
+        if case .session(let sid) = owner, let day = sessions.first(where: { $0.id == sid })?.day { d.date = day }
         trashedDocs.insert(TrashedDoc(doc: d, from: owner, index: index, deletedAt: ms), at: 0)
         return true
     }
