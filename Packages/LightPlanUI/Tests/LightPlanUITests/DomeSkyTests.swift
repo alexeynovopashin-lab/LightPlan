@@ -53,19 +53,33 @@ struct DomeSkyTests {
         #expect(DomeSky.luminance(sky(winter.elevation(at: 1080)).zenith) < 0.2)
     }
 
-    @Test func approvedNavyNightAndDarkerDarkTheme() {
-        #expect(sky(-24).zenith == SkyColor(18,35,66))
-        #expect(sky(-24).horizon == SkyColor(28,50,84))
+    /// Alexey on the phone, 02.10 (28е): at night the dome's inside must match the
+    /// screen's backing — measured before: black (0,0,0) on (15,14,12) in the dark
+    /// theme, navy (19,36,67) on (250,248,243) in the light one. The web paints
+    /// no sky at all, so its night inside IS the backing.
+    @Test func nightInsideMatchesTheScreenBacking() {
+        for e in [-18.0, -20, -24, -90] {
+            for (light, backing) in [(true, DomeSky.surface(lightTheme: true)), (false, DomeSky.surface(lightTheme: false))] {
+                let night = sky(e, light: light)
+                #expect(night.zenith == backing && night.horizon == backing)
+                for fraction in [0.0, 0.35, 0.63, 1] { #expect(night.background(at: fraction) == backing) }
+            }
+        }
+        #expect(DomeSky.surface(lightTheme: false) == SkyColor(15,14,12))
+        #expect(DomeSky.surface(lightTheme: true) == SkyColor(250,248,243))
         #expect(sky(6, light: false).zenith == SkyColor(11,23,40))
-        #expect(sky(-24, light: false).zenith == SkyColor(0,0,0))
-        for e in [-18.0, -24, -90] {
-            let light = sky(e), dark = sky(e, light: false)
-            #expect(DomeSky.luminance(light.horizon) < 0.06)
-            #expect(DomeSky.luminance(dark.horizon) < DomeSky.luminance(light.zenith))
-            // The actual native star field stays visible without changing its opacity.
-            let opacity = DomeStars.points.map(\.opacity).max()!
-            let star = LightPalette.lerp(light.horizon, SkyColor(203,215,234), opacity)
-            #expect((DomeSky.luminance(star) + 0.05) / (DomeSky.luminance(light.horizon) + 0.05) > 2.5)
+        // The twilight above the night keeps its approved navy.
+        #expect(sky(-12).zenith == SkyColor(38,65,110))
+        #expect(sky(-12, light: false).zenith == SkyColor(5,10,22))
+    }
+
+    @Test func starsStayVisibleOnTheNightBacking() {
+        let opacity = DomeStars.points.map(\.opacity).max()!
+        for light in [false, true] {
+            let back = DomeSky.surface(lightTheme: light)
+            let star = LightPalette.lerp(back, DomeSky.starColor(lightTheme: light), opacity)
+            #expect((max(DomeSky.luminance(star), DomeSky.luminance(back)) + 0.05)
+                    / (min(DomeSky.luminance(star), DomeSky.luminance(back)) + 0.05) > 2.5)
         }
     }
 
@@ -84,30 +98,29 @@ struct DomeSkyTests {
         #expect(sky(40).zenith == SkyColor(207,225,235))
     }
 
-    @Test func darkAstronomicalNightIsBlackIncludingHorizonGlow() {
-        for morning in [true, false] {
-            for palette in [nil, bright] {
-                for e in stride(from: -90.0, through: -18, by: 0.5) {
-                    let night = sky(e, light: false, morning: morning, palette: palette)
-                    #expect(night.zenith == SkyColor(0,0,0))
-                    #expect(night.horizon == SkyColor(0,0,0))
-                    #expect(night.forecastOpacity == 0 && night.glowOpacity == 0)
-                    for fraction in [0.0, 0.5, 1] {
-                        #expect(night.background(at: fraction) == SkyColor(0,0,0))
-                        #expect(night.ink(at: fraction) == SkyColor(255,255,255))
+    @Test func astronomicalNightIsTheBackingIncludingHorizonGlow() {
+        for light in [false, true] {
+            let backing = DomeSky.surface(lightTheme: light)
+            for morning in [true, false] {
+                for palette in [nil, bright] {
+                    for e in stride(from: -90.0, through: -18, by: 0.5) {
+                        let night = sky(e, light: light, morning: morning, palette: palette)
+                        #expect(night.zenith == backing && night.horizon == backing)
+                        #expect(night.forecastOpacity == 0 && night.glowOpacity == 0)
+                        for fraction in [0.0, 0.5, 1] { #expect(night.background(at: fraction) == backing) }
                     }
                 }
             }
         }
         #expect(sky(-18 + 0.001, light: false).glowOpacity < 0.00002)
-        #expect(sky(-18, light: true).glowOpacity > 0)
-        #expect(sky(-24, light: true).zenith == SkyColor(18,35,66))
     }
 
+    /// The sky darkens with the sun down to -12°; from there it eases into the
+    /// backing, which is not darker, so the monotone run stops at -12°.
     @Test func twilightIsContinuousAndMonotonicallyDarker() {
         for light in [true, false] {
             var previous = sky(90, light: light)
-            for i in 1...1800 {
+            for i in 1...1020 {
                 let next = sky(90 - Double(i) / 10, light: light)
                 #expect(DomeSky.luminance(next.zenith) <= DomeSky.luminance(previous.zenith))
                 #expect(DomeSky.luminance(next.horizon) <= DomeSky.luminance(previous.horizon))
@@ -158,7 +171,7 @@ struct DomeSkyTests {
             for minute in stride(from: 0.0, through: 1440, by: 60) {
                 let e = day.elevation(at: minute)
                 let paint = sky(e)
-                #expect(month == 6 ? paint.zenith == sky(40).zenith : DomeSky.luminance(paint.zenith) < 0.03)
+                #expect(month == 6 ? paint.zenith == sky(40).zenith : paint.zenith == DomeSky.surface(lightTheme: true))
             }
         }
     }

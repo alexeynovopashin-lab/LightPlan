@@ -216,7 +216,7 @@ public struct DomeView: View {
                 let rect = CGRect(x: CGFloat(x - star.radius), y: CGFloat(y - star.radius),
                                    width: CGFloat(star.radius * 2), height: CGFloat(star.radius * 2))
                 layer.opacity = star.opacity * opacity
-                layer.fill(Path(ellipseIn: rect), with: .color(Color(red: 0xCB / 255, green: 0xD7 / 255, blue: 0xEA / 255)))
+                layer.fill(Path(ellipseIn: rect), with: .color(Color(DomeSky.starColor(lightTheme: colorScheme == .light))))
             }
             layer.opacity = 1
             for meteor in meteors.active {
@@ -225,7 +225,7 @@ public struct DomeView: View {
                 line.move(to: head.point)
                 let tail = meteor.tail
                 line.addLine(to: CGPoint(x: head.point.x + tail.x, y: head.point.y + tail.y))
-                layer.stroke(line, with: .color(Color(red: 0xDD / 255, green: 0xE6 / 255, blue: 0xF2 / 255).opacity(head.opacity)),
+                layer.stroke(line, with: .color(Color(DomeSky.starColor(lightTheme: colorScheme == .light)).opacity(head.opacity)),
                              style: StrokeStyle(lineWidth: 1.1, lineCap: .round))
             }
         }

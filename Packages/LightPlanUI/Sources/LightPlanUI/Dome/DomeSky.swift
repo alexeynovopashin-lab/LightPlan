@@ -37,9 +37,9 @@ struct DomeSky: Sendable, Equatable {
         let pal = e < 8 && !moon ? forecast : nil
         glowColor = pal.map { LightPalette.lerp(state.color, $0.horizon, near * 0.75) } ?? state.color
         let themeGain = lightTheme ? 0.65 + 0.35 * Self.clamp((6 - e) / 12) : 1
-        // The dark-theme sky reaches true black at astronomical night. Fade
-        // its residual horizon glow too, otherwise it still paints a blue patch.
-        let nightFade = lightTheme ? 1 : Self.clamp((e + 18) / 6)
+        // Astronomical night is the screen's backing in both themes (28е). Fade the
+        // residual horizon glow too, otherwise it still paints a patch over it.
+        let nightFade = Self.clamp((e + 18) / 6)
         glowOpacity = state.glow * (pal.map { 0.35 + $0.life * 0.85 } ?? 1) * themeGain * nightFade
     }
 
@@ -75,15 +75,28 @@ struct DomeSky: Sendable, Equatable {
         return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b)
     }
 
+    /// The screen's backing around the dome (`--surface` of the web: #0F0E0C dark,
+    /// #FAF8F3 light, what `DomeView.surfaceColor` paints). The web paints no sky in
+    /// Astro, so at night its dome inside IS this colour.
+    static func surface(lightTheme: Bool) -> SkyColor {
+        lightTheme ? SkyColor(250,248,243) : SkyColor(15,14,12)
+    }
+
+    /// Star and meteor ink: pale on a dark backing, deep navy on the light paper.
+    static func starColor(lightTheme: Bool) -> SkyColor {
+        lightTheme ? SkyColor(8,14,34) : SkyColor(203,215,234)
+    }
+
     private static func clamp(_ x: Double) -> Double { min(1, max(0, x)) }
     private struct Stop: Sendable {
         let e: Double
         let light: (SkyColor, SkyColor)
         let dark: (SkyColor, SkyColor)
 
-        init(_ e: Double, _ light: (SkyColor, SkyColor), _ dark: (SkyColor, SkyColor)) {
+        init(_ e: Double, _ light: (SkyColor, SkyColor), _ dark: (SkyColor, SkyColor), dimDark: Bool = true) {
             self.e = e
             self.light = light
+            guard dimDark else { self.dark = dark; return }
             // Below the accepted sketch: “one tone darker” was ×0.85; on the phone
             // the day blue still read too bright (Alexey, 28.09). ×0.6 gives about
             // half the light of ×0.85 — close to one stop.
@@ -94,9 +107,14 @@ struct DomeSky: Sendable, Equatable {
             self.dark = (dim(dark.0), dim(dark.1))
         }
     }
+    private static let surfaceLight = surface(lightTheme: true)
+    private static let surfaceDark = surface(lightTheme: false)
     private static let stops: [Stop] = [
-        Stop(-24, (SkyColor(18,35,66), SkyColor(28,50,84)), (SkyColor(0,0,0), SkyColor(0,0,0))),
-        Stop(-18, (SkyColor(20,40,74), SkyColor(32,58,94)), (SkyColor(0,0,0), SkyColor(0,0,0))),
+        // Astronomical night paints the screen's own backing (28е, Alexey 02.10: inside
+        // the dome was darker than the screen). Measured before: dark (0,0,0) on
+        // (15,14,12), light (19,36,67) on (250,248,243); the web paints no sky at all.
+        Stop(-24, (surfaceLight, surfaceLight), (surfaceDark, surfaceDark), dimDark: false),
+        Stop(-18, (surfaceLight, surfaceLight), (surfaceDark, surfaceDark), dimDark: false),
         Stop(-12, (SkyColor(38,65,110), SkyColor(68,100,141)), (SkyColor(8,16,36), SkyColor(18,30,55))),
         Stop(-6, (SkyColor(98,130,171), SkyColor(149,176,202)), (SkyColor(16,28,49), SkyColor(24,40,68))),
         Stop(0, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,35,63), SkyColor(30,57,90))),

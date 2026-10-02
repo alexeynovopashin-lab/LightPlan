@@ -77,7 +77,13 @@ const slots = (args.slots || 'paper,graphite,window').split(',');
    главы, остальные собраны из тех же. */
 const chapters = (args.chapters === '' ? [] : (args.chapters || 'view,locale,places').split(','));
 const themes = (args.themes || 'dark,light').split(',');
-const moments = (args.moments || 'day,golden,night,dawn').split(',');
+/* Свой момент — `метка=ГГГГ-ММ-ДДTЧЧ:ММ` (28е: «сегодня» ночью и вечером):
+   `--moments n2=2026-10-02T22:49,g2=2026-10-02T17:30`. */
+const moments = (args.moments || 'day,golden,night,dawn').split(',').map(m => {
+  const [label, iso] = m.split(/=(.+)/);
+  if (iso) MOMENTS[label] = iso;
+  return label;
+});
 /* Сводка карты (итерация 20б): свёрнутая — окно прибора 20а, раскрытая —
    строки свода. Центр прибора от сводки не зависит, поэтому раскрытая
    сверяет и прибор. */
