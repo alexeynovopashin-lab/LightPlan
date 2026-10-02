@@ -9,6 +9,12 @@ struct DocsNav: Equatable {
     var isOpen = false
     /// Открытый раздел; `nil` — список разделов.
     var section: DocSection?
+    /// Строка поиска; пусто — поиска нет, экран показывает разделы как есть. Один на корень и разделы.
+    var query = ""
+    /// Открытая бумага (экран бумаги поверх корня и раздела).
+    var paper: OrgBook.ShelfDoc?
+    /// Сообщение экрана бумаги: «Файл не открылся» (облака нет до итерации 30).
+    var paperNote: String?
 }
 
 extension AppModel {
@@ -35,6 +41,97 @@ extension AppModel {
         org.shelfKind = nil
         docsNav.section = nil
     }
+
+    func openDocPaper(_ d: OrgBook.ShelfDoc) {
+        docsNav.paperNote = nil
+        docsNav.paper = d
+    }
+
+    func closeDocPaper() {
+        docsNav.paper = nil
+        docsNav.paperNote = nil
+    }
+
+    // MARK: - Поиск (справка § 5)
+
+    var docSearching: Bool { !DocSearch.tokens(docsNav.query).isEmpty }
+
+    /// Результат поиска по всей живой полке (корзина и «Требуют внимания» не ищутся) — один плоский
+    /// список: сначала совпавшие в названии, потом по дате от новых.
+    func docSearchResults() -> [OrgBook.ShelfDoc] {
+        let lib = docLibrary
+        return DocSearch.search(docsNav.query, in: DocSections.shelf(lib), orgs: lib.orgs, sessions: lib.sessions,
+                                words: docShelfWords())
+    }
+
+    /// Вид «список»: строки в порядке релевантности (сортировка колонок на результате не действует).
+    func docSearchRows() -> [DocShelf.Row] {
+        let words = docShelfWords()
+        return docSearchResults().map { DocShelf.row($0, words) }
+    }
+
+    func docSearchTableRows() -> [DocShelf.Row] {
+        let words = docShelfWords()
+        return docSearchResults().map { DocShelf.row($0, words, table: true) }
+    }
+
+    func docSearchMonths() -> [DocShelf.Group] {
+        DocShelf.months(docSearchResults(), practice: dealPractice, words: docShelfWords())
+    }
+
+    // MARK: - Экран бумаги (справка § 2.3, шаг 3б)
+
+    /// К чему привязана бумага.
+    enum DocOwner: Hashable { case session, org, requisites, mine }
+
+    struct DocPaper: Hashable {
+        let row: DocShelf.Row
+        /// Крупный заголовок: своё название, а без него — вид (остальное в строках ниже).
+        let headline: String
+        let owner: DocOwner
+        /// Съёмка словами «дата · жанр · клиент», название организации или «Мои».
+        let ownerText: String
+        let sessionId: String?
+        /// Цепочка сделки съёмки бумаги; `nil` — бумага не съёмки или у такой съёмки сделки нет.
+        let deal: CardDeal?
+        /// Звено цепочки, которое закрывает бумага этого вида.
+        let step: DealStep?
+        let url: URL?
+    }
+
+    /// Звено сделки, которое закрывает бумага вида; у чека звена нет.
+    static func dealStep(of k: DocKind?) -> DealStep? {
+        switch k {
+        case .contract: .contract
+        case .invoice: .invoice
+        case .act: .act
+        case .release: .release
+        case .acceptance: .acceptance
+        case .brief: .brief
+        case .receipt, nil: nil
+        }
+    }
+
+    func docPaper(_ d: OrgBook.ShelfDoc) -> DocPaper {
+        let row = DocShelf.row(d, docShelfWords())
+        let own = d.doc.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let owner: DocOwner = d.sessionId != nil ? .session : d.isRequisite ? .requisites : d.orgId != nil ? .org : .mine
+        let session = d.sessionId.flatMap { id in docLibrary.sessions.first { $0.id == id } }
+        let orgName = d.orgId.flatMap(orgRecord).map(orgTitle) ?? ""
+        let ownerText: String
+        switch owner {
+        case .session: ownerText = session.map(docSessionTitle) ?? ""
+        case .org, .requisites: ownerText = orgName
+        case .mine: ownerText = lexicon.t("doc.secMine")
+        }
+        let step = Self.dealStep(of: d.kind).flatMap { dealPractice.chain.contains($0) ? $0 : nil }
+        let url = d.doc.source == .link ? d.doc.url.flatMap(URL.init(string:)).flatMap { $0.scheme == nil ? nil : $0 } : nil
+        return DocPaper(row: row, headline: own.isEmpty ? row.kindLabel : own, owner: owner, ownerText: ownerText,
+                        sessionId: session?.id, deal: session.flatMap(cardDeal), step: step, url: url)
+    }
+
+    /// Без ссылки (файл — облака нет до 30) бумагу открыть нечем: сообщение на экране бумаги.
+    func noteDocNotOpened() { docsNav.paperNote = lexicon.t("doc.openFail") }
 
     // MARK: - Числа
 

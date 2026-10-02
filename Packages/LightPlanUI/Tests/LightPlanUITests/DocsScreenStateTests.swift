@@ -168,4 +168,105 @@ struct DocsScreenStateTests {
         #expect(app.docBinRows().map(\.row.title) == ["Вторая", "Первая"])
         #expect(app.docDeletedText(t2).hasPrefix("удалена "))
     }
+
+    // MARK: поиск (шаг 3б)
+
+    private func searchApp() -> AppModel {
+        model { today in
+            var alfa = Org(id: "a", name: "Альфа")
+            alfa.docs = [link("x.io/a1", kind: .contract, title: "Рамочный договор")]
+            var s1 = shoot("s1", today.adding(days: 40), org: "a", docs: [link("x.io/s1", kind: .invoice)])
+            s1.contact = "Мария"
+            var s2 = shoot("s2", today.adding(days: 41), docs: [link("x.io/s2", kind: .act, title: "Акт про Ёлку")])
+            s2.contact = "Пётр"
+            let gone = TrashedDoc(doc: link("x.io/g", title: "Секретный договор"), from: .mine, index: 0, deletedAt: 1)
+            return ([s1, s2], [alfa], [link("x.io/m", title: "Счёт на софт")], [gone])
+        }
+    }
+
+    @Test func searchFindsByTitleOrganizationAndClientAcrossTheWholeShelf() {
+        let app = searchApp()
+        app.openDocs()
+        app.docsNav.query = "альфа"
+        let byOrg = app.docSearchRows()
+        #expect(byOrg.count == 2 && byOrg.map(\.title).contains("Рамочный договор") && byOrg.contains { $0.title.hasPrefix("Счёт · Альфа") },
+                "организация находит и её бумагу, и бумагу её съёмки — \(byOrg.map(\.title))")
+        app.docsNav.query = "мария"
+        #expect(app.docSearchRows().count == 1, "клиент съёмки находит бумагу этой съёмки")
+        app.docsNav.query = "про елку"
+        #expect(app.docSearchRows().map(\.title) == ["Акт про Ёлку"], "ё = е, слова в любом порядке")
+        app.docsNav.query = "счёт"
+        #expect(app.docSearchRows().count == 2, "слово вида и своё название: «Счёт на софт» из «Мои» и счёт съёмки")
+    }
+
+    @Test func searchSkipsTheBinAndWhitespaceIsNoSearch() {
+        let app = searchApp()
+        app.docsNav.query = "секретный"
+        #expect(app.docSearching && app.docSearchRows().isEmpty, "корзина не ищется — «ничего не найдено»")
+        app.docsNav.query = "   "
+        #expect(!app.docSearching, "одни пробелы — не запрос: разделы остаются на месте")
+        app.docsNav.query = ""
+        #expect(!app.docSearching)
+    }
+
+    @Test func titleMatchesComeBeforeOthers() {
+        let app = searchApp()
+        app.docsNav.query = "договор"
+        let titles = app.docSearchRows().map(\.title)
+        #expect(titles.first == "Рамочный договор", "совпало в названии — первым: \(titles)")
+    }
+
+    @Test func closingTheScreenForgetsTheQueryAndThePaper() {
+        let app = searchApp()
+        app.openDocs()
+        app.docsNav.query = "мария"
+        app.openDocPaper(app.docSearchResults()[0])
+        #expect(app.docsNav.paper != nil)
+        app.closeDocs()
+        #expect(app.docsNav.query.isEmpty && app.docsNav.paper == nil)
+    }
+
+    // MARK: экран бумаги (шаг 3б)
+
+    @Test func paperOfAShootShowsItsOwnerAndItsLinkInTheDealChain() {
+        let app = searchApp()
+        let d = DocSections.shelf(app.docLibrary).first { $0.sessionId == "s1" }!
+        let p = app.docPaper(d)
+        #expect(p.owner == .session && p.sessionId == "s1")
+        #expect(p.ownerText.hasSuffix(" · Альфа"), "съёмка организации называется по организации — \(p.ownerText)")
+        #expect(p.step == .invoice, "счёт закрывает звено «Счёт» цепочки")
+        #expect(p.deal?.links.first { $0.step == .invoice }?.done == true, "звено у съёмки с этим счётом закрыто")
+        #expect(p.deal?.links.first { $0.step == .contract }?.done == false, "договора нет — звено открыто")
+        #expect(p.url == nil, "адрес без схемы не открывается браузером")
+    }
+
+    @Test func paperOfOrgRequisitesAndMineHasNoDeal() {
+        let app = searchApp()
+        let shelf = DocSections.shelf(app.docLibrary)
+        let org = app.docPaper(shelf.first { $0.orgId == "a" && $0.sessionId == nil }!)
+        #expect(org.owner == .org && org.ownerText == "Альфа" && org.deal == nil && org.step == .contract)
+        let mine = app.docPaper(shelf.first { $0.isMine }!)
+        #expect(mine.owner == .mine && mine.ownerText == "Мои" && mine.deal == nil && mine.sessionId == nil)
+        #expect(mine.headline == "Счёт на софт", "свой заголовок — название бумаги")
+    }
+
+    @Test func paperWithoutAnOwnTitleIsHeadedByItsKindAndAReceiptHasNoStep() {
+        let app = model { _ in ([], [], [link("https://x.io/r", kind: .receipt)], []) }
+        let p = app.docPaper(DocSections.shelf(app.docLibrary)[0])
+        #expect(p.headline == "Чек" && p.step == nil)
+        #expect(p.url?.absoluteString == "https://x.io/r")
+    }
+
+    @Test func paperNavigationKeepsTheSectionAndFileShowsAMessage() {
+        let app = searchApp()
+        app.openDocs()
+        app.openDocSection(.mine)
+        app.openDocPaper(DocSections.shelf(app.docLibrary).first { $0.isMine }!)
+        #expect(app.docsNav.section == .mine && app.docsNav.paper != nil, "бумага ложится поверх раздела")
+        app.noteDocNotOpened()
+        #expect(app.docsNav.paperNote == app.lexicon.t("doc.openFail"))
+        app.closeDocPaper()
+        #expect(app.docsNav.paper == nil && app.docsNav.paperNote == nil && app.docsNav.section == .mine,
+                "назад — в тот же раздел, сообщение не остаётся")
+    }
 }
