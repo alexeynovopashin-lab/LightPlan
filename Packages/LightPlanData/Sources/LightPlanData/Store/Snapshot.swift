@@ -31,7 +31,9 @@ public struct Snapshot: Sendable, Hashable {
     public var pro: Bool = false
     public var ribbonMode: String?
     public var drumSlot: String?
-    public var mapFold: Bool = false
+    /// Сводка «Карты» свёрнута. По умолчанию — да (слово Алексея 01.10; у беты без сохранения развёрнута,
+    /// намеренный отход). Явный выбор записывается и переживает перезапуск.
+    public var mapFold: Bool = true
     public var mapLabels: Bool = false
     public var mapLayers: [String: Bool]?
     public var dayFold: Bool = false
@@ -95,7 +97,7 @@ extension Snapshot: Codable {
         pro = try c.decodeIfPresent(Bool.self, forKey: .pro) ?? false
         ribbonMode = try c.decodeIfPresent(String.self, forKey: .ribbonMode)
         drumSlot = try c.decodeIfPresent(String.self, forKey: .drumSlot)
-        mapFold = try c.decodeIfPresent(Bool.self, forKey: .mapFold) ?? false
+        mapFold = try c.decodeIfPresent(Bool.self, forKey: .mapFold) ?? true
         mapLabels = try c.decodeIfPresent(Bool.self, forKey: .mapLabels) ?? false
         mapLayers = try c.decodeIfPresent([String: Bool].self, forKey: .mapLayers)
         dayFold = try c.decodeIfPresent(Bool.self, forKey: .dayFold) ?? false
