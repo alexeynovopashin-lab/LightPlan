@@ -12,12 +12,15 @@ struct LightSpoilerView: View {
     let open: Bool
     let title: String
 
-    @State private var expanded = false
+    /// Пара снимков (28е): `-LPShotSpoiler 1` — раскрыт сразу и прокручен к плашке неба.
+    private static let shotOpen = UserDefaults.standard.bool(forKey: "LPShotSpoiler")
+    @State private var expanded = LightSpoilerView.shotOpen
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let pal = Palette(colorScheme)
         if open {
+            ScrollViewReader { proxy in
             VStack(spacing: 0) {
                 // `#spoilerBtn`: отступ 6 сверху, поле 13, по центру столбики
                 // 17 (`--ink-4`), подпись 14/600 (`--ink-2`), шеврон 16 вниз
@@ -51,7 +54,35 @@ struct LightSpoilerView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
+            .task {
+                guard Self.shotOpen else { return }
+                try? await Task.sleep(for: .seconds(1))
+                withAnimation(nil) { proxy.scrollTo("swatch", anchor: .center) }
+            }
+            }
         }
+    }
+
+    /// `.sky-swatch`: высота 92, скругление 14, 20 сверху, поля 12/14, слово
+    /// 13/600 с разрядкой 0,2 цветом `--overlay` и тенью `0 1px 0 --hair-5`;
+    /// градиент сверху вниз: зенит 0, высокий 38 %, средний 72 %, горизонт 100 %.
+    private func swatchView(_ swatch: LightTelemetry.Swatch, _ pal: Palette) -> some View {
+        let p = swatch.palette
+        return RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(LinearGradient(stops: [
+                .init(color: Color(p.zenith), location: 0), .init(color: Color(p.high), location: 0.38),
+                .init(color: Color(p.mid), location: 0.72), .init(color: Color(p.horizon), location: 1)
+            ], startPoint: .top, endPoint: .bottom))
+            .frame(height: 92)
+            .overlay(alignment: .bottomLeading) {
+                Text(swatch.word).font(.system(size: 13, weight: .semibold)).tracking(0.2)
+                    .foregroundStyle(pal.overlay)
+                    .shadow(color: pal.hair5, radius: 0, x: 0, y: 1)
+                    .padding(.horizontal, 14).padding(.vertical, 12)
+            }
+            .shotNode("spoiler.swatch")
+            .id("swatch")
+            .padding(.top, 20)
     }
 
     /// `.pro-group`: 20 сверху, 4 снизу, знак 15 (`--ink-4`), подпись 10/600
@@ -60,6 +91,7 @@ struct LightSpoilerView: View {
     /// одной ширины).
     private func groupView(_ group: LightTelemetry.ProGroup, _ pal: Palette) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            if let swatch = group.swatch { swatchView(swatch, pal) }
             HStack(spacing: 8) {
                 Icon(group.iconName, size: 15, line: 1.6).foregroundStyle(pal.ink4)
                 Text(group.title).font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)

@@ -233,6 +233,7 @@ async function nativeShot(udid, sc, dir) {
     '-LPShotSeed', sc.seed, '-LPShotForecast', FORECAST,
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
+    ...(sc.chapter === 'spoiler' ? ['-LPShotSpoiler', '1'] : []),
     ...(sc.scope ? ['-LPShotScope', sc.scope] : []), ...(sc.pick != null ? ['-LPShotPick', String(sc.pick)] : []),
     ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []),
     ...(args['form-scroll'] ? ['-LPShotFormScroll', args['form-scroll']] : []),
@@ -497,6 +498,7 @@ function markdown(results) {
   for (const screen of screens.filter(x => x !== 'planner' && x !== 'card' && x !== 'm28')) for (const mode of modes) for (const theme of themes) {
     // «Настройки» от момента не зависят — одна пара на тему и режим.
     for (const moment of screen === 'settings' ? [moments[0]] : moments) {
+      if (args['only-spoiler']) { if (screen === 'light' && mode === 'astro') add(screen, theme, mode, moment, 'paper', 'spoiler'); continue; }
       for (const fold of screen === 'map' ? folds : ['shut']) add(screen, theme, mode, moment, 'paper', null, 'drum', fold);
     }
     if (screen === 'settings') for (const ch of chapters) add(screen, theme, mode, moments[0], 'paper', ch);

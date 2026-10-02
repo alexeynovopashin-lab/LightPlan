@@ -69,10 +69,27 @@ public struct LightTelemetry: Equatable, Sendable {
         public let value: String   // «—» или текст уже подставлен строителем
     }
 
+    /// Плашка палитры предсказанного неба (`skySwatch` веба): градиент от зенита
+    /// к горизонту и слово балла заката. Стоит над группой «Прогноз заката» и
+    /// есть ровно тогда, когда есть сама группа: у обеих одно условие веба —
+    /// у дня настоящий балл заката и ярусы облаков, время суток не смотрится.
+    public struct Swatch: Equatable, Sendable {
+        public let palette: SkyPalette
+        public let word: String
+    }
+
     public struct ProGroup: Equatable, Sendable {
         public let iconName: String
         public let title: String
         public let rows: [ProRow]
+        public let swatch: Swatch?
+
+        public init(iconName: String, title: String, swatch: Swatch? = nil, rows: [ProRow]) {
+            self.iconName = iconName
+            self.title = title
+            self.rows = rows
+            self.swatch = swatch
+        }
     }
 
     public let header: Header
@@ -277,7 +294,10 @@ public struct LightTelemetry: Equatable, Sendable {
 
         // Прогноз заката по ярусам — только когда есть настоящие данные.
         if let score = weather.sunset, let layers = weather.layers {
-            groups.append(ProGroup(iconName: "sunset", title: lexicon.t("pro.sunsetForecast"), rows: [
+            let swatch = SkyPalette(weather: weather).map {
+                Swatch(palette: $0, word: sunsetWord(score, short: false, lexicon: lexicon))
+            }
+            groups.append(ProGroup(iconName: "sunset", title: lexicon.t("pro.sunsetForecast"), swatch: swatch, rows: [
                 ProRow(label: lexicon.t("pro.score"), value: lexicon.t("pro.scoreOf", ["n": "\(score)", "word": sunsetWord(score, short: false, lexicon: lexicon)])),
                 ProRow(label: lexicon.t("pro.layerLow"), value: lexicon.t("pro.pctNote", ["n": "\(Int(layers.low.rounded()))", "note": lexicon.t("pro.layerLowNote")])),
                 ProRow(label: lexicon.t("pro.layerMid"), value: lexicon.t("pro.pctNote", ["n": "\(Int(layers.mid.rounded()))", "note": lexicon.t("pro.layerMidNote")])),

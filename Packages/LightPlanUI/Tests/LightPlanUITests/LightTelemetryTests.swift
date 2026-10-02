@@ -167,4 +167,53 @@ struct LightTelemetryTests {
             #expect(abs(Double(points[i].y) - wantY) < 1e-4)
         }
     }
+
+    // MARK: - 28е: плашка палитры неба над «Прогнозом заката»
+
+    private static let layers = HourRecord(cloud: 20, code: 0, temperature: 10, low: 10, mid: 40, high: 50,
+                                           humidity: 60, windSpeed: 0, windDirection: nil, windGusts: nil)
+
+    private static func swatch(_ w: WeatherDay, t: Minutes, sun: SolarDay) -> LightTelemetry.Swatch? {
+        build(sun: sun, t: t, weather: w).proGroups.compactMap(\.swatch).first
+    }
+
+    /// Веб: `skySwatch` рисуется там же и при том же условии, что группа «Прогноз
+    /// заката» — у дня есть балл и ярусы. Времени суток условие не знает.
+    @Test func swatchFollowsTheForecastGroupAndStandsAfterWeather() {
+        let sun = Self.barnaul(CivilDate(year: 2026, month: 10, day: 3))
+        let w = Self.day(quality: .good, sunset: 31, layers: Self.layers)
+        let groups = Self.build(sun: sun, t: sun.solarNoon, weather: w).proGroups
+        let titles = groups.map(\.title)
+        let at = titles.firstIndex(of: Self.lexicon.t("pro.sunsetForecast"))!
+        #expect(groups[at].swatch?.word == Self.lexicon.t("sunsetW.calm"))
+        #expect(groups[at].swatch?.palette == SkyPalette(weather: w))
+        #expect(titles[at - 1] == Self.lexicon.t("pro.weather"))
+        #expect(groups.filter { $0.swatch != nil }.count == 1)
+    }
+
+    @Test func swatchNeedsBothScoreAndLayers() {
+        let sun = Self.barnaul(CivilDate(year: 2026, month: 10, day: 3))
+        let t = sun.solarNoon
+        #expect(Self.swatch(Self.day(quality: .good), t: t, sun: sun) == nil)
+        #expect(Self.swatch(Self.day(quality: .good, sunset: 60), t: t, sun: sun) == nil)
+        #expect(Self.swatch(Self.day(quality: .good, layers: Self.layers), t: t, sun: sun) == nil)
+        // День без прогноза (выдумка) — у прошедших дней и за окном в 16 суток.
+        for d in [1, 20] {
+            let mock = MockWeather.day(for: CivilDate(year: 2026, month: 10, day: d))
+            #expect(Self.swatch(mock, t: t, sun: sun) == nil)
+        }
+    }
+
+    @Test func swatchDoesNotDependOnTimeOfDayIncludingSunsetEdge() {
+        let sun = Self.barnaul(CivilDate(year: 2026, month: 10, day: 3))
+        let w = Self.day(quality: .good, sunset: 80, layers: Self.layers)
+        var minutes = Array(stride(from: sun.mint, through: sun.mint + 1440, by: 10))
+        if let set = sun.set { minutes += [set - 1, set, set + 1] }
+        for t in minutes { #expect(Self.swatch(w, t: t, sun: sun) != nil) }
+        // Слово — по баллу, как `sunsetWord`.
+        for (score, key) in [(80, "beautiful"), (50, "color"), (28, "calm"), (27, "none")] {
+            let word = Self.swatch(Self.day(quality: .good, sunset: score, layers: Self.layers), t: sun.solarNoon, sun: sun)?.word
+            #expect(word == Self.lexicon.t("sunsetW.\(key)"))
+        }
+    }
 }
