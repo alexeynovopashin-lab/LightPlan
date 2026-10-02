@@ -17,6 +17,13 @@ struct DocsNav: Equatable {
     var paperNote: String?
     /// Лист быстрого «+» или правки бумаги (шаг 4).
     var sheet: DocSheet?
+    /// Вопрос корзины документов: стереть одну бумагу навсегда или очистить всю корзину.
+    var binAsk: DocBinAsk?
+}
+
+enum DocBinAsk: Equatable {
+    case purge(id: String)
+    case clear
 }
 
 /// Лист бумаги: новая («+») или правка существующей — по знаку бумаги.

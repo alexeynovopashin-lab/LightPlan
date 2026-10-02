@@ -126,18 +126,24 @@ extension AppModel {
         persist()
     }
 
-    /// «Удалить навсегда» (после вопроса).
-    func purgeDoc(_ id: String) {
-        guard snapshot.docLibrary.purge(id) else { return }
-        if undo?.what == .docTrashed(id: id) { undo = nil }
-        persist()
-    }
+    /// «Удалить навсегда» и «Очистить корзину» ничего не стирают сразу: сначала вопрос (`docsNav.binAsk`),
+    /// стирает только `confirmBinAsk`.
+    func askPurgeDoc(_ id: String) { docsNav.binAsk = .purge(id: id) }
+    func askClearDocBin() { docsNav.binAsk = .clear }
+    func cancelBinAsk() { docsNav.binAsk = nil }
 
-    /// «Очистить корзину» (после вопроса).
-    func clearDocBin() {
-        guard !snapshot.trashedDocs.isEmpty else { return }
-        snapshot.docLibrary.clearTrash()
-        if case .docTrashed? = undo?.what { undo = nil }
+    func confirmBinAsk() {
+        guard let ask = docsNav.binAsk else { return }
+        docsNav.binAsk = nil
+        switch ask {
+        case .purge(let id):
+            guard snapshot.docLibrary.purge(id) else { return }
+            if undo?.what == .docTrashed(id: id) { undo = nil }
+        case .clear:
+            guard !snapshot.trashedDocs.isEmpty else { return }
+            snapshot.docLibrary.clearTrash()
+            if case .docTrashed? = undo?.what { undo = nil }
+        }
         persist()
     }
 

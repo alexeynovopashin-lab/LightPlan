@@ -12,9 +12,6 @@ struct DocsSectionView: View {
     @Bindable var app: AppModel
     let section: DocSection
     @Environment(\.colorScheme) private var scheme
-    /// Бумага, которую просят стереть навсегда, и вопрос про всю корзину.
-    @State private var purging: String?
-    @State private var clearing = false
 
     private var t: Lexicon { app.lexicon }
     private var isShelf: Bool { section != .attention && section != .bin }
@@ -138,7 +135,7 @@ struct DocsSectionView: View {
                         }
                         HStack(spacing: 18) {
                             binAction(t.t("doc.binRestore"), "docs.binRestore.\(i)", pal.brass) { withAnimation(.easeOut(duration: 0.2)) { app.restoreDoc(x.trashed.doc.id) } }
-                            binAction(t.t("doc.binForever"), "docs.binForever.\(i)", pal.badInk) { purging = x.trashed.doc.id }
+                            binAction(t.t("doc.binForever"), "docs.binForever.\(i)", pal.badInk) { app.askPurgeDoc(x.trashed.doc.id) }
                             Spacer(minLength: 0)
                         }
                         .padding(.leading, 82)
@@ -149,22 +146,18 @@ struct DocsSectionView: View {
                 }
             }
             .padding(.top, 18)
-            Button { clearing = true } label: {
+            Button { app.askClearDocBin() } label: {
                 Text(t.t("doc.binClear")).font(webFont(14.5, 500)).foregroundStyle(pal.badInk)
                     .frame(maxWidth: .infinity).frame(height: 46)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain).padding(.top, 14).shotNode("docs.binClear")
-            .alert(t.t("doc.binForever"), isPresented: Binding(get: { purging != nil }, set: { if !$0 { purging = nil } }),
-                   presenting: purging) { id in
-                Button(t.t("doc.binForever"), role: .destructive) { app.purgeDoc(id) }
-                Button(t.t("ask.cancel"), role: .cancel) {}
-            } message: { _ in Text(t.t("doc.binForeverAsk")) }
-            .alert(t.t("doc.binClear"), isPresented: $clearing) {
-                Button(t.t("doc.binClear"), role: .destructive) { app.clearDocBin() }
-                Button(t.t("ask.cancel"), role: .cancel) {}
-            } message: { Text(t.t("doc.binClearAsk")) }
+            .alert(app.docsNav.binAsk == .clear ? t.t("doc.binClear") : t.t("doc.binForever"),
+                   isPresented: Binding(get: { app.docsNav.binAsk != nil }, set: { if !$0 { app.cancelBinAsk() } })) {
+                Button(app.docsNav.binAsk == .clear ? t.t("doc.binClear") : t.t("doc.binForever"), role: .destructive) { app.confirmBinAsk() }
+                Button(t.t("ask.cancel"), role: .cancel) { app.cancelBinAsk() }
+            } message: { Text(t.t(app.docsNav.binAsk == .clear ? "doc.binClearAsk" : "doc.binForeverAsk")) }
         }
     }
 
