@@ -25,7 +25,7 @@ struct DocsStrip: View {
                     subtitle(c, pal, t)
                 }
                 Spacer(minLength: 0)
-                Icon("chevron", size: 16, line: 2.4).foregroundStyle(pal.ink4).rotationEffect(.degrees(90))
+                Icon("chevron", size: 16, line: 2.4).foregroundStyle(pal.ink4)
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
             .background {
