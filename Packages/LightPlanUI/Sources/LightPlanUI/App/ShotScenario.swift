@@ -165,12 +165,19 @@ extension AppModel {
         case "orgs": app.openOrgs()
         case "docs":
             // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),
-            // после плюса — вид (`list|table|months`); без него — список разделов.
+            // после плюса — вид (`list|table|months`), `q=слово` — запрос поиска (шаг 3б), `paper` — открыть
+            // первую бумагу раздела или результата; без `LPShotWay` — список разделов.
             app.docsPrefsStore = MemoryDraftStore()
             app.openDocs()
             let parts = (s.way ?? "").split(separator: "+").map(String.init)
             if let sec = parts.first.flatMap(DocSection.init(rawValue:)) { app.openDocSection(sec) }
-            if let l = parts.dropFirst().first.flatMap(DocsLayout.init(rawValue:)) { app.editDocsPrefs { $0.layout = l } }
+            for p in parts {
+                if let l = DocsLayout(rawValue: p) { app.editDocsPrefs { $0.layout = l } }
+                if p.hasPrefix("q=") { app.docsNav.query = String(p.dropFirst(2)) }
+            }
+            if parts.contains("paper"), let d = app.docSearching ? app.docSearchResults().first : app.docArea(app.docsNav.section ?? .recent).first {
+                app.openDocPaper(d)
+            }
         case "orgcard": if let id = s.way ?? app.orgs.first?.id { app.openOrgCard(id: id) }
         case "contacts": app.openContacts()
         case "quest":

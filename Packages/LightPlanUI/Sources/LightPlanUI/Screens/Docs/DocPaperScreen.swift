@@ -25,10 +25,8 @@ struct DocPaperScreen: View {
                 OverlayBack(title: backTitle, node: "docs.paper.back") {
                     withAnimation(overlaySlide) { app.closeDocPaper() }
                 }
-                Text(p.row.kindLabel).font(webFont(11)).tracking(0.2).foregroundStyle(pal.brass).padding(.top, 10)
-                    .shotNode("docs.paper.kind", text: p.row.kindLabel)
                 Text(p.headline).font(webFont(26, 650)).tracking(-0.4).foregroundStyle(pal.ink)
-                    .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 10)
                     .accessibilityAddTraits(.isHeader).shotNode("docs.paper.title", text: p.headline)
                 facts(p, pal).padding(.top, 18)
                 if let step = p.step { stepLine(step, pal).padding(.top, 14) }
