@@ -237,9 +237,9 @@ extension RoutePoint: Codable {
     }
 }
 
-/// `k`, `path`, `name`, `size`, `url`, `kind`, `title`, `date`.
+/// `k`, `path`, `name`, `size`, `url`, `kind`, `title`, `date`, `id`, `at`.
 extension Attachment: Codable {
-    enum CodingKeys: String, CodingKey { case k, path, name, size, url, kind, title, date }
+    enum CodingKeys: String, CodingKey { case k, path, name, size, url, kind, title, date, id, at }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -251,7 +251,9 @@ extension Attachment: Codable {
             url: try c.decodeIfPresent(String.self, forKey: .url),
             kind: try c.decodeLenient(DocKind.self, forKey: .kind),
             title: try c.decodeIfPresent(String.self, forKey: .title),
-            date: (try? c.decodeIfPresent(String.self, forKey: .date)).flatMap { $0 }.flatMap(CivilDate.init(snapshotString:))
+            date: (try? c.decodeIfPresent(String.self, forKey: .date)).flatMap { $0 }.flatMap(CivilDate.init(snapshotString:)),
+            id: (try? c.decodeIfPresent(String.self, forKey: .id)).flatMap { $0 }.flatMap { $0.isEmpty ? nil : $0 } ?? UUID().uuidString,
+            at: try? c.decodeIfPresent(Int64.self, forKey: .at)
         )
     }
 
@@ -265,6 +267,8 @@ extension Attachment: Codable {
         try c.encodeLenient(kind, forKey: .kind)
         try c.encodeIfPresent(title, forKey: .title)
         try c.encodeIfPresent(date?.snapshotString, forKey: .date)
+        try c.encode(id, forKey: .id)
+        try c.encodeIfPresent(at, forKey: .at)
     }
 }
 

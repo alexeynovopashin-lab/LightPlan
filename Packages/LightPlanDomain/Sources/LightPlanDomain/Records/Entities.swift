@@ -259,3 +259,30 @@ public struct MonthSum: Sendable, Hashable {
         self.at = at
     }
 }
+
+/// Чья бумага (итерация 28д, справка `docs_reference.md` § 2): съёмки, организации,
+/// реквизиты-файл организации или «Мои» — без привязки.
+public enum DocOwner: Sendable, Hashable {
+    case session(String)
+    case org(String)
+    case orgRequisite(String)
+    case mine
+}
+
+/// Удалённая бумага в корзине документов (`trashedDocs[]`): помнит, откуда взята и на каком
+/// месте стояла, — возвращать надо на место. Корзина съёмок (`TrashedItem`) — другая.
+public struct TrashedDoc: Sendable, Hashable {
+    public var doc: Attachment
+    public var from: DocOwner
+    /// Место в массиве хозяина.
+    public var index: Int
+    /// Когда удалили, мс.
+    public var deletedAt: Int64
+
+    public init(doc: Attachment, from: DocOwner, index: Int, deletedAt: Int64) {
+        self.doc = doc
+        self.from = from
+        self.index = index
+        self.deletedAt = deletedAt
+    }
+}

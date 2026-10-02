@@ -278,7 +278,12 @@ public struct RoutePoint: Sendable, Hashable {
 
 /// Вложение: документ заказа, файл реквизитов (веб `docs[]`, `reqFiles[]`).
 /// Байты живут в облаке фотографа или в папке вложений, в записи — путь.
-public struct Attachment: Sendable, Hashable {
+public struct Attachment: Sendable, Hashable, Identifiable {
+    /// `id` — вечный знак бумаги (итерация 28д): по нему бумагу находят, переносят и возвращают из корзины.
+    /// Бумага из снимка без знака получает новый при чтении и пишет его при первом сохранении.
+    public var id: String
+    /// `at` — когда бумагу завели или правили, мс; `nil` — «давно» (в «Недавних» внизу).
+    public var at: Int64?
     /// Откуда (веб `k`).
     public enum Source: String, Sendable {
         /// Файл на Диске фотографа.
@@ -307,7 +312,10 @@ public struct Attachment: Sendable, Hashable {
     public var date: CivilDate?
 
     public init(source: Source, path: String? = nil, name: String? = nil, size: Int? = nil,
-                url: String? = nil, kind: DocKind? = nil, title: String? = nil, date: CivilDate? = nil) {
+                url: String? = nil, kind: DocKind? = nil, title: String? = nil, date: CivilDate? = nil,
+                id: String = UUID().uuidString, at: Int64? = nil) {
+        self.id = id
+        self.at = at
         self.source = source
         self.path = path
         self.name = name

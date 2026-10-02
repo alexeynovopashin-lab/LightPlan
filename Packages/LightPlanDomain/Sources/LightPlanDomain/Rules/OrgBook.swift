@@ -118,6 +118,14 @@ public enum OrgBook {
         return true
     }
 
+    /// По знаку бумаги, а не по номеру: корзина документов помнит знак (шаг 28д).
+    @discardableResult
+    public static func removeDoc(id: String, from o: inout Org) -> Bool {
+        guard let i = o.docs.firstIndex(where: { $0.id == id }) else { return false }
+        o.docs.remove(at: i)
+        return true
+    }
+
     public static func removeDoc(at i: Int, from o: inout Org) {
         guard o.docs.indices.contains(i) else { return }
         o.docs.remove(at: i)
@@ -139,11 +147,15 @@ public enum OrgBook {
             self.doc = doc; self.kind = kind; self.isRequisite = isRequisite
             self.orgId = orgId; self.sessionId = sessionId; self.day = day
         }
+
+        /// «Мои»: ни съёмки, ни организации, и это не реквизиты (у реквизитов организация есть).
+        public var isMine: Bool { orgId == nil && sessionId == nil && !isRequisite }
     }
 
     /// Все бумаги: съёмок, организаций, реквизиты-файлы. Свежие сверху по дате съёмки;
     /// бумаги организации без даты — внизу (веб L21075).
-    public static func shelf(orgs: [Org], sessions: [Session]) -> [ShelfDoc] {
+    /// `mine` — «Мои» (шаг 28д): бумага без привязки, день — её собственная `date`.
+    public static func shelf(orgs: [Org], sessions: [Session], mine: [Attachment] = []) -> [ShelfDoc] {
         var out: [ShelfDoc] = []
         for s in sessions {
             for d in s.docs {
@@ -157,6 +169,9 @@ public enum OrgBook {
             for d in o.requisiteFiles {
                 out.append(ShelfDoc(doc: d, kind: nil, isRequisite: true, orgId: o.id, sessionId: nil, day: nil))
             }
+        }
+        for d in mine {
+            out.append(ShelfDoc(doc: d, kind: kind(of: d), isRequisite: false, orgId: nil, sessionId: nil, day: d.date))
         }
         // Устойчиво: равные по дате остаются в порядке появления.
         return out.enumerated().sorted { a, b in

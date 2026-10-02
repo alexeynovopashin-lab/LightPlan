@@ -19,6 +19,10 @@ public struct Snapshot: Sendable, Hashable {
     public var spots: [Spot] = []
     public var studios: [Studio] = []
     public var trashed: [TrashedItem] = []
+    /// «Мои» (итерация 28д): бумага без съёмки и без организации.
+    public var myDocs: [Attachment] = []
+    /// Корзина документов; корзина съёмок — `trashed`, другая.
+    public var trashedDocs: [TrashedDoc] = []
 
     public var locLatitude: Double?
     public var locLongitude: Double?
@@ -59,9 +63,26 @@ public struct Snapshot: Sendable, Hashable {
     public init() {}
 }
 
+extension Snapshot {
+    /// Бумаги снимка как одно целое для правил `DocLibrary`. Запись обратно трогает только то, что
+    /// правила меняют: съёмки, организации, «Мои», корзину документов; корзина съёмок остаётся.
+    public var docLibrary: DocLibrary {
+        get {
+            DocLibrary(sessions: sessions, orgs: orgs, myDocs: myDocs, trashedDocs: trashedDocs,
+                       trashedSessionIds: Set(trashed.map(\.record.id)))
+        }
+        set {
+            sessions = newValue.sessions
+            orgs = newValue.orgs
+            myDocs = newValue.myDocs
+            trashedDocs = newValue.trashedDocs
+        }
+    }
+}
+
 extension Snapshot: Codable {
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case sessions, orgs, blocks, spots, studios, trashed
+        case sessions, orgs, blocks, spots, studios, trashed, myDocs, trashedDocs
         case loc, theme, clock, tempUnit, currency, timeStep, travelMin
         case pro, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold, manualEnd
         case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment
@@ -84,6 +105,8 @@ extension Snapshot: Codable {
         spots = try c.decodeIfPresent([Spot].self, forKey: .spots) ?? []
         studios = try c.decodeIfPresent([Studio].self, forKey: .studios) ?? []
         trashed = try c.decodeIfPresent([TrashedItem].self, forKey: .trashed) ?? []
+        myDocs = try c.decodeIfPresent([Attachment].self, forKey: .myDocs) ?? []
+        trashedDocs = try c.decodeIfPresent([TrashedDoc].self, forKey: .trashedDocs) ?? []
 
         let loc = try c.decodeIfPresent([String: Double].self, forKey: .loc)
         locLatitude = loc?["lat"]
@@ -130,6 +153,8 @@ extension Snapshot: Codable {
         try c.encode(spots, forKey: .spots)
         try c.encode(studios, forKey: .studios)
         try c.encode(trashed, forKey: .trashed)
+        try c.encode(myDocs, forKey: .myDocs)
+        try c.encode(trashedDocs, forKey: .trashedDocs)
 
         if let locLatitude, let locLongitude {
             try c.encode(["lat": locLatitude, "lon": locLongitude], forKey: .loc)

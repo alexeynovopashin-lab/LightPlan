@@ -234,3 +234,48 @@ extension MonthSum: Codable {
         try c.encode(at, forKey: .at)
     }
 }
+
+/// `session:<id>`, `org:<id>`, `org-requisite:<id>`, `mine` — как `from` лежит в снимке.
+extension DocOwner {
+    public var snapshotString: String {
+        switch self {
+        case .session(let id): "session:" + id
+        case .org(let id): "org:" + id
+        case .orgRequisite(let id): "org-requisite:" + id
+        case .mine: "mine"
+        }
+    }
+
+    public init?(snapshotString s: String) {
+        if s == "mine" { self = .mine; return }
+        guard let colon = s.firstIndex(of: ":") else { return nil }
+        let id = String(s[s.index(after: colon)...])
+        switch s[..<colon] {
+        case "session": self = .session(id)
+        case "org": self = .org(id)
+        case "org-requisite": self = .orgRequisite(id)
+        default: return nil
+        }
+    }
+}
+
+/// `doc`, `from`, `index`, `del`. Неразборчивый хозяин — «Мои»: бумага не пропадает.
+extension TrashedDoc: Codable {
+    enum CodingKeys: String, CodingKey { case doc, from, index, del }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(doc: try c.decode(Attachment.self, forKey: .doc),
+                  from: (try? c.decodeIfPresent(String.self, forKey: .from)).flatMap { $0 }.flatMap(DocOwner.init(snapshotString:)) ?? .mine,
+                  index: try c.decodeIfPresent(Int.self, forKey: .index) ?? 0,
+                  deletedAt: try c.decodeIfPresent(Int64.self, forKey: .del) ?? 0)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(doc, forKey: .doc)
+        try c.encode(from.snapshotString, forKey: .from)
+        try c.encode(index, forKey: .index)
+        try c.encode(deletedAt, forKey: .del)
+    }
+}
