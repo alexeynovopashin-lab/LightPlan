@@ -143,7 +143,7 @@ else
           # не находит нового API (тест на новое поведение). Прочее — окружение, «не проверено».
           if grep -qE "Test Case .* failed|✘ Test|✘ Suite" "$log"; then
             failed_any=1; detail="$detail $(basename "$p"): падают ($(grep -cE "Test Case .* failed|✘ Test" "$log"));"
-          elif grep -qE 'error:.*(cannot find|has no member|no such module|extra argument|missing argument|cannot be used)' "$log"; then
+          elif grep -qE 'error:.*(cannot find|has no member|no such module|extra argument|missing argument|cannot be used|is not compatible with expected)' "$log"; then
             failed_any=1; detail="$detail $(basename "$p"): не собирается на старом коде (нового API нет) — слабее падения;"
           else
             unverified=1; detail="$detail $(basename "$p"): swift test упал не по тесту, см. журнал;"
