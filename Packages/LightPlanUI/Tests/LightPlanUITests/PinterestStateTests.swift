@@ -410,4 +410,29 @@ struct PinterestStateTests {
         await ask(app, link: "https://www.pinterest.com/u/b/"); await add(app)
         #expect(frames(app).allSatisfy { $0.tags == ["portrait"] })
     }
+
+    // MARK: ревью GPT к 19e394e
+
+    @Test func shortLinkThatIsAPinKeepsTheSectionTag() async {
+        let dir = tmp(), r = Reader(), app = model(dir, reader: r)
+        app.mb.folderTag = "portrait"
+        r.boards["https://pin.it/pinpin"] = .failure(.badLink)
+        await ask(app, link: "https://pin.it/pinpin")
+        #expect(frames(app).count == 1 && frames(app)[0].tags == ["portrait"])
+    }
+
+    @Test func lateEndOfAnOldImportDoesNotTouchTheNewBoard() async {
+        let dir = tmp(), r = Reader(), app = model(dir, reader: r)
+        r.delay = .milliseconds(30)
+        r.boards["https://www.pinterest.com/u/a/"] = .success(board(1...40))
+        r.boards["https://www.pinterest.com/u/b/"] = .success(board(100...103, name: "Новая"))
+        await ask(app, link: "https://www.pinterest.com/u/a/")
+        app.confirmPinBoard()                                            // A качается
+        await until("A пошла") { frames(app).count >= 1 }
+        app.mbAddLink("https://www.pinterest.com/u/b/")                  // поверх неё — B
+        await app.pinTask?.value
+        try? await Task.sleep(for: .milliseconds(300))                   // старая закачка успела закончиться
+        #expect(app.mb.pin?.link == "https://www.pinterest.com/u/b/" && app.mb.pin?.phase == .ask)
+        #expect(app.mb.pin?.name == "Новая" && app.mb.pin?.added == 0)
+    }
 }

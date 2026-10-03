@@ -37,6 +37,8 @@ struct PinFlow: Equatable {
     var pending: [PinterestPin] = []
     var stopped = false
     var interrupted: PinterestFailure?
+    /// Номер запуска закачки: поздний ответ старой закачки не трогает новую (ревью GPT к 19e394e).
+    var run = UUID()
 
     /// Оценка веса: по одному замеренному пину 736 px ≈ 70 КБ (`docs/pinterest_reference.md` § 3.5).
     var megabytes: Double { Double(all.count) * 0.07 }
@@ -149,8 +151,8 @@ extension AppModel {
                 let failure = (error as? PinterestFailure) ?? .serverDown
                 if failure == .badLink, case .short = PinterestLink.kind(link) {
                     // pin.it без доски за ним: это пин. Плитка с картинкой, как у обычного пина.
-                    self.mb.pin = nil; self.mb.sheet = nil
                     let tag = self.mb.pin?.tag
+                    self.mb.pin = nil; self.mb.sheet = nil
                     let r = self.mbEdit { lib, now in lib.addLink(link, to: board, id: UUID().uuidString.lowercased(), tag: tag, now: now) }
                     if case .added(let frame) = r { self.startPinPreview(frame: frame, link: link) }
                     return
@@ -168,17 +170,18 @@ extension AppModel {
         guard var flow = mb.pin, flow.phase == .ask || flow.phase == .ended, let reader = pinterest, !flow.pending.isEmpty else { return }
         let toRun = flow.pending
         let base = flow.all.count - toRun.count
-        flow.phase = .running; flow.stopped = false; flow.interrupted = nil; flow.done = base
+        let run = UUID()
+        flow.phase = .running; flow.stopped = false; flow.interrupted = nil; flow.done = base; flow.run = run
         mb.pin = flow
         let board = flow.boardId, tag = flow.tag
         pinTask?.cancel()
         pinTask = Task { [weak self] in
             let result = await runPinImport(
                 pins: toRun, reader: reader,
-                progress: { processed, _ in self?.mb.pin?.done = base + processed },
+                progress: { processed, _ in if self?.mb.pin?.run == run { self?.mb.pin?.done = base + processed } },
                 commit: { batch in self?.commitPins(batch, board: board, tag: tag) ?? batch.map { _ in .rejected } })
             guard let self else { return }
-            if var f = self.mb.pin, f.boardId == board {
+            if var f = self.mb.pin, f.run == run {
                 f.phase = .ended
                 f.added += result.added
                 f.failed = result.failed
@@ -188,7 +191,8 @@ extension AppModel {
                 f.done = f.all.count - result.pending.count
                 self.mb.pin = f
             }
-            self.pinTask = nil
+            // Своя закачка снимает ручку; чужую (новая запущена поверх) не трогаем.
+            if self.mb.pin?.run == run || self.mb.pin == nil { self.pinTask = nil }
             // Закачка шла в папку, которую уже закрыли: опустевшая безымянная подборка уходит, как при закрытии.
             if self.mb.folder != board { self.mbEdit { lib, _ in lib.prune(board) } }
         }
