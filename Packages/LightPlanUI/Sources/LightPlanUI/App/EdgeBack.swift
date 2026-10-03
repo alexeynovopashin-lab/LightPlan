@@ -36,6 +36,8 @@ final class EdgeBack {
     private(set) var layers: [Layer] = []
     /// Закрытые жестом слои: пока они уходят из дерева, жест их не берёт.
     private var closing: Set<UUID> = []
+    private var samples: [(t: TimeInterval, x: CGFloat)] = []
+    static let velocityWindow = 0.12
     /// Сдвиг верхнего слоя вправо, pt.
     private(set) var dx: CGFloat = 0
     private(set) var width: CGFloat = 390
@@ -91,22 +93,35 @@ final class EdgeBack {
     func begin(width: CGFloat) -> Bool {
         guard canBegin else { note("refused top=\(top?.z ?? -1) active=\(active)"); return false }
         self.width = max(1, width)
+        samples = []
         note("begin top=\(top?.z ?? -1) layers=\(ordered.map(\.z))")
         dx = 0
         dragging = true
         return true
     }
 
-    func move(_ x: CGFloat) {
+    func move(_ x: CGFloat, at time: TimeInterval = ProcessInfo.processInfo.systemUptime) {
         guard dragging else { return }
         dx = min(max(0, x), width)
+        samples.append((time, x))
+        samples.removeAll { time - $0.t > Self.velocityWindow }
     }
 
-    /// Палец отпущен: решение и доезд. `velocity` — pt/с вправо.
-    func end(velocity: CGFloat) {
+    /// Скорость пальца вправо, pt/с, по последним 0,12 с движения. Палец, замерший перед отпусканием, даёт 0:
+    /// у распознавателя скорость не гаснет без новых касаний (измерено: 568–671 pt/с у пальца, стоявшего 1,3 с).
+    func releaseVelocity(at time: TimeInterval = ProcessInfo.processInfo.systemUptime) -> CGFloat {
+        let recent = samples.filter { time - $0.t <= Self.velocityWindow }
+        guard let a = recent.first, let b = recent.last, b.t - a.t > 0.015 else { return 0 }
+        return CGFloat((b.x - a.x) / (b.t - a.t))
+    }
+
+    /// Палец отпущен: решение и доезд. `velocity` — pt/с вправо; без неё — замер по последним движениям.
+    func end(velocity: CGFloat? = nil, at time: TimeInterval = ProcessInfo.processInfo.systemUptime) {
         guard dragging else { return }
-        let commit = EdgeBackRule.commits(dx: dx, velocity: velocity, width: width)
-        note("end dx=\(Int(dx)) v=\(Int(velocity)) commit=\(commit)")
+        let v = velocity ?? releaseVelocity(at: time)
+        let commit = EdgeBackRule.commits(dx: dx, velocity: v, width: width)
+        note("end dx=\(Int(dx)) v=\(Int(v)) commit=\(commit)")
+        samples = []
         settle(commit: commit)
     }
 

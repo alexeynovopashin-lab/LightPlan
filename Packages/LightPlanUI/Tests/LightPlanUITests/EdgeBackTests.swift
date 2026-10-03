@@ -59,6 +59,48 @@ struct EdgeBackTests {
         #expect(e.closedCount == 1 && !e.active && e.dx == 0)
     }
 
+    @Test func releaseVelocityFromRecentMovesOnly() {
+        let box = Box()
+        let (e, _) = edge([1.52], box: box)
+        e.begin(width: width)
+        e.move(0, at: 0); e.move(50, at: 0.05); e.move(100, at: 0.10)
+        #expect(abs(e.releaseVelocity(at: 0.10) - 1000) < 1)       // идёт — 1000 pt/с
+        #expect(e.releaseVelocity(at: 1.4) == 0)                   // стоял 1,3 с — скорости нет
+        e.cancel()
+    }
+
+    @Test func stoppedFingerReleasedBelowThirdReturns() {
+        // Палец дотянул до 100 pt, постоял и поднялся: скорость 0, меньше трети — слой возвращается.
+        let box = Box()
+        let (e, _) = edge([1.52], box: box)
+        e.begin(width: width)
+        e.move(0, at: 0); e.move(100, at: 0.1)
+        e.move(100, at: 1.4)
+        e.end(at: 1.4)
+        e.finishSettle(commit: false)
+        #expect(box.closed.isEmpty)
+    }
+
+    @Test func backwardFlickBeyondThirdReturns() {
+        let box = Box()
+        let (e, _) = edge([1.52], box: box)
+        e.begin(width: width)
+        e.move(250, at: 0); e.move(200, at: 0.05); e.move(150, at: 0.10)   // назад 1000 pt/с, всё ещё дальше трети
+        e.end(at: 0.10)
+        e.finishSettle(commit: false)
+        #expect(box.closed.isEmpty)
+    }
+
+    @Test func fastFlickMeasuredFromMovesCloses() {
+        let box = Box()
+        let (e, _) = edge([1.52], box: box)
+        e.begin(width: width)
+        e.move(0, at: 0); e.move(20, at: 0.03); e.move(40, at: 0.06)     // 667 pt/с, всего 40 pt
+        e.end(at: 0.06)
+        e.finishSettle(commit: true)
+        #expect(box.closed == [1.52])
+    }
+
     @Test func moveWithoutBeginDoesNothing() {
         // Жест не от края: распознаватель края `begin` не зовёт — слой не двигается и не закрывается.
         let box = Box()
@@ -184,7 +226,8 @@ struct EdgeBackTests {
         #expect(EdgeBackGate.allowsBack(try await windowPresenting(.fullScreen)))   // форма на весь экран — берёт
         #expect(!EdgeBackGate.allowsBack(try await windowPresenting(.pageSheet)))   // лист — не берёт
         #expect(!EdgeBackGate.allowsBack(try await windowPresenting(.formSheet)))
-        #expect(!EdgeBackGate.allowsBack(try await windowPresenting(.overFullScreen)))
+        // SwiftUI поднимает `fullScreenCover` как `.overFullScreen` — форма записи берёт жест (измерено: style=5).
+        #expect(EdgeBackGate.allowsBack(try await windowPresenting(.overFullScreen)))
     }
     #endif
 }

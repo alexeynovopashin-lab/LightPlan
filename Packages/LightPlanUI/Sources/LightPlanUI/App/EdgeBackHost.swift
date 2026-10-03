@@ -55,7 +55,7 @@ final class EdgeBackProbe: UIView {
             edge.move(x)
         case .ended:
             edge.move(x)
-            edge.end(velocity: g.velocity(in: window).x)
+            edge.end()
         case .cancelled, .failed:
             edge.cancel()
         default:
@@ -71,15 +71,24 @@ final class EdgeBackGate: NSObject, UIGestureRecognizerDelegate {
 
     func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
         guard let app, let window = g.view as? UIWindow else { return false }
-        return app.edgeBack.canBegin && !app.edgeBackBlocked && Self.allowsBack(window)
+        let ok = app.edgeBack.canBegin && !app.edgeBackBlocked && Self.allowsBack(window)
+        if !ok { app.edgeBack.note("gate no: canBegin=\(app.edgeBack.canBegin) blocked=\(app.edgeBackBlocked) allows=\(Self.allowsBack(window)) style=\(Self.topStyle(window))") }
+        return ok
+    }
+
+    static func topStyle(_ window: UIWindow) -> Int {
+        var vc = window.rootViewController
+        while let p = vc?.presentedViewController { vc = p }
+        return vc?.modalPresentationStyle.rawValue ?? -1
     }
 
     /// Лист, диалог и всё, что поднято не на весь экран, жест не берут: у них свой жест закрытия.
-    /// Форма записи поднята на весь экран — она жест берёт.
+    /// Форма записи поднята на весь экран (SwiftUI ставит `.overFullScreen`) — она жест берёт.
     static func allowsBack(_ window: UIWindow) -> Bool {
         var vc = window.rootViewController
         while let p = vc?.presentedViewController {
-            if p.isBeingDismissed || p.modalPresentationStyle != .fullScreen { return false }
+            let style = p.modalPresentationStyle
+            if p.isBeingDismissed || p is UIAlertController || !(style == .fullScreen || style == .overFullScreen) { return false }
             vc = p
         }
         return true

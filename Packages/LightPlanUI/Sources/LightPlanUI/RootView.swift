@@ -202,6 +202,9 @@ private struct FormCover: ViewModifier {
         #if os(iOS)
         content.fullScreenCover(isPresented: shown) {
             FormScreen(app: app).edgeBack(app, z: BackZ.form) { app.closeForm() }
+                // Подложку покрытия система красит сама и во время жеста «назад» она осталась бы на месте
+                // (28з): у формы своё полотно, под ней — «Съёмки».
+                .presentationBackground(.clear)
         }
         #else
         content.sheet(isPresented: shown) { FormScreen(app: app) }
