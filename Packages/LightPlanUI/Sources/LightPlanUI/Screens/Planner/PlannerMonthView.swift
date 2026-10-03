@@ -33,9 +33,10 @@ struct PlannerMonthBody: View {
                 }
                 .shotNode("cal")
             }
-            .padding(EdgeInsets(top: 0, leading: MonthMetrics.plateInner, bottom: MonthMetrics.plateBottom, trailing: MonthMetrics.plateInner))
+            .padding(EdgeInsets(top: MonthMetrics.plateTop, leading: MonthMetrics.plateInner, bottom: MonthMetrics.plateBottom, trailing: MonthMetrics.plateInner))
             .background { MonthPlate(pal: pal) }
             .padding(.horizontal, MonthMetrics.plateMargin)
+            .padding(.top, MonthMetrics.plateGap)
             .shotNode("cal.plate")
             if hasShoots { legend(pal) }
             PlannerDayPanel(app: app, f: f)
@@ -94,7 +95,9 @@ enum MonthMetrics {
     static let plateRadius: CGFloat = 22
     static let plateMargin: CGFloat = 12
     static let plateInner: CGFloat = 8
+    static let plateTop: CGFloat = 2
     static let plateBottom: CGFloat = 6
+    static let plateGap: CGFloat = 8   // от верхней панели экрана до подложки
     static let headTop: CGFloat = 10
 
     /// Центр цифры от верха сетки: зависит только от номера ряда, не от подписей.
