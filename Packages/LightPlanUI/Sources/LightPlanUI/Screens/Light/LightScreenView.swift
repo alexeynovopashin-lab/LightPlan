@@ -118,6 +118,8 @@ public struct LightScreenView: View {
             .accessibilityLabel(model.lexiconWord("today.changePlace"))
             Spacer(minLength: 0)
             if let w = h.weather {
+                // Тап по блоку погоды — принудительная загрузка прогноза (28ж.3в).
+                Button { model.weather.refreshNow() } label: {
                 VStack(alignment: .trailing, spacing: 2) {
                     // Знак и градусы: 22 + поле 8 (`.wx` у знака) + зазор 7 = 15
                     // между ними; знак на 1,5 выше середины строки, как у веба.
@@ -142,14 +144,22 @@ public struct LightScreenView: View {
                     .font(.system(size: 13).monospacedDigit())
                     .foregroundStyle(pal.ink4)
                 }
+                .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             } else if let forecastNote {
                 // Прогноза нет — честная надпись на месте погоды; выдуманное не рисуем (28ж).
+                // Тап по ней — принудительная загрузка прогноза (28ж.3в).
+                Button { model.weather.refreshNow() } label: {
                 Text(forecastNote)
                     .font(.system(size: 14))
                     .foregroundStyle(pal.ink4)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 150, alignment: .trailing)
                     .shotNode("wx.none", text: forecastNote)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }

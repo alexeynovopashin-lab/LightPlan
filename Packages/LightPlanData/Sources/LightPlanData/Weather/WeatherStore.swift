@@ -25,6 +25,12 @@ import LightPlanCore
 ///   спрашиваем заново по таймеру и при возврате на экран; старый прогноз не
 ///   стирается, пока новый не пришёл, а при сбое держится до шести часов,
 ///   потом — «недоступно»;
+/// - сеть вернулась (`NetworkReachability`: была «нет», стала «есть») и прогноза
+///   нет или он просрочен — спрашиваем сразу, мимо таймера;
+/// - принудительная загрузка (`refreshNow`, тап по надписи погоды в шапке):
+///   срок кэша не смотрим, старый прогноз остаётся на экране, пока не придёт
+///   новый; и она, и возврат сети — не чаще раза в 10 секунд и не поверх
+///   идущего запроса;
 /// - ушли в другое место — прогноз прежнего места не остаётся: он не про это
 ///   место.
 @MainActor
@@ -57,17 +63,25 @@ public final class WeatherStore {
     /// Номер идущей попытки; `nil` — никто сейчас не спрашивает.
     private var activeAttempt: Int?
     private var attemptCounter = 0
+    /// Паузы между «внеочередными» запросами (сеть вернулась, тап).
+    private let forceInterval: TimeInterval
+    private var lastForcedAt: Date?
+    private var lastNetworkUp: Bool?
+    private var networkTask: Task<Void, Never>?
 
     public init(place: Place, source: any WeatherSource, debounce: Duration = .milliseconds(500),
                 retryDelays: [Duration] = WeatherStore.retryDelays,
-                lifetime: WeatherLifetime = .standard, now: @escaping @Sendable () -> Date = { Date() }) {
+                lifetime: WeatherLifetime = .standard, now: @escaping @Sendable () -> Date = { Date() },
+                reachability: (any NetworkReachability)? = nil, forceInterval: TimeInterval = 10) {
         self.place = place
+        self.forceInterval = forceInterval
         self.lifetime = lifetime
         self.now = now
         self.fetcher = WeatherFetcher(source: source, lifetime: lifetime, now: now)
         self.debounce = debounce
         self.retryDelays = retryDelays.isEmpty ? Self.retryDelays : retryDelays
         start(debounced: true)
+        if let reachability { watch(reachability) }
     }
 
     /// Прогноз этого дня; `nil` — настоящего нет (ещё грузится, не удалось, день
@@ -119,6 +133,47 @@ public final class WeatherStore {
         start(debounced: false)
     }
 
+    /// Принудительная загрузка: спросить сейчас, срок кэша не смотрим. Не чаще
+    /// раза в 10 секунд и не поверх идущего запроса; `false` — не началась. Старый
+    /// прогноз на экране не трогаем; надпись «загружается» — только там, где
+    /// сейчас «недоступно».
+    @discardableResult
+    public func refreshNow() -> Bool {
+        guard activeAttempt == nil, forceWindowOpen else { return false }
+        beginOutOfTurn(force: true)
+        return true
+    }
+
+    // MARK: - Сеть
+
+    private func watch(_ reachability: any NetworkReachability) {
+        let stream = reachability.updates()
+        networkTask = Task { [weak self] in
+            for await up in stream {
+                guard let self else { return }
+                self.networkChanged(up: up)
+            }
+        }
+    }
+
+    /// Сеть появилась (после «нет» стало «есть») — если прогноза нет или он
+    /// просрочен, спросить сразу. Первое значение потока — только точка отсчёта.
+    private func networkChanged(up: Bool) {
+        let was = lastNetworkUp
+        lastNetworkUp = up
+        guard up, was == false, needsHourly || needsAir, activeAttempt == nil, forceWindowOpen else { return }
+        beginOutOfTurn(force: false)
+    }
+
+    private var forceWindowOpen: Bool { lastForcedAt.map { age(of: $0) >= forceInterval } ?? true }
+
+    private func beginOutOfTurn(force: Bool) {
+        lastForcedAt = now()
+        failures = 0
+        if status == .unavailable { status = .loading }
+        start(debounced: false, force: force)
+    }
+
     // MARK: - Вопрос и повторы
 
     private func age(of stamp: Date) -> TimeInterval { now().timeIntervalSince(stamp) }
@@ -126,7 +181,7 @@ public final class WeatherStore {
     private var needsHourly: Bool { hourlyAt.map { age(of: $0) >= lifetime.hourly } ?? true }
     private var needsAir: Bool { airAt.map { age(of: $0) >= lifetime.air } ?? true }
 
-    private func start(debounced: Bool) {
+    private func start(debounced: Bool, force: Bool = false) {
         refreshTask?.cancel()
         retryTask?.cancel()
         retryTask = nil
@@ -135,19 +190,19 @@ public final class WeatherStore {
             if debounced {
                 do { try await Task.sleep(for: debounce) } catch { return }   // отменено следующим move — новый вопрос уже назначен
             }
-            await self?.attempt(for: requested)
+            await self?.attempt(for: requested, force: force)
         }
     }
 
-    private func attempt(for requested: Place) async {
+    private func attempt(for requested: Place, force: Bool = false) async {
         attemptCounter += 1
         let mine = attemptCounter
         activeAttempt = mine
         defer { if activeAttempt == mine { activeAttempt = nil } }
         dropIfTooStale()
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.loadHourly(for: requested) }
-            group.addTask { await self.loadAir(for: requested) }
+            group.addTask { await self.loadHourly(for: requested, force: force) }
+            group.addTask { await self.loadAir(for: requested, force: force) }
         }
         guard !Task.isCancelled, sameSpot(requested) else { return }
         if needsHourly || needsAir {
@@ -205,10 +260,10 @@ public final class WeatherStore {
         WeatherFetcher.key(for: requested) == WeatherFetcher.key(for: place)
     }
 
-    private func loadHourly(for requested: Place) async {
-        guard needsHourly else { return }
+    private func loadHourly(for requested: Place, force: Bool) async {
+        guard force || needsHourly else { return }
         do {
-            let got = try await fetcher.hourlyStamped(at: requested)
+            let got = try await fetcher.hourlyStamped(at: requested, force: force)
             guard !Task.isCancelled, sameSpot(requested) else { return }   // место уже другое — ответ не актуален
             rawHourly = got.value
             hourlyAt = got.at
@@ -223,10 +278,10 @@ public final class WeatherStore {
         }
     }
 
-    private func loadAir(for requested: Place) async {
-        guard needsAir else { return }
+    private func loadAir(for requested: Place, force: Bool) async {
+        guard force || needsAir else { return }
         do {
-            let got = try await fetcher.airStamped(at: requested)
+            let got = try await fetcher.airStamped(at: requested, force: force)
             guard !Task.isCancelled, sameSpot(requested) else { return }
             air = got.value
             airAt = got.at

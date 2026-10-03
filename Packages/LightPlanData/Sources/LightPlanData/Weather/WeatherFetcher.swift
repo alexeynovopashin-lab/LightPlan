@@ -55,9 +55,10 @@ public actor WeatherFetcher {
     }
 
     /// То же и когда ответ получен: по этому времени хранитель считает свой срок.
-    public func hourlyStamped(at place: Place) async throws -> (value: HourlyWeather, origin: WeatherOrigin, at: Date) {
+    /// `force` — принудительная загрузка (тап по надписи): срок кэша не смотрим.
+    public func hourlyStamped(at place: Place, force: Bool = false) async throws -> (value: HourlyWeather, origin: WeatherOrigin, at: Date) {
         let key = Self.key(for: place)
-        if let hit = hourlyCache[key], now().timeIntervalSince(hit.at) < lifetime.hourly { return hit }
+        if !force, let hit = hourlyCache[key], now().timeIntervalSince(hit.at) < lifetime.hourly { return hit }
         let fetched: (HourlyWeather, WeatherOrigin)
         if let routed = source as? any OriginReportingWeatherSource {
             fetched = try await routed.fetchHourlyWithOrigin(at: place)
@@ -75,9 +76,9 @@ public actor WeatherFetcher {
         try await airStamped(at: place).value
     }
 
-    public func airStamped(at place: Place) async throws -> (value: [CivilDate: [Int: AirSample]], at: Date) {
+    public func airStamped(at place: Place, force: Bool = false) async throws -> (value: [CivilDate: [Int: AirSample]], at: Date) {
         let key = Self.key(for: place)
-        if let hit = airCache[key], now().timeIntervalSince(hit.at) < lifetime.air { return hit }
+        if !force, let hit = airCache[key], now().timeIntervalSince(hit.at) < lifetime.air { return hit }
         let fetched = try await source.fetchAir(at: place)
         try Task.checkCancellation()
         let got = (value: fetched, at: now())

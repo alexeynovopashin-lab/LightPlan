@@ -309,6 +309,7 @@ public final class AppModel {
          placeSearch: any PlaceSearch = ApplePlaceSearch(),
          weatherSource: any WeatherSource, glowSource: any GlowTileSource = NoGlowSource(),
          headingSource: (any HeadingSource)? = nil,
+         weatherReachability: (any NetworkReachability)? = nil,
          now: @escaping @Sendable () -> Date = { Date() }) {
         self.snapshot = snapshot
         self.store = store
@@ -349,7 +350,7 @@ public final class AppModel {
         self.citySource = resolved.source
         self.planner = PlannerState(today: Self.today(in: place.place, now: now()))
 
-        let weather = WeatherStore(place: place.place, source: weatherSource)
+        let weather = WeatherStore(place: place.place, source: weatherSource, reachability: weatherReachability)
         self.pointWeather = PointWeather(source: weatherSource)
         self.glow = GlowStore(place: place.place, source: glowSource)
         let timebar = TimebarState(place: place.place, date: Self.today(in: place.place, now: now()), weather: weather,
@@ -412,7 +413,8 @@ public final class AppModel {
                         locator: CoreLocationProvider(), geocoder: AppleReverseGeocoder(locale: locale),
                         cityLookup: AppleCityLookup(locale: locale), placeSearch: ApplePlaceSearch(locale: locale),
                         weatherSource: RoutedWeatherSource.live(config: WeatherProxyConfig.load()),
-                        glowSource: LorenzAtlas(), headingSource: CoreLocationHeading())
+                        glowSource: LorenzAtlas(), headingSource: CoreLocationHeading(),
+                        weatherReachability: SystemReachability())
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
