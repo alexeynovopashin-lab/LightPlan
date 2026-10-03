@@ -17,23 +17,26 @@ struct PlannerMonthBody: View {
         let grid = st.monthGrid
         let hasShoots = grid.contains { PlannerState.sameMonth($0, st.month) && !f.shown(on: $0).isEmpty }
         VStack(spacing: 0) {
-            head(pal)
-            VStack(spacing: 2) {
-                ForEach(0..<(grid.count / 7), id: \.self) { r in
-                    // Клетки ряда тянутся на его высоту, как в сетке веба.
-                    HStack(alignment: .top, spacing: 3) {
-                        ForEach(0..<7, id: \.self) { c in
-                            let i = r * 7 + c
-                            MonthCell(app: app, f: f, day: grid[i])
-                                .frame(maxHeight: .infinity, alignment: .top)
-                                .shotNode("cal.\(i)")
+            // Календарь стоит на стеклянной подложке (28и, макет C со стеклом): шапка недели и сетка.
+            VStack(spacing: 0) {
+                head(pal)
+                VStack(spacing: MonthMetrics.rowGap) {
+                    ForEach(0..<(grid.count / 7), id: \.self) { r in
+                        HStack(alignment: .top, spacing: MonthMetrics.colGap) {
+                            ForEach(0..<7, id: \.self) { c in
+                                let i = r * 7 + c
+                                MonthCell(app: app, f: f, day: grid[i])
+                                    .shotNode("cal.\(i)")
+                            }
                         }
                     }
-                    .fixedSize(horizontal: false, vertical: true)
                 }
+                .shotNode("cal")
             }
-            .padding(.horizontal, 20)
-            .shotNode("cal")
+            .padding(EdgeInsets(top: 0, leading: MonthMetrics.plateInner, bottom: MonthMetrics.plateBottom, trailing: MonthMetrics.plateInner))
+            .background { MonthPlate(pal: pal) }
+            .padding(.horizontal, MonthMetrics.plateMargin)
+            .shotNode("cal.plate")
             if hasShoots { legend(pal) }
             PlannerDayPanel(app: app, f: f)
             PlannerDayList(app: app, f: f, fan: $fan)
@@ -55,8 +58,7 @@ struct PlannerMonthBody: View {
                     .padding(.bottom, 8)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 10)
+        .padding(.top, MonthMetrics.headTop)
         .shotNode("cal.head")
     }
 
@@ -71,8 +73,59 @@ struct PlannerMonthBody: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 12)
+        .padding(.top, 14)
         .shotNode("legend")
+    }
+}
+
+/// Числа месяца (28и, макет C со стеклом + подписи словами по макету A). Всё, что решает, где стоит
+/// цифра, лежит здесь, чтобы тест держал это без экрана.
+enum MonthMetrics {
+    static let cellHeight: CGFloat = 58
+    static let digitTop: CGFloat = 5
+    static let digitBox: CGFloat = 26
+    static let digitSize: CGFloat = 17
+    static let labelSize: CGFloat = 9
+    static let labelLine: CGFloat = 10.5
+    static let labelLines = 2
+    static var zoneHeight: CGFloat { labelLine * CGFloat(labelLines) }
+    static let rowGap: CGFloat = 2
+    static let colGap: CGFloat = 3
+    static let plateRadius: CGFloat = 22
+    static let plateMargin: CGFloat = 12
+    static let plateInner: CGFloat = 8
+    static let plateBottom: CGFloat = 6
+    static let headTop: CGFloat = 10
+
+    /// Центр цифры от верха сетки: зависит только от номера ряда, не от подписей.
+    static func digitCenterY(row: Int) -> CGFloat {
+        CGFloat(row) * (cellHeight + rowGap) + digitTop + digitBox / 2
+    }
+    /// Высота сетки из `rows` рядов.
+    static func gridHeight(rows: Int) -> CGFloat {
+        CGFloat(rows) * cellHeight + CGFloat(max(0, rows - 1)) * rowGap
+    }
+    /// Сколько подписей видно в клетке: две; если их больше двух — одна и «+N» (как в бете).
+    static func visibleLabels(_ n: Int) -> (shown: Int, more: Bool) {
+        n > 2 ? (1, true) : (n, false)
+    }
+    /// Метка выбранного дня на подложке: тон чернил поверх стекла — белый .10 в тёмной, чернильный .12 в светлой
+    /// (контраст к подложке ≥ 1,25; `--press` давал 1,09).
+    static func selFill(_ pal: Palette, dark: Bool) -> Color {
+        dark ? Color(hex: 0xFFFFFF, alpha: 0.10) : Color(hex: 0x17150F, alpha: 0.12)
+    }
+}
+
+/// Подложка календаря: стекло (`--sheet-glass` + системное стекло, как у плашек формы) и кант. Блик у системного
+/// стекла свой (рисовать его нельзя — `check_boundaries.sh`). Тени нет — в покое у плашек её нет (28з).
+private struct MonthPlate: View {
+    let pal: Palette
+
+    var body: some View {
+        let r = RoundedRectangle(cornerRadius: MonthMetrics.plateRadius, style: .continuous)
+        r.fill(pal.sheetGlass)
+            .glassEffect(.regular, in: r)
+            .overlay(r.strokeBorder(pal.hairline, lineWidth: 1))
     }
 }
 
@@ -92,7 +145,7 @@ private struct MonthCell: View {
         let today = f.today
         let isToday = day == today, sel = day == st.selected, past = day < today
         let labels = self.labels(pal, out: out)
-        let show = labels.count > 2 ? Array(labels.prefix(1)) : Array(labels.prefix(2))
+        let show = Array(labels.prefix(MonthMetrics.visibleLabels(labels.count).shown))
         let mark = out ? nil : f.mark(day)
         let lit = mark.map { $0.rank >= 3 } ?? false
         let ink: Color = isToday ? pal.brass : out ? pal.ink10 : past ? pal.ink5 : pal.ink
@@ -100,25 +153,30 @@ private struct MonthCell: View {
         Button {
             withAnimation(.snappy(duration: 0.25)) { _ = app.planner.tapMonthCell(day) }
         } label: {
-            VStack(spacing: 1) {
+            // Цифра — в своей зоне на одной высоте у всех клеток, подписи — в зоне ниже (28и):
+            // число подписей высоту клетки и положение цифры не меняет.
+            VStack(spacing: 0) {
                 Text("\(day.day)")
-                    .font(webFont(16.5, isToday ? 650 : 400)).monospacedDigit()
+                    .font(webFont(MonthMetrics.digitSize, isToday ? 700 : 600)).monospacedDigit()
                     .foregroundStyle(ink)
-                    .frame(width: 26, height: 26)
+                    .frame(width: MonthMetrics.digitBox, height: MonthMetrics.digitBox)
                     .background {
                         if lit, let mark { Circle().fill(f.deliveryColor(mark).opacity(0.32)) }
                     }
-                ForEach(show.indices, id: \.self) { i in label(show[i], pal) }
-                if labels.count > show.count { label(.init(text: "+\(labels.count - show.count)", color: pal.ink7, busy: false), pal) }
+                    .padding(.top, MonthMetrics.digitTop)
+                    .shotNode("cal.n.\(day.day)-\(out ? 1 : 0)")
+                VStack(spacing: 0) {
+                    ForEach(show.indices, id: \.self) { i in label(show[i], pal) }
+                    if labels.count > show.count { label(.init(text: "+\(labels.count - show.count)", color: pal.ink7, busy: false), pal) }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: MonthMetrics.zoneHeight, alignment: .top)
+                .clipped()
+                .padding(.horizontal, 1)
             }
-            .padding(labels.isEmpty ? EdgeInsets() : EdgeInsets(top: 4, leading: 1, bottom: 5, trailing: 1))
-            .frame(width: labels.isEmpty ? 40 : nil, height: labels.isEmpty ? 40 : nil)
-            .frame(maxWidth: labels.isEmpty ? nil : .infinity)
-            .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(sel ? pal.press : .clear))
-            .opacity(1)
-            .padding(.horizontal, 1)
-            .padding(.top, 3)
-            .frame(maxWidth: .infinity, minHeight: 47, alignment: .top)
+            .frame(maxWidth: .infinity)
+            .frame(height: MonthMetrics.cellHeight, alignment: .top)
+            .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(sel ? MonthMetrics.selFill(pal, dark: scheme == .dark) : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -130,23 +188,23 @@ private struct MonthCell: View {
         let shoots = f.shown(on: day).enumerated().sorted { ($0.element.start, $0.offset) < ($1.element.start, $1.offset) }.map(\.element)
         var out1: [Label] = shoots.map { s in
             if !s.kind.isWork {
-                return Label(text: f.t.t(s.kind == .meet ? "plan.meet" : "plan.event"), color: pal.ink5, busy: true)
+                return Label(text: f.t.t(s.kind == .meet ? "plan.meet" : "plan.event"), color: pal.ink4, busy: true)
             }
             // Цвет точки — небо дня; без прогноза точка нейтральная, как у «обычного» дня.
             let dot = f.weather(s.day)?.quality.dot
             return Label(text: f.words.shortType(s), color: dot ?? Color(hex: 0xA8B49B), busy: false)
         }
-        if !out { out1 += f.blocks(on: day).map { Label(text: f.blockLabel($0), color: pal.ink5, busy: true) } }
+        if !out { out1 += f.blocks(on: day).map { Label(text: f.blockLabel($0), color: pal.ink4, busy: true) } }
         return out1.map { out ? Label(text: $0.text, color: $0.color.opacity(0.45), busy: $0.busy) : $0 }
     }
 
     private func label(_ l: Label, _ pal: Palette) -> some View {
         Text(l.text)
-            .font(webFont(8.5)).tracking(-0.1)
+            .font(webFont(MonthMetrics.labelSize, 500)).tracking(-0.1)
             .italic(l.busy)
             .foregroundStyle(l.color)
             .lineLimit(1).truncationMode(.tail)
-            .frame(height: 10.625)
+            .frame(height: MonthMetrics.labelLine)
     }
 }
 
