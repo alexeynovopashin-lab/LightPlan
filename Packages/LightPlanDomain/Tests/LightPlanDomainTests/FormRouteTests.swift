@@ -131,6 +131,23 @@ import LightPlanDomain
         WishSky(quality: q, sunsetScore: sunset, astroNight: night, moonLevel: moon, moonPercent: pct, moonFraction: frac)
     }
 
+    /// 28ж: нет настоящего прогноза — пожелания про погоду молчат (выдумка не судья),
+    /// пожелания про астрономию — луна, белая ночь, городское зарево — работают.
+    @Test func noForecastSilencesWeatherWishesOnly() {
+        func none(night: Bool = true, frac: Double = 0.5, moon: Int? = 0) -> WishSky {
+            WishSky(quality: nil, sunsetScore: nil, astroNight: night, moonLevel: moon, moonPercent: 10, moonFraction: frac)
+        }
+        for w in [Wish.clear, .cloudy, .fog, .rain, .sunset] {
+            #expect(WishCheck.check(w, sky: none(), city: false) == nil, "\(w): погодное пожелание без прогноза")
+        }
+        #expect(WishCheck.check(.stars, sky: none(), city: false) == nil)
+        #expect(WishCheck.check(.moon, sky: none(), city: false) == nil)
+        #expect(WishCheck.check(.stars, sky: none(night: false), city: false)?.key == "whiteNight")
+        #expect(WishCheck.check(.stars, sky: none(), city: true)?.key == "cityGlow")
+        #expect(WishCheck.check(.stars, sky: none(moon: 2), city: false)?.key == "moonWash")
+        #expect(WishCheck.check(.moon, sky: none(frac: 0.1), city: false)?.key == "newMoon")
+    }
+
     @Test func wishCheckBranches() {
         #expect(WishCheck.check(.stars, sky: sky(.excellent, night: false), city: false)?.key == "whiteNight")
         #expect(WishCheck.check(.stars, sky: sky(.good), city: false)?.key == "noStars")

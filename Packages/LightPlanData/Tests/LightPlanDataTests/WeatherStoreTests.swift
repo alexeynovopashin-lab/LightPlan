@@ -86,29 +86,32 @@ struct WeatherStoreTests {
         #expect(await source.hourlyCalls.count == 1)
     }
 
-    @Test("Офлайн — молча остаётся выдумка, isLive не включается")
-    func offlineFallsBackToMockSilently() async {
+    @Test("Нет прогноза — нет и выдумки: день пуст, статус «недоступно»")
+    func offlineGivesNoDayAtAll() async {
         let source = ScriptedSource(hourly: [:])
-        let store = WeatherStore(place: lobnya, source: source, debounce: .zero)
+        let store = WeatherStore(place: lobnya, source: source, debounce: .zero, retryDelays: [.seconds(600)])
+        #expect(store.status == .loading)
         await store.settled()
         #expect(!store.isLive)
-        let date = CivilDate(year: 2026, month: 6, day: 10)
-        let day = store.day(for: date)
-        #expect(!day.real)
-        // То же самое, что вернул бы MockWeather напрямую — выдумка не своя, общая.
-        #expect(day.quality == MockWeather.day(for: date).quality)
+        #expect(store.status == .unavailable)
+        // Ни одного дня — ни за сегодня, ни за любой другой: выдумка не подставляется.
+        for d in 1...28 {
+            #expect(store.day(for: CivilDate(year: 2026, month: 6, day: d)) == nil)
+        }
     }
 
-    @Test("Настоящий прогноз перекрывает выдумку по тому же дню")
-    func realWeatherOverridesMockForTheSameDay() async {
+    @Test("Настоящий прогноз виден по своим дням, чужие дни пусты")
+    func realWeatherIsKnownForItsOwnDaysOnly() async {
         let key = String(format: "%.3f,%.3f", lobnya.latitude, lobnya.longitude)
         let hourly = hour(cloud: 5, date: "2026-06-10")
         let source = ScriptedSource(hourly: [key: [.hourly(hourly)]])
         let store = WeatherStore(place: lobnya, source: source, debounce: .zero)
         await store.settled()
         let date = CivilDate(year: 2026, month: 6, day: 10)
-        #expect(store.day(for: date).real)
-        #expect(store.day(for: date).cloud == 5)
+        #expect(store.day(for: date)?.real == true)
+        #expect(store.day(for: date)?.cloud == 5)
+        // Прогноз за 10 июня — один день; за 11-е в ответе ничего нет, значит и в приложении.
+        #expect(store.day(for: CivilDate(year: 2026, month: 6, day: 11)) == nil)
     }
 
     @Test("Ответ про место, откуда карту уже увели, ничего не меняет")
@@ -129,7 +132,7 @@ struct WeatherStoreTests {
         try? await Task.sleep(for: .milliseconds(200))  // ждём, пока медленный ответ придёт и будет выброшен
         let date = CivilDate(year: 2026, month: 6, day: 10)
         #expect(store.place == tomsk)
-        #expect(store.day(for: date).cloud == 5)
+        #expect(store.day(for: date)?.cloud == 5)
     }
 
     @Test("Воздух приходит вторым и поправляет уже построенный день")
@@ -147,8 +150,8 @@ struct WeatherStoreTests {
         // mid/high (`hour()` не задаёт их) закладка та же, что у buildWx —
         // low = облачность, mid и high — ноль.
         let bare = SunsetScore.score(low: 5, mid: 0, high: 0, humidity: 50)
-        #expect(store.day(for: date).sunset != nil)
-        #expect(store.day(for: date).sunset! < bare)
+        #expect(store.day(for: date)?.sunset != nil)
+        #expect(store.day(for: date)!.sunset! < bare)
     }
 }
 

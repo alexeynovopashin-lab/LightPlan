@@ -252,7 +252,9 @@ extension EventForm {
 /// Небо дня для проверки пожеланий: всё, что веб спрашивает у `qualityOf`,
 /// `dayWeather`, `computeSun`, `moonPhase` и `moonVsStars`.
 public struct WishSky: Sendable, Equatable {
-    public var quality: DayQuality
+    /// Категория неба дня; `nil` — настоящего прогноза нет (28ж: выдумка не
+    /// подставляется), и пожелания про погоду не проверяются вовсе.
+    public var quality: DayQuality?
     /// Закатный балл прогноза; `nil` — прогноза нет.
     public var sunsetScore: Int?
     /// Есть астрономическая ночь (солнце ниже −18°).
@@ -263,7 +265,7 @@ public struct WishSky: Sendable, Equatable {
     /// Освещённая доля диска в 22:00 (веб `moonPhase(d, 1320)`).
     public var moonFraction: Double
 
-    public init(quality: DayQuality, sunsetScore: Int?, astroNight: Bool, moonLevel: Int?,
+    public init(quality: DayQuality?, sunsetScore: Int?, astroNight: Bool, moonLevel: Int?,
                 moonPercent: Int?, moonFraction: Double) {
         self.quality = quality
         self.sunsetScore = sunsetScore
@@ -295,7 +297,7 @@ public enum WishCheck {
         case .any: return nil
         case .stars:
             if !sky.astroNight { return WishClash(key: "whiteNight", params: [:]) }
-            if q != .excellent { return WishClash(key: "noStars", params: [:], sky: q) }
+            if let q, q != .excellent { return WishClash(key: "noStars", params: [:], sky: q) }
             if city { return WishClash(key: "cityGlow", params: [:]) }
             let pct = String(sky.moonPercent ?? 0)
             if sky.moonLevel == 2 { return WishClash(key: "moonWash", params: ["pct": pct]) }
@@ -307,6 +309,7 @@ public enum WishCheck {
             } else if q == .poor { return WishClash(key: "noSunset", params: [:], sky: q) }
             return nil
         case .rain:
+            guard let q else { return nil }
             return q != .poor ? WishClash(key: "noRain", params: [:], sky: q) : nil
         case .moon:
             if sky.moonFraction < 0.25 {
@@ -314,6 +317,7 @@ public enum WishCheck {
             }
             return q == .poor ? WishClash(key: "moonCloud", params: [:], sky: q) : nil
         case .clear, .cloudy, .fog:
+            guard let q else { return nil }
             return q != want[w] ? WishClash(key: "wrongWx", params: [:], sky: q, wish: w) : nil
         }
     }
