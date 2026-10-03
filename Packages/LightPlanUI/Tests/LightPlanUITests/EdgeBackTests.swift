@@ -69,6 +69,23 @@ struct EdgeBackTests {
         e.cancel()
     }
 
+    @Test func burstOfEventsFallsBackToRecognizerVelocity() {
+        let box = Box()
+        let (e, _) = edge([1.52], box: box)
+        e.begin(width: width)
+        e.move(0, at: 0); e.move(20, at: 0.004); e.move(44, at: 0.008)   // пачка за 8 мс — по ней скорость не посчитать
+        e.end(recognizer: 700, at: 0.01)
+        e.finishSettle(commit: true)
+        #expect(box.closed == [1.52])                                   // быстрый короткий закрылся по скорости распознавателя
+        // а палец, замерший перед отпусканием, скорость распознавателя не наследует
+        let (f, _) = edge([1.0], box: box)
+        f.begin(width: width)
+        f.move(0, at: 0); f.move(44, at: 0.008)
+        f.end(recognizer: 700, at: 1.5)
+        f.finishSettle(commit: false)
+        #expect(box.closed == [1.52])
+    }
+
     @Test func stoppedFingerReleasedBelowThirdReturns() {
         // Палец дотянул до 100 pt, постоял и поднялся: скорость 0, меньше трети — слой возвращается.
         let box = Box()

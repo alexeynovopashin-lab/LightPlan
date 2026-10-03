@@ -54,8 +54,9 @@ final class EdgeBackProbe: UIView {
         case .changed:
             edge.move(x)
         case .ended:
-            edge.move(x)
-            edge.end()
+            // Последнее положение уже записано движением: отпускание своей точки не добавляет, иначе стоявший палец
+            // выглядел бы двигавшимся.
+            edge.end(recognizer: g.velocity(in: window).x)
         case .cancelled, .failed:
             edge.cancel()
         default:

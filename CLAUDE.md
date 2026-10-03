@@ -53,6 +53,12 @@
   the landscape iOS Calendar (day timeline left, event card right). Duo also
   waits for the next stable Xcode. Start neither, don't guess their sizes
   (Alexey, 2026-09-19; DECISIONS «Устройства…»).
+- **Screen layers close by edge swipe (28з).** A new layer over the tabs (anything with a «Назад»/✕ that is not
+  system navigation) needs one line: `.edgeBack(app, z: BackZ.<name>) { <plain state change, no animation> }`
+  next to its `.zIndex` (heights live in `BackZ`, `App/EdgeBack.swift`). One `UIScreenEdgePanGestureRecognizer`
+  on the window (`EdgeBackHost`) moves the top registered layer; sheets, alerts and full-screen photo viewers
+  (`edgeBackBlocked`) refuse it. Settings' `NavigationStack` keeps the system gesture — don't register it.
+  Measure with `-LPEdgeBackLog <file>` (Debug): begin / end dx v / closed / `gate no` lines.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

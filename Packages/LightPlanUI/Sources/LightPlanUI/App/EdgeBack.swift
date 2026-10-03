@@ -109,16 +109,19 @@ final class EdgeBack {
 
     /// Скорость пальца вправо, pt/с, по последним 0,12 с движения. Палец, замерший перед отпусканием, даёт 0:
     /// у распознавателя скорость не гаснет без новых касаний (измерено: 568–671 pt/с у пальца, стоявшего 1,3 с).
-    func releaseVelocity(at time: TimeInterval = ProcessInfo.processInfo.systemUptime) -> CGFloat {
+    /// События одного касания иногда приходят пачкой за миллисекунды (симулятор): тогда по ним скорость не
+    /// посчитать, и берётся скорость распознавателя — но только если палец двигался перед самым отпусканием.
+    func releaseVelocity(at time: TimeInterval = ProcessInfo.processInfo.systemUptime, recognizer: CGFloat = 0) -> CGFloat {
         let recent = samples.filter { time - $0.t <= Self.velocityWindow }
-        guard let a = recent.first, let b = recent.last, b.t - a.t > 0.015 else { return 0 }
+        guard let a = recent.first, let b = recent.last else { return 0 }
+        guard b.t - a.t > 0.015 else { return recent.count > 1 || time - b.t < 0.05 ? recognizer : 0 }
         return CGFloat((b.x - a.x) / (b.t - a.t))
     }
 
     /// Палец отпущен: решение и доезд. `velocity` — pt/с вправо; без неё — замер по последним движениям.
-    func end(velocity: CGFloat? = nil, at time: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+    func end(velocity: CGFloat? = nil, recognizer: CGFloat = 0, at time: TimeInterval = ProcessInfo.processInfo.systemUptime) {
         guard dragging else { return }
-        let v = velocity ?? releaseVelocity(at: time)
+        let v = velocity ?? releaseVelocity(at: time, recognizer: recognizer)
         let commit = EdgeBackRule.commits(dx: dx, velocity: v, width: width)
         note("end dx=\(Int(dx)) v=\(Int(v)) commit=\(commit)")
         samples = []
