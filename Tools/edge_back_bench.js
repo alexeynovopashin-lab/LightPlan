@@ -124,12 +124,25 @@ async function scenario(dev, name, sc) {
     await sleep(250);
   }
   const text = fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '';
-  return parse(text);
+  const rows = parse(text);
+  validate(name, text, rows, +(args.reps || 3));
+  return rows;
+}
+
+/* Пустой или неполный прогон — ошибка, а не «нет данных»: иначе его легко принять за проверенный (ревью GPT к 2175133). */
+function validate(name, text, rows, reps) {
+  if (!/bench done/.test(text)) throw new Error(name + ': стенд не дошёл до конца (в журнале нет «bench done»)');
+  const done = rows.filter(r => !r.skipped && r.dragDts);
+  if (!done.length) throw new Error(name + ': в журнале нет ни одной строки meter');
+  const n = run_ => done.filter(r => r.run === run_).length;
+  if (n('slow-return') !== reps) throw new Error(`${name}: медленных возвратов ${n('slow-return')} из ${reps}`);
+  for (const must of ['fast-return', 'cancel-mid', 'slow-close']) if (n(must) < 1) throw new Error(`${name}: не было прогона ${must} (слой не взял жест?)`);
 }
 
 
 /* ——— Тень слоя: кадр в покое против первого кадра жеста (`--shade`) ———
-   Слой на первом кадре жеста сдвинут на полпикселя: всё, что отличается от покоя вне полосы у левой кромки, — лишнее
+   Первый кадр жеста — `begin` без движения, сдвиг 0 (`--hold <pt>` задаёт другой: тогда сдвинут весь слой, и сравнение
+   с покоем перестаёт быть чистым — ревью GPT к 2175133). Всё, что отличается от покоя вне полосы у левой кромки, — лишнее
    (тень под плашками и кнопками, когда `.shadow` лежал на содержимом слоя). Попиксельно, без допуска. */
 const zlib = require('zlib');
 function readPng(file) {
@@ -183,7 +196,7 @@ function diffPng(a, b, edgePx, outFile) {
   return { changed, outside, max, rows: outside ? [minY, maxY] : null, cols: outside ? [minX, maxX] : null };
 }
 async function shadeScenario(dev, name, sc) {
-  const { log, dir } = launch(dev, name, sc, ['-LPEdgeBackHold', args.hold || '0.5']);
+  const { log, dir } = launch(dev, name, sc, ['-LPEdgeBackHold', args.hold || '0']);
   const shot = f => run('xcrun', ['simctl', 'io', dev.udid, 'screenshot', '--type=png', path.join(dir, f)], { stdio: 'ignore' });
   const done = new Set();
   for (let i = 0; i < 400; i++) {
@@ -269,7 +282,8 @@ function table(all) {
   return lines.join('\n');
 }
 
-(async () => {
+module.exports = { parse, validate, summarize };
+if (require.main === module) (async () => {
   // Таблицы из сохранённого bench.json, без симулятора: `--table <файл>`.
   if (args.table) {
     const all = JSON.parse(fs.readFileSync(args.table, 'utf8'));
@@ -295,6 +309,8 @@ function table(all) {
       console.log(n.padEnd(14) + String(r.noise.changed).padEnd(16) + String(r.shade.changed).padEnd(24) + String(r.shade.outside).padEnd(21) +
         String(r.shade.max).padEnd(15) + (r.shade.rows ? r.shade.rows.join('–') : '—').padEnd(16) + (r.shade.cols ? r.shade.cols.join('–') : '—'));
     }
+    const bad = Object.entries(res).filter(([, r]) => r.error || r.noise.changed > 0 || r.shade.outside > 0).map(([n]) => n);
+    if (bad.length) { console.log('\nНЕ ЧИСТО: ' + bad.join(', ') + ' (ошибка, шум покоя или тень вне полосы у кромки)'); process.exitCode = 1; }
     console.log('\nтема: ' + (args.theme || 'light') + ', масштаб ×' + Object.values(res).find(r => r.scale).scale + '; снимки и diff.png — в ' + OUT);
     return;
   }
