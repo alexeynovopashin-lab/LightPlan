@@ -17,13 +17,17 @@ struct DocsScreen: View {
         ZStack {
             if let s = app.docsNav.section {
                 DocsSectionView(app: app, section: s)
+                    .edgeBack(app, z: BackZ.docsSection, inside: BackZ.docs) { app.closeDocSection() }
                     .transition(.move(edge: .trailing))
                     .zIndex(1)
-            } else {
+            }
+            // Корень под разделом нужен, пока палец тянет раздел: иначе под ним пусто (28з).
+            if app.docsNav.section == nil || app.edgeBack.active {
                 root(pal).transition(.opacity)
             }
             if let d = app.docsNav.paper {
                 DocPaperScreen(app: app, doc: d, backTitle: backTitle)
+                    .edgeBack(app, z: BackZ.docsPaper, inside: BackZ.docs) { app.closeDocPaper() }
                     .transition(.move(edge: .trailing))
                     .zIndex(2)
             }

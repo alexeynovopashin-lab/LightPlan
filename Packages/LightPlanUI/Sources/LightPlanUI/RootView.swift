@@ -52,64 +52,77 @@ private struct Shell: View {
         // Экраны живут оба, виден выбранный: у системной `TabView` так же
         // сохранялись прокрутка и глава при смене вкладки.
         ZStack {
-            screen(.light) { LightScreenView(app.light, onPlace: { app.placeSheetOpen = true }) }
-            screen(.map) { MapScreenView(app: app) }
-            screen(.planner) { PlannerScreenView(app: app) }
-            screen(.settings) { SettingsView(app: app) }
+            ZStack {
+                screen(.light) { LightScreenView(app.light, onPlace: { app.placeSheetOpen = true }) }
+                screen(.map) { MapScreenView(app: app) }
+                screen(.planner) { PlannerScreenView(app: app) }
+                screen(.settings) { SettingsView(app: app) }
+            }
+            // Под слоем, который ведёт палец, вкладки стоят на 30 % левее (28з).
+            .edgeBackBase(app, .tabs)
             // Карточка события (25) — над вкладками и панелью, как `#cardOverlay`
             // веба; форма и листы открываются поверх неё.
             if let s = app.card {
                 CardScreen(app: app, s: s)
+                    .edgeBack(app, z: BackZ.card) { app.closeCard() }
                     .transition(.move(edge: .bottom))
-                    .zIndex(1)
+                    .zIndex(BackZ.card)
                 // Полный экран референсов (27) — поверх карточки, `z-index 92` веба.
                 if app.refsFull != nil {
                     RefsFullScreen(app: app, s: s)
+                        .edgeBack(app, z: BackZ.refs) { app.closeRefsFull() }
                         .transition(.move(edge: .bottom))
-                        .zIndex(1.5)
+                        .zIndex(BackZ.refs)
                 }
             }
             // Галерея и полка мудборда (28) — слои поверх вкладок, `z-index 80` веба.
             if app.mb.galleryOpen {
                 MoodboardGallery(app: app)
+                    .edgeBack(app, z: BackZ.gallery) { app.closeMbGallery() }
                     .transition(.move(edge: .trailing))
-                    .zIndex(1.2)
+                    .zIndex(BackZ.gallery)
             }
             if let g = app.mb.shelf {
                 MoodboardShelf(app: app, genre: g)
+                    .edgeBack(app, z: BackZ.shelf) { app.closeMbShelf() }
                     .transition(.move(edge: .trailing))
-                    .zIndex(1.3)
+                    .zIndex(BackZ.shelf)
             }
             if app.mb.folder != nil {
                 MoodboardFolder(app: app)
+                    .edgeBack(app, z: BackZ.folder) { app.closeMbFolder() }
                     .transition(.move(edge: .trailing))
-                    .zIndex(1.4)
+                    .zIndex(BackZ.folder)
             }
             // «Документы» (28д, шаг 3а): экран под полосой мудборда. Ниже карточки съёмки (zIndex 1): тап по
             // строке «Требуют внимания» открывает карточку поверх, «Назад» возвращает сюда.
             if app.docsNav.isOpen {
                 DocsScreen(app: app)
+                    .edgeBack(app, z: BackZ.docs) { app.closeDocs() }
                     .transition(.move(edge: .trailing))
-                    .zIndex(0.9)
+                    .zIndex(BackZ.docs)
             }
             // Организации (28, шаг 6): список из настроек и карточка поверх него.
             if app.org.listOpen {
                 OrgListScreen(app: app)
+                    .edgeBack(app, z: BackZ.orgList) { app.closeOrgs() }
                     .transition(.move(edge: .trailing))
-                    .zIndex(1.5)
+                    .zIndex(BackZ.orgList)
             }
             // «Контакты» (28, шаг 7): слой из профиля настроек.
             if app.org.contactsOpen {
                 ContactsScreen(app: app)
+                    .edgeBack(app, z: BackZ.contacts) { app.closeContacts() }
                     .transition(.move(edge: .trailing))
-                    .zIndex(1.5)
+                    .zIndex(BackZ.contacts)
             }
             if let id = app.org.cardId {
                 OrgCardScreen(app: app, id: id, backTitle: app.lexicon.t("org.tabOrgs")) {
                     withAnimation(overlaySlide) { app.closeOrgCard() }
                 }
+                .edgeBack(app, z: BackZ.orgCard) { app.closeOrgCard() }
                 .transition(.move(edge: .trailing))
-                .zIndex(1.6)
+                .zIndex(BackZ.orgCard)
             }
             // Затемнение под листом места (`.scrim` веба, чёрный 0,55): лист
             // iOS 26 на неполной высоте экран под собой не затемняет.
@@ -160,6 +173,8 @@ private struct Shell: View {
         // Опросник клиенту (28, шаг 9): лист с QR и вставкой ответа; ответ по своей схеме `lightplan://…?ans=`.
         .questSheet(app)
         .onOpenURL { app.openQuestLink($0) }
+        // Жест «назад» от левого края (28з): один распознаватель на окно, слои записываются `.edgeBack`.
+        .background { EdgeBackHost(app: app) }
         // Пока открыта форма, лист «Занять время» показывает она сама (строка «Время в пути»).
         .sheet(item: Binding(get: { app.form == nil ? app.blockSheet : nil }, set: { app.blockSheet = $0 })) { d in
             BlockSheet(app: app, draft: d, windowHeight: windowHeight)
@@ -185,7 +200,9 @@ private struct FormCover: ViewModifier {
     func body(content: Content) -> some View {
         let shown = Binding(get: { app.form != nil }, set: { if !$0 { app.closeForm() } })
         #if os(iOS)
-        content.fullScreenCover(isPresented: shown) { FormScreen(app: app) }
+        content.fullScreenCover(isPresented: shown) {
+            FormScreen(app: app).edgeBack(app, z: BackZ.form) { app.closeForm() }
+        }
         #else
         content.sheet(isPresented: shown) { FormScreen(app: app) }
         #endif

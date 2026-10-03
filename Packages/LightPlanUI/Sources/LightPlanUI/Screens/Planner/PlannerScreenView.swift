@@ -78,6 +78,7 @@ public struct PlannerScreenView: View {
         .simultaneousGesture(swipe)
         .coordinateSpace(name: plannerFanSpace)
         .overlay { EventFan(app: app, f: f, fan: $fan) }
+        .edgeBackBase(app, .planner)
         .overlay { PlannerLayers(app: app, f: f, nav: nav) }
         .onAppear { openStartLayer() }
         .onChange(of: nav.statsOpen || nav.searchOpen, initial: true) { _, open in app.plannerPageOpen = open }

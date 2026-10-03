@@ -66,6 +66,7 @@ struct YearStage: View {
         ZStack {
             if nav.lentaOpen {
                 YearLentaView(app: app, f: f, nav: nav)
+                    .edgeBack(app, z: BackZ.lenta) { nav.lentaOpen = false }
                     .scaleEffect(z.map { 1 / $0.k + (1 - 1 / $0.k) * $0.e } ?? 1, anchor: .topLeading)
                     .offset(z.map { CGSize(width: $0.u.width * (1 - $0.e), height: $0.u.height * (1 - $0.e)) } ?? .zero)
                     .opacity(z?.lentaAlpha ?? 1)
@@ -74,6 +75,7 @@ struct YearStage: View {
             }
             if nav.year12Open {
                 Year12View(app: app, f: f, nav: nav)
+                    .edgeBack(app, z: BackZ.year12) { nav.year12Open = false }
                     .scaleEffect(z.map { 1 + ($0.k - 1) * $0.e } ?? 1, anchor: .topLeading)
                     .offset(z.map { CGSize(width: $0.t.width * $0.e, height: $0.t.height * $0.e) } ?? .zero)
                     .zIndex(2)
