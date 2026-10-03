@@ -255,6 +255,121 @@ struct EdgeBackTests {
         e.cancel()
     }
 
+    // MARK: 28з.5 — подлаги
+
+    private final class Flag: @unchecked Sendable { var hit = false }
+
+    @Test func hiddenTabReadsNothingAndStaysPut() {
+        // Сдвиг всего стека вкладок стоил ≈ 9 из 13 мс на кадр: спрятанная вкладка не едет и жеста не читает.
+        let box = Box()
+        let (e, _) = edge([1.52], box: box)
+        let flag = Flag()
+        withObservationTracking { _ = e.baseOffset(.tabs, shown: false) } onChange: { flag.hit = true }
+        e.begin(width: width); e.move(0); e.move(120); e.move(300)
+        #expect(!flag.hit)                                     // ни начало жеста, ни движение её не будят
+        #expect(e.baseOffset(.tabs, shown: false) == 0)
+        #expect(e.baseOffset(.planner, shown: false) == 0)
+        e.cancel()
+    }
+
+    @Test func shownTabFollowsFingerAndEqualsPlainBase() {
+        let box = Box()
+        let (e, _) = edge([1.52], box: box)
+        e.begin(width: width); e.move(60)
+        let flag = Flag()
+        withObservationTracking { _ = e.baseOffset(.tabs, shown: true) } onChange: { flag.hit = true }
+        e.move(110)
+        #expect(flag.hit)                                      // видимая вкладка идёт за пальцем
+        #expect(e.baseOffset(.tabs, shown: true) == e.baseOffset(.tabs))
+        #expect(abs(e.baseOffset(.tabs, shown: true) - (-0.3 * (width - 110))) < 0.001)
+        e.cancel()
+    }
+
+    @Test func shadeIsAStripThatFadesAndIsNeverThereAtRest() {
+        #expect(EdgeBackRule.shadeFade(dx: 0, width: width) == 1)
+        #expect(EdgeBackRule.shadeFade(dx: width / 2, width: width) == 0.5)
+        #expect(EdgeBackRule.shadeFade(dx: width, width: width) == 0)
+        #expect(EdgeBackRule.shadeFade(dx: -20, width: width) == 1)       // за пределы не выходит
+        #expect(EdgeBackRule.shadeFade(dx: width + 20, width: width) == 0)
+        #expect(EdgeBackRule.shadeOpacity == 0.18 && EdgeBackRule.shadeWidth == 20)
+        // В покое «верхним» не считается никто: полоса прозрачна, под содержимым тени нет.
+        let box = Box()
+        let (e, ids) = edge([1.0, 1.52], box: box)
+        #expect(!e.isTop(ids[1.52]!) && !e.isTop(ids[1.0]!))
+        e.begin(width: width); e.move(0)
+        #expect(e.isTop(ids[1.52]!) && !e.isTop(ids[1.0]!))               // тень — только у ведомого слоя
+        e.cancel(); e.finishSettle()
+        #expect(!e.isTop(ids[1.52]!))                                     // доехал — тени снова нет
+    }
+
+    @Test func cancelMidwayReturnsWithoutClosing() {
+        // Систему оборвала жест на полпути: слой возвращается, ничего не закрыто, новый жест после доезда берётся.
+        let box = Box()
+        let (e, _) = edge([1.52], box: box)
+        e.begin(width: width); e.move(0, at: 0); e.move(180, at: 0.1)
+        e.cancel()
+        #expect(e.settling && !e.dragging && e.pendingCommit == false)
+        #expect(!e.canBegin)                                              // идёт доезд
+        e.finishSettle()
+        #expect(box.closed.isEmpty && e.dx == 0 && e.canBegin && e.closedCount == 0)
+        #expect(e.begin(width: width))
+        e.cancel(); e.finishSettle()
+    }
+
+    @Test func freshLayerTakesGestureRightAfterRegister() {
+        // Слой записался в первом кадре въезда: жест сразу после тапа берётся и закрывает именно его.
+        let box = Box()
+        let e = EdgeBack()
+        let id = UUID()
+        e.register(id, z: 1.52) { box.closed.append(1.52) }
+        #expect(e.canBegin && e.begin(width: width))
+        e.move(30, at: 0); e.move(60, at: 0.05)
+        e.end(at: 0.05)                                                   // 600 pt/с — быстрый короткий
+        e.finishSettle()
+        #expect(box.closed == [1.52])
+    }
+
+    @Test func twoGesturesInARowCloseTwoLayers() {
+        // Слои закрывает состояние, дерево убирает их позже: закрытый жестом слой ещё записан, но второй жест берёт нижний.
+        let box = Box()
+        let (e, ids) = edge([1.0, 1.52], box: box)
+        e.begin(width: width); e.move(200); e.end(velocity: 0)
+        e.finishSettle()
+        #expect(box.closed == [1.52] && e.top?.z == 1.0)                  // 1.52 всё ещё записан, но не кандидат
+        #expect(e.begin(width: width))
+        e.move(250); e.end(velocity: 0)
+        e.finishSettle()
+        #expect(box.closed == [1.52, 1.0] && e.closedCount == 2)
+        _ = ids
+    }
+
+    @Test func slowAndFastSwipesDecideByDistanceAndSpeed() {
+        let r = EdgeBackRule.commits
+        #expect(r(width / 3 + 1, 20, width))                              // медленный, но дальше трети — закрыть
+        #expect(!r(width / 3 - 1, 20, width))                             // медленный и короткий — вернуть
+        #expect(r(40, 2000, width))                                       // очень быстрый и короткий — закрыть
+        #expect(!r(width, -300, width))                                   // до края и резко назад — вернуть
+    }
+
+    #if DEBUG && os(iOS)
+    @Test func meterCountsMissedFramesByDisplayPeriod() {
+        let p = 1.0 / 60
+        let s = EdgeBackMeter.stats([p, p, 2 * p, 3 * p, p], period: p)!
+        #expect(s.n == 5 && s.missed == 3)                                // 0 + 0 + 1 + 2 + 0
+        #expect(abs(s.max - 3 * p) < 1e-12)
+        #expect(EdgeBackMeter.stats([], period: p) == nil)
+        #expect(EdgeBackMeter.stats([p * 1.2, p * 0.8, p * 1.4], period: p)!.missed == 0)   // дрожь — не пропуск
+        // На 120 Гц период вдвое короче: тот же интервал — на один пропуск больше.
+        #expect(EdgeBackMeter.stats([p], period: p / 2)!.missed == 1)
+    }
+
+    @Test func meterQuantilesComeFromSortedSeries() {
+        let dts = (1...20).map { Double($0) / 1000 }.reversed().map { $0 }   // 1…20 мс, в обратном порядке
+        let s = EdgeBackMeter.stats(dts, period: 1.0 / 60)!
+        #expect(abs(s.p50 - 0.011) < 1e-12 && abs(s.p95 - 0.020) < 1e-12 && abs(s.max - 0.020) < 1e-12)
+    }
+    #endif
+
     // MARK: лист и клавиатура
 
     #if os(iOS)

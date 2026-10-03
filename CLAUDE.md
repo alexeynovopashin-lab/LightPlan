@@ -58,7 +58,13 @@
   next to its `.zIndex` (heights live in `BackZ`, `App/EdgeBack.swift`). One `UIScreenEdgePanGestureRecognizer`
   on the window (`EdgeBackHost`) moves the top registered layer; sheets, alerts and full-screen photo viewers
   (`edgeBackBlocked`) refuse it. Settings' `NavigationStack` keeps the system gesture — don't register it.
-  Measure with `-LPEdgeBackLog <file>` (Debug): begin / end dx v / closed / `gate no` lines.
+  Measure with `-LPEdgeBackLog <file>` (Debug): begin / end dx v / closed / `gate no` lines, and per gesture one
+  `meter` line (CADisplayLink frames missed / p95 + main-thread CPU ms per frame + `body` re-evaluations, `App/EdgeBackMeter.swift`).
+  `node Tools/edge_back_bench.js --app <.app>` drives all 16 layer screens without a finger (table: frames, missed, p95, CPU);
+  `--shade` compares a layer at rest with its first gesture frame pixel by pixel. **In the simulator trust CPU ms, not frame
+  intervals**: ~60 % of a late frame there is the main thread sleeping on the sim's renderer (`wait_image_queue`).
+  Layer shadow is a 20 pt gradient strip left of the edge (`EdgeShade`), never `.shadow` on the content (that shades every
+  child). Only the visible tab moves under a layer (`.edgeBackBase(app, .tabs, shown:)`): moving all four cost ~9 ms/frame.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

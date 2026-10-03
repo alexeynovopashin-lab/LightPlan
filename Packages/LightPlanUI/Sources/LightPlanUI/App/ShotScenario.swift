@@ -247,7 +247,8 @@ public final class ShotProbe {
     private var size = CGSize.zero
 
     func start(report: URL?, screen: ShotScenario.Screen) {
-        enabled = true
+        // Стенд жеста «назад» (`-LPEdgeBackBench`, Debug) идёт как обычное приложение на телефоне: без записи рамок.
+        enabled = !UserDefaults.standard.bool(forKey: "LPEdgeBackBench")
         guard let report else { return }
         Task { @MainActor in
             // Экран, погода из файла и имя места от заглушки приходят за доли

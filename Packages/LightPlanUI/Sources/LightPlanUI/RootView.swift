@@ -58,8 +58,6 @@ private struct Shell: View {
                 screen(.planner) { PlannerScreenView(app: app) }
                 screen(.settings) { SettingsView(app: app) }
             }
-            // Под слоем, который ведёт палец, вкладки стоят на 30 % левее (28з).
-            .edgeBackBase(app, .tabs)
             // Карточка события (25) — над вкладками и панелью, как `#cardOverlay`
             // веба; форма и листы открываются поверх неё.
             if let s = app.card {
@@ -191,6 +189,9 @@ private struct Shell: View {
     private func screen(_ tab: AppTab, @ViewBuilder _ content: () -> some View) -> some View {
         let shown = app.tab == tab
         return content()
+            // Под слоем, который ведёт палец, вкладка стоит на 30 % левее (28з): едет только видимая, спрятанные
+            // стоят — сдвиг всего стека стоил ≈ 9 мс главного потока на кадр (замер 28з.5).
+            .edgeBackBase(app, .tabs, shown: shown)
             .opacity(shown ? 1 : 0)
             .allowsHitTesting(shown)
             .accessibilityHidden(!shown)

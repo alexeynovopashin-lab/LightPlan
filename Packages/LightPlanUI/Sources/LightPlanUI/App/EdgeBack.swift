@@ -16,6 +16,15 @@ enum EdgeBackRule {
     static let parallax: CGFloat = 0.3
     /// Граница «оболочечных» слоёв: слои ниже — внутри «Съёмок» (лента года, поиск, статистика).
     static let shellFloor: Double = 0.9
+    /// Тень края движущегося слоя — узкий градиент слева от кромки, не `.shadow` на содержимом: тот давал тень под
+    /// каждой плашкой, кнопкой и строкой слоя (28з.5: на первом кадре жеста у «Контактов» отличалось 670 тыс. пикселей).
+    static let shadeWidth: CGFloat = 20
+    static let shadeOpacity: Double = 0.18
+
+    /// Доля тени у кромки: целая на старте жеста, к концу пути слой уходит и тень гаснет вместе с ним.
+    static func shadeFade(dx: CGFloat, width: CGFloat) -> Double {
+        Double(min(1, max(0, 1 - dx / max(1, width))))
+    }
 
     static func commits(dx: CGFloat, velocity: CGFloat, width: CGFloat) -> Bool {
         if velocity <= backVelocity { return false }
@@ -59,7 +68,13 @@ final class EdgeBack {
 
     #if DEBUG
     /// Замер на симуляторе (`-LPEdgeBackLog <файл>`): строка на начало, отпускание, закрытие и отказ.
-    private let logURL = UserDefaults.standard.string(forKey: "LPEdgeBackLog").map { URL(fileURLWithPath: $0) }
+    /// Имя без «/» — файл в `Documents` приложения: на телефоне путь контейнера заранее неизвестен.
+    private let logURL = UserDefaults.standard.string(forKey: "LPEdgeBackLog").map {
+        $0.hasPrefix("/") ? URL(fileURLWithPath: $0) : URL.documentsDirectory.appending(path: $0)
+    }
+    #endif
+    #if DEBUG && os(iOS)
+    @ObservationIgnored private lazy var meter: EdgeBackMeter? = logURL == nil ? nil : EdgeBackMeter { [unowned self] in note($0) }
     #endif
     func note(_ line: @autoclosure () -> String) {
         #if DEBUG
@@ -104,12 +119,18 @@ final class EdgeBack {
         note("begin top=\(top?.z ?? -1) layers=\(ordered.map(\.z))")
         dx = 0
         dragging = true
+        #if DEBUG && os(iOS)
+        meter?.start()
+        #endif
         return true
     }
 
     func move(_ x: CGFloat, at time: TimeInterval = ProcessInfo.processInfo.systemUptime) {
         guard dragging else { return }
         dx = min(max(0, x), width)
+        #if DEBUG && os(iOS)
+        meter?.move()
+        #endif
         samples.append((time, x))
         samples.removeAll { time - $0.t > Self.velocityWindow }
     }
@@ -145,6 +166,9 @@ final class EdgeBack {
         dragging = false
         settling = true
         pendingCommit = commit
+        #if DEBUG && os(iOS)
+        meter?.beginSettle()
+        #endif
         withAnimation(Self.settle) { dx = commit ? width : 0 }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(Self.settleSeconds))
@@ -155,6 +179,9 @@ final class EdgeBack {
     /// Доезд закончен. Закрытие — без анимации: слой уже за краем, второй выезд был бы лишним.
     func finishSettle() {
         guard settling else { return }
+        #if DEBUG && os(iOS)
+        meter?.stop()
+        #endif
         let commit = pendingCommit ?? false
         pendingCommit = nil
         let target = grabbed.flatMap { id in layers.first { $0.id == id } }
@@ -203,8 +230,10 @@ final class EdgeBack {
 
     /// Сдвиг общей основы: вкладок (`tabs`) или календаря «Съёмок» (`planner`) — когда прямо под верхним слоем лежит она.
     enum Base { case tabs, planner }
-    func baseOffset(_ base: Base) -> CGFloat {
-        guard active, let t = top else { return 0 }
+    /// `shown` — для вкладок: едет только та, что видна, спрятанные стоят и жеста не читают (28з.5: сдвиг всего стека
+    /// из четырёх вкладок, трёх невидимых тоже, стоил главному потоку ≈ 9 из 13 мс на кадр).
+    func baseOffset(_ base: Base, shown: Bool = true) -> CGFloat {
+        guard shown, active, let t = top else { return 0 }
         let shell = t.z >= EdgeBackRule.shellFloor
         let belowIsShell = second.map { $0.z >= EdgeBackRule.shellFloor } ?? false
         let moves: Bool
@@ -226,22 +255,46 @@ private struct EdgeBackLayer: ViewModifier {
     @State private var id = UUID()
 
     func body(content: Content) -> some View {
+        let _ = EdgeBackCount.hit("EdgeBackLayer")
         let x = edge.offset(of: id)
         let top = edge.isTop(id)
         content
-            // Край слоя отбрасывает тень на то, что под ним, как у системной страницы.
-            .shadow(color: .black.opacity(top ? 0.22 * (1 - Double(edge.dx / edge.width)) : 0), radius: 9, x: -3)
+            // Край слоя отбрасывает тень на то, что под ним, как у системной страницы: полоса слева от кромки, под
+            // содержимым тени нет. В покое прозрачность нулевая.
+            .background(alignment: .leading) {
+                EdgeShade().opacity(top ? EdgeBackRule.shadeFade(dx: edge.dx, width: edge.width) : 0)
+            }
             .offset(x: x)
             .onAppear { edge.register(id, z: z, inside: inside, close: close) }
             .onDisappear { edge.unregister(id) }
     }
 }
 
+/// Полоса тени: чёрный от `shadeOpacity` у кромки к нулю за `shadeWidth`, на всю высоту экрана, в обеих темах.
+private struct EdgeShade: View {
+    var body: some View {
+        let a = EdgeBackRule.shadeOpacity
+        LinearGradient(stops: [
+            .init(color: .black.opacity(a), location: 0),
+            .init(color: .black.opacity(a * 0.62), location: 0.2),
+            .init(color: .black.opacity(a * 0.26), location: 0.45),
+            .init(color: .black.opacity(a * 0.08), location: 0.7),
+            .init(color: .black.opacity(0), location: 1),
+        ], startPoint: .trailing, endPoint: .leading)
+        .frame(width: EdgeBackRule.shadeWidth)
+        .offset(x: -EdgeBackRule.shadeWidth)
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
 private struct EdgeBackBase: ViewModifier {
     let edge: EdgeBack
     let base: EdgeBack.Base
+    let shown: Bool
     func body(content: Content) -> some View {
-        content.offset(x: edge.baseOffset(base))
+        let _ = EdgeBackCount.hit("EdgeBackBase.\(base)")
+        content.offset(x: edge.baseOffset(base, shown: shown))
     }
 }
 
@@ -253,8 +306,8 @@ extension View {
     }
 
     /// То, что лежит под слоями: сдвигается на 30 % ширины, пока верхний слой едет за пальцем.
-    func edgeBackBase(_ app: AppModel, _ base: EdgeBack.Base) -> some View {
-        modifier(EdgeBackBase(edge: app.edgeBack, base: base))
+    func edgeBackBase(_ app: AppModel, _ base: EdgeBack.Base, shown: Bool = true) -> some View {
+        modifier(EdgeBackBase(edge: app.edgeBack, base: base, shown: shown))
     }
 }
 

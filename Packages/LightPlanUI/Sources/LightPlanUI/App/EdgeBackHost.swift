@@ -22,6 +22,9 @@ final class EdgeBackProbe: UIView {
     weak var app: AppModel? { didSet { gate.app = app } }
     private var pan: UIScreenEdgePanGestureRecognizer?
     private let gate = EdgeBackGate()
+    #if DEBUG
+    private var benchStarted = false
+    #endif
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -39,6 +42,14 @@ final class EdgeBackProbe: UIView {
         g.delegate = gate
         window.addGestureRecognizer(g)
         pan = g
+        #if DEBUG
+        // Стенд без пальца (`-LPEdgeBackBench 1`): тот же путь `begin` → `move` → `end`, один раз за запуск.
+        if let app, UserDefaults.standard.bool(forKey: "LPEdgeBackBench"), !benchStarted {
+            benchStarted = true
+            let width = window.bounds.width
+            Task { @MainActor in await EdgeBackBench.run(app, width: width) }
+        }
+        #endif
     }
 
     @objc private func handle(_ g: UIScreenEdgePanGestureRecognizer) {
