@@ -65,6 +65,18 @@ struct PinterestReaderTests {
         await #expect(throws: PinterestFailure.badAnswer) { try await client(body: "").image(at: "x") }
     }
 
+    @Test func pinterestsGenericPictureIsNotAPinPicture() async throws {
+        let junk = Data("not really a picture, but the same bytes for every dead short link".utf8)
+        let c = PinterestClient(config: PinterestConfig(url: base, key: "k"), transport: { req in
+            (junk, HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }, genericPictures: [PinterestClient.fingerprint(junk)])
+        await #expect(throws: PinterestFailure.notFound) { try await c.preview(of: "https://pin.it/dead") }
+        // Тот же ответ на `?img=` не трогаем: в доске картинки приходят по адресам из списка, заглушки там нет.
+        let ok = try await c.image(at: "https://i.pinimg.com/736x/a.jpg")
+        #expect(ok == junk)
+        #expect(PinterestClient.genericPictureHashes.count == 1 && PinterestClient.genericPictureHashes.first?.count == 64)
+    }
+
     // MARK: коды → причины
 
     @Test(arguments: [

@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// Читалка Pinterest в Yandex Cloud (`lightplanogreader`, итерация 28м): адрес известен всем, ключ — нет.
 /// Ключ не лежит в репозитории (он публичный): фаза сборки `Tools/og_key.sh` кладёт его в
@@ -108,10 +109,22 @@ public struct PinterestClient: PinterestReading {
     let config: PinterestConfig
     let timeouts: PinterestTimeouts
     let transport: PinterestTransport
+    let genericPictures: Set<String>
 
-    public init(config: PinterestConfig, timeouts: PinterestTimeouts = PinterestTimeouts(), transport: PinterestTransport? = nil) {
+    /// Картинка-заглушка Pinterest: на мёртвую или недописанную `pin.it/<код>` читалка отвечает `200` и отдаёт её
+    /// (страница-посадка Pinterest с красной «P» на мозаике, 921 610 байт, одна и та же для любого кода; измерено 04.10.2026,
+    /// два разных несуществующих кода — один и тот же sha256). Это не картинка пина: показывать её плиткой — имитация.
+    /// Настоящий несуществующий `/pin/<номер>/` даёт честный 404. Если Pinterest сменит заглушку, фильтр перестанет её
+    /// ловить, и плитка получит чужую картинку — тогда добавить новый отпечаток сюда.
+    public static let genericPictureHashes: Set<String> = ["32a37cba60d1045235db6f18b41fd487beb96c35064d34a6ce0110a80728240c"]
+
+    static func fingerprint(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
+
+    public init(config: PinterestConfig, timeouts: PinterestTimeouts = PinterestTimeouts(), transport: PinterestTransport? = nil,
+                genericPictures: Set<String> = PinterestClient.genericPictureHashes) {
         self.config = config
         self.timeouts = timeouts
+        self.genericPictures = genericPictures
         self.transport = transport ?? Self.liveTransport(timeouts: timeouts)
     }
 
@@ -154,6 +167,7 @@ public struct PinterestClient: PinterestReading {
     public func preview(of page: String) async throws -> Data {
         let (data, _) = try await get(mode: "url", value: page, timeout: timeouts.page)
         guard !data.isEmpty else { throw PinterestFailure.badAnswer }
+        if genericPictures.contains(Self.fingerprint(data)) { throw PinterestFailure.notFound }
         return data
     }
 
