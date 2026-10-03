@@ -20,6 +20,10 @@
      node Tools/shots/pair.js --screens light --sheets fork,addr,geo   # лист «Где снимаем» (21в)
      node Tools/shots/pair.js --layers year,year12,stats,search,bin,blk --only-layers
                                                    # слои и листы «Съёмок» (итерация 22)
+     node Tools/shots/pair.js --screens light --no-weather --themes dark --moments day
+                                                   # 28ж: БЕЗ прогноза, только натив: у веба в таком кадре выдумка,
+                                                   # у натива — «Прогноз недоступен»; пары нет, в no_weather.json —
+                                                   # какие узлы погоды на экране есть и их текст
      node Tools/shots/pair.js --drum-nudge 20      # барабан провёрнут на 20 pt (только натив):
                                                    # видно, как кромка окна гнёт число
    Выход: --out (по умолчанию $TMPDIR/lp-shots/<ветка>) — по папке на сценарий
@@ -49,6 +53,10 @@ if (args.help) {
   process.exit(0);
 }
 const FORECAST = path.resolve(args.forecast || path.join(FX, 'forecast_barnaul.json'));
+/* 28ж: файла нет — источник погоды приложения сценария отвечает отказом, как сеть без ответа. */
+const NATIVE_FORECAST = args['no-weather'] ? path.join(os.tmpdir(), 'lp-no-forecast-' + process.pid + '.json') : FORECAST;
+/* Узлы, по которым видно, есть ли на экране погода (и что вместо неё). */
+const WEATHER_NODES = /^(wx\.|tele\.(sky|wind|sunset|golden|cond)|next\.|dp\.(temp|wxnone|rise|set|gold)|wk\.|header\.note)/;
 
 /* Сценарий пары. Место — Барнаул: пояс машины Алексея тот же (+7), а
    прогноз в Fixtures/shots снят 23 сентября 2026 для этих координат. Моменты
@@ -230,7 +238,7 @@ async function nativeShot(udid, sc, dir) {
   run('xcrun', ['simctl', 'launch', udid, BUNDLE,
     '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
     '-LPShotNow', (sc.at || MOMENTS[sc.moment]) + ':00' + OFFSET, '-LPShotZone', ZONE,
-    '-LPShotSeed', sc.seed, '-LPShotForecast', FORECAST,
+    '-LPShotSeed', sc.seed, '-LPShotForecast', NATIVE_FORECAST,
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
     ...(sc.chapter === 'spoiler' ? ['-LPShotSpoiler', '1'] : []),
@@ -529,8 +537,19 @@ function markdown(results) {
   // Фаза карточки — проверка, а не замер: несовпадение роняет прогон в конце
   // (ревью GPT к 4224ce1), пары и отчёт до этого снимаются все.
   const phaseMiss = [];
+  const noWeather = {};
   for (const sc of list) {
     const nat = await nativeShot(dev.udid, sc, sc.dir);
+    if (args['no-weather']) {
+      const seen = {};
+      for (const [k, r] of Object.entries(nat.nodes)) {
+        if (!WEATHER_NODES.test(k) || r.x + r.w <= 0 || r.x >= 440 || r.y >= 956 || r.y + r.h <= 0) continue;
+        seen[k] = r.text != null ? r.text : [r.x, r.y, r.w, r.h].map(v => Math.round(v)).join(',');
+      }
+      noWeather[sc.name] = seen;
+      console.log(sc.name + ': узлы погоды на экране — ' + Object.keys(seen).join(' '));
+      continue;
+    }
     // Под главой корень остаётся в стеке и пишет свои рамки — сверяется
     // только глава (веб прячет корень листом главы).
     if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(nat.nodes)) if (/^(header|mode|nav)/.test(k)) delete nat.nodes[k];
@@ -604,6 +623,11 @@ function markdown(results) {
     console.log(`${sc.name}: узлов в обоих ${both.length}, сдвиг > 2 pt у ${off}, есть только с одной стороны ${gone}`);
   }
   await browser.close();
+  if (args['no-weather']) {
+    fs.writeFileSync(path.join(OUT, 'no_weather.json'), JSON.stringify(noWeather, null, 1));
+    console.log('без прогноза: ' + path.join(OUT, 'no_weather.json'));
+    return;
+  }
   fs.writeFileSync(path.join(OUT, 'report.md'), markdown(results));
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(results, null, 1));
   console.log('отчёт: ' + path.join(OUT, 'report.md'));
