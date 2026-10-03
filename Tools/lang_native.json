@@ -116,7 +116,11 @@
     "doc.lostSession": "съёмки",
     "doc.lostOrg": "организации",
     "doc.srcNone": "Без ссылки",
-    "doc.addKind": "Вид"
+    "doc.addKind": "Вид",
+    "wx.unavailable": "Прогноз недоступен",
+    "wx.loading": "Прогноз загружается…",
+    "pro.srcProxy": "Наш сервер · прогноз",
+    "pro.srcNone": "нет прогноза"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -234,7 +238,11 @@
     "doc.lostSession": "the shoot",
     "doc.lostOrg": "the organization",
     "doc.srcNone": "No link",
-    "doc.addKind": "Kind"
+    "doc.addKind": "Kind",
+    "wx.unavailable": "Forecast unavailable",
+    "wx.loading": "Loading forecast…",
+    "pro.srcProxy": "Our server · forecast",
+    "pro.srcNone": "no forecast"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -352,7 +360,11 @@
     "doc.lostSession": "la sesión",
     "doc.lostOrg": "la organización",
     "doc.srcNone": "Sin enlace",
-    "doc.addKind": "Tipo"
+    "doc.addKind": "Tipo",
+    "wx.unavailable": "Pronóstico no disponible",
+    "wx.loading": "Cargando pronóstico…",
+    "pro.srcProxy": "Nuestro servidor · pronóstico",
+    "pro.srcNone": "sin pronóstico"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -469,7 +481,11 @@
     "doc.lostSession": "撮影",
     "doc.lostOrg": "組織",
     "doc.srcNone": "リンクなし",
-    "doc.addKind": "種類"
+    "doc.addKind": "種類",
+    "wx.unavailable": "予報を取得できません",
+    "wx.loading": "予報を読み込み中…",
+    "pro.srcProxy": "当サーバー · 予報",
+    "pro.srcNone": "予報なし"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -586,6 +602,10 @@
     "doc.lostSession": "拍摄",
     "doc.lostOrg": "机构",
     "doc.srcNone": "无链接",
-    "doc.addKind": "类型"
+    "doc.addKind": "类型",
+    "wx.unavailable": "暂无预报",
+    "wx.loading": "正在加载预报…",
+    "pro.srcProxy": "我们的服务器·预报",
+    "pro.srcNone": "无预报"
   }
 }

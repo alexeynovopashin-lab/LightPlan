@@ -132,8 +132,9 @@ private struct MonthCell: View {
             if !s.kind.isWork {
                 return Label(text: f.t.t(s.kind == .meet ? "plan.meet" : "plan.event"), color: pal.ink5, busy: true)
             }
-            let q = f.weather(s.day).quality
-            return Label(text: f.words.shortType(s), color: q.dot ?? Color(hex: 0xA8B49B), busy: false)
+            // Цвет точки — небо дня; без прогноза точка нейтральная, как у «обычного» дня.
+            let dot = f.weather(s.day)?.quality.dot
+            return Label(text: f.words.shortType(s), color: dot ?? Color(hex: 0xA8B49B), busy: false)
         }
         if !out { out1 += f.blocks(on: day).map { Label(text: f.blockLabel($0), color: pal.ink5, busy: true) } }
         return out1.map { out ? Label(text: $0.text, color: $0.color.opacity(0.45), busy: $0.busy) : $0 }
@@ -177,11 +178,11 @@ struct PlannerDayPanel: View {
     private func bar(_ pal: Palette) -> some View {
         let d = app.planner.selected
         let sky = f.sky(d), wx = f.weather(d)
-        let fog = wx.quality == .fog
+        let fog = wx?.quality == .fog
         let goldenMin: Double? = fog
             ? sky.rise.flatMap { r in sky.goldenA.map { r - $0 } }
             : sky.set.flatMap { s in sky.goldenB.map { s - $0 } }
-        let sc = wx.real ? wx.sunset : nil
+        let sc = wx?.sunset
         let setColor: Color = sc.map { $0 >= 75 ? pal.brass : $0 >= 50 ? pal.green : $0 >= 28 ? pal.ink : pal.blue } ?? pal.brass
         return HStack(spacing: 0) {
             HStack(spacing: 8) {
@@ -191,12 +192,19 @@ struct PlannerDayPanel: View {
                     item("golden", f.durShort(Int(g.rounded())), pal.ink4, weight: 500, node: "dp.gold", pal: pal)
                 }
                 Rectangle().fill(pal.hairline).frame(width: 1, height: 12)
-                HStack(spacing: 3) {
-                    Icon(wx.quality.signIconName, size: 17, line: 1.5).foregroundStyle(pal.ink)
-                        .padding(.trailing, 8)
-                    let temp = "\(f.temp(d))°"
-                    Text(temp).font(webFont(13, 600)).monospacedDigit().foregroundStyle(pal.ink)
-                        .shotNode("dp.temp", text: temp)
+                if let wx, let deg = f.temp(d) {
+                    HStack(spacing: 3) {
+                        Icon(wx.quality.signIconName, size: 17, line: 1.5).foregroundStyle(pal.ink)
+                            .padding(.trailing, 8)
+                        let temp = "\(deg)°"
+                        Text(temp).font(webFont(13, 600)).monospacedDigit().foregroundStyle(pal.ink)
+                            .shotNode("dp.temp", text: temp)
+                    }
+                } else {
+                    // Прогноза нет — надпись на месте знака и градусов; выдумки нет (28ж).
+                    Text(f.forecastNote).font(webFont(12)).foregroundStyle(pal.ink4)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .shotNode("dp.wxnone", text: f.forecastNote)
                 }
                 Spacer(minLength: 0)
             }

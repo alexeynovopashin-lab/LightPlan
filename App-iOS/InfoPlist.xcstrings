@@ -36,6 +36,42 @@
           }
         }
       }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "comment": "Текст системного запроса геолокации (28ж, 03.10): куда уходят координаты. Базовое значение — английский в Config/*.xcconfig, переводы — здесь; формулировку согласует Алексей.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan finds out where you are to work out light and weather for your place. Your coordinates go to Open-Meteo for the forecast or, where it is unreachable, to our server in Yandex Cloud; Apple looks up the place name. Exact coordinates are not sent anywhere else."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan узнаёт, где вы, чтобы посчитать свет и погоду для вашего места. Ваши координаты уходят в Open-Meteo за прогнозом, а там, где он недоступен, — на наш сервер в Yandex Cloud; название места определяет Apple. Точные координаты больше никуда не отправляются."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan averigua dónde estás para calcular la luz y el clima de tu lugar. Tus coordenadas van a Open-Meteo para el pronóstico o, donde no está disponible, a nuestro servidor en Yandex Cloud; Apple obtiene el nombre del lugar. Las coordenadas exactas no se envían a ningún otro sitio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Planは、現在地の光と天気を計算するために位置情報を使います。座標は予報のためにOpen-Meteoへ、利用できない場合はYandex Cloud上の当社サーバーへ送られます。地名の取得にはAppleのサービスを使います。正確な座標はそれ以外には送信されません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan 获取您的位置，用于计算当地的光线和天气。坐标会发送到 Open-Meteo 获取预报；在其无法访问的地方，则经由我们位于 Yandex Cloud 的服务器；地名由 Apple 解析。精确坐标不会发送到其他任何地方。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

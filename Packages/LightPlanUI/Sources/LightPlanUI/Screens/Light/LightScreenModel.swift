@@ -130,7 +130,7 @@ public final class LightScreenModel {
 
         return LightTelemetry.build(
             sun: sun, t: t, moon: moonMode, moonSnapshot: moonMode ? moonSnapshot(date: date, t: t, sun: sun) : nil,
-            weather: weatherDay, weatherLive: weather.isLive, air: air,
+            weather: weatherDay, weatherStatus: weather.status, air: air,
             headerLocationName: headerLocationName, headerDateLabel: headerDateLabel(t: t),
             headerNote: headerNote(t: t),
             lexicon: lexicon, clock: clock, fahrenheit: fahrenheit

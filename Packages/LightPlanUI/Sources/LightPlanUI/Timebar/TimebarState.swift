@@ -445,12 +445,9 @@ public final class TimebarState {
     // MARK: - Знаки барабана и ленты
 
     /// Погодный знак дня — только там, где есть настоящий прогноз
-    /// (инвариант «прибор не врёт»): выдумку офлайн барабан не рисует.
+    /// (инвариант «прибор не врёт»): выдумки хранилище не отдаёт вовсе.
     public func weatherSignName(offset: Int) -> String? {
-        guard let weather else { return nil }
-        let d = date(offset: offset)
-        let day = weather.day(for: d)
-        return day.real ? day.quality.signIconName : nil
+        weather?.day(for: date(offset: offset))?.quality.signIconName
     }
 
     /// Фаза луны в этот день, в полдень — как в вебе (`moonPhase(date, 720)`).

@@ -43,10 +43,11 @@ extension AppModel {
     /// (полярная ночь и день) — `nil`.
     func formLight(on day: CivilDate) -> FormLightWindow? {
         let sun = SolarDay(date: day, place: place.place)
-        switch light.weather.day(for: day).quality {
-        case .poor:
+        // Прогноза нет — окно по одной астрономии (вечернее), без «плохо»/«туман».
+        switch light.weather.day(for: day)?.quality {
+        case .poor?:
             return FormLightWindow(start: 0, end: 0, poor: true)
-        case .fog:
+        case .fog?:
             guard let a = sun.blueA, let b = sun.goldenA, b > a else { return nil }
             return FormLightWindow(start: a, end: b, dawn: true)
         default:

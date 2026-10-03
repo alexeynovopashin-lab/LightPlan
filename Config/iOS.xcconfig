@@ -18,4 +18,4 @@ INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait
 INFOPLIST_FILE = Config/Info-iOS.plist
 // Геолокация — только по запросу пользователя («Найти меня»), одна точка, без фона.
 // Текст видят на системном запросе; локализует его итерация 14.
-INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Light Plan узнает, где вы, чтобы посчитать свет и погоду для вашего места. Ничего не отправляется никому, кроме названия места на серверы Apple.
+INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Light Plan finds out where you are to work out light and weather for your place. Your coordinates go to Open-Meteo for the forecast or, where it is unreachable, to our server in Yandex Cloud; Apple looks up the place name. Exact coordinates are not sent anywhere else.

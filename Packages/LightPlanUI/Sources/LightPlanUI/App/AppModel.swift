@@ -411,7 +411,7 @@ public final class AppModel {
         let model = AppModel(snapshot: snapshot, store: store, language: language,
                         locator: CoreLocationProvider(), geocoder: AppleReverseGeocoder(locale: locale),
                         cityLookup: AppleCityLookup(locale: locale), placeSearch: ApplePlaceSearch(locale: locale),
-                        weatherSource: OpenMeteoSource(),
+                        weatherSource: RoutedWeatherSource.live(config: WeatherProxyConfig.load()),
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading())
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }

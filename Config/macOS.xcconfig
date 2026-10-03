@@ -10,4 +10,4 @@ ENABLE_APP_SANDBOX = YES
 ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES
 // Геолокация по запросу пользователя: право в песочнице и текст запроса.
 ENABLE_RESOURCE_ACCESS_LOCATION = YES
-INFOPLIST_KEY_NSLocationUsageDescription = Light Plan узнает, где вы, чтобы посчитать свет и погоду для вашего места. Ничего не отправляется никому, кроме названия места на серверы Apple.
+INFOPLIST_KEY_NSLocationUsageDescription = Light Plan finds out where you are to work out light and weather for your place. Your coordinates go to Open-Meteo for the forecast or, where it is unreachable, to our server in Yandex Cloud; Apple looks up the place name. Exact coordinates are not sent anywhere else.

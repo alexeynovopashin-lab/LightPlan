@@ -35,7 +35,7 @@ private struct WeekRow: View {
         let st = app.planner
         let today = f.today
         let isToday = day == today, sel = day == st.selected, open = st.weekOpen == day
-        let q = f.weather(day).quality
+        let wx = f.weather(day)
         HStack(alignment: .top, spacing: 10) {
             Button {
                 withAnimation(.snappy(duration: 0.25)) { app.planner.tapWeekRow(day) }
@@ -47,12 +47,15 @@ private struct WeekRow: View {
                     Text(f.dates.wdShort(f.date(day))).font(webFont(10)).tracking(0.6)
                         .foregroundStyle(isToday ? pal.brass : pal.ink7)
                         .frame(height: 12)
-                    VStack(spacing: 1) {
-                        Icon(q.weekSignName, size: 17).foregroundStyle(pal.ink4)
-                        Text("\(f.temp(day))°").font(webFont(11)).monospacedDigit().foregroundStyle(pal.ink4)
-                            .frame(height: 13)
+                    // Знак и градусы — из прогноза; без него колонка пуста (надпись — в раскрытом дне).
+                    if let wx, let deg = f.temp(day) {
+                        VStack(spacing: 1) {
+                            Icon(wx.quality.weekSignName, size: 17).foregroundStyle(pal.ink4)
+                            Text("\(deg)°").font(webFont(11)).monospacedDigit().foregroundStyle(pal.ink4)
+                                .frame(height: 13)
+                        }
+                        .padding(.top, 4)
                     }
-                    .padding(.top, 4)
                 }
                 .padding(.top, 4)
                 .frame(width: 46)
@@ -175,7 +178,7 @@ private struct WeekRow: View {
             det(pal, "sunrise", f.t.t("tele.sunrise"), f.fmt(sky.rise), gold: false)
             if sky.set != nil { det(pal, "sunset", f.t.t("tele.sunset"), f.fmt(sky.set), gold: false) }
             if sky.goldenB != nil { det(pal, "clock", f.t.t("tele.golden"), f.range(sky.goldenB, sky.blueB), gold: true) }
-            Text(f.t.t("week.wx", ["cloud": "\(wx.cloud)", "wind": "\(wx.wind)"]))
+            Text(wx.map { f.t.t("week.wx", ["cloud": "\($0.cloud)", "wind": "\($0.wind)"]) } ?? f.forecastNote)
                 .font(webFont(12)).foregroundStyle(pal.ink4)
         }
         .padding(EdgeInsets(top: 2, leading: 12, bottom: 10, trailing: 12))

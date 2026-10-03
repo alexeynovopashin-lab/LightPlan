@@ -47,6 +47,9 @@ esac
 # `make phone` из той же папки отдал приложение без ключей).
 dir="${TARGET_BUILD_DIR:-}/${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}"
 [ -n "${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}" ] && [ -d "$dir" ] || { echo "stamp_build: нет папки ресурсов приложения ($dir)" >&2; exit 1; }
+# Ключ сервера погоды (28ж) — свой файл рядом; нет ключа — приложение ходит только напрямую.
+"$root/Tools/weather_key.sh" "$dir"
+
 out="$dir/build_stamp.plist"
 pb=/usr/libexec/PlistBuddy
 rm -f "$out"

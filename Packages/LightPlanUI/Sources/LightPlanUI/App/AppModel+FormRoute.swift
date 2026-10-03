@@ -69,11 +69,11 @@ extension AppModel {
     /// Небо дня для проверки пожеланий — у места приложения, как у веба
     /// (`qualityOf`, `dayWeather`, `computeSun` смотрят на `LAT`/`LON`).
     func wishSky(_ day: CivilDate) -> WishSky {
-        let wx = light.weather.day(for: day)
+        let wx = light.weather.day(for: day)      // `nil` — прогноза нет: пожелания про погоду молчат
         let p = place.place
         let sun = SolarDay(date: day, place: p)
         let moon = MoonVsStars(date: day, place: p)
-        return WishSky(quality: wx.quality, sunsetScore: wx.sunset, astroNight: sun.astroB != nil,
+        return WishSky(quality: wx?.quality, sunsetScore: wx?.sunset, astroNight: sun.astroB != nil,
                        moonLevel: moon.level?.rawValue, moonPercent: moon.percent,
                        moonFraction: MoonPhase(date: day, minutes: 1320, zone: p.zone).fraction)
     }

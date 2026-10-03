@@ -76,11 +76,18 @@ struct PlannerFacts {
     /// Солнце дня в месте приложения (веб `daySky`).
     func sky(_ d: CivilDate) -> SolarDay { SolarDay(date: d, place: app.place.place) }
 
-    func weather(_ d: CivilDate) -> WeatherDay { app.light.weather.day(for: d) }
+    /// Настоящий прогноз дня; `nil` — его нет (28ж: выдумка не подставляется).
+    func weather(_ d: CivilDate) -> WeatherDay? { app.light.weather.day(for: d) }
 
-    /// Градусы дня в 15:00 (веб `tempOut(wx.tempBase, 900)`).
-    func temp(_ d: CivilDate, at minute: Double = 900) -> Int {
-        LightTelemetry.tempOut(weather(d).temperatureBase, minute, app.settings.tempUnit == .f)
+    /// Надпись вместо погоды, когда прогноза нет: «Прогноз недоступен» или, пока
+    /// первый ответ не пришёл, «Прогноз загружается…».
+    var forecastNote: String {
+        t.t(app.light.weather.status == .loading ? "wx.loading" : "wx.unavailable")
+    }
+
+    /// Градусы дня в 15:00 (веб `tempOut(wx.tempBase, 900)`); `nil` — прогноза нет.
+    func temp(_ d: CivilDate, at minute: Double = 900) -> Int? {
+        weather(d).map { LightTelemetry.tempOut($0.temperatureBase, minute, app.settings.tempUnit == .f) }
     }
 
     /// Записи с частью в этих сутках, видимые в планировщике (веб `onDay` +

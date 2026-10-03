@@ -36,7 +36,7 @@ public struct LightScreenView: View {
 
         ScrollView {
             VStack(spacing: 0) {
-                header(telemetry.header, pal)
+                header(telemetry.header, note: telemetry.forecastNote, pal)
                     .padding(.horizontal, 24)
                     .padding(.top, 24)
 
@@ -77,7 +77,7 @@ public struct LightScreenView: View {
     /// `.header`: слева место (16/600), область (11), дата (11/500
     /// прописными, разрядка 0,6), «сегодня» (11/500, `--ink-6`); справа
     /// погода — знак 22 и 24/600, состояние 14 (`--ink-2`), ↓↑ 13 (`--ink-4`).
-    private func header(_ h: LightTelemetry.Header, _ pal: Palette) -> some View {
+    private func header(_ h: LightTelemetry.Header, note forecastNote: String?, _ pal: Palette) -> some View {
         HStack(alignment: .top, spacing: 12) {
             // `.loc` веба — кнопка на всю левую колонку: место, область, дата.
             Button(action: onPlace) {
@@ -117,29 +117,39 @@ public struct LightScreenView: View {
             .buttonStyle(PlaceButtonStyle())
             .accessibilityLabel(model.lexiconWord("today.changePlace"))
             Spacer(minLength: 0)
-            VStack(alignment: .trailing, spacing: 2) {
-                // Знак и градусы: 22 + поле 8 (`.wx` у знака) + зазор 7 = 15
-                // между ними; знак на 1,5 выше середины строки, как у веба.
-                HStack(spacing: 15) {
-                    Icon(h.weatherIconName, size: 22, line: 1.5)
-                        .foregroundStyle(pal.ink)
-                        .shotNode("wx.icon")
-                        .alignmentGuide(VerticalAlignment.center) { $0[VerticalAlignment.center] + 1.5 }
-                    Text(h.temperature)
-                        .font(.system(size: 24, weight: .semibold).monospacedDigit()).tracking(-0.5)
-                        .foregroundStyle(pal.ink)
-                        .shotNode("wx.temp", text: h.temperature)
+            if let w = h.weather {
+                VStack(alignment: .trailing, spacing: 2) {
+                    // Знак и градусы: 22 + поле 8 (`.wx` у знака) + зазор 7 = 15
+                    // между ними; знак на 1,5 выше середины строки, как у веба.
+                    HStack(spacing: 15) {
+                        Icon(w.iconName, size: 22, line: 1.5)
+                            .foregroundStyle(pal.ink)
+                            .shotNode("wx.icon")
+                            .alignmentGuide(VerticalAlignment.center) { $0[VerticalAlignment.center] + 1.5 }
+                        Text(w.temperature)
+                            .font(.system(size: 24, weight: .semibold).monospacedDigit()).tracking(-0.5)
+                            .foregroundStyle(pal.ink)
+                            .shotNode("wx.temp", text: w.temperature)
+                    }
+                    Text(w.condition)
+                        .font(.system(size: 14))
+                        .foregroundStyle(pal.ink2)
+                        .shotNode("wx.cond", text: w.condition)
+                    HStack(spacing: 10) {
+                        Text(w.low).shotNode("wx.lo", text: w.low)
+                        Text(w.high).shotNode("wx.hi", text: w.high)
+                    }
+                    .font(.system(size: 13).monospacedDigit())
+                    .foregroundStyle(pal.ink4)
                 }
-                Text(h.condition)
+            } else if let forecastNote {
+                // Прогноза нет — честная надпись на месте погоды; выдуманное не рисуем (28ж).
+                Text(forecastNote)
                     .font(.system(size: 14))
-                    .foregroundStyle(pal.ink2)
-                    .shotNode("wx.cond", text: h.condition)
-                HStack(spacing: 10) {
-                    Text(h.low).shotNode("wx.lo", text: h.low)
-                    Text(h.high).shotNode("wx.hi", text: h.high)
-                }
-                .font(.system(size: 13).monospacedDigit())
-                .foregroundStyle(pal.ink4)
+                    .foregroundStyle(pal.ink4)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 150, alignment: .trailing)
+                    .shotNode("wx.none", text: forecastNote)
             }
         }
     }
@@ -249,16 +259,18 @@ public struct LightScreenView: View {
                 .shotNode("next.value", text: nl.value)
                 .frame(height: 31.5)
                 .padding(.top, 3)
-            HStack(spacing: 8) {
-                SparklineShape(values: nl.trend)
-                    .stroke(pal.ink4, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                    .frame(width: 42, height: 14)
-                    .shotNode("next.spark")
-                Text(nl.trendWord).font(.system(size: 12))
-                    .shotNode("next.word", text: nl.trendWord)
+            if let trend = nl.trend, let word = nl.trendWord {
+                HStack(spacing: 8) {
+                    SparklineShape(values: trend)
+                        .stroke(pal.ink4, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                        .frame(width: 42, height: 14)
+                        .shotNode("next.spark")
+                    Text(word).font(.system(size: 12))
+                        .shotNode("next.word", text: word)
+                }
+                .foregroundStyle(pal.ink4)
+                .padding(.top, 5)
             }
-            .foregroundStyle(pal.ink4)
-            .padding(.top, 5)
         }
         .frame(maxWidth: .infinity)
     }
@@ -281,8 +293,9 @@ public struct LightScreenView: View {
             plainRow(labelKey: "tele.golden", value: t.golden)
             plainRow(labelKey: "tele.light", value: t.light)
             plainRow(labelKey: "tele.shadow", value: t.shadow)
-            rowWithIcon(labelKey: "tele.sky", iconName: t.sky.iconName, value: t.sky.text)
-            plainRow(labelKey: "tele.wind", value: t.wind)
+            // Небо и ветер — из прогноза: нет прогноза — нет строк (надпись уже в «Закате» и в шапке).
+            if let sky = t.sky { rowWithIcon(labelKey: "tele.sky", iconName: sky.iconName, value: sky.text) }
+            if let wind = t.wind { plainRow(labelKey: "tele.wind", value: wind) }
             if let air = t.air {
                 plainRow(labelKey: "tele.air", value: air)
             }

@@ -66,7 +66,9 @@ struct AppModelTests {
         let after = light.telemetry
         #expect(after.readout?.time != before.readout?.time)
         #expect(after.readout?.time.hasSuffix("M") == true)  // «12:22 PM»
-        #expect(after.header.temperature != before.header.temperature)
+        // Источник погоды молчит (`NoWeather`): настоящего прогноза нет, значит нет и градусов — выдумка не показывается (28ж).
+        #expect(after.header.weather == nil && before.header.weather == nil)
+        #expect(after.forecastNote != nil)
     }
 
     // MARK: - 19б: «Свет» открывается на «сейчас», в поясе из снимка

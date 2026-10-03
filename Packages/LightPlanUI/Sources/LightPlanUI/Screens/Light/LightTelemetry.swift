@@ -1,5 +1,6 @@
 import Foundation
 import LightPlanCore
+import LightPlanData
 
 /// Данные экрана «Свет» на одну минуту одних суток: порт `renderToday` и
 /// `renderPro` из `light_plan:Light_Plan/beta/index.html` в чистую функцию —
@@ -15,14 +16,20 @@ public struct LightTelemetry: Equatable, Sendable {
     // MARK: - Шапка
 
     public struct Header: Equatable, Sendable {
+        /// Погода шапки — виджет Apple: знак, градусы, состояние, мин/макс.
+        public struct Weather: Equatable, Sendable {
+            public let iconName: String
+            public let temperature: String
+            public let condition: String
+            public let low: String
+            public let high: String
+        }
         public let locationName: String
         public let dateLabel: String
         public let note: String
-        public let weatherIconName: String
-        public let temperature: String
-        public let condition: String
-        public let low: String
-        public let high: String
+        /// `nil` — настоящего прогноза на этот день нет: вместо погоды экран
+        /// пишет `forecastNote`. Выдумка (28ж, слово Алексея 02.10) не рисуется.
+        public let weather: Weather?
     }
 
     // MARK: - Показание купола (только для солнца — веб не трогает эти узлы
@@ -60,8 +67,9 @@ public struct LightTelemetry: Equatable, Sendable {
     public struct NextLightInfo: Equatable, Sendable {
         public let label: String
         public let value: String
-        public let trend: [Double]
-        public let trendWord: String
+        /// Тренд облачности — из прогноза; без прогноза `nil`, искры и слова нет.
+        public let trend: [Double]?
+        public let trendWord: String?
     }
 
     public struct ProRow: Equatable, Sendable {
@@ -105,8 +113,11 @@ public struct LightTelemetry: Equatable, Sendable {
     public let golden: String
     public let light: String
     public let shadow: String
-    public let sky: SkyRow
-    public let wind: String
+    /// Строки неба и ветра — из прогноза; без него `nil`, строк на экране нет.
+    public let sky: SkyRow?
+    public let wind: String?
+    /// «Прогноз недоступен» / «Прогноз загружается…»; `nil`, пока у дня есть прогноз.
+    public let forecastNote: String?
     /// `nil` скрывает строку «Воздух» целиком — прозрачный воздух не новость.
     public let air: String?
     public let next: NextLightInfo
@@ -122,12 +133,15 @@ public struct LightTelemetry: Equatable, Sendable {
     ///     вовсе, как и веб.
     public static func build(
         sun: SolarDay, t: Minutes, moon moonMode: Bool, moonSnapshot: MoonSnapshot?,
-        weather: WeatherDay, weatherLive: Bool, air: AirSample?,
+        weather: WeatherDay?, weatherStatus: WeatherStatus, air: AirSample?,
         headerLocationName: String, headerDateLabel: String, headerNote: String,
         lexicon: Lexicon, clock: ClockText, fahrenheit: Bool = false
     ) -> LightTelemetry {
         let raw = sun.state(at: t)
-        let quality = weather.quality
+        let quality = weather?.quality
+        // Прогноза нет — одна астрономия; об этом пишем словами, а не рисуем выдуманное.
+        let forecastNote: String? = weather == nil
+            ? lexicon.t(weatherStatus == .loading ? "wx.loading" : "wx.unavailable") : nil
 
         // Плохая погода перебивает свет: небо закрыто — экспонометр падает в
         // самый низ (веб: `if (q === "poor") st = {...}`). Веб заменяет объект
@@ -145,11 +159,14 @@ public struct LightTelemetry: Equatable, Sendable {
         // Заголовок: как виджет Apple — иконка, температура, состояние, мин/макс.
         let header = Header(
             locationName: headerLocationName, dateLabel: headerDateLabel, note: headerNote,
-            weatherIconName: quality.signIconName,
-            temperature: "\(tempOut(weather.temperatureBase, t, fahrenheit))°",
-            condition: lexicon.t("qualCond.\(quality.rawValue)"),
-            low: "↓ \(tempOut(weather.temperatureBase, 240, fahrenheit))°",
-            high: "↑ \(tempOut(weather.temperatureBase, 960, fahrenheit))°"
+            weather: weather.map { w in
+                Header.Weather(
+                    iconName: w.quality.signIconName,
+                    temperature: "\(tempOut(w.temperatureBase, t, fahrenheit))°",
+                    condition: lexicon.t("qualCond.\(w.quality.rawValue)"),
+                    low: "↓ \(tempOut(w.temperatureBase, 240, fahrenheit))°",
+                    high: "↑ \(tempOut(w.temperatureBase, 960, fahrenheit))°")
+            }
         )
 
         let readout: Readout? = moonMode ? nil : Readout(
@@ -160,11 +177,12 @@ public struct LightTelemetry: Equatable, Sendable {
 
         // Закат — главная фича, вынесена наверх: не искать её в астро-деталях.
         let sunset: Sunset
-        if let score = weather.sunset {
+        if let score = weather?.sunset {
             sunset = Sunset(text: "\(sunsetWord(score, short: true, lexicon: lexicon)) · \(score) / 100",
                              tone: score >= 75 ? .brass : score >= 50 ? .green : score >= 28 ? .ink : .blue)
         } else {
-            sunset = Sunset(text: lexicon.t(weatherLive ? "card.noDataDay" : "card.forecastFake"), tone: .muted)
+            // Прогноза нет вовсе — честная надпись; прогноз есть, а часа заката в нём нет — «нет данных на этот день».
+            sunset = Sunset(text: forecastNote ?? lexicon.t("card.noDataDay"), tone: .muted)
         }
 
         // Золотой час — окно, не момент: чтобы не спутать его с закатом.
@@ -175,9 +193,10 @@ public struct LightTelemetry: Equatable, Sendable {
             golden = "—"
         }
 
-        let sky = SkyRow(iconName: quality.signIconName,
-                          text: "\(lexicon.t("qualSky.\(quality.rawValue)")) · \(weather.cloud)%")
-        let wind = windLine(weather, lexicon: lexicon)
+        let sky = weather.map {
+            SkyRow(iconName: $0.quality.signIconName, text: "\(lexicon.t("qualSky.\($0.quality.rawValue)")) · \($0.cloud)%")
+        }
+        let wind = weather.map { windLine($0, lexicon: lexicon) }
 
         let next = buildNextLight(sun: sun, t: t, weather: weather, lexicon: lexicon)
 
@@ -186,7 +205,7 @@ public struct LightTelemetry: Equatable, Sendable {
             : clock.range(sun.goldenB, sun.blueB)
 
         let proGroups = buildProGroups(
-            sun: sun, t: t, weather: weather, weatherLive: weatherLive,
+            sun: sun, t: t, weather: weather, weatherStatus: weatherStatus,
             moonSnapshot: moonMode ? moonSnapshot : nil, lexicon: lexicon, clock: clock,
             fahrenheit: fahrenheit
         )
@@ -195,6 +214,7 @@ public struct LightTelemetry: Equatable, Sendable {
             header: header, readout: readout, tone: tone, stateColor: raw.color, condition: condition,
             sunset: sunset, golden: golden, light: lexicon.t("sun.\(raw.code.rawValue).light"),
             shadow: lexicon.t("shadow.\(sun.shadowWord(at: t).rawValue)"), sky: sky, wind: wind,
+            forecastNote: forecastNote,
             air: Weather.airWord(air).map { lexicon.t($0.rawValue) },
             next: next, actionSubtitle: actionSubtitle, proGroups: proGroups
         )
@@ -202,7 +222,7 @@ public struct LightTelemetry: Equatable, Sendable {
 
     // MARK: - «Что дальше» и спарклайн тренда
 
-    private static func buildNextLight(sun: SolarDay, t: Minutes, weather: WeatherDay, lexicon: Lexicon) -> NextLightInfo {
+    private static func buildNextLight(sun: SolarDay, t: Minutes, weather: WeatherDay?, lexicon: Lexicon) -> NextLightInfo {
         let nl = sun.nextLight(at: t)
         let label = lexicon.t("next.\(nl.key.rawValue)")
         let value: String
@@ -211,6 +231,7 @@ public struct LightTelemetry: Equatable, Sendable {
         } else {
             value = lexicon.t(sun.polar == .day ? "sun.noSet" : "sun.noRise")
         }
+        guard let weather else { return NextLightInfo(label: label, value: value, trend: nil, trendWord: nil) }
         let c0 = weather.trend.first ?? 0
         let c1 = weather.trend.last ?? 0
         let trendWord = c1 < c0 - 12 ? lexicon.t("trend.clearing")
@@ -221,7 +242,7 @@ public struct LightTelemetry: Equatable, Sendable {
     // MARK: - Спойлер «Подробно»
 
     private static func buildProGroups(
-        sun: SolarDay, t: Minutes, weather: WeatherDay, weatherLive: Bool,
+        sun: SolarDay, t: Minutes, weather: WeatherDay?, weatherStatus: WeatherStatus,
         moonSnapshot: MoonSnapshot?, lexicon: Lexicon, clock: ClockText, fahrenheit: Bool
     ) -> [ProGroup] {
         var groups: [ProGroup] = []
@@ -281,19 +302,25 @@ public struct LightTelemetry: Equatable, Sendable {
             ProRow(label: lexicon.t("pro.astroNight"), value: astroNightValue),
         ]))
 
-        groups.append(ProGroup(iconName: "cloud", title: lexicon.t("pro.weather"), rows: [
-            ProRow(label: lexicon.t("pro.sky"), value: lexicon.t("qualSky.\(weather.quality.rawValue)")),
-            ProRow(label: lexicon.t("pro.cloud"), value: "\(weather.cloud)%"),
-            // Спойлер пишет единицу буквой («°C»), не голым знаком градуса —
-            // в шапке и телеметрии её нет, там единица подразумевается,
-            // здесь веб называет её явно (`tempOut(...) + " " + unitLabel()`).
-            ProRow(label: lexicon.t("pro.temp"), value: "\(tempOut(weather.temperatureBase, t, fahrenheit)) \(fahrenheit ? "°F" : "°C")"),
-            ProRow(label: lexicon.t("pro.wind"), value: windLine(weather, lexicon: lexicon)),
-            ProRow(label: lexicon.t("pro.source"), value: lexicon.t(weatherLive ? "pro.srcLive" : "pro.srcMock")),
-        ]))
+        // «Источник» говорит честно, откуда прогноз: сам Open-Meteo, наш сервер или «нет прогноза».
+        let sourceRow = ProRow(label: lexicon.t("pro.source"), value: lexicon.t(Self.sourceKey(weatherStatus)))
+        if let weather {
+            groups.append(ProGroup(iconName: "cloud", title: lexicon.t("pro.weather"), rows: [
+                ProRow(label: lexicon.t("pro.sky"), value: lexicon.t("qualSky.\(weather.quality.rawValue)")),
+                ProRow(label: lexicon.t("pro.cloud"), value: "\(weather.cloud)%"),
+                // Спойлер пишет единицу буквой («°C»), не голым знаком градуса —
+                // в шапке и телеметрии её нет, там единица подразумевается,
+                // здесь веб называет её явно (`tempOut(...) + " " + unitLabel()`).
+                ProRow(label: lexicon.t("pro.temp"), value: "\(tempOut(weather.temperatureBase, t, fahrenheit)) \(fahrenheit ? "°F" : "°C")"),
+                ProRow(label: lexicon.t("pro.wind"), value: windLine(weather, lexicon: lexicon)),
+                sourceRow,
+            ]))
+        } else {
+            groups.append(ProGroup(iconName: "cloud", title: lexicon.t("pro.weather"), rows: [sourceRow]))
+        }
 
         // Прогноз заката по ярусам — только когда есть настоящие данные.
-        if let score = weather.sunset, let layers = weather.layers {
+        if let weather, let score = weather.sunset, let layers = weather.layers {
             let swatch = SkyPalette(weather: weather).map {
                 Swatch(palette: $0, word: sunsetWord(score, short: false, lexicon: lexicon))
             }
@@ -310,6 +337,15 @@ public struct LightTelemetry: Equatable, Sendable {
     }
 
     // MARK: - Мелкие помощники (порт мелких функций веба)
+
+    /// Ключ слова строки «Источник» (28ж): есть прогноз — по пути, нет — «нет прогноза».
+    static func sourceKey(_ status: WeatherStatus) -> String {
+        switch status {
+        case .live(.direct): "pro.srcLive"
+        case .live(.proxy): "pro.srcProxy"
+        case .loading, .unavailable: "pro.srcNone"
+        }
+    }
 
     /// `tempAt`+`tempOut` веба. Прогноз всегда приходит в Цельсии; Фаренгейт
     /// считается из неокруглённого значения, как `tempShow` веба.
