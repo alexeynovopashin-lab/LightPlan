@@ -49,6 +49,8 @@ dir="${TARGET_BUILD_DIR:-}/${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}"
 [ -n "${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}" ] && [ -d "$dir" ] || { echo "stamp_build: нет папки ресурсов приложения ($dir)" >&2; exit 1; }
 # Ключ сервера погоды (28ж) — свой файл рядом; нет ключа — приложение ходит только напрямую.
 "$root/Tools/weather_key.sh" "$dir"
+# Ключ читалки Pinterest (28м) — тоже свой файл; нет ключа — Pinterest в приложении выключен с надписью.
+"$root/Tools/og_key.sh" "$dir"
 
 out="$dir/build_stamp.plist"
 pb=/usr/libexec/PlistBuddy

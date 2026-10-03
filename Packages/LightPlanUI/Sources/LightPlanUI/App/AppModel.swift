@@ -304,6 +304,10 @@ public final class AppModel {
     private let store: Store?
     /// Файлы картинок мудборда (шаг 5г); `nil` — в тестах без диска и до `live()`.
     var refImages: RefImageStore?
+    /// Читалка Pinterest (28м); `nil` — в этой сборке нет ключа, и Pinterest выключен с надписью.
+    var pinterest: (any PinterestReading)?
+    /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
+    @ObservationIgnored var pinTask: Task<Void, Never>?
     private let locator: any DeviceLocating
 
     init(snapshot: Snapshot, store: Store?, language: String, zone: TimeZone = .current,
@@ -419,6 +423,7 @@ public final class AppModel {
                         weatherReachability: SystemReachability())
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
+        model.pinterest = PinterestClient.live(config: PinterestConfig.load())
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)

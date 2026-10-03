@@ -300,11 +300,14 @@ struct MoodboardFolder: View {
             }
             .buttonStyle(.plain).shotNode(node, text: title)
         }
-        return HStack(spacing: 8) {
-            button(t.t("ref.photo"), node: "mb.addPhoto") { app.requestMbPhotoPicker() }
-            button(t.t("ref.link"), node: "mb.addLink") { app.openMbAddLink() }
+        return VStack(spacing: 0) {
+            MbPinStrip(app: app)
+            HStack(spacing: 8) {
+                button(t.t("ref.photo"), node: "mb.addPhoto") { app.requestMbPhotoPicker() }
+                button(t.t("ref.link"), node: "mb.addLink") { app.openMbAddLink() }
+            }
+            .padding(.top, 12).padding(.horizontal, 15)
         }
-        .padding(.top, 12).padding(.horizontal, 15)
     }
 
     private func tile(_ f: RefFrame, _ sc: MbFolderScene, _ pal: Palette) -> some View {
@@ -341,6 +344,11 @@ struct MoodboardFolder: View {
             Text((RefLink.host(url) ?? t.t("ref.link")).uppercased()).font(webFont(9.5, 700)).tracking(0.4)
                 .foregroundStyle(pal.brass).lineLimit(1).padding(.trailing, 22)
             Text(RefLink.tail(url)).font(webFont(11)).foregroundStyle(pal.ink4).lineSpacing(1.5).lineLimit(4)
+            // Pinterest без картинки: плитка честно говорит, что превью нет (картинка не придумывается).
+            if PinterestLink.kind(url) != .other {
+                Spacer(minLength: 0)
+                Text(t.t("pin.previewOff")).font(webFont(9.5)).foregroundStyle(pal.ink4.opacity(0.8)).lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(10)

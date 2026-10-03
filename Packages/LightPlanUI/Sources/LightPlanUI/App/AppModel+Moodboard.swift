@@ -27,6 +27,10 @@ struct MoodboardState: Equatable {
     var sheet: MbSheet?
     /// Системный выбор «Фото» открыт (шаг 5г): его просят кнопка «Фото» и лист «+».
     var photoPicker = false
+    /// Доска Pinterest, что читается, ждёт «Добавить» или качается (28м); `nil` — ничего не идёт.
+    var pin: PinFlow?
+    /// Строка под кнопками папки: пин без превью, нет связи, ключа нет (28м).
+    var pinNote: PinNote?
     var isOpen: Bool { galleryOpen || shelf != nil || folder != nil }
 }
 

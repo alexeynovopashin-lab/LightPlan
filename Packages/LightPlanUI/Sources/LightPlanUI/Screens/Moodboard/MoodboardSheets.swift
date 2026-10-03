@@ -7,7 +7,7 @@ import LightPlanDomain
 extension View {
     /// Один лист мудборда поверх любого экрана (`RootView`); что в нём — решает `app.mb.sheet`.
     func mbSheets(_ app: AppModel) -> some View {
-        sheet(isPresented: Binding(get: { app.mb.sheet != nil }, set: { if !$0 { app.mb.sheet = nil } })) {
+        sheet(isPresented: Binding(get: { app.mb.sheet != nil }, set: { if !$0 { app.pinSheetClosed(); app.mb.sheet = nil } })) {
             MbSheetContent(app: app)
         }
     }
@@ -32,6 +32,7 @@ struct MbSheetContent: View {
             case .new?: MbNewSheet(app: app)
             case .addWhat?: MbAddWhatSheet(app: app)
             case .addLink?: MbAddLinkSheet(app: app)
+            case .pinBoard?: MbPinBoardSheet(app: app)
             case .cover(let id)?: MbCoverSheet(app: app, boardId: id)
             case .board(let id)?: MbBoardSheet(app: app, boardId: id)
             case .item(let shot, let board, let over)?: MbItemSheet(app: app, shot: shot, board: board, overView: over)
@@ -46,7 +47,7 @@ struct MbSheetContent: View {
 // MARK: - Каркас
 
 /// Ручка, заголовок 19/650, подпись 13 и тело; высота листа — по содержимому, но не выше 86 % окна.
-private struct MbSheetFrame<Body: View>: View {
+struct MbSheetFrame<Body: View>: View {
     let title: String
     var sub: String?
     var node = ""
@@ -80,7 +81,7 @@ private struct MbSheetFrame<Body: View>: View {
 }
 
 /// Строка списка: 52 (63 с подписью), ✓ справа, тап (`.row` веба).
-private struct MbRow: View {
+struct MbRow: View {
     let title: String
     var sub: String?
     var on = false
@@ -108,7 +109,7 @@ private struct MbRow: View {
     }
 }
 
-private struct MbCancel: View {
+struct MbCancel: View {
     @Bindable var app: AppModel
     var back: MbSheet?
     @Environment(\.colorScheme) private var scheme
@@ -490,7 +491,7 @@ private struct MbItemSheet: View {
     }
 
     @ViewBuilder private func open(_ f: RefFrame, _ pal: Palette, _ t: Lexicon) -> some View {
-        MbRow(title: t.t(f.kind == .link ? "mb.openLink" : "mb.viewPhoto"), node: "mbs.item.open") {
+        MbRow(title: f.kind == .link && PinterestLink.kind(f.url ?? "") != .other ? t.t("pin.openOnPinterest") : t.t(f.kind == .link ? "mb.openLink" : "mb.viewPhoto"), node: "mbs.item.open") {
             app.mb.sheet = nil
             if f.kind == .link { if let u = f.url.flatMap(URL.init(string:)), u.scheme != nil { openURL(u) } }
             else { app.mbOpenViewer(shot) }

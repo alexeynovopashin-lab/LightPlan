@@ -18,6 +18,8 @@ enum MbSheet: Equatable {
     case new
     case addWhat
     case addLink
+    /// Доска Pinterest: читаем, спрашиваем, качаем (28м); что внутри — `mb.pin`.
+    case pinBoard
     case cover(String)
     case board(String)
     case item(shot: String, board: String, overView: Bool)

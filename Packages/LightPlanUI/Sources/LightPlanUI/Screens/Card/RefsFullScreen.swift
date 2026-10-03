@@ -195,6 +195,7 @@ struct RefViewerLayer: View {
     let source: RefViewerSource
     let tiles: [String: CGRect]
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.openURL) private var openURL
     @State private var drag: CGSize = .zero
     @State private var scale: CGFloat = 1
     @State private var pinchBase: CGFloat = 1
@@ -271,18 +272,39 @@ struct RefViewerLayer: View {
             .background(LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea(edges: .top))
             Spacer()
-            HStack(spacing: 10) {
-                tagRow(frame)
-                Spacer(minLength: 0)
-                if (source.pager?.count ?? 0) >= 2 {
-                    Text(t.t("mb.viewerHint")).font(webFont(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+            VStack(alignment: .leading, spacing: 10) {
+                pinterestRow(frame)
+                HStack(spacing: 10) {
+                    tagRow(frame)
+                    Spacer(minLength: 0)
+                    if (source.pager?.count ?? 0) >= 2 {
+                        Text(t.t("mb.viewerHint")).font(webFont(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 14)
             .background(LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea(edges: .bottom))
         }
         .transition(.opacity)
+    }
+
+    /// Источник пина Pinterest: подпись и кнопка «Открыть на Pinterest» (правило 28м: чужой кадр всегда ведёт к источнику).
+    @ViewBuilder private func pinterestRow(_ frame: RefFrame?) -> some View {
+        if let f = frame, f.kind == .link, let u = f.url, PinterestLink.kind(u) != .other,
+           let url = URL(string: PinterestLink.secure(u) ?? u) {
+            HStack(spacing: 10) {
+                Text(t.t("pin.source")).font(webFont(11.5)).foregroundStyle(.white.opacity(0.6))
+                Button { openURL(url) } label: {
+                    Text(t.t("pin.openOnPinterest")).font(webFont(12.5, 600)).foregroundStyle(.white)
+                        .padding(.horizontal, 13).frame(height: 32)
+                        .background(Capsule().fill(.white.opacity(0.18)))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain).shotNode("refs.viewer.pinterest")
+            }
+        }
     }
 
     /// Чипы тегов кадра; с `editTags` вся строка нажимается и открывает лист кадра, у кадра без тегов

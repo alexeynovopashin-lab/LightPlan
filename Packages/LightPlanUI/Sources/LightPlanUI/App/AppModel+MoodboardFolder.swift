@@ -71,7 +71,10 @@ extension AppModel {
     /// «Назад»: режим выбора живёт не дольше папки; опустевшая подборка съёмки без имени
     /// исчезает (веб `boardPrune` в `mbFolderBack`). Пустая жанровая остаётся.
     func closeMbFolder() {
-        if let id = mb.folder { mbEdit { lib, _ in lib.prune(id) } }
+        if let id = mb.folder {
+            pinFolderClosing(id)
+            if !pinImportRunning(into: id) { mbEdit { lib, _ in lib.prune(id) } }
+        }
         mb.folder = nil
         resetMbFolderInput()
     }
@@ -166,13 +169,27 @@ extension AppModel {
     func openMbAddLink() { mb.sheet = .addLink }
 
     /// Адрес из листа: кадр-ссылка ложится в открытую папку. Мусор не пишется, лист остаётся; дубль
-    /// в этой подборке — лист закрывается, второй плитки нет.
+    /// в этой подборке — лист закрывается, второй плитки нет. Pinterest (28м): доска и короткая ссылка уходят
+    /// в читалку (лист «Добавить доску?»), пин ложится плиткой и дотягивает картинку; без ключа в сборке —
+    /// обычная плитка и честная строка.
     @discardableResult
     func mbAddLink(_ raw: String) -> RefLinkAdd {
         guard let board = mb.folder else { return .invalid }
         let tag = mb.folderTag
+        let kind = PinterestLink.kind(raw)
+        switch kind {
+        case .board, .short:
+            if pinterest != nil, let link = PinterestLink.secure(raw) {
+                startPinBoard(link: link, board: board, tag: tag)
+                return .added("")
+            }
+        case .pin(let id):
+            if mbLibrary().pinKeys(in: board).contains(id) { mb.sheet = nil; return .duplicate }
+        case .other: break
+        }
         let r = mbEdit { lib, now in lib.addLink(raw, to: board, id: UUID().uuidString.lowercased(), tag: tag, now: now) }
         if r != .invalid { mb.sheet = nil }
+        if case .added(let frame) = r, kind != .other { startPinPreview(frame: frame, link: PinterestLink.secure(raw) ?? raw) }
         return r
     }
 }
