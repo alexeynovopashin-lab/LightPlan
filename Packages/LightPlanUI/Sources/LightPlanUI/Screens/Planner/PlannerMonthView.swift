@@ -86,6 +86,10 @@ enum MonthMetrics {
     static let digitTop: CGFloat = 5
     static let digitBox: CGFloat = 26
     static let digitSize: CGFloat = 17
+    static let digitWeight = 500   // 28и.3: на телефоне SF тяжелее шрифта макета; «сегодня» плотнее соседей
+    static let todayWeight = 600
+    static let selSide: CGFloat = 30
+    static let selRadius: CGFloat = 9.5
     static let labelSize: CGFloat = 9
     static let labelLine: CGFloat = 10.5
     static let labelLines = 2
@@ -97,6 +101,7 @@ enum MonthMetrics {
     static let plateInner: CGFloat = 8
     static let plateTop: CGFloat = 2
     static let plateBottom: CGFloat = 6
+    static let plateLift: Double = 0.04   // белый поверх подложки, тёмная тема
     static let plateGap: CGFloat = 8   // от верхней панели экрана до подложки
     static let headTop: CGFloat = 10
 
@@ -123,11 +128,15 @@ enum MonthMetrics {
 /// стекла свой (рисовать его нельзя — `check_boundaries.sh`). Тени нет — в покое у плашек её нет (28з).
 private struct MonthPlate: View {
     let pal: Palette
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let r = RoundedRectangle(cornerRadius: MonthMetrics.plateRadius, style: .continuous)
         r.fill(pal.sheetGlass)
             .glassEffect(.regular, in: r)
+            // Тёмная: подложка светлее макета (28и.3) — ровная подсветка тоном чернил, без блика и градиента.
+            // Светлая как была (её пересобирает 28к); общие токены не тронуты.
+            .overlay { if scheme == .dark { r.fill(Color.white.opacity(MonthMetrics.plateLift)) } }
             .overlay(r.strokeBorder(pal.hairline, lineWidth: 1))
     }
 }
@@ -160,11 +169,19 @@ private struct MonthCell: View {
             // число подписей высоту клетки и положение цифры не меняет.
             VStack(spacing: 0) {
                 Text("\(day.day)")
-                    .font(webFont(MonthMetrics.digitSize, isToday ? 700 : 600)).monospacedDigit()
+                    .font(webFont(MonthMetrics.digitSize, isToday ? MonthMetrics.todayWeight : MonthMetrics.digitWeight)).monospacedDigit()
                     .foregroundStyle(ink)
                     .frame(width: MonthMetrics.digitBox, height: MonthMetrics.digitBox)
                     .background {
                         if lit, let mark { Circle().fill(f.deliveryColor(mark).opacity(0.32)) }
+                    }
+                    .background {
+                        // Выбранный день: скруглённый квадрат вокруг самой цифры, подписей не захватывает.
+                        if sel {
+                            RoundedRectangle(cornerRadius: MonthMetrics.selRadius, style: .continuous)
+                                .fill(MonthMetrics.selFill(pal, dark: scheme == .dark))
+                                .frame(width: MonthMetrics.selSide, height: MonthMetrics.selSide)
+                        }
                     }
                     .padding(.top, MonthMetrics.digitTop)
                     .shotNode("cal.n.\(day.day)-\(out ? 1 : 0)")
@@ -179,7 +196,6 @@ private struct MonthCell: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: MonthMetrics.cellHeight, alignment: .top)
-            .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(sel ? MonthMetrics.selFill(pal, dark: scheme == .dark) : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

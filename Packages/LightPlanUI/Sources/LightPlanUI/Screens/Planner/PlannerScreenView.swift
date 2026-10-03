@@ -184,7 +184,23 @@ public struct PlannerScreenView: View {
 
 // MARK: - Шапка
 
-/// `.plan-top`: вид слева (44), заголовок по центру, три действия справа
+/// Поле заголовка по бокам: слово не заходит на кнопки (слева 44, справа n×34 через 8) и симметрично относительно оси.
+enum PlanTitleLayout {
+    static let minScale: CGFloat = 0.5
+    static let chevronReach: CGFloat = 17   // ширина шеврона 16 + 1 зазор
+    static let gap: CGFloat = 8
+    static func rightWidth(buttons n: Int) -> CGFloat { CGFloat(n) * 34 + CGFloat(max(0, n - 1)) * 8 }
+    static let leftWidth: CGFloat = 44
+    /// Поля слова внутри строки шапки (она уже без полей 16). Три кнопки справа — поля равны, слово на оси.
+    /// Четвёртая (значок ответа клиента, редкий случай) оси не оставляет места — тогда слово сидит по центру
+    /// свободного места между кнопками, а не на оси.
+    static func insets(rightButtons n: Int) -> (leading: CGFloat, trailing: CGFloat) {
+        let l = leftWidth + 6 + gap, r = rightWidth(buttons: n) + 6 + gap
+        return n <= 3 ? (max(l, r), max(l, r)) : (l + chevronReach, r)
+    }
+}
+
+/// `.plan-top`: вид слева (44), заголовок по оси экрана (поверх, 28и.3), три действия справа
 /// (по 34 через 8). Поле сверху — 12 от выреза, снизу 6.
 private struct PlanTop: View {
     @Bindable var app: AppModel
@@ -209,27 +225,7 @@ private struct PlanTop: View {
             .shotNode("plan.scope")
             .accessibilityLabel(f.t.t("plan.viewPick"))
 
-            Button {
-                withAnimation(overlaySlide) { nav.openLenta(from: app.planner.month) }
-            } label: {
-                // Шеврон веба стоит в строке с полями −5 и −3 и пробелом
-                // перед словом (`.pt-chev`): группа центрируется со сдвигом.
-                HStack(spacing: 3.9) {
-                    Icon("chevron", size: 16, line: 1.6)
-                        .rotationEffect(.degrees(180))
-                        .foregroundStyle(pal.ink4)
-                        .shotNode("plan.chev")
-                        .padding(.leading, -5).padding(.trailing, -3)
-                    Text(title)
-                        .font(webFont(18, 650)).tracking(-0.3)
-                        .foregroundStyle(pal.ink)
-                        .lineLimit(1)
-                        .shotNode("plan.title", text: title)
-                }
-                .padding(4)
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.plain)
+            Spacer(minLength: 0)
 
             HStack(spacing: 8) {
                 let waiting = app.questWaiting.count
@@ -252,9 +248,43 @@ private struct PlanTop: View {
                     .accessibilityLabel(f.t.t("plan.search"))
             }
         }
+        .overlay { titleButton(pal, rightButtons: app.questWaiting.count > 0 ? 4 : 3) }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 6)
+    }
+
+    /// Заголовок стоит на оси экрана независимо от кнопок (28и.3): слово — по центру, шеврон висит слева от него,
+    /// не сдвигая слово. Не помещается — сжимается, с оси не уходит (`PlanTitleLayout`).
+    private func titleButton(_ pal: Palette, rightButtons: Int) -> some View {
+        Button {
+            withAnimation(overlaySlide) { nav.openLenta(from: app.planner.month) }
+        } label: {
+            Text(title)
+                .font(webFont(18, 650)).tracking(-0.3)
+                .foregroundStyle(pal.ink)
+                .lineLimit(1).minimumScaleFactor(PlanTitleLayout.minScale)
+                .shotNode("plan.title", text: title)
+                .overlay(alignment: .leading) {
+                    Icon("chevron", size: 16, line: 1.6)
+                        .rotationEffect(.degrees(180))
+                        .foregroundStyle(pal.ink4)
+                        .shotNode("plan.chev")
+                        .fixedSize()
+                        .offset(x: -PlanTitleLayout.chevronReach)
+                }
+                .padding(.vertical, 4)
+                .background(alignment: .leading) {
+                    Color.clear.frame(width: PlanTitleLayout.chevronReach, height: 24)
+                        .contentShape(Rectangle())
+                        .offset(x: -PlanTitleLayout.chevronReach)
+                }
+                .contentShape(Rectangle())   // нажимается слово со шевроном, не вся строка: кнопки рядом живы
+                .padding(.leading, PlanTitleLayout.insets(rightButtons: rightButtons).leading)
+                .padding(.trailing, PlanTitleLayout.insets(rightButtons: rightButtons).trailing)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
     }
 
     /// Значок «пришёл ответ клиента» (знак `chat` из библиотеки, латунь); число — сколько ответов ждёт. Нет ответов — нет значка.

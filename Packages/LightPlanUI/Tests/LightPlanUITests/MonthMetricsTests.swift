@@ -1,5 +1,8 @@
 import Testing
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 @testable import LightPlanUI
 
 /// Месяц «Съёмок» (28и): цифры на одной линии, зона подписей, метка выбранного дня — числами, без экрана.
@@ -60,5 +63,52 @@ import Foundation
         #expect(ratio(lightSel, lightPlate) >= 1.25)
         // Старая метка (`--press`) на подложке — ниже порога: ради неё шаг и сделан.
         #expect(ratio((0x22, 0x1F, 0x19), darkPlate) < 1.25)
+    }
+
+    // MARK: заголовок месяца на оси (28и.3)
+
+    /// Слово самого длинного названия месяца на каждом языке не заходит на кнопки при ширинах 402 и 440 и при
+    /// трёх и четырёх кнопках справа: поле слова симметрично, с оси слово не уходит; не помещается — сжатие до minScale.
+    @Test func titleFitsBetweenButtonsInEveryLanguage() throws {
+        #if canImport(UIKit)
+        let utc = TimeZone(identifier: "UTC")!
+        let font = UIFont.systemFont(ofSize: 18, weight: UIFont.Weight(rawValue: 0.35))
+        for code in FormatParityTests.langs {
+            let d = DateText(language: code, timeZone: utc)
+            for year in ["", " 2027"] {
+                let names = (0..<12).map { d.monthTitleN($0) + year }
+                for width in [402.0, 440.0] {
+                    for n in [3, 4] {
+                        let ins = PlanTitleLayout.insets(rightButtons: n)
+                        let room = width - 32 - ins.leading - ins.trailing   // ширина слова между полями
+                        #expect(room > 0)
+                        // Слово на оси (±0,5) при трёх кнопках; при четырёх сидит по центру свободного места.
+                        let centre = 16 + ins.leading + room / 2
+                        if n == 3 { #expect(abs(centre - width / 2) <= 0.5) }
+                        for name in names {
+                            let w = (name as NSString).size(withAttributes: [.font: font]).width
+                            // Левый край слова с шевроном правее кнопки вида, правый — левее первой правой кнопки.
+                            let half = min(w, room) / 2
+                            #expect(centre + half <= width - 16 - PlanTitleLayout.rightWidth(buttons: n) - PlanTitleLayout.gap)
+                            #expect(centre - half - PlanTitleLayout.chevronReach >= 16 + 44 + PlanTitleLayout.gap)
+                            // сжатие не глубже минимального масштаба
+                            #expect(w * PlanTitleLayout.minScale <= room, Comment(rawValue: "\(code) \(name) \(width) n=\(n)"))
+                        }
+                    }
+                }
+            }
+        }
+        #endif
+    }
+
+    /// Выбранный день: квадрат ≈30×30 с радиусом 9–10 вокруг цифры, а не клетки; центр цифры внутри.
+    @Test func selectionSquareWrapsOnlyTheDigit() {
+        #expect(M.selSide >= 29 && M.selSide <= 31)
+        #expect(M.selRadius >= 9 && M.selRadius <= 10)
+        #expect(M.selSide < M.digitBox + 6)
+        let top = M.digitTop + M.digitBox / 2 - M.selSide / 2
+        #expect(top >= 0)
+        #expect(top + M.selSide < M.digitTop + M.digitBox + 4)   // низ квадрата выше зоны подписей
+        #expect(M.digitWeight == 500 && M.todayWeight == 600)
     }
 }
