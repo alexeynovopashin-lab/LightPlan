@@ -90,6 +90,7 @@ struct PinterestStateTests {
         snap.extra["boards"] = .array([
             .object(["id": .string("x"), "kind": .string("tpl"), "genre": .string("wedding"), "items": .array([])]),
             .object(["id": .string("y"), "kind": .string("tpl"), "genre": .string("wedding"), "items": .array([]), "name": .string("Вторая")]),
+            .object(["id": .string("s"), "kind": .string("shoot"), "sid": .string("none"), "items": .array([])]),   // безымянная съёмочная: пустую подметают
         ])
         let now = ISO8601DateFormatter().date(from: "2026-10-03T09:00:00+03:00")!
         let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
@@ -349,14 +350,22 @@ struct PinterestStateTests {
 
     @Test func leavingTheFolderDuringImportDoesNotLoseTheBoard() async {
         let dir = tmp(), r = Reader(), app = model(dir, reader: r)
+        app.closeMbFolder(); app.openMbFolder(boardId: "s")            // безымянная подборка съёмки: пустую при выходе подметают
         r.delay = .milliseconds(10)
         r.boards["https://www.pinterest.com/u/b/"] = .success(board(1...30))
         await ask(app, link: "https://www.pinterest.com/u/b/")
         app.confirmPinBoard()
         app.closeMbFolder()                                              // смена экрана посреди закачки
-        #expect(app.mbLibrary().board("x") != nil)                       // пустая подборка не ушла под ногами у закачки
+        #expect(app.mbLibrary().board("s") != nil)                       // подборку не смело под ногами у закачки
         await app.pinTask?.value
-        #expect(frames(app).count == 30 && files(dir) == 30)
+        #expect(frames(app, "s").count == 30 && files(dir) == 30)
+    }
+
+    @Test func emptyUnnamedShootFolderStillGoesWhenNothingIsImporting() {
+        let dir = tmp(), app = model(dir, reader: Reader())
+        app.closeMbFolder(); app.openMbFolder(boardId: "s")
+        app.closeMbFolder()
+        #expect(app.mbLibrary().board("s") == nil)
     }
 
     @Test func closingTheFolderBeforeConfirmingDropsTheBoardAndFetchesNothing() async {
