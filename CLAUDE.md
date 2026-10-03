@@ -45,6 +45,7 @@
   between packages, but NOT system frameworks (`import SwiftUI` compiles in
   Core — measured). `Tools/check_boundaries.sh` enforces them; it runs as a
   build phase of both apps. Rules are in its two functions.
+  Drawn glass shine (`glassShine`) is allowed outside `Timebar/` only in `Screens/Planner/PlannerMonthView.swift` (month plate; Alexey, DECISIONS 03.10), held by `Tools/check_glass.sh`.
 - Structure changes to `LightPlan.xcodeproj` (targets, phases, package refs):
   propose in text, Alexey does them in Xcode. Never read the pbxproj in full.
 - Devices: first priority is regular iPhones, 14 through 17 Pro Max, portrait

@@ -86,8 +86,8 @@ enum MonthMetrics {
     static let digitTop: CGFloat = 5
     static let digitBox: CGFloat = 26
     static let digitSize: CGFloat = 17
-    static let digitWeight = 500   // 28и.3: на телефоне SF тяжелее шрифта макета; «сегодня» плотнее соседей
-    static let todayWeight = 600
+    static let digitWeight = 600   // 28и.3б: 500 на телефоне тонок (Алексей: «шрифт толще»); макет — 500 в браузере
+    static let todayWeight = 700   // «сегодня» и выбранный день — bold
     static let selSide: CGFloat = 30
     static let selRadius: CGFloat = 9.5
     static let labelSize: CGFloat = 9
@@ -101,7 +101,11 @@ enum MonthMetrics {
     static let plateInner: CGFloat = 8
     static let plateTop: CGFloat = 2
     static let plateBottom: CGFloat = 6
-    static let plateLift: Double = 0.04   // белый поверх подложки, тёмная тема
+    static let shadowRadius: CGFloat = 10   // `0 6 20` макета: blur 20 = радиус 10
+    static let shadowY: CGFloat = 6
+    /// Тень уходит от края подложки на radius·2 в стороны и на radius·2 ± y вверх/вниз; вверху и по бокам
+    /// её держат поля `plateGap` и `plateMargin`, чтобы контейнер не срезал видимую часть (хвост за 1 радиус бледнее 4 %).
+    static var shadowReachTop: CGFloat { shadowRadius - shadowY }
     static let plateGap: CGFloat = 8   // от верхней панели экрана до подложки
     static let headTop: CGFloat = 10
 
@@ -124,20 +128,42 @@ enum MonthMetrics {
     }
 }
 
-/// Подложка календаря: стекло (`--sheet-glass` + системное стекло, как у плашек формы) и кант. Блик у системного
-/// стекла свой (рисовать его нельзя — `check_boundaries.sh`). Тени нет — в покое у плашек её нет (28з).
+/// Подложка календаря по макету C со стеклом (28и.3б, DECISIONS 03.10): `--sheet-glass` + системное стекло, кант 1 px,
+/// верхний блик 1 px (`inset 0 1 0 --glass-shine`: серп вдоль верхнего скругления, по бокам сходит на нет) и тень
+/// `0 6 20 --glass-cast` только снаружи подложки. Блик здесь нарисован по слову Алексея — единственное исключение
+/// вне `Timebar/` (`Tools/check_glass.sh`).
 private struct MonthPlate: View {
     let pal: Palette
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let r = RoundedRectangle(cornerRadius: MonthMetrics.plateRadius, style: .continuous)
         r.fill(pal.sheetGlass)
             .glassEffect(.regular, in: r)
-            // Тёмная: подложка светлее макета (28и.3) — ровная подсветка тоном чернил, без блика и градиента.
-            // Светлая как была (её пересобирает 28к); общие токены не тронуты.
-            .overlay { if scheme == .dark { r.fill(Color.white.opacity(MonthMetrics.plateLift)) } }
             .overlay(r.strokeBorder(pal.hairline, lineWidth: 1))
+            .overlay {
+                // Серп: контур минус тот же контур, сдвинутый на 1 pt вниз.
+                r.fill(pal.glassShine)
+                    .mask {
+                        ZStack {
+                            r.fill(Color.black)
+                            r.offset(y: 1).fill(Color.black).blendMode(.destinationOut)
+                        }
+                        .compositingGroup()
+                    }
+                    .allowsHitTesting(false)
+            }
+            .background {
+                // Тень без заливки под стеклом: контур вырезан, подложка не темнеет изнутри.
+                r.fill(Color.black)
+                    .shadow(color: pal.glassCast, radius: MonthMetrics.shadowRadius, y: MonthMetrics.shadowY)
+                    .mask {
+                        ZStack {
+                            Rectangle().padding(-60)
+                            r.blendMode(.destinationOut)
+                        }
+                        .compositingGroup()
+                    }
+            }
     }
 }
 
@@ -169,7 +195,7 @@ private struct MonthCell: View {
             // число подписей высоту клетки и положение цифры не меняет.
             VStack(spacing: 0) {
                 Text("\(day.day)")
-                    .font(webFont(MonthMetrics.digitSize, isToday ? MonthMetrics.todayWeight : MonthMetrics.digitWeight)).monospacedDigit()
+                    .font(webFont(MonthMetrics.digitSize, isToday || sel ? MonthMetrics.todayWeight : MonthMetrics.digitWeight)).monospacedDigit()
                     .foregroundStyle(ink)
                     .frame(width: MonthMetrics.digitBox, height: MonthMetrics.digitBox)
                     .background {

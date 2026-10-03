@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SwiftUI
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -109,6 +110,44 @@ import UIKit
         let top = M.digitTop + M.digitBox / 2 - M.selSide / 2
         #expect(top >= 0)
         #expect(top + M.selSide < M.digitTop + M.digitBox + 4)   // низ квадрата выше зоны подписей
-        #expect(M.digitWeight == 500 && M.todayWeight == 600)
+    }
+
+    // MARK: подложка и вес цифр по макету (28и.3б)
+
+    /// Вес: обычные semibold, «сегодня» и выбранный bold; webFont отдаёт им разные веса SF (0,3 и 0,4).
+    @Test func digitWeightsAreHeavierThanMedium() {
+        #expect(M.digitWeight == 600 && M.todayWeight == 700)
+        #expect(M.digitWeight > 500)
+    }
+
+    /// Блик, тень и подложка — числа макета C со стеклом, тёмная и светлая.
+    @Test func plateTokensMatchMockup() {
+        let d = Palette(.dark), l = Palette(.light)
+        func rgba(_ c: Color) -> (Double, Double, Double, Double) {
+            #if canImport(UIKit)
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            UIColor(c).getRed(&r, green: &g, blue: &b, alpha: &a)
+            return (Double(r * 255), Double(g * 255), Double(b * 255), Double(a))
+            #else
+            return (0, 0, 0, 0)
+            #endif
+        }
+        #if canImport(UIKit)
+        let sg = rgba(d.sheetGlass)
+        #expect(abs(sg.0 - 23) < 1 && abs(sg.1 - 21) < 1 && abs(sg.2 - 15) < 1 && abs(sg.3 - 0.74) < 0.01)
+        #expect(abs(rgba(d.glassShine).3 - 0.30) < 0.01)
+        #expect(abs(rgba(l.glassShine).3 - 0.95) < 0.01)
+        #expect(abs(rgba(d.glassCast).3 - 0.45) < 0.01)
+        #expect(abs(rgba(l.glassCast).3 - 0.16) < 0.01)
+        #endif
+        #expect(M.shadowRadius == 10 && M.shadowY == 6)   // `0 6 20`
+    }
+
+    /// Тень не срезается: сверху она выходит от края подложки на radius − y, и это меньше зазора до панели;
+    /// по бокам — radius·2, поле подложки 12 и ещё хвост за краем экрана невидим.
+    @Test func shadowFitsInsideMargins() {
+        #expect(M.shadowReachTop < M.plateGap)
+        #expect(M.shadowRadius * 2 - M.plateMargin <= 8)
+        #expect(M.plateRadius == 22)
     }
 }

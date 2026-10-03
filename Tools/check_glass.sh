@@ -29,6 +29,9 @@ while IFS= read -r file; do
     fi
     case "$file" in
       */Timebar/*) ;;
+      # Единственное исключение (Алексей, DECISIONS 03.10 «Месяц «Съёмок»: поправка…»): верхний блик подложки
+      # календаря месяца — `MonthPlate`. Другим файлам вне Timebar/ блик по-прежнему нельзя.
+      */Screens/Planner/PlannerMonthView.swift) ;;
       *)
         # Объявление цвета в палитре — не рисунок.
         if printf '%s\n' "$code" | grep -qE '\bglassShine\b' && ! printf '%s\n' "$code" | grep -qE 'var glassShine\b'; then
