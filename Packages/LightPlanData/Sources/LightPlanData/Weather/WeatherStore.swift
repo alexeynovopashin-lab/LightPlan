@@ -21,6 +21,10 @@ import LightPlanCore
 ///   пока не удастся и прогноз, и воздух;
 /// - воздух не ждёт прогноза: оба вопроса уходят вместе, сбой одного не мешает
 ///   другому;
+/// - прогноз живёт час, воздух три (как у сервера): по истечении срока
+///   спрашиваем заново по таймеру и при возврате на экран; старый прогноз не
+///   стирается, пока новый не пришёл, а при сбое держится до шести часов,
+///   потом — «недоступно»;
 /// - ушли в другое место — прогноз прежнего места не остаётся: он не про это
 ///   место.
 @MainActor
@@ -38,10 +42,13 @@ public final class WeatherStore {
     private var hourlyByDay: [CivilDate: [Int: HourRecord]] = [:]
     private var air: [CivilDate: [Int: AirSample]] = [:]
     private var rawHourly: HourlyWeather?
-    private var hourlyLoaded = false
-    private var airLoaded = false
+    /// Когда получены показанные прогноз и воздух; `nil` — ничего нет.
+    private var hourlyAt: Date?
+    private var airAt: Date?
 
     private let fetcher: WeatherFetcher
+    private let lifetime: WeatherLifetime
+    private let now: @Sendable () -> Date
     private let debounce: Duration
     private let retryDelays: [Duration]
     private var refreshTask: Task<Void, Never>?
@@ -52,9 +59,12 @@ public final class WeatherStore {
     private var attemptCounter = 0
 
     public init(place: Place, source: any WeatherSource, debounce: Duration = .milliseconds(500),
-                retryDelays: [Duration] = WeatherStore.retryDelays) {
+                retryDelays: [Duration] = WeatherStore.retryDelays,
+                lifetime: WeatherLifetime = .standard, now: @escaping @Sendable () -> Date = { Date() }) {
         self.place = place
-        self.fetcher = WeatherFetcher(source: source)
+        self.lifetime = lifetime
+        self.now = now
+        self.fetcher = WeatherFetcher(source: source, lifetime: lifetime, now: now)
         self.debounce = debounce
         self.retryDelays = retryDelays.isEmpty ? Self.retryDelays : retryDelays
         start(debounced: true)
@@ -93,22 +103,28 @@ public final class WeatherStore {
         real = [:]
         hourlyByDay = [:]
         air = [:]
-        hourlyLoaded = false
-        airLoaded = false
+        hourlyAt = nil
+        airAt = nil
         status = .loading
         failures = 0
         start(debounced: true)
     }
 
-    /// Приложение вернулось на экран: если прогноза или воздуха всё ещё нет и
-    /// никто сейчас не спрашивает — спросить сразу, не дожидаясь таймера.
+    /// Приложение вернулось на экран: если прогноза или воздуха всё ещё нет либо
+    /// их срок прошёл и никто сейчас не спрашивает — спросить сразу, не дожидаясь
+    /// таймера.
     public func resume() {
-        guard !(hourlyLoaded && airLoaded), activeAttempt == nil else { return }
+        guard needsHourly || needsAir, activeAttempt == nil else { return }
         failures = 0
         start(debounced: false)
     }
 
     // MARK: - Вопрос и повторы
+
+    private func age(of stamp: Date) -> TimeInterval { now().timeIntervalSince(stamp) }
+    /// Ровно срок — уже старый (кэш `WeatherFetcher` считает так же).
+    private var needsHourly: Bool { hourlyAt.map { age(of: $0) >= lifetime.hourly } ?? true }
+    private var needsAir: Bool { airAt.map { age(of: $0) >= lifetime.air } ?? true }
 
     private func start(debounced: Bool) {
         refreshTask?.cancel()
@@ -128,12 +144,52 @@ public final class WeatherStore {
         let mine = attemptCounter
         activeAttempt = mine
         defer { if activeAttempt == mine { activeAttempt = nil } }
+        dropIfTooStale()
         await withTaskGroup(of: Void.self) { group in
             group.addTask { await self.loadHourly(for: requested) }
             group.addTask { await self.loadAir(for: requested) }
         }
         guard !Task.isCancelled, sameSpot(requested) else { return }
-        if !(hourlyLoaded && airLoaded) { scheduleRetry(for: requested) }
+        if needsHourly || needsAir {
+            scheduleRetry(for: requested)
+        } else {
+            failures = 0
+            scheduleRefresh(for: requested)
+        }
+    }
+
+    /// Всё свежо — следующий вопрос, когда истечёт ближайший срок.
+    private func scheduleRefresh(for requested: Place) {
+        let left = [hourlyAt.map { lifetime.hourly - age(of: $0) }, airAt.map { lifetime.air - age(of: $0) }]
+            .compactMap { $0 }.min() ?? 0
+        let delay = Duration.seconds(max(left, 0.001))
+        retryTask = Task { [weak self] in
+            do { try await Task.sleep(for: delay) } catch { return }
+            await self?.attempt(for: requested)
+        }
+    }
+
+    /// Старому прогнозу, которому давно за предел, не место на экране, пока
+    /// спрашиваем: он уже не про «сейчас».
+    private func dropIfTooStale() {
+        if let at = hourlyAt, age(of: at) >= lifetime.staleLimit {
+            dropHourly()
+            status = .loading
+        }
+        if let at = airAt, age(of: at) >= lifetime.staleLimit { dropAir() }
+    }
+
+    private func dropHourly() {
+        rawHourly = nil
+        real = [:]
+        hourlyByDay = [:]
+        hourlyAt = nil
+    }
+
+    private func dropAir() {
+        air = [:]
+        airAt = nil
+        rebuild()
     }
 
     private func scheduleRetry(for requested: Place) {
@@ -150,30 +206,35 @@ public final class WeatherStore {
     }
 
     private func loadHourly(for requested: Place) async {
-        guard !hourlyLoaded else { return }
+        guard needsHourly else { return }
         do {
-            let (hourly, origin) = try await fetcher.hourlyWithOrigin(at: requested)
+            let got = try await fetcher.hourlyStamped(at: requested)
             guard !Task.isCancelled, sameSpot(requested) else { return }   // место уже другое — ответ не актуален
-            rawHourly = hourly
-            hourlyLoaded = true
-            status = .live(origin)
+            rawHourly = got.value
+            hourlyAt = got.at
+            status = .live(got.origin)
             rebuild()
         } catch {
             guard !Task.isCancelled, sameSpot(requested) else { return }
+            // Новый не пришёл: старый, если ему нет шести часов, остаётся.
+            if let at = hourlyAt, age(of: at) < lifetime.staleLimit { return }
+            dropHourly()
             status = .unavailable
         }
     }
 
     private func loadAir(for requested: Place) async {
-        guard !airLoaded else { return }
+        guard needsAir else { return }
         do {
-            let got = try await fetcher.air(at: requested)
+            let got = try await fetcher.airStamped(at: requested)
             guard !Task.isCancelled, sameSpot(requested) else { return }
-            air = got
-            airLoaded = true
+            air = got.value
+            airAt = got.at
             rebuild()
         } catch {
-            return                                        // воздух необязателен: без него оценка прежняя
+            guard !Task.isCancelled, sameSpot(requested) else { return }
+            // воздух необязателен: без него оценка прежняя; старый держим до шести часов
+            if let at = airAt, age(of: at) >= lifetime.staleLimit { dropAir() }
         }
     }
 

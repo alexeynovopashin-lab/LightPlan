@@ -56,6 +56,16 @@ const FORECAST = path.resolve(args.forecast || path.join(FX, 'forecast_barnaul.j
 /* 28ж: файла нет — источник погоды приложения сценария отвечает отказом, как сеть без ответа. */
 const NATIVE_FORECAST = args['no-weather'] ? path.join(os.tmpdir(), 'lp-no-forecast-' + process.pid + '.json') : FORECAST;
 /* Узлы, по которым видно, есть ли на экране погода (и что вместо неё). */
+// Узлы, которым без прогноза на экране не бывать: значок, градусы, небо и ветер
+// в телеметрии, график «следующих». Есть хоть один — режим --no-weather падает
+// (ревью GPT к 466d9d3: раньше он лишь записывал найденное и выходил с нулём).
+const FORBIDDEN_WITHOUT_WEATHER = ['wx.icon', 'wx.temp', 'tele.sky', 'tele.wind', 'next.spark'];
+function forbiddenSeen(seenByScreen) {
+  const bad = [];
+  for (const [screen, seen] of Object.entries(seenByScreen))
+    for (const k of FORBIDDEN_WITHOUT_WEATHER) if (k in seen) bad.push(screen + ': ' + k);
+  return bad;
+}
 const WEATHER_NODES = /^(wx\.|tele\.(sky|wind|sunset|golden|cond)|next\.|dp\.(temp|wxnone|rise|set|gold)|wk\.|header\.note)/;
 
 /* Сценарий пары. Место — Барнаул: пояс машины Алексея тот же (+7), а
@@ -626,6 +636,8 @@ function markdown(results) {
   if (args['no-weather']) {
     fs.writeFileSync(path.join(OUT, 'no_weather.json'), JSON.stringify(noWeather, null, 1));
     console.log('без прогноза: ' + path.join(OUT, 'no_weather.json'));
+    const bad = forbiddenSeen(noWeather);
+    if (bad.length) throw new Error('без прогноза на экране есть узлы погоды (' + bad.length + '):\n' + bad.join('\n'));
     return;
   }
   fs.writeFileSync(path.join(OUT, 'report.md'), markdown(results));
