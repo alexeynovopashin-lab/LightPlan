@@ -47,6 +47,10 @@ final class EdgeBack {
     private(set) var settling = false
     /// Сколько раз жест закрыл слой (для тестов и замеров).
     private(set) var closedCount = 0
+    /// Слой, который взяли в начале жеста: закрывается он, а не то, что окажется сверху к концу доезда.
+    private var grabbed: UUID?
+    /// Решение, принятое при отпускании; исполняется по окончании доезда.
+    private(set) var pendingCommit: Bool?
 
     static let settle = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.28)
     static let settleSeconds = 0.3
@@ -67,9 +71,11 @@ final class EdgeBack {
 
     /// Открытые слои сверху вниз; на равной высоте выше тот, кто записан позже (так рисует `ZStack`).
     private var ordered: [Layer] {
-        let live = layers.enumerated().filter { !closing.contains($0.element.id) }
+        let live = layers.enumerated().filter { !closing.contains($0.element.id) && isLive($0.element) }
         return live.sorted { ($0.element.z, $0.offset) > ($1.element.z, $1.offset) }.map(\.element)
     }
+    /// Слой вкладки, которой сейчас не видно, жест не берёт (ревью GPT: слои «Съёмок» остаются в дереве под другой вкладкой).
+    var isLive: (Layer) -> Bool = { _ in true }
     var top: Layer? { ordered.first }
     private var second: Layer? { ordered.dropFirst().first }
 
@@ -94,6 +100,7 @@ final class EdgeBack {
         guard canBegin else { note("refused top=\(top?.z ?? -1) active=\(active)"); return false }
         self.width = max(1, width)
         samples = []
+        grabbed = top?.id
         note("begin top=\(top?.z ?? -1) layers=\(ordered.map(\.z))")
         dx = 0
         dragging = true
@@ -137,17 +144,22 @@ final class EdgeBack {
     private func settle(commit: Bool) {
         dragging = false
         settling = true
+        pendingCommit = commit
         withAnimation(Self.settle) { dx = commit ? width : 0 }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(Self.settleSeconds))
-            finishSettle(commit: commit)
+            finishSettle()
         }
     }
 
     /// Доезд закончен. Закрытие — без анимации: слой уже за краем, второй выезд был бы лишним.
-    func finishSettle(commit: Bool) {
+    func finishSettle() {
         guard settling else { return }
-        if commit, let t = top {
+        let commit = pendingCommit ?? false
+        pendingCommit = nil
+        let target = grabbed.flatMap { id in layers.first { $0.id == id } }
+        grabbed = nil
+        if commit, let t = target {
             let id = t.id
             closing.insert(id)
             closedCount += 1

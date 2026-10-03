@@ -43,7 +43,8 @@ struct EdgeBackTests {
         e.move(100)
         e.end(velocity: 50)
         #expect(e.settling && !e.dragging)
-        e.finishSettle(commit: false)
+        #expect(e.pendingCommit == false)
+        e.finishSettle()
         #expect(box.closed.isEmpty)
         #expect(e.dx == 0 && !e.active)
     }
@@ -54,7 +55,8 @@ struct EdgeBackTests {
         #expect(e.begin(width: width))
         e.move(30)
         e.end(velocity: 900)
-        e.finishSettle(commit: true)
+        #expect(e.pendingCommit == true)
+        e.finishSettle()
         #expect(box.closed == [1.52])
         #expect(e.closedCount == 1 && !e.active && e.dx == 0)
     }
@@ -75,14 +77,16 @@ struct EdgeBackTests {
         e.begin(width: width)
         e.move(0, at: 0); e.move(20, at: 0.004); e.move(44, at: 0.008)   // пачка за 8 мс — по ней скорость не посчитать
         e.end(recognizer: 700, at: 0.01)
-        e.finishSettle(commit: true)
+        #expect(e.pendingCommit == true)
+        e.finishSettle()
         #expect(box.closed == [1.52])                                   // быстрый короткий закрылся по скорости распознавателя
         // а палец, замерший перед отпусканием, скорость распознавателя не наследует
         let (f, _) = edge([1.0], box: box)
         f.begin(width: width)
         f.move(0, at: 0); f.move(44, at: 0.008)
         f.end(recognizer: 700, at: 1.5)
-        f.finishSettle(commit: false)
+        #expect(f.pendingCommit == false)
+        f.finishSettle()
         #expect(box.closed == [1.52])
     }
 
@@ -94,7 +98,8 @@ struct EdgeBackTests {
         e.move(0, at: 0); e.move(100, at: 0.1)
         e.move(100, at: 1.4)
         e.end(at: 1.4)
-        e.finishSettle(commit: false)
+        #expect(e.pendingCommit == false)
+        e.finishSettle()
         #expect(box.closed.isEmpty)
     }
 
@@ -104,7 +109,8 @@ struct EdgeBackTests {
         e.begin(width: width)
         e.move(250, at: 0); e.move(200, at: 0.05); e.move(150, at: 0.10)   // назад 1000 pt/с, всё ещё дальше трети
         e.end(at: 0.10)
-        e.finishSettle(commit: false)
+        #expect(e.pendingCommit == false)
+        e.finishSettle()
         #expect(box.closed.isEmpty)
     }
 
@@ -114,7 +120,8 @@ struct EdgeBackTests {
         e.begin(width: width)
         e.move(0, at: 0); e.move(20, at: 0.03); e.move(40, at: 0.06)     // 667 pt/с, всего 40 pt
         e.end(at: 0.06)
-        e.finishSettle(commit: true)
+        #expect(e.pendingCommit == true)
+        e.finishSettle()
         #expect(box.closed == [1.52])
     }
 
@@ -139,11 +146,11 @@ struct EdgeBackTests {
         let box = Box()
         let (e, _) = edge([1.0, 1.52, 1.6], box: box)
         #expect(e.top?.z == 1.6)
-        e.begin(width: width); e.move(300); e.end(velocity: 0); e.finishSettle(commit: true)
+        e.begin(width: width); e.move(300); e.end(velocity: 0); #expect(e.pendingCommit == true); e.finishSettle()
         #expect(box.closed == [1.6])
         // Закрытый слой ещё в дереве (уходит) — следующий жест его не берёт, берёт слой под ним.
         #expect(e.top?.z == 1.52)
-        e.begin(width: width); e.move(300); e.end(velocity: 0); e.finishSettle(commit: true)
+        e.begin(width: width); e.move(300); e.end(velocity: 0); #expect(e.pendingCommit == true); e.finishSettle()
         #expect(box.closed == [1.6, 1.52])
         #expect(e.top?.z == 1.0)
     }
@@ -155,9 +162,37 @@ struct EdgeBackTests {
         #expect(e.settling)
         #expect(!e.canBegin)
         #expect(!e.begin(width: width))
-        e.finishSettle(commit: true)
-        e.finishSettle(commit: true)   // запоздавший второй вызов (таймер) ничего не закрывает
+        #expect(e.pendingCommit == true)
+        e.finishSettle()
+        e.finishSettle()   // запоздавший второй вызов (таймер) ничего не закрывает
         #expect(box.closed == [1.52])
+    }
+
+    @Test func closesTheLayerGrabbedAtBeginEvenIfAnotherAppearedOnTop() {
+        let box = Box()
+        let (e, _) = edge([1.0], box: box)
+        e.begin(width: width); e.move(300); e.end(velocity: 0)
+        e.register(UUID(), z: 1.6) { box.closed.append(1.6) }     // за время доезда сверху открылся другой слой
+        e.finishSettle()
+        #expect(box.closed == [1.0])
+    }
+
+    @Test func grabbedLayerGoneMeansNothingClosed() {
+        let box = Box()
+        let (e, ids) = edge([1.0, 1.52], box: box)
+        e.begin(width: width); e.move(300); e.end(velocity: 0)
+        e.unregister(ids[1.52]!)                                   // слой ушёл сам
+        e.finishSettle()
+        #expect(box.closed.isEmpty && !e.active)
+    }
+
+    @Test func layersOfHiddenTabAreNotCandidates() {
+        let box = Box()
+        let (e, _) = edge([0.3], box: box)                         // статистика «Съёмок»
+        e.isLive = { _ in false }                                  // вкладка «Съёмок» не выбрана
+        #expect(!e.canBegin)
+        e.isLive = { _ in true }
+        #expect(e.canBegin)
     }
 
     @Test func equalHeightLaterLayerIsOnTop() {

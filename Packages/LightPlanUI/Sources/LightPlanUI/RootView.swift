@@ -175,6 +175,10 @@ private struct Shell: View {
         .onOpenURL { app.openQuestLink($0) }
         // Жест «назад» от левого края (28з): один распознаватель на окно, слои записываются `.edgeBack`.
         .background { EdgeBackHost(app: app) }
+        .onAppear {
+            // Слои «Съёмок» лежат под вкладкой в дереве всегда: берём их, только пока вкладка выбрана.
+            app.edgeBack.isLive = { [weak app] l in l.z >= EdgeBackRule.shellFloor || app?.tab == .planner }
+        }
         // Пока открыта форма, лист «Занять время» показывает она сама (строка «Время в пути»).
         .sheet(item: Binding(get: { app.form == nil ? app.blockSheet : nil }, set: { app.blockSheet = $0 })) { d in
             BlockSheet(app: app, draft: d, windowHeight: windowHeight)
