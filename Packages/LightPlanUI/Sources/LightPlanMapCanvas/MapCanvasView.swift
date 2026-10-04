@@ -1,4 +1,5 @@
 import SwiftUI
+import CryptoKit
 
 /// Поставщик холста (docs/17 § 10): оба делаются, выбор — в настройках.
 /// Пока приложение бесплатное, главный — MapLibre (слово Алексея 20.09.2026).
@@ -134,8 +135,8 @@ public enum MapStyle {
         #endif
         guard labels || cartoKey != nil || silent, let base else { return base }
         let key = nameKey(language)
-        let out = FileManager.default.temporaryDirectory
-            .appendingPathComponent("lp_style_\(dark ? "dark" : "light")_\(key.replacingOccurrences(of: ":", with: "_"))\(labels ? "_l" : "")\(cartoKey != nil ? "_k" : "")\(silent ? "_s" : "").json")
+        let out = FileManager.default.temporaryDirectory.appendingPathComponent(
+            cacheName(dark: dark, nameKey: key, labels: labels, cartoKey: cartoKey, silent: silent))
         // Раз за запуск: файл прошлой сборки мог остаться от старого стиля.
         if built.contains(out) { return out }
         guard var data = try? Data(contentsOf: base) else { return base }
@@ -150,6 +151,17 @@ public enum MapStyle {
         guard (try? data.write(to: out, options: .atomic)) != nil else { return base }
         built.insert(out)
         return out
+    }
+
+    /// Имя файла стиля в кэше. Ключ в имя не пишем — только отпечаток (первые 8 hex от SHA-256): сменили
+    /// ключ — получили новый файл, а не старый стиль со старым ключом.
+    static func cacheName(dark: Bool, nameKey: String, labels: Bool, cartoKey: String?, silent: Bool) -> String {
+        let k = cartoKey.map { "_k" + fingerprint($0) } ?? ""
+        return "lp_style_\(dark ? "dark" : "light")_\(nameKey.replacingOccurrences(of: ":", with: "_"))\(labels ? "_l" : "")\(k)\(silent ? "_s" : "").json"
+    }
+
+    static func fingerprint(_ key: String) -> String {
+        SHA256.hash(data: Data(key.utf8)).prefix(4).map { String(format: "%02x", $0) }.joined()
     }
 
     /// Ключ CARTO в адресах плиток и шрифтов стиля (`?key=…`, документация CARTO Basemaps). Спрайт не

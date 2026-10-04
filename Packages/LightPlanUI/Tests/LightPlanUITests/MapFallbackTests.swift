@@ -37,6 +37,29 @@ struct MapFallbackGateTests {
         #expect(fired == 0 && gate.outcome == .waiting)
     }
 
+    /// Молчащий источник по замеру 28л.3: стиль встал, дальше только неполные кадры — «карта загружена» не приходит.
+    @Test func styleAndPartialFramesAreNotData() async throws {
+        var fired = 0
+        let gate = MapFallbackGate(timeout: .milliseconds(80)) { fired += 1 }
+        gate.start()
+        gate.receive(.styleLoaded)
+        for _ in 0..<36 { gate.receive(.partialFrame) }
+        #expect(gate.outcome == .waiting)
+        try await Task.sleep(for: .milliseconds(250))
+        #expect(gate.outcome == .silent && fired == 1)
+    }
+
+    /// Над морем и пустым местом объектов на кадре нет, но «карта загружена» пришла — это приход данных.
+    @Test func mapLoadedCountsWithoutLookingAtFeatures() async throws {
+        var fired = 0
+        let gate = MapFallbackGate(timeout: .milliseconds(150)) { fired += 1 }
+        gate.start()
+        gate.receive(.styleLoaded)
+        gate.receive(.mapLoaded)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(gate.outcome == .arrived && fired == 0 && gate.firstTileMs != nil)
+    }
+
     @Test func realTimeoutIsFourSeconds() { #expect(MapFallbackGate.timeout == .seconds(4)) }
 }
 
@@ -66,6 +89,15 @@ struct CartoKeyTests {
             let text = try String(contentsOf: keyed, encoding: .utf8)
             #expect(text.contains("{y}.mvt?key=K1") && text.contains(".pbf?key=K1"))
         }
+    }
+
+    @Test func cacheNameFollowsKeyWithoutContainingIt() {
+        func name(_ k: String?) -> String { MapStyle.cacheName(dark: true, nameKey: "name:ru", labels: true, cartoKey: k, silent: false) }
+        #expect(name("secretKeyOne") != name("secretKeyTwo"))
+        #expect(name("secretKeyOne") == name("secretKeyOne"))
+        #expect(name(nil) != name("secretKeyOne"))
+        #expect(!name("secretKeyOne").contains("secretKeyOne"))
+        #expect(MapStyle.fingerprint("a").count == 8)
     }
 
     @Test func missingOrEmptyKeyFileMeansNoKeyNoCrash() throws {

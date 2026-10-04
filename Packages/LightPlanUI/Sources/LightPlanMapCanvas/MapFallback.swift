@@ -50,6 +50,14 @@ public final class MapFallbackGate {
         }
     }
 
+    /// Что сторож понимает о загрузке карты. Приходом данных считается только `.mapLoaded`: ни загруженный
+    /// стиль (он локальный и встаёт без сети), ни неполные кадры о плитках не говорят.
+    public enum Event: Equatable, Sendable { case styleLoaded, partialFrame, mapLoaded }
+
+    public func receive(_ event: Event) {
+        if event == .mapLoaded { tileArrived() }
+    }
+
     public func tileArrived() {
         guard outcome == .waiting, let startedAt else { return }
         let d = ContinuousClock().now - startedAt

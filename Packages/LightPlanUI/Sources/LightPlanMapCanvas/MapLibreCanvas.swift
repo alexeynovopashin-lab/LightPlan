@@ -104,14 +104,17 @@ struct MapLibreCanvas: UIViewRepresentable {
             })
         }
 
-        /// Плитка пришла, когда на кадре есть объекты векторного источника: фон без плиток их не даёт.
-        func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
+        /// «Карта загружена» — стиль и все плитки первого кадра на месте. У молчащего источника этого события нет:
+        /// замер 28л.3 за 8 с — только неполные кадры, ни загрузки, ни простоя; на суше оно приходит за ~0,7 с,
+        /// над открытым морем (0°/0°) за ~1,7 с. Объекты на кадре не смотрим: над морем и пустым местом их может не быть.
+        func mapViewDidFinishLoadingMap(_ mapView: MLNMapView) {
             MainActor.assumeIsolated {
-                guard let gate, gate.outcome == .waiting,
-                      !mapView.visibleFeatures(in: mapView.bounds).isEmpty else { return }
-                gate.tileArrived()
-                logResult(fell: false)
-                onTile?()
+                guard let gate, gate.outcome == .waiting else { return }
+                gate.receive(.mapLoaded)
+                if gate.outcome == .arrived {
+                    logResult(fell: false)
+                    onTile?()
+                }
             }
         }
 
