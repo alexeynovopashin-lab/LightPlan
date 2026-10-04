@@ -22115,6 +22115,41 @@
         }
       }
     },
+    "map.fallbackApple" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карта Apple: наша не ответила"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Maps: ours didn't respond"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mapas de Apple: la nuestra no respondió"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appleマップ：こちらの地図が応答しませんでした"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "苹果地图：我们的地图没有响应"
+          }
+        }
+      }
+    },
     "map.glow" : {
       "extractionState" : "manual",
       "localizations" : {

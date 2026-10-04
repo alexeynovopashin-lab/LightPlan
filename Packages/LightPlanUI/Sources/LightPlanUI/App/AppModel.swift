@@ -58,10 +58,29 @@ public final class AppModel {
     /// снимке среди чужих (`extra`), как у других нативных полей.
     public private(set) var mapSource: MapCanvasSource
     public func setMapSource(_ s: MapCanvasSource) {
-        guard mapSource != s else { return }
+        // Выбор запоминается и тогда, когда совпал с умолчанием: по нему автопереключение понимает, что решал человек.
+        guard mapSource != s || !mapSourceChosen else { return }
         mapSource = s
+        mapAutoApple = false
         snapshot.extra["mapSource"] = .string(s.rawValue)
         persist()
+    }
+    /// Запасная карта (28л.3). CARTO не отдала первую плитку за 4 с — на этот запуск показываем карту Apple.
+    /// Только если холст не выбран руками: выбор в настройках (даже «OpenStreetMap») автопереключение не
+    /// перебивает. В снимок не пишется — в следующий запуск CARTO получает новую попытку.
+    public private(set) var mapAutoApple = false
+    /// CARTO уже отдала плитку в этом запуске — сторожить дальше незачем.
+    private var cartoAnswered = false
+    /// Холст выбран руками: ключ `mapSource` в снимке появляется только от `setMapSource`.
+    public var mapSourceChosen: Bool { snapshot.extra["mapSource"] != nil }
+    /// Холст, который рисуется на самом деле.
+    public var shownMapSource: MapCanvasSource { mapAutoApple && !mapSourceChosen ? .mapKit : mapSource }
+    /// Надо ли следить за первой плиткой CARTO.
+    public var mapFallbackArmed: Bool { mapSource == .mapLibre && !mapSourceChosen && !mapAutoApple && !cartoAnswered }
+    public func cartoTileArrived() { cartoAnswered = true }
+    public func cartoWentSilent() {
+        guard mapFallbackArmed else { return }
+        mapAutoApple = true
     }
     /// Названия улиц и мест на холсте (`mapLabels` снимка, тумблер веба).
     public var mapLabels: Bool { snapshot.mapLabels }

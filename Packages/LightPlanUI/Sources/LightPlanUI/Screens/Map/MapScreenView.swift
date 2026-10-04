@@ -136,7 +136,7 @@ struct MapScreenView: View {
                         if app.mapOffline {
                             ground
                         } else {
-                            MapCanvasView(source: app.mapSource,
+                            MapCanvasView(source: app.shownMapSource,
                                           center: MapCanvasCenter(latitude: place.latitude, longitude: place.longitude),
                                           zoom: 14, dark: darkCanvas, labels: app.mapLabels, language: app.language,
                                           panEnabled: !rotor.live, focusShift: ((size.height / 2 - cy) * 2).rounded(),
@@ -150,7 +150,11 @@ struct MapScreenView: View {
                                           onTap: { p in
                                               tapMap(p, anchor: anchor, side: side,
                                                      screen: screenPoint(p, side: side, size: size, cy: cy))
-                                          })
+                                          },
+                                          fallback: app.mapFallbackArmed
+                                              ? MapCanvasFallback(onTile: { app.cartoTileArrived() },
+                                                                  onSilent: { app.cartoWentSilent() })
+                                              : nil)
                                 .background(ground)
                         }
                     }
@@ -217,8 +221,21 @@ struct MapScreenView: View {
                     .shotNode("map.credit")
                     .frame(width: size.width - 8, alignment: .trailing)
                     .padding(.top, headerBottom + 8)
-                    .opacity(app.mapSource == .mapLibre ? 1 : 0)
+                    .opacity(app.shownMapSource == .mapLibre ? 1 : 0)
                     .allowsHitTesting(false)
+
+                if app.shownMapSource == .mapKit && app.mapAutoApple {
+                    Text(app.lexicon.t("map.fallbackApple"))
+                        .font(.system(size: 9)).tracking(0.2)
+                        .foregroundStyle(pal.ink7)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(pal.bar2)
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 7, style: .continuous)))
+                        .shotNode("map.fallback", text: app.lexicon.t("map.fallbackApple"))
+                        .frame(width: size.width - 8, alignment: .trailing)
+                        .padding(.top, headerBottom + 8)
+                        .allowsHitTesting(false)
+                }
 
                 layersButton(pal, on: layers.sun || layers.moon || layers.mw, darkCanvas: darkCanvas)
                     .position(x: 12 + 17, y: ctlBot - 12 - 17)

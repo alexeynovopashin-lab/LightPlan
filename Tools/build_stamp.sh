@@ -51,6 +51,8 @@ dir="${TARGET_BUILD_DIR:-}/${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}"
 "$root/Tools/weather_key.sh" "$dir"
 # Ключ читалки Pinterest (28м) — тоже свой файл; нет ключа — Pinterest в приложении выключен с надписью.
 "$root/Tools/og_key.sh" "$dir"
+# Ключ CARTO (28л.3) — свой файл; нет ключа — плитки CARTO идут без него, сборка проходит.
+"$root/Tools/carto_key.sh" "$dir"
 
 out="$dir/build_stamp.plist"
 pb=/usr/libexec/PlistBuddy

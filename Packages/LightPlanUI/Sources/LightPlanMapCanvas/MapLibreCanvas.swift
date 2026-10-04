@@ -15,8 +15,15 @@ struct MapLibreCanvas: UIViewRepresentable {
     let onMove: (MapCanvasCenter) -> Void
     let onCamera: (MapCanvasCamera) -> Void
     let onTap: (CGPoint) -> Void
+    let fallback: MapCanvasFallback?
 
-    func makeCoordinator() -> Coordinator { Coordinator(onMove: onMove, onCamera: onCamera, onTap: onTap) }
+    func makeCoordinator() -> Coordinator {
+        let c = Coordinator(onMove: onMove, onCamera: onCamera, onTap: onTap)
+        c.watch(fallback)
+        return c
+    }
+
+    static func dismantleUIView(_ view: MLNMapView, coordinator: Coordinator) { coordinator.gate?.cancel() }
 
     func makeUIView(context: Context) -> MLNMapView {
         let view = MLNMapView(frame: .zero, styleURL: style)
@@ -29,6 +36,8 @@ struct MapLibreCanvas: UIViewRepresentable {
         view.attributionButton.isHidden = true
         view.automaticallyAdjustsContentInset = false
         view.delegate = context.coordinator
+        // Стиль локальный и встаёт ещё в `init` — раньше, чем назначен делегат, так что его «встал» не придёт.
+        context.coordinator.gate?.start()
         // Тап — свой распознаватель, уступающий двойному тапу движка
         // (приближение): одиночный срабатывает, только если второго не было.
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tapped(_:)))
@@ -82,6 +91,38 @@ struct MapLibreCanvas: UIViewRepresentable {
         var given: MapCanvasCenter?
         var inset: UIEdgeInsets = .zero
         var style: URL?
+        /// Сторож первой плитки CARTO (28л.3) и что сказать, когда она пришла.
+        @MainActor var gate: MapFallbackGate?
+        @MainActor private var onTile: (@MainActor () -> Void)?
+
+        @MainActor func watch(_ fallback: MapCanvasFallback?) {
+            guard let fallback else { return }
+            onTile = fallback.onTile
+            gate = MapFallbackGate(timeout: fallback.timeout, onSilent: { [weak self] in
+                self?.logResult(fell: true)
+                fallback.onSilent()
+            })
+        }
+
+        /// Плитка пришла, когда на кадре есть объекты векторного источника: фон без плиток их не даёт.
+        func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
+            MainActor.assumeIsolated {
+                guard let gate, gate.outcome == .waiting,
+                      !mapView.visibleFeatures(in: mapView.bounds).isEmpty else { return }
+                gate.tileArrived()
+                logResult(fell: false)
+                onTile?()
+            }
+        }
+
+        @MainActor private func logResult(fell: Bool) {
+            #if DEBUG
+            guard let out = UserDefaults.standard.string(forKey: "LPCartoLog") else { return }
+            var seen: [String: Any] = ["fell": fell, "keyed": CartoKey.current != nil]
+            if let ms = gate?.firstTileMs { seen["firstTileMs"] = ms }
+            try? (try? JSONSerialization.data(withJSONObject: seen, options: [.sortedKeys]))?.write(to: URL(fileURLWithPath: out))
+            #endif
+        }
 
         init(onMove: @escaping (MapCanvasCenter) -> Void, onCamera: @escaping (MapCanvasCamera) -> Void,
              onTap: @escaping (CGPoint) -> Void) {

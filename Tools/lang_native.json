@@ -43,6 +43,7 @@
     "bin.busyBack": "время занято: {name} {when}",
     "set.buildLine": "Сборка · {branch} · {sha} · {date}",
     "set.buildUnknown": "Сборка · неизвестна",
+    "map.fallbackApple": "Карта Apple: наша не ответила",
     "doc.stripTitle": "Документы",
     "doc.stripCount": [
       "бумага",
@@ -189,6 +190,7 @@
     "bin.busyBack": "time is busy: {name} {when}",
     "set.buildLine": "Build · {branch} · {sha} · {date}",
     "set.buildUnknown": "Build · unknown",
+    "map.fallbackApple": "Apple Maps: ours didn't respond",
     "doc.stripTitle": "Documents",
     "doc.stripCount": [
       "paper",
@@ -334,6 +336,7 @@
     "bin.busyBack": "horario ocupado: {name} {when}",
     "set.buildLine": "Compilación · {branch} · {sha} · {date}",
     "set.buildUnknown": "Compilación · desconocida",
+    "map.fallbackApple": "Mapas de Apple: la nuestra no respondió",
     "doc.stripTitle": "Documentos",
     "doc.stripCount": [
       "papel",
@@ -479,6 +482,7 @@
     "bin.busyBack": "時間が埋まっています：{name} {when}",
     "set.buildLine": "ビルド · {branch} · {sha} · {date}",
     "set.buildUnknown": "ビルド · 不明",
+    "map.fallbackApple": "Appleマップ：こちらの地図が応答しませんでした",
     "doc.stripTitle": "書類",
     "doc.stripCount": [
       "件"
@@ -623,6 +627,7 @@
     "bin.busyBack": "时间已被占用：{name} {when}",
     "set.buildLine": "构建 · {branch} · {sha} · {date}",
     "set.buildUnknown": "构建 · 未知",
+    "map.fallbackApple": "苹果地图：我们的地图没有响应",
     "doc.stripTitle": "文档",
     "doc.stripCount": [
       "份文档"

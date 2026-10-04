@@ -209,6 +209,55 @@ struct AppModelTests {
         #expect(second.mapSource == .mapKit)
     }
 
+    // MARK: - Запасная карта (28л.3)
+
+    @Test func silentCartoFallsBackToApple() {
+        let app = model()
+        #expect(app.mapFallbackArmed && app.shownMapSource == .mapLibre)
+        app.cartoWentSilent()
+        #expect(app.shownMapSource == .mapKit && app.mapAutoApple && !app.mapFallbackArmed)
+        #expect(app.mapSource == .mapLibre)
+    }
+
+    @Test func answeredCartoStaysAndIsNotWatchedAgain() {
+        let app = model()
+        app.cartoTileArrived()
+        #expect(!app.mapFallbackArmed)
+        app.cartoWentSilent()
+        #expect(app.shownMapSource == .mapLibre && !app.mapAutoApple)
+    }
+
+    @Test func handPickedCanvasIsNeverOverridden() {
+        let app = model()
+        app.setMapSource(.mapLibre)   // сам выбрал «OpenStreetMap» — выбор есть, хоть он и совпал с умолчанием
+        #expect(app.mapSourceChosen && !app.mapFallbackArmed)
+        app.cartoWentSilent()
+        #expect(app.shownMapSource == .mapLibre && !app.mapAutoApple)
+
+        let apple = model()
+        apple.setMapSource(.mapKit)
+        #expect(!apple.mapFallbackArmed && apple.shownMapSource == .mapKit)
+    }
+
+    @Test func pickingAfterAutoFallbackWins() {
+        let app = model()
+        app.cartoWentSilent()
+        app.setMapSource(.mapLibre)
+        #expect(app.shownMapSource == .mapLibre)
+    }
+
+    @Test func autoFallbackIsNotSaved() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lp-28l3-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = Store(directory: dir, debounce: .milliseconds(1))
+        let first = model(store: store)
+        first.cartoWentSilent()
+        first.setMapLabels(true)
+        await first.flush()
+        let second = model(try await store.load(), store: store)
+        #expect(second.mapLabels && !second.mapAutoApple && second.mapFallbackArmed)
+    }
+
     // MARK: - Язык из iOS
 
     @Test(arguments: [
