@@ -256,6 +256,10 @@ struct MapRouteTests {
         #expect(demo.url?.absoluteString
                 == "https://router.project-osrm.org/route/v1/driving/83.77000,53.34000;83.78000,53.35123?overview=full&geometries=geojson")
         #expect(demo.value(forHTTPHeaderField: "User-Agent")?.hasPrefix("LightPlan/") == true)
+        // У каждого запроса свой срок = срок сервера (3 / 3 / 4 с).
+        #expect(demo.timeoutInterval == 3)
+        #expect(RoadServers.fossgisOSRM.request(mode: .car, points: pts)?.timeoutInterval == 3)
+        #expect(RoadServers.valhalla.request(mode: .foot, points: pts)?.timeoutInterval == 4)
         // Замер 04.10: у OSRM demo пешком = машина (3705,8 м и 286,8 с), пеший профиль не его.
         #expect(RoadServers.osrmDemo.request(mode: .foot, points: pts) == nil)
         #expect(RoadServers.fossgisOSRM.request(mode: .car, points: pts)?.url?.path.hasPrefix("/routed-car/") == true)
@@ -292,6 +296,30 @@ struct MapRouteTests {
         #expect(got?.km == 2.45)
         #expect(calls.seen.count == 2 && calls.seen[0] == "slow.test" && calls.seen[1] == "fast.test")
         #expect(took < .seconds(2))   // ждали таймаут 0,2 с, а не зависший ответ (30 с)
+    }
+
+    /// Сервер молчит и не слушает отмену (как зависшее соединение): запрос
+    /// кончается только по своему `timeoutInterval`, как у URLSession. Если срок
+    /// не выставлен у запроса, переход к следующему ждёт его умолчание (60 с).
+    @Test func silentServerThatIgnoresCancelDelaysNextByAtMostItsTimeoutPlusOneSecond() async {
+        let slow = RoadServer(id: "mute", modes: [.car, .foot], timeout: 0.5) { _, _ in URLRequest(url: URL(string: "https://mute.test/r")!) }
+        let client = RoadClient(servers: [slow, RoadFx.server("next")], gap: .milliseconds(1)) { req in
+            if req.url?.host == "mute.test" {
+                // Не отменяемое ожидание: continuation + таймер GCD, как сокет без отклика.
+                await withCheckedContinuation { c in
+                    DispatchQueue.global().asyncAfter(deadline: .now() + req.timeoutInterval) { c.resume() }
+                }
+                throw URLError(.timedOut)
+            }
+            return (RoadFx.osrmBody, 200)
+        }
+        let (got, took) = await Task.detached {
+            let t0 = ContinuousClock.now
+            let a = await client.ask(mode: .car, points: RoadFx.pts)
+            return (a, ContinuousClock.now - t0)
+        }.value
+        #expect(got?.km == 2.45)
+        #expect(took < .milliseconds(1500))   // срок 0,5 с + 1 с
     }
 
     /// Код не 200 и мусорный ответ — тоже «не ответил»: идём дальше.

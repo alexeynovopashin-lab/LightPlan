@@ -253,6 +253,7 @@ async function nativeShot(udid, sc, dir) {
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
     ...(sc.chapter === 'spoiler' ? ['-LPShotSpoiler', '1'] : []),
     ...(sc.scope ? ['-LPShotScope', sc.scope] : []), ...(sc.pick != null ? ['-LPShotPick', String(sc.pick)] : []),
+    ...(sc.roads ? ['-LPShotRoads', sc.roads, ...(sc.roads === 'none' ? ['-LPShotReportDelay', '14'] : [])] : []),
     ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []),
     ...(args['form-scroll'] ? ['-LPShotFormScroll', args['form-scroll']] : []),
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
@@ -269,6 +270,50 @@ async function nativeShot(udid, sc, dir) {
   await sleep(300);
   run('xcrun', ['simctl', 'io', udid, 'screenshot', '--type=png', path.join(dir, 'native.png')], { stdio: 'ignore' });
   return JSON.parse(fs.readFileSync(report, 'utf8'));
+}
+
+/* 28л.5: числа по плашке «Исправить карту» и подписи авторства. Расстояние —
+   от низа подписи до верха плашки в pt (< 0 — пересекаются); контраст — по
+   пикселям снимка: фон плашки (медиана кольца на 1 pt вокруг рамки) против
+   самого далёкого от него пикселя внутри рамки (сердцевина букв). */
+async function roadsReport(page, sc, nat) {
+  const n = nat.nodes;
+  const credit = n['map.credit'], fix = n['map.fixTheMap'], sum = n['route.sum'];
+  const out = { state: sc.roads, theme: sc.theme, sum: sum && sum.text, fixTheMap: fix, credit };
+  if (credit && fix) {
+    out.gapPt = +(fix.y - (credit.y + credit.h)).toFixed(1);
+    out.overlapX = !(fix.x + fix.w <= credit.x || fix.x >= credit.x + credit.w);
+    out.intersects = out.overlapX && fix.y < credit.y + credit.h && fix.y + fix.h > credit.y;
+  }
+  const png = 'data:image/png;base64,' + fs.readFileSync(path.join(sc.dir, 'native.png')).toString('base64');
+  out.contrast = await page.evaluate(async ({ png, rects }) => {
+    const img = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = png; });
+    const k = img.width / 440;
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+    const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const res = {};
+    for (const [name, r] of Object.entries(rects)) {
+      if (!r) { res[name] = null; continue; }
+      const x0 = Math.round(r.x * k), y0 = Math.round(r.y * k), w = Math.round(r.w * k), h = Math.round(r.h * k);
+      const px = (x, y) => Array.from(cx.getImageData(x, y, 1, 1).data.slice(0, 3));
+      const ring = [];
+      const m = Math.round(k);
+      for (let x = x0 - m; x <= x0 + w + m; x += 2) { ring.push(px(x, y0 - m)); ring.push(px(x, y0 + h + m)); }
+      for (let y = y0; y <= y0 + h; y += 2) { ring.push(px(x0 - m, y)); ring.push(px(x0 + w + m, y)); }
+      const med = i => ring.map(p => p[i]).sort((a, b) => a - b)[ring.length >> 1];
+      const bg = [med(0), med(1), med(2)];
+      let best = bg, bd = -1;
+      const d = a => Math.abs(a[0] - bg[0]) + Math.abs(a[1] - bg[1]) + Math.abs(a[2] - bg[2]);
+      const data = cx.getImageData(x0, y0, w, h).data;
+      for (let i = 0; i < data.length; i += 4) { const p = [data[i], data[i + 1], data[i + 2]]; if (d(p) > bd) { bd = d(p); best = p; } }
+      const [a, b] = [lum(bg), lum(best)].sort((p, q) => q - p);
+      res[name] = { bg, ink: best, ratio: +((a + 0.05) / (b + 0.05)).toFixed(2) };
+    }
+    return res;
+  }, { png, rects: { fixTheMap: fix || null, credit: credit || null } });
+  console.log(`${sc.name}: «${out.sum}»; плашка ${fix ? [fix.x, fix.y, fix.w, fix.h].join(',') : 'нет'}; зазор ${out.gapPt} pt; контраст плашки ${out.contrast.fixTheMap && out.contrast.fixTheMap.ratio}`);
+  return out;
 }
 
 function webShot(sc, dir, safe) {
@@ -507,6 +552,24 @@ function markdown(results) {
     }
   }
   if (args['only-sheets'] || args.forms && args['only-forms'] || args['only-layers']) screens.length = 0;
+  /* 28л.5: маршрут при разных ответах серверов — только натив, веб тут ничего
+     не знает. `ok` — сервер отвечает дорогой, `none` — все три молчат (настоящая
+     цепочка с настоящими сроками, сети нет). Меряется плашка «Исправить карту»
+     и подпись «© CARTO · © OpenStreetMap»: расстояние и контраст — roads.json. */
+  const roadStates = args.roads ? (args.roads === '1' ? 'ok,none' : args.roads).split(',') : [];
+  if (roadStates.length) {
+    screens.length = 0;
+    for (const state of roadStates) for (const theme of themes) {
+      add('map', theme, 'simple', moments[0], 'paper', 'route');
+      const sc = list.pop();
+      sc.name = ['map-roads', state, theme].join('-');
+      sc.dir = path.join(OUT, sc.name);
+      fs.mkdirSync(sc.dir, { recursive: true });
+      sc.roads = state;
+      list.push(sc);
+    }
+    list.splice(0, list.length - roadStates.length * themes.length);   // остальные сценарии выше сюда не нужны
+  }
   if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
     add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope);
     /* Суббота 26-го: две съёмки внахлёст (14:00–15:30 и 15:00–16:30) —
@@ -548,8 +611,10 @@ function markdown(results) {
   // (ревью GPT к 4224ce1), пары и отчёт до этого снимаются все.
   const phaseMiss = [];
   const noWeather = {};
+  const roadsOut = {};
   for (const sc of list) {
     const nat = await nativeShot(dev.udid, sc, sc.dir);
+    if (sc.roads) { roadsOut[sc.name] = await roadsReport(page, sc, nat); continue; }
     if (args['no-weather']) {
       const seen = {};
       for (const [k, r] of Object.entries(nat.nodes)) {
@@ -633,6 +698,11 @@ function markdown(results) {
     console.log(`${sc.name}: узлов в обоих ${both.length}, сдвиг > 2 pt у ${off}, есть только с одной стороны ${gone}`);
   }
   await browser.close();
+  if (roadStates.length) {
+    fs.writeFileSync(path.join(OUT, 'roads.json'), JSON.stringify(roadsOut, null, 1));
+    console.log('маршрут по ответам серверов: ' + path.join(OUT, 'roads.json'));
+    return;
+  }
   if (args['no-weather']) {
     fs.writeFileSync(path.join(OUT, 'no_weather.json'), JSON.stringify(noWeather, null, 1));
     console.log('без прогноза: ' + path.join(OUT, 'no_weather.json'));

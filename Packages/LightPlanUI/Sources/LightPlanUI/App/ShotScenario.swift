@@ -3,6 +3,7 @@ import SwiftUI
 import LightPlanCore
 import LightPlanData
 import LightPlanDomain
+import LightPlanMapCanvas
 
 /// Половина пары «веб / натив» (итерация 19б, § 5.4 плана): приложение
 /// открывается в той же минуте, в том же месте, с той же погодой и теми же
@@ -111,6 +112,7 @@ extension AppModel {
             _ = app.planner.consumeDayShift()
         }
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
+        if let mode = UserDefaults.standard.string(forKey: "LPShotRoads") { app.roads.useShotRoads(RoadBook.shotRouter(mode)) }
         app.startChapter = s.chapter
         app.showsBuildLine = false
         // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.
@@ -252,8 +254,12 @@ public final class ShotProbe {
         guard let report else { return }
         Task { @MainActor in
             // Экран, погода из файла и имя места от заглушки приходят за доли
-            // секунды; три секунды — с запасом на анимацию вкладки.
-            try? await Task.sleep(for: .seconds(3))
+            // секунды; три секунды — с запасом на анимацию вкладки. Молчащие
+            // серверы маршрутов (`LPShotRoads none`) отвечают отказом через
+            // 3 + 3 + 4 с и очередь в секунду — `LPShotReportDelay` ждёт дольше.
+            let delay = UserDefaults.standard.object(forKey: "LPShotReportDelay") == nil
+                ? 3 : UserDefaults.standard.double(forKey: "LPShotReportDelay")
+            try? await Task.sleep(for: .seconds(delay))
             self.write(to: report, screen: screen)
         }
     }
@@ -346,3 +352,37 @@ private struct ShotNodeModifier: ViewModifier {
     }
 }
 #endif
+
+extension RoadBook {
+    /// Снимки маршрута (`LPShotRoads`): настоящий клиент с настоящей цепочкой
+    /// серверов и сроками, но вместо сети — `ok` отвечает дорогой с изгибом
+    /// в формате OSRM, `none` молчит до отмены (как сервер без отклика).
+    static func shotRouter(_ mode: String) -> Router {
+        let client = RoadClient { req in
+            guard mode == "ok" else {
+                try await Task.sleep(for: .seconds(3600))
+                throw URLError(.timedOut)
+            }
+            // «…/driving/lon,lat;lon,lat?…» — точки из пути запроса.
+            let path = req.url?.path ?? ""
+            let pts: [(Double, Double)] = (path.split(separator: "/").last.map(String.init) ?? "")
+                .split(separator: ";").compactMap { p in
+                    let c = p.split(separator: ",").compactMap { Double($0) }
+                    return c.count == 2 ? (c[0], c[1]) : nil
+                }
+            var line: [[Double]] = []
+            var meters = 0.0
+            for i in 0 ..< max(0, pts.count - 1) {
+                let (a, b) = (pts[i], pts[i + 1])
+                let mid = [(a.0 + b.0) / 2 + (b.1 - a.1) * 0.12, (a.1 + b.1) / 2 - (b.0 - a.0) * 0.12]
+                line += [[a.0, a.1], mid]
+                meters += 1.3 * 111_000 * ((b.0 - a.0) * (b.0 - a.0) * 0.36 + (b.1 - a.1) * (b.1 - a.1)).squareRoot()
+            }
+            if let l = pts.last { line.append([l.0, l.1]) }
+            let body: [String: Any] = ["routes": [["geometry": ["coordinates": line],
+                                                   "distance": meters, "duration": meters / 1.2]]]
+            return (try JSONSerialization.data(withJSONObject: body), 200)
+        }
+        return { _, run in await client.ask(mode: run.mode, points: run.points) }
+    }
+}

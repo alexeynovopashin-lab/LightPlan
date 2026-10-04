@@ -217,7 +217,14 @@ final class RoadBook {
     }
 
     private(set) var cache: [String: RoadAnswer?] = [:]
-    @ObservationIgnored private let router: Router
+    @ObservationIgnored private var router: Router
+    /// Снимки (`LPShotRoads`): дорогу спрашивают и без холста с сетью.
+    @ObservationIgnored private(set) var asksOffline = false
+
+    func useShotRoads(_ router: @escaping Router) {
+        self.router = router
+        asksOffline = true
+    }
 
     init(router: @escaping Router = { await RoadRouter.ask(source: $0, mode: $1.mode, points: $1.points) }) {
         self.router = router

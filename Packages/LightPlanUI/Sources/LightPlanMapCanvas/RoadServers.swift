@@ -19,6 +19,9 @@ public struct RoadServer: Sendable {
     public func request(mode: RoadMode, points: [MapCanvasCenter]) -> URLRequest? {
         guard modes.contains(mode), var r = make(mode, points) else { return nil }
         r.setValue(RoadServers.userAgent, forHTTPHeaderField: "User-Agent")
+        // Страховка к гонке с таймером в `RoadClient`: срок не зависит от того,
+        // как быстро завершится отменённая задача (ревью GPT к 0fdca61).
+        r.timeoutInterval = timeout
         return r
     }
 }

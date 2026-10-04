@@ -228,7 +228,7 @@ struct MapScreenView: View {
                 if routeMode && app.shownMapSource == .mapLibre && !app.routeRuns.isEmpty {
                     Link(app.lexicon.t("map.fixTheMap"), destination: RoadServers.fixTheMap)
                         .font(.system(size: 9)).tracking(0.2)
-                        .foregroundStyle(pal.ink7)
+                        .foregroundStyle(pal.ink4)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(pal.bar2)
                             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 7, style: .continuous)))
@@ -332,11 +332,12 @@ struct MapScreenView: View {
         .onChange(of: light.locationName) { hereError = nil }
         .sensoryFeedback(.impact(weight: .medium), trigger: spotDrops)
         // Дорогу спрашиваем, когда куски сменились (`roadAsk`); в паре сети
-        // у веба нет — там прямые, и натив не спрашивает.
+        // у веба нет — там прямые, и натив не спрашивает (кроме снимков
+        // `LPShotRoads`: серверы подменены, до сети дело не доходит).
         .onChange(of: routeMode ? app.routeRuns : [], initial: true) { _, runs in
-            if !runs.isEmpty && !app.mapOffline { app.roads.ask(app.mapSource, runs) }
+            if !runs.isEmpty && (!app.mapOffline || app.roads.asksOffline) { app.roads.ask(app.mapSource, runs) }
         }
-        .onChange(of: app.mapSource) { if routeMode && !app.mapOffline { app.roads.ask(app.mapSource, app.routeRuns) } }
+        .onChange(of: app.mapSource) { if routeMode && (!app.mapOffline || app.roads.asksOffline) { app.roads.ask(app.mapSource, app.routeRuns) } }
         // Центр компаса стал булавкой-визиром или вернулся в круг (слово
         // Алексея 24.09: «тактильная отдача, значок трансформируется»).
         .sensoryFeedback(.impact(weight: .medium), trigger: sight)
