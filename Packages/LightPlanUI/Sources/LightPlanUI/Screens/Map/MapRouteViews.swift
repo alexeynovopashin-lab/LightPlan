@@ -508,13 +508,14 @@ struct RouteBar: View {
 }
 
 /// Линия черновика на холсте (`placeRoutePath`). Слой под булавками, над
-/// вуалью; куски — `routeRuns`. Пока дороги нет — прямая штрихом, 2,2 латунью
-/// .45, `dash 6 6`. Дорога машиной — ореол 7,5 / .2 и линия 2,8 / .95; пешком —
+/// вуалью; куски — `routeRuns`. Пока дорогу ещё спрашивают — прямая штрихом,
+/// 2,2 латунью .45, `dash 6 6`; не ответил никто — куска на карте нет (28л.5). Дорога машиной — ореол 7,5 / .2 и линия 2,8 / .95; пешком —
 /// цепочка точек 2,8 / .9, `dash 0 5,6` (круглый конец делает точку).
 struct RoutePathLayer: View {
     let runs: [RouteRun]
-    /// Ответ на каждый кусок по порядку; `nil` — прямая.
-    let roads: [RoadAnswer?]
+    /// Ответ на каждый кусок по порядку; `nil` — ещё спрашивают (прямая
+    /// штрихом), `.some(nil)` — не ответил никто (линии нет).
+    let roads: [RoadAnswer??]
     let feed: MapCameraFeed
     let fallback: MapCanvasCamera
     let anchor: CGPoint
@@ -522,9 +523,9 @@ struct RoutePathLayer: View {
 
     var body: some View {
         let cam = feed.camera ?? fallback
-        let raw = path(cam) { road, _ in road == nil }
-        let car = path(cam) { road, run in road != nil && run.mode == .car }
-        let foot = path(cam) { road, run in road != nil && run.mode == .foot }
+        let raw = path(cam) { road, _ in if case .none = road { true } else { false } }
+        let car = path(cam) { road, run in (road ?? nil) != nil && run.mode == .car }
+        let foot = path(cam) { road, run in (road ?? nil) != nil && run.mode == .foot }
         ZStack {
             car.stroke(pal.brass.opacity(0.2), style: StrokeStyle(lineWidth: 7.5, lineCap: .round, lineJoin: .round))
             car.stroke(pal.brass.opacity(0.95), style: StrokeStyle(lineWidth: 2.8, lineCap: .round, lineJoin: .round))
@@ -537,12 +538,25 @@ struct RoutePathLayer: View {
         .shotNode("route.line")
     }
 
-    private func path(_ cam: MapCanvasCamera, _ take: (RoadAnswer?, RouteRun) -> Bool) -> Path {
-        Path { p in
+    /// Точки линии каждого куска: прямая у спрашиваемого, дорога у ответившего,
+    /// пусто у отказа.
+    static func lines(runs: [RouteRun], roads: [RoadAnswer??]) -> [[MapCanvasCenter]] {
+        runs.enumerated().map { j, run in
+            switch j < roads.count ? roads[j] : nil {
+            case .none: return run.points
+            case .some(.none): return []
+            case .some(.some(let a)): return a.line
+            }
+        }
+    }
+
+    private func path(_ cam: MapCanvasCamera, _ take: (RoadAnswer??, RouteRun) -> Bool) -> Path {
+        let lines = Self.lines(runs: runs, roads: roads)
+        return Path { p in
             for (j, run) in runs.enumerated() {
-                let road = j < roads.count ? roads[j] : nil
+                let road: RoadAnswer?? = j < roads.count ? roads[j] : nil
                 guard take(road, run) else { continue }
-                for (i, c) in (road?.line ?? run.points).enumerated() {
+                for (i, c) in lines[j].enumerated() {
                     let d = MapSpots.offset(latitude: c.latitude, longitude: c.longitude, camera: cam)
                     let pt = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
                     if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }

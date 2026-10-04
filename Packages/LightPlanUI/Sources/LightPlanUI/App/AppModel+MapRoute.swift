@@ -203,11 +203,36 @@ extension AppModel {
 /// Кэш и очередь маршрутизатора (`roadCache`, `roadFly`, `roadAsk` веба).
 /// Ключ — источник, способ и точки: те же точки пешком — другой вопрос, и
 /// карты Apple — другой ответ. Сбой кладёт `nil`: в этом сеансе кусок не
-/// спрашивают снова и он остаётся прямой.
+/// спрашивают снова, на нём «Маршрут недоступен» и никакой линии.
 @MainActor
 @Observable
 final class RoadBook {
+    typealias Router = @Sendable (MapCanvasSource, RouteRun) async -> RoadAnswer?
+
+    /// Итог по всем кускам для подписи полосы: `unavailable` — хоть один кусок
+    /// спросили и не ответил никто (прямой и выдуманных минут нет, 28л.5).
+    enum Total: Equatable {
+        case none, pending, unavailable
+        case ready(km: Double, min: Int)
+    }
+
     private(set) var cache: [String: RoadAnswer?] = [:]
+    @ObservationIgnored private let router: Router
+
+    init(router: @escaping Router = { await RoadRouter.ask(source: $0, mode: $1.mode, points: $1.points) }) {
+        self.router = router
+    }
+
+    func total(_ source: MapCanvasSource, _ runs: [RouteRun]) -> Total {
+        guard !runs.isEmpty else { return .none }
+        var km = 0.0, min = 0, pending = false
+        for r in runs {
+            guard let got = answer(source, r) else { pending = true; continue }
+            guard let a = got else { return .unavailable }
+            km += a.km; min += a.min
+        }
+        return pending ? .pending : .ready(km: km, min: min)
+    }
     @ObservationIgnored private var flying: Set<String> = []
     @ObservationIgnored private var pending = ""
     @ObservationIgnored private var wait: Task<Void, Never>?
@@ -235,7 +260,7 @@ final class RoadBook {
             for (k, run) in zip(keys, runs) where self.cache[k] == nil && !self.flying.contains(k) {
                 self.flying.insert(k)
                 Task {
-                    let a = await RoadRouter.ask(source: source, mode: run.mode, points: run.points)
+                    let a = await self.router(source, run)
                     self.flying.remove(k)
                     self.cache[k] = .some(a)
                 }

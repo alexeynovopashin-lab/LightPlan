@@ -177,7 +177,7 @@ struct MapScreenView: View {
                     // темнеет, свои точки — нет. Слой — квадрат ротора, как холст.
                     if routeMode && app.routeSpots.count > 1 {
                         let runs = app.routeRuns
-                        RoutePathLayer(runs: runs, roads: runs.map { roadOf($0) }, feed: feed,
+                        RoutePathLayer(runs: runs, roads: runs.map { app.roads.answer(app.mapSource, $0) }, feed: feed,
                                        fallback: fallbackCamera(place), anchor: anchor, pal: pal)
                             .frame(width: side, height: side)
                             .position(x: size.width / 2, y: size.height / 2)
@@ -223,6 +223,19 @@ struct MapScreenView: View {
                     .padding(.top, headerBottom + 8)
                     .opacity(app.shownMapSource == .mapLibre ? 1 : 0)
                     .allowsHitTesting(false)
+
+                // Правила FOSSGIS для маршрутов: источник и ссылка «fix the map».
+                if routeMode && app.shownMapSource == .mapLibre && !app.routeRuns.isEmpty {
+                    Link(app.lexicon.t("map.fixTheMap"), destination: RoadServers.fixTheMap)
+                        .font(.system(size: 9)).tracking(0.2)
+                        .foregroundStyle(pal.ink7)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(pal.bar2)
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 7, style: .continuous)))
+                        .shotNode("map.fixTheMap", text: app.lexicon.t("map.fixTheMap"))
+                        .frame(width: size.width - 8, alignment: .trailing)
+                        .padding(.top, headerBottom + 8 + 22)
+                }
 
                 if app.shownMapSource == .mapKit && app.mapAutoApple {
                     Text(app.lexicon.t("map.fallbackApple"))
@@ -830,23 +843,17 @@ struct MapScreenView: View {
         }
     }
 
-    /// Дорога куска, если ответили (`roadOf` веба); иначе прямая.
-    private func roadOf(_ run: RouteRun) -> RoadAnswer? {
-        app.roads.answer(app.mapSource, run) ?? nil
-    }
-
-    /// «12 км · 25 мин» — только когда ответили все куски (`chainDist`).
+    /// «12 км · 25 мин» — когда ответили все куски (`chainDist`); «Маршрут
+    /// недоступен» — когда не ответил ни один сервер. Минуты не придумываем.
     private func routeDist() -> String? {
-        let runs = app.routeRuns
-        guard !runs.isEmpty else { return nil }
-        var km = 0.0, min = 0
-        for r in runs {
-            guard let a = roadOf(r) else { return nil }
-            km += a.km; min += a.min
+        switch app.roads.total(app.mapSource, app.routeRuns) {
+        case .none, .pending: return nil
+        case .unavailable: return app.lexicon.t("map.routeNone")
+        case .ready(let km, let min):
+            let nt = NumberText(language: app.language)
+            let n = km < 10 ? nt.num(km, digits: 1) : nt.num(km.rounded(), digits: 0)
+            return app.lexicon.t("pro.distKm", ["n": n]) + " · " + PlannerFacts(app: app, dark: false).durLabel(min)
         }
-        let nt = NumberText(language: app.language)
-        let n = km < 10 ? nt.num(km, digits: 1) : nt.num(km.rounded(), digits: 0)
-        return app.lexicon.t("pro.distKm", ["n": n]) + " · " + PlannerFacts(app: app, dark: false).durLabel(min)
     }
 
     /// Полоса черновика и её кнопки.

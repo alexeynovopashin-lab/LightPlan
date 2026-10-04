@@ -249,26 +249,119 @@ struct MapRouteTests {
         #expect(app.routeSpots.map(\.id) == ["a", "b", "d"])
     }
 
-    @Test func webRouterUrlsAndAnswerMatchTheWeb() throws {
-        let pts = [MapCanvasCenter(latitude: 53.34, longitude: 83.77),
-                   MapCanvasCenter(latitude: 53.35123456, longitude: 83.78)]
+    @Test func serverUrlsProfilesAndAnswer() throws {
+        let pts = RoadFx.pts
         #expect(RoadRouter.key(pts) == "83.77000,53.34000;83.78000,53.35123")
-        #expect(RoadRouter.webURL(mode: .car, points: pts)?.absoluteString
+        let demo = try #require(RoadServers.osrmDemo.request(mode: .car, points: pts))
+        #expect(demo.url?.absoluteString
                 == "https://router.project-osrm.org/route/v1/driving/83.77000,53.34000;83.78000,53.35123?overview=full&geometries=geojson")
-        let foot = try #require(RoadRouter.webURL(mode: .foot, points: pts))
-        let json = try #require(URLComponents(url: foot, resolvingAgainstBaseURL: false)?
-            .queryItems?.first { $0.name == "json" }?.value)
-        let body = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
-        #expect(foot.host == "valhalla1.openstreetmap.de")
-        #expect(body["costing"] as? String == "pedestrian" && body["format"] as? String == "osrm")
-        #expect(body["shape_format"] as? String == "geojson" && body["directions_type"] as? String == "none")
-        let answer = RoadRouter.parseOSRM(Data("""
-            {"routes":[{"geometry":{"coordinates":[[83.77,53.34],[83.775,53.345],[83.78,53.35]]},
-            "distance":2450,"duration":389}]}
-            """.utf8))
+        #expect(demo.value(forHTTPHeaderField: "User-Agent")?.hasPrefix("LightPlan/") == true)
+        // Замер 04.10: у OSRM demo пешком = машина (3705,8 м и 286,8 с), пеший профиль не его.
+        #expect(RoadServers.osrmDemo.request(mode: .foot, points: pts) == nil)
+        #expect(RoadServers.fossgisOSRM.request(mode: .car, points: pts)?.url?.path.hasPrefix("/routed-car/") == true)
+        #expect(RoadServers.fossgisOSRM.request(mode: .foot, points: pts)?.url?.path.hasPrefix("/routed-foot/") == true)
+        for mode in [RoadMode.car, .foot] {
+            let v = try #require(RoadServers.valhalla.request(mode: mode, points: pts)?.url)
+            let json = try #require(URLComponents(url: v, resolvingAgainstBaseURL: false)?
+                .queryItems?.first { $0.name == "json" }?.value)
+            let body = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+            #expect(v.host == "valhalla1.openstreetmap.de")
+            #expect(body["costing"] as? String == (mode == .car ? "auto" : "pedestrian") && body["format"] as? String == "osrm")
+            #expect(body["shape_format"] as? String == "geojson" && body["directions_type"] as? String == "none")
+        }
+        let answer = RoadRouter.parseOSRM(RoadFx.osrmBody)
         #expect(answer?.line.count == 3 && answer?.line[1].latitude == 53.345)
         #expect(answer?.km == 2.45 && answer?.min == 6)
         #expect(RoadRouter.parseOSRM(Data(#"{"code":"DistanceExceeded"}"#.utf8)) == nil)
+    }
+
+    /// Первый завис дольше таймаута → ходим ко второму; сам ответ второго берём.
+    @Test func clientMovesToNextServerOnTimeout() async {
+        let calls = RoadFx.Calls()
+        let client = RoadClient(servers: [RoadFx.server("slow"), RoadFx.server("fast")], gap: .milliseconds(1)) { req in
+            calls.add(req)
+            if req.url?.host == "slow.test" { try await Task.sleep(for: .seconds(30)) }
+            return (RoadFx.osrmBody, 200)
+        }
+        // Время меряем вне главного потока: он в этом наборе занят чужими тестами.
+        let (got, took) = await Task.detached {
+            let t0 = ContinuousClock.now
+            let a = await client.ask(mode: .car, points: RoadFx.pts)
+            return (a, ContinuousClock.now - t0)
+        }.value
+        #expect(got?.km == 2.45)
+        #expect(calls.seen.count == 2 && calls.seen[0] == "slow.test" && calls.seen[1] == "fast.test")
+        #expect(took < .seconds(2))   // ждали таймаут 0,2 с, а не зависший ответ (30 с)
+    }
+
+    /// Код не 200 и мусорный ответ — тоже «не ответил»: идём дальше.
+    @Test func clientSkipsBadCodeAndGarbage() async {
+        let calls = RoadFx.Calls()
+        let client = RoadClient(servers: [RoadFx.server("a"), RoadFx.server("b"), RoadFx.server("c")], gap: .milliseconds(1)) { req in
+            calls.add(req)
+            switch req.url?.host {
+            case "a.test": return (RoadFx.osrmBody, 503)
+            case "b.test": return (Data("{}".utf8), 200)
+            default: return (RoadFx.osrmBody, 200)
+            }
+        }
+        #expect(await client.ask(mode: .car, points: RoadFx.pts) != nil)
+        #expect(calls.seen.count == 3)
+    }
+
+    /// Отказали все: `nil` — ни линии, ни километров, ни минут.
+    @Test func clientAnswersNothingWhenEveryServerFails() async {
+        let calls = RoadFx.Calls()
+        let client = RoadClient(servers: [RoadFx.server("a"), RoadFx.server("b", timeout: 0.05), RoadFx.server("c")],
+                                gap: .milliseconds(1)) { req in
+            calls.add(req)
+            if req.url?.host == "b.test" { try await Task.sleep(for: .seconds(30)) }
+            throw URLError(.notConnectedToInternet)
+        }
+        #expect(await client.ask(mode: .foot, points: RoadFx.pts) == nil)
+        #expect(calls.seen.count == 3)
+    }
+
+    /// Пешком OSRM demo не спрашивается совсем, машина идёт к нему первому.
+    @Test func footSkipsDemoServer() async {
+        let calls = RoadFx.Calls()
+        let client = RoadClient(servers: [RoadFx.server("demo", modes: [.car]), RoadFx.server("foot")],
+                                gap: .milliseconds(1)) { req in calls.add(req); return (RoadFx.osrmBody, 200) }
+        _ = await client.ask(mode: .foot, points: RoadFx.pts)
+        #expect(calls.seen.count == 1 && calls.seen[0] == "foot.test")
+    }
+
+    /// Не чаще одного запроса в секунду на сервер: три подряд встают в очередь
+    /// с зазором (тут 0,6 с; пределы широкие — полный прогон грузит процессор).
+    @Test func throttleSpacesRequestsPerServer() async {
+        let t = RoadThrottle(gap: .milliseconds(600))
+        let t0 = ContinuousClock.now
+        await t.wait("s"); await t.wait("s"); await t.wait("s")
+        #expect(ContinuousClock.now - t0 >= .milliseconds(1190))
+        let t1 = ContinuousClock.now
+        await t.wait("other")                      // другой сервер своя очередь
+        #expect(ContinuousClock.now - t1 < .milliseconds(500))
+    }
+
+    /// Итог для полосы: отказ — «недоступен», а не недостающая сумма; линия
+    /// отказавшего куска пуста, у спрашиваемого — прямая, у ответившего — дорога.
+    @Test func totalsAndLinesForFailedRuns() async throws {
+        let a = RouteRun(mode: .car, points: RoadFx.pts)
+        let b = RouteRun(mode: .foot, points: Array(RoadFx.pts.reversed()))
+        let ok = RoadAnswer(line: RoadFx.pts, km: 2, min: 5)
+        let book = RoadBook { _, run in run.mode == .car ? ok : nil }
+        #expect(book.total(.mapLibre, [a, b]) == .pending)
+        #expect(book.total(.mapLibre, []) == .none)
+        book.ask(.mapLibre, [a, b])
+        for _ in 0 ..< 200 where book.total(.mapLibre, [a, b]) == .pending {   // дебаунс 400 мс + ответ
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(book.total(.mapLibre, [a]) == .ready(km: 2, min: 5))
+        #expect(book.total(.mapLibre, [a, b]) == .unavailable)
+        let roads = [book.answer(.mapLibre, a), book.answer(.mapLibre, b), nil]
+        let lines = RoutePathLayer.lines(runs: [a, b, a], roads: roads)
+        #expect(lines[0] == RoadFx.pts && lines[1].isEmpty && lines[2] == RoadFx.pts)
+        #expect(lines[1].isEmpty)
     }
 
     // MARK: - Ревью 24а (шаг 1 итерации 25)
@@ -354,5 +447,28 @@ struct MapRouteTests {
         #expect(m.tick(for: "A", now: t0.addingTimeInterval(0.1)) == 3)
         #expect(m.tick(for: "B", now: t0.addingTimeInterval(0.1)) == 0)
         #expect(m.tick(for: "A", now: t0.addingTimeInterval(SpotLanding.total + 0.1)) == 0)
+    }
+}
+
+/// Общее для тестов маршрутизатора; вне `@MainActor`, чтобы замыкания клиента
+/// читали это из любого потока.
+private enum RoadFx {
+    static let pts = [MapCanvasCenter(latitude: 53.34, longitude: 83.77),
+                      MapCanvasCenter(latitude: 53.35123456, longitude: 83.78)]
+    static let osrmBody = Data("""
+        {"routes":[{"geometry":{"coordinates":[[83.77,53.34],[83.775,53.345],[83.78,53.35]]},
+        "distance":2450,"duration":389}]}
+        """.utf8)
+
+    static func server(_ id: String, timeout: TimeInterval = 0.2, modes: Set<RoadMode> = [.car, .foot]) -> RoadServer {
+        RoadServer(id: id, modes: modes, timeout: timeout) { _, _ in URLRequest(url: URL(string: "https://\(id).test/r")!) }
+    }
+
+    /// Кто и в каком порядке спрошен.
+    final class Calls: @unchecked Sendable {
+        private let lock = NSLock()
+        private var hosts: [String] = []
+        var seen: [String] { lock.lock(); defer { lock.unlock() }; return hosts }
+        func add(_ r: URLRequest) { lock.lock(); hosts.append(r.url?.host ?? ""); lock.unlock() }
     }
 }

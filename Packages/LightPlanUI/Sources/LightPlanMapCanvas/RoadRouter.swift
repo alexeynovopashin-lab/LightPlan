@@ -20,9 +20,10 @@ public struct RoadAnswer: Equatable, Sendable {
 }
 
 /// Дорога между точками черновика (итерация 24а). Две реализации по источнику
-/// карты (Алексей, 28.09, DECISIONS): у MapLibre — те же серверы, что у веба
-/// (`roadUrl`), у MapKit — карты Apple. Выше модуля видны только координаты.
-/// `nil` — не ответили или ответ без линии; кусок тогда остаётся прямой.
+/// карты (Алексей, 28.09, DECISIONS): у MapLibre — публичные серверы по
+/// очереди (`RoadServers`), у MapKit — карты Apple. Выше модуля видны только
+/// координаты. `nil` — не ответили или ответ без линии; кусок тогда без линии
+/// и без времени в пути, прямой не рисуем (28л.5).
 public enum RoadRouter {
     public static func ask(source: MapCanvasSource, mode: RoadMode,
                            points: [MapCanvasCenter]) async -> RoadAnswer? {
@@ -38,25 +39,16 @@ public enum RoadRouter {
         points.map { String(format: "%.5f,%.5f", $0.longitude, $0.latitude) }.joined(separator: ";")
     }
 
-    // MARK: MapLibre — OSRM / Valhalla, как у веба
+    // MARK: MapLibre — публичные серверы по очереди
 
-    /// `roadUrl` веба: машина — демо-сервер OSRM, пешком — Valhalla FOSSGIS
-    /// в формате OSRM. Сервер на своих правилах не для магазина — к выпуску
-    /// (34) нужен свой или платный (справка 24а).
-    public static func webURL(mode: RoadMode, points: [MapCanvasCenter]) -> URL? {
-        let pts = key(points)
-        if mode == .car {
-            return URL(string: "https://router.project-osrm.org/route/v1/driving/" + pts
-                       + "?overview=full&geometries=geojson")
-        }
-        let locs = points.map { ["lat": $0.latitude, "lon": $0.longitude] }
-        let body: [String: Any] = ["locations": locs, "costing": "pedestrian", "format": "osrm",
-                                   "shape_format": "geojson", "directions_type": "none"]
-        guard let data = try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys]),
-              let json = String(data: data, encoding: .utf8) else { return nil }
-        var c = URLComponents(string: "https://valhalla1.openstreetmap.de/route")
-        c?.queryItems = [URLQueryItem(name: "json", value: json)]
-        return c?.url
+    /// Серверы по очереди (`RoadServers`): первый, кто ответил линией, и есть
+    /// ответ. Серверы на своих правилах не для магазина — к выпуску (34) нужен
+    /// свой или платный (справка 24а); до конца бесплатного года их не
+    /// подключаем (DECISIONS «Смена курса», 2026-10-04). Не
+    /// ответил никто — `nil`, и выше честная надпись, а не прямая (правило
+    /// «без имитации» 02.10, DECISIONS «Смена курса» 04.10).
+    public static func askWeb(mode: RoadMode, points: [MapCanvasCenter]) async -> RoadAnswer? {
+        await RoadClient.shared.ask(mode: mode, points: points)
     }
 
     /// Разбор ответа в формате OSRM: `routes[0].geometry.coordinates`, метры, секунды.
@@ -69,12 +61,6 @@ public enum RoadRouter {
         guard line.count >= 2 else { return nil }
         let m = (r["distance"] as? Double) ?? 0, s = (r["duration"] as? Double) ?? 0
         return RoadAnswer(line: line, km: m / 1000, min: Int((s / 60).rounded()))
-    }
-
-    private static func askWeb(mode: RoadMode, points: [MapCanvasCenter]) async -> RoadAnswer? {
-        guard let url = webURL(mode: mode, points: points),
-              let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
-        return parseOSRM(data)
     }
 
     // MARK: MapKit — карты Apple
