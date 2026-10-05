@@ -139,7 +139,21 @@ extension AppModel {
             // Форма читает качество неба дня: ждём, пока погода из файла придёт (у веба она уже на месте).
             Task { @MainActor in
                 await app.light.weather.settled()
-                app.openForm(day: app.planner.selected)
+                // Черновик другого дня (28о): `LPShotDraft ask|continue|new` — на диске черновик от 27 сентября
+                // с набранным текстом, просят 29 октября (как у Алексея): окно вопроса / ответ «продолжить» /
+                // ответ «новая». `LPShotFormDay yyyy-mm-dd` — форма на этот день без черновика (порядок блоков, предупреждение).
+                if let mode = UserDefaults.standard.string(forKey: "LPShotDraft") {
+                    app.openForm(day: CivilDate(year: 2026, month: 9, day: 27))
+                    app.form?.notes = "рано утром"
+                    app.closeForm()
+                    app.openForm(day: CivilDate(year: 2026, month: 10, day: 29))
+                    if mode == "continue" { app.continueDraft() } else if mode == "new" { app.startNewOverDraft() }
+                } else if let d = UserDefaults.standard.string(forKey: "LPShotFormDay")?.split(separator: "-").compactMap({ Int($0) }), d.count == 3 {
+                    let start = UserDefaults.standard.string(forKey: "LPShotFormStart").flatMap { Int($0) }   // минуты суток
+                    app.openForm(day: CivilDate(year: d[0], month: d[1], day: d[2]), start: start, fromLight: start == nil)
+                } else {
+                    app.openForm(day: app.planner.selected)
+                }
                 if let g = s.way.flatMap(Genre.init(rawValue:)) { app.pickFormGenre(g) }
                 // Город формы (шаг 4б): `defaults write … LPShotFormCity Москва` — строки выезда и дороги.
                 if let c = UserDefaults.standard.string(forKey: "LPShotFormCity") {

@@ -115,7 +115,7 @@ extension AppModel {
         return text
     }
 
-    private func carrier(_ d: CivilDate) -> Date {
+    func carrier(_ d: CivilDate) -> Date {
         var c = DateComponents()
         (c.year, c.month, c.day, c.hour) = (d.year, d.month, d.day, 12)
         return Calendar(identifier: .gregorian).date(from: c) ?? Date()

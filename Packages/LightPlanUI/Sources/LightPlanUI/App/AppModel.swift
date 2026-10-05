@@ -303,6 +303,11 @@ public final class AppModel {
     public var formIsDraft = false
     /// Строка под заголовком формы («черновик стёрт»).
     public var formNote: String?
+    /// Вопрос «продолжить черновик или начать новую»: задан, когда в календаре выбрали день,
+    /// не совпадающий с днём черновика с набранным текстом. Пока он не `nil`, форма закрыта (28о).
+    public var draftAsk: DraftAsk?
+    /// Форма открыта «новой» поверх живого черновика: пока в ней пусто, черновик на диске не трогаем.
+    var formOverDraft = false
     /// Последний жанр формы: новая форма открывается на нём (веб `shootType`).
     var lastFormGenre: Genre = .portrait
     var draftStore: any DraftStoring = DefaultsDraftStore()

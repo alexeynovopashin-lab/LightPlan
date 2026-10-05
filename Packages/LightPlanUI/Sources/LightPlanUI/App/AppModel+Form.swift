@@ -31,6 +31,15 @@ final class MemoryDraftStore: DraftStoring, @unchecked Sendable {
     func save(_ data: Data?) { self.data = data }
 }
 
+/// Вопрос «продолжить черновик или начать новую» (28о): с чем просили открыть форму.
+public struct DraftAsk: Equatable, Sendable {
+    public let draftDay: CivilDate
+    public let askedDay: CivilDate
+    let start: Int?
+    let fromLight: Bool
+    let mode: FormMode
+}
+
 /// Форма записи (итерация 23): открыть, править, сохранить, черновик. Правила —
 /// в `EventForm` (Domain); здесь — то, что связано с приложением: часы, место,
 /// снимок, диск.
@@ -56,15 +65,26 @@ extension AppModel {
         }
     }
 
-    /// Новая съёмка или встреча. Черновик, если он есть, поднимается **поверх**
-    /// того, что просит кнопка: день и время черновика главнее (веб L30532–30543).
+    /// Новая съёмка или встреча. Черновик с набранным текстом на **тот же день** поднимается
+    /// как раньше (веб L30532–30543); на другой — форма не открывается, а задаётся вопрос
+    /// `draftAsk` (28о, П5): раньше день из календаря молча подменялся днём черновика.
     public func openForm(day: CivilDate? = nil, start: Int? = nil, fromLight: Bool = true, mode: FormMode = .shoot) {
         let d = day ?? planner.selected
+        formOverDraft = false
         if let data = draftStore.load(), let draft = EventForm.fromDraft(data), draft.hasTypedContent {
+            // Черновик встречи без даты называть датой нечем — он поднимается без вопроса.
+            if !draft.dayUnset, draft.day != d {
+                draftAsk = DraftAsk(draftDay: draft.day, askedDay: d, start: start, fromLight: fromLight, mode: mode)
+                return
+            }
             formIsDraft = true
             form = draft
             return
         }
+        openCleanForm(day: d, start: start, fromLight: fromLight, mode: mode)
+    }
+
+    private func openCleanForm(day d: CivilDate, start: Int?, fromLight: Bool, mode: FormMode) {
         formIsDraft = false
         let genre = lastFormGenre
         form = EventForm.new(id: Self.newRecordId(now()), day: d, start: start, fromLight: fromLight, mode: mode,
@@ -72,10 +92,53 @@ extension AppModel {
                              home: repeatHome, genreRate: genreRate(genre), currency: settings.currency)
     }
 
+    /// Ответ «Продолжить черновик»: открывается черновик с его днём и временем.
+    public func continueDraft() {
+        draftAsk = nil
+        guard let data = draftStore.load(), let draft = EventForm.fromDraft(data) else { return }
+        formOverDraft = false
+        formIsDraft = true
+        form = draft
+    }
+
+    /// Ответ «Новая на выбранный день»: чистая форма на день из календаря. Черновик на диске
+    /// остаётся: его стирает только «Начать заново» или сохранение записи (пустая новая форма,
+    /// закрытая крестиком, его тоже не трогает; набранное в новой формой заменит его — слот один, как в вебе).
+    public func startNewOverDraft() {
+        guard let ask = draftAsk else { return }
+        draftAsk = nil
+        openCleanForm(day: ask.askedDay, start: ask.start, fromLight: ask.fromLight, mode: ask.mode)
+        formOverDraft = true
+    }
+
+    /// Вопрос целиком: «Продолжить черновик от 27 сентября или начать новую на 29 октября?»
+    public func draftAskTitle(_ ask: DraftAsk) -> String {
+        lexicon.t("form.draftAsk", ["draft": draftDayText(ask.draftDay), "new": draftDayText(ask.askedDay)])
+    }
+
+    /// Подпись второй кнопки вопроса: «Новая съёмка на 29 октября» (у встречи — «встреча»).
+    public func draftAskNewTitle(_ ask: DraftAsk) -> String {
+        lexicon.t(ask.mode == .meet ? "form.draftAskNewMeet" : "form.draftAskNew", ["d": draftDayText(ask.askedDay)])
+    }
+
+    /// Плашка над поднятым черновиком: «Черновик восстановлен · 27 сентября».
+    public func draftStripText(_ f: EventForm) -> String {
+        // Дата неразрывно: плашка узкая и переносит строку целиком перед датой, а не посреди неё.
+        f.dayUnset ? lexicon.t("form.draftRestored")
+                   : lexicon.t("form.draftRestoredOn", ["d": draftDayText(f.day).replacingOccurrences(of: " ", with: "\u{00A0}")])
+    }
+
+    /// День словами: год называется, только если он не нынешний.
+    func draftDayText(_ d: CivilDate) -> String {
+        let dt = DateText(language: language)
+        return d.year == today.year ? dt.dMon(carrier(d)) : dt.dMonYear(carrier(d))
+    }
+
     /// Правка существующей записи: черновика у правки нет.
     public func openForm(editing id: String) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
         formIsDraft = false
+        formOverDraft = false
         form = EventForm.editing(s, home: settings.currency)
         reapplyQuestDraft(for: id)
     }
@@ -124,7 +187,13 @@ extension AppModel {
     public func writeDraft() {
         draftTask?.cancel()
         guard let f = form, f.isNew, f.growFrom == nil else { return }
-        draftStore.save(f.hasTypedContent ? f.draftData() : nil)
+        // Новая форма поверх живого черновика, пока в ней пусто, чужой черновик не стирает.
+        if f.hasTypedContent {
+            draftStore.save(f.draftData())
+            formOverDraft = false           // слот теперь занят этой формой
+        } else if !formOverDraft {
+            draftStore.save(nil)
+        }
     }
 
     /// «Начать заново»: черновик стирается, форма открывается чистой на том же дне.
@@ -145,6 +214,7 @@ extension AppModel {
         writeDraft()
         form = nil
         formIsDraft = false
+        formOverDraft = false
         formNote = nil
     }
 

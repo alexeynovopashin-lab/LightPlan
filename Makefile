@@ -26,6 +26,7 @@ help:
 	@echo "make glass    стекло без подделки: ни системного материала, ни нарисованного блика вне Timebar/ (20д; идёт и фазой сборки)"
 	@echo "make phone    сборка на iPhone Алексея: ARGS=\"install\" | \"uninstall\" | \"list\"; ветка ставит своё приложение «LP <ветка>» (26т)"
 	@echo "make checkstep ветка шага против базы: четыре строки да/нет, любое «нет» — код 1; ARGS=\"wt/26 [main] --type код\" (26т)"
+	@echo "make draftday  форма при черновике другого дня: окно вопроса, плашка, порядок блоков, числа (28о)"
 	@echo "make shots    пары снимков веб / натив «Света», «Карты», «Съёмок» и «Настроек» и сверка числами (19б, 20а, 21)"
 
 # Файлы, которые пишет сам generate.js. Другие цели (lang, domain, локация)
@@ -121,6 +122,10 @@ year:
 # в шапке файла. Из worktree: LIGHT_PLAN_WEB=<путь к Light_Plan>.
 shots:
 	@node Tools/shots/pair.js $(ARGS)
+
+# 28о: форма при черновике другого дня — окно вопроса, плашка с датой, порядок блоков (только натив, iPhone 17 Pro).
+draftday:
+	@node Tools/shots/draft_day.js $(ARGS)
 
 mapstyle:
 	@node Tools/mapstyle.js && node Tools/mapstyle.js --check

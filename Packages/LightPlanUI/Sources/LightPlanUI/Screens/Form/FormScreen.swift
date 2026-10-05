@@ -54,11 +54,12 @@ struct FormScreen: View {
                     bar(pal, t).padding(.top, 46).padding(.bottom, 8)
                     title(f, pal, t)
                     if app.formIsDraft { draftStrip(pal, t) }
-                    // Замысел против прогноза — вверху: узнавать о нём, докрутив до низа, поздно.
-                    if let w = app.formWarning(f) { FormWishWarn(warning: w) }
+                    // Порядок (28о, Алексей): жанр, дата и время, затем имена. Предупреждение — сразу
+                    // под временем, к которому относится: над жанром оно называло чужой день (П5).
                     genreBlock(f, pal, t).padding(.top, 24)
-                    whoBlock(f, pal, t)
                     timeBlock(f, pal, t)
+                    if let w = app.formWarning(f) { FormWishWarn(warning: w) }
+                    whoBlock(f, pal, t)
                     FormPlaceBlock(app: app, form: f, wheel: $stopWheel) { picker = nil; repMenu = false }.id("place")
                     notesBlock(f, pal, t)
                     if f.shows(.order) { orderBlock(f, pal, t).id("order") }
@@ -135,7 +136,7 @@ struct FormScreen: View {
 
     private func draftStrip(_ pal: Palette, _ t: Lexicon) -> some View {
         HStack {
-            Text(t.t("form.draftRestored")).font(.system(size: 13)).foregroundStyle(pal.ink3)
+            Text(app.form.map { app.draftStripText($0) } ?? t.t("form.draftRestored")).font(.system(size: 13)).foregroundStyle(pal.ink3)
             Spacer()
             Button(t.t("form.draftReset")) { app.resetDraft() }
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brass)

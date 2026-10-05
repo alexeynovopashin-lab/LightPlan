@@ -66,8 +66,10 @@ struct FormFlowTests {
 
         let second = model(disk: disk)                 // «после перезапуска»
         second.openForm(day: CivilDate(year: 2026, month: 10, day: 9))
+        #expect(second.form == nil && second.draftAsk != nil, "день другой — приложение спрашивает (28о)")
+        second.continueDraft()
         #expect(second.formIsDraft && second.form?.notes == "рано утром")
-        #expect(second.form?.day == CivilDate(year: 2026, month: 10, day: 3), "день черновика главнее кнопки")
+        #expect(second.form?.day == CivilDate(year: 2026, month: 10, day: 3), "«продолжить» поднимает день черновика")
         second.saveForm()
         #expect(disk.data == nil)
         #expect(second.sessions.last?.notes == "рано утром")

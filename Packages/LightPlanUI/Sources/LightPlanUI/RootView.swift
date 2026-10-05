@@ -204,6 +204,8 @@ private struct FormCover: ViewModifier {
     @Bindable var app: AppModel
     func body(content: Content) -> some View {
         let shown = Binding(get: { app.form != nil }, set: { if !$0 { app.closeForm() } })
+        let asking = Binding(get: { app.draftAsk != nil }, set: { _ in })   // закрывают сами кнопки
+        let ask = app.draftAsk
         #if os(iOS)
         content.fullScreenCover(isPresented: shown) {
             FormScreen(app: app).edgeBack(app, z: BackZ.form) { app.closeForm() }
@@ -211,9 +213,20 @@ private struct FormCover: ViewModifier {
                 // (28з): у формы своё полотно, под ней — «Съёмки».
                 .presentationBackground(.clear)
         }
+        .alert(ask.map(app.draftAskTitle) ?? "", isPresented: asking) { draftAskButtons(ask) }
         #else
         content.sheet(isPresented: shown) { FormScreen(app: app) }
+            .alert(ask.map(app.draftAskTitle) ?? "", isPresented: asking) { draftAskButtons(ask) }
         #endif
+    }
+
+    /// Вопрос 28о: системное окно, как у других подтверждений (`.alert`); обе кнопки отвечают, отмены нет.
+    @ViewBuilder
+    private func draftAskButtons(_ ask: DraftAsk?) -> some View {
+        if let ask {
+            Button(app.lexicon.t("form.draftContinue")) { app.continueDraft() }
+            Button(app.draftAskNewTitle(ask)) { app.startNewOverDraft() }
+        }
     }
 }
 
