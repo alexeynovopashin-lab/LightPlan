@@ -90,7 +90,10 @@ public actor ForeignReachDetector {
     private var epoch = 0
     private var inflight: (epoch: Int, task: Task<ForeignReach, Never>)?
     private var watching: Task<Void, Never>?
-    private var polling: Task<Void, Never>?
+    /// Следующая проверка по таймеру: заводится по окончании каждой пробы, пауза — по её итогу.
+    private var timer: Task<Void, Never>?
+    /// Что говорил последний путь; `nil` — слежения за путём нет или путь ещё не отвечал.
+    private var online: Bool?
     private var subscribers: [UUID: AsyncStream<ForeignReach>.Continuation] = [:]
 
     public init(probe: any ReachProbe, reachability: (any NetworkReachability)? = nil,
@@ -114,13 +117,14 @@ public actor ForeignReachDetector {
 
     deinit {
         watching?.cancel()
-        polling?.cancel()
+        timer?.cancel()
         for c in subscribers.values { c.finish() }
     }
 
     // MARK: Запуск
 
     /// Начать слежение: смена сети и таймер. Повторный вызов ничего не делает.
+    /// Без слежения за путём (тесты) сразу идёт первая проба.
     public func start() {
         guard watching == nil else { return }
         if let reachability {
@@ -132,24 +136,13 @@ public actor ForeignReachDetector {
                 }
             }
         } else {
-            Task { [weak self] in _ = await self?.recheck() }
-        }
-        let hasPath = reachability != nil
-        polling = Task { [weak self] in
-            while !Task.isCancelled {
-                guard let self else { return }
-                let wait = await self.pollDelay()
-                do { try await self.pause(wait) } catch { return }
-                if Task.isCancelled { return }
-                // Сети нет («неизвестно» при слежении за путём) — проба зря: путь сам разбудит, когда сеть вернётся.
-                if await self.state != .unknown || !hasPath { _ = await self.recheck() }
-            }
+            watching = Task { [weak self] in _ = await self?.recheck() }
         }
     }
 
     public func stop() {
         watching?.cancel(); watching = nil
-        polling?.cancel(); polling = nil
+        timer?.cancel(); timer = nil
         inflight?.task.cancel(); inflight = nil
     }
 
@@ -167,17 +160,15 @@ public actor ForeignReachDetector {
 
     private func drop(_ id: UUID) { subscribers[id] = nil }
 
-    private func pollDelay() -> Duration {
-        state == .unreachable ? intervals.unreachable : intervals.reachable
-    }
-
     // MARK: Проверки
 
     /// Сменился путь: старый ответ — про другую сеть. Сети нет — «неизвестно» без пробы; сеть есть — новая проба.
     /// Пробу не ждём: следующая смена пути должна обрабатываться сразу, а не после срока зависшей пробы.
     func pathChanged(online: Bool) {
         epoch += 1
+        self.online = online
         inflight?.task.cancel(); inflight = nil
+        timer?.cancel(); timer = nil
         set(.unknown)
         if online { _ = startProbeIfNeeded() }
     }
@@ -186,6 +177,8 @@ public actor ForeignReachDetector {
     /// Возвращает состояние после проверки; если сеть сменилась на ходу — нынешнее, а не ответ старой пробы.
     @discardableResult
     public func recheck() async -> ForeignReach {
+        // Сети нет — пробу не тратим: ответ «недоступно» был бы неправдой про зарубежное.
+        if online == false { return state }
         _ = await startProbeIfNeeded().value
         return state
     }
@@ -208,9 +201,24 @@ public actor ForeignReachDetector {
         guard e == epoch else { return }
         inflight = nil
         set(result)
+        scheduleNext()
     }
 
-    /// Проба против часов: кто раньше. Опоздавшая проба отменяется (`URLSession` слышит отмену).
+    /// Пауза до следующей проверки берётся по итогу пробы, а не по состоянию на запуске: после «недоступно» — 2 мин.
+    /// Задача держит детектор слабо — на время ожидания он не «залипает» в памяти.
+    private func scheduleNext() {
+        timer?.cancel()
+        let wait = state == .unreachable ? intervals.unreachable : intervals.reachable
+        let pause = self.pause
+        timer = Task { [weak self] in
+            do { try await pause(wait) } catch { return }
+            if Task.isCancelled { return }
+            _ = await self?.recheck()
+        }
+    }
+
+    /// Проба против часов: кто раньше. Опоздавшая проба отменяется; проба обязана слышать отмену (`URLSession` слышит),
+    /// иначе группа дождётся её ответа, а не срока — у боевой пробы свой срок 4 с как страховка.
     private static func run(probe: any ReachProbe, timeout: Duration,
                             sleep: @escaping @Sendable (Duration) async throws -> Void) async -> Bool {
         await withTaskGroup(of: Bool?.self) { group in

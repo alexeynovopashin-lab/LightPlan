@@ -43,9 +43,21 @@ private final class ScriptedPath: NetworkReachability, @unchecked Sendable {
 private let timeoutNow: @Sendable (Duration) async throws -> Void = { _ in }
 private let neverPause: @Sendable (Duration) async throws -> Void = { _ in try await Task.sleep(for: .seconds(3600)) }
 
+private actor Flag {
+    private(set) var on: Bool
+    init(_ v: Bool) { on = v }
+    func set(_ v: Bool) { on = v }
+}
+
+private actor Tokens {
+    private var n = 0
+    func give() { n += 1 }
+    func take() -> Bool { if n > 0 { n -= 1; return true }; return false }
+}
+
 private actor Durations {
     private(set) var asked: [Duration] = []
-    func note(_ d: Duration) { asked.append(d) }
+    @discardableResult func note(_ d: Duration) -> Int { asked.append(d); return asked.count }
 }
 
 /// Ждать, пока условие станет верным (до 3 с настоящих): опрос, а не часы.
@@ -71,12 +83,19 @@ struct ForeignReachDetectorTests {
     @Test("Проба молчит дольше срока — «недоступно»; ответила — «доступно»; перепроверка возвращает назад")
     func timeoutThenBack() async {
         let probe = ScriptedProbe(.hangs)
-        let d = ForeignReachDetector(probe: probe, sleep: timeoutNow, pause: neverPause)
+        // Срок выходит сразу, только пока тест его разрешил: иначе мгновенный срок гонялся бы с мгновенным ответом.
+        let expire = Flag(true)
+        let d = ForeignReachDetector(probe: probe, sleep: { _ in
+            if await expire.on { return }
+            try await Task.sleep(for: .seconds(3600))
+        }, pause: neverPause)
         #expect(await d.state == .unknown)
         #expect(await d.recheck() == .unreachable)
         await probe.set(.answers)
+        await expire.set(false)
         #expect(await d.recheck() == .reachable)
         await probe.set(.hangs)
+        await expire.set(true)
         #expect(await d.recheck() == .unreachable)
     }
 
@@ -145,23 +164,40 @@ struct ForeignReachDetectorTests {
         await d.stop()
     }
 
-    @Test("Таймер: после «доступно» ждём 10 мин, после «недоступно» — 2 мин, и проверяет снова")
-    func pollingUsesTheStateInterval() async {
+    @Test("Таймер: пауза берётся по итогу пробы — после «недоступно» 2 мин, после «доступно» 10 мин — и проверяет снова")
+    func pollingUsesTheOutcomeOfTheProbe() async {
         let probe = ScriptedProbe(.refuses)
         let waits = Durations()
-        // Первая пауза возвращается сразу, остальные — вечные: ровно одна перепроверка по таймеру.
-        let first = Durations()
+        let tokens = Tokens()
+        // Пауза кончается, только когда тест её отпустил: так между пробами успевает смениться ответ.
         let d = ForeignReachDetector(probe: probe, sleep: neverPause,
                                      pause: { dur in
                                          await waits.note(dur)
-                                         if await first.asked.isEmpty { await first.note(dur); return }
-                                         try await Task.sleep(for: .seconds(3600))
+                                         while !(await tokens.take()) { try await Task.sleep(for: .milliseconds(5)) }
                                      })
-        _ = await d.recheck()                               // недоступно
-        await d.start()
-        #expect(await until { await probe.calls == 2 })    // таймер сам перепроверил
-        #expect(await waits.asked.first == .seconds(120))
+        await d.start()                                     // первая проба: состояние было «неизвестно», итог — «недоступно»
+        #expect(await until { await waits.asked.count == 1 })
         await probe.set(.answers)
+        await tokens.give()                                 // пауза кончилась — вторая проба ответила
+        #expect(await until { await d.state == .reachable })
+        #expect(await until { await waits.asked.count == 2 })
+        #expect(await waits.asked == [.seconds(120), .seconds(600)])
+        await d.stop()
+    }
+
+    @Test("Сети нет: ручная проверка пробу не тратит и «недоступно» не пишет; таймер молчит")
+    func offlineRecheckDoesNotProbe() async {
+        let probe = ScriptedProbe(.refuses)
+        let path = ScriptedPath()
+        let waits = Durations()
+        let d = ForeignReachDetector(probe: probe, reachability: path, sleep: neverPause,
+                                     pause: { dur in _ = await waits.note(dur); try await Task.sleep(for: .seconds(3600)) })
+        await d.start()
+        path.send(false)
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(await d.recheck() == .unknown)
+        #expect(await probe.calls == 0)
+        #expect(await waits.asked.isEmpty)
         await d.stop()
     }
 
