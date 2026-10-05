@@ -31,7 +31,7 @@ import LightPlanMapCanvas
 /// Лист места (21в): `LPShotSheet loc` открывает «Где снимаем» над экраном,
 /// `LPShotWay` — путь (`addr` | `geo`), без него — развилка. «Съёмки» (22):
 /// `LPShotSheet year | year12 | stats | search` — слой, `bin` — корзина, `card` — карточка,
-/// `blk` — «Занять время» на выбранный день.
+/// `blk` — «Занять время» на выбранный день; `grip` — запись `LPShotWay` поднята на ленте дня (29а).
 public struct ShotScenario: Sendable {
     public enum Screen: String, Sendable { case light, map, planner, settings }
 
@@ -174,6 +174,9 @@ extension AppModel {
         // Слои «Съёмок» и листы (22): слои открывает сам экран при появлении
         // (у него они в своём состоянии), листы — здесь. Корзину засевает файл.
         if ["year", "year12", "stats", "search"].contains(s.sheet ?? "") { app.startChapter = s.sheet }
+        // Время рукой (29а): `LPShotSheet grip -LPShotWay <id>` — запись поднята на ленте дня и сдвинута на час,
+        // палец ещё держит: ручки, тень, капсула минуты (пара с `shot.js --sheet grip`).
+        if s.sheet == "grip", let id = s.way { app.startChapter = "grip:" + id }
         if s.sheet == "bin" { app.binOpen = true }
         if s.sheet == "blk" { app.openBlockSheet(day: app.planner.selected) }
         // Итерация 28: мудборды, организации, «Контакты», опросник, встреча. `LPShotWay` — жанр полки,

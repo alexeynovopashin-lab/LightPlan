@@ -25,6 +25,8 @@ public struct PlannerScreenView: View {
     @State private var nav = PlannerNav()
     /// Веер удержанной записи.
     @State private var fan: FanTarget?
+    /// Время события рукой на ленте дня (29а): выделение, ручки, идущий жест.
+    @State private var grip = DayGrip()
 
     public init(app: AppModel) { self.app = app }
 
@@ -37,7 +39,7 @@ public struct PlannerScreenView: View {
                 switch st.scope {
                 case .month: PlannerMonthBody(app: app, f: f, fan: $fan)
                 case .week: PlannerWeekBody(app: app, f: f)
-                case .day: PlannerDayBody(app: app, f: f, fan: $fan)
+                case .day: PlannerDayBody(app: app, f: f, fan: $fan, grip: grip)
                 }
                 // Полоса мудборда — внизу «Съёмок», под лентой дня и кнопками (28); под ней — «Документы» (28д).
                 MoodboardStrip(app: app, f: f)
@@ -76,13 +78,17 @@ public struct PlannerScreenView: View {
         }
         .background(pal.surface.ignoresSafeArea())
         .simultaneousGesture(swipe)
+        .modifier(OutsideTouch(grip: grip, fan: $fan))
         .coordinateSpace(name: plannerFanSpace)
         .overlay { EventFan(app: app, f: f, fan: $fan) }
         .edgeBackBase(app, .planner)
         .overlay { PlannerLayers(app: app, f: f, nav: nav) }
         .onAppear { openStartLayer() }
         .onChange(of: nav.statsOpen || nav.searchOpen, initial: true) { _, open in app.plannerPageOpen = open }
-        .onChange(of: st.scope, initial: true) { _, _ in aim() }
+        .onChange(of: st.scope, initial: true) { was, now in
+            aim()
+            if was != now { grip.deselect() }   // первый показ выделения не трогает
+        }
         .onChange(of: st.selected) { _, _ in aim() }
         // Смена вкладки закрывает слои (веб: `.overlay-right.open` и прочие).
         .onChange(of: app.tab) { _, _ in
@@ -92,14 +98,25 @@ public struct PlannerScreenView: View {
                 nav.lentaOpen = false; nav.year12Open = false
                 nav.statsOpen = false; nav.searchOpen = false
                 fan = nil
+                grip.deselect()
             }
         }
     }
 
     /// Слой при запуске сценария снимка (22): `LPShotSheet year | year12 |
-    /// stats | search` — как тап по заголовку, «Год целиком» или кнопкам шапки.
+    /// stats | search` — как тап по заголовку, «Год целиком» или кнопкам шапки;
+    /// `grip` — запись поднята на ленте дня и сдвинута на час (29а).
     private func openStartLayer() {
         guard let layer = app.startChapter else { return }
+        if layer.hasPrefix("grip:") {
+            let id = String(layer.dropFirst(5))
+            if let s = app.sessions.first(where: { $0.id == id }) {
+                grip.selected = id
+                grip.live = DayGrip.Live(id: id, mode: .move, start: s.start + 60, end: s.endMinute + 60, lifted: true, moved: true)
+            }
+            app.startChapter = nil
+            return
+        }
         let month = app.planner.month
         switch layer {
         case "year": nav.openLenta(from: month)
@@ -158,12 +175,15 @@ public struct PlannerScreenView: View {
         .shotNode("plan.now")
     }
 
-    /// Свайп по экрану (веб: |dx| ≥ 60, |dy| ≤ 40) — листает вид.
+    /// Свайп по экрану (веб: |dx| ≥ 60, |dy| ≤ 40) — листает вид. Событие на
+    /// ленте дня тянули — боковой увод пальца день не листает (веб `dlArmedEnd`).
     private var swipe: some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { g in
+                if grip.blocksSwipe { DayGripLog.note("swipe blocked dx=\(Int(g.translation.width))"); return }
                 let dx = g.translation.width, dy = g.translation.height
                 guard abs(dx) >= 60, abs(dy) <= 40 else { return }
+                DayGripLog.note("swipe step dx=\(Int(dx))")
                 withAnimation(.snappy(duration: 0.22)) { app.planner.step(dx < 0 ? 1 : -1) }
             }
     }
@@ -179,6 +199,32 @@ public struct PlannerScreenView: View {
         guard aimedDay != st.selected else { return }
         aimedDay = st.selected
         position.scrollTo(y: PlannerDayBody.loadHeight + PlannerDayBody.lineTop + 9 * DayLanes.hourHeight - 10)
+    }
+}
+
+/// Касание мимо ленты (шапка, даты, полоса мудборда) тоже снимает выделение и
+/// закрывает веер ленты — как `pointerdown` документа у веба. Касание самой
+/// ленты решает `gripDown`; сторож узнаёт его по метке и молчит. Веер лежит
+/// выше сторожа — касания веера сюда не доходят.
+private struct OutsideTouch: ViewModifier {
+    let grip: DayGrip
+    @Binding var fan: FanTarget?
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.gesture(TouchProbe { stamp in
+            // Лента получает то же касание в том же такте, но порядок не обещан:
+            // решаем тактом позже, когда она уже отметилась.
+            Task { @MainActor in
+                guard grip.laneTouch != stamp else { return }
+                if grip.selected != nil { DayGripLog.note("deselect outside") }
+                grip.deselect()
+                if fan?.lane == true { fan = nil }
+            }
+        })
+        #else
+        content
+        #endif
     }
 }
 

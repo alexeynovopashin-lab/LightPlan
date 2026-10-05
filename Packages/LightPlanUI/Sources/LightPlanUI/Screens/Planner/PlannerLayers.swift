@@ -38,6 +38,11 @@ let statsSlide = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.36)
 struct FanTarget: Equatable {
     let id: String
     let anchor: CGRect
+    /// Веер ленты дня после удержания (29а, веб `dlOpenFan`): без затемнения и
+    /// без ловушки касаний — ручки под ним в досягаемости, закрывает его любое
+    /// касание мимо (`gripDown`, сторож экрана); встаёт на 14 ниже обычного,
+    /// чтобы не лечь на нижнюю ручку; открывается молча — щелчок был при подъёме.
+    var lane = false
 }
 
 /// Пространство, в котором меряются строки и ставится веер.
@@ -48,14 +53,20 @@ let plannerFanSpace = "plannerFan"
 struct FanHold: ViewModifier {
     let id: String
     @Binding var fan: FanTarget?
+    /// Удержание занято жестом ленты дня (29а).
+    var off = false
     @State private var frame: CGRect = .zero
 
     func body(content: Content) -> some View {
-        content
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(plannerFanSpace)) } action: { frame = $0 }
-            .onLongPressGesture(minimumDuration: 0.45, maximumDistance: 8) {
-                fan = FanTarget(id: id, anchor: frame)
-            }
+        if off {
+            content
+        } else {
+            content
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(plannerFanSpace)) } action: { frame = $0 }
+                .onLongPressGesture(minimumDuration: 0.45, maximumDistance: 8) {
+                    fan = FanTarget(id: id, anchor: frame)
+                }
+        }
     }
 }
 
@@ -74,11 +85,13 @@ struct EventFan: View {
                 let pal = Palette(scheme)
                 let w = geo.size.width, h = geo.size.height, a = target.anchor
                 let left = min(max(a.minX, 10), w - size.width - 10)
-                let below = a.maxY + 6
+                let below = a.maxY + 6 + (target.lane ? 14 : 0)
                 let top = below + size.height > h - 10 ? max(10, a.minY - size.height - 6) : below
                 ZStack(alignment: .topLeading) {
-                    Color.clear.contentShape(Rectangle())
-                        .onTapGesture { fan = nil }
+                    if !target.lane {
+                        Color.clear.contentShape(Rectangle())
+                            .onTapGesture { fan = nil }
+                    }
                     VStack(spacing: 0) {
                         item("note_edit", f.t.t("card.fill"), who(s), del: false, pal) {
                             fan = nil
@@ -103,7 +116,7 @@ struct EventFan: View {
                 }
             }
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: fan?.id) { _, new in new != nil }
+        .sensoryFeedback(.impact(weight: .light), trigger: fan?.id) { _, new in new != nil && fan?.lane != true }
         .animation(.easeOut(duration: 0.16), value: fan)
     }
 

@@ -560,19 +560,31 @@ struct PlannerDayStates: View {
 }
 
 /// Действие строки дня: занятость открывается тапом; запись — тап открывает
-/// карточку (25), удержание — веер.
+/// карточку (25), удержание — веер. На ленте дня (`grip`) тап после жеста
+/// времени или касания, снявшего выделение, не открывает ничего; у записи,
+/// которую берёт палец (`lane`), удержание — подъём жеста ленты (29а), а не
+/// этот веер.
 struct RowAct: ViewModifier {
     let app: AppModel
     let it: DayItem
     @Binding var fan: FanTarget?
+    var grip: DayGrip? = nil
+    var lane = false
 
     func body(content: Content) -> some View {
         if let b = it.block {
-            content.onTapGesture { app.openBlockSheet(editing: b.id) }
+            content.onTapGesture {
+                if grip?.swallows == true { return }
+                app.openBlockSheet(editing: b.id)
+            }
         } else if let s = it.session {
             content
-                .onTapGesture { withAnimation(overlaySlide) { app.openCard(id: s.id) } }
-                .modifier(FanHold(id: s.id, fan: $fan))
+                .onTapGesture {
+                    if grip?.swallows == true { DayGripLog.note("swallow card \(s.id)"); return }
+                    DayGripLog.note("tap card \(s.id)")
+                    withAnimation(overlaySlide) { app.openCard(id: s.id) }
+                }
+                .modifier(FanHold(id: s.id, fan: $fan, off: lane))
         } else {
             content
         }
