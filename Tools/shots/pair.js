@@ -274,7 +274,7 @@ async function nativeShot(udid, sc, dir) {
 
 /* 28л.5: числа по плашке «Исправить карту» и подписи авторства. Расстояние —
    от низа подписи до верха плашки в pt (< 0 — пересекаются); контраст — по
-   пикселям внутренности рамки (см. ниже). Прогон падает, если состояние
+   букв внутри рамки: медиана самых тёмных от фона пикселей (см. ниже). Прогон падает, если состояние
    маршрута не то, плашки или подписи нет, они пересекаются или контраст
    плашки ниже 3 (ревью GPT к 18f7ac6). */
 async function roadsReport(page, sc, nat) {
@@ -298,17 +298,25 @@ async function roadsReport(page, sc, nat) {
       if (!r) { res[name] = null; continue; }
       // Только внутренность плашки (отступ 3 pt по бокам и 2 pt сверху и снизу):
       // там фон плашки и буквы, без кромки, тени и карты вокруг. Фон — медиана
-      // внутренности (букв меньшинство), чернила — самый далёкий от неё пиксель.
+      // внутренности (букв меньшинство).
       const x0 = Math.round((r.x + 3) * k), y0 = Math.round((r.y + 2) * k);
       const w = Math.round((r.w - 6) * k), h = Math.round((r.h - 4) * k);
       const data = cx.getImageData(x0, y0, w, h).data;
       const med = i => { const v = []; for (let j = i; j < data.length; j += 4) v.push(data[j]); return v.sort((p, q) => p - q)[v.length >> 1]; };
       const bg = [med(0), med(1), med(2)];
-      let best = bg, bd = -1;
+      // Чернила — медианный цвет «буквенных» пикселей: тех, что отстоят от
+      // фона не меньше чем на половину самого большого отстояния. Один случайный
+      // пиксель числа не задаёт; меньше 12 таких пикселей — букв в рамке нет.
       const d = a => Math.abs(a[0] - bg[0]) + Math.abs(a[1] - bg[1]) + Math.abs(a[2] - bg[2]);
-      for (let i = 0; i < data.length; i += 4) { const p = [data[i], data[i + 1], data[i + 2]]; if (d(p) > bd) { bd = d(p); best = p; } }
+      const px = [];
+      let dmax = 0;
+      for (let i = 0; i < data.length; i += 4) { const p = [data[i], data[i + 1], data[i + 2]]; px.push(p); dmax = Math.max(dmax, d(p)); }
+      const core = px.filter(p => d(p) >= dmax / 2 && dmax > 12);
+      if (core.length < 12) { res[name] = { bg, ink: null, ratio: 0, core: core.length }; continue; }
+      const mid = i => core.map(p => p[i]).sort((p, q) => p - q)[core.length >> 1];
+      const best = [mid(0), mid(1), mid(2)];
       const [a, b] = [lum(bg), lum(best)].sort((p, q) => q - p);
-      res[name] = { bg, ink: best, ratio: +((a + 0.05) / (b + 0.05)).toFixed(2) };
+      res[name] = { bg, ink: best, ratio: +((a + 0.05) / (b + 0.05)).toFixed(2), core: core.length };
     }
     return res;
   }, { png, rects: { fixTheMap: fix || null, credit: credit || null } });
