@@ -3,7 +3,7 @@ import LightPlanData
 
 /// Экран «Настройки» — порт `#s-set` веба (итерация 19а).
 ///
-/// Корень: переключатель Просто/Астро и девять глав в порядке веба
+/// Корень: переключатель Просто/Астро и десять глав: девять в порядке веба и нативная «Сеть» (28л.6)
 /// (Профиль, Вид, Съёмки, Оповещения, Карта и места, Хранилище, Данные и
 /// облако, Язык и регион, О приложении). План называл семь глав — это слепок
 /// 26 августа; веб с тех пор разделил «Хранилище» и «Данные», вынес
@@ -19,7 +19,7 @@ public struct SettingsView: View {
     public init(app: AppModel) { self.app = app }
 
     enum Chapter: String, CaseIterable, Hashable {
-        case profile, view, shoots, alerts, places, store, data, locale, about
+        case profile, view, shoots, alerts, places, store, data, network, locale, about
 
         var icon: String {
             switch self {
@@ -30,6 +30,7 @@ public struct SettingsView: View {
             case .places: "pin"
             case .store: "briefcase"
             case .data: "cloud"
+            case .network: "route"
             case .locale: "chat"
             case .about: "aperture"
             }
@@ -44,6 +45,7 @@ public struct SettingsView: View {
             case .places: "set.grpPlaces"
             case .store: "set.storage"
             case .data: "set.grpData"
+            case .network: "set.grpNet"
             case .locale: "set.grpLocale"
             case .about: "set.grpAbout"
             }
@@ -116,6 +118,8 @@ public struct SettingsView: View {
             return app.spotCount > 0 ? String(app.spotCount) : t.t("card.none")
         case .data:
             return t.t("set.off")      // облака ещё нет (итерация 31) — честно «выкл»
+        case .network:
+            return t.t(app.netMode == .auto ? "net.auto" : "net.direct")
         case .locale:
             return SettingsText.languageName(app.language) + " · "
                 + NumberText(language: app.language).currencySign(s.currency.rawValue)

@@ -113,6 +113,10 @@ extension AppModel {
         }
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
         if let mode = UserDefaults.standard.string(forKey: "LPShotRoads") { app.roads.useShotRoads(RoadBook.shotRouter(mode)) }
+        // 28л.6: состояние детектора без сети — для снимков раздела «Сеть» (`reachable` | `unreachable` | `unknown`).
+        if let raw = UserDefaults.standard.string(forKey: "LPShotNet"), let state = ForeignReach(rawValue: raw) {
+            app.useShotNetwork(state)
+        }
         app.startChapter = s.chapter
         app.showsBuildLine = false
         // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.

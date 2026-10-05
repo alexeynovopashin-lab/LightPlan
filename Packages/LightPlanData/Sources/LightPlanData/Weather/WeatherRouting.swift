@@ -27,6 +27,14 @@ public enum WeatherRouteError: Error, Equatable { case directTimedOut }
 /// начинает следующий запрос; прямой перепроверяется раз в 3 часа (VPN
 /// включили или выключили). Форма ответа у путей одна, разбор не меняется.
 ///
+/// 28л.6: поверх этого — режим человека и детектор доступности (`NetworkPolicy`).
+/// - «Только напрямую»: наш сервер не спрашивается вовсе, прямой — без своего срока (у запроса он свой, 20 с);
+///   отказ уходит наверх, экран пишет «Прогноз недоступен».
+/// - «Авто» и зарубежное недоступно: сразу наш сервер, без ожидания четырёх секунд; не ответил — прямой с сроком.
+/// - «Авто» и зарубежное доступно: прямой; память «ходим через сервер» забывается — детектор свежее, чем отметка
+///   о прошлом отказе.
+/// - «Авто» и неизвестно (проба ещё идёт, сети нет): как до детектора — отметка о прошлом отказе и 3 часа.
+///
 /// Ожидание и «сейчас» приходят снаружи — тест не ждёт четыре настоящие секунды.
 public actor RoutedWeatherSource: OriginReportingWeatherSource {
     public static let directTimeout: Duration = .seconds(4)
@@ -38,6 +46,7 @@ public actor RoutedWeatherSource: OriginReportingWeatherSource {
     private let recheck: TimeInterval
     private let now: @Sendable () -> Date
     private let sleep: @Sendable (Duration) async throws -> Void
+    private let policy: @Sendable () async -> NetworkPolicy
 
     /// Путь, с которого начинается следующий запрос.
     public private(set) var preferred: WeatherOrigin = .direct
@@ -48,7 +57,9 @@ public actor RoutedWeatherSource: OriginReportingWeatherSource {
                 timeout: Duration = RoutedWeatherSource.directTimeout,
                 recheck: TimeInterval = RoutedWeatherSource.recheckInterval,
                 now: @escaping @Sendable () -> Date = { Date() },
-                sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
+                sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+                policy: @escaping @Sendable () async -> NetworkPolicy = { NetworkPolicy() }) {
+        self.policy = policy
         self.direct = direct
         self.proxy = proxy
         self.timeout = timeout
@@ -59,10 +70,12 @@ public actor RoutedWeatherSource: OriginReportingWeatherSource {
 
     /// Боевая сборка: прямой Open-Meteo и наш сервер; без ключа — только прямой
     /// и без ожидания (кроме него идти некуда).
-    public static func live(config: WeatherProxyConfig?) -> any WeatherSource {
+    public static func live(config: WeatherProxyConfig?, hub: NetworkPolicyHub? = nil) -> any WeatherSource {
         guard let config else { return OpenMeteoSource() }
+        let policy: @Sendable () async -> NetworkPolicy = { await hub?.policy() ?? NetworkPolicy() }
         return RoutedWeatherSource(direct: OpenMeteoSource(),
-                                   proxy: OpenMeteoSource(endpoint: .proxy(config.url, key: config.key)))
+                                   proxy: OpenMeteoSource(endpoint: .proxy(config.url, key: config.key)),
+                                   policy: policy)
     }
 
     public func fetchHourly(at place: Place) async throws -> HourlyWeather {
@@ -90,8 +103,16 @@ public actor RoutedWeatherSource: OriginReportingWeatherSource {
         _ op: @escaping @Sendable (any WeatherSource) async throws -> T
     ) async throws -> (T, WeatherOrigin) {
         let direct = self.direct, proxy = self.proxy
-        if preferred == .proxy && !recheckDue {
-            if let got = try? await op(proxy) { return (got, .proxy) }
+        let net = await policy()
+        if net.mode == .directOnly {
+            let got = try await op(direct)
+            return (got, .direct)
+        }
+        if net.foreign == .unreachable || (net.foreign == .unknown && preferred == .proxy && !recheckDue) {
+            if let got = try? await op(proxy) {
+                preferred = .proxy
+                return (got, .proxy)
+            }
             try Task.checkCancellation()
             // Наш сервер молчит — остаётся прямой, тоже с ожиданием.
             let got = try await withDirectTimeout { try await op(direct) }

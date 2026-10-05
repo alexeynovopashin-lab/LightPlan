@@ -24,6 +24,10 @@
                                                    # 28ж: БЕЗ прогноза, только натив: у веба в таком кадре выдумка,
                                                    # у натива — «Прогноз недоступен»; пары нет, в no_weather.json —
                                                    # какие узлы погоды на экране есть и их текст
+     node Tools/shots/pair.js --net reachable,unreachable,unknown --themes dark,light
+                                                   # 28л.6: глава «Сеть» в «Настройках» — только натив (у веба такой главы нет);
+                                                   # состояние детектора подставляется (-LPShotNet), в network.json — рамки,
+                                                   # слова и нарушения; прогон падает при нарушении
      node Tools/shots/pair.js --drum-nudge 20      # барабан провёрнут на 20 pt (только натив):
                                                    # видно, как кромка окна гнёт число
    Выход: --out (по умолчанию $TMPDIR/lp-shots/<ветка>) — по папке на сценарий
@@ -253,6 +257,7 @@ async function nativeShot(udid, sc, dir) {
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
     ...(sc.chapter === 'spoiler' ? ['-LPShotSpoiler', '1'] : []),
     ...(sc.scope ? ['-LPShotScope', sc.scope] : []), ...(sc.pick != null ? ['-LPShotPick', String(sc.pick)] : []),
+    ...(sc.net ? ['-LPShotNet', sc.net] : []),
     ...(sc.roads ? ['-LPShotRoads', sc.roads, ...(sc.roads === 'none' ? ['-LPShotReportDelay', '14'] : [])] : []),
     ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []),
     ...(args['form-scroll'] ? ['-LPShotFormScroll', args['form-scroll']] : []),
@@ -270,6 +275,30 @@ async function nativeShot(udid, sc, dir) {
   await sleep(300);
   run('xcrun', ['simctl', 'io', udid, 'screenshot', '--type=png', path.join(dir, 'native.png')], { stdio: 'ignore' });
   return JSON.parse(fs.readFileSync(report, 'utf8'));
+}
+
+/* 28л.6: глава «Сеть» — только натив. Проверяется по рамкам: слово состояния то, что подставлено; сегмент и кнопка
+   на полях соседних глав (x = 24, ширина 392 — как `seg.0` «Вида» и «Языка»); кнопка — рамка строки на всю ширину (0, 440):
+   отступы 24 по бокам кладёт сам `.data-btn`, как у «Отправить» в «О приложении»;
+   всё на экране и ничего не налезает друг на друга (по порядку сверху вниз). */
+const NET_WORD = { reachable: 'доступны', unreachable: 'недоступны', unknown: 'проверяем' };
+function netReport(sc, nat) {
+  const n = nat.nodes, bad = [];
+  const need = ['seg.0', 'note.0', 'item.0', 'item.1', 'note.1'];
+  for (const k of need) if (!n[k]) bad.push('нет узла ' + k);
+  const out = { state: sc.net, theme: sc.theme, status: n['item.0'] && n['item.0'].text, button: n['item.1'] && n['item.1'].text,
+    frames: Object.fromEntries(need.filter(k => n[k]).map(k => [k, [n[k].x, n[k].y, n[k].w, n[k].h].map(v => +v.toFixed(1))])) };
+  if (out.status !== NET_WORD[sc.net]) bad.push('слово состояния «' + out.status + '», ждали «' + NET_WORD[sc.net] + '»');
+  const seg = n['seg.0'], btn = n['item.1'];
+  if (seg && (Math.abs(seg.x - 24) > 0.5 || Math.abs(seg.w - 392) > 0.5)) bad.push('сегмент не на полях соседних глав: x ' + seg.x + ', w ' + seg.w);
+  if (btn && (Math.abs(btn.x) > 0.5 || Math.abs(btn.w - 440) > 0.5)) bad.push('кнопка не на всю ширину строки: x ' + btn.x + ', w ' + btn.w);
+  const rows = need.filter(k => n[k]).map(k => ({ k, ...n[k] }));
+  for (const r of rows) if (r.x < 0 || r.x + r.w > 440 || r.y < 0 || r.y + r.h > 956) bad.push(r.k + ' вне экрана');
+  const byY = rows.slice().sort((a, b) => a.y - b.y);
+  for (let i = 1; i < byY.length; i++) if (byY[i].y < byY[i - 1].y + byY[i - 1].h - 0.5) bad.push(byY[i - 1].k + ' налезает на ' + byY[i].k);
+  out.bad = bad;
+  console.log(`${sc.name}: «${out.status}» · кнопка «${out.button}»; сегмент ${out.frames['seg.0']}; ${bad.length ? 'НАРУШЕНИЙ ' + bad.length : 'ровно'}`);
+  return out;
 }
 
 /* 28л.5: числа по плашке «Исправить карту» и подписи авторства. Расстояние —
@@ -587,6 +616,21 @@ function markdown(results) {
     }
     list.splice(0, list.length - roadStates.length * themes.length);   // остальные сценарии выше сюда не нужны
   }
+  /* 28л.6: глава «Сеть» — только натив, три состояния детектора × темы. */
+  const netStates = args.net ? (args.net === '1' ? 'reachable,unreachable,unknown' : args.net).split(',') : [];
+  if (netStates.length) {
+    screens.length = 0;
+    for (const state of netStates) for (const theme of themes) {
+      add('settings', theme, 'simple', moments[0], 'paper', 'network');
+      const sc = list.pop();
+      sc.name = ['settings-net', state, theme].join('-');
+      sc.dir = path.join(OUT, sc.name);
+      fs.mkdirSync(sc.dir, { recursive: true });
+      sc.net = state;
+      list.push(sc);
+    }
+    list.splice(0, list.length - netStates.length * themes.length);
+  }
   if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
     add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope);
     /* Суббота 26-го: две съёмки внахлёст (14:00–15:30 и 15:00–16:30) —
@@ -629,9 +673,11 @@ function markdown(results) {
   const phaseMiss = [];
   const noWeather = {};
   const roadsOut = {};
+  const netOut = {};
   for (const sc of list) {
     const nat = await nativeShot(dev.udid, sc, sc.dir);
     if (sc.roads) { roadsOut[sc.name] = await roadsReport(page, sc, nat); continue; }
+    if (sc.net) { netOut[sc.name] = netReport(sc, nat); continue; }
     if (args['no-weather']) {
       const seen = {};
       for (const [k, r] of Object.entries(nat.nodes)) {
@@ -720,6 +766,13 @@ function markdown(results) {
     console.log('маршрут по ответам серверов: ' + path.join(OUT, 'roads.json'));
     const fails = Object.entries(roadsOut).flatMap(([k, v]) => v.bad.map(m => k + ': ' + m));
     if (fails.length) throw new Error('маршрут: ' + fails.length + ' нарушений:\n' + fails.join('\n'));
+    return;
+  }
+  if (netStates.length) {
+    fs.writeFileSync(path.join(OUT, 'network.json'), JSON.stringify(netOut, null, 1));
+    console.log('глава «Сеть»: ' + path.join(OUT, 'network.json'));
+    const fails = Object.entries(netOut).flatMap(([k, v]) => v.bad.map(m => k + ': ' + m));
+    if (fails.length) throw new Error('глава «Сеть»: ' + fails.length + ' нарушений:\n' + fails.join('\n'));
     return;
   }
   if (args['no-weather']) {

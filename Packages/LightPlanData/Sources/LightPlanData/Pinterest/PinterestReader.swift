@@ -49,6 +49,8 @@ public struct PinterestBoard: Sendable, Equatable {
 public enum PinterestFailure: Error, Equatable, Sendable {
     /// В этой сборке нет ключа.
     case notConfigured
+    /// Человек выбрал «Только напрямую» (28л.6): читалка — наш сервер, приложение само Pinterest не читает.
+    case serverOff
     /// Нет сети у телефона.
     case offline
     /// Читалка или Pinterest не ответили вовремя.
@@ -71,7 +73,7 @@ public enum PinterestFailure: Error, Equatable, Sendable {
     /// Сбой, из-за которого незачем продолжать очередь: следующие запросы упадут так же.
     public var isSystemic: Bool {
         switch self {
-        case .notConfigured, .offline, .rejected, .busy: return true
+        case .notConfigured, .serverOff, .offline, .rejected, .busy: return true
         default: return false
         }
     }
@@ -86,8 +88,7 @@ public enum PinterestFailure: Error, Equatable, Sendable {
 }
 
 /// Читалка за протоколом: приложение говорит с нашей функцией, тесты — со сценарием.
-/// Точка подключения детектора доступности 28л.6: он станет ещё одним `PinterestReading`-обёрткой
-/// (или поставщиком `pinterest`), а пока доступность — это сам ответ функции (`PinterestFailure`).
+/// Режим 28л.6 держит обёртка `PolicyPinterestReader`; сама доступность читалки — ответ функции (`PinterestFailure`).
 public protocol PinterestReading: Sendable {
     /// Список пинов доски; ссылка — доска или короткая `pin.it`.
     func board(link: String) async throws -> PinterestBoard

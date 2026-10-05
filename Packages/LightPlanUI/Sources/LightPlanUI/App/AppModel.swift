@@ -330,6 +330,15 @@ public final class AppModel {
     var refImages: RefImageStore?
     /// Читалка Pinterest (28м); `nil` — в этой сборке нет ключа, и Pinterest выключен с надписью.
     var pinterest: (any PinterestReading)?
+    /// Режим «Сеть» и детектор доступности зарубежного (28л.6): общий для погоды и читалок; `nil` — в тестах и снимках.
+    var netHub: NetworkPolicyHub?
+    /// Режим «Авто» / «Только напрямую»: ключ `netMode` лежит в снимке среди чужих (`extra`), веб его не знает.
+    public internal(set) var netMode: NetworkMode
+    /// Что детектор думает о зарубежных адресах; экран «Сеть» пишет это словом.
+    public internal(set) var foreignReach: ForeignReach = .unknown
+    /// Идёт ручная проверка по кнопке «Проверить снова».
+    public internal(set) var netChecking = false
+    @ObservationIgnored var reachTask: Task<Void, Never>?
     /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
     @ObservationIgnored var pinTask: Task<Void, Never>?
     private let locator: any DeviceLocating
@@ -360,6 +369,7 @@ public final class AppModel {
         } else {
             self.mapSource = .mapLibre
         }
+        self.netMode = Self.netMode(of: snapshot)
 
         // Город по умолчанию. Место, выбранное руками в прошлый раз
         // (`loc` веба), на старте не читается: выбор руками живёт до
@@ -439,15 +449,18 @@ public final class AppModel {
         }
         let language = AppLanguage.current
         let locale = Locale(identifier: language)
+        let hub = NetworkPolicyHub(mode: Self.netMode(of: snapshot), detector: .live())
         let model = AppModel(snapshot: snapshot, store: store, language: language,
                         locator: CoreLocationProvider(), geocoder: AppleReverseGeocoder(locale: locale),
                         cityLookup: AppleCityLookup(locale: locale), placeSearch: ApplePlaceSearch(locale: locale),
-                        weatherSource: RoutedWeatherSource.live(config: WeatherProxyConfig.load()),
+                        weatherSource: RoutedWeatherSource.live(config: WeatherProxyConfig.load(), hub: hub),
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading(),
                         weatherReachability: SystemReachability())
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
         model.pinterest = PinterestClient.live(config: PinterestConfig.load())
+            .map { PolicyPinterestReader($0) { await hub.policy() } }
+        model.attachNetwork(hub)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)

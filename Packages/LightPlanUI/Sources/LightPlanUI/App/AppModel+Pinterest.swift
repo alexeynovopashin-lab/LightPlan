@@ -53,13 +53,16 @@ extension AppModel {
 
     // MARK: надписи
 
-    /// Единственное место, где решается «Pinterest сейчас доступен?». Детектор доступности 28л.6 подключится сюда:
-    /// вернёт причину, не дожидаясь запроса. Пока — только «в сборке нет ключа».
-    func pinterestUnavailable() -> PinterestFailure? { pinterest == nil ? .notConfigured : nil }
+    /// Единственное место, где решается «Pinterest сейчас доступен?»: в сборке нет ключа, либо человек выбрал
+    /// «Только напрямую» (28л.6) — читалка это наш сервер. Причина — без запроса.
+    func pinterestUnavailable() -> PinterestFailure? {
+        pinterest == nil ? .notConfigured : netMode == .directOnly ? .serverOff : nil
+    }
 
     func pinText(_ f: PinterestFailure) -> String {
         switch f {
         case .notConfigured, .rejected: lexicon.t("pin.notConnected")
+        case .serverOff: lexicon.t("pin.serverOff")
         case .offline: lexicon.t("pin.offline")
         case .timeout, .serverDown, .badAnswer: lexicon.t("pin.serverDown")
         case .busy: lexicon.t("pin.busy")

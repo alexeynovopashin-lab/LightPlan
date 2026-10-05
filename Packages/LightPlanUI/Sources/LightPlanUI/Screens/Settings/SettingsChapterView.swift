@@ -30,6 +30,7 @@ struct SettingsChapterView: View {
             case .places: places
             case .store: moodboardRow; orgsRow; binRow
             case .data: foreign("set.data"); foreign("set.icsImport"); foreign("cloud.title")
+            case .network: network
             case .locale: locale
             case .about: about
             }
@@ -166,6 +167,27 @@ struct SettingsChapterView: View {
         .padding(.bottom, 16)
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
         SetNote(text: t.t("set.manualEndNote"))
+    }
+
+    // MARK: - Сеть
+
+    /// Только натив (28л.6, у веба главы нет): выбор из двух режимов, строка состояния зарубежного и
+    /// кнопка проверки. Кусочки — те же, что у соседних глав: подпись, сегмент, пояснение, `.data-btn`.
+    @ViewBuilder private var network: some View {
+        SecLabel(text: t.t("net.modeLabel"), first: true, node: "sec.0")
+        WebSeg(options: [(t.t("net.auto"), NetworkMode.auto), (t.t("net.direct"), NetworkMode.directOnly)],
+               selection: Binding(get: { app.netMode }, set: { app.setNetMode($0) }))
+            .shotNode("seg.0")
+            .padding(.horizontal, 24).padding(.top, 12)
+        SetNote(text: t.t(app.netMode == .auto ? "net.noteAuto" : "net.noteDirect"), node: "note.0")
+        SecLabel(text: t.t("net.statusLabel"), node: "sec.1")
+        SetItemRow(icon: nil, title: t.t("net.status", ["state": t.t(app.foreignReachKey)]), value: "", chevron: false)
+            .shotNode("item.0", text: t.t(app.foreignReachKey))
+        Button { app.recheckNetwork() } label: { Text(t.t("net.recheck")) }
+            .buttonStyle(DataButtonStyle())
+            .disabled(app.netChecking)
+            .shotNode("item.1", text: t.t("net.recheck"))
+        SetNote(text: t.t("net.statusNote"), node: "note.1")
     }
 
     // MARK: - Язык и регион
