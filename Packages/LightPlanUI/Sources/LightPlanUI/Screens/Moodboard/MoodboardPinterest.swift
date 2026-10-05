@@ -140,6 +140,15 @@ struct MbPinStrip: View {
             }
             .padding(.top, 12).padding(.horizontal, 15)
             .shotNode("pin.note", text: "\(why)")
+        } else if case .image(let why, let frame)? = app.mb.pinNote {
+            HStack {
+                Text(app.imageLinkText(why)).font(webFont(13)).foregroundStyle(pal.ink3).lineLimit(3)
+                Spacer(minLength: 8)
+                if frame != nil, why == .offline || why == .unreachable || why == .busy { action(t.t("pin.retry"), pal, node: "img.note.retry") { app.retryImageNote() } }
+                action("✕", pal, node: "img.note.close") { app.dismissPinNote() }
+            }
+            .padding(.top, 12).padding(.horizontal, 15)
+            .shotNode("img.note", text: "\(why)")
         }
     }
 

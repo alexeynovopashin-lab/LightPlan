@@ -165,7 +165,13 @@
     "net.checking": "проверяем",
     "net.recheck": "Проверить снова",
     "net.statusNote": "Приложение проверяет это само: при смене сети и раз в несколько минут.",
-    "pin.serverOff": "Pinterest читается через наш сервер, а он выключен: Настройки → Сеть → «Авто»"
+    "pin.serverOff": "Pinterest читается через наш сервер, а он выключен: Настройки → Сеть → «Авто»",
+    "img.unreachable": "Картинка по ссылке не открылась",
+    "img.notFound": "По ссылке нет картинки",
+    "img.notImage": "По ссылке не картинка или формат не поддерживается",
+    "img.tooLarge": "Картинка слишком большая",
+    "img.badLink": "Этот адрес не подошёл",
+    "img.serverOff": "Напрямую картинка не открылась, а наш сервер выключен: Настройки → Сеть → «Авто»"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -332,7 +338,13 @@
     "net.checking": "checking",
     "net.recheck": "Check again",
     "net.statusNote": "The app checks this on its own: when the network changes and every few minutes.",
-    "pin.serverOff": "Pinterest is read through our server, which is off: Settings → Network → “Auto”"
+    "pin.serverOff": "Pinterest is read through our server, which is off: Settings → Network → “Auto”",
+    "img.unreachable": "The picture didn't open",
+    "img.notFound": "There is no picture at this link",
+    "img.notImage": "This link is not a picture, or the format is not supported",
+    "img.tooLarge": "The picture is too large",
+    "img.badLink": "This address didn't work",
+    "img.serverOff": "The picture didn't open directly, and our server is off: Settings → Network → “Auto”"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -499,7 +511,13 @@
     "net.checking": "comprobando",
     "net.recheck": "Comprobar de nuevo",
     "net.statusNote": "La app lo comprueba sola: al cambiar de red y cada pocos minutos.",
-    "pin.serverOff": "Pinterest se lee a través de nuestro servidor, que está desactivado: Ajustes → Red → «Auto»"
+    "pin.serverOff": "Pinterest se lee a través de nuestro servidor, que está desactivado: Ajustes → Red → «Auto»",
+    "img.unreachable": "La imagen no se abrió",
+    "img.notFound": "No hay imagen en este enlace",
+    "img.notImage": "El enlace no es una imagen o el formato no es compatible",
+    "img.tooLarge": "La imagen es demasiado grande",
+    "img.badLink": "Esta dirección no es válida",
+    "img.serverOff": "La imagen no se abrió directamente y nuestro servidor está desactivado: Ajustes → Red → «Auto»"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -665,7 +683,13 @@
     "net.checking": "確認中",
     "net.recheck": "もう一度確認",
     "net.statusNote": "アプリはネットワークが変わったときと、数分ごとに自動で確認します。",
-    "pin.serverOff": "Pinterest は当方のサーバー経由で読むため、現在は使えません：設定 → ネットワーク →「自動」"
+    "pin.serverOff": "Pinterest は当方のサーバー経由で読むため、現在は使えません：設定 → ネットワーク →「自動」",
+    "img.unreachable": "画像を開けませんでした",
+    "img.notFound": "このリンクに画像はありません",
+    "img.notImage": "リンク先は画像ではないか、非対応の形式です",
+    "img.tooLarge": "画像が大きすぎます",
+    "img.badLink": "このアドレスは使えません",
+    "img.serverOff": "直接は開けず、当方のサーバーも停止中です：設定 → ネットワーク →「自動」"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -831,6 +855,12 @@
     "net.checking": "检测中",
     "net.recheck": "重新检测",
     "net.statusNote": "应用会自动检测：网络变化时，以及每隔几分钟。",
-    "pin.serverOff": "Pinterest 需通过我们的服务器读取，而它已关闭：设置 → 网络 →“自动”"
+    "pin.serverOff": "Pinterest 需通过我们的服务器读取，而它已关闭：设置 → 网络 →“自动”",
+    "img.unreachable": "图片无法打开",
+    "img.notFound": "此链接没有图片",
+    "img.notImage": "链接不是图片，或格式不受支持",
+    "img.tooLarge": "图片过大",
+    "img.badLink": "此地址无法使用",
+    "img.serverOff": "无法直接打开，而我们的服务器已关闭：设置 → 网络 →“自动”"
   }
 }

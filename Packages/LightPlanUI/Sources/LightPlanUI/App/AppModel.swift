@@ -330,6 +330,8 @@ public final class AppModel {
     var refImages: RefImageStore?
     /// Читалка Pinterest (28м); `nil` — в этой сборке нет ключа, и Pinterest выключен с надписью.
     var pinterest: (any PinterestReading)?
+    /// Читалка прямых ссылок на фото (28н.1): работает и без ключа (напрямую), с ключом — ещё и через наш сервер; `nil` — в тестах.
+    var imageLinks: (any ImageLinkReading)?
     /// Режим «Сеть» и детектор доступности зарубежного (28л.6): общий для погоды и читалок; `nil` — в тестах и снимках.
     var netHub: NetworkPolicyHub?
     /// Режим «Авто» / «Только напрямую»: ключ `netMode` лежит в снимке среди чужих (`extra`), веб его не знает.
@@ -460,6 +462,7 @@ public final class AppModel {
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
         model.pinterest = PinterestClient.live(config: PinterestConfig.load())
             .map { PolicyPinterestReader($0) { await hub.policy() } }
+        model.imageLinks = ImageLinkReader(direct: DirectImageFetcher(), server: PinterestClient.live(config: PinterestConfig.load())) { await hub.policy() }
         model.attachNetwork(hub)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {

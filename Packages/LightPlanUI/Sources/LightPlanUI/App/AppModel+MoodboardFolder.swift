@@ -189,7 +189,14 @@ extension AppModel {
         }
         let r = mbEdit { lib, now in lib.addLink(raw, to: board, id: UUID().uuidString.lowercased(), tag: tag, now: now) }
         if r != .invalid { mb.sheet = nil }
-        if case .added(let frame) = r, kind != .other { startPinPreview(frame: frame, link: PinterestLink.secure(raw) ?? raw) }
+        if case .added(let frame) = r {
+            if kind != .other { startPinPreview(frame: frame, link: PinterestLink.secure(raw) ?? raw) }
+            else {
+                // Прямая ссылка на фото (28н.1): по расширению — сразу, без расширения — тихая проверка по ответу.
+                let image = ImageLink.kind(raw)
+                if image != .page { startImagePreview(frame: frame, link: PinterestLink.secure(raw) ?? raw, quiet: image == .maybe) }
+            }
+        }
         return r
     }
 }

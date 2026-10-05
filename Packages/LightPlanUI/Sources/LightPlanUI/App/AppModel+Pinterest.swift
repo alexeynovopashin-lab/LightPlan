@@ -47,6 +47,8 @@ struct PinFlow: Equatable {
 /// Строка под кнопками папки про один пин: чем кончилось и что можно повторить.
 enum PinNote: Equatable {
     case failure(PinterestFailure, retryFrame: String?)
+    /// Картинка по прямой ссылке (28н.1) не легла.
+    case image(ImageLinkFailure, retryFrame: String?)
 }
 
 extension AppModel {

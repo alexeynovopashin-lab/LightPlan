@@ -344,8 +344,8 @@ struct MoodboardFolder: View {
             Text((RefLink.host(url) ?? t.t("ref.link")).uppercased()).font(webFont(9.5, 700)).tracking(0.4)
                 .foregroundStyle(pal.brass).lineLimit(1).padding(.trailing, 22)
             Text(RefLink.tail(url)).font(webFont(11)).foregroundStyle(pal.ink4).lineSpacing(1.5).lineLimit(4)
-            // Pinterest без картинки: плитка честно говорит, что превью нет (картинка не придумывается).
-            if PinterestLink.kind(url) != .other {
+            // Pinterest или прямая ссылка на фото без картинки: плитка честно говорит, что превью нет (картинка не придумывается).
+            if PinterestLink.kind(url) != .other || ImageLink.kind(url) == .image {
                 Spacer(minLength: 0)
                 Text(t.t("pin.previewOff")).font(webFont(9.5)).foregroundStyle(pal.ink4.opacity(0.8)).lineLimit(1)
             }
