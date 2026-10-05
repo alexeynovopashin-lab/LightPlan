@@ -274,8 +274,9 @@ async function nativeShot(udid, sc, dir) {
 
 /* 28л.5: числа по плашке «Исправить карту» и подписи авторства. Расстояние —
    от низа подписи до верха плашки в pt (< 0 — пересекаются); контраст — по
-   пикселям снимка: фон плашки (медиана кольца на 1 pt вокруг рамки) против
-   самого далёкого от него пикселя внутри рамки (сердцевина букв). */
+   пикселям внутренности рамки (см. ниже). Прогон падает, если состояние
+   маршрута не то, плашки или подписи нет, они пересекаются или контраст
+   плашки ниже 3 (ревью GPT к 18f7ac6). */
 async function roadsReport(page, sc, nat) {
   const n = nat.nodes;
   const credit = n['map.credit'], fix = n['map.fixTheMap'], sum = n['route.sum'];
@@ -295,23 +296,31 @@ async function roadsReport(page, sc, nat) {
     const res = {};
     for (const [name, r] of Object.entries(rects)) {
       if (!r) { res[name] = null; continue; }
-      const x0 = Math.round(r.x * k), y0 = Math.round(r.y * k), w = Math.round(r.w * k), h = Math.round(r.h * k);
-      const px = (x, y) => Array.from(cx.getImageData(x, y, 1, 1).data.slice(0, 3));
-      const ring = [];
-      const m = Math.round(k);
-      for (let x = x0 - m; x <= x0 + w + m; x += 2) { ring.push(px(x, y0 - m)); ring.push(px(x, y0 + h + m)); }
-      for (let y = y0; y <= y0 + h; y += 2) { ring.push(px(x0 - m, y)); ring.push(px(x0 + w + m, y)); }
-      const med = i => ring.map(p => p[i]).sort((a, b) => a - b)[ring.length >> 1];
+      // Только внутренность плашки (отступ 3 pt по бокам и 2 pt сверху и снизу):
+      // там фон плашки и буквы, без кромки, тени и карты вокруг. Фон — медиана
+      // внутренности (букв меньшинство), чернила — самый далёкий от неё пиксель.
+      const x0 = Math.round((r.x + 3) * k), y0 = Math.round((r.y + 2) * k);
+      const w = Math.round((r.w - 6) * k), h = Math.round((r.h - 4) * k);
+      const data = cx.getImageData(x0, y0, w, h).data;
+      const med = i => { const v = []; for (let j = i; j < data.length; j += 4) v.push(data[j]); return v.sort((p, q) => p - q)[v.length >> 1]; };
       const bg = [med(0), med(1), med(2)];
       let best = bg, bd = -1;
       const d = a => Math.abs(a[0] - bg[0]) + Math.abs(a[1] - bg[1]) + Math.abs(a[2] - bg[2]);
-      const data = cx.getImageData(x0, y0, w, h).data;
       for (let i = 0; i < data.length; i += 4) { const p = [data[i], data[i + 1], data[i + 2]]; if (d(p) > bd) { bd = d(p); best = p; } }
       const [a, b] = [lum(bg), lum(best)].sort((p, q) => q - p);
       res[name] = { bg, ink: best, ratio: +((a + 0.05) / (b + 0.05)).toFixed(2) };
     }
     return res;
   }, { png, rects: { fixTheMap: fix || null, credit: credit || null } });
+  const bad = [];
+  if (!fix) bad.push('нет плашки «Исправить карту»');
+  if (!credit) bad.push('нет подписи «© CARTO · © OpenStreetMap»');
+  if (out.gapPt != null && (out.intersects || out.gapPt < 0)) bad.push('плашка задевает подпись, зазор ' + out.gapPt + ' pt');
+  if (sc.roads === 'ok' && !(out.sum && /км/.test(out.sum) && !/недоступен/.test(out.sum))) bad.push('«ok»: в полосе нет километров: ' + out.sum);
+  if (sc.roads === 'none' && !(out.sum && /Маршрут недоступен/.test(out.sum))) bad.push('«none»: в полосе нет «Маршрут недоступен»: ' + out.sum);
+  const ratio = out.contrast && out.contrast.fixTheMap && out.contrast.fixTheMap.ratio;
+  if (!(ratio >= 3)) bad.push('контраст плашки ' + ratio + ' < 3');
+  out.bad = bad;
   console.log(`${sc.name}: «${out.sum}»; плашка ${fix ? [fix.x, fix.y, fix.w, fix.h].join(',') : 'нет'}; зазор ${out.gapPt} pt; контраст плашки ${out.contrast.fixTheMap && out.contrast.fixTheMap.ratio}`);
   return out;
 }
@@ -701,6 +710,8 @@ function markdown(results) {
   if (roadStates.length) {
     fs.writeFileSync(path.join(OUT, 'roads.json'), JSON.stringify(roadsOut, null, 1));
     console.log('маршрут по ответам серверов: ' + path.join(OUT, 'roads.json'));
+    const fails = Object.entries(roadsOut).flatMap(([k, v]) => v.bad.map(m => k + ': ' + m));
+    if (fails.length) throw new Error('маршрут: ' + fails.length + ' нарушений:\n' + fails.join('\n'));
     return;
   }
   if (args['no-weather']) {
