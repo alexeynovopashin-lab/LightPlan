@@ -318,7 +318,8 @@ async function dragReport(page, sc, nat) {
   const rect = k => n['card.order.row.' + k];
   for (const k of DRAG_ORDER) if (!rect(k)) bad.push('нет строки ' + k);
   if (bad.length) return { bad };
-  const y0 = rect(DRAG_ORDER[0]).y;
+  // Начало сетки строк; если в руке первая, она сама сдвинута на `dy`.
+  const y0 = rect(DRAG_ORDER[0]).y - (li === 0 ? dy : 0);
   const to = Math.max(0, Math.min(DRAG_ORDER.length - 1, li + Math.round(dy / 64)));
   const place = i => i === li ? to : (i > li ? i - 1 : i) >= to ? (i > li ? i - 1 : i) + 1 : (i > li ? i - 1 : i);
   const frames = {};
@@ -330,6 +331,11 @@ async function dragReport(page, sc, nat) {
     if (Math.abs(r.x - 36) > 0.6 || Math.abs(r.w - 368) > 0.6) bad.push(`${k}: x ${r.x} w ${r.w}`);
   });
   const slotTop = y0 + 64 * to, liftTop = y0 + 64 * li + dy;
+  // Открытая часть слота: слот минус поднятая строка (две полосы — над ней и под ней), берём большую; отступ 4 pt
+  // от краёв полосы, чтобы не попасть в сглаженный край и тень строки.
+  const bands = [[slotTop, Math.min(slotTop + 56, liftTop)], [Math.max(slotTop, liftTop + 56), slotTop + 56]].filter(b => b[1] - b[0] > 8);
+  const open = bands.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0];
+  const openSlotY = open ? (open[0] + open[1]) / 2 : null;
   const png = 'data:image/png;base64,' + fs.readFileSync(path.join(sc.dir, 'native.png')).toString('base64');
   const px = await page.evaluate(async ({ png, pts }) => {
     const img = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = png; });
@@ -337,25 +343,26 @@ async function dragReport(page, sc, nat) {
     const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
     const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
     const out = {};
-    for (const [name, [x, y]] of Object.entries(pts)) out[name] = [...cx.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data].slice(0, 3);
+    for (const [name, [x, y]] of Object.entries(pts)) if (y != null) out[name] = [...cx.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data].slice(0, 3);
     return out;
   }, { png, pts: {
     // лист в зазоре между двумя неподвижными строками, у самого края (x 200 — середина строки по ширине)
     sheet: [200, y0 + 56 + 4],
-    // полоса слота, не закрытая поднятой строкой: верх слота, если строка ушла вниз (dy > 0), иначе низ
-    slot: [200, dy >= 0 ? slotTop + Math.min(dy, 56) / 2 : slotTop + 56 - Math.min(-dy, 56) / 2],
+    // середина большей части слота, не закрытой поднятой строкой (нет такой — слот закрыт целиком, точки нет)
+    slot: [200, openSlotY],
     // боковая тень: 6 pt левее строки на уровне её середины, и там же на уровне строки, до которой тень не достаёт
     shadowL: [30, liftTop + 28], shadowRef: [30, y0 + 64 * (DRAG_ORDER.length - 1) + 28],
     shadowBelow: [200, liftTop + 56 + 4]
   } });
   const dark = sc.theme === 'dark';
   const lum = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-  const slotD = lum(px.slot) - lum(px.sheet), shadeD = lum(px.shadowL) - lum(px.shadowRef);
-  if (dy !== 0 && Math.abs(slotD) < 1) bad.push('слот не виден: яркость ' + slotD.toFixed(1) + ' к листу');
-  if (dy !== 0 && (dark ? slotD < 0 : slotD > 0)) bad.push('слот не в ту сторону: ' + slotD.toFixed(1));
-  const out = { block: blk, dy, to, theme: sc.theme, frames, slotLum: +slotD.toFixed(1), shadowSideLum: +shadeD.toFixed(1), px, bad,
+  const slotD = px.slot ? lum(px.slot) - lum(px.sheet) : null, shadeD = lum(px.shadowL) - lum(px.shadowRef);
+  if (dy !== 0 && slotD == null) bad.push('слот закрыт строкой целиком — проверять нечего');
+  else if (dy !== 0 && Math.abs(slotD) < 1) bad.push('слот не виден: яркость ' + slotD.toFixed(1) + ' к листу');
+  if (slotD != null && dy !== 0 && (dark ? slotD < 0 : slotD > 0)) bad.push('слот не в ту сторону: ' + slotD.toFixed(1));
+  const out = { block: blk, dy, to, theme: sc.theme, frames, slotLum: slotD == null ? null : +slotD.toFixed(1), shadowSideLum: +shadeD.toFixed(1), px, bad,
     gapLiftedToNext: +(rect(DRAG_ORDER[li + 1] || blk).y - (liftTop + 56)).toFixed(1) };
-  console.log(`${sc.name}: слот ${to + 1}-й (строка на ${dy} pt ниже места), слот ${slotD.toFixed(1)} к листу, тень сбоку ${shadeD.toFixed(1)}; ${bad.length ? 'НАРУШЕНИЙ ' + bad.length : 'рамки сошлись'}`);
+  console.log(`${sc.name}: слот ${to + 1}-й (строка на ${dy} pt ниже места), слот ${slotD == null ? '—' : slotD.toFixed(1)} к листу, тень сбоку ${shadeD.toFixed(1)}; ${bad.length ? 'НАРУШЕНИЙ ' + bad.length : 'рамки сошлись'}`);
   return out;
 }
 
