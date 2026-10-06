@@ -17,6 +17,9 @@ struct CardScreen: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var still
 
+    @State private var scrollPos = ScrollPosition(edge: .top)
+    @State private var scrollBridge = CardScrollBridge()
+
     private var t: Lexicon { app.lexicon }
 
     var body: some View {
@@ -50,6 +53,17 @@ struct CardScreen: View {
                 // Сосед из стопки открывается листом сверху, как у веба
                 // (`openCard(i, false, …)` сбрасывает прокрутку).
                 .id(s.id)
+                // Лист отдаёт списку порядка, где он стоит: строка в руке у края гонит его сама (27а.3).
+                .scrollPosition($scrollPos)
+                .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollBridge.offset = y }
+                // Дальний край: содержимое минус окно (замер: на конце лист стоит на 201,67 при 1013,67 и 812;
+                // нижний отступ 34 в окно не входит — с ним зона уезжала бы на 34 за край).
+                .onScrollGeometryChange(for: CGFloat.self) {
+                    max(0, $0.contentSize.height - $0.containerSize.height)
+                } action: { _, m in scrollBridge.maxOffset = m }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { scrollBridge.viewport = $0 }
+                .environment(\.cardScroll, scrollBridge)
+                .onAppear { let pos = $scrollPos; scrollBridge.scrollTo = { pos.wrappedValue.scrollTo(y: $0) } }
             }
             .shotNode("card.phase", text: phase.rawValue)
         }

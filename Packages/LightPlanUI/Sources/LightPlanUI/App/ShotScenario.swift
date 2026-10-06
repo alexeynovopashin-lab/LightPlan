@@ -127,6 +127,13 @@ extension AppModel {
             if let id { app.openCard(id: id) }
             // Лист перестановки (26): `LPShotTune 1` — как после тапа по «ползункам».
             if id != nil, UserDefaults.standard.bool(forKey: "LPShotTune") { app.toggleCardTuning() }
+            // Блок в руке (27а.3): `LPShotDrag place:24` — строка «place» на 24 pt ниже своего места.
+            if id != nil, let raw = UserDefaults.standard.string(forKey: "LPShotDrag") {
+                let part = raw.split(separator: ":")
+                if part.count == 2, let b = CardBlock(rawValue: String(part[0])), let dy = Double(part[1]) {
+                    app.cardShotDrag = (b, CGFloat(dy))
+                }
+            }
             // Свёртка маршрута (27): `LPShotFold route` — как после тапа по строке «Маршрут дня».
             if id != nil, UserDefaults.standard.string(forKey: "LPShotFold") == "route" { app.toggleCardFold(.route) }
             // Референсы (27): `LPShotRefs full` — полный экран, `view` — ещё и первый кадр в просмотрщике.

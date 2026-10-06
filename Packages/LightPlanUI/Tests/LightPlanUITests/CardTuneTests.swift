@@ -141,6 +141,60 @@ struct CardTuneTests {
         #expect(rows(app, "q") == [.money, .day, .notes, .delivery])
     }
 
+    // MARK: - 27а.3: порядок после драга за пальцем
+
+    /// Палец ведёт блок `b` на `dy` (по осям экрана), `scroll` — на сколько уехал лист; отпустили — запись.
+    /// `lift` рука делает с места в списке, как жест на ручке.
+    private func dragBlock(_ app: AppModel, _ id: String, _ b: CardBlock, dy: CGFloat, scroll: CGFloat = 0, interrupt: Bool = false) {
+        let p = rec(app, id)
+        let list = rows(app, id)
+        var hand = CardHand()
+        hand.lift(b, from: list.firstIndex(of: b)!, count: list.count, startY: 500, startScroll: 0)
+        hand.follow(finger: 500 + dy, scroll: scroll)
+        if interrupt { hand.interrupt() }
+        if let m = hand.release(finger: 500 + dy, scroll: scroll) { app.moveCardBlock(m.block, to: m.to, for: p) }
+    }
+
+    @Test func dragDownUpAndToTheSamePlace() {
+        let app = model()
+        dragBlock(app, "p", .notes, dy: 70)                         // вниз на строку
+        #expect(rows(app, "p") == [.day, .delivery, .notes, .money])
+        dragBlock(app, "p", .money, dy: -130)                       // вверх на две
+        #expect(rows(app, "p") == [.day, .money, .delivery, .notes])
+        let saved = app.snapshotForTests.cardOrder
+        dragBlock(app, "p", .delivery, dy: 20)                      // меньше полшага — то же место
+        dragBlock(app, "p", .delivery, dy: -31)
+        #expect(rows(app, "p") == [.day, .money, .delivery, .notes])
+        #expect(app.snapshotForTests.cardOrder == saved)            // и записи нет
+    }
+
+    @Test func dragToTheEdgesAndBeyond() {
+        let app = model()
+        dragBlock(app, "p", .day, dy: 5000)                         // первый — в самый низ, дальше края не уйти
+        #expect(rows(app, "p") == [.notes, .delivery, .money, .day])
+        dragBlock(app, "p", .day, dy: -5000)                        // и обратно в самый верх
+        #expect(rows(app, "p") == [.day, .notes, .delivery, .money])
+        dragBlock(app, "p", .money, dy: 5000)                       // последний ниже последнего — на месте
+        dragBlock(app, "p", .day, dy: -5000)                        // первый выше первого — на месте
+        #expect(rows(app, "p") == [.day, .notes, .delivery, .money])
+    }
+
+    @Test func dragWithTheSheetScrollingUnderAStillFinger() {
+        let app = model()
+        dragBlock(app, "p", .day, dy: 0, scroll: 128)               // палец стоит, лист проехал две строки
+        #expect(rows(app, "p") == [.notes, .delivery, .day, .money])
+    }
+
+    /// Звонок посреди драга: строки остаются, как были, и следующий драг идёт обычно.
+    @Test func interruptedDragChangesNothingAndDoesNotStick() {
+        let app = model()
+        dragBlock(app, "p", .money, dy: -500, interrupt: true)
+        #expect(rows(app, "p") == [.day, .notes, .delivery, .money])
+        #expect(app.snapshotForTests.cardOrder[.people] == nil)
+        dragBlock(app, "p", .money, dy: -500)
+        #expect(rows(app, "p") == [.money, .day, .notes, .delivery])
+    }
+
     @Test func switchHidesBlockFromCardButKeepsItsRow() {
         let app = model()
         let p = rec(app, "p")

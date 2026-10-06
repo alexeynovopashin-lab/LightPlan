@@ -52,6 +52,7 @@ if (args.help) {
   --screens light,map,planner,settings,card,m28   какие экраны (по умолчанию все)
   --themes dark,light   --moments day,golden,night,dawn   --modes simple,astro   --scopes month,week,day
   --m28 mbgallery,mbshelf,mbfolder,orgs,orgcard,contacts,quest,meet   экраны итерации 28 (мудборды, организации, «Контакты», опросник, встреча); только они: --screens m28
+  --drag [block:dy,...]   блок карточки в руке (27а.3, только натив; по умолчанию place:24,place:44): сдвиг, зазор, слот, тень
   --grip [<знак записи>]   лента дня с поднятой записью и ручками (29а; по умолчанию 26-е, sd_sep_clash_b); только они: --screens grip
   --cards / --phases / --forms / --layers / --sheets / --chapters   перебор отдельных экранов (см. шапку файла)
   --skip-build   --out <папка>   --forecast <файл>   --no-sheets --no-pick   --help   эта справка`);
@@ -269,6 +270,7 @@ async function nativeShot(udid, sc, dir) {
     ...(sc.m28 ? ['-LPShotSheet', sc.m28, ...(sc.way ? ['-LPShotWay', sc.way] : [])] : []),
     ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
     ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card, ...(sc.tune ? ['-LPShotTune', '1'] : []),
+      ...(sc.drag ? ['-LPShotDrag', sc.drag] : []),
       ...(sc.fold ? ['-LPShotFold', sc.fold] : []), ...(sc.refs ? ['-LPShotRefs', sc.refs] : [])] : []),
     '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
@@ -301,6 +303,59 @@ function netReport(sc, nat) {
   for (let i = 1; i < byY.length; i++) if (byY[i].y < byY[i - 1].y + byY[i - 1].h - 0.5) bad.push(byY[i - 1].k + ' налезает на ' + byY[i].k);
   out.bad = bad;
   console.log(`${sc.name}: «${out.status}» · кнопка «${out.button}»; сегмент ${out.frames['seg.0']}; ${bad.length ? 'НАРУШЕНИЙ ' + bad.length : 'ровно'}`);
+  return out;
+}
+
+/* 27а.3: блок карточки в руке (`--drag place:24`). Рамки строк: поднятая стоит на `dy` ниже своего места и
+   размера не меняет (56), слот — на месте `to = clamp(i + round(dy / 64))`, соседи шагнули ровно на 64 и между
+   собой держат зазор 8. Пиксели: слот светлее (тёмная тема) / темнее (светлая) листа на долю `hair3`; тень —
+   боковая полоса левее строки темнее листа. Радиус слота 6 и цвет `hair3` — из кода, тот же, что у маршрута
+   (`MapRouteViews.swift`: `RoundedRectangle(6)` + `pal.hair3`), в кадре не мерены. */
+const DRAG_ORDER = ['deal', 'day', 'place', 'weather', 'brief', 'docs', 'notes', 'delivery', 'money'];
+async function dragReport(page, sc, nat) {
+  const n = nat.nodes, [blk, dyS] = sc.drag.split(':'), dy = +dyS, bad = [];
+  const li = DRAG_ORDER.indexOf(blk);
+  const rect = k => n['card.order.row.' + k];
+  for (const k of DRAG_ORDER) if (!rect(k)) bad.push('нет строки ' + k);
+  if (bad.length) return { bad };
+  const y0 = rect(DRAG_ORDER[0]).y;
+  const to = Math.max(0, Math.min(DRAG_ORDER.length - 1, li + Math.round(dy / 64)));
+  const place = i => i === li ? to : (i > li ? i - 1 : i) >= to ? (i > li ? i - 1 : i) + 1 : (i > li ? i - 1 : i);
+  const frames = {};
+  DRAG_ORDER.forEach((k, i) => {
+    const r = rect(k), want = i === li ? y0 + 64 * li + dy : y0 + 64 * place(i);
+    frames[k] = { y: +r.y.toFixed(1), want, h: +r.h.toFixed(1) };
+    if (Math.abs(r.y - want) > 0.6) bad.push(`${k}: y ${r.y.toFixed(1)}, ждали ${want}`);
+    if (Math.abs(r.h - 56) > 0.6) bad.push(`${k}: высота ${r.h.toFixed(1)}, ждали 56 (размер не меняется)`);
+    if (Math.abs(r.x - 36) > 0.6 || Math.abs(r.w - 368) > 0.6) bad.push(`${k}: x ${r.x} w ${r.w}`);
+  });
+  const slotTop = y0 + 64 * to, liftTop = y0 + 64 * li + dy;
+  const png = 'data:image/png;base64,' + fs.readFileSync(path.join(sc.dir, 'native.png')).toString('base64');
+  const px = await page.evaluate(async ({ png, pts }) => {
+    const img = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = png; });
+    const k = img.width / 440;
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+    const out = {};
+    for (const [name, [x, y]] of Object.entries(pts)) out[name] = [...cx.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data].slice(0, 3);
+    return out;
+  }, { png, pts: {
+    // лист в зазоре между двумя неподвижными строками, у самого края (x 200 — середина строки по ширине)
+    sheet: [200, y0 + 56 + 4],
+    // полоса слота, не закрытая поднятой строкой: верх слота, если строка ушла вниз (dy > 0), иначе низ
+    slot: [200, dy >= 0 ? slotTop + Math.min(dy, 56) / 2 : slotTop + 56 - Math.min(-dy, 56) / 2],
+    // боковая тень: 6 pt левее строки на уровне её середины, и там же на уровне строки, до которой тень не достаёт
+    shadowL: [30, liftTop + 28], shadowRef: [30, y0 + 64 * (DRAG_ORDER.length - 1) + 28],
+    shadowBelow: [200, liftTop + 56 + 4]
+  } });
+  const dark = sc.theme === 'dark';
+  const lum = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  const slotD = lum(px.slot) - lum(px.sheet), shadeD = lum(px.shadowL) - lum(px.shadowRef);
+  if (dy !== 0 && Math.abs(slotD) < 1) bad.push('слот не виден: яркость ' + slotD.toFixed(1) + ' к листу');
+  if (dy !== 0 && (dark ? slotD < 0 : slotD > 0)) bad.push('слот не в ту сторону: ' + slotD.toFixed(1));
+  const out = { block: blk, dy, to, theme: sc.theme, frames, slotLum: +slotD.toFixed(1), shadowSideLum: +shadeD.toFixed(1), px, bad,
+    gapLiftedToNext: +(rect(DRAG_ORDER[li + 1] || blk).y - (liftTop + 56)).toFixed(1) };
+  console.log(`${sc.name}: слот ${to + 1}-й (строка на ${dy} pt ниже места), слот ${slotD.toFixed(1)} к листу, тень сбоку ${shadeD.toFixed(1)}; ${bad.length ? 'НАРУШЕНИЙ ' + bad.length : 'рамки сошлись'}`);
   return out;
 }
 
@@ -635,6 +690,26 @@ function markdown(results) {
     }
     list.splice(0, list.length - netStates.length * themes.length);
   }
+  /* 27а.3: блок карточки в руке — только натив (в бете блок за пальцем не идёт, ей сравнивать не с чем): заказ до
+     съёмки в «ползунках», строка `place` на 24 pt ниже места (слот виден полосой, соседи на местах) и на 44 pt
+     (слот уже на строку ниже, сосед шагнул). Числа — `dragReport`: сдвиг, зазор, слот, тень. */
+  const dragStates = args.drag ? (args.drag === '1' ? 'place:24,place:44' : args.drag).split(',') : [];
+  if (dragStates.length) {
+    screens.length = 0;
+    const id = CARDS.client;
+    for (const st of dragStates) for (const theme of themes) {
+      const name = ['card-drag', st.replace(':', '-'), theme].join('-');
+      const dir = path.join(OUT, name);
+      fs.mkdirSync(dir, { recursive: true });
+      const s = { ...plannerSeed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' };
+      const rec = s.sessions.find(x => x.id === id);
+      const seedFile = path.join(dir, 'seed.json');
+      fs.writeFileSync(seedFile, JSON.stringify(s));
+      list.push({ name, dir, screen: 'planner', theme, moment: 'day', at: wallAt(rec.date, rec.min - 120), card: id,
+        phase: 'before', seed: seedFile, tune: true, drag: st });
+    }
+    list.splice(0, list.length - dragStates.length * themes.length);   // остальные сценарии выше сюда не нужны
+  }
   if (screens.includes('planner')) for (const scope of scopes) for (const theme of themes) {
     add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', scope);
     /* Суббота 26-го: две съёмки внахлёст (14:00–15:30 и 15:00–16:30) —
@@ -693,10 +768,12 @@ function markdown(results) {
   const noWeather = {};
   const roadsOut = {};
   const netOut = {};
+  const dragOut = {};
   for (const sc of list) {
     const nat = await nativeShot(dev.udid, sc, sc.dir);
     if (sc.roads) { roadsOut[sc.name] = await roadsReport(page, sc, nat); continue; }
     if (sc.net) { netOut[sc.name] = netReport(sc, nat); continue; }
+    if (sc.drag) { dragOut[sc.name] = await dragReport(page, sc, nat); continue; }
     if (args['no-weather']) {
       const seen = {};
       for (const [k, r] of Object.entries(nat.nodes)) {
@@ -785,6 +862,13 @@ function markdown(results) {
     console.log('маршрут по ответам серверов: ' + path.join(OUT, 'roads.json'));
     const fails = Object.entries(roadsOut).flatMap(([k, v]) => v.bad.map(m => k + ': ' + m));
     if (fails.length) throw new Error('маршрут: ' + fails.length + ' нарушений:\n' + fails.join('\n'));
+    return;
+  }
+  if (dragStates.length) {
+    fs.writeFileSync(path.join(OUT, 'drag.json'), JSON.stringify(dragOut, null, 1));
+    console.log('блок в руке: ' + path.join(OUT, 'drag.json'));
+    const fails = Object.entries(dragOut).flatMap(([k, v]) => v.bad.map(m => k + ': ' + m));
+    if (fails.length) throw new Error('блок в руке: ' + fails.length + ' нарушений:\n' + fails.join('\n'));
     return;
   }
   if (netStates.length) {

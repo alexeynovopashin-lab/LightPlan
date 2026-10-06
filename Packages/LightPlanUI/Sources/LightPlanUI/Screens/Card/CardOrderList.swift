@@ -1,6 +1,7 @@
 import SwiftUI
 import LightPlanCore
 import LightPlanDomain
+import QuartzCore
 
 // MARK: - Перестановка блоков («ползунки», `#cardOrder`, итерация 26, шаг 5а)
 
@@ -18,14 +19,106 @@ enum CardOrderDrag {
         return min(max(start + Int(((dy / step) + 0.5).rounded(.down)), 0), count - 1)
     }
 
-    /// Строки, как они стоят, пока блок в руке: он «перескакивает по местам»,
-    /// за пальцем плавно не едет (справка: плавное «читалось сломанным»).
+    /// Порядок строк, каким он станет, если блок отпустить на `slot`. Строки на экране
+    /// порядок не меняют (едут сдвигом, `CardRowDrag.place`) — это проверка, что сдвиг
+    /// и перестановка сходятся.
     static func preview(_ rows: [CardBlock], moving b: CardBlock, to slot: Int) -> [CardBlock] {
         guard let i = rows.firstIndex(of: b), rows.indices.contains(slot), i != slot else { return rows }
         var out = rows
         out.remove(at: i)
         out.insert(b, at: slot)
         return out
+    }
+}
+
+/// Строка в руке (27а.3): откуда взята, где встанет, на сколько ушёл палец. Строки
+/// списка порядка не меняют, пока блок в руке: каждая стоит на своём месте плюс
+/// сдвиг (`offset(of:)`), как у точек маршрута на Карте — поэтому соседи
+/// расступаются мгновенно, а под рукой остаётся слот.
+struct CardRowDrag: Equatable {
+    let block: CardBlock
+    let from: Int
+    let count: Int
+    /// Палец в момент касания (координаты экрана) и прокрутка листа в этот момент: сдвиг
+    /// строки — путь пальца плюс то, на сколько уехал лист (автопрокрутка у краёв).
+    let startY: CGFloat
+    let startScroll: CGFloat
+    private(set) var dy: CGFloat = 0
+    private(set) var to: Int
+    private(set) var fingerY: CGFloat
+
+    init(block: CardBlock, from: Int, count: Int, startY: CGFloat = 0, startScroll: CGFloat = 0) {
+        self.block = block; self.from = from; self.count = count
+        self.startY = startY; self.startScroll = startScroll
+        fingerY = startY; to = from
+    }
+
+    /// Палец на `y` экрана, лист прокручен на `scroll`.
+    mutating func follow(finger y: CGFloat, scroll: CGFloat) {
+        fingerY = y
+        follow((y - startY) + (scroll - startScroll))
+    }
+
+    /// Палец ушёл на `raw` от места касания. Строка не выходит за края списка: выше первой
+    /// и ниже последней ей встать некуда.
+    mutating func follow(_ raw: CGFloat) {
+        let step = CardOrderDrag.step
+        dy = min(max(raw, -CGFloat(from) * step), CGFloat(count - 1 - from) * step)
+        to = CardOrderDrag.slot(start: from, dy: dy, count: count)
+    }
+
+    /// Место строки `i`, когда блок `from` встал на `to`: поднятая — на слоте, остальные сдвинуты им.
+    func place(_ i: Int) -> Int {
+        if i == from { return to }
+        let p = i > from ? i - 1 : i
+        return p >= to ? p + 1 : p
+    }
+
+    /// Сдвиг строки `i` от её места в списке: поднятая идёт за пальцем, соседи — на шаг.
+    func offset(of i: Int) -> CGFloat {
+        i == from ? dy : CGFloat(place(i) - i) * CardOrderDrag.step
+    }
+}
+
+/// Что записать, когда блок отпустили: он `block` встал на `to`.
+struct CardMove: Equatable {
+    let block: CardBlock
+    let to: Int
+}
+
+/// Рука: ведёт одну строку или пуста. Отпускание и прерванный жест разведены: отпущенная
+/// строка даёт ход, прерванная — ничего, порядок остаётся, как был до подъёма. Любой из двух
+/// концов очищает руку, второй за ним ничего не делает (конец жеста и сброс «палец держит»
+/// приходят оба, замер 27а.3: сперва конец, потом сброс).
+struct CardHand: Equatable {
+    private(set) var drag: CardRowDrag?
+
+    var isLifted: Bool { drag != nil }
+
+    /// Поднять строку `block` с места `from` из `count`; уже занятая рука не берёт вторую.
+    @discardableResult
+    mutating func lift(_ block: CardBlock, from: Int, count: Int, startY: CGFloat, startScroll: CGFloat) -> Bool {
+        guard drag == nil else { return false }
+        drag = CardRowDrag(block: block, from: from, count: count, startY: startY, startScroll: startScroll)
+        return true
+    }
+
+    /// Палец или лист сдвинулись.
+    mutating func follow(finger y: CGFloat, scroll: CGFloat) {
+        drag?.follow(finger: y, scroll: scroll)
+    }
+
+    /// Отпустили на `y`: ход, который надо записать (даже «на то же место»), и пустая рука.
+    mutating func release(finger y: CGFloat, scroll: CGFloat) -> CardMove? {
+        guard var d = drag else { return nil }
+        d.follow(finger: y, scroll: scroll)
+        drag = nil
+        return CardMove(block: d.block, to: d.to)
+    }
+
+    /// Жест прервала система: рука пуста, ничего не пишется.
+    mutating func interrupt() {
+        drag = nil
     }
 }
 
@@ -43,19 +136,34 @@ struct CardOrderList<Content: View>: View {
     @ViewBuilder let content: (CardBlock) -> Content
 
     @Environment(\.accessibilityReduceMotion) private var still
-    @State private var hand: CardBlock?
-    @State private var handStart = 0
-    @State private var handSlot = 0
+    /// Блок в руке; рука пуста — никто не тянет.
+    @State private var hand = CardHand()
+    private var drag: CardRowDrag? { hand.drag }
+    /// Палец держит ручку. Систему прервала жест (звонок, шторка, уход в фон) —
+    /// `onEnded` не приходит, а это значение сбрасывается само: тогда строка
+    /// возвращается на прежнее место (известный залип, справка 27а.1, §3).
+    @GestureState private var holding = false
+    @State private var lifts = 0
+    @State private var autoscroll: Task<Void, Never>?
+    @Environment(\.cardScroll) private var scroll
 
     var body: some View {
         let tuning = app.cardTuning
         let rows = app.cardOrderRows(s, phase: phase)
-        let shown = hand.map { CardOrderDrag.preview(rows, moving: $0, to: handSlot) } ?? rows
         VStack(spacing: 0) {
             // Первая строка встаёт вплотную к шапке, как у веба: пара мерила +10.
             VStack(spacing: 0) {
-                ForEach(Array(shown.enumerated()), id: \.element) { i, b in
-                    slot(b, first: i == 0, tuning: tuning, rows: rows)
+                ForEach(Array(rows.enumerated()), id: \.element) { i, b in
+                    slot(b, at: i, tuning: tuning, rows: rows)
+                }
+            }
+            // Слот под строкой в руке: пустое место, куда она встанет (маршрут на Карте:
+            // `hair3`, радиус 6). Лежит на сетке строк, строки едут над ним.
+            .background(alignment: .top) {
+                if let d = drag {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(pal.hair3)
+                        .frame(height: CardTuneSqueeze.rowHeight)
+                        .offset(y: CGFloat(d.to) * CardOrderDrag.step)
                 }
             }
             // Узел списка — только в «ползунках»: в обычном виде набор узлов карточки тот же, что до 27а.2.
@@ -63,14 +171,28 @@ struct CardOrderList<Content: View>: View {
             // Подвал веб показывает и прячет сразу, без перехода.
             if tuning { footer.transition(.identity) }
         }
+        .sensoryFeedback(.selection, trigger: lifts)
+        // Снимок «блок в руке»: без пальца рука встаёт сразу с нужным сдвигом (`-LPShotDrag`).
+        .onChange(of: tuning, initial: true) { _, on in
+            if on, !hand.isLifted, let t = app.cardShotDrag, let i = rows.firstIndex(of: t.block),
+               hand.lift(t.block, from: i, count: rows.count, startY: 0, startScroll: 0) {
+                hand.follow(finger: t.dy, scroll: 0)
+            }
+        }
+        .onChange(of: holding) { _, on in
+            CardDragProbe.log("holding \(on) drag=\(drag.map { "\($0.block.rawValue) \($0.from)→\($0.to)" } ?? "nil")")
+            if !on { cancel() }
+        }
+        .onChange(of: tuning) { _, on in if !on { cancel() } }
     }
 
     /// Обёртка блока: начинка гаснет сразу (`visibility: hidden`), шапка-строка
     /// проявляется за 0,22 с, а выходит без затухания; фон и поля строки — в первом кадре.
-    private func slot(_ b: CardBlock, first: Bool, tuning: Bool, rows: [CardBlock]) -> some View {
+    private func slot(_ b: CardBlock, at i: Int, tuning: Bool, rows: [CardBlock]) -> some View {
         let off = app.isCardBlockOff(b, for: s)
         let moving = app.cardTuneMoving
-        return CardSqueezeLayout(t: tuning ? 1 : 0, gap: first ? 0 : CardTuneSqueeze.gap) {
+        let lifted = drag?.block == b
+        return CardSqueezeLayout(t: tuning ? 1 : 0, gap: i == 0 ? 0 : CardTuneSqueeze.gap) {
             VStack(spacing: 0) { if !off { content(b) } }
                 .environment(\.shotSilent, tuning)
                 .opacity(tuning ? 0 : 1)
@@ -86,13 +208,16 @@ struct CardOrderList<Content: View>: View {
         #endif
         // Обрезка по краю — пока высота едет; в покое границы открыты (тень поднятой строки).
         .clipShape(Rectangle().inset(by: moving ? 0 : -40))
+        // Сдвиг — снаружи обрезки: она едет вместе со строкой. Соседи встают мгновенно (без `.animation`).
+        .offset(y: drag?.offset(of: i) ?? 0)
+        .zIndex(lifted ? 1 : 0)
     }
 
     // MARK: Строка (`.ord-cap`)
 
     private func row(_ b: CardBlock, rows: [CardBlock]) -> some View {
         let off = app.isCardBlockOff(b, for: s)
-        let held = hand == b
+        let held = drag?.block == b
         return HStack(spacing: 12) {
             HStack(spacing: 12) {
                 Icon(b.iconName, size: 17, line: 1.6).foregroundStyle(pal.brass)
@@ -116,7 +241,6 @@ struct CardOrderList<Content: View>: View {
         .frame(height: 56)
         .background(held ? pal.press : pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: held ? .black.opacity(0.45) : .clear, radius: held ? 12 : 0, y: held ? 8 : 0)
-        .zIndex(held ? 1 : 0)
         .shotNode("card.order.row.\(b.rawValue)")
     }
 
@@ -133,17 +257,80 @@ struct CardOrderList<Content: View>: View {
         .contentShape(Rectangle())
         .gesture(
             DragGesture(minimumDistance: CardOrderDrag.threshold, coordinateSpace: .global)
-                .onChanged { g in
-                    if hand != b, let i = rows.firstIndex(of: b) { hand = b; handStart = i; handSlot = i }
-                    handSlot = CardOrderDrag.slot(start: handStart, dy: g.translation.height, count: rows.count)
-                }
-                .onEnded { g in
-                    let j = CardOrderDrag.slot(start: handStart, dy: g.translation.height, count: rows.count)
-                    hand = nil
-                    app.moveCardBlock(b, to: j, for: s)
-                }
+                .updating($holding) { _, on, _ in on = true }
+                .onChanged { g in follow(b, rows: rows, g) }
+                .onEnded { g in drop(finger: g.location.y) }
         )
         .shotNode("card.order.handle.\(b.rawValue)")
+    }
+
+    // MARK: Жест
+
+    /// Палец ведёт блок: первый сдвиг поднимает строку (отдача), дальше она идёт за пальцем.
+    private func follow(_ b: CardBlock, rows: [CardBlock], _ g: DragGesture.Value) {
+        let at = scroll?.offset ?? 0
+        if !hand.isLifted {
+            guard let i = rows.firstIndex(of: b),
+                  hand.lift(b, from: i, count: rows.count, startY: g.startLocation.y, startScroll: at) else { return }
+            lifts += 1   // 29.5/29.6 заменят единым слоем отдачи
+            startAutoscroll()
+            CardDragProbe.log("lift \(b.rawValue) from=\(i) count=\(rows.count) scroll=\(Int(at))")
+        }
+        guard drag?.block == b else { return }
+        hand.follow(finger: g.location.y, scroll: at)
+        CardDragProbe.log("move y=\(Int(g.location.y)) row=\(Int(drag?.dy ?? 0)) to=\(drag?.to ?? -1) scroll=\(Int(at))")
+    }
+
+    /// Отпустили: строка падает на слот без доводки, порядок пишется один раз.
+    private func drop(finger: CGFloat) {
+        let rowDy = drag?.dy ?? 0
+        guard let move = hand.release(finger: finger, scroll: scroll?.offset ?? 0) else { return }
+        stopAutoscroll()
+        CardDragProbe.log("drop \(move.block.rawValue) →\(move.to) row=\(Int(rowDy)) scroll=\(Int(scroll?.offset ?? 0))")
+        app.moveCardBlock(move.block, to: move.to, for: s)
+    }
+
+    private func stopAutoscroll() {
+        autoscroll?.cancel()
+        autoscroll = nil
+    }
+
+    // MARK: Автопрокрутка
+
+    /// Пока строка в руке, раз в кадр: палец у верхнего или нижнего края окна листа — лист едет,
+    /// и строка идёт за пальцем по листу (палец при этом может стоять).
+    private func startAutoscroll() {
+        guard scroll != nil else { return }
+        autoscroll?.cancel()
+        autoscroll = Task { @MainActor in
+            var last = CACurrentMediaTime()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(CardAutoScroll.tick))
+                let now = CACurrentMediaTime()
+                scrollStep(dt: now - last)
+                last = now
+            }
+        }
+    }
+
+    private func scrollStep(dt: Double) {
+        guard let bridge = scroll, let d = drag else { return }
+        let v = CardAutoScroll.velocity(y: d.fingerY, top: bridge.viewport.minY, bottom: bridge.viewport.maxY)
+        guard v != 0 else { return }
+        let y = CardAutoScroll.next(offset: bridge.offset, velocity: v, dt: dt, max: bridge.maxOffset)
+        guard y != bridge.offset else { return }
+        bridge.offset = y
+        bridge.scrollTo(y)
+        hand.follow(finger: d.fingerY, scroll: y)
+        CardDragProbe.log("scroll v=\(Int(v)) offset=\(Int(y)) row=\(Int(drag?.dy ?? 0)) to=\(drag?.to ?? -1)")
+    }
+
+    /// Жест прервала система: порядок остаётся, как был до подъёма. Второй вызов после
+    /// `drop` ничего не делает — `drag` уже пуст.
+    private func cancel() {
+        if let d = drag { CardDragProbe.log("cancel \(d.block.rawValue) \(d.from)→\(d.to)") }
+        hand.interrupt()
+        stopAutoscroll()
     }
 
     // MARK: Подвал (`.ord-foot`)
