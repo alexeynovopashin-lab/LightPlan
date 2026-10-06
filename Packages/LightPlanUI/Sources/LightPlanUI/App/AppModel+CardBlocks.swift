@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import LightPlanCore
 import LightPlanDomain
 import LightPlanData
@@ -81,6 +82,22 @@ extension AppModel {
 
     /// «Ползунки» и «Готово»: вход и выход из режима перестановки.
     public func toggleCardTuning() { cardTuning.toggle() }
+
+    /// Идёт ли сжатие или разворот блоков (27а.2).
+    var cardTuneMoving: Bool { cardTuneMoves > 0 }
+
+    /// Вход и выход с анимацией высоты блоков (веб `foldBlocks`/`unfoldBlocks`);
+    /// `still` («Уменьшение движения») — мгновенно. Счётчик, а не флаг: повторный
+    /// тап посреди хода не гасит обрезку раньше времени.
+    func toggleCardTuning(still: Bool) {
+        guard let curve = CardTuneSqueeze.animation(still: still) else { toggleCardTuning(); return }
+        cardTuneMoves += 1
+        withAnimation(curve, completionCriteria: .logicallyComplete) {
+            cardTuning.toggle()
+        } completion: { [weak self] in
+            self?.cardTuneMoves -= 1
+        }
+    }
 
     public func isCardFoldOpen(_ b: CardBlock) -> Bool { cardFolds.contains(b) }
 

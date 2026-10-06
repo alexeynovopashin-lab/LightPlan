@@ -15,6 +15,7 @@ struct CardScreen: View {
     @Bindable var app: AppModel
     let s: Session
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var still
 
     private var t: Lexicon { app.lexicon }
 
@@ -53,6 +54,9 @@ struct CardScreen: View {
             .shotNode("card.phase", text: phase.rawValue)
         }
         .background(pal.surface.ignoresSafeArea())
+        #if DEBUG && os(iOS)
+        .onAppear { CardTuneBench.startIfAsked(app) }   // стенд 27а.2, `-LPTuneBench 1`
+        #endif
     }
 
     // MARK: - Полоса (`.form-bar`)
@@ -105,7 +109,7 @@ struct CardScreen: View {
     /// «Ползунки» (`#cardOrder`): круглая 40×40 стеклянная; в режиме залита
     /// `--ink`, знак `--surface`. Повторный тап — выход.
     private func tuneButton(_ pal: Palette) -> some View {
-        Button { withAnimation(.easeInOut(duration: 0.26)) { app.toggleCardTuning() } } label: {
+        Button { app.toggleCardTuning(still: still) } label: {
             Icon("sliders", size: 18, line: 1.8)
                 .foregroundStyle(app.cardTuning ? pal.surface : pal.ink3)
                 .frame(width: 40, height: 40)

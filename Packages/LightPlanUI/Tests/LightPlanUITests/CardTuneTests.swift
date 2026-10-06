@@ -101,6 +101,20 @@ struct CardTuneTests {
         #expect(!app.cardTuning)
     }
 
+    /// 27а.2: при «Уменьшении движения» вход — мгновенный, хода нет; с движением
+    /// ход идёт счётчиком (его гасит завершение анимации, не флаг).
+    @Test func reducedMotionToggleIsInstantAndLeavesNoMove() {
+        let app = model()
+        app.openCard(id: "p")
+        app.toggleCardTuning(still: true)
+        #expect(app.cardTuning && !app.cardTuneMoving)
+        app.toggleCardTuning(still: true)
+        #expect(!app.cardTuning && !app.cardTuneMoving)
+        app.toggleCardTuning(still: false)
+        #expect(app.cardTuning)
+        #expect(app.cardTuneMoves >= 0)
+    }
+
     // MARK: - Порядок, тумблер, сброс
 
     /// Перетащили «Деньги» наверх: на месте остаются и блоки без данных в этой

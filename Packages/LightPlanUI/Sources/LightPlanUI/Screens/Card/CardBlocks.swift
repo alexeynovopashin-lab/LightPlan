@@ -17,11 +17,7 @@ struct CardBlocks: View {
     let tick: Date
 
     var body: some View {
-        if app.cardTuning {
-            CardOrderList(app: app, s: s, phase: phase, pal: pal)
-        } else {
-            blocks
-        }
+        CardOrderList(app: app, s: s, phase: phase, pal: pal) { b in block(b) }
     }
 
     @Environment(\.openURL) private var openURL
@@ -31,9 +27,8 @@ struct CardBlocks: View {
         if case .url(let u) = app.openCardDoc(d) { openURL(u) }
     }
 
-    @ViewBuilder private var blocks: some View {
-        ForEach(app.cardBlocks(s, phase: phase), id: \.self) { b in
-            switch b {
+    @ViewBuilder private func block(_ b: CardBlock) -> some View {
+        switch b {
             case .deal: CardDealBlock(app: app, s: s, pal: pal)
             case .day: CardDayTile(app: app, s: s, phase: phase, pal: pal, tick: tick)
             case .clash: CardClash(app: app, s: s, phase: phase, pal: pal)
@@ -67,7 +62,6 @@ struct CardBlocks: View {
             case .delivery: CardDeliveryBlock(app: app, s: s, pal: pal)
             case .money: CardMoneyBlock(app: app, s: s, pal: pal)
             case .refs: CardRefsBlock(app: app, s: s, pal: pal)
-            }
         }
     }
 }

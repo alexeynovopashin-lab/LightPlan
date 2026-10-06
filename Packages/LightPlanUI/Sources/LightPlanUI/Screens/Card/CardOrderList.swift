@@ -29,27 +29,62 @@ enum CardOrderDrag {
     }
 }
 
-/// Список перестановки вместо блоков листа: строка на каждый блок с данными
-/// (и выключенный — чтобы было чем вернуть), внизу «По умолчанию» и «Готово».
-struct CardOrderList: View {
+/// Блоки листа и их строки перестановки (27а.2). Каждый блок живёт под
+/// обёрткой `CardSqueezeLayout`: в обычном виде это сам блок, в «ползунках» —
+/// строка в 56 pt, между ними высота идёт по кривой веба. Ветка листа не
+/// подменяется: блок остаётся в дереве, поэтому его таймер, фолды и состояние
+/// живут через вход и выход. Строки есть у каждого блока с данными, у
+/// выключенного — тоже (чтобы было чем вернуть), внизу «По умолчанию» и «Готово».
+struct CardOrderList<Content: View>: View {
     let app: AppModel
     let s: Session
     let phase: EventPhase
     let pal: Palette
+    @ViewBuilder let content: (CardBlock) -> Content
 
+    @Environment(\.accessibilityReduceMotion) private var still
     @State private var hand: CardBlock?
     @State private var handStart = 0
     @State private var handSlot = 0
 
     var body: some View {
+        let tuning = app.cardTuning
         let rows = app.cardOrderRows(s, phase: phase)
         let shown = hand.map { CardOrderDrag.preview(rows, moving: $0, to: handSlot) } ?? rows
-        VStack(spacing: 8) {
-            ForEach(shown, id: \.self) { b in row(b, rows: rows) }
+        VStack(spacing: 0) {
+            // Первая строка встаёт вплотную к шапке, как у веба: пара мерила +10.
+            VStack(spacing: 0) {
+                ForEach(Array(shown.enumerated()), id: \.element) { i, b in
+                    slot(b, first: i == 0, tuning: tuning, rows: rows)
+                }
+            }
+            .shotNode("card.order.list")
+            // Подвал веб показывает и прячет сразу, без перехода.
+            if tuning { footer.transition(.identity) }
         }
-        // Первая строка встаёт вплотную к шапке, как у веба: пара мерила +10.
-        .shotNode("card.order.list")
-        footer
+    }
+
+    /// Обёртка блока: начинка гаснет сразу (`visibility: hidden`), шапка-строка
+    /// проявляется за 0,22 с, а выходит без затухания; фон и поля строки — в первом кадре.
+    private func slot(_ b: CardBlock, first: Bool, tuning: Bool, rows: [CardBlock]) -> some View {
+        let off = app.isCardBlockOff(b, for: s)
+        let moving = app.cardTuneMoving
+        return CardSqueezeLayout(t: tuning ? 1 : 0, gap: first ? 0 : CardTuneSqueeze.gap) {
+            VStack(spacing: 0) { if !off { content(b) } }
+                .environment(\.shotSilent, tuning)
+                .opacity(tuning ? 0 : 1)
+                .allowsHitTesting(!tuning)
+                .accessibilityHidden(tuning)
+                .animation(nil, value: tuning)
+            ZStack {
+                if tuning { row(b, rows: rows).transition(CardTuneSqueeze.capTransition(still: still)) }
+            }
+        }
+        #if DEBUG && os(iOS)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { CardTuneProbe.note(b.rawValue, height: $0) }
+        #endif
+        // Обрезка по краю — пока высота едет; в покое границы открыты (тень поднятой строки).
+        .clipShape(Rectangle().inset(by: moving ? 0 : -40))
     }
 
     // MARK: Строка (`.ord-cap`)
@@ -118,7 +153,7 @@ struct CardOrderList: View {
                 app.resetCardOrder(for: s)
             }
             footButton(app.lexicon.t("card.orderDone"), color: pal.brassDeep, weight: 650, node: "card.order.done") {
-                app.toggleCardTuning()
+                app.toggleCardTuning(still: still)
             }
         }
         .padding(.top, 18)
