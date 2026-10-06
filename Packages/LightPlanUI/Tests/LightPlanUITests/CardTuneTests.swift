@@ -101,8 +101,8 @@ struct CardTuneTests {
         #expect(!app.cardTuning)
     }
 
-    /// 27а.2: при «Уменьшении движения» вход — мгновенный, хода нет; с движением
-    /// ход идёт счётчиком (его гасит завершение анимации, не флаг).
+    /// 27а.2: при «Уменьшении движения» вход мгновенный, хода нет; с движением ход идёт
+    /// счётчиком, и по окончании анимации он ровно ноль (в том числе после повторного тапа посреди хода).
     @Test func reducedMotionToggleIsInstantAndLeavesNoMove() {
         let app = model()
         app.openCard(id: "p")
@@ -110,9 +110,18 @@ struct CardTuneTests {
         #expect(app.cardTuning && !app.cardTuneMoving)
         app.toggleCardTuning(still: true)
         #expect(!app.cardTuning && !app.cardTuneMoving)
+    }
+
+    @Test func moveCounterReturnsToZeroWhenAnimationEnds() async {
+        let app = model()
+        app.openCard(id: "p")
         app.toggleCardTuning(still: false)
         #expect(app.cardTuning)
-        #expect(app.cardTuneMoves >= 0)
+        // Повторный тап посреди хода: оба хода должны закрыться.
+        app.toggleCardTuning(still: false)
+        #expect(!app.cardTuning)
+        for _ in 0..<100 where app.cardTuneMoves != 0 { try? await Task.sleep(for: .milliseconds(50)) }
+        #expect(app.cardTuneMoves == 0 && !app.cardTuneMoving)
     }
 
     // MARK: - Порядок, тумблер, сброс

@@ -58,7 +58,8 @@ struct CardOrderList<Content: View>: View {
                     slot(b, first: i == 0, tuning: tuning, rows: rows)
                 }
             }
-            .shotNode("card.order.list")
+            // Узел списка — только в «ползунках»: в обычном виде набор узлов карточки тот же, что до 27а.2.
+            .background { if tuning { Color.clear.shotNode("card.order.list") } }
             // Подвал веб показывает и прячет сразу, без перехода.
             if tuning { footer.transition(.identity) }
         }
