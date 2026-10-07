@@ -301,7 +301,9 @@ async function pass(udid, theme) {
       // стекло — плита в сотни pt по обеим сторонам (на симуляторе ≈ 390–460 × 415–470),
       // плашка, её тень и полосы краёв — узкие: меньшая сторона ≤ 120 pt.
       const dir = path.join(OUT, theme);
-      for (const f of fs.readdirSync(dir).filter(n => n.startsWith('motion_')).sort()) {
+      const frames = fs.readdirSync(dir).filter(n => n.startsWith('motion_')).sort();
+      if (!frames.length) { fail = 1; console.log('ПАДАЕТ: кадров в движении нет — ротор встал на угол раньше съёмки; --motion ничего не проверил'); }
+      for (const f of frames) {
         const big = blobs(path.join(dir, f), theme === 'light' ? LIGHT_THR : 9).filter(b => b.w > 36 || b.h > 36);
         const slab = big.filter(b => Math.min(b.w, b.h) > 120);
         const ok = slab.length === 0;
