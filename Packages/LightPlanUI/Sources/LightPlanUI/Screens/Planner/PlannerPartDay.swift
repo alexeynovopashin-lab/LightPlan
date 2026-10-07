@@ -189,7 +189,8 @@ final class PartDay {
     @ObservationIgnored private(set) var lower: UIView?
     #endif
 
-    /// Вход в день из месяца. Строку недели не нашли, нет окна, «Уменьшение движения» — вход без разреза.
+    /// Вход в день из месяца. Строку недели не нашли или она не целиком на экране, нет окна, «Уменьшение
+    /// движения» — вход без разреза.
     func enter(_ app: AppModel, still: Bool, frozenAt: Double? = nil) {
         #if os(iOS)
         let commit = {
@@ -200,8 +201,8 @@ final class PartDay {
         let grid = app.planner.monthGrid
         guard !still, let i = grid.firstIndex(of: app.planner.selected), let row = rows[i / 7], row.height > 0,
               screen.height > 0, let window = Self.window() else { finish(); commit(); return }
-        let r = row.intersection(screen)
-        guard !r.isNull, r.height > 0 else { finish(); commit(); return }
+        // Строка недели целиком на виду: частично ушедшую под шапку прокруткой ячейки нарисовали бы поверх шапки.
+        guard row.minY >= screen.minY, row.maxY <= screen.maxY else { finish(); commit(); return }
         let wb = window.bounds
         let c0 = Self.cpu
         upper = window.resizableSnapshotView(from: CGRect(x: 0, y: 0, width: wb.width, height: max(1, row.minY)),

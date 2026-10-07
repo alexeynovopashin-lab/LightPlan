@@ -191,7 +191,8 @@ public struct PlannerScreenView: View {
         scopeOpen = false
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(50))
-            guard app.planner.scope == .month else { return }
+            // За эти 50 мс могли уйти с вкладки или сменить вид — тогда входа нет (ревью GPT к 15b9e3f).
+            guard app.tab == .planner, app.planner.scope == .month else { return }
             part.enter(app, still: still)
         }
     }
