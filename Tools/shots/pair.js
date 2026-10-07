@@ -54,6 +54,7 @@ if (args.help) {
   --m28 mbgallery,mbshelf,mbfolder,orgs,orgcard,contacts,quest,meet   экраны итерации 28 (мудборды, организации, «Контакты», опросник, встреча); только они: --screens m28
   --drag [block:dy,...]   блок карточки в руке (27а.3, только натив; по умолчанию place:24,place:44): сдвиг, зазор, слот, тень
   --grip [<знак записи>]   лента дня с поднятой записью и ручками (29а; по умолчанию 26-е, sd_sep_clash_b); только они: --screens grip
+  --part [<мс>,...]   разрез месяца при входе в день, кадр на мс от старта (29.2а; по умолчанию 170); только он: --screens part
   --cards / --phases / --forms / --layers / --sheets / --chapters   перебор отдельных экранов (см. шапку файла)
   --skip-build   --out <папка>   --forecast <файл>   --no-sheets --no-pick   --help   эта справка`);
   process.exit(0);
@@ -267,6 +268,7 @@ async function nativeShot(udid, sc, dir) {
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     ...(sc.layer ? ['-LPShotSheet', sc.layer] : []),
     ...(sc.grip ? ['-LPShotSheet', 'grip', '-LPShotWay', sc.grip] : []),
+    ...(sc.part ? ['-LPShotChapter', 'part:' + sc.part, '-LPShotReportDelay', '6'] : []),
     ...(sc.m28 ? ['-LPShotSheet', sc.m28, ...(sc.way ? ['-LPShotWay', sc.way] : [])] : []),
     ...(sc.sheet ? ['-LPShotSheet', 'loc', ...(sc.sheet !== 'fork' ? ['-LPShotWay', sc.sheet] : [])] : []),
     ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card, ...(sc.tune ? ['-LPShotTune', '1'] : []),
@@ -438,6 +440,7 @@ function webShot(sc, dir, safe) {
     ...(sc.form ? ['--sheet', 'form', '--way', sc.form] : []),
     ...(sc.layer ? ['--sheet', sc.layer] : []),
     ...(sc.grip ? ['--sheet', 'grip', '--way', sc.grip] : []),
+    ...(sc.part ? ['--sheet', 'part', '--way', sc.part] : []),
     ...(sc.m28 ? ['--sheet', sc.m28, ...(sc.way ? ['--way', sc.way] : []), ...(sc.shelf ? ['--shelf', sc.shelf] : [])] : []),
     ...(sc.sheet ? ['--sheet', 'loc', ...(sc.sheet !== 'fork' ? ['--way', sc.sheet] : [])] : []),
     ...(sc.card ? ['--sheet', 'card', '--way', sc.card, ...(sc.tune ? ['--tune'] : []),
@@ -738,7 +741,22 @@ function markdown(results) {
     sc.dir = dir;
     sc.seed = path.join(dir, 'seed.json');
   }
-  for (const screen of screens.filter(x => x !== 'planner' && x !== 'card' && x !== 'm28' && x !== 'grip')) for (const mode of modes) for (const theme of themes) {
+  /* Разрез месяца (29.2а, `--part`): второй тап по выбранному 23-му, кадр замороженный на N мс от старта. Веб —
+     `shot.js --sheet part` (переходы беты на паузе на той же мс), приложение — `-LPShotChapter part:<мс>`.
+     Сверяются половины (`part.up`, `part.down` — видимая часть снимка) и семь ячеек недели (`part.c.N`). */
+  if (args.part || screens.includes('part')) for (const ms of String(args.part && args.part !== '1' ? args.part : '170').split(','))
+    for (const theme of themes) {
+      add('planner', theme, 'simple', 'day', 'paper', null, 'drum', 'shut', 'month');
+      const sc = list[list.length - 1];
+      sc.part = ms;
+      sc.name = ['planner', 'part', ms, theme].join('-');
+      const dir = path.join(OUT, sc.name);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.renameSync(sc.seed, path.join(dir, 'seed.json'));
+      sc.dir = dir;
+      sc.seed = path.join(dir, 'seed.json');
+    }
+  for (const screen of screens.filter(x => x !== 'planner' && x !== 'card' && x !== 'm28' && x !== 'grip' && x !== 'part')) for (const mode of modes) for (const theme of themes) {
     // «Настройки» от момента не зависят — одна пара на тему и режим.
     for (const moment of screen === 'settings' ? [moments[0]] : moments) {
       if (args['only-spoiler']) { if (screen === 'light' && mode === 'astro') add(screen, theme, mode, moment, 'paper', 'spoiler'); continue; }

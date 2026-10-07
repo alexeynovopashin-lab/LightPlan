@@ -22,8 +22,10 @@ public struct PlannerState: Hashable, Sendable {
     /// сам по себе, выбранный день при этом стоит.
     public private(set) var month: CivilDate
     /// Откуда въезжает лента дня: +1 — день вперёд, въезд справа; −1 — назад;
-    /// 0 — без въезда. Потребляется один раз (`consumeDayShift`), как веб
-    /// читает и сам обнуляет `dayShift`.
+    /// 0 — без въезда. Ставят только листание дня и дата ленты; любой другой
+    /// переход его гасит, а лента, въехав, потребляет (`consumeDayShift`) — как
+    /// веб обнуляет `dayShift` после каждого въезда (`index.html` `renderDayPanel`).
+    /// Иначе направление жило до следующего листания (29.2а, аудит C2).
     public private(set) var dayShift = 0
     /// Раскрытая строка недели (веб `.wk-day-row.open`). Открыта всегда одна;
     /// перерисовка календаря (листание, смена масштаба) закрывает её, как веб
@@ -42,6 +44,7 @@ public struct PlannerState: Hashable, Sendable {
         guard s != scope else { return }
         scope = s
         month = Self.first(of: selected)
+        dayShift = 0
         weekOpen = nil
     }
 
@@ -54,9 +57,11 @@ public struct PlannerState: Hashable, Sendable {
             selected = selected.adding(days: dir)
             month = Self.first(of: selected)
         case .week:
+            dayShift = 0
             selected = selected.adding(days: dir * 7)
             month = Self.first(of: selected)
         case .month:
+            dayShift = 0
             month = Self.addMonths(month, dir)
         }
         weekOpen = nil
@@ -73,12 +78,13 @@ public struct PlannerState: Hashable, Sendable {
     }
 
     /// Тап по ячейке месяца. Первый тап выбирает; второй по уже выбранному
-    /// дню своего месяца — вход в день (веб — через `partMonthIntoDay`,
-    /// анимация перенесена в итерацию 29). Тап по дню соседнего месяца
+    /// дню своего месяца — вход в день (движение — разрез месяца, `PartDay`,
+    /// 29.2а; лента дня при нём сбоку не въезжает). Тап по дню соседнего месяца
     /// перелистывает на его месяц. Возвращает `true`, если вошли в день.
     @discardableResult
     public mutating func tapMonthCell(_ day: CivilDate) -> Bool {
         let outside = !Self.sameMonth(day, month)
+        dayShift = 0
         if !outside, day == selected {
             scope = .day
             month = Self.first(of: day)
@@ -90,9 +96,24 @@ public struct PlannerState: Hashable, Sendable {
         return false
     }
 
+    /// Ведёт ли тап по ячейке месяца в день: второй тап по выбранному дню своего месяца.
+    public func entersDay(on day: CivilDate) -> Bool {
+        scope == .month && Self.sameMonth(day, month) && day == selected
+    }
+
+    /// Вход в выбранный день из месяца — второй тап по числу и «День» в веере видов (веб `partMonthIntoDay`,
+    /// его `commit`). Лента дня при входе сбоку не въезжает.
+    public mutating func enterSelectedDay() {
+        scope = .day
+        month = Self.first(of: selected)
+        dayShift = 0
+        weekOpen = nil
+    }
+
     /// Тап по голове строки недели: выбирает день и раскрывает его строку,
     /// повторный тап сворачивает.
     public mutating func tapWeekRow(_ day: CivilDate) {
+        dayShift = 0
         selected = day
         weekOpen = weekOpen == day ? nil : day
     }
@@ -101,6 +122,7 @@ public struct PlannerState: Hashable, Sendable {
     public mutating func goToday(_ today: CivilDate) {
         month = Self.first(of: today)
         selected = today
+        dayShift = 0
         weekOpen = nil
     }
 
@@ -119,6 +141,7 @@ public struct PlannerState: Hashable, Sendable {
     /// если это нынешний месяц, иначе первое число.
     public mutating func enterMonth(_ first: CivilDate, today: CivilDate) {
         scope = .month
+        dayShift = 0
         month = Self.first(of: first)
         selected = Self.sameMonth(first, today) ? today : month
         weekOpen = nil

@@ -12,7 +12,7 @@ import LightPlanCore
 /// (итерация 22, `PlannerLayers`); удержание съёмки — веер «Заполнить /
 /// Удалить», тап — карточка (25). Веер видов и меню часа — виды веба на встроенном стекле, не
 /// системные меню (NEXT_SESSION: «не системные компоненты»); их движение —
-/// итерация 29.
+/// итерация 29. Вход в день из месяца — разрезом месяца (`PartDay`, 29.2а).
 public struct PlannerScreenView: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
@@ -27,6 +27,9 @@ public struct PlannerScreenView: View {
     @State private var fan: FanTarget?
     /// Время события рукой на ленте дня (29а): выделение, ручки, идущий жест.
     @State private var grip = DayGrip()
+    /// Разрез месяца при входе в день (29.2а).
+    @State private var part = PartDay()
+    @Environment(\.accessibilityReduceMotion) private var still
 
     public init(app: AppModel) { self.app = app }
 
@@ -37,7 +40,7 @@ public struct PlannerScreenView: View {
         ScrollView {
             VStack(spacing: 0) {
                 switch st.scope {
-                case .month: PlannerMonthBody(app: app, f: f, fan: $fan)
+                case .month: PlannerMonthBody(app: app, f: f, fan: $fan, part: part)
                 case .week: PlannerWeekBody(app: app, f: f)
                 case .day: PlannerDayBody(app: app, f: f, fan: $fan, grip: grip)
                 }
@@ -48,10 +51,11 @@ public struct PlannerScreenView: View {
             .frame(maxWidth: .infinity, alignment: .top)
         }
         .scrollPosition($position)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.screen = $0 }
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: 0) {
                 PlanTop(app: app, f: f, scopeOpen: $scopeOpen, nav: nav)
-                if st.scope == .day { PlannerDaySticky(app: app, f: f) }
+                if st.scope == .day { PlannerDaySticky(app: app, f: f, part: part) }
                 if st.scope != .day, st.isAway(from: f.today) { nowBack(pal, f) }
             }
             .background {
@@ -73,25 +77,31 @@ public struct PlannerScreenView: View {
                 .padding(.bottom, 12)
             }
         }
+        .overlay { PartDayLayer(app: app, f: f, part: part) }
         .overlay(alignment: .topLeading) {
             if scopeOpen { scopeMenu(pal, f) }
         }
         .background(pal.surface.ignoresSafeArea())
         .simultaneousGesture(swipe)
-        .modifier(OutsideTouch(grip: grip, fan: $fan))
+        .modifier(OutsideTouch(grip: grip, fan: $fan, part: part))
         .coordinateSpace(name: plannerFanSpace)
         .overlay { EventFan(app: app, f: f, fan: $fan) }
         .edgeBackBase(app, .planner)
         .overlay { PlannerLayers(app: app, f: f, nav: nav) }
         .onAppear { openStartLayer() }
+        #if DEBUG && os(iOS)
+        .task { if PartDayBench.on { await PartDayBench.run(app, part: part, fan: enterFromFan) } }
+        #endif
         .onChange(of: nav.statsOpen || nav.searchOpen, initial: true) { _, open in app.plannerPageOpen = open }
         .onChange(of: st.scope, initial: true) { was, now in
+            if now != .day { part.interrupt("scope") }
             aim()
             if was != now { grip.deselect() }   // первый показ выделения не трогает
         }
         .onChange(of: st.selected) { _, _ in aim() }
         // Смена вкладки закрывает слои (веб: `.overlay-right.open` и прочие).
         .onChange(of: app.tab) { _, _ in
+            part.interrupt("tab")
             var off = Transaction()
             off.disablesAnimations = true
             withTransaction(off) {
@@ -108,6 +118,15 @@ public struct PlannerScreenView: View {
     /// `grip` — запись поднята на ленте дня и сдвинута на час (29а).
     private func openStartLayer() {
         guard let layer = app.startChapter else { return }
+        // Разрез месяца, замороженный на `part:<мс>` от старта (пара снимков 29.2а): месяц успевает нарисоваться.
+        if layer.hasPrefix("part:"), let ms = Double(layer.dropFirst(5)) {
+            app.startChapter = nil
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                part.enter(app, still: false, frozenAt: ms / 1000)
+            }
+            return
+        }
         if layer.hasPrefix("grip:") {
             let id = String(layer.dropFirst(5))
             if let s = app.sessions.first(where: { $0.id == id }) {
@@ -138,6 +157,7 @@ public struct PlannerScreenView: View {
                 ForEach(CalScope.allCases, id: \.self) { s in
                     let on = s == app.planner.scope
                     Button {
+                        if app.planner.scope == .month, s == .day { enterFromFan(); return }
                         scopeOpen = false
                         withAnimation(.snappy(duration: 0.25)) { app.planner.setScope(s) }
                     } label: {
@@ -165,6 +185,17 @@ public struct PlannerScreenView: View {
         }
     }
 
+    /// «День» из месяца в веере видов — тем же разрезом, что второй тап по числу (веб `zoomMonthToDay`). Снимок
+    /// берёт уже нарисованный экран: ждём кадры без веера, иначе веер уехал бы вверх вместе с месяцем.
+    private func enterFromFan() {
+        scopeOpen = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            guard app.planner.scope == .month else { return }
+            part.enter(app, still: still)
+        }
+    }
+
     /// «↺ сегодня» строкой под шапкой в месяце и неделе (`.now-back.show`).
     private func nowBack(_ pal: Palette, _ f: PlannerFacts) -> some View {
         Button { app.planner.goToday(f.today) } label: {
@@ -184,7 +215,10 @@ public struct PlannerScreenView: View {
                 let dx = g.translation.width, dy = g.translation.height
                 guard abs(dx) >= 60, abs(dy) <= 40 else { return }
                 DayGripLog.note("swipe step dx=\(Int(dx))")
-                withAnimation(.snappy(duration: 0.22)) { app.planner.step(dx < 0 ? 1 : -1) }
+                // День въезжает по кривой беты (E1); месяц и неделя — как были (их движение — 29.2в).
+                withAnimation(app.planner.scope == .day ? PlannerDayBody.slide : .snappy(duration: 0.22)) {
+                    app.planner.step(dx < 0 ? 1 : -1)
+                }
             }
     }
 
@@ -209,10 +243,13 @@ public struct PlannerScreenView: View {
 private struct OutsideTouch: ViewModifier {
     let grip: DayGrip
     @Binding var fan: FanTarget?
+    let part: PartDay
 
     func body(content: Content) -> some View {
         #if os(iOS)
         content.gesture(TouchProbe { stamp in
+            // Касание посреди разреза месяца — сразу конечный кадр, касание идёт дальше уже в день (29.2а).
+            part.interrupt("touch")
             // Лента получает то же касание в том же такте, но порядок не обещан:
             // решаем тактом позже, когда она уже отметилась.
             Task { @MainActor in
