@@ -7,16 +7,22 @@ import LightPlanDomain
 struct PlannerDaySticky: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
+    /// Разрез месяца (29.2а): лента дат — цель семи ячеек недели и прячется, пока они летят.
+    let part: PartDay
     @Environment(\.colorScheme) private var scheme
+    /// Зазор между датами недели.
+    static let dateGap: CGFloat = 2
 
     var body: some View {
         let pal = Palette(scheme)
         VStack(spacing: 0) {
-            HStack(spacing: 2) {
+            HStack(spacing: Self.dateGap) {
                 ForEach(Array(app.planner.week.enumerated()), id: \.element) { i, d in
                     date(d, pal).shotNode("dd.\(i)")
                 }
             }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.stripLaid($0) }
+            .opacity(part.machine.stripHidden ? 0 : 1)
             .padding(EdgeInsets(top: 6, leading: 16, bottom: 8, trailing: 16))
             .background(pal.surface)
             .shotNode("dates")
@@ -30,7 +36,7 @@ struct PlannerDaySticky: View {
         let sel = d == app.planner.selected, today = d == f.today
         let marks = f.shown(on: d)
         return Button {
-            withAnimation(.snappy(duration: 0.22)) { _ = app.planner.pickInStrip(d) }
+            withAnimation(PlannerDayBody.slide) { _ = app.planner.pickInStrip(d) }
         } label: {
             VStack(spacing: 4) {
                 Text(f.dates.wdShort(f.date(d))).font(webFont(10)).tracking(0.5).foregroundStyle(pal.ink7)
@@ -89,6 +95,8 @@ struct PlannerDayBody: View {
     static let lane: CGFloat = 70
     /// Середина оси — 24 поля + 46 часов + 9.
     static let axis: CGFloat = 79
+    /// Въезд ленты при смене дня (веб `.day-line.slide-l/-r`): 0,22 с, E1 `cubic-bezier(0.25, 1, 0.4, 1)`.
+    static let slide = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.22)
 
     var body: some View {
         let d = app.planner.selected
@@ -100,7 +108,11 @@ struct PlannerDayBody: View {
                 .padding(.bottom, 20)
                 .shotNode("line")
                 .id(d)
-                .onChange(of: d) { _, _ in armed = nil; grip.deselect(); closeLaneFan() }
+                .onChange(of: d) { _, _ in
+                    armed = nil; grip.deselect(); closeLaneFan()
+                    // Лента въехала — направление прочитано, гасим (веб обнуляет `dayShift` после каждого въезда).
+                    _ = app.planner.consumeDayShift()
+                }
                 .onChange(of: items.map(\.id)) { _, ids in
                     // Выделенное ушло с ленты — удалено или перенесено формой на другой день.
                     if let sel = grip.selected, !ids.contains(sel + "@shoot"), !ids.contains(sel + "@meet"),

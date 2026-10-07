@@ -9,6 +9,8 @@ struct PlannerMonthBody: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     @Binding var fan: FanTarget?
+    /// Разрез при входе в день (29.2а): ему — рамки строк, через него — второй тап по числу.
+    let part: PartDay
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -25,10 +27,11 @@ struct PlannerMonthBody: View {
                         HStack(alignment: .top, spacing: MonthMetrics.colGap) {
                             ForEach(0..<7, id: \.self) { c in
                                 let i = r * 7 + c
-                                MonthCell(app: app, f: f, day: grid[i])
+                                MonthCell(app: app, f: f, day: grid[i], part: part)
                                     .shotNode("cal.\(i)")
                             }
                         }
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.rows[r] = $0 }
                     }
                 }
                 .shotNode("cal")
@@ -169,12 +172,14 @@ private struct MonthPlate: View {
 
 /// Клетка месяца (веб `cell`): число в круге срочности сдачи, до двух подписей
 /// (третья и дальше — счётчиком). Подпись съёмки красится качеством дня,
-/// встреча и занятость — без цвета.
-private struct MonthCell: View {
+/// встреча и занятость — без цвета. Та же клетка летит в разрезе месяца (`PartDayLayer`, `part == nil`).
+struct MonthCell: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     let day: CivilDate
+    let part: PartDay?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         let pal = Palette(scheme)
@@ -189,6 +194,8 @@ private struct MonthCell: View {
         let ink: Color = isToday ? pal.brass : out ? pal.ink10 : past ? pal.ink5 : pal.ink
 
         Button {
+            // Второй тап по выбранному числу — вход в день разрезом месяца (29.2а), первый — только выбор.
+            if let part, app.planner.entersDay(on: day) { part.enter(app, still: still); return }
             withAnimation(.snappy(duration: 0.25)) { _ = app.planner.tapMonthCell(day) }
         } label: {
             // Цифра — в своей зоне на одной высоте у всех клеток, подписи — в зоне ниже (28и):
