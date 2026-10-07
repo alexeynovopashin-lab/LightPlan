@@ -140,6 +140,8 @@ function analyze(file, cy) {
    остриё точки (меркатор от центра камеры, зум 14), повёрнутое вокруг оси на
    −курс, и сдвиг подписи (14; −15,7 − 7,5) по неповёрнутому экрану: плашка
    не должна ни расти, ни крутиться. */
+// Плашка и булавка светлее подложки в обеих темах, тень — темнее; в светлой теме порог выше (подложка светлая, шум крупнее).
+const LIGHT_THR = 25;
 const PLATE_SPOTS = [['Дом с драконами', 53.3560, 83.7728], ['Ресторан «Соль»', 53.3538, 83.7663], ['Берег Оби', 53.3541, 83.7748]];
 function expectedTip(lat, lon, angle, cy) {
   const mx = l => (l + 180) / 360, my = l => { const f = Math.max(-85.051129, Math.min(85.051129, l)) * Math.PI / 180;
@@ -149,7 +151,7 @@ function expectedTip(lat, lon, angle, cy) {
   const a = -angle * Math.PI / 180;
   return { x: 220 + dx * Math.cos(a) - dy * Math.sin(a), y: cy + dx * Math.sin(a) + dy * Math.cos(a) };
 }
-function blobs(file) {
+function blobs(file, thr = 9) {
   const { w, h, bpp, px } = readPng(file);
   const hist = new Map();
   for (let y = 700; y < 1900; y += 7) for (let x = 40; x < w - 40; x += 7) {
@@ -159,7 +161,7 @@ function blobs(file) {
   const m = new Uint8Array(w * h);
   for (let y = 520; y < 2100; y++) for (let x = 0; x < w; x++) {
     const i = (y * w + x) * bpp;
-    m[y * w + x] = Math.abs(px[i] - gr) + Math.abs(px[i + 1] - gg) + Math.abs(px[i + 2] - gb) >= 9 ? 1 : 0;
+    m[y * w + x] = px[i] - gr + px[i + 1] - gg + px[i + 2] - gb >= thr ? 1 : 0;   // светлее подложки: тень (темнее) не в счёт
   }
   // окно карты: между шапкой и доком (пиксели 3×), кадр 1320 × 2868
   const top = 520, bot = 2100;
@@ -191,8 +193,8 @@ function blobs(file) {
    на другом курсе остриё точки идёт по кругу вокруг оси (−курс), плашка — те
    же размеры и тот же сдвиг (14; −23,2 до верха) от острия, вверх головой. Без образца
    (курса 0° нет в списке) ожидание считается от меркатора — грубее, ~7 pt. */
-function platesAt(file, angle, cy, ref) {
-  const big = blobs(file).filter(b => b.w > 36 || b.h > 36);
+function platesAt(file, angle, cy, ref, thr) {
+  const big = blobs(file, thr).filter(b => b.w > 36 || b.h > 36);
   return PLATE_SPOTS.map(([name, lat, lon], i) => {
     let t, size = null;
     const r0 = ref && ref[i] && ref[i].found;
@@ -254,7 +256,7 @@ async function pass(udid, theme) {
       // Карта крутится навстречу телефону: курс 90° — север карты слева.
       const want = (360 - row.target % 360) % 360;
       const err = got2.bearing == null ? null : ((got2.bearing - want + 540) % 360) - 180;
-      rows.push({ ...row, shot, ...got2, want, err, plates: SPOTS && BARE ? platesAt(shot, row.angle, row.cy, rows[0] && rows[0].target === 0 ? rows[0].plates : null) : undefined });
+      rows.push({ ...row, shot, ...got2, want, err, plates: SPOTS && BARE ? platesAt(shot, row.angle, row.cy, rows[0] && rows[0].target === 0 ? rows[0].plates : null, theme === 'light' ? LIGHT_THR : 9) : undefined });
       burst = 0;
       continue;
     }
@@ -290,11 +292,21 @@ async function pass(udid, theme) {
         if (p.ok === false) fail = 1;
       }
     }
-    if (MOTION) {
+    if (SPOTS && BARE && !(rows[0] && rows[0].target === 0)) {
+      fail = 1;
+      console.log('ПАДАЕТ: без кадра курса 0° нет образца плашек — добавьте 0 в --angles');
+    }
+    if (MOTION && SPOTS && BARE) {
+      // Кадры в движении (угол на них неизвестен): плашка не должна раздуться. Раздутое
+      // стекло — плита в сотни pt по обеим сторонам (на симуляторе ≈ 390–460 × 415–470),
+      // плашка, её тень и полосы краёв — узкие: меньшая сторона ≤ 120 pt.
       const dir = path.join(OUT, theme);
       for (const f of fs.readdirSync(dir).filter(n => n.startsWith('motion_')).sort()) {
-        const big = blobs(path.join(dir, f)).filter(b => b.w > 36 || b.h > 36);
-        console.log(`  в движении ${f}: пятен шире/выше 36 pt — ${big.length}, самое крупное ${big.length ? Math.max(...big.map(b => b.w)) + ' × ' + Math.max(...big.map(b => b.h)) : '—'} pt`);
+        const big = blobs(path.join(dir, f), theme === 'light' ? LIGHT_THR : 9).filter(b => b.w > 36 || b.h > 36);
+        const slab = big.filter(b => Math.min(b.w, b.h) > 120);
+        const ok = slab.length === 0;
+        if (!ok) fail = 1;
+        console.log(`  ${ok ? 'ок    ' : 'ПАДАЕТ'} в движении ${f}: пятен крупнее 36 pt — ${big.length}, плит (обе стороны > 120 pt) — ${slab.length}${slab.length ? ', самая ' + slab[0].w + ' × ' + slab[0].h + ' pt' : ''}`);
       }
     }
   }
