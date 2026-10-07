@@ -122,9 +122,14 @@ struct MapScreenView: View {
             let ctlBot = routeMode ? routeBarTop : bare ? floor : readoutTop
             let cy = (headerBottom + floor) / 2
             ZStack(alignment: .topLeading) {
-                // Ротор (`.map-rotor`): карта, вуаль и прибор одним слоем —
-                // живой компас крутит их вокруг наблюдателя. Карта и вуаль —
-                // квадрат `MapRotor.side`, чтобы на любом угле не открылся клин.
+                // Ротор (`.map-rotor`): карта, вуаль и прибор — живой компас крутит
+                // их вокруг наблюдателя. Карта и вуаль — квадрат `MapRotor.side`,
+                // чтобы на любом угле не открылся клин. Ротор из двух половин
+                // с одним углом: карта, вуаль, дорога — под знаками точек, прибор
+                // — над ними (порядок слоёв прежний), а знаки точек между ними
+                // не крутятся: на встроенном стекле поворот (28п) раздувает его.
+                let axis = CGPoint(x: size.width / 2, y: cy)
+                let rotorAnchor = UnitPoint(x: 0.5, y: cy / max(1, size.height))
                 let side = MapRotor.side(width: size.width, height: size.height, cy: cy)
                 // Центр камеры в квадрате ротора — под головкой наблюдателя.
                 let anchor = CGPoint(x: side / 2, y: cy - size.height / 2 + side / 2)
@@ -148,8 +153,7 @@ struct MapScreenView: View {
                                               if cam.byHand, bar.spot != nil { closeBar() }
                                           },
                                           onTap: { p in
-                                              tapMap(p, anchor: anchor, side: side,
-                                                     screen: screenPoint(p, side: side, size: size, cy: cy))
+                                              tapMap(screenPoint(p, side: side, size: size, cy: cy), size: size, cy: cy)
                                           },
                                           fallback: app.mapFallbackArmed
                                               ? MapCanvasFallback(onTile: { app.cartoTileArrived() },
@@ -162,7 +166,7 @@ struct MapScreenView: View {
                     .position(x: size.width / 2, y: size.height / 2)
                     #if DEBUG
                     // Кадр сменился — отсчёт сценария заново: тап только по улёгшемуся.
-                    .task(id: "\(anchor.x),\(anchor.y),\(side)") { await shotTapSpot(anchor: anchor, side: side) }
+                    .task(id: "\(anchor.x),\(anchor.y),\(side)") { await shotTapSpot(size: size, cy: cy) }
                     #endif
 
                     Color(hex: 0x05070C)
@@ -173,8 +177,7 @@ struct MapScreenView: View {
                         .allowsHitTesting(false)
                         .shotNode("map.veil", text: String(format: "%.3f", veil))
 
-                    // Булавки своих мест — над вуалью и под прибором: город ночью
-                    // темнеет, свои точки — нет. Слой — квадрат ротора, как холст.
+                    // Дорога маршрута — над вуалью, в роторе, как холст.
                     if routeMode && app.routeSpots.count > 1 {
                         let runs = app.routeRuns
                         RoutePathLayer(runs: runs, roads: runs.map { app.roads.answer(app.mapSource, $0) }, feed: feed,
@@ -182,14 +185,20 @@ struct MapScreenView: View {
                             .frame(width: side, height: side)
                             .position(x: size.width / 2, y: size.height / 2)
                     }
-                    if layers.spots {
-                        MapSpotsLayer(spots: app.spots, feed: feed, fallback: fallbackCamera(place),
-                                      anchor: anchor, here: app.place.coordinate, pal: pal,
-                                      numbers: routeNumbers, routing: routeMode, landing: landing)
-                            .frame(width: side, height: side)
-                            .position(x: size.width / 2, y: size.height / 2)
-                    }
+                }
+                .frame(width: size.width, height: size.height)
+                .rotationEffect(.degrees(-rotor.angle), anchor: rotorAnchor)
 
+                // Булавки своих мест — над вуалью и под прибором: город ночью
+                // темнеет, свои точки — нет. Слой — весь экран, не повёрнутый.
+                if layers.spots {
+                    MapSpotsLayer(spots: app.spots, feed: feed, fallback: fallbackCamera(place),
+                                  axis: axis, angle: rotor.angle, here: app.place.coordinate, pal: pal,
+                                  numbers: routeNumbers, routing: routeMode, landing: landing)
+                        .frame(width: size.width, height: size.height)
+                }
+
+                ZStack(alignment: .topLeading) {
                     MapInstrumentView(scene: scene, optic: optic(size, floor: floor), onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
                                       onTapMoon: { tap(.tapMoon(az: $0, alt: $1)) })
                         // Прибор гаснет вместе с уходящим низом, но не едет:
@@ -205,7 +214,7 @@ struct MapScreenView: View {
                     #endif
                 }
                 .frame(width: size.width, height: size.height)
-                .rotationEffect(.degrees(-rotor.angle), anchor: UnitPoint(x: 0.5, y: cy / max(1, size.height)))
+                .rotationEffect(.degrees(-rotor.angle), anchor: rotorAnchor)
 
                 pin(pal, place: place, spots: routeMode && layers.spots ? app.spots : [])
                     .position(x: size.width / 2, y: cy)
@@ -743,9 +752,10 @@ struct MapScreenView: View {
 
     /// Тап по холсту (`lmap.on("click")`): по булавке — переезд на точку и
     /// тихая полоса с её именем; мимо — открытая полоса закрывается и больше
-    /// ничего. Точка под головкой в тап не идёт: ехать некуда.
-    private func tapMap(_ p: CGPoint, anchor: CGPoint, side: CGFloat, screen: CGPoint? = nil) {
-        let hit = MapSpots.hit(p, marks: spotMarks(anchor: anchor, side: side))
+    /// ничего. Точка под головкой в тап не идёт: ехать некуда. Точка тапа и
+    /// знаки — в точках экрана: знаки не крутятся с картой (28п).
+    private func tapMap(_ screen: CGPoint, size: CGSize, cy: CGFloat) {
+        let hit = MapSpots.hit(screen, marks: spotMarks(size: size, cy: cy))
             .flatMap { id in app.spots.first { $0.id == id } }
         if routeMode { routeTap(hit, screen: screen); return }
         guard let sp = hit, let la = sp.latitude, let lo = sp.longitude else {
@@ -926,17 +936,17 @@ struct MapScreenView: View {
         }
     }
 
-    /// Булавки на кадре в координатах холста — их острия ловят тап.
-    private func spotMarks(anchor: CGPoint, side: CGFloat) -> [(id: String, tip: CGPoint, labelWidth: CGFloat)] {
+    /// Булавки на кадре в точках экрана — их острия ловят тап.
+    private func spotMarks(size: CGSize, cy: CGFloat) -> [(id: String, tip: CGPoint, labelWidth: CGFloat)] {
         guard app.mapLayers.spots else { return [] }
         let cam = feed.camera ?? fallbackCamera(app.light.timebar.place)
         let here = app.place.coordinate
-        let bounds = CGSize(width: side, height: side)
+        let axis = CGPoint(x: size.width / 2, y: cy)
         return MapSpots.tappable(app.spots, here: here, routing: routeMode).compactMap { sp in
             guard let la = sp.latitude, let lo = sp.longitude else { return nil }
             let d = MapSpots.offset(latitude: la, longitude: lo, camera: cam)
-            let tip = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
-            guard MapSpots.onScreen(tip, in: bounds) else { return nil }
+            let tip = MapSpots.screenTip(offset: d, axis: axis, angle: rotor.angle)
+            guard MapSpots.onScreen(tip, in: size) else { return nil }
             return (sp.id, tip, feed.labelWidths[sp.id] ?? 0)
         }
     }
@@ -990,16 +1000,16 @@ struct MapScreenView: View {
     /// распознаватель холста, и пишет в `-LPShotTapReport`, стоит ли полоса
     /// имени через 1 и 4 с и ушла ли через 6,5 с (тихая живёт 5 с). Камеру
     /// ведёт живой холст (`-LPShotLiveMap`) — ошибка 20е жила в нём.
-    private func shotTapSpot(anchor: CGPoint, side: CGFloat) async {
+    private func shotTapSpot(size: CGSize, cy: CGFloat) async {
         let d = UserDefaults.standard
         guard let id = d.string(forKey: "LPShotTapSpot"), let out = d.string(forKey: "LPShotTapReport") else { return }
         try? await Task.sleep(for: .seconds(3))
         guard !Task.isCancelled, feed.camera != nil else { return }
-        guard let mark = spotMarks(anchor: anchor, side: side).first(where: { $0.id == id }) else {
+        guard let mark = spotMarks(size: size, cy: cy).first(where: { $0.id == id }) else {
             try? Data(#"{"error":"no pin on screen"}"#.utf8).write(to: URL(fileURLWithPath: out))
             return
         }
-        tapMap(mark.tip, anchor: anchor, side: side)
+        tapMap(mark.tip, size: size, cy: cy)
         var seen: [String: Bool] = [:]
         for (key, wait) in [("bar1", 1.0), ("bar4", 3.0), ("bar6_5", 2.5)] {
             try? await Task.sleep(for: .seconds(wait))

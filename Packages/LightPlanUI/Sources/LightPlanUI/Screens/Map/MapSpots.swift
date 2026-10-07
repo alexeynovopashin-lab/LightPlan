@@ -17,6 +17,18 @@ enum MapSpots {
                        y: (mercY(latitude) - mercY(camera.center.latitude)) * world)
     }
 
+    /// Остриё точки на экране (28п). Слой знаков не крутится вместе с картой —
+    /// встроенное стекло не держит `rotationEffect` (на углах не кратных 90°
+    /// оно раздувается в прямоугольник всего слоя, кадры iPhone 07.10): знак
+    /// сам встаёт в повёрнутую точку, а плашка и булавка остаются вверх головой.
+    /// `offset` — сдвиг от центра камеры (`offset(latitude:…)`), `axis` — ось
+    /// ротора (головка наблюдателя), `angle` — курс в градусах: карта крутится
+    /// на −курс по часовой, как `rotationEffect(.degrees(-angle))`.
+    static func screenTip(offset d: CGPoint, axis: CGPoint, angle: Double) -> CGPoint {
+        let a = -angle * .pi / 180
+        return CGPoint(x: axis.x + d.x * cos(a) - d.y * sin(a), y: axis.y + d.x * sin(a) + d.y * cos(a))
+    }
+
     static func mercX(_ lon: Double) -> Double { (lon + 180) / 360 }
     static func mercY(_ lat: Double) -> Double {
         let phi = max(-85.051129, min(85.051129, lat)) * .pi / 180
@@ -68,7 +80,8 @@ enum MapSpots {
     }
 }
 
-/// Слой булавок. Касаний не ловит (`pointer-events: none` веба): под ним
+/// Слой булавок: лежит на экране, а не в роторе — знаки встают в повёрнутые
+/// точки сами (`MapSpots.screenTip`) и не крутятся. Касаний не ловит (`pointer-events: none` веба): под ним
 /// карта, которую водят пальцем, и знак с перехваченным касанием был бы
 /// мёртвой зоной. Тап приходит от холста (`onTap`) и попадание считается
 /// `MapSpots.hit`.
@@ -76,8 +89,10 @@ struct MapSpotsLayer: View {
     let spots: [Spot]
     let feed: MapCameraFeed
     let fallback: MapCanvasCamera
-    /// Центр камеры в слое — точка под головкой наблюдателя.
-    let anchor: CGPoint
+    /// Ось ротора на экране — точка под головкой наблюдателя, она же центр камеры.
+    let axis: CGPoint
+    /// Курс ротора, градусы (`CompassRotor.angle`).
+    let angle: Double
     let here: GeoCoordinate
     let pal: Palette
     /// Режим маршрута (24а): номера мест черновика; точка под головкой — обычная
@@ -93,7 +108,7 @@ struct MapSpotsLayer: View {
         GeometryReader { g in
             ForEach(spots.filter { $0.latitude != nil && $0.longitude != nil }) { sp in
                 let d = MapSpots.offset(latitude: sp.latitude!, longitude: sp.longitude!, camera: cam)
-                let tip = CGPoint(x: anchor.x + d.x, y: anchor.y + d.y)
+                let tip = MapSpots.screenTip(offset: d, axis: axis, angle: angle)
                 if MapSpots.onScreen(tip, in: g.size) {
                     SpotMark(spot: sp, here: !routing && sp.coordinate.isSameSpot(as: here), pal: pal,
                              number: numbers[sp.id], landTick: landing?.tick(for: sp.id, now: .now) ?? 0,

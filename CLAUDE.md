@@ -66,6 +66,12 @@
   intervals**: ~60 % of a late frame there is the main thread sleeping on the sim's renderer (`wait_image_queue`).
   Layer shadow is a 20 pt gradient strip left of the edge (`EdgeShade`), never `.shadow` on the content (that shades every
   child). Only the visible tab moves under a layer (`.edgeBackBase(app, .tabs, shown:)`): moving all four cost ~9 ms/frame.
+- **Glass never takes a rotation (28п).** `.glassEffect` under `rotationEffect` (or `scaleEffect`) swells into the
+  bounding rectangle of the whole layer at angles that are not multiples of 90° (measured: three spot plates → one
+  ≈ 420 × 415 pt slab). On «Карта» the rotor is two halves with the same angle (canvas, veil, road / instrument)
+  and the spots layer (pins, name plates, route numbers) sits between them, **not rotated**: each mark is placed at
+  `MapSpots.screenTip` and stays upright. A new glass element near the rotor goes outside both halves.
+  `node Tools/rotor.js --spots --bare --angles 0,45,…,33 --motion 4` measures plate size and place per angle (red on a swell).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

@@ -97,6 +97,58 @@ struct MapSpotsTests {
         #expect(!MapSpots.onScreen(CGPoint(x: 0, y: 981), in: s))
     }
 
+    // MARK: - Знаки под ротором (28п)
+
+    /// Остриё точки при курсе 0 / 90 / 180 / 270°: карта крутится навстречу
+    /// телефону. Точка к востоку от оси при курсе 90° (смотрим на восток)
+    /// уходит вверх экрана, к северу — влево.
+    @Test func screenTipFollowsTheRotor() {
+        let axis = CGPoint(x: 220, y: 400), d = CGPoint(x: 60, y: -40)
+        func tip(_ a: Double) -> CGPoint { MapSpots.screenTip(offset: d, axis: axis, angle: a) }
+        func near(_ p: CGPoint, _ x: Double, _ y: Double) -> Bool { abs(p.x - x) < 1e-9 && abs(p.y - y) < 1e-9 }
+        #expect(near(tip(0), 280, 360))
+        #expect(near(tip(90), 180, 340))
+        #expect(near(tip(180), 160, 440))
+        #expect(near(tip(270), 260, 460))
+        #expect(near(MapSpots.screenTip(offset: CGPoint(x: 60, y: 0), axis: axis, angle: 90), 220, 340))   // восток — вверх
+        #expect(near(MapSpots.screenTip(offset: CGPoint(x: 0, y: -40), axis: axis, angle: 90), 180, 400))  // север — влево
+    }
+
+    /// Остриё идёт по кругу вокруг оси: расстояние до неё на любом курсе то же,
+    /// и угол поворота — ровно минус курс.
+    @Test func screenTipKeepsDistanceAndTurnsByMinusHeading() {
+        let axis = CGPoint(x: 220, y: 433.5), d = CGPoint(x: 83.4, y: -17.9)
+        let r0 = hypot(d.x, d.y)
+        for a in stride(from: 0.0, through: 360.0, by: 7.5) {
+            let t = MapSpots.screenTip(offset: d, axis: axis, angle: a)
+            #expect(abs(hypot(t.x - axis.x, t.y - axis.y) - r0) < 1e-9)
+            let turn = atan2(t.y - axis.y, t.x - axis.x) - atan2(d.y, d.x)
+            let want = -a * .pi / 180
+            #expect(abs(sin(turn - want)) < 1e-9 && cos(turn - want) > 0)
+        }
+    }
+
+    /// Плашка идёт за остриём, но не крутится: от повёрнутого острия она всегда
+    /// на (14; −23,2) тех же размеров, а тап по месту, куда плашка уехала бы
+    /// вместе с картой, её не задевает — в этом месте пусто.
+    @Test func plateStaysUprightAtEveryHeading() {
+        let axis = CGPoint(x: 220, y: 400), d = CGPoint(x: 70, y: -45), w: CGFloat = 90
+        for a in [0.0, 33, 90, 135, 180, 270, 315, 359] {
+            let tip = MapSpots.screenTip(offset: d, axis: axis, angle: a)
+            let mark = (id: "a", tip: tip, labelWidth: w)
+            let upright = CGPoint(x: tip.x + MapSpots.labelOrigin.x + w / 2, y: tip.y + MapSpots.labelOrigin.y + MapSpots.labelHeight / 2)
+            #expect(MapSpots.hit(upright, marks: [mark]) == "a")
+            // Правый край и верх плашки — те же при любом курсе.
+            #expect(MapSpots.hit(CGPoint(x: tip.x + MapSpots.labelOrigin.x + w + 3, y: upright.y), marks: [mark]) == "a")
+            #expect(MapSpots.hit(CGPoint(x: tip.x + MapSpots.labelOrigin.x + w + 5, y: upright.y), marks: [mark]) == nil)
+            #expect(MapSpots.hit(CGPoint(x: upright.x, y: tip.y + MapSpots.labelOrigin.y - 5), marks: [mark]) == nil)
+        }
+        // Повёрнутая вместе с картой плашка (прежний вид) при курсе 90° стояла бы
+        // над остриём — там теперь пусто.
+        let tip = MapSpots.screenTip(offset: d, axis: axis, angle: 90)
+        #expect(MapSpots.hit(CGPoint(x: tip.x, y: tip.y - 14 - w / 2), marks: [(id: "a", tip: tip, labelWidth: w)]) == nil)
+    }
+
     // MARK: - Закладка, имя, удаление
 
     @Test func bookmarkSavesPlaceUnderPinThenRemovesIt() {
