@@ -19,6 +19,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const X = require("./extract.js");
+const WindowLight = require("./window_light.js");
 
 /* ---------- Пояс машины ----------
    computeSun берёт номер дня через локальный `new Date(y, 0, 0)`, и в поясе
@@ -1038,6 +1039,11 @@ function main() {
     tolerance: { score: "строго", look: "строго", word: "строго", cloud: "строго", hum: "строго" },
     count: mwSky.length,
   }, { cases: mwSky }));
+
+  /* Свет в окнах зала (шаг 31в): правило живёт в Light_Plan/tools/window_light.js,
+     стенд сверяет его солнце с блоками беты и пишет эталон для Swift */
+  const wl = WindowLight.build(ctx, X);
+  out.push(write(dir, "window_light.json", wl.meta, wl.body));
 
   if (!quiet) {
     console.log("\nвырезка из беты: " + DIGEST + "\nпапка: " + dir);
