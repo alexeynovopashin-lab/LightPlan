@@ -1,8 +1,8 @@
 import Foundation
 import LightPlanCore
 
-/// Свет в окнах зала: «прямой», «закатный», «рассеянный» — по солнцу, без
-/// погоды (шаг 31в, решение Алексея 08.10: «Свет в окнах зала. Важная задача,
+/// Свет в окнах зала: «прямой», «рассветный», «закатный», «рассеянный» — по
+/// солнцу, без погоды (шаг 31в, решение Алексея 08.10: «Свет в окнах зала. Важная задача,
 /// нужна реализация сегодня»).
 ///
 /// Правило чистое: место, момент и сторона окон на входе — ответ на выходе, ни
@@ -18,8 +18,11 @@ import LightPlanCore
 public enum WindowLightKind: String, Hashable, Sendable {
     /// Солнце над горизонтом и светит в окна.
     case direct
-    /// То же, но солнце низкое и тёплое — золотой час (`half` говорит какой).
-    case golden
+    /// То же, но солнце низкое и тёплое утром — утренний золотой час
+    /// («рассветный», Алексей 08.10). `half` = `.morning`.
+    case sunrise
+    /// То же вечером — вечерний золотой час («закатный»). `half` = `.evening`.
+    case sunset
     /// Солнце в окна не светит: за стеной, у самого горизонта, под ним.
     case diffuse
     /// В зале нет окон.
@@ -28,7 +31,7 @@ public enum WindowLightKind: String, Hashable, Sendable {
     case unknown
 }
 
-/// Золотой час, в который попало солнце.
+/// Половина суток, в которую попало солнце золотого часа.
 public enum GoldenHalf: String, Hashable, Sendable {
     /// Рассветный: до солнечного полудня.
     case morning
@@ -44,13 +47,15 @@ public enum WindowLightGap: String, Hashable, Sendable {
     case noZone = "no_zone"
     case badZone = "bad_zone"
     case badMoment = "bad_moment"
+    /// Момент вне 1970-01-01 … 2100-01-01 (UTC).
+    case momentOutOfRange = "moment_out_of_range"
 }
 
 public struct WindowLightAnswer: Hashable, Sendable {
     public let kind: WindowLightKind
     /// Только у `.unknown`.
     public let reason: WindowLightGap?
-    /// Только у `.golden`.
+    /// Только у `.sunrise` и `.sunset`.
     public let half: GoldenHalf?
     /// Градусы над горизонтом (у `.none` и `.unknown` — `nil`).
     public let sunElevation: Double?
@@ -75,6 +80,12 @@ public enum WindowLight {
     /// Солнце «перед окном», если азимут солнца отличается от азимута окон не
     /// более чем на столько. 90° — плоскость стены, 85° — с запасом в 5°.
     public static let maxOffset: Double = 85
+
+    /// Какие моменты считаем, секунды с 1970: с 1970-01-01 до 2100-01-01 UTC
+    /// (правая граница не входит). Дальше нечего ждать от пояса (правила часов
+    /// известны не дальше) и от солнечной модели, а очень большая дата ломает
+    /// календарь (год ≈ 275000: произведение на 1000 и разбор компонентов).
+    public static let instantRange: Range<Double> = 0..<4_102_444_800
 
     /// Подпись функции — она же честное «чего не знаем».
     public static let note = "по солнцу, без погоды"
@@ -104,6 +115,8 @@ public enum WindowLight {
               abs(lat) <= 90, abs(lon) <= 180 else { return answer(.unknown, reason: .noCoordinates) }
         guard let zoneName = zone, !zoneName.isEmpty else { return answer(.unknown, reason: .noZone) }
         guard let moment, moment.timeIntervalSince1970.isFinite else { return answer(.unknown, reason: .badMoment) }
+        /* До умножения на 1000 и до календаря: и то и другое на огромной дате ломается */
+        guard instantRange.contains(moment.timeIntervalSince1970) else { return answer(.unknown, reason: .momentOutOfRange) }
         guard let tz = TimeZone(identifier: zoneName) else { return answer(.unknown, reason: .badZone) }
 
         /* Миллисекунды, как в JS-копии: те же целые на входе обеих версий */
@@ -132,7 +145,9 @@ public enum WindowLight {
                               sunElevation: elevation, sunAzimuth: sunAzimuth, offsetFromWindow: d)
         }
         if elevation < minElevation || d > maxOffset { return ans(.diffuse) }
-        if elevation <= goldElevation { return ans(.golden, t >= sun.solarNoon ? .evening : .morning) }
+        if elevation <= goldElevation {
+            return t >= sun.solarNoon ? ans(.sunset, .evening) : ans(.sunrise, .morning)
+        }
         return ans(.direct)
     }
 

@@ -2,15 +2,16 @@
   "meta": {
     "source": "beta/index.html",
     "cut": "05749284365f957a",
-    "what": "свет в окнах зала («прямой» / «закатный» / «рассеянный»): правило по солнцу, без погоды",
-    "grid": "8 мест × 8 дат × моменты (каждый час 25 часов от полуночи зала плюс по полминуты вокруг прохождений 2° и 6°) × 5 азимутов окон; пробы порога угла; случаи «нет данных»",
+    "what": "свет в окнах зала («прямой» / «рассветный» / «закатный» / «рассеянный»): правило по солнцу, без погоды",
+    "grid": "8 мест × 8 дат × моменты (каждый час 25 часов от полуночи зала плюс по полминуты вокруг прохождений 2° и 6°) × 5 азимутов окон; пробы порога угла; края диапазона моментов (1970…2100); случаи «нет данных»",
     "tolerance": {"degrees":1e-9,"code":"строго","offsetMs":"строго"},
     "thresholds": {"minElevation":2,"goldElevation":6,"maxOffset":85},
     "azimuths": [0,90,180,270,137.5],
-    "codes": {"diffuse":0,"direct":1,"goldenMorning":2,"goldenEvening":3,"none":4,"unknown":5},
+    "codes": {"diffuse":0,"direct":1,"sunrise":2,"sunset":3,"none":4,"unknown":5},
     "rowLayout": "[мс, сдвиг пояса мс, высота солнца, азимут солнца, код ответа на каждый азимут из azimuths]",
     "note": "по солнцу, без погоды; размер окна и преграды не учитываются. Высота и азимут солнца сверены с блоками беты (худшее расхождение копии 1.1e-13°); ответы — копией light_plan:Light_Plan/tools/window_light.js",
-    "count": 9597
+    "range": {"from":0,"to":4102444800000},
+    "count": 9608
   },
   "days": [
     {
@@ -3861,6 +3862,63 @@
       "why": "азимут 720.5 = 0.5"
     }
   ],
+  "far": [
+    {
+      "place": "Томск",
+      "lat": 56.4847,
+      "lon": 84.9482,
+      "zone": "Asia/Tomsk",
+      "ms": 0,
+      "windowsAzimuth": 180,
+      "code": 0,
+      "offset": 81.43333850225531,
+      "why": "первый миг диапазона, 1970-01-01T00:00Z"
+    },
+    {
+      "place": "Сидней",
+      "lat": -33.8688,
+      "lon": 151.2093,
+      "zone": "Australia/Sydney",
+      "ms": 0,
+      "windowsAzimuth": 180,
+      "code": 0,
+      "offset": 104.96368223205985,
+      "why": "первый миг диапазона, Сидней"
+    },
+    {
+      "place": "Томск",
+      "lat": 56.4847,
+      "lon": 84.9482,
+      "zone": "Asia/Tomsk",
+      "ms": 4102444799999,
+      "windowsAzimuth": 180,
+      "code": 0,
+      "offset": 81.43334183637478,
+      "why": "последняя миллисекунда диапазона, 2099-12-31T23:59:59.999Z"
+    },
+    {
+      "place": "Сидней",
+      "lat": -33.8688,
+      "lon": 151.2093,
+      "zone": "Australia/Sydney",
+      "ms": 4102441200000,
+      "windowsAzimuth": 180,
+      "code": 0,
+      "offset": 93.60404215794586,
+      "why": "час до конца диапазона, Сидней"
+    },
+    {
+      "place": "Москва",
+      "lat": 55.7558,
+      "lon": 37.6173,
+      "zone": "Europe/Moscow",
+      "ms": 4102304400000,
+      "windowsAzimuth": 180,
+      "code": 1,
+      "offset": 7.427837377045535,
+      "why": "30 декабря 2099, 12:00 в Москве"
+    }
+  ],
   "gaps": [
     {
       "why": "окон нет, остальное полно",
@@ -3933,6 +3991,63 @@
       "input": {"lat":56.4847,"lon":84.9482,"zone":"Asia/Tomsk","ms":null,"windowsAzimuth":180,"hasWindows":true},
       "kind": "unknown",
       "reason": "bad_moment"
+    },
+    {
+      "why": "миг до диапазона (1969-12-31T23:59:59.999Z)",
+      "input": {"lat":56.4847,"lon":84.9482,"zone":"Asia/Tomsk","ms":-1,"windowsAzimuth":180,"hasWindows":true},
+      "kind": "unknown",
+      "reason": "moment_out_of_range"
+    },
+    {
+      "why": "первый миг за диапазоном (2100-01-01T00:00Z)",
+      "input": {"lat":56.4847,"lon":84.9482,"zone":"Asia/Tomsk","ms":4102444800000,"windowsAzimuth":180,"hasWindows":true},
+      "kind": "unknown",
+      "reason": "moment_out_of_range"
+    },
+    {
+      "why": "год ≈ 275000 (самая поздняя Date, 8.64e15 мс)",
+      "input": {"lat":56.4847,"lon":84.9482,"zone":"Asia/Tomsk","ms":8640000000000000,"windowsAzimuth":180,"hasWindows":true},
+      "kind": "unknown",
+      "reason": "moment_out_of_range"
+    },
+    {
+      "why": "год ≈ 275000 до н. э. (−8.64e15 мс)",
+      "input": {
+        "lat": 56.4847,
+        "lon": 84.9482,
+        "zone": "Asia/Tomsk",
+        "ms": -8640000000000000,
+        "windowsAzimuth": 180,
+        "hasWindows": true
+      },
+      "kind": "unknown",
+      "reason": "moment_out_of_range"
+    },
+    {
+      "why": "момент за пределами Date (8.64e18 мс)",
+      "input": {
+        "lat": 56.4847,
+        "lon": 84.9482,
+        "zone": "Asia/Tomsk",
+        "ms": 8640000000000000000,
+        "windowsAzimuth": 180,
+        "hasWindows": true
+      },
+      "kind": "unknown",
+      "reason": "moment_out_of_range"
+    },
+    {
+      "why": "окон нет, момент за диапазоном",
+      "input": {
+        "lat": 56.4847,
+        "lon": 84.9482,
+        "zone": "Asia/Tomsk",
+        "ms": 8640000000000000000,
+        "windowsAzimuth": 180,
+        "hasWindows": false
+      },
+      "kind": "none",
+      "reason": null
     }
   ]
 }

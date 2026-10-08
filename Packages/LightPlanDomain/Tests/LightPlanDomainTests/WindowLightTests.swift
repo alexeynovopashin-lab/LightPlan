@@ -21,7 +21,8 @@ struct WindowLightTests {
         switch a.kind {
         case .diffuse: return 0
         case .direct: return 1
-        case .golden: return a.half == .morning ? 2 : 3
+        case .sunrise: return 2
+        case .sunset: return 3
         case .none: return 4
         case .unknown: return 5
         }
@@ -32,6 +33,8 @@ struct WindowLightTests {
     // MARK: - Пороги
 
     @Test func thresholdsMatchFixture() {
+        #expect(f["meta"]["range"]["from"].double! * 0.001 == WindowLight.instantRange.lowerBound)
+        #expect(f["meta"]["range"]["to"].double! * 0.001 == WindowLight.instantRange.upperBound)
         let t = f["meta"]["thresholds"]
         #expect(t["minElevation"].double == WindowLight.minElevation)
         #expect(t["goldElevation"].double == WindowLight.goldElevation)
@@ -80,7 +83,7 @@ struct WindowLightTests {
 
     @Test func edgeAndNormalizationMatchFixture() {
         var bad: [String] = []
-        for key in ["edge", "norm"] {
+        for key in ["edge", "norm", "far"] {
             let rows = f[key].array!
             #expect(rows.count >= 5, "в «\(key)» пусто")
             for r in rows {
@@ -147,15 +150,39 @@ struct WindowLightTests {
         #expect(WindowLight.at(tomskNoon, latitude: 56, longitude: 84, zone: "Мордор/Ородруин", windowsAzimuth: 180, hasWindows: true).reason == .badZone)
     }
 
-    @Test func goldenHourKnowsItsHalf() {
-        /* Томск, 21 июня: вечером солнце идёт через 6° около 21:20 — перебор по минутам ловит оба золотых часа */
-        var halves = Set<GoldenHalf>()
-        for k in stride(from: 0, to: 24 * 60, by: 5) {
-            let a = tomsk(tomskNoon.addingTimeInterval(Double(k - 6 * 60) * 60), 270)
-            if a.kind == .golden { halves.insert(a.half!); #expect(a.sunElevation! >= 2 && a.sunElevation! <= 6) }
-            else { #expect(a.half == nil) }
+    @Test func goldenHourIsSunriseInTheMorningSunsetInTheEvening() {
+        /* Томск, 21 июня: перебор суток по минутам. Окно на восток видит только рассветный, на запад — только закатный */
+        func kinds(_ az: Double) -> Set<WindowLightKind> {
+            var out = Set<WindowLightKind>()
+            for k in stride(from: 0, to: 24 * 60, by: 5) {
+                let a = tomsk(tomskNoon.addingTimeInterval(Double(k - 6 * 60) * 60), az)
+                if a.kind == .sunrise { #expect(a.half == .morning) }
+                else if a.kind == .sunset { #expect(a.half == .evening) }
+                else { #expect(a.half == nil) }
+                if a.kind == .sunrise || a.kind == .sunset { #expect(a.sunElevation! >= 2 && a.sunElevation! <= 6) }
+                out.insert(a.kind)
+            }
+            return out
         }
-        #expect(halves == [.evening])   // окно на запад: утром солнце за стеной
+        let east = kinds(90), west = kinds(270)
+        #expect(east.contains(.sunrise) && !east.contains(.sunset), "окно на восток: \(east)")
+        #expect(west.contains(.sunset) && !west.contains(.sunrise), "окно на запад: \(west)")
+    }
+
+    @Test func hugeAndOutOfRangeMomentsAreNoData() {
+        /* Год ≈ 275000 и дальше: умножение секунд на 1000 и разбор календаря раньше ломались */
+        for secs in [8.64e15, -8.64e15, 8.64e18, 1e300, Double.greatestFiniteMagnitude, 4_102_444_800, -1] {
+            let a = tomsk(Date(timeIntervalSince1970: secs), 180)
+            #expect(a.kind == .unknown && a.reason == .momentOutOfRange, "\(secs): \(a)")
+            #expect(a.sunElevation == nil && a.sunAzimuth == nil && a.offsetFromWindow == nil)
+        }
+        #expect(tomsk(Date(timeIntervalSince1970: .infinity), 180).reason == .badMoment)
+        #expect(tomsk(Date(timeIntervalSince1970: .nan), 180).reason == .badMoment)
+        /* Края внутри диапазона считаются */
+        #expect(tomsk(Date(timeIntervalSince1970: 0), 180).kind != .unknown)
+        #expect(tomsk(Date(timeIntervalSince1970: 4_102_444_799.999), 180).kind != .unknown)
+        /* Окон нет — ответ и так готов, момент не смотрим */
+        #expect(tomsk(Date(timeIntervalSince1970: 8.64e18), 180, windows: false).kind == .none)
     }
 
     @Test func southernHemisphereFlipsTheSun() {

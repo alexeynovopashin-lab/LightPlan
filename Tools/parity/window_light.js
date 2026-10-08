@@ -26,9 +26,11 @@
 const path = require("path");
 
 /* Коды ответа в рядах — числами, чтобы ряд лёг в одну строку. */
-const CODE = { diffuse: 0, direct: 1, goldenMorning: 2, goldenEvening: 3, none: 4, unknown: 5 };
+const CODE = { diffuse: 0, direct: 1, sunrise: 2, sunset: 3, none: 4, unknown: 5 };
 function codeOf(r) {
-  if (r.kind === "golden") return r.half === "morning" ? CODE.goldenMorning : CODE.goldenEvening;
+  /* Золотой час несёт и половину суток: рассветный — только утром, закатный — только вечером */
+  if ((r.kind === "sunrise") !== (r.half === "morning") && r.half !== null) throw new Error("half не сходится с видом: " + JSON.stringify(r));
+  if (r.kind !== "sunrise" && r.kind !== "sunset" && r.half !== null) throw new Error("half вне золотого часа: " + JSON.stringify(r));
   return CODE[r.kind];
 }
 
@@ -64,6 +66,7 @@ function build(ctx, X) {
       "\n(папка веба — LIGHT_PLAN_WEB; файл — Light_Plan/tools/window_light.js)");
   }
   const TH = WL.THRESHOLDS;
+  const RANGE = WL.INSTANT_RANGE_MS;
 
   /* Эталон солнца — блоки беты. Момент → {el, az} по часам зала. */
   function oracle(place, ms) {
@@ -135,7 +138,7 @@ function build(ctx, X) {
         answers[0].sunElevation, answers[0].sunAzimuth];
       for (const a of answers) {
         row.push(codeOf(a));
-        kinds[a.kind + (a.half ? ":" + a.half : "")] = (kinds[a.kind + (a.half ? ":" + a.half : "")] || 0) + 1;
+        kinds[a.kind] = (kinds[a.kind] || 0) + 1;
       }
       rows.push(row);
       rowsTotal++;
@@ -178,6 +181,23 @@ function build(ctx, X) {
       windowsAzimuth: raw, code: codeOf(a), offset: a.offsetFromWindow, why: "азимут " + raw + " = " + twin });
   }
 
+  /* Края диапазона принимаемых моментов: первый и последний миг внутри считаются
+     (в Томске и Сиднее), миг за краем — «нет данных» (ниже, в gaps) */
+  const far = [];
+  for (const [place, ms, why] of [
+    [PLACES[0], RANGE.from, "первый миг диапазона, 1970-01-01T00:00Z"],
+    [PLACES[6], RANGE.from, "первый миг диапазона, Сидней"],
+    [PLACES[0], RANGE.to - 1, "последняя миллисекунда диапазона, 2099-12-31T23:59:59.999Z"],
+    [PLACES[6], RANGE.to - 3600000, "час до конца диапазона, Сидней"],
+    [PLACES[1], Date.UTC(2099, 11, 30, 9, 0, 0), "30 декабря 2099, 12:00 в Москве"],
+  ]) {
+    const r = ask(place, ms, 180);
+    if (r.kind === "unknown") throw new Error("край диапазона отвергнут: " + why + " " + JSON.stringify(r));
+    checkSun(place, ms, r);
+    far.push({ place: place.name, lat: place.lat, lon: place.lon, zone: place.zone, ms: ms,
+      windowsAzimuth: 180, code: codeOf(r), offset: r.offsetFromWindow, why: why });
+  }
+
   /* «Нет данных» и «нет окон»: ответ записан руками здесь и сверен с копией, а
      не взят из неё. `null` — поля нет. */
   const m0 = midnightMs(np, "2026-06-21") + 12 * 3600000;
@@ -195,6 +215,12 @@ function build(ctx, X) {
     ["пустой пояс", Object.assign({}, full, { zone: "" }), "unknown", "no_zone"],
     ["пояса нет в базе", Object.assign({}, full, { zone: "Mars/Olympus" }), "unknown", "bad_zone"],
     ["нет момента", Object.assign({}, full, { ms: null }), "unknown", "bad_moment"],
+    ["миг до диапазона (1969-12-31T23:59:59.999Z)", Object.assign({}, full, { ms: RANGE.from - 1 }), "unknown", "moment_out_of_range"],
+    ["первый миг за диапазоном (2100-01-01T00:00Z)", Object.assign({}, full, { ms: RANGE.to }), "unknown", "moment_out_of_range"],
+    ["год ≈ 275000 (самая поздняя Date, 8.64e15 мс)", Object.assign({}, full, { ms: 8.64e15 }), "unknown", "moment_out_of_range"],
+    ["год ≈ 275000 до н. э. (−8.64e15 мс)", Object.assign({}, full, { ms: -8.64e15 }), "unknown", "moment_out_of_range"],
+    ["момент за пределами Date (8.64e18 мс)", Object.assign({}, full, { ms: 8.64e18 }), "unknown", "moment_out_of_range"],
+    ["окон нет, момент за диапазоном", Object.assign({}, full, { hasWindows: false, ms: 8.64e18 }), "none", null],
   ];
   const gaps = gapCases.map(function (c) {
     const i = c[1];
@@ -227,8 +253,8 @@ function build(ctx, X) {
   expect("Томск, 21 декабря, 01:00: ночью любой азимут — рассеянный",
     [0, 90, 180, 270].every(function (a) { return ask(PLACES[0], tomskNight, a).kind === "diffuse"; }), true);
   const sydneyEve = days.find(function (d) { return d.place === "Сидней" && d.date === "2026-12-21"; });
-  expect("Сидней, 21 декабря: бывает закатный вечером",
-    sydneyEve.rows.some(function (r) { return r.slice(4).indexOf(CODE.goldenEvening) >= 0; }), true);
+  expect("Сидней, 21 декабря: вечером бывает закатный",
+    sydneyEve.rows.some(function (r) { return r.slice(4).indexOf(CODE.sunset) >= 0; }), true);
   const kx = days.find(function (d) { return d.place === "Лонгйир" && d.date === "2026-06-21"; });
   /* Полярный день на 78,2° с. ш.: низшая точка солнца 78,2 + 23,4 − 90 ≈ 11,6° — выше золотого часа,
      так что в полночь окно на север получает прямой, а ниже 2° солнце не уходит */
@@ -238,9 +264,9 @@ function build(ctx, X) {
 
   return {
     meta: {
-      what: "свет в окнах зала («прямой» / «закатный» / «рассеянный»): правило по солнцу, без погоды",
+      what: "свет в окнах зала («прямой» / «рассветный» / «закатный» / «рассеянный»): правило по солнцу, без погоды",
       grid: PLACES.length + " мест × " + DATES.length + " дат × моменты (каждый час 25 часов от полуночи зала плюс по полминуты " +
-        "вокруг прохождений " + TH.minElevation + "° и " + TH.goldElevation + "°) × 5 азимутов окон; пробы порога угла; случаи «нет данных»",
+        "вокруг прохождений " + TH.minElevation + "° и " + TH.goldElevation + "°) × 5 азимутов окон; пробы порога угла; края диапазона моментов (1970…2100); случаи «нет данных»",
       tolerance: { degrees: 1e-9, code: "строго", offsetMs: "строго" },
       thresholds: { minElevation: TH.minElevation, goldElevation: TH.goldElevation, maxOffset: TH.maxOffset },
       azimuths: AZIMUTHS,
@@ -248,9 +274,10 @@ function build(ctx, X) {
       rowLayout: "[мс, сдвиг пояса мс, высота солнца, азимут солнца, код ответа на каждый азимут из azimuths]",
       note: "по солнцу, без погоды; размер окна и преграды не учитываются. Высота и азимут солнца сверены " +
         "с блоками беты (худшее расхождение копии " + sunWorst.toExponential(1) + "°); ответы — копией light_plan:Light_Plan/tools/window_light.js",
-      count: rowsTotal * AZIMUTHS.length + edge.length + norm.length + gaps.length,
+      range: { from: RANGE.from, to: RANGE.to },
+      count: rowsTotal * AZIMUTHS.length + edge.length + norm.length + far.length + gaps.length,
     },
-    body: { days: days, edge: edge, norm: norm, gaps: gaps },
+    body: { days: days, edge: edge, norm: norm, far: far, gaps: gaps },
     stats: { rows: rowsTotal, kinds: kinds, sunWorst: sunWorst },
   };
 }
