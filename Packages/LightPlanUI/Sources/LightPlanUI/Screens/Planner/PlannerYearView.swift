@@ -60,12 +60,13 @@ struct YearStage: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     @Bindable var nav: PlannerNav
+    let part: PartDay
 
     var body: some View {
         let z = nav.zoom
         ZStack {
             if nav.lentaOpen {
-                YearLentaView(app: app, f: f, nav: nav)
+                YearLentaView(app: app, f: f, nav: nav, part: part)
                     .edgeBack(app, z: BackZ.lenta) { nav.lentaOpen = false }
                     .scaleEffect(z.map { 1 / $0.k + (1 - 1 / $0.k) * $0.e } ?? 1, anchor: .topLeading)
                     .offset(z.map { CGSize(width: $0.u.width * (1 - $0.e), height: $0.u.height * (1 - $0.e)) } ?? .zero)
@@ -159,12 +160,17 @@ struct NowPill: View {
 
 /// Лента месяцев (веб `#yearOverlay`): 24 месяца — показанный год и следующий,
 /// только числа и сегодняшний круг, «чистая навигация». Тап по числу — в
-/// день, по имени месяца — в месяц, по году — «Год целиком».
+/// день разрезом месяца (29.2б, `PartDay`), по имени месяца — в месяц, по году — «Год целиком».
 struct YearLentaView: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     @Bindable var nav: PlannerNav
+    /// Разрез при входе в день: ему — рамки сеток месяцев и видимой части ленты, через него — тап по числу.
+    let part: PartDay
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var still
+    /// Зазор между строками чисел (веб `.year-cal-grid` `row-gap: 3px`).
+    static let rowGap: CGFloat = 3
     @State private var position = ScrollPosition(idType: String.self)
     /// Верх каждого месяца в координатах содержимого ленты.
     @State private var tops: [CivilDate: CGFloat] = [:]
@@ -197,7 +203,10 @@ struct YearLentaView: View {
             // Заголовок — год последнего блока, чей верх уже у края (веб: ≤ 4).
             seenYear = dividerTop.map { $0 - y <= 4 ? nav.year + 1 : nav.year } ?? nav.year
         }
-        .safeAreaInset(edge: .top, spacing: 0) { head(pal) }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            head(pal).onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { part.yearTop = $0 }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { part.yearBottom = $0 }
         .overlay(alignment: .bottom) {
             if nav.year != today.year, nav.zoom == nil {
                 NowPill(text: f.t.t("today.backToday")) {
@@ -299,32 +308,22 @@ struct YearLentaView: View {
                 }
             }
             .padding(.bottom, 4)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 3) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: Self.rowGap) {
                 ForEach(0..<lead, id: \.self) { i in Color.clear.aspectRatio(1, contentMode: .fit).id("pad\(i)") }
                 ForEach(1...days, id: \.self) { d in
                     let day = CivilDate(year: first.year, month: first.month, day: d)
                     let isToday = day == today
                     Button {
-                        withAnimation(nil) { nav.lentaOpen = false }
-                        app.planner.enterDay(day)
+                        part.enter(app, nav: nav, day: day, still: still)
                     } label: {
-                        // Квадрат клетки задаёт пустой `Color`, число — поверх: у текста
-                        // с `aspectRatio` строки сетки после второй сплющивались в «…».
-                        Color.clear
-                            .aspectRatio(1, contentMode: .fit)
-                            .overlay {
-                                Text("\(d)")
-                                    .font(webFont(13.5, isToday ? 700 : 400)).monospacedDigit()
-                                    .foregroundStyle(isToday ? pal.onBrass : pal.ink3)
-                            }
-                            .background { if isToday { Circle().fill(pal.brass).frame(width: 30, height: 30) } }
-                            .contentShape(Circle())
+                        YearDayFace(day: d, today: isToday).contentShape(Circle())
                     }
                     .buttonStyle(YearDayPress())
                     .accessibilityLabel(f.dates.dMonYear(f.date(day)))
                 }
             }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(yearStageSpace)) } action: { nav.lentaGrids[first] = $0 }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.yearGrids[first] = $0 }
             .shotNode(first1 ? "ym.grid.\(first.month - 1)" : "")
         }
         .padding(.bottom, 26)
@@ -361,6 +360,28 @@ struct YearLentaView: View {
             .overlay(alignment: .top) { Rectangle().fill(pal.hair).frame(height: 1) }
             .padding(.top, 34 - 26)
             .shotNode("year.sum")
+    }
+}
+
+/// Число ленты (`.year-cal-grid button`): квадрат клетки, число, у сегодняшнего — латунный круг 30 pt. Та же
+/// клетка летит в разрезе при входе в день (`PartDayLayer`).
+struct YearDayFace: View {
+    let day: Int
+    let today: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let pal = Palette(scheme)
+        // Квадрат клетки задаёт пустой `Color`, число — поверх: у текста
+        // с `aspectRatio` строки сетки после второй сплющивались в «…».
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                Text("\(day)")
+                    .font(webFont(13.5, today ? 700 : 400)).monospacedDigit()
+                    .foregroundStyle(today ? pal.onBrass : pal.ink3)
+            }
+            .background { if today { Circle().fill(pal.brass).frame(width: 30, height: 30) } }
     }
 }
 

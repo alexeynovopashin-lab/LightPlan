@@ -87,10 +87,10 @@ public struct PlannerScreenView: View {
         .coordinateSpace(name: plannerFanSpace)
         .overlay { EventFan(app: app, f: f, fan: $fan) }
         .edgeBackBase(app, .planner)
-        .overlay { PlannerLayers(app: app, f: f, nav: nav) }
+        .overlay { PlannerLayers(app: app, f: f, nav: nav, part: part) }
         .onAppear { openStartLayer() }
         #if DEBUG && os(iOS)
-        .task { if PartDayBench.on { await PartDayBench.run(app, part: part, fan: enterFromFan) } }
+        .task { if PartDayBench.on { await PartDayBench.run(app, part: part, nav: nav, fan: enterFromFan) } }
         #endif
         .onChange(of: nav.statsOpen || nav.searchOpen, initial: true) { _, open in app.plannerPageOpen = open }
         .onChange(of: st.scope, initial: true) { was, now in
@@ -124,6 +124,16 @@ public struct PlannerScreenView: View {
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(2))
                 part.enter(app, still: false, frozenAt: ms / 1000)
+            }
+            return
+        }
+        // То же из ленты года (`partyear:<мс>`, 29.2б): лента открыта на месяце выбранного дня, тап по его числу.
+        if layer.hasPrefix("partyear:"), let ms = Double(layer.dropFirst(9)) {
+            app.startChapter = nil
+            nav.openLenta(from: app.planner.month)
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                part.enter(app, nav: nav, day: app.planner.selected, still: false, frozenAt: ms / 1000)
             }
             return
         }

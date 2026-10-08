@@ -9,10 +9,12 @@ struct PlannerLayers: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     @Bindable var nav: PlannerNav
+    /// Разрез месяца — им же вход в день из ленты года (29.2б).
+    let part: PartDay
 
     var body: some View {
         ZStack {
-            YearStage(app: app, f: f, nav: nav).zIndex(1)
+            YearStage(app: app, f: f, nav: nav, part: part).zIndex(1)
             if nav.searchOpen {
                 PlannerSearchView(app: app, f: f, nav: nav)
                     .edgeBack(app, z: BackZ.search) { nav.searchOpen = false }

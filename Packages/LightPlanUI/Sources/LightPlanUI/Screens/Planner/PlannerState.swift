@@ -127,8 +127,8 @@ public struct PlannerState: Hashable, Sendable {
     }
 
     /// Тап по числу в ленте месяцев года (итерация 22, веб `buildMonthEl`):
-    /// в день. Раскол месяца на ленту дня (`partMonthIntoDay`) — движение,
-    /// итерация 29, как и вход в день из месяца.
+    /// в день. Движение — разрез месяца ленты (`PartDay`, 29.2б), как и вход в
+    /// день из месяца; лента дня сбоку не въезжает.
     public mutating func enterDay(_ day: CivilDate) {
         scope = .day
         selected = day
