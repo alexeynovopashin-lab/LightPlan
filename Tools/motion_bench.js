@@ -6,7 +6,7 @@
    какая кривая и длительность подходят лучше всего (E1, ease-out, ease-in-out, линейная), смещение, прозрачность.
 
      node Tools/motion_bench.js [--scenario month,week,bar,fan,tab,ring] [--theme dark|light] [--reduce]
-                                [--skip-build] [--out <папка>] [--check]
+                                [--skip-build] [--out <папка>] [--check] [--keep] [--again]
 
    `--check` сверяет числа с бетой (красный = выход 1); без него только печатает. `--reduce` включает
    «Уменьшение движения» симулятора на время прогона. Видео и кадры лежат в `--out`. */
@@ -115,6 +115,8 @@ async function scenario(udid, name) {
       console.log('\n== ' + name + (args.reduce ? ' (уменьшение движения)' : '') + ' · ' + THEME + ' ==');
       for (const l of res.lines) console.log('  ' + l);
       fs.writeFileSync(path.join(r.dir, 'result.json'), JSON.stringify(res, null, 1));
+      // Видео и кадры велики (до сотен МБ на сценарий): без --keep после подсчёта удаляются, числа и журнал остаются.
+      if (!args.keep && !AGAIN) for (const f of ['video.mp4', 'frames.bin']) fs.rmSync(path.join(r.dir, f), { force: true });
       red += res.red;
     }
   } finally {

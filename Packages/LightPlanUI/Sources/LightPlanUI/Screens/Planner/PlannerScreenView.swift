@@ -78,9 +78,7 @@ public struct PlannerScreenView: View {
             }
         }
         .overlay { PartDayLayer(app: app, f: f, part: part) }
-        .overlay(alignment: .topLeading) {
-            if scopeOpen { scopeMenu(pal, f) }
-        }
+        .overlay(alignment: .topLeading) { scopeMenu(pal, f) }
         .background(pal.surface.ignoresSafeArea())
         .simultaneousGesture(swipe)
         .modifier(OutsideTouch(grip: grip, fan: $fan, part: part))
@@ -155,7 +153,9 @@ public struct PlannerScreenView: View {
     /// Веер видов (`.scope-menu`): под кнопкой вида на 8 pt, три строки —
     /// галочка текущего, знак, имя. Тап мимо закрывает.
     private func scopeMenu(_ pal: Palette, _ f: PlannerFacts) -> some View {
+        // Условие — внутри стопки: переход веера срабатывает, только когда он вставляется в уже стоящий контейнер.
         ZStack(alignment: .topLeading) {
+          if scopeOpen {
             Color.clear.contentShape(Rectangle()).ignoresSafeArea()
                 .onTapGesture { scopeOpen = false }
             VStack(spacing: 0) {
@@ -184,9 +184,11 @@ public struct PlannerScreenView: View {
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheetGlass))
             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.55), radius: 20, y: 18)
+            // `scopeIn` беты (C5): от scale 0,94 и −6 pt, точка роста — угол веера; переход на самом веере, до полей.
+            .transition(.scopeIn(still: still))
             .padding(.leading, 16)
             .padding(.top, 12 + 44 + 8)
-            .transition(.scale(scale: 0.96, anchor: .topLeading).combined(with: .opacity))
+          }
         }
     }
 
@@ -227,10 +229,10 @@ public struct PlannerScreenView: View {
 
     /// Листание вида на шаг (свайп и стенд движений: один путь).
     func flip(_ dir: Int) {
-        // День въезжает по кривой беты (E1); месяц и неделя — как были (их движение — 29.2в).
-        withAnimation(app.planner.scope == .day ? PlannerDayBody.slide : .snappy(duration: 0.22)) {
-            app.planner.step(dir)
-        }
+        // День въезжает по кривой беты (E1 0,22 с); месяц и неделя скользят сбоку (E1 0,3 с, слово Алексея 07.10),
+        // при «Уменьшении движения» — сразу.
+        let motion: Animation? = app.planner.scope == .day ? PlannerDayBody.slide : still ? nil : Motion.flip
+        withAnimation(motion) { app.planner.step(dir) }
     }
 
     /// Первый показ дня ставит 09:00 на 10 pt ниже закреплённого блока (веб:

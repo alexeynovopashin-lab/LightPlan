@@ -192,10 +192,12 @@ private struct Shell: View {
             // Под слоем, который ведёт палец, вкладка стоит на 30 % левее (28з): едет только видимая, спрятанные
             // стоят — сдвиг всего стека стоил ≈ 9 мс главного потока на кадр (замер 28з.5).
             .edgeBackBase(app, .tabs, shown: shown)
-            .opacity(shown ? 1 : 0)
+            // Вкладка, ставшая выбранной, проявляется и поднимается на 8 pt за 0,45 с E1 (S1); уходящая гаснет сразу.
+            .modifier(TabRise(shown: shown))
             .allowsHitTesting(shown)
             .accessibilityHidden(!shown)
             .environment(\.shotSilent, !shown)
+            .environment(\.screenShown, shown)
     }
 }
 

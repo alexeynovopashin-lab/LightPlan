@@ -19,9 +19,12 @@ enum MotionBench {
         await wait(5)   // видео уже идёт, экран успел нарисоваться и успокоиться
         switch name {
         case "month", "week":
+            // Первый шаг — разминка: от «сегодня» уходит подпись «↺ сегодня» под шапкой и всё едет по вертикали,
+            // замеру нужно чистое горизонтальное движение.
+            mark("warmup"); flip(1); await wait(2.5)
             for dir in [1, -1, 1] { mark("flip \(dir)"); flip(dir); await wait(1.6) }
         case "bar":
-            for _ in 0..<2 { mark("fold"); PlannerDayPanel.fold(app); await wait(1.6) }
+            for _ in 0..<2 { mark("fold"); PlannerDayPanel.fold(app, still: UIAccessibility.isReduceMotionEnabled); await wait(1.6) }
         case "fan":
             for _ in 0..<2 { mark("fan"); fan(); await wait(1.6) }
         case "tab":

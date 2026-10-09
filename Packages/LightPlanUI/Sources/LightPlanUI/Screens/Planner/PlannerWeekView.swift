@@ -10,17 +10,28 @@ import LightPlanDomain
 struct PlannerWeekBody: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
+    /// Высоты недель, как они легли: у месяца высота известна по числу рядов, у недели нет — листание сбоку
+    /// плавно ведёт высоту стойки по этим числам.
+    @State private var heights: [Int: CGFloat] = [:]
 
     var body: some View {
+        // Листание недели едет сбоку (29.2в): две недели рядом, пока позиция между ними.
+        FlipStage(pos: Double(FlipTrack.weekIndex(app.planner.selected)), height: { heights[$0] }) { idx, lead in
+            page(FlipTrack.weekStart(idx), lead: lead)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[idx] = $0 }
+        }
+        .shotNode("week")
+        .padding(.bottom, 20)
+    }
+
+    private func page(_ start: CivilDate, lead: Bool) -> some View {
         VStack(spacing: 4) {
-            ForEach(Array(app.planner.week.enumerated()), id: \.element) { i, d in
-                WeekRow(app: app, f: f, day: d).shotNode("wk.\(i)")
+            ForEach(Array(PlannerState.week(of: start).enumerated()), id: \.element) { i, d in
+                WeekRow(app: app, f: f, day: d).shotNode(lead ? "wk.\(i)" : "wk.out.\(i)")
             }
         }
         .padding(.horizontal, 20)
         .padding(.top, 6)
-        .shotNode("week")
-        .padding(.bottom, 20)
     }
 }
 

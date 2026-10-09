@@ -96,16 +96,33 @@ function progress(fr, ev) {
   return { a, b, idx, ps, den };
 }
 
-/* Ряд кадров события и доля пути p(t) → строка с числами. */
-function summarize(fr, idx, ps, lines, label, expect) {
+/* Лучшая t0 при заданной длительности D: rms каждой кривой на ожидаемых числах беты. */
+function fixedFit(ts, ps, onset, D) {
+  const out = {};
+  for (const [name, c] of Object.entries(CURVES)) {
+    let b = Infinity;
+    for (let t0 = onset - 0.05; t0 <= onset + 0.03; t0 += 0.004) {
+      let s = 0;
+      for (let i = 0; i < ts.length; i++) { const e = ps[i] - c((ts[i] - t0) / D); s += e * e; }
+      b = Math.min(b, Math.sqrt(s / ts.length));
+    }
+    out[name] = b;
+  }
+  return out;
+}
+
+/* Ряд кадров события и доля пути p(t) → строка с числами; `expectD` — длительность беты в секундах. */
+function summarize(fr, idx, ps, lines, label, expectD) {
   const ts = idx.map(k => fr.ts[k] - fr.ts[idx[0]]);
   const onset = ts[Math.max(0, ps.findIndex(p => p > 0.02) - 1)];
   const inPath = ps.filter(p => p > 0.02 && p < 0.98).length;
-  const t98 = (() => { const k = ps.findIndex((p, i) => i > 0 && p >= 0.98); return k < 0 ? ts[ts.length - 1] : ts[k]; })();
+  const at = q => { const k = ps.findIndex((p, i) => i > 0 && p >= q); return k < 0 ? ts[ts.length - 1] - onset : ts[k] - onset; };
+  const t50 = at(0.5), t90 = at(0.9), total = at(0.98);
   const fit = fitCurve(ts, ps, onset);
-  const e1 = fit.all.E1;
-  lines.push(`${label}: кадров в пути ${inPath}, от начала до 98 % ${ms(t98 - onset)} мс; лучшая кривая ${fit.name} D=${ms(fit.D)} мс (rms ${r3(fit.rms)}); E1 при D=${ms(e1.D)} мс rms ${r3(e1.rms)}`);
-  return { inPath, total: t98 - onset, fit, e1 };
+  const fixed = expectD ? fixedFit(ts, ps, onset, expectD) : null;
+  lines.push(`${label}: кадров в пути ${inPath}; доля пути 50 % за ${ms(t50)} мс, 90 % за ${ms(t90)} мс, 98 % за ${ms(total)} мс; свободный подбор ${fit.name} D=${ms(fit.D)} мс (rms ${r3(fit.rms)})`
+    + (fixed ? `; при D=${ms(expectD)} мс rms: ${Object.entries(fixed).map(([k, v]) => `${k} ${r3(v)}`).join(', ')}` : ''));
+  return { inPath, total, t50, t90, fit, e1: fit.all.E1, fixed };
 }
 
 /* ---------- скольжение (месяц, неделя) ---------- */
@@ -123,51 +140,127 @@ function predict(S, E, w, h, s, sgn, out) {
   }
 }
 
-function bestShift(f, S, E, w, h, sgn) {
-  const P = new Uint8Array(w * h);
-  let best = { s: 0, e: Infinity };
-  const tryS = s => { predict(S, E, w, h, s, sgn, P); const e = sad(f, P); if (e < best.e) best = { s, e }; };
-  for (let s = 0; s <= w; s += 6) tryS(Math.min(s, w - 1));
-  const c = best.s;
-  for (let s = Math.max(0, c - 6); s <= Math.min(w - 1, c + 6); s++) tryS(s);
-  if (best.s >= w - 1) { predict(S, E, w, h, 0, sgn, P); const e = sad(f, P); if (e <= best.e) best = { s: w, e }; }   // s = w — это конец
-  return best;
+/* Цена каждого сдвига 0…w для кадра (строки через одну: быстрее, числа те же). */
+function shiftCosts(f, S, E, w, h, sgn) {
+  const c = new Float64Array(w + 1);
+  for (let sh = 0; sh <= w; sh++) {
+    let e = 0;
+    for (let y = 0; y < h; y += 2) {
+      const r = y * w;
+      for (let x = 0; x < w; x++) {
+        let v;
+        if (sgn > 0) v = x + sh < w ? S[r + x + sh] : E[r + x + sh - w];
+        else v = x - sh >= 0 ? S[r + x - sh] : E[r + x - sh + w];
+        e += Math.abs(f[r + x] - v);
+      }
+    }
+    c[sh] = e * 2;
+  }
+  return c;
+}
+
+/* Сдвиг по кадрам не убывает (страница едет в одну сторону): путь с наименьшей суммой цен. Узор цифр повторяется
+   через колонку, и поодиночке кадры путаются на кратные сдвиги — монотонность это снимает. */
+function monotonePath(costs) {
+  const n = costs.length, m = costs[0].length;
+  const best = costs.map(c => Float64Array.from(c)), from = costs.map(() => new Int32Array(m));
+  for (let k = 1; k < n; k++) {
+    let run = Infinity, at = 0;
+    for (let sh = 0; sh < m; sh++) {
+      if (best[k - 1][sh] < run) { run = best[k - 1][sh]; at = sh; }
+      best[k][sh] += run; from[k][sh] = at;
+    }
+  }
+  let sh = 0, e = Infinity;
+  for (let i = 0; i < m; i++) if (best[n - 1][i] < e) { e = best[n - 1][i]; sh = i; }
+  const path = new Array(n);
+  for (let k = n - 1; k >= 0; k--) { path[k] = sh; sh = from[k][sh]; }
+  return path;
 }
 
 function slide(fr, evs, lines, dirs) {
-  const out = [];
+  const out = [], ends = [];
   evs.forEach((ev, n) => {
     const a = Math.max(0, ev.i0 - 1), b = Math.min(fr.n - 1, ev.i1 + 1);
     const S = fr.data[a], E = fr.data[b];
     const base = sad(S, E) || 1;
     // Кадр — это начало, конец, скольжение (сдвиг подходит) или иное (смесь, прыжок).
     const run = sgn => {
-      const rows = [];
+      const costs = [], pre = [];
       for (let k = a; k <= b; k++) {
         const f = fr.data[k], toS = sad(f, S) / base, toE = sad(f, E) / base;
-        const r = bestShift(f, S, E, fr.w, fr.h, sgn);
-        rows.push({ k, toS, toE, s: r.s, e: r.e / base });
+        // Смесь: S + α(E − S) с лучшим α; скольжение засчитываем, только если сдвиг подходит заметно лучше смеси.
+        let num = 0, den = 0; for (let i = 0; i < f.length; i++) { const d = E[i] - S[i]; num += (f[i] - S[i]) * d; den += d * d; }
+        const al = Math.min(1, Math.max(0, den ? num / den : 0)); let eb = 0;
+        for (let i = 0; i < f.length; i++) eb += Math.abs(f[i] - (S[i] + al * (E[i] - S[i])));
+        costs.push(shiftCosts(f, S, E, fr.w, fr.h, sgn)); pre.push({ k, toS, toE, eb: eb / base, al });
       }
-      return rows;
+      const path = monotonePath(costs);
+      return pre.map((r, i) => ({ ...r, s: path[i], e: costs[i][path[i]] / base }));
     };
-    const cls = r => (r.toS < 0.02 ? 'S' : r.toE < 0.02 ? 'E' : r.e < 0.35 && r.s > 0 && r.s < fr.w ? 'slide' : 'other');
+    const cls = r => (r.toS < 0.02 ? 'S' : r.toE < 0.02 ? 'E' : r.e < 0.85 * r.eb && r.s > 0 && r.s < fr.w ? 'slide' : 'other');
     const pos = run(1), neg = run(-1);
-    const score = rows => rows.reduce((t, r) => t + Math.min(r.e, r.toS, r.toE), 0);
+    const score = rows => rows.reduce((t, r) => t + r.e, 0);
     const rows = score(pos) <= score(neg) ? pos : neg, sgn = rows === pos ? 1 : -1;
     const kinds = rows.map(cls);
     const idx = rows.map(r => r.k);
-    const ps = rows.map((r, i) => kinds[i] === 'S' ? 0 : kinds[i] === 'E' ? 1 : kinds[i] === 'slide' ? r.s / fr.w : 1 - r.toE / (r.toS + r.toE || 1));
+    // До первого и после последнего скольжения «иное» — это своё движение на месте (подсветка строки): в путь не берём.
+    const first = kinds.indexOf('slide'), last = kinds.lastIndexOf('slide');
+    if (first >= 0) kinds.forEach((k, i) => { if (k === 'other' && i < first) kinds[i] = 'S'; else if (k === 'other' && i > last) kinds[i] = 'E'; });
+    const ps = rows.map((r, i) => kinds[i] === 'S' ? 0 : kinds[i] === 'E' ? 1 : kinds[i] === 'slide' ? r.s / fr.w : r.al);
     const nSlide = kinds.filter(k => k === 'slide').length, nOther = kinds.filter(k => k === 'other').length;
     const ghost = Math.max(0, ...rows.filter((_, i) => kinds[i] === 'slide').map(r => r.e));
     const label = `шаг ${n + 1} (ждём: новое ${dirs[n] > 0 ? 'справа' : 'слева'})`;
     const ts = idx.map(k => fr.ts[k] - fr.ts[idx[0]]);
     const dts = ts.slice(1).map((t, i) => t - ts[i]).filter(d => d > 0).sort((x, y) => x - y);
-    const sm = summarize(fr, idx, ps, lines, `${label}; скольжение в ${nSlide} кадрах, «иное» (смесь/прыжок) в ${nOther}` + (nSlide ? `; новое едет ${sgn > 0 ? 'справа' : 'слева'}; остаток подгонки ${r3(ghost)}` : ''));
+    const sm = summarize(fr, idx, ps, lines, `${label}; скольжение в ${nSlide} кадрах, «иное» (смесь/прыжок) в ${nOther}` + (nSlide ? `; новое едет ${sgn > 0 ? 'справа' : 'слева'}` : ''), 0.3);
     const peak = Math.max(0, ...rows.filter((_, i) => kinds[i] === 'slide').map(r => r.s));
     lines.push(`  смещение, pt по кадрам: ${rows.map((r, i) => kinds[i] === 'S' ? 'нач' : kinds[i] === 'E' ? 'кон' : kinds[i] === 'slide' ? Math.round(r.s) : 'иное').join(' ')}; кадров между событиями ${dts.length ? ms(dts[Math.floor(dts.length / 2)]) + ' мс (медиана)' : '—'}`);
+    ends.push({ S, E, base });
     out.push({ sgn, ghost, peak, w: fr.w, nSlide, nOther, inPath: nSlide, ...sm, inPath2: sm.inPath, want: dirs[n] > 0 ? 1 : -1 });
   });
+  // «Призрак»: следов прежнего месяца после остановки нет — тот же месяц в покое после разных шагов совпадает точка в точку.
+  if (ends.length === 3) {
+    // Покой одного месяца после разных шагов ложится с долей пункта разницы (подпись «↺ сегодня» под шапкой
+    // появляется и уходит), поэтому сравнение грубое — средние по квадратам 8 × 8 pt: след прежнего месяца
+    // (целые цифры) в такой сетке виден, сдвиг на долю пункта — нет.
+    const pool = f => { const o = []; for (let y = 0; y + 8 <= fr.h; y += 8) for (let x = 0; x + 8 <= fr.w; x += 8) { let t = 0; for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) t += f[(y + j) * fr.w + x + i]; o.push(t / 64); } return o; };
+    const strong = (a, b) => { const A = pool(a), B = pool(b); let t = 0; for (let i = 0; i < A.length; i++) t += Math.abs(A[i] - B[i]); return t; };
+    const ref = strong(ends[0].S, ends[0].E) || 1;
+    const g1 = strong(ends[0].E, ends[2].E) / ref, g2 = strong(ends[0].S, ends[1].E) / ref;
+    lines.push(`покой после шагов: тот же месяц после 1-го и 3-го шага расходится на ${r3(g1)} (доля от разницы двух месяцев в сетке 8 × 8 pt), исходный и после возврата — на ${r3(g2)}`);
+    out.ghosts = [g1, g2];
+  }
   return out;
+}
+
+
+/* Журнал приложения: отметки стенда и доля пути `pose <имя> p` на каждом кадре. */
+function markTimes(log) {
+  const o = [];
+  for (const l of log.split('\n')) { const m = /^(\d+\.\d+) motion \w+ (fold|fan|flip|tab)/.exec(l); if (m) o.push(+m[1]); }
+  return o;
+}
+function poseRuns(log, name, marks, lastLen = 1.6) {
+  const rows = [];
+  for (const l of log.split('\n')) { const m = new RegExp(`^(\\d+\\.\\d+) pose ${name} (\\S+)`).exec(l); if (m) rows.push({ t: +m[1], p: +m[2] }); }
+  return marks.map((t0, i) => {
+    const t1 = marks[i + 1] ?? t0 + lastLen;
+    return rows.filter(r => r.t >= t0 - 0.001 && r.t < t1).filter(r => r.p > 0.0001 && r.p < 0.9999).map(r => ({ t: r.t - t0, p: r.p }));
+  });
+}
+/* Ряд (t, p) из журнала → число: куда идёт (вверх или вниз), подбор кривой, ширина пути. */
+function runStats(run, lines, label, expectD) {
+  if (run.length < 3) { lines.push(`${label}: в журнале ${run.length} промежуточных значений — движения нет`); return { n: run.length }; }
+  const up = run[run.length - 1].p > run[0].p;
+  const q = run.map(r => (up ? r.p : 1 - r.p));
+  const ts = run.map(r => r.t);
+  const onset = ts[0];
+  const fit = fitCurve(ts, q, onset);
+  const fixed = fixedFit(ts, q, onset, expectD);
+  const span = ts[ts.length - 1] - ts[0];
+  lines.push(`${label}: ${run.length} кадров с промежуточной долей пути за ${ms(span)} мс, первая ${r3(run[0].p)}; свободный подбор ${fit.name} D=${ms(fit.D)} мс (rms ${r3(fit.rms)}); при D=${ms(expectD)} мс rms: ${Object.entries(fixed).map(([k, v]) => `${k} ${r3(v)}`).join(', ')}`);
+  return { n: run.length, span, first: run[0].p, fit, fixed, up };
 }
 
 /* ---------- вкладка: прозрачность и сдвиг по регрессии ---------- */
@@ -255,51 +348,43 @@ function analyze(name, r, opt) {
         if (opt.still) { bad(o.inPath === 0, `${L}: при уменьшении движения кадров в пути ${o.inPath}, нужно 0`); return; }
         bad(o.sgn === o.want, `${L}: направление ${o.sgn > 0 ? 'справа' : 'слева'}, ждали ${o.want > 0 ? 'справа' : 'слева'}`);
         bad(o.inPath >= 8, `${L}: кадров в пути ${o.inPath}, нужно ≥ 8`);
-        bad(o.total >= 0.24 && o.total <= 0.36, `${L}: путь до 98 % ${ms(o.total)} мс, нужно 240–360`);
-        bad(o.fit.D >= 0.26 && o.fit.D <= 0.36, `${L}: длительность ${ms(o.fit.D)} мс, нужно 260–360`);
-        bad(o.e1.rms <= 0.06, `${L}: E1 rms ${r3(o.e1.rms)}, нужно ≤ 0,06`);
+        bad(o.t90 >= 0.09 && o.t90 <= 0.16, `${L}: 90 % пути за ${ms(o.t90)} мс, нужно 90–160 (E1 0,3 с даёт ≈ 120)`);
+        bad(o.total >= 0.14 && o.total <= 0.24, `${L}: 98 % пути за ${ms(o.total)} мс, нужно 140–240 (E1 0,3 с даёт ≈ 180)`);
+        bad(o.fixed.E1 <= 0.10 && o.fixed.E1 <= Math.min(o.fixed.linear, o.fixed['ease-in-out']), `${L}: при D=300 E1 rms ${r3(o.fixed.E1)} (линейная ${r3(o.fixed.linear)}, ease-in-out ${r3(o.fixed['ease-in-out'])}), нужно ≤ 0,10 и лучше остальных`);
         bad(o.peak >= o.w - 2, `${L}: пик смещения ${Math.round(o.peak)} из ${o.w}`);
-        bad(o.ghost <= 0.15, `${L}: «призрак» ${r3(o.ghost)}, нужно ≤ 0,15`);
       });
+      (out.ghosts || []).forEach((g, i) => bad(g <= 0.15, `покой ${i + 1}: следы прежнего месяца ${r3(g)}, нужно ≤ 0,15`));
     }
     return res;
   }
 
   if (name === 'tab') {
-    res.rise = [];
-    ev.list.forEach((e, n) => {
-      const q = rise(fr, e);
-      const ts = q.idx.map(k => fr.ts[k] - fr.ts[q.idx[0]]);
-      const onset = ts[Math.max(0, q.A.findIndex(p => p > 0.02) - 1)];
-      const fit = fitCurve(ts, q.A.map(v => Math.min(1.2, Math.max(-0.2, v))), onset);
-      const inPath = q.A.filter(p => p > 0.02 && p < 0.98).length;
-      const dy0 = q.DY[Math.max(0, q.A.findIndex(p => p > 0.02))];
-      lines.push(`вкладка ${n + 1} (${n % 2 ? 'в «Съёмки»' : 'в «Свет»'}): кадров в пути ${inPath}; прозрачность: ${q.A.map(v => r3(v)).join(' ')}`);
-      lines.push(`  сдвиг вниз, pt: ${q.DY.join(' ')}; лучшая кривая прозрачности ${fit.name} D=${ms(fit.D)} мс (rms ${r3(fit.rms)}), E1 rms ${r3(fit.all.E1.rms)}`);
-      res.rise.push({ n, inPath, fit, dy0, A: q.A, DY: q.DY, e1: fit.all.E1 });
+    // Числа — из журнала (доля пути на каждом кадре, как её отдал SwiftUI); кадры видео подтверждают, что экран вообще двигался.
+    const runs = poseRuns(r.log, 'rise', markTimes(r.log).slice(0, 4));
+    res.rise = runs.map((run, n) => {
+      const st = runStats(run, lines, `вкладка ${n + 1} (${n % 2 ? 'в «Съёмки»' : 'в «Свет»'})`, 0.45);
+      if (st.n >= 3) lines.push(`  сдвиг на первом кадре: ${r3(8 * (1 - st.first))} pt из 8; на видео кадров движения ${ev.list[n] ? ev.list[n].i1 - ev.list[n].i0 + 1 : 0}`);
+      return { n, ...st };
     });
     if (opt.check) {
       res.rise.forEach(o => {
         const L = `вкладка ${o.n + 1}`;
-        bad(o.inPath >= 8, `${L}: кадров в пути ${o.inPath}, нужно ≥ 8`);
-        bad(o.e1.D >= 0.40 && o.e1.D <= 0.50 && o.e1.rms <= 0.08, `${L}: E1 D=${ms(o.e1.D)} мс rms ${r3(o.e1.rms)}, нужно D 400–500, rms ≤ 0,08`);
-        bad(o.dy0 >= 6 && o.dy0 <= 9, `${L}: сдвиг в начале ${o.dy0} pt, нужно 6–9 (≈ 8)`);
-        bad(Math.max(...o.DY.slice(-2)) === 0, `${L}: в конце сдвиг не вернулся в 0`);
+        bad(o.n >= 10, `${L}: кадров с промежуточной долей пути ${o.n}, нужно ≥ 10`);
+        if (o.n < 3) return;
+        bad(o.fixed.E1 <= 0.03 && o.fixed.E1 <= o.fixed.linear, `${L}: при D=450 E1 rms ${r3(o.fixed.E1)}, нужно ≤ 0,03 и лучше линейной`);
+        bad(o.span >= 0.3 && o.span <= 0.5, `${L}: путь ${ms(o.span)} мс, нужно 300–500`);
+        bad((8 * (1 - o.first)) >= 6, `${L}: сдвиг на первом кадре ${r3(8 * (1 - o.first))} pt, нужно ≥ 6`);
       });
+      ev.list.forEach((e, n) => bad(e.i1 - e.i0 >= 8, `вкладка ${n + 1}: на видео кадров движения ${e.i1 - e.i0 + 1}, нужно ≥ 9`));
     }
     return res;
   }
 
-  // bar, fan: доля пути и (для сводки) геометрия из журнала приложения
-  res.prog = [];
-  ev.list.forEach((e, n) => {
-    const p = progress(fr, e);
-    const label = name === 'bar' ? (n === 0 ? 'схлопывание' : 'раскрытие') : (n === 0 ? 'открытие веера' : 'закрытие веера');
-    const sm = summarize(fr, p.idx, p.ps, lines, label);
-    res.prog.push({ n, ...sm });
-  });
+  // bar, fan: кадры видео — только «двигалось ли»; числа — из журнала приложения
+  res.prog = ev.list.map((e, n) => ({ n, frames: e.i1 - e.i0 + 1 }));
+  lines.push('кадров движения на видео: ' + res.prog.map(o => o.frames).join(', '));
   if (name === 'bar') bar(fr, r, lines, res, bad, opt);
-  if (name === 'fan') fan(fr, ev.list[0], lines, res, bad, opt);
+  if (name === 'fan') fan(fr, r, lines, res, bad, opt);
   return res;
 }
 
@@ -325,52 +410,50 @@ function bar(fr, r, lines, res, bad, opt) {
   mk.slice(0, 2).forEach((t0, n) => {
     const t1 = mk[n + 1] ?? t0 + 1.6;
     const g = geoSeries(r.log, 'dp.bar').filter(v => v.t >= t0 - 0.001 && v.t < t1);
-    if (!g.length) { lines.push(`${n ? 'раскрытие' : 'схлопывание'}: в журнале нет рамок сводки (геометрия не менялась или узла нет)`); out.push({ n, frames: 0 }); return; }
-    const w0 = g[0].w, wN = g[g.length - 1].w;
-    const ws = g.map(v => Math.round(v.w));
-    const tEnd = g[g.length - 1].t - t0;
-    const inPath = g.filter(v => v.w > Math.min(w0, wN) + 1 && v.w < Math.max(w0, wN) - 1).length;
-    lines.push(`${n ? 'раскрытие' : 'схлопывание'} (журнал, ширина .dp-bar): ${ws.length} записей, ширина ${Math.round(w0)} → ${Math.round(wN)} pt, последняя запись через ${ms(tEnd)} мс, промежуточных ${inPath}`);
-    lines.push(`  ширина по записям: ${ws.join(' ')}`);
-    out.push({ n, frames: g.length, inPath, w0, wN, tEnd });
+    const label = n ? 'раскрытие' : 'схлопывание';
+    if (g.length < 3) { lines.push(`${label}: в журнале ${g.length} рамок сводки — ширина не ехала`); out.push({ n, frames: g.length, inPath: 0 }); return; }
+    const w0 = n ? 40 : g[0].w, wN = n ? g[g.length - 1].w : 40;   // старт и конец известны: полная ширина 392 и ручка 40
+    const full = 392, shut = 40;
+    const up = n === 1;
+    const q = g.map(v => Math.min(1, Math.max(0, up ? (v.w - shut) / (full - shut) : (full - v.w) / (full - shut))));
+    const ts = g.map(v => v.t - t0);
+    const mid = q.map((v, i) => [v, i]).filter(([v]) => v > 0.02 && v < 0.98);
+    const fit = fitCurve(ts, q, ts[0]);
+    const fixed = fixedFit(ts, q, ts[0], 0.45);
+    const t98 = (() => { const k = q.findIndex(v => v >= 0.98); return k < 0 ? ts[ts.length - 1] : ts[k]; })();
+    lines.push(`${label} (журнал, ширина .dp-bar): ${g.length} записей, ширина ${Math.round(g[0].w)} → ${Math.round(g[g.length - 1].w)} pt, промежуточных ${mid.length}, 98 % пути на ${ms(t98)} мс от нажатия; подбор ${fit.name} D=${ms(fit.D)} мс; при D=450 мс rms: ${Object.entries(fixed).map(([k, v]) => `${k} ${r3(v)}`).join(', ')}`);
+    lines.push(`  ширина по записям: ${g.map(v => Math.round(v.w)).join(' ')}; высота ${Math.round(g[0].h)} → ${Math.round(g[g.length - 1].h)}`);
+    out.push({ n, frames: g.length, inPath: mid.length, t98, fixed, fit });
   });
   res.bar = out;
   if (opt.check) {
     out.forEach(o => {
       const L = o.n ? 'раскрытие' : 'схлопывание';
+      if (opt.still) { bad(o.inPath === 0, `${L}: при уменьшении движения промежуточных значений ширины ${o.inPath}, нужно 0`); return; }
       bad(o.inPath >= 6, `${L}: промежуточных значений ширины ${o.inPath}, нужно ≥ 6 (ширина должна ехать)`);
-      bad(o.tEnd >= 0.40 && o.tEnd <= 0.55, `${L}: ширина едет ${ms(o.tEnd || 0)} мс, нужно 400–550`);
+      if (!o.fixed) return;
+      bad(o.fixed.E1 <= 0.05 && o.fixed.E1 <= o.fixed.linear, `${L}: при D=450 E1 rms ${r3(o.fixed.E1)} (линейная ${r3(o.fixed.linear)}), нужно ≤ 0,05 и лучше линейной`);
+      bad(o.fit.name === 'E1' && o.fit.D >= 0.38 && o.fit.D <= 0.52, `${L}: подбор ${o.fit.name} D=${ms(o.fit.D)} мс, нужно E1 и 380–520`);
     });
-    res.prog.forEach(o => bad(o.total >= 0.3 && o.total <= 0.62, `кадры: путь до 98 % ${ms(o.total)} мс, нужно 300–620`));
   }
 }
 
-/* Веер: рамка изменившихся точек в первых кадрах открытия — сжатие и сдвиг вверх. */
-function fan(fr, ev, lines, res, bad, opt) {
-  const a = Math.max(0, ev.i0 - 1), b = Math.min(fr.n - 1, ev.i1 + 1);
-  const S = fr.data[a], E = fr.data[b], w = fr.w, h = fr.h;
-  const box = f => {
-    let mx = 0; const d = new Float32Array(w * h);
-    for (let i = 0; i < d.length; i++) { d[i] = Math.abs(f[i] - S[i]); if (d[i] > mx) mx = d[i]; }
-    const th = Math.max(6, mx * 0.5);
-    let x0 = w, y0 = h, x1 = -1, y1 = -1;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[y * w + x] >= th) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-    return x1 < 0 ? null : { x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1 };
-  };
-  const fin = box(E);
-  const rows = [];
-  for (let k = a + 1; k <= b; k++) {
-    const q = box(fr.data[k]);
-    if (!q || !fin) continue;
-    rows.push({ t: fr.ts[k] - fr.ts[a + 1], sw: q.w / fin.w, sh: q.h / fin.h, top: q.y0 - fin.y0, left: q.x0 - fin.x0 });
+/* Веер: доля пути `scopeIn` из журнала (ease-out 0,16 с) и поза на первом кадре из чисел беты. */
+function fan(fr, r, lines, res, bad, opt) {
+  const runs = poseRuns(r.log, 'scopeIn', markTimes(r.log).slice(0, 2), 0.8);
+  const open = runStats(runs[0], lines, 'открытие веера', 0.16);
+  runStats(runs[1], lines, 'закрытие веера', 0.16);
+  res.fan = { open };
+  if (open.n >= 3) {
+    const sc = 0.94 + 0.06 * open.first, dy = -10 * (1 - sc) - 6 * (1 - open.first);
+    lines.push(`  поза на первом кадре: масштаб ${r3(sc)}, сдвиг вверх ${r3(-dy)} pt (старт беты: 0,94 и 6 pt)`);
   }
-  lines.push(`рамка веера в конце: ${fin ? `${fin.w}×${fin.h} pt` : 'не найдена'}; по кадрам открытия (t мс: ширина/высота от конечной, сдвиг верха и левого края pt):`);
-  lines.push('  ' + rows.slice(0, 10).map(q => `${ms(q.t)}: ${r3(q.sw)}/${r3(q.sh)} ${q.top >= 0 ? '+' : ''}${q.top},${q.left >= 0 ? '+' : ''}${q.left}`).join(' · '));
-  res.fan = rows;
-  const first = rows[0];
-  if (opt.check && first) {
-    bad(first.sw <= 0.97 && first.sw >= 0.92, `первый кадр: ширина ${r3(first.sw)} от конечной, нужно ≈ 0,94–0,96 (старт 0,94)`);
-    bad(first.top <= -2, `первый кадр: верх выше конечного на ${-first.top} pt, нужно ≥ 2 (сдвиг −6 к нулю)`);
+  if (opt.check) {
+    bad(open.n >= 3, `веер: в журнале ${open.n} кадров движения`);
+    if (open.n >= 3) {
+      bad(open.fixed['ease-out'] <= 0.05 && open.fixed['ease-out'] <= open.fixed.E1, `веер: при D=160 ease-out rms ${r3(open.fixed['ease-out'])} (E1 ${r3(open.fixed.E1)}), нужно ≤ 0,05 и лучше E1`);
+      bad(open.span >= 0.1 && open.span <= 0.2, `веер: путь ${ms(open.span)} мс, нужно 100–200`);
+    }
   }
 }
 
@@ -391,10 +474,12 @@ function ring(fr, r, lines, res, bad, opt) {
   // запуск приложения кончается к ~4,5 с видео (запись идёт с 2,5 с до запуска); дальше кольцо в покое или дышит
   const t1 = fr.ts[fr.n - 1], from = Math.max(0, fr.ts.findIndex(t => t >= 4.5));
   const seg = d.slice(from), ts = Array.from(fr.ts.slice(from));
-  const hi = Math.max(...seg), lo = Math.min(...seg);
+  // Подложка светлее фона в тёмной теме и темнее в светлой: берём размах по модулю (мин — это слабейший вдох).
+  const sign = seg.reduce((a, v) => a + v, 0) < 0 ? -1 : 1, mag = seg.map(v => v * sign);
+  const hi = Math.max(...mag), lo = Math.min(...mag);
   const ratio = hi ? lo / hi : 1;
   // минимумы и максимумы по сглаженному ряду
-  const sm = seg.map((_, i) => { let s = 0, n = 0; for (let j = Math.max(0, i - 6); j <= Math.min(seg.length - 1, i + 6); j++) { s += seg[j]; n++; } return s / n; });
+  const sm = seg.map((_, i) => { let s = 0, n = 0; for (let j = Math.max(0, i - 6); j <= Math.min(seg.length - 1, i + 6); j++) { s += mag[j]; n++; } return s / n; });
   const mid = (hi + lo) / 2, cross = [];
   for (let i = 1; i < sm.length; i++) if ((sm[i - 1] - mid) * (sm[i] - mid) < 0 && sm[i] > sm[i - 1]) cross.push(ts[i]);
   const periods = cross.slice(1).map((t, i) => t - cross[i]);

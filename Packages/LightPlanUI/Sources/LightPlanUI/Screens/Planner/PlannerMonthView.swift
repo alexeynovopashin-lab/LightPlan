@@ -22,17 +22,11 @@ struct PlannerMonthBody: View {
             // Календарь стоит на стеклянной подложке (28и, макет C со стеклом): шапка недели и сетка.
             VStack(spacing: 0) {
                 head(pal)
-                VStack(spacing: MonthMetrics.rowGap) {
-                    ForEach(0..<(grid.count / 7), id: \.self) { r in
-                        HStack(alignment: .top, spacing: MonthMetrics.colGap) {
-                            ForEach(0..<7, id: \.self) { c in
-                                let i = r * 7 + c
-                                MonthCell(app: app, f: f, day: grid[i], part: part)
-                                    .shotNode("cal.\(i)")
-                            }
-                        }
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.rows[r] = $0 }
-                    }
+                // Листание месяца едет сбоку (29.2в): подложка и шапка стоят, сетка двух месяцев скользит внутри.
+                FlipStage(pos: Double(FlipTrack.monthIndex(st.month)), height: { idx in
+                    MonthMetrics.gridHeight(rows: PlannerState.grid(of: FlipTrack.monthStart(idx)).count / 7)
+                }) { idx, lead in
+                    rows(FlipTrack.monthStart(idx), lead: lead)
                 }
                 .shotNode("cal")
             }
@@ -45,6 +39,23 @@ struct PlannerMonthBody: View {
             PlannerDayPanel(app: app, f: f)
             PlannerDayList(app: app, f: f, fan: $fan)
             PlannerDayStates(f: f)
+        }
+    }
+
+    /// Ряды одного месяца. Рамки узлов и строк для разреза даёт только страница, к которой идём (`lead`).
+    private func rows(_ month: CivilDate, lead: Bool) -> some View {
+        let grid = PlannerState.grid(of: month)
+        return VStack(spacing: MonthMetrics.rowGap) {
+            ForEach(0..<(grid.count / 7), id: \.self) { r in
+                HStack(alignment: .top, spacing: MonthMetrics.colGap) {
+                    ForEach(0..<7, id: \.self) { c in
+                        let i = r * 7 + c
+                        MonthCell(app: app, f: f, day: grid[i], part: part, month: month)
+                            .shotNode(lead ? "cal.\(i)" : "cal.out.\(i)")
+                    }
+                }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { if lead { part.rows[r] = $0 } }
+            }
         }
     }
 
@@ -178,13 +189,15 @@ struct MonthCell: View {
     let f: PlannerFacts
     let day: CivilDate
     let part: PartDay?
+    /// Месяц, к которому клетка принадлежит сетке (листание держит рядом два месяца); без него — показанный.
+    var month: CivilDate? = nil
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         let pal = Palette(scheme)
         let st = app.planner
-        let out = !PlannerState.sameMonth(day, st.month)
+        let out = !PlannerState.sameMonth(day, month ?? st.month)
         let today = f.today
         let isToday = day == today, sel = day == st.selected, past = day < today
         let labels = self.labels(pal, out: out)
@@ -206,7 +219,7 @@ struct MonthCell: View {
                     .foregroundStyle(ink)
                     .frame(width: MonthMetrics.digitBox, height: MonthMetrics.digitBox)
                     .background {
-                        if lit, let mark { Circle().fill(f.deliveryColor(mark).opacity(0.32)) }
+                        if lit, let mark { BreathDisc(color: f.deliveryColor(mark).opacity(0.32)) }
                     }
                     .background {
                         // Выбранный день: скруглённый квадрат вокруг самой цифры, подписей не захватывает.
@@ -268,29 +281,40 @@ struct PlannerDayPanel: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var still
+
+    /// Свернуть или раскрыть сводку (шеврон и стенд движений): 0,45 с E1 по ширине и месту; «Уменьшение движения» — сразу.
+    static func fold(_ app: AppModel, still: Bool = false) {
+        withAnimation(still ? nil : Motion.fold) { app.dayFold.toggle() }
+    }
 
     var body: some View {
         let pal = Palette(scheme)
-        let open = !app.dayFold
-        VStack(spacing: 0) {
-            Rectangle().fill(pal.brass.opacity(0.35)).frame(height: 1)
-                .padding(.horizontal, -20)
-                .padding(.bottom, open ? 8 : 0)
-                .overlay(alignment: .trailing) {
-                    if !open { chevron(pal, open: false).padding(.trailing, 4) }
-                }
-            if open { bar(pal) }
+        let shut = app.dayFold
+        // Четыре части кладёт `FoldPanel` по доле пути `t` (0 раскрыта, 1 свёрнута); у каждой части своя кривая беты.
+        FoldPanel(t: shut ? 1 : 0,
+                  line: Rectangle().fill(pal.brass.opacity(0.35)),
+                  frame: barFrame(pal, shut: shut),
+                  main: main(pal, shut: shut),
+                  chevron: chevron(pal, open: !shut))
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+    }
+
+    /// Рамка плашки (`.dp-bar`): волосок всегда, фон `--bar` у свёрнутой ручки — иначе черта просвечивает сквозь знак.
+    private func barFrame(_ pal: Palette, shut: Bool) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.bar).opacity(shut ? 1 : 0)
+            RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 6)
+        .animation(still ? nil : Motion.foldFrame, value: shut)
+        .shotNode("dp.bar")
+        .motionGeo("dp.bar")
     }
 
-    /// Свернуть или раскрыть сводку (шеврон и стенд движений).
-    static func fold(_ app: AppModel) {
-        withAnimation(.snappy(duration: 0.35)) { app.dayFold.toggle() }
-    }
-
-    private func bar(_ pal: Palette) -> some View {
+    /// Основная часть (`.dp-bar-main`): показания в строку без переноса, ширина её сжимается вместе с плашкой,
+    /// лишнее срезается (`overflow: hidden`), прозрачность уходит за 0,25 с.
+    private func main(_ pal: Palette, shut: Bool) -> some View {
         let d = app.planner.selected
         let sky = f.sky(d), wx = f.weather(d)
         let fog = wx?.quality == .fog
@@ -299,38 +323,36 @@ struct PlannerDayPanel: View {
             : sky.set.flatMap { s in sky.goldenB.map { s - $0 } }
         let sc = wx?.sunset
         let setColor: Color = sc.map { $0 >= 75 ? pal.brass : $0 >= 50 ? pal.green : $0 >= 28 ? pal.ink : pal.blue } ?? pal.brass
-        return HStack(spacing: 0) {
-            HStack(spacing: 8) {
-                item("sunrise", f.fmt(sky.rise), pal.ink2, node: "dp.rise", pal: pal)
-                item("sunset", f.fmt(sky.set), setColor, node: "dp.set", pal: pal)
-                if let g = goldenMin, g > 0 {
-                    item("golden", f.durShort(Int(g.rounded())), pal.ink4, weight: 500, node: "dp.gold", pal: pal)
-                }
-                Rectangle().fill(pal.hairline).frame(width: 1, height: 12)
-                if let wx, let deg = f.temp(d) {
-                    HStack(spacing: 3) {
-                        Icon(wx.quality.signIconName, size: 17, line: 1.5).foregroundStyle(pal.ink)
-                            .padding(.trailing, 8)
-                        let temp = "\(deg)°"
-                        Text(temp).font(webFont(13, 600)).monospacedDigit().foregroundStyle(pal.ink)
-                            .shotNode("dp.temp", text: temp)
-                    }
-                } else {
-                    // Прогноза нет — надпись на месте знака и градусов; выдумки нет (28ж).
-                    Text(f.forecastNote).font(webFont(12)).foregroundStyle(pal.ink4)
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                        .shotNode("dp.wxnone", text: f.forecastNote)
-                }
-                Spacer(minLength: 0)
+        return HStack(spacing: 8) {
+            item("sunrise", f.fmt(sky.rise), pal.ink2, node: "dp.rise", pal: pal)
+            item("sunset", f.fmt(sky.set), setColor, node: "dp.set", pal: pal)
+            if let g = goldenMin, g > 0 {
+                item("golden", f.durShort(Int(g.rounded())), pal.ink4, weight: 500, node: "dp.gold", pal: pal)
             }
-            .padding(.leading, 12)
-            .frame(height: 38)
-            chevron(pal, open: true)
+            Rectangle().fill(pal.hairline).frame(width: 1, height: 12)
+            if let wx, let deg = f.temp(d) {
+                HStack(spacing: 3) {
+                    Icon(wx.quality.signIconName, size: 17, line: 1.5).foregroundStyle(pal.ink)
+                        .padding(.trailing, 8)
+                    let temp = "\(deg)°"
+                    Text(temp).font(webFont(13, 600)).monospacedDigit().foregroundStyle(pal.ink)
+                        .shotNode("dp.temp", text: temp)
+                }
+            } else {
+                // Прогноза нет — надпись на месте знака и градусов; выдумки нет (28ж).
+                Text(f.forecastNote).font(webFont(12)).foregroundStyle(pal.ink4)
+                    .lineLimit(1)
+                    .shotNode("dp.wxnone", text: f.forecastNote)
+            }
         }
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1))
-        .shotNode("dp.bar")
-        .motionGeo("dp.bar")
-        .padding(.horizontal, 4)
+        .padding(.leading, 12)
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: FoldGeometry.barHeight)
+        .clipped()
+        .opacity(shut ? 0 : 1)
+        .animation(still ? nil : Motion.foldFade, value: shut)
+        .allowsHitTesting(false)
     }
 
     private func item(_ icon: String, _ text: String, _ color: Color, weight: Int = 600, node: String, pal: Palette) -> some View {
@@ -342,22 +364,16 @@ struct PlannerDayPanel: View {
         .frame(height: 20)
     }
 
-    /// Шеврон: раскрыто — остриём вверх, свёрнуто — вниз, и тогда он висит
-    /// капсулой на черте (`.dp-bar.shut`).
+    /// Шеврон: раскрыто — остриём вверх, свёрнуто — вниз, и тогда он висит капсулой на черте (`.dp-bar.shut`).
     private func chevron(_ pal: Palette, open: Bool) -> some View {
         Button {
-            Self.fold(app)
+            Self.fold(app, still: still)
         } label: {
             Icon("chevron", size: 16, line: 1.6)
                 .rotationEffect(.degrees(open ? -90 : 90))
+                .animation(still ? nil : Motion.foldChevron, value: open)
                 .foregroundStyle(pal.ink4)
-                .padding(.horizontal, 12).padding(.vertical, open ? 11 : 3)
-                .background {
-                    if !open {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.bar)
-                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1))
-                    }
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

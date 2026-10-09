@@ -169,10 +169,13 @@ public struct PlannerState: Hashable, Sendable {
 
     /// Сетка месяца: дни с понедельника первой недели до воскресенья последней
     /// (веб `renderCal`: хвост прошлого месяца, месяц, голова следующего).
-    public var monthGrid: [CivilDate] {
-        let start = Self.weekStart(month)
-        let last = Self.addMonths(month, 1).adding(days: -1)
-        let end = Self.weekStart(last).adding(days: 6)
+    public var monthGrid: [CivilDate] { Self.grid(of: month) }
+
+    /// Сетка любого месяца (листание сбоку держит рядом сетки двух соседних).
+    public static func grid(of month: CivilDate) -> [CivilDate] {
+        let start = weekStart(month)
+        let last = addMonths(month, 1).adding(days: -1)
+        let end = weekStart(last).adding(days: 6)
         return (0...end.days(since: start)).map { start.adding(days: $0) }
     }
 
