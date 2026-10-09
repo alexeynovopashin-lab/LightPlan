@@ -17,6 +17,9 @@ private func d(_ y: Int, _ m: Int, _ day: Int) -> CivilDate { CivilDate(year: y,
         #expect(m.phase == .cut && m.showsLayer && m.stripHidden)    // снимки легли, лента дат спрятана
         m.tick(at: 100, run: run)                                     // без старта часы не идут
         #expect(m.phase == .cut)
+        m.go(at: 5)                                                   // ленты дат нет — не летим
+        #expect(m.phase == .cut)
+        m.lay()
         m.go(at: 10)
         #expect(m.phase == .moving && m.stripHidden)
         m.tick(at: 10.279, run: run)
@@ -32,6 +35,7 @@ private func d(_ y: Int, _ m: Int, _ day: Int) -> CivilDate { CivilDate(year: y,
     @Test func tapInTheMiddleEndsAtOnce() {
         var m = PartDayMachine()
         let run = m.cut()
+        m.lay()
         m.go(at: 0)
         m.tick(at: 0.1, run: run)
         m.interrupt()                                                 // касание посреди
@@ -45,14 +49,63 @@ private func d(_ y: Int, _ m: Int, _ day: Int) -> CivilDate { CivilDate(year: y,
     @Test func newCutIgnoresOldTimers() {
         var m = PartDayMachine()
         let first = m.cut()
+        m.lay()
         m.go(at: 0)
         let second = m.cut()                                          // выход и новый вход, пока первый шёл
-        #expect(second == first + 1 && m.phase == .cut)
+        #expect(second == first + 1 && m.phase == .cut && !m.laid)    // рамка ленты прошлого разреза не в счёт
+        m.lay()
         m.go(at: 1)
         m.tick(at: 1.39, run: first)
         #expect(m.phase == .moving)
         m.tick(at: 1.3, run: second)
         #expect(m.phase == .revealed)
+    }
+
+    // MARK: запасной срок (ревью GPT к 29.2а)
+
+    @Test func lateWithoutStripEntersStill() {
+        var m = PartDayMachine()
+        let run = m.cut()
+        let flies = m.late()
+        #expect(!flies && m.phase == .idle && !m.showsLayer && !m.stripHidden)    // слоя нет: ячейки не гаснут на месте
+        m.lay()
+        m.go(at: 0.1)                                                 // поздняя рамка ленты разреза уже не стартует
+        m.tick(at: 0.5, run: run)
+        #expect(m.phase == .idle)
+    }
+
+    @Test func lateWithStripStillFlies() {
+        var m = PartDayMachine()
+        m.cut()
+        m.lay()
+        let flies = m.late()
+        #expect(flies)                                                // лента есть — летим
+        m.go(at: 0)
+        #expect(m.phase == .moving)
+        var live = PartDayMachine()
+        live.cut(stripLive: true)                                     // из ленты года, когда под ней уже день
+        let liveFlies = live.late()
+        #expect(live.laid && liveFlies)
+        var idle = PartDayMachine()
+        let idleFlies = idle.late()
+        #expect(!idleFlies && idle.phase == .idle)                    // без разреза срок ничего не делает
+    }
+
+    @Test func yearEntryRunsTheSameMachine() {
+        var m = PartDayMachine()
+        let run = m.cut()                                             // тап по числу ленты: снимки, лента закрыта, день под ними
+        #expect(m.showsLayer && m.stripHidden)
+        m.lay()
+        m.go(at: 2)
+        m.tick(at: 2.2, run: run)
+        m.interrupt()                                                 // касание посреди — сразу конечный кадр
+        #expect(m.phase == .idle && !m.showsLayer && !m.stripHidden)
+        let again = m.cut(stripLive: true)
+        m.go(at: 3)                                                   // лента дня уже стояла — старт без её отчёта
+        m.tick(at: 3.28, run: again)
+        #expect(m.phase == .revealed)
+        m.tick(at: 3.4, run: again)
+        #expect(m.phase == .idle)
     }
 
     // MARK: числа беты
@@ -99,13 +152,40 @@ private func d(_ y: Int, _ m: Int, _ day: Int) -> CivilDate { CivilDate(year: y,
         #expect(PartDayGeometry.rect(cells[3], fly, at: 0) == cells[3])
     }
 
+    @Test func yearRowCutsTheTappedWeek() {
+        // Октябрь 2026: 1-е — четверг, три пустых клетки впереди, 31 день. Сетка 392 pt — клетка 56, строки через 3.
+        let grid = CGRect(x: 24, y: 300, width: 392, height: 5 * 56 + 4 * 3)
+        let first = PartDayGeometry.yearRow(grid: grid, day: d(2026, 10, 2))
+        #expect(first.row == CGRect(x: 24, y: 300, width: 392, height: 56))
+        #expect(first.days == [nil, nil, nil, d(2026, 10, 1), d(2026, 10, 2), d(2026, 10, 3), d(2026, 10, 4)])
+        let mid = PartDayGeometry.yearRow(grid: grid, day: d(2026, 10, 14))
+        #expect(abs(mid.row.minY - (300 + 2 * 59)) < 1e-9 && mid.days.first == d(2026, 10, 12) && mid.days.last == d(2026, 10, 18))
+        let last = PartDayGeometry.yearRow(grid: grid, day: d(2026, 10, 31))   // неполная последняя неделя
+        #expect(abs(last.row.minY - (300 + 4 * 59)) < 1e-9)
+        #expect(last.days == [d(2026, 10, 26), d(2026, 10, 27), d(2026, 10, 28), d(2026, 10, 29), d(2026, 10, 30), d(2026, 10, 31), nil])
+        let cells = PartDayGeometry.cells(row: mid.row, gap: 0)       // колонки ленты — без зазора
+        #expect(abs(cells[0].width - 56) < 1e-9 && cells[1].minX == cells[0].maxX && abs(cells[6].maxX - 416) < 1e-9)
+    }
+
+    @Test func yearDayTapEntersDayWithoutSideSlide() {
+        var s = PlannerState(today: d(2026, 9, 23))
+        s.setScope(.day)
+        s.step(1)                                                     // лента открыта из дня, где только что листали
+        #expect(s.dayShift == 1)
+        s.enterDay(d(2026, 12, 5))                                    // commit входа из ленты
+        #expect(s.scope == .day && s.selected == d(2026, 12, 5) && s.month == d(2026, 12, 1) && s.dayShift == 0)
+    }
+
     // MARK: вход и направление въезда
 
     @Test func secondTapAndFanEnterSelectedDay() {
         var s = PlannerState(today: d(2026, 9, 23))
         #expect(s.entersDay(on: d(2026, 9, 23)))
         #expect(!s.entersDay(on: d(2026, 9, 24)))                     // первый тап по другому числу — выбор
-        #expect(!s.entersDay(on: d(2026, 10, 1)) || PlannerState.sameMonth(d(2026, 10, 1), s.month))
+        var other = s
+        other.tapMonthCell(d(2026, 9, 30))                            // выбрано 30-е,
+        other.step(1)                                                 // месяц листнули на октябрь: 30 сентября — в его первой строке
+        #expect(!other.entersDay(on: d(2026, 9, 30)))                 // тап по выбранному чужому дню — листание, не вход
         s.enterSelectedDay()
         #expect(s.scope == .day && s.selected == d(2026, 9, 23) && s.month == d(2026, 9, 1))
         #expect(!s.entersDay(on: d(2026, 9, 23)))                     // в дне — не вход
