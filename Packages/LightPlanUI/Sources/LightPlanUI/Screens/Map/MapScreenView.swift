@@ -133,6 +133,8 @@ struct MapScreenView: View {
                 let side = MapRotor.side(width: size.width, height: size.height, cy: cy)
                 // Центр камеры в квадрате ротора — под головкой наблюдателя.
                 let anchor = CGPoint(x: side / 2, y: cy - size.height / 2 + side / 2)
+                // Всё, кроме шапки, проявляется при смене вкладки (S1); шапка не мигает.
+                Group {
                 ZStack(alignment: .topLeading) {
                     Group {
                         // В снимке пары холста нет: у веба сеть закрыта, библиотека
@@ -277,6 +279,8 @@ struct MapScreenView: View {
 
                 headingButton(pal, darkCanvas: darkCanvas)
                     .position(x: 12 + 17, y: headerBottom + 12 + 17)
+                }
+                .tabRise()
 
                 VStack(spacing: 0) {
                     header(light, telemetry, pal, top: safe.top)
@@ -293,12 +297,14 @@ struct MapScreenView: View {
                             .offset(y: dockOut ? 26 : 0)
                             .opacity(dockOut ? 0 : 1)
                             .transition(.identity)
+                            .tabRise()
                     } else if !bare {
                         dock(light, telemetry, summary(date: date, minute: minute, solar: solar, place: place, clock: clock),
                              pal, cy: cy).padding(.bottom, safe.bottom)
                             .offset(y: dockOut ? 26 : 0)
                             .opacity(dockOut ? 0 : 1)
                             .transition(.identity)
+                            .tabRise()
                     }
                 }
             }

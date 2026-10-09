@@ -312,6 +312,10 @@ const SPEC = {
     scope: 'month', trig: 4,
     region: () => ({ rect: [0, 70, 440, 730] }),
   },
+  tabs: {
+    scope: 'month', trig: 12,
+    region: () => ({ rect: [0, 62, 440, 56] }),   // верх экрана под часами: шапка вкладки (город/дата/погода «Света», кнопки «Съёмок»)
+  },
   ring: {
     scope: 'month', trig: 0, now: process.env.LP_RING_NOW || '2026-10-26T13:00:00+07:00',   // позже сида: сдачи октября уже просрочены
     region: (nodes, log) => {
@@ -355,6 +359,27 @@ function analyze(name, r, opt) {
       });
       (out.ghosts || []).forEach((g, i) => bad(g <= 0.15, `покой ${i + 1}: следы прежнего месяца ${r3(g)}, нужно ≤ 0,15`));
     }
+    return res;
+  }
+
+  if (name === 'tabs') {
+    // Шапка не мигает: энергия полосы (отклонение пикселей от медианы кадра) ни на одном кадре перехода не падает
+    // ниже доли `DIP` от меньшей из энергий покоя до и после (пустой фон = 0, шапка = заметно больше).
+    const energy = f => {
+      const s = Array.from(f).sort((a, b) => a - b), med = s[s.length >> 1];
+      let t = 0; for (let i = 0; i < f.length; i++) t += Math.abs(f[i] - med);
+      return t / f.length;
+    };
+    const e = fr.data.map(energy);
+    res.tabs = ev.list.map((x, n) => {
+      const a = Math.max(0, x.i0 - 1), b = Math.min(fr.n - 1, x.i1 + 1);
+      let lo = Infinity, at = a; for (let k = a; k <= b; k++) if (e[k] < lo) { lo = e[k]; at = k; }
+      const rest = Math.min(e[a], e[b]);
+      let dark = 0; for (let k = a; k <= b; k++) if (rest > 0 && e[k] < 0.6 * rest) dark++;
+      return { n, from: e[a], to: e[b], min: lo, ratio: rest > 0 ? lo / rest : 1, frames: b - a + 1, at: at - a, dark, darkMs: dark * 1000 / (fr.n / fr.ts[fr.n - 1]) };
+    });
+    res.tabs.forEach(o => lines.push(`переход ${o.n + 1}: энергия шапки до ${r3(o.from)}, после ${r3(o.to)}, минимум в пути ${r3(o.min)} (кадр ${o.at} из ${o.frames}), доля от меньшей ${r3(o.ratio)}; кадров темнее 0,6 покоя: ${o.dark} (≈ ${ms(o.darkMs / 1000)} мс)`));
+    if (opt.check) res.tabs.forEach(o => bad(o.ratio >= 0.6, `переход ${o.n + 1}: шапка проваливается до ${r3(o.ratio)} от покоя, нужно ≥ 0,6`));
     return res;
   }
 

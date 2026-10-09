@@ -40,26 +40,30 @@ public struct LightScreenView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 24)
 
-                dome(telemetry, pal)
+                // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
+                Group {
+                    dome(telemetry, pal)
 
-                nextLight(telemetry, pal)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 2)
-                    .frame(height: 72, alignment: .top)
+                    nextLight(telemetry, pal)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 2)
+                        .frame(height: 72, alignment: .top)
 
-                telemetryList(telemetry, pal)
-                    .padding(.horizontal, 24)
+                    telemetryList(telemetry, pal)
+                        .padding(.horizontal, 24)
 
-                LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"))
-                    .padding(.horizontal, 24)
+                    LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"))
+                        .padding(.horizontal, 24)
 
-                // `.screen-action { margin-top: auto }`: в «Просто» кнопка
-                // ложится к низу, в «Астро» содержимое длиннее экрана и
-                // зазора нет вовсе.
-                Spacer(minLength: 0)
+                    // `.screen-action { margin-top: auto }`: в «Просто» кнопка
+                    // ложится к низу, в «Астро» содержимое длиннее экрана и
+                    // зазора нет вовсе.
+                    Spacer(minLength: 0)
 
-                actionButton(subtitle: telemetry.actionSubtitle, pal)
-                    .padding(.horizontal, 24)
+                    actionButton(subtitle: telemetry.actionSubtitle, pal)
+                        .padding(.horizontal, 24)
+                }
+                .tabRise()
             }
             .frame(minHeight: visibleHeight, alignment: .top)
         }
@@ -68,6 +72,7 @@ public struct LightScreenView: View {
         .safeAreaInset(edge: .bottom, spacing: 8) {
             TimebarView(model.timebar, showRibbon: model.proMode)
                 .shotNode("timebar")
+                .tabRise()
         }
         .background(pal.surface)
     }

@@ -3,7 +3,7 @@ import SwiftUI
 import LightPlanCore
 import LightPlanDomain
 
-/// Стенд малых движений «Съёмок» (29.2в): `-LPMotionBench month|week|bar|fan|tab|ring`. Делает то же, что палец,
+/// Стенд малых движений «Съёмок» (29.2в): `-LPMotionBench month|week|bar|fan|tab|tabs|ring`. Делает то же, что палец,
 /// теми же функциями, а кадры снимает `xcrun simctl io recordVideo` (`Tools/motion_bench.js` меряет по ним числа).
 /// Метки со временем — в файл `-LPPartLog`. Не часть приложения: только Debug.
 @MainActor
@@ -29,6 +29,11 @@ enum MotionBench {
             for _ in 0..<2 { mark("fan"); fan(); await wait(1.6) }
         case "tab":
             for t in [AppTab.light, .planner, .light, .planner] { mark("tab \(t)"); app.tab = t; await wait(1.6) }
+        case "tabs":
+            // Все двенадцать переходов между четырьмя вкладками, в обе стороны: обход полного графа K4 за 12 шагов.
+            let walk: [AppTab] = [.light, .map, .planner, .settings, .light, .planner, .map, .settings, .planner, .light, .settings, .map, .light]
+            app.tab = walk[0]; await wait(2)
+            for t in walk.dropFirst() { mark("tab \(t)"); app.tab = t; await wait(1.6) }
         case "ring":
             // Дни месяца с рангом «просрочено» — кольцо дышит только у них.
             let st = app.planner

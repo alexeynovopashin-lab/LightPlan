@@ -49,6 +49,8 @@ public struct PlannerScreenView: View {
                 DocsStrip(app: app).padding(.bottom, 30)
             }
             .frame(maxWidth: .infinity, alignment: .top)
+            // Содержимое под шапкой проявляется при смене вкладки (S1); шапка (`PlanTop`) не мигает.
+            .tabRise()
         }
         .scrollPosition($position)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.screen = $0 }

@@ -320,6 +320,16 @@ struct TabRise: ViewModifier {
     }
 }
 
+/// Содержимое вкладки под шапкой: проявление и подъём S1 по `screenShown`; шапка стоит на месте и не гаснет.
+private struct TabRiseBody: ViewModifier {
+    @Environment(\.screenShown) private var shown
+    func body(content: Content) -> some View { content.modifier(TabRise(shown: shown)) }
+}
+
+extension View {
+    func tabRise() -> some View { modifier(TabRiseBody()) }
+}
+
 /// Доля пути `p` проявления (0 — спрятана, 1 — на месте): прозрачность `p` и сдвиг вниз `8 · (1 − p)`.
 struct RiseEffect: ViewModifier, @preconcurrency Animatable {
     var p: Double

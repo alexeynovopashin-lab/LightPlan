@@ -64,6 +64,8 @@ public struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     SetHeader(title: "Light Plan", sub: t.t("set.proto"))
+                    // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
+                    Group {
                     VStack(spacing: 0) {
                         WebSeg(options: [(t.t("set.modeSimple"), false), (t.t("set.modePro"), true)],
                                selection: binding(\.pro), nodes: ["mode.simple", "mode.pro"], sky: app.settings.pro)
@@ -85,6 +87,8 @@ public struct SettingsView: View {
                     .padding(.top, 2)
                     .shotNode("nav")
                     if app.showsBuildLine { BuildLine(info: BuildInfo.current(), lexicon: t) }
+                    }
+                    .tabRise()
                 }
             }
             .background(Palette(colorScheme).surface)
