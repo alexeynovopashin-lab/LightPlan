@@ -60,3 +60,18 @@ extension View {
         #endif
     }
 }
+
+/// Узкий экран без узкого телефона: `-LPPanelWidth 320` (ширина экрана, pt) сажает сводку дня в панель такой ширины.
+/// Симуляторов iPhone SE 1-го поколения (320 pt) в iOS 26 нет. Вне стенда и в Release — ничего.
+extension View {
+    @ViewBuilder
+    func benchPanelWidth() -> some View {
+        #if DEBUG && os(iOS)
+        if let w = UserDefaults.standard.string(forKey: "LPPanelWidth").flatMap(Double.init) {
+            frame(width: CGFloat(w) - 40).frame(maxWidth: .infinity, alignment: .leading)
+        } else { self }
+        #else
+        self
+        #endif
+    }
+}

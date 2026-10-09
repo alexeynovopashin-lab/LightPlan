@@ -282,6 +282,8 @@ struct PlannerDayPanel: View {
     let f: PlannerFacts
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var still
+    /// Ширина раскрытой панели: по ней основная часть знает, сколько места у надписи «прогноза нет».
+    @State private var panelW: CGFloat = 0
 
     /// Свернуть или раскрыть сводку (шеврон и стенд движений): 0,45 с E1 по ширине и месту; «Уменьшение движения» — сразу.
     static func fold(_ app: AppModel, still: Bool = false) {
@@ -297,6 +299,8 @@ struct PlannerDayPanel: View {
                   frame: barFrame(pal, shut: shut),
                   main: main(pal, shut: shut),
                   chevron: chevron(pal, open: !shut))
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { panelW = $0 }
+            .benchPanelWidth()
             .padding(.horizontal, 20)
             .padding(.top, 6)
     }
@@ -329,7 +333,7 @@ struct PlannerDayPanel: View {
             if let g = goldenMin, g > 0 {
                 item("golden", f.durShort(Int(g.rounded())), pal.ink4, weight: 500, node: "dp.gold", pal: pal)
             }
-            Rectangle().fill(pal.hairline).frame(width: 1, height: 12)
+            Rectangle().fill(pal.hairline).frame(width: 1, height: 12).fixedSize()
             if let wx, let deg = f.temp(d) {
                 HStack(spacing: 3) {
                     Icon(wx.quality.signIconName, size: 17, line: 1.5).foregroundStyle(pal.ink)
@@ -338,15 +342,18 @@ struct PlannerDayPanel: View {
                     Text(temp).font(webFont(13, 600)).monospacedDigit().foregroundStyle(pal.ink)
                         .shotNode("dp.temp", text: temp)
                 }
+                .fixedSize()
             } else {
                 // Прогноза нет — надпись на месте знака и градусов; выдумки нет (28ж).
                 Text(f.forecastNote).font(webFont(12)).foregroundStyle(pal.ink4)
-                    .lineLimit(1)
+                    .lineLimit(1).minimumScaleFactor(0.7)
                     .shotNode("dp.wxnone", text: f.forecastNote)
             }
         }
         .padding(.leading, 12)
-        .fixedSize(horizontal: true, vertical: false)
+        // Показания остаются полной ширины (`fixedSize`), сжимается одна надпись «прогноза нет» (`lineLimit(1)` +
+        // `minimumScaleFactor(0.7)`, как в бете) — в ширине раскрытой основной части; пока панель не измерена, как было.
+        .modifier(OpenWidth(width: panelW > 0 ? panelW - 2 * FoldGeometry.inset - FoldGeometry.chevronWidth : nil))
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: FoldGeometry.barHeight)
         .clipped()
@@ -361,6 +368,7 @@ struct PlannerDayPanel: View {
             Text(text).font(webFont(13, weight)).monospacedDigit().foregroundStyle(color)
                 .shotNode(node, text: text)
         }
+        .fixedSize()
         .frame(height: 20)
     }
 
@@ -617,5 +625,13 @@ struct RowAct: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+/// Ширина основной части сводки: заданная — по ней надпись «прогноза нет» сжимается; не задана — по содержимому.
+private struct OpenWidth: ViewModifier {
+    let width: CGFloat?
+    func body(content: Content) -> some View {
+        if let width { content.frame(width: width, alignment: .leading) } else { content.fixedSize(horizontal: true, vertical: false) }
     }
 }
