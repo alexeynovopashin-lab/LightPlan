@@ -91,6 +91,11 @@ public struct PlannerScreenView: View {
         .onAppear { openStartLayer() }
         #if DEBUG && os(iOS)
         .task { if PartDayBench.on { await PartDayBench.run(app, part: part, fan: enterFromFan) } }
+        .task {
+            if MotionBench.on {
+                await MotionBench.run(app, flip: flip, fan: { withAnimation(PlanTop.fanToggle) { scopeOpen.toggle() } })
+            }
+        }
         #endif
         .onChange(of: nav.statsOpen || nav.searchOpen, initial: true) { _, open in app.plannerPageOpen = open }
         .onChange(of: st.scope, initial: true) { was, now in
@@ -216,11 +221,16 @@ public struct PlannerScreenView: View {
                 let dx = g.translation.width, dy = g.translation.height
                 guard abs(dx) >= 60, abs(dy) <= 40 else { return }
                 DayGripLog.note("swipe step dx=\(Int(dx))")
-                // День въезжает по кривой беты (E1); месяц и неделя — как были (их движение — 29.2в).
-                withAnimation(app.planner.scope == .day ? PlannerDayBody.slide : .snappy(duration: 0.22)) {
-                    app.planner.step(dx < 0 ? 1 : -1)
-                }
+                flip(dx < 0 ? 1 : -1)
             }
+    }
+
+    /// Листание вида на шаг (свайп и стенд движений: один путь).
+    func flip(_ dir: Int) {
+        // День въезжает по кривой беты (E1); месяц и неделя — как были (их движение — 29.2в).
+        withAnimation(app.planner.scope == .day ? PlannerDayBody.slide : .snappy(duration: 0.22)) {
+            app.planner.step(dir)
+        }
     }
 
     /// Первый показ дня ставит 09:00 на 10 pt ниже закреплённого блока (веб:
@@ -293,12 +303,15 @@ private struct PlanTop: View {
     let nav: PlannerNav
     @Environment(\.colorScheme) private var scheme
 
+    /// Открытие и закрытие веера видов (кнопка вида и стенд движений).
+    static let fanToggle = Animation.easeOut(duration: 0.16)
+
     var body: some View {
         let pal = Palette(scheme)
         let st = app.planner
         HStack(spacing: 6) {
             Button {
-                withAnimation(.easeOut(duration: 0.16)) { scopeOpen.toggle() }
+                withAnimation(Self.fanToggle) { scopeOpen.toggle() }
             } label: {
                 Icon(Self.icon(st.scope), size: 21, line: 1.6)
                     .foregroundStyle(pal.brass)

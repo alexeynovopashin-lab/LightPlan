@@ -285,6 +285,11 @@ struct PlannerDayPanel: View {
         .padding(.top, 6)
     }
 
+    /// Свернуть или раскрыть сводку (шеврон и стенд движений).
+    static func fold(_ app: AppModel) {
+        withAnimation(.snappy(duration: 0.35)) { app.dayFold.toggle() }
+    }
+
     private func bar(_ pal: Palette) -> some View {
         let d = app.planner.selected
         let sky = f.sky(d), wx = f.weather(d)
@@ -324,6 +329,7 @@ struct PlannerDayPanel: View {
         }
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1))
         .shotNode("dp.bar")
+        .motionGeo("dp.bar")
         .padding(.horizontal, 4)
     }
 
@@ -340,7 +346,7 @@ struct PlannerDayPanel: View {
     /// капсулой на черте (`.dp-bar.shut`).
     private func chevron(_ pal: Palette, open: Bool) -> some View {
         Button {
-            withAnimation(.snappy(duration: 0.35)) { app.dayFold.toggle() }
+            Self.fold(app)
         } label: {
             Icon("chevron", size: 16, line: 1.6)
                 .rotationEffect(.degrees(open ? -90 : 90))
