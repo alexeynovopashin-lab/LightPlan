@@ -14,8 +14,31 @@ struct LightSpoilerView: View {
 
     /// Пара снимков (28е): `-LPShotSpoiler 1` — раскрыт сразу и прокручен к плашке неба.
     private static let shotOpen = UserDefaults.standard.bool(forKey: "LPShotSpoiler")
+    /// `.pro-body { max-height: 0 → 1600px; transition: 0,5 с E1 }` и `.chv { transition: transform 0,35 с ease }`
+    /// беты: список раскрывается под кнопкой, а не выезжает сверху экрана (29.2г; `move(edge: .top)` вело его от
+    /// верха окна). Шеврон — отдельная кривая и отдельный `expanded`.
+    private static let revealAnimation = Animation.timingCurve(0.25, 1, 0.4, 1, duration: SpoilerReveal.revealDuration)
+    private static let chevronAnimation = Animation.timingCurve(0.25, 0.1, 0.25, 1, duration: SpoilerReveal.chevronDuration)
+    private static let maxHeight = SpoilerReveal.maxHeight
     @State private var expanded = LightSpoilerView.shotOpen
+    /// Список в дереве: от нажатия до конца сворачивания. Свёрнутого — нет вовсе (узлы пар снимков не меняются).
+    @State private var mounted = LightSpoilerView.shotOpen
+    /// Аналог `max-height` беты: растёт 0 → 1600, видимая высота — меньшая из неё и высоты списка.
+    @State private var reveal: CGFloat = LightSpoilerView.shotOpen ? LightSpoilerView.maxHeight : 0
+    @State private var bodyHeight: CGFloat = 0
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private func toggle() {
+        let opening = !expanded
+        if opening { mounted = true }
+        withAnimation(reduceMotion ? nil : Self.chevronAnimation) { expanded = opening }
+        withAnimation(reduceMotion ? nil : Self.revealAnimation, completionCriteria: .logicallyComplete) {
+            reveal = opening ? Self.maxHeight : 0
+        } completion: {
+            if !expanded { mounted = false }
+        }
+    }
 
     var body: some View {
         let pal = Palette(colorScheme)
@@ -25,17 +48,16 @@ struct LightSpoilerView: View {
                 // `#spoilerBtn`: отступ 6 сверху, поле 13, по центру столбики
                 // 17 (`--ink-4`), подпись 14/600 (`--ink-2`), шеврон 16 вниз
                 // (`--ink-4`, линия 2,4), зазоры 8.
-                Button {
-                    withAnimation(.easeInOut(duration: 0.3)) { expanded.toggle() }
-                } label: {
+                Button(action: toggle) {
                     HStack(spacing: 8) {
                         BarsGlyph()
                             .stroke(pal.ink4, style: StrokeStyle(lineWidth: 1.6 * 17 / 24, lineCap: .round, lineJoin: .round))
                             .frame(width: 17, height: 17)
                         Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.ink2)
+                        // Как у беты: вниз 90°, раскрытый — ещё +180° по часовой (вниз → влево → вверх).
                         Icon("chevron", size: 16, line: 2.4)
                             .foregroundStyle(pal.ink4)
-                            .rotationEffect(.degrees(expanded ? -90 : 90))
+                            .rotationEffect(.degrees(SpoilerReveal.chevronAngle(expanded: expanded)))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(13)
@@ -45,13 +67,18 @@ struct LightSpoilerView: View {
                 .shotNode("spoiler")
                 .padding(.top, 6)
 
-                if expanded {
+                if mounted {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
                             groupView(group, pal)
                         }
                     }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bodyHeight = $0 }
+                    .frame(height: SpoilerReveal.visibleHeight(natural: bodyHeight, reveal: reveal), alignment: .top)
+                    .clipped()
+                    .allowsHitTesting(expanded)
+                    .accessibilityHidden(!expanded)
                 }
             }
             .task {
@@ -113,6 +140,19 @@ struct LightSpoilerView: View {
             }
         }
     }
+}
+
+/// Числа раскрытия «Подробно» из беты (`.pro-body`, `.chv`): сами по себе, чтобы их держал тест, а не глаз.
+enum SpoilerReveal {
+    /// `.pro-body.open { max-height: 1600px }`.
+    static let maxHeight: CGFloat = 1600
+    /// `.pro-body { transition: max-height 0.5s E1 }`, `.chv { transition: transform 0.35s ease }`.
+    static let revealDuration = 0.5
+    static let chevronDuration = 0.35
+    /// Высота видимой части: `max-height` обрезает список, но не растягивает его.
+    static func visibleHeight(natural: CGFloat, reveal: CGFloat) -> CGFloat { max(0, min(natural, reveal)) }
+    /// `.chv.dn` — 90° (вниз), `.spoiler.open .chev` — ещё +180° по часовой (вниз → влево → вверх).
+    static func chevronAngle(expanded: Bool) -> Double { expanded ? 270 : 90 }
 }
 
 /// Столбики кнопки «Подробно» — свой SVG в разметке веба (`M5 20V11M10 20V4

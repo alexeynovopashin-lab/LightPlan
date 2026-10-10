@@ -101,6 +101,7 @@ make tapspot    tap a pin on the live canvas (network), MapLibre and MapKit: the
 make pinch      five pinches on the live MapLibre canvas: each zoom holds, the centre doesn't jump back (21б)
 make rotor      «Карта» under a scripted compass, 8 headings: north on screen within 1°, no void wedge (21а)
 make sims       this branch's simulator; ARGS=--prune deletes simulators of deleted branches
+make lightfit   «Подробно» on «Свет» (Astro): button bottom vs bottom-panel top on 15/16/16 Pro Max/17/17 Pro Max (red if hidden), 15 Pro Max and SE 3 for information; ARGS="--app <.app>" (29.2г)
 ```
 
 Build on Alexey's iPhone — for his word at the end of an iteration. Device: **iPhone ALno**

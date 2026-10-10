@@ -285,7 +285,7 @@ enum PlanTitleLayout {
 }
 
 /// `.plan-top`: вид слева (44), заголовок по оси экрана (поверх, 28и.3), три действия справа
-/// (по 34 через 8). Поле сверху — 12 от выреза, снизу 6.
+/// (по 34 через 8). Сверху — сразу под безопасной зоной (29.2г: у веба +12), снизу 6.
 private struct PlanTop: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
@@ -334,7 +334,6 @@ private struct PlanTop: View {
         }
         .overlay { titleButton(pal, rightButtons: app.questWaiting.count > 0 ? 4 : 3) }
         .padding(.horizontal, 16)
-        .padding(.top, 12)
         .padding(.bottom, 6)
     }
 

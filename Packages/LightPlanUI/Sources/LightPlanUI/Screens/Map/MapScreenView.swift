@@ -468,7 +468,7 @@ struct MapScreenView: View {
         .accessibilityLabel(app.lexicon.t("today.changePlace"))
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 24)
-        .padding(.top, top + 24)
+        .padding(.top, top)
         .padding(.bottom, 16)
         // Закладка в правом углу шапки (`.map-save`, поля −6 сверху и −8 справа),
         // перед ней вплотную — «Мои места» (`.map-list`, с первым местом).
@@ -485,7 +485,7 @@ struct MapScreenView: View {
                     .opacity(routeMode ? 0 : 1)
                     .allowsHitTesting(!routeMode)
             }
-            .padding(.top, top + 24 - 6)
+            .padding(.top, top - 6)
             .padding(.trailing, 24 - 8)
         }
         .background { glass(pal, outside: [.top, .horizontal]) }

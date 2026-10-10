@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: phone checkstep help parity blocks lang icons domain shots mapstyle mapref planner year tapspot pinch rotor sims glass
+.PHONY: phone checkstep help parity blocks lang icons domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -147,6 +147,10 @@ pinch:
 # им пользуются shots, tapspot, rotor. Ротор под подставным компасом.
 rotor:
 	@node Tools/rotor.js $(ARGS)
+
+# 29.2г: «Подробно» на «Свете» — нижний край кнопки против верхнего края панели, по моделям iPhone.
+lightfit:
+	@node Tools/light_fit.js $(ARGS)
 
 sims:
 	@node Tools/sim.js $(ARGS)
