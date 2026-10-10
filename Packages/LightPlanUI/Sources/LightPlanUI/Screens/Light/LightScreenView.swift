@@ -46,23 +46,27 @@ public struct LightScreenView: View {
                     .padding(.horizontal, 24)
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { headerBottom = $0 }
 
-                dome(telemetry, pal)
+                // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
+                Group {
+                    dome(telemetry, pal)
 
-                nextLight(telemetry, pal)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 2)
-                    .frame(height: 72, alignment: .top)
+                    nextLight(telemetry, pal)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 2)
+                        .frame(height: 72, alignment: .top)
 
-                telemetryList(telemetry, pal)
-                    .padding(.horizontal, 24)
+                    telemetryList(telemetry, pal)
+                        .padding(.horizontal, 24)
 
-                // `.screen-action { margin-top: auto }`: в «Просто» кнопка
-                // ложится к низу, в «Астро» содержимое длиннее экрана и
-                // зазора нет вовсе. «Подробно» в потоке больше нет: см. нижнюю полосу ниже.
-                Spacer(minLength: 0)
+                    // `.screen-action { margin-top: auto }`: в «Просто» кнопка
+                    // ложится к низу, в «Астро» содержимое длиннее экрана и
+                    // зазора нет вовсе. «Подробно» в потоке больше нет: см. нижнюю полосу ниже.
+                    Spacer(minLength: 0)
 
-                actionButton(subtitle: telemetry.actionSubtitle, pal)
-                    .padding(.horizontal, 24)
+                    actionButton(subtitle: telemetry.actionSubtitle, pal)
+                        .padding(.horizontal, 24)
+                }
+                .tabRise()
             }
             .frame(minHeight: visibleHeight, alignment: .top)
         }
@@ -85,6 +89,8 @@ public struct LightScreenView: View {
                 TimebarView(model.timebar, showRibbon: model.proMode)
                     .shotNode("timebar")
             }
+            // Вся нижняя полоса (кнопка + панель) поднимается вместе с вкладкой (29.2в); подложка стоит на месте.
+            .tabRise()
             .background(pal.surface)
             .shotNode("spoiler.dock")
         }

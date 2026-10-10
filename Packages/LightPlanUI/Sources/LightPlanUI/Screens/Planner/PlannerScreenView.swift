@@ -49,6 +49,8 @@ public struct PlannerScreenView: View {
                 DocsStrip(app: app).padding(.bottom, 30)
             }
             .frame(maxWidth: .infinity, alignment: .top)
+            // Содержимое под шапкой проявляется при смене вкладки (S1); шапка (`PlanTop`) не мигает.
+            .tabRise()
         }
         .scrollPosition($position)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.screen = $0 }
@@ -78,19 +80,22 @@ public struct PlannerScreenView: View {
             }
         }
         .overlay { PartDayLayer(app: app, f: f, part: part) }
-        .overlay(alignment: .topLeading) {
-            if scopeOpen { scopeMenu(pal, f) }
-        }
+        .overlay(alignment: .topLeading) { scopeMenu(pal, f) }
         .background(pal.surface.ignoresSafeArea())
         .simultaneousGesture(swipe)
         .modifier(OutsideTouch(grip: grip, fan: $fan, part: part))
         .coordinateSpace(name: plannerFanSpace)
         .overlay { EventFan(app: app, f: f, fan: $fan) }
         .edgeBackBase(app, .planner)
-        .overlay { PlannerLayers(app: app, f: f, nav: nav) }
+        .overlay { PlannerLayers(app: app, f: f, nav: nav, part: part) }
         .onAppear { openStartLayer() }
         #if DEBUG && os(iOS)
-        .task { if PartDayBench.on { await PartDayBench.run(app, part: part, fan: enterFromFan) } }
+        .task { if PartDayBench.on { await PartDayBench.run(app, part: part, nav: nav, fan: enterFromFan) } }
+        .task {
+            if MotionBench.on {
+                await MotionBench.run(app, flip: flip, fan: { withAnimation(PlanTop.fanToggle) { scopeOpen.toggle() } })
+            }
+        }
         #endif
         .onChange(of: nav.statsOpen || nav.searchOpen, initial: true) { _, open in app.plannerPageOpen = open }
         .onChange(of: st.scope, initial: true) { was, now in
@@ -127,6 +132,16 @@ public struct PlannerScreenView: View {
             }
             return
         }
+        // То же из ленты года (`partyear:<мс>`, 29.2б): лента открыта на месяце выбранного дня, тап по его числу.
+        if layer.hasPrefix("partyear:"), let ms = Double(layer.dropFirst(9)) {
+            app.startChapter = nil
+            nav.openLenta(from: app.planner.month)
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                part.enter(app, nav: nav, day: app.planner.selected, still: false, frozenAt: ms / 1000)
+            }
+            return
+        }
         if layer.hasPrefix("grip:") {
             let id = String(layer.dropFirst(5))
             if let s = app.sessions.first(where: { $0.id == id }) {
@@ -150,7 +165,9 @@ public struct PlannerScreenView: View {
     /// Веер видов (`.scope-menu`): под кнопкой вида на 8 pt, три строки —
     /// галочка текущего, знак, имя. Тап мимо закрывает.
     private func scopeMenu(_ pal: Palette, _ f: PlannerFacts) -> some View {
+        // Условие — внутри стопки: переход веера срабатывает, только когда он вставляется в уже стоящий контейнер.
         ZStack(alignment: .topLeading) {
+          if scopeOpen {
             Color.clear.contentShape(Rectangle()).ignoresSafeArea()
                 .onTapGesture { scopeOpen = false }
             VStack(spacing: 0) {
@@ -179,9 +196,11 @@ public struct PlannerScreenView: View {
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheetGlass))
             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.55), radius: 20, y: 18)
+            // `scopeIn` беты (C5): от scale 0,94 и −6 pt, точка роста — угол веера; переход на самом веере, до полей.
+            .transition(.scopeIn(still: still))
             .padding(.leading, 16)
             .padding(.top, 12 + 44 + 8)
-            .transition(.scale(scale: 0.96, anchor: .topLeading).combined(with: .opacity))
+          }
         }
     }
 
@@ -216,11 +235,16 @@ public struct PlannerScreenView: View {
                 let dx = g.translation.width, dy = g.translation.height
                 guard abs(dx) >= 60, abs(dy) <= 40 else { return }
                 DayGripLog.note("swipe step dx=\(Int(dx))")
-                // День въезжает по кривой беты (E1); месяц и неделя — как были (их движение — 29.2в).
-                withAnimation(app.planner.scope == .day ? PlannerDayBody.slide : .snappy(duration: 0.22)) {
-                    app.planner.step(dx < 0 ? 1 : -1)
-                }
+                flip(dx < 0 ? 1 : -1)
             }
+    }
+
+    /// Листание вида на шаг (свайп и стенд движений: один путь).
+    func flip(_ dir: Int) {
+        // День въезжает по кривой беты (E1 0,22 с); месяц и неделя скользят сбоку (E1 0,3 с, слово Алексея 07.10),
+        // при «Уменьшении движения» — сразу.
+        let motion: Animation? = app.planner.scope == .day ? PlannerDayBody.slide : still ? nil : Motion.flip
+        withAnimation(motion) { app.planner.step(dir) }
     }
 
     /// Первый показ дня ставит 09:00 на 10 pt ниже закреплённого блока (веб:
@@ -293,12 +317,15 @@ private struct PlanTop: View {
     let nav: PlannerNav
     @Environment(\.colorScheme) private var scheme
 
+    /// Открытие и закрытие веера видов (кнопка вида и стенд движений).
+    static let fanToggle = Animation.easeOut(duration: 0.16)
+
     var body: some View {
         let pal = Palette(scheme)
         let st = app.planner
         HStack(spacing: 6) {
             Button {
-                withAnimation(.easeOut(duration: 0.16)) { scopeOpen.toggle() }
+                withAnimation(Self.fanToggle) { scopeOpen.toggle() }
             } label: {
                 Icon(Self.icon(st.scope), size: 21, line: 1.6)
                     .foregroundStyle(pal.brass)

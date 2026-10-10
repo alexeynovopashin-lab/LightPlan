@@ -44,6 +44,8 @@ final class DayGrip {
         var y0: CGFloat = 0
     }
     @ObservationIgnored var hand: Hand?
+    /// Удержание пустого часа: час и минута, на которые встанет меню часа.
+    @ObservationIgnored var slotHold: (hour: Int, at: Int)?
     /// Жест поднят (веб `dlG.armed`): от подъёма или взятой ручки до отпускания.
     @ObservationIgnored var armed = false
 
@@ -100,8 +102,9 @@ enum DayGripLog {
     }
 }
 
-/// Как лента приняла касание (`DayGripPan.Start`).
-enum DayGripStart { case none, now, hold }
+/// Как лента приняла касание (`DayGripPan.Start`): мимо, сразу, удержанием
+/// события, удержанием пустого часа (меню часа).
+enum DayGripStart { case none, now, hold, slot }
 
 /// Жест ленты. `down` — касание (точка ленты, метка касания) и решение:
 /// мимо / берём сразу (ручка, тело выделенного) / после удержания.
@@ -290,7 +293,7 @@ final class DayGripPan: UIGestureRecognizer {
         case .none: state = .failed
         case .now: state = .began
         // Во всех режимах цикла: пока прокрутка ждёт нашего отказа, цикл может стоять в режиме слежения.
-        case .hold: perform(#selector(arm), with: nil, afterDelay: 0.45, inModes: [.common])
+        case .hold, .slot: perform(#selector(arm), with: nil, afterDelay: 0.45, inModes: [.common])
         }
     }
 
