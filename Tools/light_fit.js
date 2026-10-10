@@ -6,7 +6,8 @@
      зазор  = верх узла `timebar` (нижней панели) − низ узла `spoiler` (кнопки). > 0 — кнопка видна целиком и не
               касается панели; ≤ 0 — часть под панелью или вплотную;
      раскрытый вид (узел `spoiler.list`): верх списка не ближе 8 pt к низу шапки, низ списка не ниже верха кнопки, первый
-              ряд (`spoiler.g0`) не выше верха списка;
+              ряд (`spoiler.g0`) есть, не выше верха списка и пересекается с рамкой списка, у списка высота > 0
+              (`--selftest` — проверка самой проверки на пустом и нормальном списке, без симулятора);
      кнопка стоит на месте: её y в закрытом и раскрытом виде одинаков (закреплена, не уезжает с прокруткой);
      «воздух» (`tele.air`): низ строки против верха закреплённого низа (кнопки, если она закреплена, иначе панели) —
               для сведения: под закреплённым низом строка достижима прокруткой.
@@ -28,6 +29,36 @@ const args = {};
 for (let i = 2; i < process.argv.length; i++) {
   const a = process.argv[i];
   if (a.startsWith('--')) { const k = a.slice(2), nx = process.argv[i + 1]; if (nx && !nx.startsWith('--')) { args[k] = nx; i++; } else args[k] = true; }
+}
+/* Проверки раскрытого списка (29.2г-2: без первого ряда, высоты и пересечения рамок прежний прибор зеленел на пустом списке).
+   Вход — рамки {x,y,w,h}: list, g0 (первый ряд), sp (кнопка), head — низ шапки. Выход — список причин, пустой = зелёный. */
+function listProblems(list, g0, head, sp) {
+  const why = [];
+  if (!list) return ['нет узла spoiler.list'];
+  if (!(list.h > 0)) why.push('у списка нет высоты');
+  if (!g0) why.push('нет первого ряда spoiler.g0');
+  else if (list.h > 0 && (g0.y + g0.h <= list.y + 0.5 || g0.y >= list.y + list.h - 0.5 || g0.h <= 0)) why.push('первый ряд вне рамки списка');
+  if (list.y < head + 7.5) why.push('список ближе 8 pt к низу шапки');
+  if (list.y + list.h > sp.y + 0.5) why.push('список ниже верха кнопки');
+  if (g0 && g0.y < list.y - 0.5) why.push('первый ряд выше списка');
+  return why;
+}
+if (args.selftest) {
+  const sp = { x: 24, y: 700, w: 340, h: 44 }, head = 120;
+  const ok = { x: 24, y: 300, w: 340, h: 392 }, g = { x: 24, y: 310, w: 340, h: 30 };
+  const cases = [
+    ['нормальный', listProblems(ok, g, head, sp), false],
+    ['высота 0', listProblems({ ...ok, h: 0 }, g, head, sp), true],
+    ['нет первого ряда', listProblems(ok, undefined, head, sp), true],
+    ['ряд вне списка', listProblems(ok, { ...g, y: 720 }, head, sp), true],
+    ['нет списка', listProblems(undefined, g, head, sp), true],
+  ];
+  let bad = 0;
+  for (const [name, why, wantRed] of cases) {
+    const okc = (why.length > 0) === wantRed; if (!okc) bad++;
+    console.log((okc ? 'ok  ' : 'FAIL'), name.padEnd(18), why.length ? 'красный: ' + why.join('; ') : 'зелёный');
+  }
+  process.exit(bad ? 1 : 0);
 }
 if (!args.app) { console.error('нужен --app <путь к .app>'); process.exit(2); }
 const APP = path.resolve(args.app);
@@ -139,12 +170,7 @@ for (const model of MODELS) {
       if (gap <= 0) why.push('кнопка под панелью или вплотную');
       if (closedY === null) closedY = sp.y;
       else if (Math.abs(sp.y - closedY) > 0.5) why.push(`кнопка уехала на ${(sp.y - closedY).toFixed(1)}`);
-      if (view === 'open' && list) {
-        if (list.y < head + 7.5) why.push('список ближе 8 pt к низу шапки');
-        if (bottomOf(list) > sp.y + 0.5) why.push('список ниже верха кнопки');
-        if (g0 && g0.y < list.y - 0.5) why.push('первый ряд выше списка');
-      }
-      if (view === 'open' && !list) why.push('нет узла spoiler.list');
+      if (view === 'open') why.push(...listProblems(list, g0, head, sp));
       const limit = dock ? Math.min(dock.y, tb.y) : tb.y;
       const bad = modern && why.length > 0; if (bad) red++;
       console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, f1(head).padStart(9),
