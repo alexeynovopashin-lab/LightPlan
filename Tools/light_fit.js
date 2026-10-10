@@ -1,20 +1,21 @@
 #!/usr/bin/env node
-/* «Подробно» на экране «Свет» — видна ли кнопка без прокрутки (29.2г) и куда встаёт раскрытый список (29.2г-2).
+/* «Подробно» на экране «Свет»: где стоит кнопка относительно нижней панели (29.2г) и куда раскрывается список (29.2г-3).
    Для каждой модели iPhone, обеих тем и четырёх текстов («спокойно», «сильный ветер», ночь с «Теней нет», «дымка» — все восемь строк) ставит
    сборку Debug на свой симулятор `LP29d <модель>`, открывает «Свет» в «Астро» (кнопка есть только там) и читает рамки
    из `-LPShotReport`, в двух видах: закрытый и раскрытый (`-LPShotSpoiler 2`: раскрыт и стоит в начале). Меряет:
-     зазор  = верх узла `timebar` (нижней панели) − низ узла `spoiler` (кнопки). > 0 — кнопка видна целиком и не
-              касается панели; ≤ 0 — часть под панелью или вплотную;
-     раскрытый вид (узел `spoiler.list`): верх списка не ближе 8 pt к низу шапки, низ списка не ниже верха кнопки, первый
-              ряд (`spoiler.g0`) есть, не выше верха списка и пересекается с рамкой списка, у списка высота > 0
-              (`--selftest` — проверка самой проверки на пустом и нормальном списке, без симулятора);
-     кнопка стоит на месте: её y в закрытом и раскрытом виде одинаков (закреплена, не уезжает с прокруткой);
-     «воздух» (`tele.air`): низ строки против верха закреплённого низа (кнопки, если она закреплена, иначе панели) —
-              для сведения: под закреплённым низом строка достижима прокруткой.
-   Красный (выход 1) — только у «современных» (15, 16, 16 Pro Max, 17, 17 Pro Max); 15 Pro Max и SE 3 печатаются
-   для сведения: прокрутка там допустима (слово Алексея 09.10), но наезда быть не должно.
+     зазор  = верх узла `timebar` (нижней панели) − низ узла `spoiler` (кнопки). Это ИЗМЕРЕНИЕ, не условие: кнопка в
+              потоке прокрутки, её видимость без прокрутки зависит от модели (слово Алексея 10.10: решит отдельно);
+              ≤ 0 печатается пометкой «под панелью», красным не считается. `--min-gap <pt>` включает порог (0 — как
+              требовала версия 29.2г: кнопка видна целиком);
+     раскрытый вид (узлы `spoiler.list`, `spoiler.g0`): список начинается у низа кнопки (над кнопкой 0 px), шапку не
+              накрывает, у него высота > 0, первый ряд есть, лежит в рамке списка и начинается у её верха
+              (`--selftest` — проверка самой проверки: нормальный список и испорченные, без симулятора);
+     кнопка стоит на месте: её y в закрытом и раскрытом виде одинаков;
+     «воздух» (`tele.air`): низ строки против верха панели — для сведения (строка достижима прокруткой).
+   Красный (выход 1) — только структура: нет узла, список вне места, кнопка уехала.
 
-     node Tools/light_fit.js --app <путь к .app> [--models iPhone-15,iPhone-17] [--views closed,open] [--cases calm,wind,night,haze] [--ribbon drum|lane] [--mode simple] [--out <папка>] [--keep]
+     node Tools/light_fit.js --app <путь к .app> [--models iPhone-15,iPhone-17] [--views closed,open] [--cases calm,wind,night,haze] [--ribbon drum|lane] [--mode simple] [--min-gap 0] [--out <папка>] [--keep]
+     node Tools/light_fit.js --selftest
 
    Модели — имена `SimDeviceType`. Симуляторы по одному: два загруженных разом заклинивали `simctl launch` (16 ГБ,
    своп); после модели симулятор гасится, созданные — удаляются, если нет `--keep`. */
@@ -30,42 +31,51 @@ for (let i = 2; i < process.argv.length; i++) {
   const a = process.argv[i];
   if (a.startsWith('--')) { const k = a.slice(2), nx = process.argv[i + 1]; if (nx && !nx.startsWith('--')) { args[k] = nx; i++; } else args[k] = true; }
 }
-/* Проверки раскрытого списка (29.2г-2: без первого ряда, высоты и пересечения рамок прежний прибор зеленел на пустом списке).
-   Вход — рамки {x,y,w,h}: list, g0 (первый ряд), sp (кнопка), head — низ шапки. Выход — список причин, пустой = зелёный. */
+/* Проверки раскрытого списка: без высоты и первого ряда прежний прибор зеленел на пустом списке (замечание ревью 29.2г-2).
+   Вход — рамки {x,y,w,h}: list, g0 (первая группа списка), sp (кнопка), head — низ шапки. Выход — список причин, пустой = зелёный. */
 function listProblems(list, g0, head, sp) {
   const why = [];
   if (!list) return ['нет узла spoiler.list'];
   if (!(list.h > 0)) why.push('у списка нет высоты');
   if (!g0) why.push('нет первого ряда spoiler.g0');
-  else if (list.h > 0 && (g0.y + g0.h <= list.y + 0.5 || g0.y >= list.y + list.h - 0.5 || g0.h <= 0)) why.push('первый ряд вне рамки списка');
-  if (list.y < head + 7.5) why.push('список ближе 8 pt к низу шапки');
-  if (list.y + list.h > sp.y + 0.5) why.push('список ниже верха кнопки');
-  if (g0 && g0.y < list.y - 0.5) why.push('первый ряд выше списка');
+  else {
+    if (list.h > 0 && (g0.y + g0.h <= list.y + 0.5 || g0.y >= list.y + list.h - 0.5 || g0.h <= 0)) why.push('первый ряд вне рамки списка');
+    if (Math.abs(g0.y - list.y) > 0.5) why.push(`первый ряд не у верха списка (${(g0.y - list.y).toFixed(1)})`);
+  }
+  const under = sp.y + sp.h;
+  if (list.y < under - 0.5) why.push(`список заходит на кнопку (${(under - list.y).toFixed(1)} над её низом)`);
+  else if (list.y > under + 0.5) why.push(`список не вплотную под кнопкой (зазор ${(list.y - under).toFixed(1)})`);
+  if (list.y < head - 0.5) why.push('список накрывает шапку');
   return why;
 }
 if (args.selftest) {
-  const sp = { x: 24, y: 700, w: 340, h: 44 }, head = 120;
-  const ok = { x: 24, y: 300, w: 340, h: 392 }, g = { x: 24, y: 310, w: 340, h: 30 };
+  const sp = { x: 24, y: 700, w: 340, h: 43 }, head = 120;
+  const ok = { x: 24, y: 743, w: 340, h: 400 }, g = { x: 24, y: 743, w: 340, h: 120 };
   const cases = [
     ['нормальный', listProblems(ok, g, head, sp), false],
     ['высота 0', listProblems({ ...ok, h: 0 }, g, head, sp), true],
     ['нет первого ряда', listProblems(ok, undefined, head, sp), true],
-    ['ряд вне списка', listProblems(ok, { ...g, y: 720 }, head, sp), true],
+    ['ряд вне списка', listProblems(ok, { ...g, y: 1200 }, head, sp), true],
+    ['ряд не у верха', listProblems(ok, { ...g, y: 760 }, head, sp), true],
     ['нет списка', listProblems(undefined, g, head, sp), true],
+    ['растёт вверх', listProblems({ ...ok, y: 300, h: 400 }, { ...g, y: 300 }, head, sp), true],
+    ['с зазором под кнопкой', listProblems({ ...ok, y: 790 }, { ...g, y: 790 }, head, sp), true],
+    ['накрывает шапку', listProblems({ ...ok, y: 93 }, { ...g, y: 93 }, head, { ...sp, y: 50 }), true],
   ];
   let bad = 0;
   for (const [name, why, wantRed] of cases) {
     const okc = (why.length > 0) === wantRed; if (!okc) bad++;
-    console.log((okc ? 'ok  ' : 'FAIL'), name.padEnd(18), why.length ? 'красный: ' + why.join('; ') : 'зелёный');
+    console.log((okc ? 'ok  ' : 'FAIL'), name.padEnd(22), why.length ? 'красный: ' + why.join('; ') : 'зелёный');
   }
   process.exit(bad ? 1 : 0);
 }
 if (!args.app) { console.error('нужен --app <путь к .app>'); process.exit(2); }
 const APP = path.resolve(args.app);
 const OUT = path.resolve(args.out || path.join(os.tmpdir(), 'lp-light-fit'));
-/* 15 Pro Max — телефон Алексея: красный и у него, хотя в списке «современных» слова от 09.10 его нет. */
-const MODERN = ['iPhone-15', 'iPhone-15-Pro-Max', 'iPhone-16', 'iPhone-16-Pro-Max', 'iPhone-17', 'iPhone-17-Pro-Max'];
-const MODELS = (args.models || [...MODERN, 'iPhone-SE-3rd-generation'].join(',')).split(',');
+/* 15 Pro Max — телефон Алексея; SE 3 — для сведения (прокрутка там допустима, слово Алексея 09.10). */
+const ALL = ['iPhone-15', 'iPhone-15-Pro-Max', 'iPhone-16', 'iPhone-16-Pro-Max', 'iPhone-17', 'iPhone-17-Pro-Max', 'iPhone-SE-3rd-generation'];
+const MODELS = (args.models || ALL.join(',')).split(',');
+const MIN_GAP = args['min-gap'] === undefined ? null : Number(args['min-gap']);
 const VIEWS = (args.views || 'closed,open').split(',');
 const RUNTIME = 'com.apple.CoreSimulator.SimRuntime.iOS-26-5';
 const BUNDLE = 'Novopashin.LightPlan';
@@ -146,41 +156,43 @@ function shoot(udid, theme, c, view, dir) {
 }
 
 const bottomOf = n => n.y + n.h;
-let red = 0;
+let red = 0, under = 0, runs = 0;
 const f1 = v => v.toFixed(1).padStart(7);
 console.log('модель'.padEnd(26), 'тема'.padEnd(6), 'текст'.padEnd(6), 'вид'.padEnd(7), 'окно'.padEnd(10),
-  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−низ');
+  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель');
 for (const model of MODELS) {
   const { udid, created } = device(model);
   run('xcrun', ['simctl', 'install', udid, APP]);
-  const modern = MODERN.includes(model);
   for (const theme of ['dark', 'light']) for (const c of CASES) {
     let closedY = null;
     for (const view of VIEWS) {
       const j = shoot(udid, theme, c, view, path.join(OUT, model, theme + '-' + c.name + '-' + view)), n = j.nodes;
-      const sp = n.spoiler, tb = n.timebar, dock = n['spoiler.dock'], list = n['spoiler.list'], g0 = n['spoiler.g0'], air = n['tele.air'];
+      const sp = n.spoiler, tb = n.timebar, list = n['spoiler.list'], g0 = n['spoiler.g0'], air = n['tele.air'];
       const head = Math.max(...['header.note', 'wx.lo', 'wx.hi', 'wx.none'].filter(k => n[k]).map(k => bottomOf(n[k])));
       const win = `${Math.round(j.size[0])}×${Math.round(j.size[1] + j.safe[0] + j.safe[1])}`.padEnd(10);
+      runs++;
       if (args.mode === 'simple' && tb && !sp) {
         console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, '«Просто»: кнопки нет, панель сверху', f1(tb.y).trim()); continue;
       }
       if (!sp || !tb) { console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, 'нет узла spoiler/timebar'); red++; continue; }
       const gap = tb.y - bottomOf(sp);
-      const why = [];
-      if (gap <= 0) why.push('кнопка под панелью или вплотную');
+      const why = [], note = [];
+      if (gap <= 0) { note.push('под панелью'); if (view === 'closed' || VIEWS.length === 1) under++; }
+      if (MIN_GAP !== null && gap < MIN_GAP) why.push(`зазор ${gap.toFixed(1)} < ${MIN_GAP}`);
       if (closedY === null) closedY = sp.y;
       else if (Math.abs(sp.y - closedY) > 0.5) why.push(`кнопка уехала на ${(sp.y - closedY).toFixed(1)}`);
       if (view === 'open') why.push(...listProblems(list, g0, head, sp));
-      const limit = dock ? Math.min(dock.y, tb.y) : tb.y;
-      const bad = modern && why.length > 0; if (bad) red++;
+      if (why.length) red++;
       console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, f1(head).padStart(9),
         (f1(sp.y) + '/' + f1(bottomOf(sp)).trim()).padStart(16), f1(tb.y).padStart(12), f1(gap),
         (list ? f1(list.y) + '/' + f1(bottomOf(list)).trim() : '—').padStart(16), (g0 ? f1(g0.y) : '—').padStart(8),
-        (air ? f1(bottomOf(air) - limit) : '—').padStart(11), why.length ? (modern ? ' ← красный: ' : ' ← ') + why.join('; ') : '');
+        (air ? f1(bottomOf(air) - tb.y) : '—').padStart(13),
+        why.length ? ' ← красный: ' + why.join('; ') : note.length ? ' · ' + note.join('; ') : '');
     }
   }
   run('xcrun', ['simctl', 'shutdown', udid], { stdio: 'ignore' });
   if (created && !args.keep) run('xcrun', ['simctl', 'delete', udid], { stdio: 'ignore' });
 }
-console.log(red ? `\nна современных не сошлось в ${red} прогонах (см. «красный»)` : '\nкнопка видна, список встаёт между шапкой и кнопкой, кнопка стоит на месте — на всех современных');
+console.log(red ? `\nне сошлось в ${red} из ${runs} прогонов (см. «красный»)`
+  : `\nсписок встаёт под кнопкой, шапку не накрывает, кнопка стоит на месте — во всех ${runs} прогонах; кнопка под панелью в ${under} (для сведения)`);
 process.exit(red ? 1 : 0);

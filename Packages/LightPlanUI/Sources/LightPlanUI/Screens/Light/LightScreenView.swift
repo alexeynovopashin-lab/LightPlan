@@ -19,12 +19,6 @@ public struct LightScreenView: View {
     /// Рамка купола и показаний в ней — светило пальцем (19в).
     @State private var domeSize = CGSize(width: 0, height: DomeView.height)
     @State private var readoutFrame = CGRect.null
-    /// «Подробно» (29.2г-2): кнопка закреплена над нижней панелью, список растёт вверх над ней. Место для списка —
-    /// от низа шапки (в покое, то есть без учёта прокрутки) до верха кнопки; обе рамки в окне.
-    @State private var spoiler = SpoilerState()
-    @State private var headerBottom: CGFloat = 0
-    @State private var scrolledBy: CGFloat = 0
-    @State private var spoilerTop: CGFloat = 0
 
     public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {}) {
         self.model = model
@@ -44,7 +38,6 @@ public struct LightScreenView: View {
             VStack(spacing: 0) {
                 header(telemetry.header, note: telemetry.forecastNote, pal)
                     .padding(.horizontal, 24)
-                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { headerBottom = $0 }
 
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
@@ -58,9 +51,12 @@ public struct LightScreenView: View {
                     telemetryList(telemetry, pal)
                         .padding(.horizontal, 24)
 
+                    LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"))
+                        .padding(.horizontal, 24)
+
                     // `.screen-action { margin-top: auto }`: в «Просто» кнопка
                     // ложится к низу, в «Астро» содержимое длиннее экрана и
-                    // зазора нет вовсе. «Подробно» в потоке больше нет: см. нижнюю полосу ниже.
+                    // зазора нет вовсе.
                     Spacer(minLength: 0)
 
                     actionButton(subtitle: telemetry.actionSubtitle, pal)
@@ -72,27 +68,10 @@ public struct LightScreenView: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0 }
-        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in scrolledBy = y }
-        // Нижняя полоса: «Подробно» (только «Астро», как `.pro` веба) над панелью времени, зазор 8. Кнопка стоит на
-        // месте при любой прокрутке; список накладкой над ней, нижним краем на её верх, растёт вверх.
         .safeAreaInset(edge: .bottom, spacing: 8) {
-            VStack(spacing: 8) {
-                if model.proMode {
-                    LightSpoilerButton(state: spoiler, title: model.lexiconWord("today.details"))
-                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { spoilerTop = $0 }
-                        .overlay(alignment: .top) {
-                            LightSpoilerList(state: spoiler, groups: telemetry.proGroups,
-                                             limit: SpoilerReveal.listLimit(buttonTop: spoilerTop, headerBottom: headerBottom + scrolledBy))
-                                .alignmentGuide(.top) { $0[.bottom] }
-                        }
-                }
-                TimebarView(model.timebar, showRibbon: model.proMode)
-                    .shotNode("timebar")
-            }
-            // Вся нижняя полоса (кнопка + панель) поднимается вместе с вкладкой (29.2в); подложка стоит на месте.
-            .tabRise()
-            .background(pal.surface)
-            .shotNode("spoiler.dock")
+            TimebarView(model.timebar, showRibbon: model.proMode)
+                .shotNode("timebar")
+                .tabRise()
         }
         .background(pal.surface)
     }

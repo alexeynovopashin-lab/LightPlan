@@ -101,7 +101,7 @@ make tapspot    tap a pin on the live canvas (network), MapLibre and MapKit: the
 make pinch      five pinches on the live MapLibre canvas: each zoom holds, the centre doesn't jump back (21б)
 make rotor      «Карта» under a scripted compass, 8 headings: north on screen within 1°, no void wedge (21а)
 make sims       this branch's simulator; ARGS=--prune deletes simulators of deleted branches
-make lightfit   «Подробно» on «Свет» (Astro), closed and open: gap button↔bottom panel (> 0), open list between header bottom and button top, button doesn't move; 15/15 Pro Max/16/16 Pro Max/17/17 Pro Max red, SE 3 for information; ARGS="--app <.app> [--ribbon lane] [--mode simple]" (29.2г, 29.2г-2)
+make lightfit   «Подробно» on «Свет» (Astro), closed and open: MEASURES gap button↔bottom panel (not a pass/fail; `--min-gap` makes it one), open list starts at the button bottom, header not covered, button doesn't move; 7 models × 2 themes × 4 texts; ARGS="--app <.app> [--views closed,open] [--cases calm,wind,night,haze] [--ribbon lane] [--mode simple] [--min-gap 0]"; `node Tools/light_fit.js --selftest` checks the checker (29.2г, 29.2г-3)
 ```
 
 Build on Alexey's iPhone — for his word at the end of an iteration. Device: **iPhone ALno**
