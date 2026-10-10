@@ -147,4 +147,38 @@ struct DayGripTests {
                                        slot: DayLanes.Slot(top: 532, bottom: 608, column: 1, columns: 2), width: 440)
         #expect(half == CGRect(x: 255, y: 532, width: 181, height: 76))
     }
+
+    /// Багфикс 10.10: кнопки меню часа «съёмка» и «встреча» только закрывали меню.
+    /// Каждая кнопка открывает своё на выбранное время; час после полуночи — завтра.
+    @Test func slotMenuActsOpenTheirSheetAtTheHour() throws {
+        let app = model([])
+        app.openFromSlot(.shoot, day: Self.day, at: 930)
+        let shoot = try #require(app.form)
+        #expect(shoot.mode == .shoot && shoot.day == Self.day && shoot.start == 930)
+
+        let meet = model([])
+        meet.openFromSlot(.meet, day: Self.day, at: 600)
+        let m = try #require(meet.form)
+        #expect(m.mode == .meet && m.day == Self.day && m.start == 600)
+
+        let busy = model([])
+        busy.openFromSlot(.busy, day: Self.day, at: 1470)
+        let b = try #require(busy.blockSheet)
+        #expect(b.block.from == Self.day.adding(days: 1) && b.block.start == 30 && !b.block.allDay && !b.editing)
+        #expect(busy.form == nil)
+    }
+
+    /// Удержание пустого часа берёт час и получас, как тап; меню часа — над
+    /// лентой, и касание в нём жест ленты не забирает.
+    @Test func slotHoldPointAndMenuFrame() {
+        let h = PlannerDayBody.hourH
+        #expect(PlannerDayBody.slotAt(y: 15 * h + 2) == (15, 900))
+        #expect(PlannerDayBody.slotAt(y: 15 * h + h * 0.75) == (15, 930))
+        #expect(PlannerDayBody.slotAt(y: 25 * h + 40) == (24, 1470))
+        #expect(PlannerDayBody.slotAt(y: -5) == (0, 0))
+        let m = PlannerDayBody.menuFrame(hour: 15, width: 440)
+        #expect(m == CGRect(x: 88, y: 16 * h, width: 328, height: 66))
+        // У последнего часа меню встаёт над ним.
+        #expect(PlannerDayBody.menuFrame(hour: 24, width: 440).maxY == 24 * h)
+    }
 }

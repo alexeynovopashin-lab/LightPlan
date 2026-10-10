@@ -84,6 +84,18 @@ extension AppModel {
         openCleanForm(day: d, start: start, fromLight: fromLight, mode: mode)
     }
 
+    /// Действие меню часа на ленте дня (веб `.slot-menu`): съёмка и встреча — форма на
+    /// это время, «занять» — два часа с него. `at` — минута дня, с 1440 — уже завтра.
+    /// Съёмка и встреча до этой правки только закрывали меню (багфикс 10.10).
+    public func openFromSlot(_ act: SlotAct, day: CivilDate, at: Int) {
+        let d = at >= 1440 ? day.adding(days: 1) : day, m = at % 1440
+        switch act {
+        case .shoot: openForm(day: d, start: m, fromLight: false)
+        case .meet: openForm(day: d, start: m, fromLight: false, mode: .meet)
+        case .busy: openBlockSheet(day: d, at: m)
+        }
+    }
+
     private func openCleanForm(day d: CivilDate, start: Int?, fromLight: Bool, mode: FormMode) {
         formIsDraft = false
         let genre = lastFormGenre
@@ -468,3 +480,6 @@ extension AppModel {
         return String((0..<10).map { _ in chars.randomElement()! })
     }
 }
+
+/// Три действия меню часа на ленте дня.
+public enum SlotAct: Sendable, CaseIterable { case shoot, meet, busy }

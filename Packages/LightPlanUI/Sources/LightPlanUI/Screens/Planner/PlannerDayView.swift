@@ -221,20 +221,16 @@ struct PlannerDayBody: View {
     /// Меню часа (`.slot-menu`): время и три действия под выбранным часом; у
     /// последних часов опустить некуда — встаёт над ним. Сетку не сдвигает.
     private func slotMenu(_ a: (hour: Int, at: Int), _ pal: Palette) -> some View {
-        let menuH: CGFloat = 66, gridH = 25 * Self.hourH
-        let below = CGFloat(a.hour + 1) * Self.hourH
-        let top = below + menuH > gridH ? max(0, CGFloat(a.hour) * Self.hourH - menuH) : below
-        let acts: [(String, String)] = [("camera", "day.actShoot"), ("guests", "day.actMeet"), ("lock", "day.actBusy")]
+        let top = Self.menuTop(hour: a.hour)
+        let acts: [(String, String, SlotAct)] = [("camera", "day.actShoot", .shoot), ("guests", "day.actMeet", .meet),
+                                                 ("lock", "day.actBusy", .busy)]
         return HStack(spacing: 8) {
             Text(f.fmt(Double(a.at % 1440))).font(webFont(13, 650)).monospacedDigit().foregroundStyle(pal.brass)
-            ForEach(acts, id: \.1) { ic, key in
+            ForEach(acts, id: \.1) { ic, key, act in
                 Button {
                     armed = nil
-                    // «занять» — два часа с этого часа (22); съёмка и встреча — формы 23–24.
-                    if key == "day.actBusy" {
-                        let d = app.planner.selected
-                        app.openBlockSheet(day: a.at >= 1440 ? d.adding(days: 1) : d, at: a.at % 1440)
-                    }
+                    DayGripLog.note("slot menu \(act) at=\(a.at)")
+                    app.openFromSlot(act, day: app.planner.selected, at: a.at)
                 } label: {
                     VStack(spacing: 4) {
                         Icon(ic, size: 19, line: 1.5).foregroundStyle(pal.brass)
@@ -252,6 +248,24 @@ struct PlannerDayBody: View {
         .padding(.leading, 24 + 64).padding(.trailing, 24)
         .padding(.top, top)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    static let menuH: CGFloat = 66
+    /// Верх меню часа: под часом, у последних часов — над ним.
+    nonisolated static func menuTop(hour: Int) -> CGFloat {
+        let gridH = 25 * hourH, below = CGFloat(hour + 1) * hourH
+        return below + menuH > gridH ? max(0, CGFloat(hour) * hourH - menuH) : below
+    }
+
+    /// Рамка меню часа на ленте: касание в ней — кнопкам меню, не жесту ленты.
+    nonisolated static func menuFrame(hour: Int, width: CGFloat) -> CGRect {
+        CGRect(x: 24 + 64, y: menuTop(hour: hour), width: max(0, width - 24 - 64 - 24), height: menuH)
+    }
+
+    /// Час и получас под точкой ленты — как у тапа: верх часа «:00», низ «:30».
+    nonisolated static func slotAt(y: CGFloat) -> (hour: Int, at: Int) {
+        let h = min(24, max(0, Int((y / hourH).rounded(.down))))
+        return (h, h * 60 + (y - CGFloat(h) * hourH > hourH / 2 ? 30 : 0))
     }
 
     /// Цвет оси в минуту дня (веб `phaseCol`): ночь, синий час, рассвет,
@@ -447,7 +461,7 @@ struct PlannerDayBody: View {
             began: { _ in gripBegan(items, slots) },
             moved: { p in gripMoved(p) },
             ended: { cancelled in gripEnded(cancelled, items, slots) },
-            reset: { if !grip.armed { grip.hand = nil } },
+            reset: { if !grip.armed { grip.hand = nil; grip.slotHold = nil } },
             autoScroll: { grip.live != nil })
     }
 
@@ -459,8 +473,15 @@ struct PlannerDayBody: View {
                           _ slots: [DayLanes.Slot?]) -> DayGripStart {
         grip.laneTouch = stamp
         grip.hand = nil
+        grip.slotHold = nil
         closeLaneFan()
         let w = laneWidth
+        // Меню часа лежит над лентой: его кнопки жест ленты не трогает.
+        if let a = armed, Self.menuFrame(hour: a.hour, width: w).contains(p) {
+            DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) menu")
+            return .none
+        }
+        var deselected = false
         if let k = selectedIndex(items) {
             let it = items[k], span = shown(it)
             let r = Self.rect(start: span.start, end: span.end, slot: slots[k], width: w)
@@ -472,6 +493,7 @@ struct PlannerDayBody: View {
             if r.contains(p) { return take(it, .move, hold: it.session.map { Nest.span(of: $0) != nil } ?? true, p) }
             grip.deselect()
             grip.swallowTill = DayGrip.clock + 0.45
+            deselected = true
             DayGripLog.note("deselect lane")
         }
         // Верхний блок под пальцем решает: занятость или вчерашний хвост сверху
@@ -482,8 +504,12 @@ struct PlannerDayBody: View {
             if !Self.grabbable(it) { DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) none(\(it.kind.rawValue))"); return .none }
             return take(it, .move, hold: true, p)
         }
-        DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) none")
-        return .none
+        // Пустой час: удержание открывает меню часа, как тап (багфикс 10.10 — раньше
+        // удержание не делало ничего). Касание, снявшее выделение, — нет.
+        if deselected { DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) none"); return .none }
+        grip.slotHold = Self.slotAt(y: p.y)
+        DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) slot \(grip.slotHold!.at)")
+        return .slot
     }
 
     private func take(_ it: DayItem, _ mode: DayDrag.Mode, hold: Bool, _ p: CGPoint) -> DayGripStart {
@@ -501,6 +527,14 @@ struct PlannerDayBody: View {
     /// Подъём (веб `dlArm`). Удержание выделяет и щёлкает; непустую съёмку не
     /// поднимает — ручки и веер встают сразу.
     private func gripBegan(_ items: [DayItem], _ slots: [DayLanes.Slot?]) {
+        if grip.hand == nil, let s = grip.slotHold {
+            grip.armed = true
+            grip.swallowTill = .infinity
+            grip.tapLift()
+            armed = s
+            DayGripLog.note("slot hold \(s.at)")
+            return
+        }
         guard let h = grip.hand else { return }
         grip.armed = true
         grip.swallowTill = .infinity
@@ -538,6 +572,14 @@ struct PlannerDayBody: View {
     /// веер; тап по выделенному — карточка. Касание отняла система — ничего не
     /// пишем. После жеста тап 0,45 с не открывает ни карточку, ни меню часа.
     private func gripEnded(_ cancelled: Bool, _ items: [DayItem], _ slots: [DayLanes.Slot?]) {
+        if grip.hand == nil, grip.slotHold != nil {
+            // Меню уже открыто удержанием; отпускание его не закрывает тапом часа.
+            grip.slotHold = nil
+            grip.armed = false
+            grip.armedEnd = DayGrip.clock
+            grip.swallowTill = DayGrip.clock + 0.45
+            return
+        }
         guard let h = grip.hand else { return }
         let l = grip.live
         grip.hand = nil
