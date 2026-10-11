@@ -93,7 +93,11 @@ struct MoodboardFolder: View {
         }
         .alert(t.t("mb.selDelTitle", ["n": "\(app.mb.pick?.count ?? 0)"]), isPresented: $confirmRemove) {
             Button(t.t("ask.cancel"), role: .cancel) {}
-            Button(t.t("mb.selDelOk"), role: .destructive) { app.mbRemovePicked() }
+            Button(t.t("mb.selDelOk"), role: .destructive) {
+                // Корзина (29.7): отмеченные кадры стягиваются в круг; со съёмки они снимаются в глоток.
+                let keys = Set((app.mb.pick?.ids ?? []).map { "frame." + $0 })
+                app.flyToBin(keys) { app.mbRemovePicked() }
+            }
         } message: { Text(t.t("mb.selDelSub")) }
     }
 
@@ -334,6 +338,7 @@ struct MoodboardFolder: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { tap() }
         .opacity(hidden ? 0 : 1)
+        .binSubject(app, "frame." + f.id)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("mbf")) } action: { tiles[f.id] = $0 }
         .shotNode("mb.ftile.\(sc.shown.firstIndex { $0.id == f.id } ?? 0)", text: f.id)
     }

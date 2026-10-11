@@ -77,8 +77,10 @@ struct BlockSheet: View {
                 .padding(.top, 20)
                 if editing {
                     Button {
+                        // Корзина (29.7): лист закрыт, плашка занятости стягивается в круг; «Вернуть» — в глоток.
+                        let id = b.id
                         app.blockSheet = nil
-                        app.removeBlock(id: b.id)
+                        app.flyToBin([id]) { app.removeBlock(id: id) }
                     } label: {
                         HStack(spacing: 8) {
                             Icon("close", size: 18, line: 1.6)

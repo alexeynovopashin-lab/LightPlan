@@ -86,7 +86,27 @@ played.length = 0; gains.length = 0;
 vm.runInContext("swoosh()", ctx);
 const shutterGain = gains[0].gain.value;
 
-const ref = { clickSha256: sha, clickBytes: wav.length, piDigits, steps, shutterGain };
+// Смятие бумаги (`trashSound`, 29.7): записанный `TRASH_B64` и громкость — тем же способом, настоящим кодом беты.
+const tb64 = /var TRASH_B64 = "([A-Za-z0-9+/=]+)"/.exec(html)[1];
+const trashWav = Buffer.from(tb64, "base64");
+const trashSha = crypto.createHash("sha256").update(trashWav).digest("hex");
+const trashCtx = {
+  navigator: {}, $: () => ({ classList: { contains: () => true } }), trashBuf: {},
+  audioCtx: null,
+};
+vm.createContext(trashCtx);
+vm.runInContext(between("function trashSound()", "/* Копия данных"), trashCtx);
+const trashGains = [];
+trashCtx.audioCtx = {
+  state: "running", destination: {},
+  createBufferSource() { return { buffer: null, connect() {}, start() {} }; },
+  createGain() { const g = { gain: { value: 1 }, connect() {} }; trashGains.push(g); return g; },
+};
+vm.runInContext("trashSound()", trashCtx);
+const trashGain = trashGains[0].gain.value;
+
+const ref = { clickSha256: sha, clickBytes: wav.length, piDigits, steps, shutterGain,
+  trashSha256: trashSha, trashBytes: trashWav.length, trashGain };
 const out = path.join(ROOT, "Packages/LightPlanUI/Tests/LightPlanUITests/sound_ref.json");
 const res = path.join(ROOT, "Packages/LightPlanUI/Sources/LightPlanUI/Resources/Sound/click.wav");
 const json = JSON.stringify(ref, null, 1) + "\n";
@@ -95,7 +115,9 @@ if (check) {
   let bad = 0;
   if (fs.readFileSync(out, "utf8") !== json) { console.log("sound_ref.json расходится с бетой"); bad++; }
   if (!fs.readFileSync(res).equals(wav)) { console.log("click.wav не равен CLICK_B64 побайтно"); bad++; }
-  console.log(bad ? "FAIL" : `ok: click.wav ${wav.length} байт, sha256 ${sha.slice(0, 16)}…, шагов ${steps.length}, затвор ${shutterGain}`);
+  const tres = path.join(path.dirname(res), "trash.wav");
+  if (!fs.existsSync(tres) || !fs.readFileSync(tres).equals(trashWav)) { console.log("trash.wav не равен TRASH_B64 побайтно"); bad++; }
+  console.log(bad ? "FAIL" : `ok: click.wav ${wav.length} байт, sha256 ${sha.slice(0, 16)}…, шагов ${steps.length}, затвор ${shutterGain}, смятие ${trashWav.length} байт, gain ${trashGain}`);
   process.exit(bad ? 1 : 0);
 }
 fs.writeFileSync(out, json);

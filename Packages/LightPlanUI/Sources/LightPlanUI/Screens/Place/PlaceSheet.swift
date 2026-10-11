@@ -91,6 +91,8 @@ struct PlaceSheet: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
+        // Корзина (29.7): лист лежит над оболочкой, поэтому круг для стёртой точки — свой, над низом листа.
+        .overlay { BinTarget(flight: app.binFlight, host: .place, lift: 24) }
         .shotNode("loc.sheet")
         .presentationDetents([detent])
         .presentationDragIndicator(.hidden)
@@ -335,7 +337,8 @@ struct PlaceSheet: View {
             .shotNode("loc.spot.\(i).edit")
             Button {
                 if editing == sp.id { editing = nil }
-                app.removeSpot(id: sp.id)
+                let id = sp.id
+                app.flyToBin(["spot." + id], host: .place) { app.removeSpot(id: id) }
             } label: {
                 PlaceGlyphView(glyph: .cross, size: 15, line: 1.9).foregroundStyle(pal.ink6)
                     .frame(width: 36, height: 36).contentShape(Rectangle())
@@ -347,6 +350,7 @@ struct PlaceSheet: View {
         .padding(.vertical, 10).padding(.horizontal, 2)
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair).frame(height: 1) }
         .padding(.bottom, 1)
+        .binSubject(app, "spot." + sp.id)
         .shotNode("loc.spot.\(i)")
     }
 

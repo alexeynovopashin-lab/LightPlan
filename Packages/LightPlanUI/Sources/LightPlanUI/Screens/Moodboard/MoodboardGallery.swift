@@ -125,6 +125,7 @@ struct MoodboardGallery: View {
             focused = false
             withAnimation(overlaySlide) { app.openMbFolder(fo) }
         }
+        .binSubject(app, "board." + fo.boardId)
     }
 
     // MARK: плоская сетка найденных кадров

@@ -44,6 +44,8 @@ struct DocPaperScreen: View {
         }
         .scrollIndicators(.hidden)
         .background(pal.surface.ignoresSafeArea())
+        // Бумага уходит в корзину документов (29.7): экран стягивается в круг.
+        .binSubject(app, "paper." + doc.doc.id)
         .shotNode("docs.paper", text: p.row.title)
     }
 
@@ -120,7 +122,10 @@ struct DocPaperScreen: View {
                     withAnimation(overlaySlide) { app.openCard(id: sid) }
                 }
             }
-            Button { withAnimation(overlaySlide) { app.trashDoc(doc.doc.id) } } label: {
+            Button {
+                let id = doc.doc.id
+                app.flyToBin(["paper." + id]) { app.trashDoc(id) }
+            } label: {
                 Text(t.t("doc.paperDelete")).font(webFont(14.5, 500)).foregroundStyle(pal.badInk)
                     .frame(maxWidth: .infinity).frame(height: 46)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))

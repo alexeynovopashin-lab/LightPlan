@@ -614,6 +614,7 @@ struct RowAct: ViewModifier {
                 if grip?.swallows == true { return }
                 app.openBlockSheet(editing: b.id)
             }
+            .binSubject(app, b.id)
         } else if let s = it.session {
             content
                 .onTapGesture {
@@ -622,6 +623,8 @@ struct RowAct: ViewModifier {
                     withAnimation(overlaySlide) { app.openCard(id: s.id) }
                 }
                 .modifier(FanHold(id: s.id, fan: $fan, off: lane))
+                // Плашка, что улетает в корзину из веера, формы или карточки (29.7).
+                .binSubject(app, s.id)
         } else {
             content
         }

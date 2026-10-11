@@ -305,7 +305,14 @@ extension AppModel {
         form = nil
         formIsDraft = false
         formNote = nil
-        trashSession(id: f.id)
+        // Корзина (29.7): форма уходит сразу, под ней запись (или открытая карточка) стягивается в круг.
+        let id = f.id
+        var keys: Set<String> = [id]
+        if cardId == id { keys.insert("card." + id) }
+        flyToBin(keys) { [self] in
+            if cardId == id { closeCard() }
+            trashSession(id: id)
+        }
     }
 
     // MARK: - Повтор

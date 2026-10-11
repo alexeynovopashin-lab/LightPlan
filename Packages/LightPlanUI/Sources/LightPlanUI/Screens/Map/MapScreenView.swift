@@ -1081,7 +1081,8 @@ struct MapScreenView: View {
         holdBar()
         bar.drop()
         barFocus = false
-        app.removeSpot(id: id)
+        // Корзина (29.7): круг и смятие; булавка стирается в глоток.
+        app.flyToBin { app.removeSpot(id: id) }
     }
 
     // MARK: - Головка

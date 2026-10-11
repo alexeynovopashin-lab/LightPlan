@@ -1,10 +1,10 @@
 import Foundation
 import AVFAudio
 
-/// Звуки приложения (29.6). Два сэмпла беты, один плеер, один выключатель.
+/// Звуки приложения (29.6, 29.7). Три сэмпла беты, один плеер, один выключатель.
 ///
 /// Бета (`initAudio`, `tickClick`, `swoosh`): щелчок детента `CLICK_B64` (48 кГц моно 16 бит, 44 мс) и затвор
-/// `SHUTTER_B64` (0,35 с). Оба гасятся тумблером «Щелчки слайдера» (`#soundToggle`, по умолчанию включён).
+/// `SHUTTER_B64` (0,35 с); смятие бумаги `TRASH_B64` (1,30 с, `trashSound`, 29.7). Все гасятся тумблером «Щелчки слайдера» (`#soundToggle`, по умолчанию включён).
 ///
 /// Источник один — отдача: щелчок звучит из `Haptics.play` (у события в карте есть `sound`) и из
 /// `TimebarHaptics.detent`, в тот же вызов, что и тик. Своих мест со звуком у экранов нет.
@@ -12,13 +12,15 @@ import AVFAudio
 /// Системная часть: категория `ambient` — звук подчиняется переключателю «Без звука» и не прерывает чужую
 /// музыку. Буферы грузятся один раз; узлы живут в одном `AVAudioEngine`.
 enum SoundCue: String, CaseIterable, Sendable {
-    case click, shutter
+    case click, shutter, trash
 
-    /// Громкость: у затвора — число беты (`swoosh`, 0,385 − 30 %), у щелчка её задаёт `SoundCenter.clickVariation`.
+    /// Громкость: у затвора — число беты (`swoosh`, 0,385 − 30 %), у смятия — `trashSound` (0,165), у щелчка её
+    /// задаёт `SoundCenter.clickVariation`.
     var gain: Double {
         switch self {
         case .click: 0.02
         case .shutter: 0.2695
+        case .trash: 0.165
         }
     }
 }
@@ -86,7 +88,7 @@ enum SoundCenter {
         case .click:
             let v = cursor.next()
             rate = v.rate; gain = v.gain
-        case .shutter:
+        case .shutter, .trash:
             rate = 1; gain = cue.gain
         }
         SoundLog.note(SoundPlay(event: event, cue: cue, gain: gain, rate: rate))
@@ -112,6 +114,7 @@ enum SoundCenter {
         private let clickNode = AVAudioPlayerNode()
         private let clickPitch = AVAudioUnitVarispeed()
         private let shutterNode = AVAudioPlayerNode()
+        private let trashNode = AVAudioPlayerNode()
         private var buffers: [SoundCue: AVAudioPCMBuffer] = [:]
         private var built = false
 
@@ -134,7 +137,7 @@ enum SoundCenter {
                 else { continue }
                 buffers[cue] = buf
             }
-            engine.attach(clickNode); engine.attach(clickPitch); engine.attach(shutterNode)
+            engine.attach(clickNode); engine.attach(clickPitch); engine.attach(shutterNode); engine.attach(trashNode)
             // Подключение — по формату сэмпла: узел знает его до первого буфера. Тон щелчка идёт через
             // varispeed — он, как `playbackRate` беты, двигает тон и длину вместе.
             if let f = buffers[.click]?.format {
@@ -143,6 +146,9 @@ enum SoundCenter {
             }
             if let f = buffers[.shutter]?.format {
                 engine.connect(shutterNode, to: engine.mainMixerNode, format: f)
+            }
+            if let f = buffers[.trash]?.format {
+                engine.connect(trashNode, to: engine.mainMixerNode, format: f)
             }
             NotificationCenter.default.addObserver(
                 forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
@@ -165,7 +171,12 @@ enum SoundCenter {
         func play(_ cue: SoundCue, gain: Float, rate: Float) {
             prepare()
             guard let buf = buffers[cue], engine.isRunning else { return }
-            let node = cue == .click ? clickNode : shutterNode
+            let node: AVAudioPlayerNode
+            switch cue {
+            case .click: node = clickNode
+            case .shutter: node = shutterNode
+            case .trash: node = trashNode
+            }
             if cue == .click { clickPitch.rate = rate }
             node.volume = gain
             // `.interrupts`: быстрый ряд щелчков не копится в очереди — каждый обрывает хвост предыдущего.

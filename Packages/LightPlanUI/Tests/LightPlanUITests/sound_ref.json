@@ -690,5 +690,8 @@
    "gain": 0.0204
   }
  ],
- "shutterGain": 0.2695
+ "shutterGain": 0.2695,
+ "trashSha256": "c938e49455b0f8a4c4d282b90c81e10cf66dbf0679a90275b7d54cde48312995",
+ "trashBytes": 124364,
+ "trashGain": 0.165
 }

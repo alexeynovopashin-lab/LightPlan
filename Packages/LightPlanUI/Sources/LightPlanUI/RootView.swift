@@ -88,6 +88,7 @@ private struct Shell: View {
             }
             if app.mb.folder != nil {
                 MoodboardFolder(app: app)
+                    .binSubject(app, "mbfolder." + (app.mb.folder ?? ""))
                     .edgeBack(app, z: BackZ.folder) { app.closeMbFolder() }
                     .transition(.move(edge: .trailing))
                     .zIndex(BackZ.folder)
@@ -148,6 +149,8 @@ private struct Shell: View {
         // Лист «Когда смотрим» (19в) лежит над панелью вкладок, как `#sheet`
         // веба (z-index 70 над `.tabbar`).
         .overlay { MomentSheetHost(model: app.light) }
+        // Круг корзины (29.7, `#binTarget`): над всеми слоями оболочки, от нижнего края экрана, как у беты.
+        .overlay { BinTarget(flight: app.binFlight, host: .shell).ignoresSafeArea() }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
         .onGeometryChange(for: ShotWindow.self) { ShotWindow(safe: $0.safeAreaInsets, size: $0.size) } action: {
             ShotProbe.shared.window($0)

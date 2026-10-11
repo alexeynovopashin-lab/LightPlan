@@ -173,8 +173,11 @@ struct DocMonth: View {
 extension View {
     /// Долгое нажатие на строке бумаги: «Удалить» уводит бумагу в корзину документов (полоса «Вернуть»).
     func docRowMenu(_ app: AppModel, _ row: DocShelf.Row) -> some View {
-        contextMenu {
-            Button(role: .destructive) { withAnimation(.easeOut(duration: 0.2)) { app.trashDoc(row.shelf.doc.id) } } label: {
+        binSubject(app, "doc." + row.shelf.doc.id).contextMenu {
+            Button(role: .destructive) {
+                let id = row.shelf.doc.id
+                app.flyToBin(["doc." + id]) { app.trashDoc(id) }
+            } label: {
                 Label(app.lexicon.t("doc.paperDelete"), systemImage: "trash")
             }
         }

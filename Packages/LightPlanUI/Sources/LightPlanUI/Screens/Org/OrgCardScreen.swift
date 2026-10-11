@@ -50,6 +50,7 @@ struct OrgCardScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .background(pal.surface.ignoresSafeArea())
+        .binSubject(app, "org." + id)
         .shotNode("org.card", text: o.name)
         .sheet(isPresented: $askingLink) {
             AskLinkSheet(title: t.t("org.docLinkAsk"), titleField: t.t("doc.titleOpt"), ok: t.t("ask.ok"), cancel: t.t("ask.cancel"),
@@ -320,9 +321,15 @@ struct OrgCardScreen: View {
 
     // MARK: удаление
 
+    /// Организация стирается насовсем (без «Вернуть»), но с тем же полётом и звуком (29.7).
+    private func eraseOrg() {
+        let id = id
+        app.flyToBin(["org." + id]) { app.deleteOrg(id); onBack() }
+    }
+
     private func delete(_ o: Org, _ pal: Palette) -> some View {
         Button {
-            if app.orgShootCount(id) > 0 { askingDelete = true } else { app.deleteOrg(id); onBack() }
+            if app.orgShootCount(id) > 0 { askingDelete = true } else { eraseOrg() }
         } label: {
             Text(t.t("org.del")).font(.system(size: 15)).foregroundStyle(Color(hex: pal.dark ? 0xB9603D : 0x9E4722))
                 .frame(maxWidth: .infinity).frame(height: 48)
@@ -332,7 +339,7 @@ struct OrgCardScreen: View {
         .buttonStyle(.plain).padding(.top, 28)
         .shotNode("orgc.delete", text: t.t("org.del"))
         .alert(t.t("org.delAsk", ["n": t.count("unit.shoot", app.orgShootCount(id))]), isPresented: $askingDelete) {
-            Button(t.t("ask.del"), role: .destructive) { app.deleteOrg(id); onBack() }
+            Button(t.t("ask.del"), role: .destructive) { eraseOrg() }
             Button(t.t("ask.cancel"), role: .cancel) {}
         }
     }

@@ -234,6 +234,8 @@ public final class AppModel {
     public var undo: UndoOffer?
     /// Лист «Корзина» (веб `#binSheet`): из настроек, недели и карточки.
     public var binOpen = false
+    /// Полёт в корзину при стирании (29.7): круг, плашка-цель, звук. Один на приложение.
+    @ObservationIgnored let binFlight = BinFlight()
     /// Лист «Занять время» (веб `#blkSheet`) с заготовкой; `nil` — закрыт.
     public var blockSheet: BlockDraft?
     /// Открытая карточка — id записи (итерация 25, `AppModel+Card`).

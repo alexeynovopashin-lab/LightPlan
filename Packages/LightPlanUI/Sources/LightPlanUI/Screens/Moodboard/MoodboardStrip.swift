@@ -118,6 +118,7 @@ struct MoodboardStrip: View {
                        hold: fo.kind == .shoot ? { app.openMbBoardCard(fo.boardId) } : nil) {
                     withAnimation(overlaySlide) { app.openMbFolder(fo) }
                 }
+                .binSubject(app, "board." + fo.boardId)
             }
             if let badge = r.badge {
                 MbMoreTile(cells: Moodboard.mosaic(hidden: r.hidden, all: all), badge: badge, title: t.t("mb.all"),

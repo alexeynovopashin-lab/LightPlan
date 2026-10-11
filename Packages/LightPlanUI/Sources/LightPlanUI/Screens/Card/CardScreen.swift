@@ -53,6 +53,8 @@ struct CardScreen: View {
                 // Сосед из стопки открывается листом сверху, как у веба
                 // (`openCard(i, false, …)` сбрасывает прокрутку).
                 .id(s.id)
+                // Лист, который улетает в корзину (`.card-sheet.to-bin`): бар с «✕» остаётся на месте.
+                .binSubject(app, "card." + s.id)
                 // Лист отдаёт списку порядка, где он стоит: строка в руке у края гонит его сама (27а.3).
                 .scrollPosition($scrollPos)
                 .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollBridge.offset = y }
@@ -188,9 +190,13 @@ struct CardScreen: View {
             Spacer(minLength: 0)
             // В режиме перестановки «Удалить» скрыта — как «＋» и «Заполнить».
             if !app.cardTuning { Button {
+                // Корзина (29.7): лист стягивается в круг, звучит смятие; в момент глотка карточка закрыта
+                // без съезда, запись в корзине, полоса «Вернуть».
                 let id = s.id
-                withAnimation(overlaySlide) { app.closeCard() }
-                app.trashSession(id: id)
+                app.flyToBin(["card." + id]) {
+                    app.closeCard()
+                    app.trashSession(id: id)
+                }
             } label: {
                 // Пилюля `.card-del`: фон `--bad-bg`, слово `--bad-ink`, поля
                 // 10×16 (пара шага 4: было голое слово терракотой).

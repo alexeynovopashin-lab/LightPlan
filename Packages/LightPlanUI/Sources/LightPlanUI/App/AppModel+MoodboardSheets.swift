@@ -144,9 +144,13 @@ extension AppModel {
 
     /// «Удалить подборку» из карточки (веб `mbBoardDel`): из папки выходим до удаления.
     func mbConfirmDelete(_ id: String) {
-        if mb.folder == id { closeFolderNoPrune() }
-        mbDeleteBoard(id)
+        // Корзина (29.7): лист закрывается сразу — круг выезжает над ним; подборка или её папка стягиваются в круг,
+        // в глоток подборка стёрта (стирание без «Вернуть», как у беты).
         mb.sheet = nil
+        flyToBin(["board." + id, "mbfolder." + id]) { [self] in
+            if mb.folder == id { closeFolderNoPrune() }
+            mbDeleteBoard(id)
+        }
     }
 
     private func closeFolderNoPrune() {

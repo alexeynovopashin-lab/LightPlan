@@ -102,7 +102,9 @@ struct EventFan: View {
                         .shotNode("fan.fill")
                         item("trash", f.t.t("swipe.del"), f.t.t("swipe.delSub"), del: true, pal) {
                             fan = nil
-                            withAnimation(.easeOut(duration: 0.2)) { app.trashSession(id: s.id) }
+                            // Корзина (29.7): строка схлопывается в круг, звучит смятие; запись стирается в глоток.
+                            let id = s.id
+                            app.flyToBin([id]) { app.trashSession(id: id) }
                         }
                         .shotNode("fan.del")
                     }
