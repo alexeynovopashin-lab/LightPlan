@@ -119,9 +119,18 @@ final class BinFlight {
             await at(BinTimeline.flyAt)
             BinLog.note(n, "fly")
             SoundCenter.play(.trash, event: "binTrash")
-            withAnimation(BinTimeline.flightCurve) { flying = true }
+            // Глоток — когда плашка долетела: не раньше таймера беты (0,43 с) и не раньше, чем кончилась сама анимация
+            // (в симуляторе она встаёт на ~2 кадра позже метки «fly»; без этого плашка стирается на 22 %, а не на 5 %).
+            var landed = false
+            withAnimation(BinTimeline.flightCurve, completionCriteria: .logicallyComplete) {
+                flying = true
+            } completion: { landed = true }
             await at(BinTimeline.gulpAtTotal)
+            var spare = 0
+            while !landed && spare < 12 { try? await Task.sleep(for: .milliseconds(8)); spare += 1 }
             BinLog.note(n, "gulp")
+            let g0 = ContinuousClock.now
+            func after(_ s: Double) async { try? await Task.sleep(until: g0 + .milliseconds(Int((s * 1000).rounded())), clock: .continuous) }
             var tx = Transaction(); tx.disablesAnimations = true
             withTransaction(tx) { commit() }
             withAnimation(BinTimeline.easeOut(BinTimeline.gulpPeakAt * BinTimeline.gulp)) { gulpScale = BinTimeline.gulpPeak }
@@ -129,10 +138,10 @@ final class BinFlight {
                 try? await Task.sleep(for: .milliseconds(Int((BinTimeline.gulpPeakAt * BinTimeline.gulp * 1000).rounded())))
                 withAnimation(BinTimeline.easeOut((1 - BinTimeline.gulpPeakAt) * BinTimeline.gulp)) { gulpScale = 1 }
             }
-            await at(BinTimeline.leaveAtTotal)
+            await after(BinTimeline.leaveAfter)
             BinLog.note(n, "leave")
             withAnimation(BinTimeline.riseCurve) { up = false }
-            await at(BinTimeline.hideAtTotal)
+            await after(BinTimeline.leaveAfter + BinTimeline.hideAfter)
             BinLog.note(n, "hide")
             withTransaction(tx) {
                 shown = false
@@ -174,6 +183,60 @@ enum BinLog {
     }
 }
 
+extension BinLog {
+    /// Значение, которое анимация отдала на этом кадре (`plate` — масштаб плашки, `gulp` — размер круга): строка в
+    /// журнале на каждое изменение. Меряем числами, а не глазом (29.7).
+    nonisolated static func sample(_ tag: String, _ v: Double) {
+        #if DEBUG
+        guard url != nil else { return }
+        if lastSample[tag] == v { return }
+        lastSample[tag] = v
+        let t = ProcessInfo.processInfo.systemUptime
+        guard let data = String(format: "%.3f sample %@ %.4f\n", t, tag, v).data(using: .utf8),
+              let url else { return }
+        if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(data); try? h.close() }
+        else { try? data.write(to: url) }
+        #endif
+    }
+    #if DEBUG
+    nonisolated(unsafe) private static var lastSample: [String: Double] = [:]
+    #endif
+}
+
+/// Масштаб с отдачей кадров: `animatableData` получает промежуточное значение на каждом кадре анимации.
+nonisolated private struct BinScale: ViewModifier, Animatable {
+    var value: CGFloat
+    var anchor: UnitPoint
+    var tag: String
+    var animatableData: CGFloat {
+        get { value }
+        set { value = newValue }
+    }
+    func body(content: Content) -> some View {
+        BinLog.sample(tag, Double(value))
+        return content.scaleEffect(value, anchor: anchor)
+    }
+}
+
+/// Круг с размером контура `value` (стекло не масштабируют — меняют рамку): знак растёт вместе с ним.
+nonisolated private struct BinGulpDisc: View, Animatable {
+    var value: CGFloat
+    var ink: Color
+    var animatableData: CGFloat {
+        get { value }
+        set { value = newValue }
+    }
+    var body: some View {
+        let _ = BinLog.sample("gulp", Double(value))
+        ZStack {
+            Color.clear
+                .frame(width: BinTimeline.size * value, height: BinTimeline.size * value)
+                .glassEffect(.regular, in: Circle())
+            Icon("trash", size: 24, line: 1.6).foregroundStyle(ink).scaleEffect(value)
+        }
+    }
+}
+
 // MARK: - Круг
 
 /// Круг `binTarget`: стекло 56 pt, знак корзины. «Глоток» меняет размер контура, а не масштаб стекла
@@ -196,13 +259,8 @@ struct BinTarget: View {
                     .onGeometryChange(for: CGPoint.self) {
                         let f = $0.frame(in: .global); return CGPoint(x: f.midX, y: f.midY)
                     } action: { flight.center = $0 }
-                ZStack {
-                    Color.clear
-                        .frame(width: BinTimeline.size * g, height: BinTimeline.size * g)
-                        .glassEffect(.regular, in: Circle())
-                    Icon("trash", size: 24, line: 1.6).foregroundStyle(pal.ink3).scaleEffect(g)
-                }
-                .frame(width: slot, height: slot)
+                BinGulpDisc(value: g, ink: pal.ink3)
+                    .frame(width: slot, height: slot)
                 .offset(y: flight.up ? 0 : BinTimeline.offscreen)
             }
             .frame(width: slot, height: slot)
@@ -237,7 +295,7 @@ private struct BinSubject: ViewModifier {
                     Color.clear.onChange(of: armed) { _, now in if now { frame = g.frame(in: .global) } }
                 }
             }
-            .scaleEffect(on ? BinTimeline.flightScale : 1, anchor: anchor)
+            .modifier(BinScale(value: on ? BinTimeline.flightScale : 1, anchor: anchor, tag: "plate"))
             .animation(BinTimeline.flightCurve, value: on)
             .opacity(on ? 0 : 1)
             .animation(BinTimeline.fadeCurve, value: on)
