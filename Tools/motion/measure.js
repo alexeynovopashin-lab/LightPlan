@@ -469,9 +469,14 @@ function bar(fr, r, lines, res, bad, opt) {
     if (g.length < 3) {
       // Без движения ширина меняется скачком: нужна хотя бы одна запись, и последняя — конечная (40 у ручки, 392 у сводки).
       // Пустой журнал или не дошедшая до конца ширина — «не проверено», а не «0 кадров в пути».
-      const end = n ? 392 : 40, last = g.length ? g[g.length - 1].w : null;
-      lines.push(`${label}: в журнале ${g.length} рамок сводки` + (last === null ? '' : `, последняя ширина ${Math.round(last)} pt (ждём ${end})`) + ' — ширина не ехала');
-      out.push({ n, frames: g.length, inPath: 0, unseen: last === null || Math.abs(last - end) > 2 });
+      // Переход доказывают две ширины: «до» (последняя запись перед действием) и «после»; одной конечной мало.
+      const end = n ? 392 : 40, start = n ? 40 : 392, last = g.length ? g[g.length - 1].w : null;
+      const before = geoSeries(r.log, 'dp.bar').filter(v => v.t < t0 - 0.001).pop();
+      const pre = before ? before.w : null;
+      lines.push(`${label}: в журнале ${g.length} рамок сводки; ширина до действия ${pre === null ? 'не записана' : Math.round(pre) + ' pt'}, после ${last === null ? 'не записана' : Math.round(last) + ' pt'} (ждём ${start} → ${end}) — ширина не ехала`);
+      const reachedEnd = last !== null && Math.abs(last - end) <= 2;
+      const switched = pre !== null && last !== null && Math.abs(pre - last) > 2;
+      out.push({ n, frames: g.length, inPath: 0, unseen: !reachedEnd || pre === null, same: pre !== null && last !== null && !switched, pre, last });
       return;
     }
     const w0 = n ? 40 : g[0].w, wN = n ? g[g.length - 1].w : 40;   // старт и конец известны: полная ширина 392 и ручка 40
@@ -491,7 +496,8 @@ function bar(fr, r, lines, res, bad, opt) {
   if (opt.check) {
     out.forEach(o => {
       const L = o.n ? 'раскрытие' : 'схлопывание';
-      if (o.unseen) { bad(false, `${L}: в журнале нет записи с конечной шириной сводки (записей ${o.frames}) — не проверено`); return; }
+      if (o.same) { bad(false, `${L}: ширина до действия ${Math.round(o.pre)} pt и после ${Math.round(o.last)} pt одна — переключения не было`); return; }
+      if (o.unseen) { bad(false, `${L}: в журнале нет записи «до» или конечной ширины сводки (записей ${o.frames}) — не проверено`); return; }
       if (opt.still) { bad(o.inPath === 0, `${L}: при уменьшении движения промежуточных значений ширины ${o.inPath}, нужно 0`); return; }
       bad(o.inPath >= 6, `${L}: промежуточных значений ширины ${o.inPath}, нужно ≥ 6 (ширина должна ехать)`);
       if (!o.fixed) return;
