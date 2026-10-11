@@ -93,11 +93,9 @@ struct MoodboardFolder: View {
         }
         .alert(t.t("mb.selDelTitle", ["n": "\(app.mb.pick?.count ?? 0)"]), isPresented: $confirmRemove) {
             Button(t.t("ask.cancel"), role: .cancel) {}
-            Button(t.t("mb.selDelOk"), role: .destructive) {
-                // Корзина (29.7): отмеченные кадры стягиваются в круг; со съёмки они снимаются в глоток.
-                let keys = Set((app.mb.pick?.ids ?? []).map { "frame." + $0 })
-                app.flyToBin(keys) { app.mbRemovePicked() }
-            }
+            // Корзина (29.7): отмеченные кадры стягиваются в круг и снимаются в глоток; кадры и подборка
+            // фиксируются в момент подтверждения (выбор за 0,6 с полёта мог смениться).
+            Button(t.t("mb.selDelOk"), role: .destructive) { app.mbConfirmRemovePicked() }
         } message: { Text(t.t("mb.selDelSub")) }
     }
 

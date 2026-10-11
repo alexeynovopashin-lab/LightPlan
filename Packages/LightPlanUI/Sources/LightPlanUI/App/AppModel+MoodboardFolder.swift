@@ -103,7 +103,22 @@ extension AppModel {
     /// (веб `mbSelDel`). Подборка исчезла (опустела) — папка закрывается.
     func mbRemovePicked() {
         guard let id = mb.folder, let picked = mb.pick?.ids, !picked.isEmpty else { return }
+        mbRemove(picked, from: id)
+    }
+
+    /// «Убрать N» после подтверждения: кадры и подборка фиксируются в этот момент, стирание — в глоток полёта.
+    func mbConfirmRemovePicked() {
+        guard let board = mb.folder, let picked = mb.pick?.ids, !picked.isEmpty else { return }
+        flyToBin(Set(picked.map { "frame." + $0 })) { [self] in mbRemove(picked, from: board) }
+    }
+
+    /// То же с зафиксированными кадрами и подборкой: стирание идёт через полёт в корзину (0,6 с после «Убрать»),
+    /// выбор за это время мог смениться — `mb.pick` здесь не читается (29.7). Экран трогаем, только если он ещё
+    /// на этой подборке.
+    func mbRemove(_ picked: [String], from id: String) {
+        guard !picked.isEmpty else { return }
         mbEdit { lib, now in lib.remove(picked, from: id, now: now) }
+        guard mb.folder == id else { return }
         mb.pick = nil
         mb.pager = nil; mb.viewerIds = []
         if mbLibrary().board(id) == nil { mb.folder = nil; resetMbFolderInput() }

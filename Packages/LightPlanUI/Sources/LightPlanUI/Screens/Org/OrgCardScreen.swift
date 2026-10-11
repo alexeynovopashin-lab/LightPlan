@@ -324,7 +324,12 @@ struct OrgCardScreen: View {
     /// Организация стирается насовсем (без «Вернуть»), но с тем же полётом и звуком (29.7).
     private func eraseOrg() {
         let id = id
-        app.flyToBin(["org." + id]) { app.deleteOrg(id); onBack() }
+        app.flyToBin(["org." + id]) {
+            // Назад — только если открыта именно эта карточка (deleteOrg сам её сбросит).
+            let open = app.org.cardId == id
+            app.deleteOrg(id)
+            if open { onBack() }
+        }
     }
 
     private func delete(_ o: Org, _ pal: Palette) -> some View {

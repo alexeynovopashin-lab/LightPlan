@@ -194,7 +194,8 @@ struct CardScreen: View {
                 // без съезда, запись в корзине, полоса «Вернуть».
                 let id = s.id
                 app.flyToBin(["card." + id]) {
-                    app.closeCard()
+                    // Закрываем ту карточку, что удаляем: за 0,6 с могла открыться соседняя.
+                    if app.cardId == id { app.closeCard() }
                     app.trashSession(id: id)
                 }
             } label: {

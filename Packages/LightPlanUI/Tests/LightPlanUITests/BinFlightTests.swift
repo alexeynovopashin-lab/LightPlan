@@ -2,6 +2,9 @@ import CryptoKit
 import Foundation
 import Testing
 @testable import LightPlanUI
+import LightPlanCore
+import LightPlanDomain
+import LightPlanData
 
 /// Полёт в корзину (29.7): звук — записанный `TRASH_B64` и громкость `trashSound` (сверка с живой бетой через
 /// `Tools/sound_ref.js`), порядок и интервалы фаз — `deleteToBin` беты, `Reduce Motion` без звука.
@@ -126,5 +129,62 @@ struct BinFlightTests {
             #expect(commits == 1)
             #expect(Self.trashPlays(since: before).isEmpty)
         }
+    }
+
+    // MARK: - Что стирается, фиксируется при подтверждении
+
+    private struct NoWeather: WeatherSource {
+        func fetchHourly(at place: Place) async throws -> HourlyWeather {
+            HourlyWeather(time: [], cloud: [], temperature: [], windSpeed: [], precipitation: [], weatherCode: [])
+        }
+        func fetchAir(at place: Place) async throws -> [CivilDate: [Int: AirSample]] { [:] }
+    }
+    private struct SilentGeocoder: ReverseGeocoding {
+        func answer(for c: GeoCoordinate) async throws -> GeocodeAnswer {
+            GeocodeAnswer(locality: nil, region: nil, country: nil, zoneIdentifier: nil)
+        }
+    }
+    private struct NoCities: CityLookup {
+        func cities(matching query: String) async throws -> [CityHit] { [] }
+    }
+    private final class NoLocator: DeviceLocating {
+        var isAlreadyAuthorized: Bool { false }
+        func currentFix() async -> DeviceFix { .unavailable }
+    }
+
+    private func moodModel() -> AppModel {
+        func shot(_ id: String) -> JSONValue { .object(["id": .string(id), "k": .string("img"), "tags": .array([]), "im": .string(id)]) }
+        func board(_ id: String, _ kind: String, _ items: [String], sid: String? = nil) -> JSONValue {
+            var o: [String: JSONValue] = ["id": .string(id), "kind": .string(kind), "genre": .string("wedding"),
+                                          "items": .array(items.map { .string($0) })]
+            if let sid { o["sid"] = .string(sid) }
+            return .object(o)
+        }
+        var snap = Snapshot()
+        snap.sessions = [Session(id: "w", kind: .shoot, day: CivilDate(year: 2026, month: 10, day: 1), start: 600, end: 1380,
+                                 duration: 780, genre: .wedding)]
+        snap.extra["shots"] = .array(["a", "b", "c", "d"].map(shot))
+        snap.extra["boards"] = .array([board("sh", "shoot", ["a", "b", "c", "d"], sid: "w"), board("tpl", "tpl", ["d"])])
+        let now = ISO8601DateFormatter().date(from: "2026-09-30T09:00:00+03:00")!
+        return AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
+                        locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
+                        weatherSource: NoWeather(), now: { now })
+    }
+
+    /// Ревью 29.7: выбор сменился, пока кадры летят в корзину, — стираются ровно подтверждённые.
+    @Test func framesAreFixedAtConfirmationNotAtTheGulp() async {
+        BinFlightControl.calm(false)
+        defer { BinFlightControl.reset() }
+        let app = moodModel()
+        app.openMbFolder(boardId: "sh")
+        app.toggleMbPicking(); app.toggleMbPick("a"); app.toggleMbPick("d")
+        app.mbConfirmRemovePicked()
+        // За время полёта человек снял «a» и «d» и отметил «b».
+        app.toggleMbPick("a"); app.toggleMbPick("d"); app.toggleMbPick("b")
+        #expect(app.mbLibrary().board("sh")?.items == ["a", "b", "c", "d"], "до глотка ничего не стёрто")
+        try? await Task.sleep(for: .milliseconds(1500))
+        let lib = app.mbLibrary()
+        #expect(lib.board("sh")?.items == ["b", "c"], "\(lib.board("sh")?.items ?? [])")
+        #expect(lib.shot("a") == nil && lib.shot("d") != nil && lib.shot("b") != nil)
     }
 }
