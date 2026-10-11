@@ -37,6 +37,8 @@ struct PlannerDaySticky: View {
         let sel = d == app.planner.selected, today = d == f.today
         let marks = f.shown(on: d)
         return Button {
+            // Бета на iPhone тикает на каждое касание даты (`hapticize`), в том числе по выбранной.
+            Haptics.play(.dayStripDate)
             withAnimation(PlannerDayBody.flipMotion(day: true, still: still)) { _ = app.planner.pickInStrip(d) }
         } label: {
             VStack(spacing: 4) {

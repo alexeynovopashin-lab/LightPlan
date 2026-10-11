@@ -118,7 +118,7 @@ struct EventFan: View {
                 }
             }
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: fan?.id) { _, new in new != nil && fan?.lane != true }
+        .haptic(.fan, trigger: fan?.id) { _, new in new != nil && fan?.lane != true }
         .animation(.easeOut(duration: 0.16), value: fan)
     }
 

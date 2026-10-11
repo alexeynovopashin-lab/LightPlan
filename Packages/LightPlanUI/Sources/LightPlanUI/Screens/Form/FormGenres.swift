@@ -36,7 +36,7 @@ struct GenreGrid: View {
             }
         }
         .onChange(of: list) { if let g = openFor, !list.contains(g) { openFor = nil } }
-        .sensoryFeedback(.impact(weight: .medium), trigger: holds)
+        .haptic(.genreHold, trigger: holds)
     }
 
     private func tile(_ g: Genre, _ t: Lexicon) -> some View {

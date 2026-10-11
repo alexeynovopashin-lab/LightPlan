@@ -171,7 +171,7 @@ struct CardOrderList<Content: View>: View {
             // Подвал веб показывает и прячет сразу, без перехода.
             if tuning { footer.transition(.identity) }
         }
-        .sensoryFeedback(.selection, trigger: lifts)
+        .haptic(.cardBlockLift, trigger: lifts)
         // Снимок «блок в руке»: без пальца рука встаёт сразу с нужным сдвигом (`-LPShotDrag`).
         .onChange(of: tuning, initial: true) { _, on in
             if on, !hand.isLifted, let t = app.cardShotDrag, let i = rows.firstIndex(of: t.block),

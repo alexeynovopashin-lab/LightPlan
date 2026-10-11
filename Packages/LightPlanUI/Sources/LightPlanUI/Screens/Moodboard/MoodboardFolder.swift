@@ -132,7 +132,7 @@ struct MoodboardFolder: View {
             MbCover(boardId: sc.board.id, genre: sc.genre, radius: 14, mark: 0.42, stroke: 1.5)
                 .frame(width: 58, height: 58).shotNode("mb.folderHero")
                 .onLongPressGesture(minimumDuration: 0.42, maximumDistance: 8) {
-                    if !app.mbLibrary().coverCandidates(sc.board.id).isEmpty { app.openMbCover() }
+                    if !app.mbLibrary().coverCandidates(sc.board.id).isEmpty { Haptics.play(.mbCover); app.openMbCover() }
                 }
             VStack(alignment: .leading, spacing: 6) {
                 Text(sc.title).font(webFont(22, 650)).tracking(-0.5).foregroundStyle(pal.ink).lineLimit(1)
@@ -328,7 +328,7 @@ struct MoodboardFolder: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .gesture(LongPressGesture(minimumDuration: 0.42, maximumDistance: 8).onEnded { _ in
-            if app.mb.pick == nil { app.openMbItem(shot: f.id) }
+            if app.mb.pick == nil { Haptics.play(.mbHold); app.openMbItem(shot: f.id) }
         }.exclusively(before: TapGesture().onEnded { tap() }))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)

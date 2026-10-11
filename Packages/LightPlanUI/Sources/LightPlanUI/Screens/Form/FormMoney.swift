@@ -404,7 +404,7 @@ struct DeadlineDial: View {
             })
         }
         .frame(height: 54)
-        .sensoryFeedback(.selection, trigger: stop)
+        .haptic(.deadlineStop, trigger: stop)
         .accessibilityElement()
         .accessibilityValue(labels.indices.contains(stop) ? labels[stop] : "")
         .accessibilityAdjustableAction { d in

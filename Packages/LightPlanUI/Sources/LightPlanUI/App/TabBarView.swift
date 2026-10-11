@@ -48,6 +48,7 @@ struct TabBarView: View {
     private func item(_ target: AppTab?, glyph: TabGlyph.Kind, title: String, node: String, pal: Palette) -> some View {
         let active = target != nil && target == tab
         return Button {
+            Haptics.play(.tab)
             if let target { tab = target }
         } label: {
             VStack(spacing: 4) {

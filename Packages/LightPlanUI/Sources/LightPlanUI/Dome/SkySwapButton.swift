@@ -7,6 +7,7 @@ struct SkySwapButton: View {
 
     var body: some View {
         Button {
+            Haptics.play(.skySwap)
             mode = mode == .sun ? .moon : .sun
         } label: {
             Canvas { context, size in

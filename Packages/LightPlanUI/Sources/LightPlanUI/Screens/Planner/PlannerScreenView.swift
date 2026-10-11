@@ -174,6 +174,7 @@ public struct PlannerScreenView: View {
                 ForEach(CalScope.allCases, id: \.self) { s in
                     let on = s == app.planner.scope
                     Button {
+                        Haptics.play(.scopeItem)
                         if app.planner.scope == .month, s == .day { enterFromFan(); return }
                         scopeOpen = false
                         withAnimation(.snappy(duration: 0.25)) { app.planner.setScope(s) }
@@ -244,6 +245,7 @@ public struct PlannerScreenView: View {
         // День въезжает по кривой беты (E1 0,22 с); месяц и неделя скользят сбоку (E1 0,3 с, слово Алексея 07.10),
         // при «Уменьшении движения» — сразу (и день тоже: ревью GPT на da03172).
         let motion = PlannerDayBody.flipMotion(day: app.planner.scope == .day, still: still)
+        Haptics.play(.daySwipe)
         withAnimation(motion) { app.planner.step(dir) }
     }
 
@@ -325,6 +327,7 @@ private struct PlanTop: View {
         let st = app.planner
         HStack(spacing: 6) {
             Button {
+                Haptics.play(.scopeButton)
                 withAnimation(Self.fanToggle) { scopeOpen.toggle() }
             } label: {
                 Icon(Self.icon(st.scope), size: 21, line: 1.6)

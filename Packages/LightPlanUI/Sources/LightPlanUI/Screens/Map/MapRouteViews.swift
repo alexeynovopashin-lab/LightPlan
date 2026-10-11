@@ -354,7 +354,7 @@ struct RouteBar: View {
                     .frame(height: scrolls && drag == nil ? 16 : 0)
             }
         }
-        .sensoryFeedback(.selection, trigger: lifts)
+        .haptic(.routePointLift, trigger: lifts)
         .shotNode("route.list")
     }
 

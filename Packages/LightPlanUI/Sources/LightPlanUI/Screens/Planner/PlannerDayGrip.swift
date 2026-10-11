@@ -71,17 +71,10 @@ final class DayGrip {
         if selected != nil { selected = nil }
     }
 
-    #if os(iOS)
-    private let lift = UIImpactFeedbackGenerator(style: .light)
-    private let notch = UISelectionFeedbackGenerator()
-    /// Отдача подъёма — та же, что у веера удержания (`.impact(.light)`).
-    func tapLift() { lift.impactOccurred() }
+    /// Отдача подъёма — та же, что у веера удержания (`Haptics`: `dayLift`, `.light`).
+    func tapLift() { Haptics.play(.dayLift) }
     /// Щелчок на каждой ступени времени (веб `tickClick` в `dlTrack`).
-    func tapNotch() { notch.selectionChanged() }
-    #else
-    func tapLift() {}
-    func tapNotch() {}
-    #endif
+    func tapNotch() { Haptics.play(.dayNotch) }
 }
 
 /// Журнал жеста для замеров на симуляторе (Debug, `-LPDayGripLog <файл>`; имя без

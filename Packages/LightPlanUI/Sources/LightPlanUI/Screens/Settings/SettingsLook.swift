@@ -46,7 +46,10 @@ struct WebSeg<V: Hashable>: View {
         HStack(spacing: 0) {
             ForEach(options.indices, id: \.self) { i in
                 let on = options[i].value == selection
-                Button { withAnimation(.easeInOut(duration: 0.3)) { selection = options[i].value } } label: {
+                Button {
+                    Haptics.play(.segment)
+                    withAnimation(.easeInOut(duration: 0.3)) { selection = options[i].value }
+                } label: {
                     Text(options[i].label)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(on ? pal.ink : pal.ink4)

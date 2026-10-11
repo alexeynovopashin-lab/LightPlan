@@ -345,7 +345,7 @@ struct MapScreenView: View {
         }
         .onChange(of: timebar.touches) { showChip(.drag, life: 1.2) }
         .onChange(of: light.locationName) { hereError = nil }
-        .sensoryFeedback(.impact(weight: .medium), trigger: spotDrops)
+        .haptic(.spotDrop, trigger: spotDrops)
         // Дорогу спрашиваем, когда куски сменились (`roadAsk`); в паре сети
         // у веба нет — там прямые, и натив не спрашивает (кроме снимков
         // `LPShotRoads`: серверы подменены, до сети дело не доходит).
@@ -355,7 +355,7 @@ struct MapScreenView: View {
         .onChange(of: app.mapSource) { if routeMode && (!app.mapOffline || app.roads.asksOffline) { app.roads.ask(app.mapSource, app.routeRuns) } }
         // Центр компаса стал булавкой-визиром или вернулся в круг (слово
         // Алексея 24.09: «тактильная отдача, значок трансформируется»).
-        .sensoryFeedback(.impact(weight: .medium), trigger: sight)
+        .haptic(.sight, trigger: sight)
         // Фокус в поле — отсчёт снят; ушёл — имя записано (`blur` веба).
         .onChange(of: barFocus) { _, focused in
             if focused { holdBar(); bar.focus() } else if let r = bar.blur() { holdBar(); app.renameSpot(id: r.id, to: r.name) }
@@ -1032,7 +1032,8 @@ struct MapScreenView: View {
     /// `keyboard: false` — снимок пары: у веба в безголовом браузере клавиатуры
     /// нет, и полоса стоит без неё и без обратного отсчёта.
     private func saveTapped(keyboard: Bool = true) {
-        guard let sp = app.toggleSpotHere() else { return }
+        // Поставил — булавка (`spotDrop`, средний тик); убрал — тик закладки: на касание один.
+        guard let sp = app.toggleSpotHere() else { Haptics.play(.mapSave); return }
         spotDrops += 1
         MapClick.play()
         openBar(sp, edit: false, quiet: false, keyboard: keyboard)

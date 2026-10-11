@@ -207,6 +207,14 @@ struct CardLane: View {
     static let fit: CGFloat = 40
     static let column: CGFloat = 44
 
+    /// Палец ведёт ленту (а не её поставили на «сейчас»): тик только тогда, как у беты (`laneColAt` на `pointermove`).
+    @State private var handsOn = false
+
+    /// Колонка под серединой окна ленты (веб `laneColAt`).
+    static func column(atOffset x: CGFloat, width: CGFloat, count: Int) -> Int {
+        min(max(Int(((x + width / 2) / column).rounded(.down)), 0), max(0, count - 1))
+    }
+
     var body: some View {
         let nowMin = app.nowMinute(of: s)
         // Текущая — последняя начатая, только «во время».
@@ -225,6 +233,12 @@ struct CardLane: View {
                         track(pts, w, nowMin, cur)
                     }
                     .onAppear { proxy.scrollTo(anchor, anchor: .center) }
+                    .onScrollPhaseChange { _, phase in handsOn = phase == .interacting }
+                    .onScrollGeometryChange(for: Int.self) {
+                        Self.column(atOffset: $0.contentOffset.x, width: $0.containerSize.width, count: pts.count)
+                    } action: { _, _ in
+                        if handsOn { Haptics.play(.laneDot) }
+                    }
                 }
             } else {
                 track(pts, w, nowMin, cur)
