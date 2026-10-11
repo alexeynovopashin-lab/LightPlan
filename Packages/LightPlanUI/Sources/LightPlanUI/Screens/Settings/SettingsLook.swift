@@ -27,7 +27,6 @@ struct SetHeader: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 24)
-        .padding(.top, 24)
     }
 }
 
