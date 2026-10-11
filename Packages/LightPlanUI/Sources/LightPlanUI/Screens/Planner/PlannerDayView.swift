@@ -10,6 +10,7 @@ struct PlannerDaySticky: View {
     /// Разрез месяца (29.2а): лента дат — цель семи ячеек недели и прячется, пока они летят.
     let part: PartDay
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var still
     /// Зазор между датами недели.
     static let dateGap: CGFloat = 2
 
@@ -36,7 +37,7 @@ struct PlannerDaySticky: View {
         let sel = d == app.planner.selected, today = d == f.today
         let marks = f.shown(on: d)
         return Button {
-            withAnimation(PlannerDayBody.slide) { _ = app.planner.pickInStrip(d) }
+            withAnimation(PlannerDayBody.flipMotion(day: true, still: still)) { _ = app.planner.pickInStrip(d) }
         } label: {
             VStack(spacing: 4) {
                 Text(f.dates.wdShort(f.date(d))).font(webFont(10)).tracking(0.5).foregroundStyle(pal.ink7)
@@ -97,6 +98,8 @@ struct PlannerDayBody: View {
     static let axis: CGFloat = 79
     /// Въезд ленты при смене дня (веб `.day-line.slide-l/-r`): 0,22 с, E1 `cubic-bezier(0.25, 1, 0.4, 1)`.
     static let slide = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.22)
+    /// Движение листания вида: день — въезд ленты, месяц и неделя — сдвиг сбоку; при «Уменьшении движения» — без движения.
+    static func flipMotion(day: Bool, still: Bool) -> Animation? { still ? nil : day ? slide : Motion.flip }
 
     var body: some View {
         let d = app.planner.selected

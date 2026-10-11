@@ -3,7 +3,7 @@ import SwiftUI
 import LightPlanCore
 import LightPlanDomain
 
-/// Стенд малых движений «Съёмок» (29.2в): `-LPMotionBench month|week|bar|fan|tab|tabs|ring`. Делает то же, что палец,
+/// Стенд малых движений «Съёмок» (29.2в): `-LPMotionBench month|week|day|bar|fan|tab|tabs|ring`. Делает то же, что палец,
 /// теми же функциями, а кадры снимает `xcrun simctl io recordVideo` (`Tools/motion_bench.js` меряет по ним числа).
 /// Метки со временем — в файл `-LPPartLog`. Не часть приложения: только Debug.
 @MainActor
@@ -22,6 +22,9 @@ enum MotionBench {
             // Первый шаг — разминка: от «сегодня» уходит подпись «↺ сегодня» под шапкой и всё едет по вертикали,
             // замеру нужно чистое горизонтальное движение.
             mark("warmup"); flip(1); await wait(2.5)
+            for dir in [1, -1, 1] { mark("flip \(dir)"); flip(dir); await wait(1.6) }
+        case "day":
+            // День листается тем же `flip`, что свайп (29.2е): три шага вправо, влево, вправо.
             for dir in [1, -1, 1] { mark("flip \(dir)"); flip(dir); await wait(1.6) }
         case "bar":
             for _ in 0..<2 { mark("fold"); PlannerDayPanel.fold(app, still: UIAccessibility.isReduceMotionEnabled); await wait(1.6) }

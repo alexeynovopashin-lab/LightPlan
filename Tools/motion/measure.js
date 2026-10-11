@@ -126,6 +126,7 @@ function summarize(fr, idx, ps, lines, label, expectD) {
 }
 
 /* ---------- скольжение (месяц, неделя) ---------- */
+function f_len(a) { return a.length; }
 function sad(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]); return s; }
 
 function predict(S, E, w, h, s, sgn, out) {
@@ -300,6 +301,10 @@ const SPEC = {
     scope: 'week', trig: 3,
     region: nodes => { const c = nodes.week; return { rect: [0, c.y, 440, 300] }; },
   },
+  day: {
+    scope: 'day', trig: 3,
+    region: nodes => { const c = nodes['dp.bar']; const y = c.y + c.h + 8; return { rect: [0, y, 440, 400] }; },   // лента ниже сводки (узел `line` в прокрутке уходит выше экрана)
+  },
   bar: {
     scope: 'month', trig: 2,
     region: nodes => { const c = nodes['dp.bar']; return { rect: [0, Math.max(0, c.y - 30), 440, 90] }; },
@@ -359,6 +364,25 @@ function analyze(name, r, opt) {
       });
       (out.ghosts || []).forEach((g, i) => bad(g <= 0.15, `покой ${i + 1}: следы прежнего месяца ${r3(g)}, нужно ≤ 0,15`));
     }
+    return res;
+  }
+
+  if (name === 'day') {
+    // День листается въездом ленты (сдвиг 18 pt + проявление 0,22 с). Кадр события — начало, конец или промежуточный
+    // (ни тот ни другой): при «Уменьшении движения» промежуточных нет, лента меняется одним кадром.
+    res.day = ev.list.map((x, n) => {
+      const a = Math.max(0, x.i0 - 1), b = x.i1, S = fr.data[a], E = fr.data[b];   // b — последний изменившийся кадр: следующий — уже другое листание
+      const base = sad(S, E) || 1;
+      let mid = 0;
+      for (let k = a; k <= b; k++) { const f = fr.data[k]; if (sad(f, S) / base > 0.02 && sad(f, E) / base > 0.02) mid++; }
+      return { n, inPath: mid, frames: b - a + 1, span: fr.ts[x.i1] - fr.ts[x.i0], base: base / f_len(S) };
+    });
+    res.day.forEach(o => lines.push(`шаг ${o.n + 1}: кадров события ${o.frames}, из них в пути (не начало и не конец) ${o.inPath}, движение ${ms(o.span)} мс (от первого до последнего изменившегося кадра), разница начала и конца ${r3(o.base)} на пиксель`));
+    if (opt.check) res.day.forEach(o => {
+      if (o.base < 0.5) { bad(false, `шаг ${o.n + 1}: день на кадрах не сменился (разница ${r3(o.base)}) — не проверено`); return; }
+      if (opt.still) bad(o.inPath === 0, `шаг ${o.n + 1}: при уменьшении движения кадров в пути ${o.inPath}, нужно 0`);
+      else bad(o.inPath >= 3, `шаг ${o.n + 1}: кадров в пути ${o.inPath}, нужно ≥ 3 (въезд 0,22 с)`);
+    });
     return res;
   }
 
@@ -430,13 +454,26 @@ function marks(log) {
 
 function bar(fr, r, lines, res, bad, opt) {
   const mk = marks(r.log);
-  if (mk.length < 2) { lines.push('журнал приложения без отметок сводки'); return; }
+  if (mk.length < 2) {
+    // Пустой журнал не доказывает «движения нет»: прибор ничего не видел → красное (не проверено).
+    lines.push('журнал приложения без отметок сводки');
+    res.bar = [];
+    bad(!opt.check, 'в журнале нет отметок сводки (.dp.bar) — не проверено');
+    return;
+  }
   const out = [];
   mk.slice(0, 2).forEach((t0, n) => {
     const t1 = mk[n + 1] ?? t0 + 1.6;
     const g = geoSeries(r.log, 'dp.bar').filter(v => v.t >= t0 - 0.001 && v.t < t1);
     const label = n ? 'раскрытие' : 'схлопывание';
-    if (g.length < 3) { lines.push(`${label}: в журнале ${g.length} рамок сводки — ширина не ехала`); out.push({ n, frames: g.length, inPath: 0 }); return; }
+    if (g.length < 3) {
+      // Без движения ширина меняется скачком: нужна хотя бы одна запись, и последняя — конечная (40 у ручки, 392 у сводки).
+      // Пустой журнал или не дошедшая до конца ширина — «не проверено», а не «0 кадров в пути».
+      const end = n ? 392 : 40, last = g.length ? g[g.length - 1].w : null;
+      lines.push(`${label}: в журнале ${g.length} рамок сводки` + (last === null ? '' : `, последняя ширина ${Math.round(last)} pt (ждём ${end})`) + ' — ширина не ехала');
+      out.push({ n, frames: g.length, inPath: 0, unseen: last === null || Math.abs(last - end) > 2 });
+      return;
+    }
     const w0 = n ? 40 : g[0].w, wN = n ? g[g.length - 1].w : 40;   // старт и конец известны: полная ширина 392 и ручка 40
     const full = 392, shut = 40;
     const up = n === 1;
@@ -454,6 +491,7 @@ function bar(fr, r, lines, res, bad, opt) {
   if (opt.check) {
     out.forEach(o => {
       const L = o.n ? 'раскрытие' : 'схлопывание';
+      if (o.unseen) { bad(false, `${L}: в журнале нет записи с конечной шириной сводки (записей ${o.frames}) — не проверено`); return; }
       if (opt.still) { bad(o.inPath === 0, `${L}: при уменьшении движения промежуточных значений ширины ${o.inPath}, нужно 0`); return; }
       bad(o.inPath >= 6, `${L}: промежуточных значений ширины ${o.inPath}, нужно ≥ 6 (ширина должна ехать)`);
       if (!o.fixed) return;

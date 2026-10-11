@@ -242,8 +242,8 @@ public struct PlannerScreenView: View {
     /// Листание вида на шаг (свайп и стенд движений: один путь).
     func flip(_ dir: Int) {
         // День въезжает по кривой беты (E1 0,22 с); месяц и неделя скользят сбоку (E1 0,3 с, слово Алексея 07.10),
-        // при «Уменьшении движения» — сразу.
-        let motion: Animation? = app.planner.scope == .day ? PlannerDayBody.slide : still ? nil : Motion.flip
+        // при «Уменьшении движения» — сразу (и день тоже: ревью GPT на da03172).
+        let motion = PlannerDayBody.flipMotion(day: app.planner.scope == .day, still: still)
         withAnimation(motion) { app.planner.step(dir) }
     }
 

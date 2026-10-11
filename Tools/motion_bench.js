@@ -5,7 +5,7 @@
    в серые байты, `Tools/motion/measure.js` считает числа: когда началось и кончилось, сколько кадров в пути,
    какая кривая и длительность подходят лучше всего (E1, ease-out, ease-in-out, линейная), смещение, прозрачность.
 
-     node Tools/motion_bench.js [--scenario month,week,bar,fan,tab,tabs,ring] [--theme dark|light] [--reduce]
+     node Tools/motion_bench.js [--scenario month,week,day,bar,fan,tab,tabs,ring] [--theme dark|light] [--reduce]
                                 [--skip-build] [--out <папка>] [--check] [--keep] [--again]
 
    `--check` сверяет числа с бетой (красный = выход 1); без него только печатает. `--reduce` включает
@@ -35,7 +35,7 @@ const BUNDLE = 'Novopashin.LightPlan';
 const ZONE = 'Asia/Barnaul';
 const THEME = args.theme || 'dark';
 const AGAIN = !!args.again;   // не писать заново: пересчитать числа по видео и журналу, что лежат в --out
-const SCENARIOS = (args.scenario || 'month,week,bar,fan,tab,tabs,ring').split(',');
+const SCENARIOS = (args.scenario || 'month,week,day,bar,fan,tab,tabs,ring').split(',');
 
 function build(udid) {
   const dd = path.join(OUT, 'DerivedData');
