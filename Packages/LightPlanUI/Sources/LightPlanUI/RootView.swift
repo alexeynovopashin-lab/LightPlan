@@ -27,10 +27,12 @@ public struct RootView: View {
             if let shot = ShotScenario.fromLaunch() {
                 ShotProbe.shared.start(report: shot.report, screen: shot.screen)
                 app = AppModel.shot(shot)
+                app?.sweepMbBins()
                 return
             }
             #endif
             app = await AppModel.live()
+            app?.sweepMbBins()          // самоочистка корзин мудбордов: при запуске (29б)
         }
         .onChange(of: scenePhase) { _, phase in
             // Ушли в фон — отложенная запись дописывается сейчас: система
@@ -40,7 +42,7 @@ public struct RootView: View {
             if phase == .background, let app { app.commitOrgTels(); Task { await app.flush() } }
             // Вернулись на экран — если прогноза или воздуха всё ещё нет, спросить сразу (28ж): раньше один
             // сорвавшийся запрос оставлял приложение без прогноза до перезапуска.
-            if phase == .active, let app { app.light.weather.resume() }
+            if phase == .active, let app { app.light.weather.resume(); app.sweepMbBins() }
         }
     }
 }

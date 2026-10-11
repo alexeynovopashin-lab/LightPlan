@@ -70,15 +70,52 @@ public struct RefBoard: Sendable, Hashable {
     public var sort: Int
     /// Срок «хранения на устройстве» — только сохраняется (решение 30.09, 2А).
     public var keep: RefKeep?
+    /// Корзина мудборда съёмки (29б): убранные кадры и когда их убрали. Только у `shoot`; у папок жанра пусто.
+    public var bin: [RefBinned]
+    /// Самоочистка корзины; `nil` — режим не выбран, действует `RefBinMode.standard`.
+    public var binMode: RefBinMode?
     public var mt: Double?
     public var extra: [String: JSONValue]
 
     public init(id: String = "", kind: Kind, sid: String? = nil, genre: String? = nil, items: [String] = [],
                 name: String? = nil, cover: String? = nil, sort: Int = 0, keep: RefKeep? = nil,
+                bin: [RefBinned] = [], binMode: RefBinMode? = nil,
                 mt: Double? = nil, extra: [String: JSONValue] = [:]) {
         self.id = id; self.kind = kind; self.sid = sid; self.genre = genre; self.items = items
         self.name = name; self.cover = cover; self.sort = sort; self.keep = keep
+        self.bin = bin; self.binMode = binMode
         self.mt = mt; self.extra = extra
+    }
+
+    /// Режим, что действует сейчас: выбранный, а иначе «через 7 дней».
+    public var effectiveBinMode: RefBinMode { binMode ?? .standard }
+}
+
+/// Самоочистка корзины мудборда съёмки (слова Алексея 07.10 и 11.10): четыре режима.
+public enum RefBinMode: String, Sendable, CaseIterable {
+    /// «Удалять сразу» — как до корзины: убранный кадр, что нигде не лежит, уходит насовсем.
+    case now
+    /// «Через 7 дней» — режим по умолчанию.
+    case week
+    /// «После окончания съёмки».
+    case shoot
+    /// «Не удалять» — только руками.
+    case never
+
+    public static let standard: RefBinMode = .week
+}
+
+/// Кадр в корзине мудборда съёмки: кто, когда убран (мс) и на каком месте стоял.
+public struct RefBinned: Sendable, Hashable {
+    public var id: String
+    /// Когда убран, мс Unix.
+    public var at: Double
+    /// Место в подборке на момент снятия — туда «Вернуть» ставит кадр обратно.
+    public var pos: Int?
+    public var extra: [String: JSONValue]
+
+    public init(id: String, at: Double, pos: Int? = nil, extra: [String: JSONValue] = [:]) {
+        self.id = id; self.at = at; self.pos = pos; self.extra = extra
     }
 }
 

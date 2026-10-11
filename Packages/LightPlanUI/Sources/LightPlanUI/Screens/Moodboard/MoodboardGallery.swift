@@ -24,7 +24,7 @@ struct MoodboardGallery: View {
     var body: some View {
         let pal = Palette(scheme)
         let lib = app.mbLibrary()
-        let counts = Moodboard.tagCounts(lib.shots)
+        let counts = Moodboard.tagCounts(lib.liveShots)
         let tag = Moodboard.activeTag(app.mb.tag, in: counts)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -138,7 +138,7 @@ struct MoodboardGallery: View {
     }
 
     @ViewBuilder private func results(_ lib: RefLibrary, _ tag: String?, _ pal: Palette) -> some View {
-        let found = Moodboard.search(lib.shots, query: app.mb.query, tag: tag, tagName: app.mbTagName,
+        let found = Moodboard.search(lib.liveShots, query: app.mb.query, tag: tag, tagName: app.mbTagName,
                                      boardTitles: { app.mbBoardTitles($0, lib) })
         if found.isEmpty {
             Text(t.t("mb.searchNothing")).font(webFont(14)).foregroundStyle(pal.ink6)

@@ -41,8 +41,9 @@ public struct RefLibrary: Sendable, Hashable {
     public func shot(_ id: String) -> RefFrame? { shots.first { $0.id == id } }
     /// Кадр лежит хотя бы в одной подборке (веб `shotUsed`).
     /// Сырые подборки неизвестного рода тоже держат кадр: их ссылку рвать нельзя.
+    /// Кадр в корзине мудборда съёмки тоже держится — он ждёт «Вернуть» или срока самоочистки.
     public func isUsed(_ shotId: String) -> Bool {
-        boards.contains { $0.items.contains(shotId) } || foreignBoards.contains { v in
+        boards.contains { $0.items.contains(shotId) || $0.bin.contains { $0.id == shotId } } || foreignBoards.contains { v in
             guard case .object(let o) = v, case .array(let a)? = o["items"] else { return false }
             return a.contains(.string(shotId))
         }
@@ -63,6 +64,7 @@ public struct RefLibrary: Sendable, Hashable {
     public mutating func put(_ shotId: String, into boardId: String, at: Int? = nil, now: Double? = nil) -> Bool {
         guard !shotId.isEmpty, let i = boards.firstIndex(where: { $0.id == boardId }),
               !boards[i].items.contains(shotId) else { return false }
+        boards[i].bin.removeAll { $0.id == shotId }       // кадр вернулся в подборку — из её корзины он уходит
         if let at, at >= 0, at <= boards[i].items.count { boards[i].items.insert(shotId, at: at) }
         else { boards[i].items.append(shotId) }
         if let now { boards[i].mt = now }
@@ -99,7 +101,8 @@ public struct RefLibrary: Sendable, Hashable {
     /// жанровую пустой не подметаем — это вещь человека с первого тычка.
     @discardableResult
     public mutating func prune(_ boardId: String) -> Bool {
-        guard let b = board(boardId), b.kind != .tpl, b.items.isEmpty, b.name == nil, b.cover == nil else { return false }
+        guard let b = board(boardId), b.kind != .tpl, b.items.isEmpty, b.bin.isEmpty,
+              b.name == nil, b.cover == nil else { return false }
         boards.removeAll { $0.id == boardId }
         return true
     }
@@ -109,7 +112,10 @@ public struct RefLibrary: Sendable, Hashable {
     @discardableResult
     public mutating func dropShot(_ shotId: String) -> Bool {
         guard shots.contains(where: { $0.id == shotId }) else { return false }
-        for i in boards.indices { boards[i].items.removeAll { $0 == shotId } }
+        for i in boards.indices {
+            boards[i].items.removeAll { $0 == shotId }
+            boards[i].bin.removeAll { $0.id == shotId }
+        }
         shots.removeAll { $0.id == shotId }
         return true
     }
@@ -121,7 +127,8 @@ public struct RefLibrary: Sendable, Hashable {
         guard let b = board(boardId) else { return [] }
         boards.removeAll { $0.id == boardId }
         var gone: [String] = []
-        for id in b.items where !isUsed(id) && dropShot(id) { gone.append(id) }
+        // Корзина уходит вместе с подборкой: её кадры, что нигде больше не лежат, тоже насовсем.
+        for id in b.items + b.bin.map(\.id) where !isUsed(id) && dropShot(id) { gone.append(id) }
         return gone
     }
 
@@ -208,7 +215,8 @@ extension RefLibrary {
     /// Кадр лежит в какой-то другой подборке, кроме этой (веб: `boards.some(o !== b && boardHas(o, id))`).
     /// Сырые подборки неизвестного рода тоже считаются — их ссылку рвать нельзя.
     public func isUsed(_ shotId: String, except boardId: String) -> Bool {
-        boards.contains { $0.id != boardId && $0.items.contains(shotId) } || isUsedByForeign(shotId)
+        boards.contains { $0.id != boardId && ($0.items.contains(shotId) || $0.bin.contains { $0.id == shotId }) }
+            || isUsedByForeign(shotId)
     }
 
     /// Сколько кадров подборки уйдут насовсем вместе с ней — лежат только здесь (веб `openMbBoardSheet`, `lone`).

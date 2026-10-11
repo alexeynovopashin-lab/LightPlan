@@ -84,6 +84,25 @@ extension RefFrame {
     }
 }
 
+extension RefBinned {
+    init?(json: JSONValue) {
+        guard case .object(var o) = json, let id = o.take("id", \.str), let at = o.take("at", \.num) else { return nil }
+        let pos = o.take("i") { v -> Int? in
+            guard let n = v.num, n.isFinite, n == n.rounded(), n >= 0, n < 1_000_000 else { return nil }
+            return Int(n)
+        }
+        self.init(id: id, at: at, pos: pos, extra: o)
+    }
+
+    var json: JSONValue {
+        var o = extra
+        o["id"] = .string(id)
+        o["at"] = .number(at)
+        if let pos { o["i"] = .number(Double(pos)) }
+        return .object(o)
+    }
+}
+
 extension RefBoard {
     /// Подборка неизвестного рода (`kind` не shoot/tpl) сюда не проходит — `RefLibrary` держит её сырой.
     /// Нет `id` (старый файл) — стабильный выводной: род + знак съёмки или жанр + место.
@@ -98,9 +117,17 @@ extension RefBoard {
             guard let n = v.num, n.isFinite, n == n.rounded(), abs(n) < 1_000_000 else { return nil }
             return Int(n)
         } ?? 0
+        // Корзина: разобранные записи берутся, чужие остаются сырыми в `extra["bin"]` и уходят обратно.
+        var bin: [RefBinned] = []
+        if case .array(let a)? = o["bin"] {
+            bin = a.compactMap { RefBinned(json: $0) }
+            if bin.count == a.count { o.removeValue(forKey: "bin") }
+        }
         self.init(id: id, kind: k, sid: sid, genre: genre, items: items,
                   name: o.take("name", \.str), cover: o.take("cover", \.str), sort: sort,
-                  keep: o.take("keep") { RefKeep(json: $0) }, mt: o.take("mt", \.num), extra: o)
+                  keep: o.take("keep") { RefKeep(json: $0) }, bin: bin,
+                  binMode: o.take("binMode") { RefBinMode(rawValue: $0.str ?? "") },
+                  mt: o.take("mt", \.num), extra: o)
     }
 
     public var json: JSONValue {
@@ -114,6 +141,15 @@ extension RefBoard {
         if let cover { o["cover"] = .string(cover) } else if o["cover"] == nil { o["cover"] = .null }
         if sort != 0 { o["sort"] = .number(Double(sort)) }
         if let keep { o["keep"] = keep.json }
+        if let binMode { o["binMode"] = .string(binMode.rawValue) }
+        if case .array(let raw)? = o["bin"] {
+            // Есть непонятные записи: они остаются на местах, разобранные идут в порядке `bin`.
+            var out: [JSONValue] = bin.map(\.json)
+            for (i, v) in raw.enumerated() where RefBinned(json: v) == nil { out.insert(v, at: Swift.min(i, out.count)) }
+            o["bin"] = .array(out)
+        } else if !bin.isEmpty {
+            o["bin"] = .array(bin.map(\.json))
+        }
         if let mt { o["mt"] = .number(mt) }
         return .object(o)
     }

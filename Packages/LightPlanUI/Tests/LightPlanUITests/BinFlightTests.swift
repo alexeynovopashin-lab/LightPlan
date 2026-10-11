@@ -185,6 +185,8 @@ struct BinFlightTests {
         try? await Task.sleep(for: .milliseconds(1500))
         let lib = app.mbLibrary()
         #expect(lib.board("sh")?.items == ["b", "c"], "\(lib.board("sh")?.items ?? [])")
-        #expect(lib.shot("a") == nil && lib.shot("d") != nil && lib.shot("b") != nil)
+        // Корзина мудборда съёмки (29б): «a» (нигде больше не лежит) и «d» (лежит ещё в жанре) — в корзине, «b» не тронут.
+        #expect(Set(lib.board("sh")?.bin.map(\.id) ?? []) == ["a", "d"], "\(lib.board("sh")?.bin.map(\.id) ?? [])")
+        #expect(lib.shot("a") != nil && lib.shot("d") != nil && lib.shot("b") != nil)
     }
 }

@@ -163,7 +163,7 @@ struct MoodboardSheetsStateTests {
         #expect(app.mb.sheet == .add(mode))                                       // лист остался
     }
 
-    @Test func removingTheLastPlaceOfAShotAsksFirstAndThenDropsIt() {
+    @Test func removingTheLastPlaceOfAShotAsksFirstAndThenBinsIt() {
         let app = model()
         app.openMbAdd(shot: "a")
         let mode = MbAddMode(shot: "a")
@@ -171,7 +171,9 @@ struct MoodboardSheetsStateTests {
         #expect(app.mb.sheet == .loneConfirm(shot: "a", board: "sh"))
         #expect(lib(app).shot("a") != nil && lib(app).board("sh")?.items.contains("a") == true)   // пока ничего не тронуто
         app.mbConfirmLone(shot: "a", board: "sh")
-        #expect(lib(app).shot("a") == nil && lib(app).board("sh")?.items == ["b", "c", "d"])
+        // Корзина мудборда съёмки (29б): ссылка снята, кадр ждёт срока самоочистки (по умолчанию 7 дней).
+        #expect(lib(app).board("sh")?.items == ["b", "c", "d"] && lib(app).board("sh")?.bin.map(\.id) == ["a"])
+        #expect(lib(app).shot("a") != nil)
         #expect(app.mb.sheet == nil)
     }
 
@@ -183,11 +185,13 @@ struct MoodboardSheetsStateTests {
         #expect(app.mbBoardCardSub(lib(app).board("tpl")!) == "1 кадр")
     }
 
-    @Test func deleteFromInsideFolderClosesItAndDropsOnlyLoneFrames() {
+    @Test func deleteFromInsideFolderClosesItAndDropsOnlyLoneFrames() async {
         let app = model(); app.openMbFolder(boardId: "sh")
         app.toggleMbPicking()
         app.openMbBoardCard("sh")
         app.mbConfirmDelete("sh")
+        // Стирание идёт через полёт в корзину (29.7): без «Уменьшить движение» оно в глоток, через ~0,65 с.
+        for _ in 0..<60 where lib(app).board("sh") != nil { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(lib(app).board("sh") == nil && app.mb.folder == nil && app.mb.pick == nil && app.mb.sheet == nil)
         #expect(lib(app).shots.map(\.id) == ["d"])                                // «d» лежит ещё в жанровой
     }
@@ -299,7 +303,7 @@ struct MoodboardSheetsStateTests {
         app.openMbItem(shot: "c")
         app.mb.pager = RefPager(count: 3, start: 1); app.mb.viewerIds = ["b", "c", "d"]
         app.mbItemRemove(shot: "c", board: "sh")
-        #expect(lib(app).board("sh")?.items == ["a", "b", "d"] && lib(app).shot("c") == nil)    // «c» больше нигде не лежал
+        #expect(lib(app).board("sh")?.items == ["a", "b", "d"] && lib(app).board("sh")?.bin.map(\.id) == ["c"])   // «c» — в корзину
         #expect(app.mb.pager == nil && app.mb.viewerIds.isEmpty && app.mb.sheet == nil && app.mb.folder == "sh")
     }
 }

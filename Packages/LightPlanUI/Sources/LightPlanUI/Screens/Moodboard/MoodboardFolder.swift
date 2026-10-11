@@ -96,7 +96,7 @@ struct MoodboardFolder: View {
             // Корзина (29.7): отмеченные кадры стягиваются в круг и снимаются в глоток; кадры и подборка
             // фиксируются в момент подтверждения (выбор за 0,6 с полёта мог смениться).
             Button(t.t("mb.selDelOk"), role: .destructive) { app.mbConfirmRemovePicked() }
-        } message: { Text(t.t("mb.selDelSub")) }
+        } message: { Text(app.mbBinGoText(board: app.mb.folder, fallback: t.t("mb.selDelSub"))) }
     }
 
     private struct Metrics: Equatable { var offset: CGFloat; var scrollable: CGFloat; var window: CGFloat }
@@ -237,7 +237,11 @@ struct MoodboardFolder: View {
     @ViewBuilder private func grid(_ sc: MbFolderScene, _ pal: Palette) -> some View {
         Group {
             if sc.list.isEmpty {
-                ghosts(sc, pal)
+                // Все кадры убраны — корзина над призраками, чтобы до неё не листать коллаж (там лежит то, что вернуть).
+                VStack(alignment: .leading, spacing: 16) {
+                    if showsBinTile(sc) { binTile(sc, pal).frame(width: (gridW - 8) / 2, height: (gridW - 8) / 3) }
+                    ghosts(sc, pal)
+                }
             } else if sc.shown.isEmpty {
                 Text(app.mb.folderQuery.trimmingCharacters(in: .whitespaces).isEmpty
                      ? t.t("mb.sectionEmpty", ["section": sc.tag.map(app.mbTagName) ?? ""]) : t.t("mb.searchNothing"))
@@ -256,15 +260,20 @@ struct MoodboardFolder: View {
         let w = (gridW - 8) / 2
         let frames = sc.shown
         let adds = MbFolderView.showsAddTile(filtered: sc.filtered, picking: app.mb.pick != nil, shownCount: frames.count)
-        let hs = frames.map { MbFolderView.tileHeight($0, width: Double(w)) } + (adds ? [Double(w)] : [])
+        // Корзина — отдельная плитка мудборда съёмки, без превью, только знак; у жанровых подборок её нет (29б).
+        let bin = showsBinTile(sc)
+        let extras: [Extra] = (adds ? [.add] : []) + (bin ? [.bin] : [])
+        let hs = frames.map { MbFolderView.tileHeight($0, width: Double(w)) } + extras.map { _ in Double(w) }
         let n = RefColumns.firstColumnCount(heights: hs)
         func col(_ a: ArraySlice<Double>) -> Double { a.reduce(0, +) + Double(max(0, a.count - 1)) * 8 }
-        // «+» — последний в порядке колонок: в первой, если она вместила всё, иначе последней во второй.
+        // «+» и корзина — последние в порядке колонок: в первой, если она вместила всё, иначе во второй.
         func column(_ range: Range<Int>) -> some View {
             VStack(spacing: 8) {
                 ForEach(Array(range), id: \.self) { i in
                     Group {
-                        if i < frames.count { tile(frames[i], sc, pal) } else { addTile(pal) }
+                        if i < frames.count { tile(frames[i], sc, pal) }
+                        else if extras[i - frames.count] == .add { addTile(pal) }
+                        else { binTile(sc, pal) }
                     }
                     .frame(width: w, height: CGFloat(hs[i]))
                 }
@@ -277,6 +286,26 @@ struct MoodboardFolder: View {
         }
         .frame(height: CGFloat(max(col(hs[..<n]), col(hs[n...]))), alignment: .top)
         .shotNode("mb.fgrid", text: "\(frames.count)")
+    }
+
+    private enum Extra { case add, bin }
+
+    /// Плитка корзины стоит у подборки съёмки в спокойном виде: без выбора и без фильтра по слову или поиску.
+    private func showsBinTile(_ sc: MbFolderScene) -> Bool {
+        sc.board.kind == .shoot && app.mb.pick == nil && !sc.filtered
+    }
+
+    /// Плитка «Корзина»: квадрат, подложка листа, знак по центру — ни превью, ни числа (слова Алексея 07.10:
+    /// «отдельной плиткой в мудборде, без превью, только иконкой»). Тап — лист корзины.
+    private func binTile(_ sc: MbFolderScene, _ pal: Palette) -> some View {
+        Button { focused = false; app.openMbBin(sc.board.id) } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(pal.sheet)
+                Icon("trash", size: 26, line: 1.6).foregroundStyle(pal.ink4)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain).accessibilityLabel(t.t("card.bin")).shotNode("mb.binTile")
     }
 
     /// Плитка «+»: пунктир 1 `#1C1913`, радиус 10; тап — лист «Фото / Ссылка» (`openMbAddWhat`).

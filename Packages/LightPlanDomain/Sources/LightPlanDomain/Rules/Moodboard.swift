@@ -60,7 +60,7 @@ public enum Moodboard {
         var out: [MbFolder] = []
         for s in sessions {
             guard let b = library.boards.first(where: { $0.kind == .shoot && $0.sid == s.id }),
-                  !b.items.isEmpty else { continue }
+                  !b.items.isEmpty || !b.bin.isEmpty else { continue }   // с кадрами в корзине подборка стоит: там можно «Вернуть»
             out.append(MbFolder(kind: .shoot, boardId: b.id, boardIds: [b.id], sessionId: s.id,
                                 genre: b.genre, frameCount: count(b)))
         }

@@ -171,7 +171,20 @@
     "img.notImage": "По ссылке не картинка или формат не поддерживается",
     "img.tooLarge": "Картинка слишком большая",
     "img.badLink": "Этот адрес не подошёл",
-    "img.serverOff": "Напрямую картинка не открылась, а наш сервер выключен: Настройки → Сеть → «Авто»"
+    "img.serverOff": "Напрямую картинка не открылась, а наш сервер выключен: Настройки → Сеть → «Авто»",
+    "mb.binSub": "Кадры, убранные из этого мудборда. Что нигде больше не лежит, уходит насовсем по сроку самоочистки.",
+    "mb.binAuto": "Самоочистка",
+    "mb.binModeNow": "Удалять сразу",
+    "mb.binModeWeek": "Через 7 дней",
+    "mb.binModeShoot": "После окончания съёмки",
+    "mb.binModeNever": "Не удалять",
+    "mb.binLeft": "Уйдёт через {n}",
+    "mb.binLeftShoot": "Уйдёт после окончания съёмки",
+    "mb.binLeftKeep": "Лежит, пока вы не очистите корзину",
+    "mb.binBack": "Вернуть",
+    "mb.binGoWeek": "Убранное уйдёт в корзину этого мудборда. Что нигде больше не лежит, пропадёт через 7 дней.",
+    "mb.binGoShoot": "Убранное уйдёт в корзину этого мудборда. Что нигде больше не лежит, пропадёт после окончания съёмки.",
+    "mb.binGoNever": "Убранное уйдёт в корзину этого мудборда и останется там, пока вы её не очистите."
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -344,7 +357,20 @@
     "img.notImage": "This link is not a picture, or the format is not supported",
     "img.tooLarge": "The picture is too large",
     "img.badLink": "This address didn't work",
-    "img.serverOff": "The picture didn't open directly, and our server is off: Settings → Network → “Auto”"
+    "img.serverOff": "The picture didn't open directly, and our server is off: Settings → Network → “Auto”",
+    "mb.binSub": "Frames removed from this moodboard. Anything that lies nowhere else is deleted for good when the auto-clean term ends.",
+    "mb.binAuto": "Auto-clean",
+    "mb.binModeNow": "Delete at once",
+    "mb.binModeWeek": "After 7 days",
+    "mb.binModeShoot": "After the shoot ends",
+    "mb.binModeNever": "Never delete",
+    "mb.binLeft": "Goes in {n}",
+    "mb.binLeftShoot": "Goes when the shoot ends",
+    "mb.binLeftKeep": "Stays until you empty the bin",
+    "mb.binBack": "Restore",
+    "mb.binGoWeek": "Removed frames go to this moodboard’s bin. Anything that lies nowhere else is deleted after 7 days.",
+    "mb.binGoShoot": "Removed frames go to this moodboard’s bin. Anything that lies nowhere else is deleted when the shoot ends.",
+    "mb.binGoNever": "Removed frames go to this moodboard’s bin and stay there until you empty it."
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -517,7 +543,20 @@
     "img.notImage": "El enlace no es una imagen o el formato no es compatible",
     "img.tooLarge": "La imagen es demasiado grande",
     "img.badLink": "Esta dirección no es válida",
-    "img.serverOff": "La imagen no se abrió directamente y nuestro servidor está desactivado: Ajustes → Red → «Auto»"
+    "img.serverOff": "La imagen no se abrió directamente y nuestro servidor está desactivado: Ajustes → Red → «Auto»",
+    "mb.binSub": "Fotogramas quitados de este moodboard. Lo que no está en ningún otro sitio se borra para siempre al cumplirse el plazo.",
+    "mb.binAuto": "Limpieza automática",
+    "mb.binModeNow": "Borrar al instante",
+    "mb.binModeWeek": "A los 7 días",
+    "mb.binModeShoot": "Al terminar la sesión",
+    "mb.binModeNever": "No borrar",
+    "mb.binLeft": "Se irá en {n}",
+    "mb.binLeftShoot": "Se irá al terminar la sesión",
+    "mb.binLeftKeep": "Se queda hasta que vacíe la papelera",
+    "mb.binBack": "Restaurar",
+    "mb.binGoWeek": "Lo quitado va a la papelera de este moodboard. Lo que no esté en otro sitio se borra a los 7 días.",
+    "mb.binGoShoot": "Lo quitado va a la papelera de este moodboard. Lo que no esté en otro sitio se borra al terminar la sesión.",
+    "mb.binGoNever": "Lo quitado va a la papelera de este moodboard y se queda allí hasta que la vacíe."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -689,7 +728,20 @@
     "img.notImage": "リンク先は画像ではないか、非対応の形式です",
     "img.tooLarge": "画像が大きすぎます",
     "img.badLink": "このアドレスは使えません",
-    "img.serverOff": "直接は開けず、当方のサーバーも停止中です：設定 → ネットワーク →「自動」"
+    "img.serverOff": "直接は開けず、当方のサーバーも停止中です：設定 → ネットワーク →「自動」",
+    "mb.binSub": "このムードボードから外したカットです。ほかのどこにもないものは、自動削除の期限で完全に消えます。",
+    "mb.binAuto": "自動削除",
+    "mb.binModeNow": "すぐに削除",
+    "mb.binModeWeek": "7日後",
+    "mb.binModeShoot": "撮影の終了後",
+    "mb.binModeNever": "削除しない",
+    "mb.binLeft": "あと{n}で削除",
+    "mb.binLeftShoot": "撮影の終了後に削除",
+    "mb.binLeftKeep": "ゴミ箱を空にするまで残ります",
+    "mb.binBack": "戻す",
+    "mb.binGoWeek": "外したカットはこのムードボードのゴミ箱に入ります。ほかにないものは7日後に消えます。",
+    "mb.binGoShoot": "外したカットはこのムードボードのゴミ箱に入ります。ほかにないものは撮影の終了後に消えます。",
+    "mb.binGoNever": "外したカットはこのムードボードのゴミ箱に入り、空にするまで残ります。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -861,6 +913,19 @@
     "img.notImage": "链接不是图片，或格式不受支持",
     "img.tooLarge": "图片过大",
     "img.badLink": "此地址无法使用",
-    "img.serverOff": "无法直接打开，而我们的服务器已关闭：设置 → 网络 →“自动”"
+    "img.serverOff": "无法直接打开，而我们的服务器已关闭：设置 → 网络 →“自动”",
+    "mb.binSub": "从此情绪板中移除的图片。不在其他位置的图片会在自动清理期限到后永久删除。",
+    "mb.binAuto": "自动清理",
+    "mb.binModeNow": "立即删除",
+    "mb.binModeWeek": "7 天后",
+    "mb.binModeShoot": "拍摄结束后",
+    "mb.binModeNever": "不删除",
+    "mb.binLeft": "{n}后删除",
+    "mb.binLeftShoot": "拍摄结束后删除",
+    "mb.binLeftKeep": "在您清空回收站前一直保留",
+    "mb.binBack": "恢复",
+    "mb.binGoWeek": "移除的图片会进入此情绪板的回收站。不在其他位置的图片将在 7 天后删除。",
+    "mb.binGoShoot": "移除的图片会进入此情绪板的回收站。不在其他位置的图片将在拍摄结束后删除。",
+    "mb.binGoNever": "移除的图片会进入此情绪板的回收站，直到您清空前一直保留。"
   }
 }

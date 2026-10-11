@@ -86,7 +86,7 @@ extension AppModel {
         var snapshot = (try? Data(contentsOf: s.seed)).flatMap { try? JSONDecoder().decode(Snapshot.self, from: $0) }
             ?? Snapshot()
         // Экраны мудборда (28): первый запуск заводит пустую папку каждому жанру, как на телефоне и в вебе (`mbSeeded`).
-        if ["mbgallery", "mbshelf", "mbfolder"].contains(s.sheet ?? "") {
+        if ["mbgallery", "mbshelf", "mbfolder", "mbbin"].contains(s.sheet ?? "") {
             _ = RefLibrary.seedGenreFolders(in: &snapshot.extra, genres: Moodboard.enabledGenres(snapshot.genres).map(\.rawValue),
                                             newId: { UUID().uuidString.lowercased() })
         }
@@ -192,6 +192,8 @@ extension AppModel {
         case "mbgallery": app.openMbGallery(backKey: "nav.settings")   // дверь веба: строка «Мудборды» в «Настройках»
         case "mbshelf": app.openMbShelf(s.way ?? "wedding")
         case "mbfolder": if let id = s.way { app.openMbFolder(boardId: id) }
+        // Корзина мудборда съёмки (29б): папка подборки и лист корзины поверх неё.
+        case "mbbin": if let id = s.way { app.openMbFolder(boardId: id); app.openMbBin(id) }
         case "orgs": app.openOrgs()
         case "docs":
             // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),

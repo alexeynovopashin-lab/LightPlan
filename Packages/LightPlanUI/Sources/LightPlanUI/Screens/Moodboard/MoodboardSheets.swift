@@ -36,6 +36,9 @@ struct MbSheetContent: View {
             case .cover(let id)?: MbCoverSheet(app: app, boardId: id)
             case .board(let id)?: MbBoardSheet(app: app, boardId: id)
             case .item(let shot, let board, let over)?: MbItemSheet(app: app, shot: shot, board: board, overView: over)
+            case .bin(let id)?: MbBinSheet(app: app, boardId: id)
+            case .binMode(let id)?: MbBinModeSheet(app: app, boardId: id)
+            case .binClear(let id, let shots)?: MbBinClearSheet(app: app, boardId: id, shots: shots)
             case nil: Color.clear
             }
         }
@@ -112,10 +115,12 @@ struct MbRow: View {
 struct MbCancel: View {
     @Bindable var app: AppModel
     var back: MbSheet?
+    /// Слово кнопки: «Отмена» у вопросов и выбора, «Закрыть» у экрана, где ничего не отменяется.
+    var key = "ask.cancel"
     @Environment(\.colorScheme) private var scheme
     var body: some View {
         Button { app.mb.sheet = back } label: {
-            Text(app.lexicon.t("ask.cancel")).font(webFont(15)).foregroundStyle(Palette(scheme).ink4)
+            Text(app.lexicon.t(key)).font(webFont(15)).foregroundStyle(Palette(scheme).ink4)
                 .frame(maxWidth: .infinity, minHeight: 45).contentShape(Rectangle())
         }
         .buttonStyle(.plain).padding(.top, 6).shotNode("mbs.cancel")
@@ -311,7 +316,8 @@ private struct MbLoneSheet: View {
     let board: String
     var body: some View {
         let t = app.lexicon
-        AskYesSheet(title: t.t("mb.loneTitle"), sub: t.t("mb.loneSub"), ok: t.t("mb.selDelOk"), cancel: t.t("ask.cancel")) { yes in
+        // У мудборда съёмки с корзиной кадр не пропадает сразу — вопрос говорит, куда он уйдёт и когда исчезнет.
+        AskYesSheet(title: t.t("mb.loneTitle"), sub: app.mbBinGoText(board: board, fallback: t.t("mb.loneSub")), ok: t.t("mb.selDelOk"), cancel: t.t("ask.cancel")) { yes in
             if yes { app.mbConfirmLone(shot: shot, board: board) } else { app.mb.sheet = .add(MbAddMode(shot: shot)) }
         }
     }

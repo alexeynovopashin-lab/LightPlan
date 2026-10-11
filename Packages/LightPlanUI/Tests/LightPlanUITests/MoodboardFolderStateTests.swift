@@ -137,6 +137,7 @@ struct MoodboardFolderStateTests {
 
     @Test func removePickedTakesFramesOffAndDropsOnlyOrphans() {
         let app = model(); app.openMbFolder(boardId: "sh")
+        app.mbEdit { lib, now in lib.setBinMode(.now, of: "sh", now: now) }       // «Удалять сразу» — как до корзины (29б)
         app.toggleMbPicking(); app.toggleMbPick("a"); app.toggleMbPick("d")
         app.mbRemovePicked()
         let lib = app.mbLibrary()
@@ -148,6 +149,7 @@ struct MoodboardFolderStateTests {
 
     @Test func removingAllFromShootFolderClosesItBecauseTheBoardIsGone() {
         let app = model(); app.openMbFolder(boardId: "sh")
+        app.mbEdit { lib, now in lib.setBinMode(.now, of: "sh", now: now) }       // с корзиной подборка остаётся — см. `MoodboardBinStateTests`
         app.toggleMbPicking()
         app.toggleMbPickAll(scene(app).shown)
         app.mbRemovePicked()

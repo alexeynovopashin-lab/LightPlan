@@ -23,6 +23,10 @@ enum MbSheet: Equatable {
     case cover(String)
     case board(String)
     case item(shot: String, board: String, overView: Bool)
+    /// Корзина мудборда съёмки (29б), выбор самоочистки и вопрос «Очистить корзину» с кадрами, о которых спросили.
+    case bin(String)
+    case binMode(String)
+    case binClear(board: String, shots: [String])
 }
 
 /// Что лист «Добавить в…» делает с тапом: один кадр (галочки) или пачка (добавить / переместить).
@@ -199,7 +203,7 @@ extension AppModel {
                 return
             }
             if lib.board(id)?.items.contains(shot) == true {
-                if lib.isUsed(shot, except: id) { mbEdit { $0.remove([shot], from: id, now: $1) } }
+                if lib.isUsed(shot, except: id) { mbDiscard([shot], from: id) }
                 else { mb.sheet = .loneConfirm(shot: shot, board: id) }
             } else {
                 mbPut(shot, into: id)
@@ -222,7 +226,7 @@ extension AppModel {
 
     /// «Убрать» последнее место кадра подтверждено: кадр уходит совсем (веб `askYes` `mb.loneTitle`).
     func mbConfirmLone(shot: String, board: String) {
-        mbEdit { $0.remove([shot], from: board, now: $1) }
+        mbDiscard([shot], from: board)
         mb.sheet = nil
     }
 
@@ -246,7 +250,7 @@ extension AppModel {
     /// «Убрать из мудборда» на листе кадра (веб `mbItemRemove`): просмотрщик закрывается, опустевшая
     /// подборка съёмки исчезает вместе с папкой.
     func mbItemRemove(shot: String, board: String) {
-        mbEdit { $0.remove([shot], from: board, now: $1) }
+        mbDiscard([shot], from: board)
         mb.sheet = nil
         mb.pager = nil; mb.viewerIds = []
         if mbLibrary().board(board) == nil { closeFolderNoPrune() }

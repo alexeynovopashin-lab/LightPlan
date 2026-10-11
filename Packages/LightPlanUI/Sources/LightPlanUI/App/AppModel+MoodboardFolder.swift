@@ -64,6 +64,7 @@ extension AppModel {
 
     /// Открыть папку: чужой запрос и раздел не переезжают, выбор сброшен (веб `openMbFolder`).
     func openMbFolder(boardId: String) {
+        sweepMbBins()
         mb.folder = boardId
         resetMbFolderInput()
     }
@@ -117,7 +118,7 @@ extension AppModel {
     /// на этой подборке.
     func mbRemove(_ picked: [String], from id: String) {
         guard !picked.isEmpty else { return }
-        mbEdit { lib, now in lib.remove(picked, from: id, now: now) }
+        mbDiscard(picked, from: id)
         guard mb.folder == id else { return }
         mb.pick = nil
         mb.pager = nil; mb.viewerIds = []
