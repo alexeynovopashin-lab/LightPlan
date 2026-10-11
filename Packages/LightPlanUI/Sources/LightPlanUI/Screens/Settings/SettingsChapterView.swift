@@ -26,7 +26,7 @@ struct SettingsChapterView: View {
             case .profile: profile
             case .view: view
             case .shoots: shoots
-            case .alerts: foreign("set.feedback"); foreign("set.notify")
+            case .alerts: feedback; foreign("set.notify")
             case .places: places
             case .store: moodboardRow; orgsRow; binRow
             case .data: foreign("set.data"); foreign("set.icsImport"); foreign("cloud.title")
@@ -130,6 +130,21 @@ struct SettingsChapterView: View {
         }
         .buttonStyle(.plain)
         .shotNode("item.1", text: t.t("loc.myPlaces"))
+    }
+
+    // MARK: - Оповещения
+
+    /// «Отклик» (`#soundToggle`, 29.6): один тумблер «Щелчки слайдера», по умолчанию включён; гасит все звуки
+    /// приложения — щелчки детентов и затвор. Звук и без того подчиняется переключателю «Без звука» на боку.
+    @ViewBuilder private var feedback: some View {
+        let pal = Palette(colorScheme)
+        SecLabel(text: t.t("set.feedback"), first: true, node: "sec.0")
+        SoundClicksRow(label: t.t("set.clicks"), pal: pal)
+            .padding(.horizontal, 24)
+            .padding(.top, 15)
+            .padding(.bottom, 16)
+            .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+            .shotNode("item.0", text: t.t("set.clicks"))
     }
 
     // MARK: - Съёмки
@@ -357,5 +372,23 @@ extension SettingsText {
         cal.timeZone = .current
         let c = cal.dateComponents([.hour, .minute], from: d)
         return dt.dNum(d) + " " + ClockText(language: language, preference: clock).fmt(Double(c.hour! * 60 + c.minute!))
+    }
+}
+
+/// Строка «Щелчки слайдера»: тумблер хранится на устройстве (`SoundCenter.enabledKey`), не в данных съёмок.
+private struct SoundClicksRow: View {
+    let label: String
+    let pal: Palette
+    @AppStorage(SoundCenter.enabledKey) private var on = true
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(label).font(.system(size: 15)).foregroundStyle(pal.ink)
+            Spacer(minLength: 0)
+            Toggle("", isOn: Binding(get: { on }, set: { SoundCenter.setEnabled($0) }))
+                .labelsHidden().tint(pal.brass)
+                .frame(height: 31)
+                .shotNode("clicks.toggle", text: on ? "on" : "off")
+        }
     }
 }

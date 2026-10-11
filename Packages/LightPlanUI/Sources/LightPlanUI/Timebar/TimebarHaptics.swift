@@ -49,6 +49,8 @@ final class TimebarHaptics {
     /// Час пройден, ячейка барабана щёлкнула. Лёгкий, но не слабый: полная
     /// сила с коротким телом 18 мс — вес даёт тело, не одна лишь сила удара.
     func detent() {
+        // Щелчок беты (`tickClick` на часовой метке) — в тот же вызов, что и тик.
+        SoundCenter.play(.click, event: "timebar.detent")
         guard !play(events: [
             body(0.45, 0.8, at: 0, for: 0.018),
             hit(1, 0.95, at: 0),
@@ -176,7 +178,7 @@ final class TimebarHaptics {
 @MainActor
 final class TimebarHaptics {
     init() {}
-    func detent() {}
+    func detent() { SoundCenter.play(.click, event: "timebar.detent") }
     func windLevel(_ p: Double) {}
     func windStop() {}
     func snap() {}

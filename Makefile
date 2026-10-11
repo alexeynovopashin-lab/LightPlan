@@ -155,6 +155,10 @@ lightfit:
 sims:
 	@node Tools/sim.js $(ARGS)
 
+# Итерация 29.6: звуки беты — click.wav побайтно, gain и тон щелчка, затвор (Tools/sound_ref.js; без --check пересобирает эталон).
+sound:
+	@node Tools/sound_ref.js $(ARGS)
+
 # Итерация 20д: там, где у веба имитация стекла, — только встроенное стекло.
 glass:
 	@Tools/check_glass.sh

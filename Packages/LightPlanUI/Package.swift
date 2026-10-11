@@ -46,8 +46,8 @@ let package = Package(
             name: "LightPlanUITests",
             dependencies: ["LightPlanUI"],
             // Ответы веба на корпус названий, эталонный лист знаков и разметка
-            // прибора карты читаются по #filePath, а не ресурсом: это не сборочные файлы.
-            exclude: ["point_sign.json", "icons_ref.png", "icons_ref.json", "map_scene_ref.json"],
+            // прибора карты, звуков беты читаются по #filePath, а не ресурсом: это не сборочные файлы.
+            exclude: ["point_sign.json", "icons_ref.png", "icons_ref.json", "map_scene_ref.json", "sound_ref.json"],
             resources: [.process("Resources")]
         ),
     ],

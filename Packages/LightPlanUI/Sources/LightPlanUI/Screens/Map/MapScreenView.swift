@@ -798,13 +798,13 @@ struct MapScreenView: View {
         if r.isNew { openBar(r.spot, edit: false, quiet: true) }
     }
 
-    /// Постановка (`markLand`): движение булавки, отдача и щелчок закладки.
+    /// Постановка (`markLand`): движение булавки и отдача. Звука нет: у беты на закладке карты только тик касания
+    /// (`hapticize`), ни `tickClick`, ни `swoosh` там не зовутся.
     /// Строка новой точки в полосе ждёт, пока булавка сядет
     /// (`SpotLanding.total`); точка, уже стоявшая в черновике, строку не прячет.
     private func land(_ id: String, newRow: Bool = true) {
         landing = SpotLandingMark(id: id, tick: (landing?.tick ?? 0) + 1, at: .now)
         spotDrops += 1
-        MapClick.play()
         guard newRow else { return }
         rowLag.insert(id)
         Task { @MainActor in
@@ -1035,7 +1035,6 @@ struct MapScreenView: View {
         // Поставил — булавка (`spotDrop`, средний тик); убрал — тик закладки: на касание один.
         guard let sp = app.toggleSpotHere() else { Haptics.play(.mapSave); return }
         spotDrops += 1
-        MapClick.play()
         openBar(sp, edit: false, quiet: false, keyboard: keyboard)
     }
 

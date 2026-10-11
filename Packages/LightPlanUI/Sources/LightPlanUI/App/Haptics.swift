@@ -12,6 +12,9 @@ import UIKit
 /// системной настройкой «Haptics» iOS сама: своего переключателя нет. Reduce Motion к
 /// ней не относится (это не движение).
 ///
+/// Звук (29.6): у события в карте есть `sound`; `play` отдаёт тик и щелчок одним вызовом. Таймбар звучит из
+/// `TimebarHaptics.detent` тем же образом — один источник.
+///
 /// Не через слой — отдача таймбара (`Timebar/TimebarHaptics`, свой CoreHaptics-слой,
 /// подтверждён на телефоне). Через неё же ходит и купол: час под пальцем — детент
 /// таймбара (`TimebarState.dragDome` → `checkHourMark`), второго тика слой не ставит.
@@ -88,6 +91,23 @@ enum HapticEvent: String, CaseIterable, Sendable {
         }
     }
 
+    /// Щелчок, что звучит вместе с тиком (29.6): ровно те места, где у беты стоит `tickClick()`, а не системный
+    /// `hapticize`. Вкладки, сегменты, кнопка и веер видов, закладка карты, светило, булавка, визир, жанр, блок
+    /// карточки и мудборд у беты звука не имеют (там тик касания или вибрация Android) — здесь тоже тихи.
+    var sound: SoundCue? {
+        switch self {
+        case .deadlineStop,        // срок сдачи `fDelvDial` (веб 20400)
+             .fan,                 // открытие веера над записью (35972); из подъёма он открывается молча (`quiet`)
+             .dayLift, .dayNotch,  // подъём и сдвиг блока и ручки на ленте дня (19470, 19478, 19525)
+             .routePointLift,      // удержание строки маршрута `rbHold` (16938)
+             .dayStripDate,        // тап по дате ленты, только если день сменился (18835) — решает вызов
+             .daySwipe,            // смена дня свайпом, только «день» (34397)
+             .laneDot:             // точка ленты маршрута карточки (28920)
+            .click
+        default: nil
+        }
+    }
+
     /// События, которых в нативе пока нет жестом: подключают 29.3б и 29.3в.
     var awaitsGesture: Bool {
         switch self {
@@ -109,11 +129,15 @@ enum Haptics {
     /// `stepCal`, у недели и месяца отдачи нет.
     static func daySwipeTicks(in scope: CalScope) -> Bool { scope == .day }
 
-    static func play(_ event: HapticEvent) {
+    /// `sound: false` — тик без щелчка: у даты ленты тик на каждое касание, а `tickClick` беты — только когда
+    /// день сменился (`if (dayShift)`).
+    static func play(_ event: HapticEvent, sound: Bool = true) {
         HapticsLog.note("\(event.rawValue) \(event.kind.rawValue)")
         #if os(iOS)
         generators.fire(event.kind)
         #endif
+        // Один вызов — и тик, и щелчок: рассинхрона между ними быть не может.
+        if sound, let cue = event.sound { SoundCenter.play(cue, event: event.rawValue) }
     }
 
     /// Прогреть движок до касания: первый тик после паузы иначе приходит с задержкой.
@@ -121,6 +145,7 @@ enum Haptics {
         #if os(iOS)
         generators.prepareAll()
         #endif
+        SoundCenter.prepare()
     }
 
     #if os(iOS)
