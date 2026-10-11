@@ -245,7 +245,7 @@ public struct PlannerScreenView: View {
         // День въезжает по кривой беты (E1 0,22 с); месяц и неделя скользят сбоку (E1 0,3 с, слово Алексея 07.10),
         // при «Уменьшении движения» — сразу (и день тоже: ревью GPT на da03172).
         let motion = PlannerDayBody.flipMotion(day: app.planner.scope == .day, still: still)
-        Haptics.play(.daySwipe)
+        if Haptics.daySwipeTicks(in: app.planner.scope) { Haptics.play(.daySwipe) }
         withAnimation(motion) { app.planner.step(dir) }
     }
 

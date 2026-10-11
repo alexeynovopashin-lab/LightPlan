@@ -49,6 +49,12 @@ struct HapticsTests {
         }
     }
 
+    @Test func daySwipeTicksOnlyInDayScope() {
+        for s in CalScope.allCases { #expect(Haptics.daySwipeTicks(in: s) == (s == .day), "\(s)") }
+        #expect(!Haptics.daySwipeTicks(in: .week))
+        #expect(!Haptics.daySwipeTicks(in: .month))
+    }
+
     @Test func domeHourBelongsToTimebar() {
         #expect(Haptics.ownedByTimebar["dome.hour"] != nil)
     }

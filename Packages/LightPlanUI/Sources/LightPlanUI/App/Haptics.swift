@@ -105,6 +105,10 @@ enum Haptics {
         "dome.hour": "TimebarState.dragDome → checkHourMark → TimebarHaptics.detent",
     ]
 
+    /// Смена дня свайпом тикает только в «дне»: у беты `tickClick()` стоит в ветке `calScope === "day"` функции
+    /// `stepCal`, у недели и месяца отдачи нет.
+    static func daySwipeTicks(in scope: CalScope) -> Bool { scope == .day }
+
     static func play(_ event: HapticEvent) {
         HapticsLog.note("\(event.rawValue) \(event.kind.rawValue)")
         #if os(iOS)
