@@ -86,8 +86,9 @@ struct MoodboardBinStateTests {
         app.mbDiscard(["a", "b"], from: "sh")
         app.mbBinRestore(["a"], into: "sh")
         #expect(lib(app).board("sh")?.items == ["a", "c", "d"] && binIds(app) == ["b"])
-        app.mbDiscard(["c"], from: "sh")                           // убрано уже после того, как спросили «очистить»
-        app.mbBinPurge(["b"], of: "sh")                            // стирается то, о чём спросили
+        let asked = app.mbLibrary().binned("sh").filter { $0.id == "b" }   // о нём спросили «очистить»
+        app.mbDiscard(["c"], from: "sh")                           // убрано уже после вопроса
+        app.mbBinPurge(asked, of: "sh")                            // стирается то, о чём спросили
         #expect(binIds(app) == ["c"] && lib(app).shot("b") == nil && lib(app).shot("c") != nil)
     }
 

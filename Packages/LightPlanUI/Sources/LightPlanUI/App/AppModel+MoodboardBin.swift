@@ -40,11 +40,11 @@ extension AppModel {
         BinStoreLog.note("restore", board: board, before: before, after: mbLibrary(), at: now())
     }
 
-    /// «Очистить корзину» после подтверждения: уходят ровно те кадры, о которых спросили (за время полёта в
-    /// корзину могло что-то добавиться — это не трогаем).
-    func mbBinPurge(_ ids: [String], of board: String) {
+    /// «Очистить корзину» после подтверждения: уходят ровно те записи, о которых спросили (за время полёта в
+    /// корзину могло что-то добавиться или вернуться и уйти снова — это не трогаем).
+    func mbBinPurge(_ asked: [RefBinned], of board: String) {
         let before = mbLibrary()
-        mbEdit { lib, now in lib.purgeBin(ids, of: board, now: now) }
+        mbEdit { lib, now in lib.purgeBin(asked, of: board, now: now) }
         BinStoreLog.note("purge", board: board, before: before, after: mbLibrary(), at: now())
     }
 

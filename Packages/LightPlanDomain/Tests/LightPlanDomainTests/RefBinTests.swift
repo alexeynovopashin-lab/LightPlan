@@ -151,10 +151,33 @@ struct RefBinTests {
     @Test func purgeTakesOnlyWhatWasConfirmed() {
         var l = library()
         l.discard(["f1", "f3"], from: "S", now: t0)
-        let gone = l.purgeBin(["f1"], of: "S")          // f3 убрали уже после вопроса — не трогаем
+        let asked = l.binned("S").filter { $0.id == "f1" }
+        let gone = l.purgeBin(asked, of: "S")           // f3 убрали уже после вопроса — не трогаем
         #expect(gone == ["f1"])
         #expect(bin(l) == ["f3"])
         #expect(fund(l).contains("f3"))
+    }
+
+    @Test func purgeSkipsAFrameThatWasRestoredAndRemovedAgain() {
+        var l = library()
+        l.discard(["f1"], from: "S", now: t0)
+        let asked = l.binned("S")                       // подтвердили очистку этой записи
+        l.restore(["f1"], into: "S")
+        l.discard(["f1"], from: "S", now: t0 + 5 * second)   // убрали снова — запись другая
+        #expect(l.purgeBin(asked, of: "S").isEmpty)
+        #expect(bin(l) == ["f1"] && fund(l).contains("f1"))
+    }
+
+    @Test func frameHeldByAnUnreadBoardStaysInTheFund() {
+        let raw: JSONValue = .object(["id": .string("X"), "kind": .string("mystery"), "items": .array([.string("f1")])])
+        var extra: [String: JSONValue] = [:]
+        library().write(into: &extra)
+        guard case .array(var bs)? = extra["boards"] else { Issue.record("нет подборок"); return }
+        bs.append(raw)
+        extra["boards"] = .array(bs)
+        var l = RefLibrary(extra: extra)
+        l.discard(["f1"], from: "S", now: t0)
+        #expect(l.liveShots.map(\.id).contains("f1"))   // чужая подборка держит кадр на виду
     }
 
     @Test func emptyBoardWithBinIsKept() {
@@ -162,7 +185,7 @@ struct RefBinTests {
         l.discard(["f1", "f2", "f3", "f4"], from: "S", now: t0)
         #expect(l.board("S")?.items.isEmpty == true)
         #expect(l.board("S") != nil)                    // подборку держит корзина
-        l.purgeBin(bin(l), of: "S")
+        l.purgeBin(l.binned("S"), of: "S")
         #expect(l.board("S") == nil)                    // пустая и без корзины — исчезает, как раньше
     }
 

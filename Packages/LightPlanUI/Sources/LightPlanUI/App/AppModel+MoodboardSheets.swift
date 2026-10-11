@@ -26,7 +26,7 @@ enum MbSheet: Equatable {
     /// Корзина мудборда съёмки (29б), выбор самоочистки и вопрос «Очистить корзину» с кадрами, о которых спросили.
     case bin(String)
     case binMode(String)
-    case binClear(board: String, shots: [String])
+    case binClear(board: String, shots: [RefBinned])
 }
 
 /// Что лист «Добавить в…» делает с тапом: один кадр (галочки) или пачка (добавить / переместить).

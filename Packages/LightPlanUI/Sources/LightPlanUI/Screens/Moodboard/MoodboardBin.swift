@@ -36,7 +36,7 @@ struct MbBinSheet: View {
                     .padding(.top, 12)
                     FormGroup {
                         MbRow(title: t.t("bin.clear"), danger: true, node: "mbs.bin.clear") {
-                            app.mb.sheet = .binClear(board: boardId, shots: list.map(\.id))
+                            app.mb.sheet = .binClear(board: boardId, shots: list)
                         }
                     }
                     .padding(.top, 12)
@@ -102,16 +102,16 @@ struct MbBinModeSheet: View {
 struct MbBinClearSheet: View {
     @Bindable var app: AppModel
     let boardId: String
-    let shots: [String]
+    let shots: [RefBinned]
     var body: some View {
         let t = app.lexicon
         AskYesSheet(title: t.t("bin.clear"),
                     sub: t.t("bin.wipeAsk", ["n": t.count("unit.frame", shots.count)]),
                     ok: t.t("ask.wipe"), cancel: t.t("ask.cancel")) { yes in
             guard yes else { app.mb.sheet = .bin(boardId); return }
-            let ids = shots
+            let asked = shots
             app.mb.sheet = .bin(boardId)
-            app.flyToBin(Set(ids.map { "binframe." + $0 }), host: .mbBin) { app.mbBinPurge(ids, of: boardId) }
+            app.flyToBin(Set(asked.map { "binframe." + $0.id }), host: .mbBin) { app.mbBinPurge(asked, of: boardId) }
         }
     }
 }

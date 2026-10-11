@@ -22,7 +22,8 @@ extension RefLibrary {
         let binned = Set(boards.flatMap { $0.bin.map(\.id) })
         if binned.isEmpty { return shots }
         let linked = Set(boards.flatMap(\.items))
-        return shots.filter { !binned.contains($0.id) || linked.contains($0.id) }
+        // Подборка неизвестного рода тоже держит кадр на виду: её ссылку читать не умеем, но рвать нельзя.
+        return shots.filter { !binned.contains($0.id) || linked.contains($0.id) || isUsedByForeign($0.id) }
     }
 
     /// Записи корзины подборки, новые убранные первыми.
@@ -106,20 +107,24 @@ extension RefLibrary {
     // MARK: Стереть
 
     /// «Очистить корзину» (или её часть): записи уходят, кадры, что нигде больше не лежат, — насовсем.
-    /// Ответ — кадры, ушедшие из фонда. Какие записи — решает вызывающий в момент подтверждения.
+    /// Ответ — кадры, ушедшие из фонда. Какие записи — решает вызывающий в момент подтверждения: стирается
+    /// запись, у которой совпали и кадр, и время «убрано». Кадр, что за время полёта вернули и убрали снова,
+    /// — другая запись, её подтверждение не покрывало (ревью GPT к c4b4c07).
     @discardableResult
-    public mutating func purgeBin(_ shotIds: [String], of boardId: String, now: Double? = nil) -> [String] {
+    public mutating func purgeBin(_ confirmed: [RefBinned], of boardId: String, now: Double? = nil) -> [String] {
         guard let i = boards.firstIndex(where: { $0.id == boardId }) else { return [] }
-        let ask = Set(shotIds)
-        let going = boards[i].bin.map(\.id).filter(ask.contains)
+        let ask = Set(confirmed.map { Key(id: $0.id, at: $0.at) })
+        let going = boards[i].bin.filter { ask.contains(Key(id: $0.id, at: $0.at)) }.map(\.id)
         guard !going.isEmpty else { return [] }
-        boards[i].bin.removeAll { ask.contains($0.id) }
+        boards[i].bin.removeAll { ask.contains(Key(id: $0.id, at: $0.at)) }
         if let now { boards[i].mt = now }
         var gone: [String] = []
         for id in going where !isUsed(id) && dropShot(id) { gone.append(id) }
         prune(boardId)
         return gone
     }
+
+    private struct Key: Hashable { let id: String; let at: Double }
 
     // MARK: Самоочистка
 

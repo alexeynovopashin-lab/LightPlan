@@ -48,7 +48,7 @@ public struct RefLibrary: Sendable, Hashable {
             return a.contains(.string(shotId))
         }
     }
-    fileprivate func isUsedByForeign(_ shotId: String) -> Bool {
+    func isUsedByForeign(_ shotId: String) -> Bool {
         foreignBoards.contains { v in
             guard case .object(let o) = v, case .array(let a)? = o["items"] else { return false }
             return a.contains(.string(shotId))
