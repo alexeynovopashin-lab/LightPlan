@@ -119,12 +119,10 @@ async function scenario(udid, name) {
       console.log('\n== ' + name + (args.reduce ? ' (уменьшение движения)' : '') + ' · ' + THEME + ' ==');
       for (const l of res.lines) console.log('  ' + l);
       fs.writeFileSync(path.join(r.dir, 'result.json'), JSON.stringify(res, null, 1));
-      // frames.bin велик (до сотен МБ на сценарий) и воспроизводим из видео: без --keep удаляется. video.mp4 нужен `--again`
-      // и остаётся, пока не просили --drop-video (раньше стирались оба — и `--again` после обычного прогона не работал).
-      if (!AGAIN) {
-        if (!args.keep) fs.rmSync(path.join(r.dir, 'frames.bin'), { force: true });
-        if (args['drop-video']) fs.rmSync(path.join(r.dir, 'video.mp4'), { force: true });
-      }
+      // frames.bin велик (до сотен МБ на сценарий) и воспроизводим из видео: без --keep удаляется после анализа, и после
+      // `--again` тоже (он пересоздаёт его из видео). video.mp4 нужен `--again` и остаётся, пока не просили --drop-video.
+      if (!args.keep) fs.rmSync(path.join(r.dir, 'frames.bin'), { force: true });
+      if (!AGAIN && args['drop-video']) fs.rmSync(path.join(r.dir, 'video.mp4'), { force: true });
       red += res.red;
     }
   } finally {

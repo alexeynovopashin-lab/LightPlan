@@ -185,24 +185,33 @@ else
     row "?" "5. не удалось получить симулятор «LP checkstep» (Tools/sim.js): $simline"
   else
     fulldir="$(mktemp -d)"; TMPS+=("$fulldir" /tmp/cc-checkstep-dd-branch /tmp/cc-checkstep-dd-base)
-    # failed_tests <папка проекта> <метка>  → файл $fulldir/<метка>.failed (имена), код: 0 — прогон дошёл до итога, 1 — нет итога (сборка)
+    # failed_tests <папка проекта> <метка>  → файл $fulldir/<метка>.failed (имена).
+    # Код: 0 — прогон дошёл до итога (TEST SUCCEEDED либо TEST FAILED с набором результатов);
+    #      1 — не собралось (BUILD FAILED); 2 — прервано (убит, нет итоговой строки xcodebuild) или нет ни одного теста.
     failed_tests() {
-      local dir="$1" lab="$2" bundle log
+      local dir="$1" lab="$2" bundle log xc
       bundle="$fulldir/$lab.xcresult"; log="$fulldir/$lab.log"
       rm -rf "/tmp/cc-checkstep-dd-$lab"
       ( cd "$dir" && xcodebuild test -project LightPlan.xcodeproj -scheme LightPlan-iOS \
           -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "/tmp/cc-checkstep-dd-$lab" \
           -resultBundlePath "$bundle" ${LP_FULL_TESTING_ARGS:-} ) > "$log" 2>&1
+      xc=$?
       cp "$log" "/tmp/cc-checkstep-full-$lab.log"
-      [ -d "$bundle" ] || return 1
+      # Итог по самому xcodebuild: частичный набор результатов прерванного прогона не считаем итогом.
+      if grep -qE '\*\* (TEST )?BUILD FAILED \*\*' "$log"; then return 1; fi
+      if [ "$xc" -eq 0 ]; then grep -q '\*\* TEST SUCCEEDED \*\*' "$log" || return 2
+      else grep -q '\*\* TEST FAILED \*\*' "$log" || return 2; fi
+      [ -d "$bundle" ] || return 2
       xcrun xcresulttool get test-results tests --path "$bundle" 2>/dev/null | jq -r '
         def w($p): ($p + [.name]) as $q
           | (if .nodeType == "Test Case" and .result == "Failed" then ($q[1:] | join("/")) else empty end),
             (.children[]? | w($q));
-        .testNodes[]? | w([])' | sort -u > "$fulldir/$lab.failed" || return 1
+        .testNodes[]? | w([])' | sort -u > "$fulldir/$lab.failed" || return 2
       # Прогон без единого теста (фильтр промахнулся, набор не собрался) — не итог.
       xcrun xcresulttool get test-results summary --path "$bundle" 2>/dev/null \
-        | jq -e '(.passedTests + .failedTests + .skippedTests) > 0' >/dev/null 2>&1 || return 1
+        | jq -e '(.passedTests + .failedTests + .skippedTests) > 0' >/dev/null 2>&1 || return 2
+      # Красный код выхода без единого упавшего теста в наборе — тоже не итог (упало что-то кроме тестов).
+      if [ "$xc" -ne 0 ] && [ ! -s "$fulldir/$lab.failed" ]; then return 2; fi
       return 0
     }
     bwt="$(mktemp -d)/branch"; basewt="$(mktemp -d)/base"
@@ -212,10 +221,17 @@ else
       row "?" "5. не смог поднять папки ветки и общего предка для полного прогона"
     else
       echo "    (строка 5: полный набор на предке ${mb:0:7}, затем на ветке — минуты; журналы /tmp/cc-checkstep-full-{base,branch}.log)"
-      if ! failed_tests "$basewt" base; then
-        row "?" "5. на общем предке ${mb:0:7} полный прогон не дал итога (не собрался или нет тестов) — сравнивать не с чем, журнал /tmp/cc-checkstep-full-base.log"
-      elif ! failed_tests "$bwt" branch; then
-        row нет "5. на ветке полный прогон не дал итога (на предке собирался: упало $(wc -l < "$fulldir/base.failed" | tr -d ' ')) — не собирается или нет тестов, журнал /tmp/cc-checkstep-full-branch.log"
+      failed_tests "$basewt" base; rb=$?
+      if [ $rb -ne 0 ]; then
+        row "?" "5. не проверялась: на общем предке ${mb:0:7} полный прогон $([ $rb -eq 1 ] && echo 'не собрался' || echo 'прерван или не дал итога') — сравнивать не с чем, журнал /tmp/cc-checkstep-full-base.log"
+      else
+        failed_tests "$bwt" branch; rr=$?
+      fi
+      if [ $rb -ne 0 ]; then :
+      elif [ $rr -eq 1 ]; then
+        row нет "5. на ветке полный набор не собирается (на предке собирался: упало $(wc -l < "$fulldir/base.failed" | tr -d ' ')), журнал /tmp/cc-checkstep-full-branch.log"
+      elif [ $rr -ne 0 ]; then
+        row "?" "5. не проверялась: прогон на ветке прерван или не дал итога (на предке упало $(wc -l < "$fulldir/base.failed" | tr -d ' ')), журнал /tmp/cc-checkstep-full-branch.log"
       else
         nbase="$(wc -l < "$fulldir/base.failed" | tr -d ' ')"; nbr="$(wc -l < "$fulldir/branch.failed" | tr -d ' ')"
         newred="$(comm -13 "$fulldir/base.failed" "$fulldir/branch.failed")"

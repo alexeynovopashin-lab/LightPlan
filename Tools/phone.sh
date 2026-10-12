@@ -114,15 +114,31 @@ pick_slot() {
   return 2
 }
 
-# Блокировка на выбор слота: две сессии не берут один слот.
+# Блокировка на выбор слота: две сессии не берут один слот. Своя — только если mkdir её создал; по тайм-ауту чужую
+# не удаляем (её владелец мог быть жив) — выходим с ошибкой и называем папку.
+LOCK_HELD=0
 lock_slots() {
   local d="$RECORD.lock" i=0
   until mkdir "$d" 2>/dev/null; do
-    i=$((i + 1)); [ $i -gt 50 ] && { rm -rf "$d"; mkdir "$d" 2>/dev/null || die "не взял блокировку $d" 1; break; }
+    i=$((i + 1))
+    [ $i -gt 100 ] && die "блокировка $d занята другой сессией больше 20 с; если её владелец умер — rm -rf $d" 1
     sleep 0.2
   done
-  trap 'rm -rf "$RECORD.lock"' EXIT
+  LOCK_HELD=1
 }
+unlock_slots() { [ "$LOCK_HELD" = 1 ] && rmdir "$RECORD.lock" 2>/dev/null; LOCK_HELD=0; }
+
+# Бронь слота (строка с 5-м полем `reserved`) снимается при любом выходе без записи об успешной установке:
+# возвращаем прежнюю последнюю запись слота (его прежнее приложение на телефоне осталось) либо ставим «свободен».
+RESERVED_BID=""; RESERVED_PREV=""
+release_reservation() {
+  [ -n "$RESERVED_BID" ] || return 0
+  if [ -n "$RESERVED_PREV" ]; then printf '%s\n' "$RESERVED_PREV" >> "$RECORD"
+  else printf '%s\t-\t-\t%s\n' "$RESERVED_BID" "$(date '+%Y-%m-%d %H:%M')" >> "$RECORD"; fi
+  RESERVED_BID=""
+}
+on_exit() { release_reservation; unlock_slots; }
+trap on_exit EXIT
 
 need_phone() {
   if xcrun devicectl list devices 2>/dev/null | grep -E "^$DEVICE_NAME[[:space:]]" | grep -qE '[[:space:]]available \(paired\)'; then return 0; fi
@@ -138,16 +154,26 @@ case "$cmd" in
     fi
     if [ "$branch" = "main" ]; then
       bid="$MAIN_BID"; why="основное приложение"
+      [ "$dry" = 1 ] && echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid ($why)" && exit 0
+      need_phone
     else
-      [ "$dry" = 1 ] || lock_slots
+      [ "$dry" = 1 ] || need_phone
+      lock_slots
       pick="$(pick_slot "$branch")" || exit $?
       slot="${pick%%$'\t'*}"; why="${pick#*$'\t'}"; bid="$MAIN_BID.$slot"
-      # Бронь сразу (5-е поле `reserved`): параллельная сессия увидит слот занятым, а `list` не покажет чужое «до».
-      [ "$dry" = 1 ] || printf '%s\t%s\t%s\t%s\treserved\n' "$bid" "$branch" "$sha$dirty" "$(date '+%Y-%m-%d %H:%M')" >> "$RECORD"
-      rm -rf "$RECORD.lock"
+      # Бронь сразу (5-е поле `reserved`): параллельная сессия, в том числе `--dry-run`, увидит слот занятым, а `list`
+      # не покажет чужое «до». Снимается при любом выходе без установки (on_exit); dry-run держит бронь
+      # LP_PHONE_DRY_HOLD секунд — этим проверяют параллельные сессии.
+      RESERVED_PREV="$(rec_last "$bid" all)"
+      printf '%s\t%s\t%s\t%s\treserved\n' "$bid" "$branch" "$sha$dirty" "$(date '+%Y-%m-%d %H:%M')" >> "$RECORD"
+      RESERVED_BID="$bid"
+      unlock_slots
+      if [ "$dry" = 1 ]; then
+        echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid (слот ${slot#slot} — $why)"
+        sleep "${LP_PHONE_DRY_HOLD:-0}"
+        exit 0
+      fi
     fi
-    [ "$dry" = 1 ] && echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid (${slot:+слот ${slot#slot} — }$why)" && exit 0
-    need_phone
     dd="/tmp/cc-phone-${slug:-main}"
     log="/tmp/cc-phone-${slug:-main}.log"
     echo "сборка «$name» ($bid) из $branch @ $sha$dirty…"
@@ -168,6 +194,7 @@ case "$cmd" in
     st_sha="$(/usr/libexec/PlistBuddy -c 'Print :LPBuildSha' "$pl" 2>/dev/null)"
     st_day="$(/usr/libexec/PlistBuddy -c 'Print :LPBuildDate' "$pl" 2>/dev/null)"
     printf '%s\t%s\t%s\t%s\n' "$bid" "$branch" "${st_sha:-$sha$dirty}" "${st_day:-$(date '+%Y-%m-%d')} $(date '+%H:%M')" >> "$RECORD"
+    RESERVED_BID=""   # установка подтверждена записью — бронь не снимать
     if xcrun devicectl device process launch --device "$DEVICE_ID" "$bid" > "$log.launch" 2>&1; then
       launched="запущено"
     else
