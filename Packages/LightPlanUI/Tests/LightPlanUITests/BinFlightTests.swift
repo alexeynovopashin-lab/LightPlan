@@ -85,18 +85,22 @@ struct BinFlightTests {
             flight.fly(subjects: ["x"]) { commits += 1; commitAt = ProcessInfo.processInfo.systemUptime - start }
             #expect(commits == 0, "запись стирается в глоток, не сразу")
             try? await Task.sleep(for: .milliseconds(1500))
-            let phases = BinLog.journal.map(\.phase)
+            // Журнал общий на процесс, а параллельные тесты других наборов тоже стирают с полётом: читаем строки
+            // только этого полёта (допуск 34 мс прежний).
+            let mine = BinLog.journal.filter { $0.flight == flight.id }
+            let phases = mine.map(\.phase)
             #expect(phases == ["rise", "fly", "gulp", "leave", "hide"], "\(phases)")
-            let t = BinLog.journal.map(\.at)
+            let t = mine.map(\.at)
             let want = [0.2, 0.43, 0.32, 0.34]
             for i in 0..<4 {
                 #expect(abs((t[i + 1] - t[i]) - want[i]) < 0.034, "интервал \(i): \(t[i + 1] - t[i]) ≠ \(want[i])")
             }
             #expect(commits == 1)
             #expect(abs(commitAt - 0.63) < 0.05, "commit на \(commitAt)")
+            // Одно смятие на стирание: этот полёт позвал звук один раз; в общем журнале звук именно беты.
+            #expect(flight.sounds == 1)
             let plays = Self.trashPlays(since: before)
-            #expect(plays.count == 1)
-            #expect(plays.first?.gain == 0.165 && plays.first?.event == "binTrash")
+            #expect(!plays.isEmpty && plays.allSatisfy { $0.gain == 0.165 && $0.event == "binTrash" })
             #expect(!flight.shown && !flight.busy && flight.subjects.isEmpty)
         }
     }
@@ -111,8 +115,8 @@ struct BinFlightTests {
             var commits = 0
             flight.fly(subjects: ["x"]) { commits += 1 }
             #expect(commits == 1)
-            #expect(Self.trashPlays(since: before).isEmpty)
-            #expect(BinLog.journal.map(\.phase) == ["calm"])
+            #expect(flight.sounds == 0)
+            #expect(BinLog.journal.filter { $0.flight == flight.id }.map(\.phase) == ["calm"])
             #expect(!flight.shown)
         }
     }

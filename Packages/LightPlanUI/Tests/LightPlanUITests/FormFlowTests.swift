@@ -126,12 +126,14 @@ struct FormFlowTests {
         #expect(app.sessions.count == 3)
     }
 
-    @Test func deleteFromFormClosesItAndRemovesRecord() throws {
+    @Test func deleteFromFormClosesItAndRemovesRecord() async throws {
         let app = model(disk: Disk())
         app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
         let s = try #require(app.saveForm())
         app.openForm(editing: s.id)
         app.deleteFormRecord()
+        // Стирание идёт через полёт в корзину (29.7): без «Уменьшить движение» запись уходит в глоток, ~0,65 с.
+        for _ in 0..<60 where app.sessions.contains(where: { $0.id == s.id }) { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(app.form == nil && !app.sessions.contains { $0.id == s.id })
     }
 

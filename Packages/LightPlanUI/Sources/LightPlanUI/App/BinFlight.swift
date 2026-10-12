@@ -73,6 +73,12 @@ final class BinFlight {
     private(set) var busy = false
 
     @ObservationIgnored private var runs = 0
+    /// Номер полёта в процессе и сколько раз он сам позвал смятие: журналы (`BinLog`) помечают строки номером, тест
+    /// читает только свой полёт — чужие стирания параллельных тестов в его журнал не попадают.
+    @ObservationIgnored let id: Int = BinFlight.takeID()
+    @ObservationIgnored private(set) var sounds = 0
+    @ObservationIgnored nonisolated(unsafe) private static var lastID = 0
+    private static func takeID() -> Int { lastID += 1; return lastID }
 
     /// Пересчёт «Уменьшить движение»: у системы или (тесты, стенд) свой ответ.
     static var reduceMotionOverride: Bool?
@@ -93,13 +99,14 @@ final class BinFlight {
         runs += 1
         let n = runs
         if Self.reduceMotion {
-            BinLog.note(n, "calm")
+            BinLog.note(n, "calm", flight: id)
             commit()
             return
         }
         if busy {
             // Второе стирание поверх идущего полёта: запись уходит сразу, звук свой — одно смятие на стирание.
-            BinLog.note(n, "busy")
+            BinLog.note(n, "busy", flight: id)
+            sounds += 1
             SoundCenter.play(.trash, event: "binTrash")
             commit()
             return
@@ -115,10 +122,11 @@ final class BinFlight {
         let t0 = ContinuousClock.now
         Task { @MainActor in
             func at(_ s: Double) async { try? await Task.sleep(until: t0 + .milliseconds(Int((s * 1000).rounded())), clock: .continuous) }
-            BinLog.note(n, "rise")
+            BinLog.note(n, "rise", flight: id)
             withAnimation(BinTimeline.riseCurve) { up = true }
             await at(BinTimeline.flyAt)
-            BinLog.note(n, "fly")
+            BinLog.note(n, "fly", flight: id)
+            sounds += 1
             SoundCenter.play(.trash, event: "binTrash")
             // Глоток — когда плашка долетела: не раньше таймера беты (0,43 с) и не раньше, чем кончилась сама анимация
             // (в симуляторе она встаёт на ~2 кадра позже метки «fly»; без этого плашка стирается на 22 %, а не на 5 %).
@@ -129,7 +137,7 @@ final class BinFlight {
             await at(BinTimeline.gulpAtTotal)
             var spare = 0
             while !landed && spare < 12 { try? await Task.sleep(for: .milliseconds(8)); spare += 1 }
-            BinLog.note(n, "gulp")
+            BinLog.note(n, "gulp", flight: id)
             let g0 = ContinuousClock.now
             func after(_ s: Double) async { try? await Task.sleep(until: g0 + .milliseconds(Int((s * 1000).rounded())), clock: .continuous) }
             var tx = Transaction(); tx.disablesAnimations = true
@@ -140,10 +148,10 @@ final class BinFlight {
                 withAnimation(BinTimeline.easeOut((1 - BinTimeline.gulpPeakAt) * BinTimeline.gulp)) { gulpScale = 1 }
             }
             await after(BinTimeline.leaveAfter)
-            BinLog.note(n, "leave")
+            BinLog.note(n, "leave", flight: id)
             withAnimation(BinTimeline.riseCurve) { up = false }
             await after(BinTimeline.leaveAfter + BinTimeline.hideAfter)
-            BinLog.note(n, "hide")
+            BinLog.note(n, "hide", flight: id)
             withTransaction(tx) {
                 shown = false
                 flying = false
@@ -169,13 +177,13 @@ enum BinLog {
         $0.hasPrefix("/") ? URL(fileURLWithPath: $0) : URL.documentsDirectory.appending(path: $0)
     }
     /// Те же строки для тестов.
-    @MainActor private(set) static var journal: [(run: Int, phase: String, at: TimeInterval)] = []
+    @MainActor private(set) static var journal: [(run: Int, phase: String, at: TimeInterval, flight: Int)] = []
     @MainActor static func reset() { journal.removeAll() }
     #endif
-    @MainActor static func note(_ run: Int, _ phase: String) {
+    @MainActor static func note(_ run: Int, _ phase: String, flight: Int = 0) {
         #if DEBUG
         let t = ProcessInfo.processInfo.systemUptime
-        journal.append((run, phase, t))
+        journal.append((run, phase, t, flight))
         guard let url else { return }
         guard let data = String(format: "%.3f run=%d %@\n", t, run, phase).data(using: .utf8) else { return }
         if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(data); try? h.close() }
