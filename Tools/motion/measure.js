@@ -455,10 +455,10 @@ function marks(log) {
 function bar(fr, r, lines, res, bad, opt) {
   const mk = marks(r.log);
   if (mk.length < 2) {
-    // Пустой журнал не доказывает «движения нет»: прибор ничего не видел → красное (не проверено).
+    // Пустой журнал не доказывает «движения нет»: прибор ничего не видел → красное (не проверено), с --check и без.
     lines.push('журнал приложения без отметок сводки');
     res.bar = [];
-    bad(!opt.check, 'в журнале нет отметок сводки (.dp.bar) — не проверено');
+    bad(false, 'в журнале нет отметок сводки (.dp.bar) — не проверено');
     return;
   }
   const out = [];
@@ -466,23 +466,27 @@ function bar(fr, r, lines, res, bad, opt) {
     const t1 = mk[n + 1] ?? t0 + 1.6;
     const g = geoSeries(r.log, 'dp.bar').filter(v => v.t >= t0 - 0.001 && v.t < t1);
     const label = n ? 'раскрытие' : 'схлопывание';
+    const full = 392, shut = 40;
+    const startW = n ? shut : full, endW = n ? full : shut;
+    // Последняя запись перед действием — откуда переход начался; должна быть исходной шириной (40 у ручки, 392 у сводки).
+    const before = geoSeries(r.log, 'dp.bar').filter(v => v.t < t0 - 0.001).pop();
+    const pre = before ? before.w : null;
+    const wrongStart = pre !== null && Math.abs(pre - startW) > 2;
+    // Доля пути каждой записи; «промежуточная» — не у начала и не у конца (в любой ветке, и при одной-двух записях).
+    const qOf = v => Math.min(1, Math.max(0, n ? (v.w - shut) / (full - shut) : (full - v.w) / (full - shut)));
+    const midCount = g.filter(v => { const q = qOf(v); return q > 0.02 && q < 0.98; }).length;
     if (g.length < 3) {
       // Без движения ширина меняется скачком: нужна хотя бы одна запись, и последняя — конечная (40 у ручки, 392 у сводки).
       // Пустой журнал или не дошедшая до конца ширина — «не проверено», а не «0 кадров в пути».
       // Переход доказывают две ширины: «до» (последняя запись перед действием) и «после»; одной конечной мало.
-      const end = n ? 392 : 40, start = n ? 40 : 392, last = g.length ? g[g.length - 1].w : null;
-      const before = geoSeries(r.log, 'dp.bar').filter(v => v.t < t0 - 0.001).pop();
-      const pre = before ? before.w : null;
+      const end = endW, start = startW, last = g.length ? g[g.length - 1].w : null;
       lines.push(`${label}: в журнале ${g.length} рамок сводки; ширина до действия ${pre === null ? 'не записана' : Math.round(pre) + ' pt'}, после ${last === null ? 'не записана' : Math.round(last) + ' pt'} (ждём ${start} → ${end}) — ширина не ехала`);
       const reachedEnd = last !== null && Math.abs(last - end) <= 2;
       const switched = pre !== null && last !== null && Math.abs(pre - last) > 2;
-      out.push({ n, frames: g.length, inPath: 0, unseen: !reachedEnd || pre === null, same: pre !== null && last !== null && !switched, pre, last });
+      out.push({ n, frames: g.length, inPath: midCount, unseen: !reachedEnd || pre === null, wrongStart, start, same: pre !== null && last !== null && !switched, pre, last });
       return;
     }
-    const w0 = n ? 40 : g[0].w, wN = n ? g[g.length - 1].w : 40;   // старт и конец известны: полная ширина 392 и ручка 40
-    const full = 392, shut = 40;
-    const up = n === 1;
-    const q = g.map(v => Math.min(1, Math.max(0, up ? (v.w - shut) / (full - shut) : (full - v.w) / (full - shut))));
+    const q = g.map(qOf);   // старт и конец известны: полная ширина 392 и ручка 40
     const ts = g.map(v => v.t - t0);
     const mid = q.map((v, i) => [v, i]).filter(([v]) => v > 0.02 && v < 0.98);
     const fit = fitCurve(ts, q, ts[0]);
@@ -490,12 +494,13 @@ function bar(fr, r, lines, res, bad, opt) {
     const t98 = (() => { const k = q.findIndex(v => v >= 0.98); return k < 0 ? ts[ts.length - 1] : ts[k]; })();
     lines.push(`${label} (журнал, ширина .dp-bar): ${g.length} записей, ширина ${Math.round(g[0].w)} → ${Math.round(g[g.length - 1].w)} pt, промежуточных ${mid.length}, 98 % пути на ${ms(t98)} мс от нажатия; подбор ${fit.name} D=${ms(fit.D)} мс; при D=450 мс rms: ${Object.entries(fixed).map(([k, v]) => `${k} ${r3(v)}`).join(', ')}`);
     lines.push(`  ширина по записям: ${g.map(v => Math.round(v.w)).join(' ')}; высота ${Math.round(g[0].h)} → ${Math.round(g[g.length - 1].h)}`);
-    out.push({ n, frames: g.length, inPath: mid.length, t98, fixed, fit });
+    out.push({ n, frames: g.length, inPath: mid.length, t98, fixed, fit, wrongStart, start: startW, pre });
   });
   res.bar = out;
   if (opt.check) {
     out.forEach(o => {
       const L = o.n ? 'раскрытие' : 'схлопывание';
+      if (o.wrongStart) { bad(false, `${L}: ширина до действия ${Math.round(o.pre)} pt, а должна начинаться с ${o.start} pt — переход начался не оттуда`); return; }
       if (o.same) { bad(false, `${L}: ширина до действия ${Math.round(o.pre)} pt и после ${Math.round(o.last)} pt одна — переключения не было`); return; }
       if (o.unseen) { bad(false, `${L}: в журнале нет записи «до» или конечной ширины сводки (записей ${o.frames}) — не проверено`); return; }
       if (opt.still) { bad(o.inPath === 0, `${L}: при уменьшении движения промежуточных значений ширины ${o.inPath}, нужно 0`); return; }
@@ -564,4 +569,53 @@ function ring(fr, r, lines, res, bad, opt) {
   return res;
 }
 
-module.exports = { readFrames, SPEC, analyze, CURVES, fitCurve, bezier };
+module.exports = { readFrames, SPEC, analyze, CURVES, fitCurve, bezier, bar };
+
+/* Самопроверка проверки сводки `bar()`: журналы собраны руками, видео не нужно.
+   `node Tools/motion/measure.js --selftest` — каждая порча должна краснеть, чистые журналы — нет. */
+if (require.main === module) {
+  if (!process.argv.includes('--selftest')) { console.error('node Tools/motion/measure.js --selftest'); process.exit(2); }
+  const T0 = 1.0, T1 = 3.0;   // нажатия: схлопывание, раскрытие
+  const mark = t => `${t.toFixed(3)} motion bar fold`;
+  const geo = (t, w) => `${t.toFixed(3)} geo dp.bar 20 100 ${w} 80`;
+  const ramp = (t, a, b, k) => Array.from({ length: k }, (_, i) => geo(t + 0.03 * (i + 1), a + (b - a) * (i + 1) / k));
+  // Журнал «движения нет»: ширина прыгает, записей по одной.
+  const still = (collapseTo, expandTo, extra = []) => [geo(0.5, 392), mark(T0), ...extra.filter(e => e[0] === 'c').map(e => geo(T0 + 0.02, e[1])),
+    geo(T0 + 0.05, collapseTo), geo(2.0, 40), mark(T1), ...extra.filter(e => e[0] === 'e').map(e => geo(T1 + 0.02, e[1])), geo(T1 + 0.05, expandTo)];
+  const run = (log, opt, mutate) => {
+    const res = { red: 0 }, lines = [];
+    const bad = (cond, msg) => { if (!cond) { res.red++; lines.push('КРАСНОЕ: ' + msg); } };
+    bar({}, { log: log.join('\n') }, lines, res, bad, opt);
+    return { red: res.red, text: lines.join('\n') };
+  };
+  let fails = 0;
+  const t = (name, got, wantRed, must) => {
+    const pass = (wantRed ? got.red > 0 : got.red === 0) && (!must || got.text.includes(must));
+    if (!pass) fails++;
+    console.log((pass ? 'ok    ' : 'КРАСНОЕ ') + name + (pass ? '' : `\n      красных ${got.red}; ${got.text.replace(/\n/g, '\n      ')}`));
+  };
+  const S = { still: true, check: true };
+  t('уменьшение движения: 392 → 40 → 392 скачками — зелёный', run(still(40, 392), S), false);
+  t('одна запись «до» пропала — красное, не молчаливое', run(still(40, 392).filter((_, i) => i !== 0), S), true);
+  // Остаток 2: промежуточная ширина при двух записях в режиме «Уменьшение движения».
+  t('раскрытие 40 → 200 → 392 при уменьшении движения — красное', run(still(40, 392, [['e', 200]]), S), true, 'промежуточных значений ширины 1');
+  t('схлопывание 392 → 200 → 40 при уменьшении движения — красное', run(still(40, 392, [['c', 200]]), S), true, 'промежуточных значений ширины 1');
+  // Остаток 1: исходная ширина. Переход 100 → 392 должен начинаться с 40.
+  const wrong = still(40, 392); wrong[wrong.indexOf(geo(2.0, 40))] = geo(2.0, 100);
+  t('раскрытие 100 → 392 вместо 40 → 392 — красное', run(wrong, S), true, 'должна начинаться с 40');
+  const wrongC = still(40, 392); wrongC[0] = geo(0.5, 300);
+  t('схлопывание от 300 вместо 392 — красное', run(wrongC, S), true, 'должна начинаться с 392');
+  // Длинная ветка (≥ 3 записей): та же сверка начала.
+  const moving = pre => [geo(0.5, pre), mark(T0), ...ramp(T0, 392, 40, 12), geo(2.0, 40), mark(T1), ...ramp(T1, 40, 392, 12)];
+  // Кривая синтетической езды линейная, поэтому подбор кривой краснеет сам; здесь важно одно — начало названо верным.
+  const moved = run(moving(392), { still: false, check: true });
+  const startOk = !moved.text.includes('должна начинаться');
+  if (!startOk) fails++;
+  console.log((startOk ? 'ok    ' : 'КРАСНОЕ ') + 'езда: начало с 392 — к началу претензий нет');
+  t('езда: начало со 100 вместо 392 — красное', run(moving(100), { still: false, check: true }), true, 'должна начинаться с 392');
+  // Нет отметок: ошибка и с --check, и без.
+  t('нет отметок сводки, --check — красное', run([geo(0.5, 392)], { still: false, check: true }), true, 'нет отметок');
+  t('нет отметок сводки, без --check — тоже красное', run([geo(0.5, 392)], { still: false, check: false }), true, 'нет отметок');
+  console.log(fails ? `КРАСНЫХ: ${fails}` : 'зелёный');
+  process.exit(fails ? 1 : 0);
+}

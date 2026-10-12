@@ -14,13 +14,14 @@
 const fs = require('fs'), os = require('os'), path = require('path');
 const { execFileSync } = require('child_process');
 const sim = require('../sim');
+const { verdict } = require('./draft_verdict');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const FX = path.join(ROOT, 'Fixtures', 'shots');
 const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => a.startsWith('--') ? [a.slice(2), all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : true] : []).filter(x => x.length));
 const run = (cmd, argv, opts = {}) => execFileSync(cmd, argv, { encoding: 'utf8', ...opts });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const BUNDLE = 'Novopashin.LightPlan', ZONE = 'Asia/Barnaul', SCREEN_H = 874, HOME_BAR = 34;
+const BUNDLE = 'Novopashin.LightPlan', ZONE = 'Asia/Barnaul';
 
 function proSim() {
   const name = sim.nameFor(ROOT) + ' pro';
@@ -74,13 +75,12 @@ function proSim() {
     const r = k => nodes[k] ? { y: +nodes[k].y.toFixed(1), bottom: +(nodes[k].y + nodes[k].h).toFixed(1) } : null;
     const row = { state, theme, title: nodes['form.title'] && nodes['form.title'].text,
       genre: r('form.genre'), startDate: r('form.startDate'), startVal: r('form.startVal'), who: r('form.who'), warn: r('form.wishWarn') };
-    const limit = SCREEN_H - HOME_BAR;
-    if (row.startDate) row.dateVisible = row.startDate.bottom <= limit && row.startVal.bottom <= limit;
-    if (row.genre && row.startDate && row.who) row.orderOk = row.genre.y < row.startDate.y && row.startDate.y < row.who.y;
-    if (row.warn && row.startDate && row.who) row.warnBetween = row.startDate.bottom <= row.warn.y && row.warn.bottom <= row.who.y;
+    row.bad = verdict({ state, ...row });   // порядок, «без прокрутки», плашка — Tools/shots/draft_verdict.js
     rows.push(row);
   }
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(rows, null, 1));
   for (const r of rows) console.log(JSON.stringify(r));
   console.log('→ ' + OUT);
+  const fails = rows.flatMap(r => r.bad.map(m => `${r.state}-${r.theme}: ${m}`));
+  if (fails.length) throw new Error('форма при черновике: ' + fails.length + ' нарушений:\n' + fails.join('\n'));
 })().catch(e => { console.error(e.message); process.exit(1); });
