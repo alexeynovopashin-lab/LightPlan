@@ -1,4 +1,5 @@
 import SwiftUI
+import LightPlanCore
 import LightPlanData
 
 /// Экран «Настройки» — порт `#s-set` веба (итерация 19а).
@@ -54,6 +55,17 @@ public struct SettingsView: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var path: [Chapter] = []
+    /// Небо на включении «Астро» (29.9): идёт ли оно сейчас и когда оно погаснет.
+    @State private var sky: SkyRun?
+    /// `sky-wait` беты: пока небо на экране, звёзды на кнопке погашены.
+    @State private var skyWaiting = false
+    @State private var skyTimer: Task<Void, Never>?
+
+    struct SkyRun: Equatable {
+        let id = UUID()
+        let start: Date
+        let scene: AstroSky.Scene
+    }
 
     /// Корень — вид веба: шапка «Light Plan · v3 · прототип», сегмент
     /// Просто/Астро с небом на «Астро» и пояснением, девять строк разделов.
@@ -68,7 +80,7 @@ public struct SettingsView: View {
                     Group {
                     VStack(spacing: 0) {
                         WebSeg(options: [(t.t("set.modeSimple"), false), (t.t("set.modePro"), true)],
-                               selection: binding(\.pro), nodes: ["mode.simple", "mode.pro"], sky: app.settings.pro)
+                               selection: modeBinding, nodes: ["mode.simple", "mode.pro"], sky: app.settings.pro && !skyWaiting)
                             .shotNode("mode")
                             .padding(.horizontal, 24)
                             .padding(.top, 12)
@@ -99,7 +111,18 @@ public struct SettingsView: View {
                 SettingsChapterView(app: app, chapter: ch)
             }
         }
+        // Небо лежит поверх «Настроек» и касаний не ловит; тёмное затемнение
+        // одно и то же в обеих темах (`rgba(0,0,0,.42)` беты).
+        .overlay {
+            if let run = sky {
+                AstroSkyView(scene: run.scene, start: run.start)
+                    .id(run.id)
+                    .ignoresSafeArea()
+                    .transition(.identity)
+            }
+        }
         .onAppear {
+            SkyLog.note("settings appear pro=\(app.settings.pro) layer=\(sky == nil ? "none" : "on")")
             if let c = app.startChapter, let ch = Chapter(rawValue: c) { path = [ch]; app.startChapter = nil }
         }
         // Глава закрывает панель вкладок, как у веба.
@@ -129,6 +152,40 @@ public struct SettingsView: View {
                 + NumberText(language: app.language).currencySign(s.currency.rawValue)
         case .alerts, .store, .about:
             return ""
+        }
+    }
+
+    /// Переключатель режима. Небо — только на ВКЛЮЧЕНИЕ «Астро» (на нажатие,
+    /// а не на смену значения: второе нажатие подряд перезапускает слой, как у
+    /// беты); «Просто» и запуск с уже включённым режимом неба не зовут.
+    private var modeBinding: Binding<Bool> {
+        Binding(get: { app.settings.pro }, set: { v in
+            app.update { $0.pro = v }
+            if v { showSky() } else { SkyLog.note("tap simple: no sky") }
+        })
+    }
+
+    private func showSky() {
+        let place = app.place.place
+        let now = app.now()
+        let moon = MoonSample(date: app.today, minutes: Double(app.nowMinute), place: place)
+        let scene = AstroSky.scene(
+            days: AstroSky.days(of: now), latitude: place.latitude, longitude: place.longitude,
+            moon: HorizontalPoint(altitude: moon.altitude, azimuth: moon.azimuth))
+        // Анимация идёт по часам устройства: часы приложения в сценариях съёмок подменены.
+        let run = SkyRun(start: Date(), scene: scene)
+        SkyLog.note("start constellations=\(scene.constellations.count) lines=\(scene.lines.count) stars=\(scene.stars.count) moon=\(scene.moon == nil ? "no" : "yes") codes=\(scene.constellations.joined(separator: ","))")
+        sky = run
+        skyWaiting = true
+        skyTimer?.cancel()
+        let began = ProcessInfo.processInfo.systemUptime
+        skyTimer = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(AstroSkyView.lifetime))
+            guard !Task.isCancelled, sky?.id == run.id else { return }
+            SkyLog.note(String(format: "end alive=%.3f", ProcessInfo.processInfo.systemUptime - began))
+            sky = nil
+            // `.seg-sky { transition: opacity 0.7s ease }` — звёзды на кнопке проявляются, когда небо гаснет.
+            withAnimation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.7)) { skyWaiting = false }
         }
     }
 

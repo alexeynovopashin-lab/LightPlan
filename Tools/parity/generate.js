@@ -20,6 +20,7 @@ const path = require("path");
 const crypto = require("crypto");
 const X = require("./extract.js");
 const WindowLight = require("./window_light.js");
+const SkyStars = require("./sky_stars.js");
 
 /* ---------- Пояс машины ----------
    computeSun берёт номер дня через локальный `new Date(y, 0, 0)`, и в поясе
@@ -1044,6 +1045,10 @@ function main() {
      стенд сверяет его солнце с блоками беты и пишет эталон для Swift */
   const wl = WindowLight.build(ctx, X);
   out.push(write(dir, "window_light.json", wl.meta, wl.body));
+
+  /* Небо при включении «Астро» (шаг 29.9): каталог из beta/sky.js и buildAstroSky беты */
+  const cs = SkyStars.build(ctx, X);
+  out.push(write(dir, "constellations.json", cs.meta, cs.body));
 
   if (!quiet) {
     console.log("\nвырезка из беты: " + DIGEST + "\nпапка: " + dir);
