@@ -10,7 +10,7 @@ import LightPlanDomain
 /// плитка дня и студийный час; шаг 4 — стопка соседей и раскладка по парам
 /// веб / натив (поля 24, полоса формы, студийный час над плиткой дня).
 /// Порядок блоков («ползунки», `#cardOrder`) и сами блоки — итерация 26,
-/// гармошка стопки — 29. Справка — `Light_Plan/docs/card_reference.md`.
+/// гармошка стопки — 29.3а (`CardStackPull`). Справка — `Light_Plan/docs/card_reference.md`.
 struct CardScreen: View {
     @Bindable var app: AppModel
     let s: Session
@@ -39,7 +39,9 @@ struct CardScreen: View {
                 bar(pal)
                 ScrollView {
                     VStack(spacing: 0) {
+                        // Лист гармошки едет вниз поверх строк под стопкой (`.card-sheet { z-index: 1 }`).
                         CardStack(app: app, s: s, pal: pal) { sheet(pal, phase, ctx.date) }
+                            .zIndex(1)
                         // Пожелание к небу не сбудется — строка под листом.
                         CardWishMissed(app: app, s: s, phase: phase, pal: pal)
                         // Встреча кончается решением: «Назначить съёмку» или пометка, что съёмка назначена (28, шаг 7).

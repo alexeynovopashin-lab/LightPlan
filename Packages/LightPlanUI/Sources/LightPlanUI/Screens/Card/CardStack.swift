@@ -51,15 +51,20 @@ struct PeekText {
 /// ширины перестаёт расти на четвёртом. Видна полоса 22 pt, остальное прячет
 /// лист. Тап по краю открывает соседа листом (веб `openCard(i, false, true)`):
 /// стопка пересчитывается, движения подмены у веба нет (класс `swap` без
-/// стиля). Гармошка — потянуть лист вниз — итерация 29.
+/// стиля). Гармошка — потянуть лист вниз (29.3а, `StackPull`): края
+/// разъезжаются за пальцем и пружинят обратно.
 struct CardStack<Sheet: View>: View {
     let app: AppModel
     let s: Session
     let pal: Palette
     @ViewBuilder let sheet: () -> Sheet
 
+    /// Доля протяга гармошки, `0…1`; на пружине обратно — с перелётом ниже нуля.
+    @State private var pull: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var still
+
     /// Высота края (веб `PEEK_H`) и видимая полоса (`PEEK_STEP`).
-    static var peekHeight: CGFloat { 74 }
+    static var peekHeight: CGFloat { StackPull.peekHeight }
     static var peekStep: CGFloat { 22 }
 
     /// Отступ края с каждой стороны (веб `10 + min(k, 3)·10`).
@@ -73,14 +78,46 @@ struct CardStack<Sheet: View>: View {
                 edge(p, k)
                     .padding(.horizontal, Self.inset(k))
                     .padding(.top, CGFloat(n - 1 - k) * Self.peekStep)
+                    .modifier(PullShift(travel: StackPull.peekTravel(k: k, n: n), p: pull, tag: "k\(k)"))
                     .zIndex(Double(9 - k))
             }
             // Лист над краями (`.card-sheet { z-index: 1 }` над слоем `.peeks`):
             // отступ даёт обёртка — `N·22`.
             sheet()
+                .modifier(PullShift(travel: StackPull.sheetTravel(n), p: pull, tag: "sheet"))
+                #if os(iOS)
+                .background { StackPullHost(gesture: pullGesture(n)) }
+                #endif
                 .padding(.top, CGFloat(n) * Self.peekStep)
                 .zIndex(10)
         }
+    }
+
+    /// Гармошка (веб `touchstart` / `touchmove` / `touchend` на `#cdSheet`): на
+    /// время жеста лист и края идут за пальцем без анимации (`.dragging`),
+    /// отпустил или система отняла палец — пружина обратно. Отдачи и звука у
+    /// веба на этом жесте нет.
+    private func pullGesture(_ n: Int) -> StackPullGesture {
+        StackPullGesture(
+            down: { touches, top in
+                let ok = StackPull.canStart(n: n, tuning: app.cardTuning, touches: touches, scrollTop: top)
+                StackLog.note(String(format: "down n=%d top=%.1f tuning=%@ touches=%d -> %@", n, top,
+                                     app.cardTuning ? "yes" : "no", touches, ok ? "take" : "none"))
+                return ok
+            },
+            moved: { dy in
+                let p = StackPull.progress(dy: dy, n: n)
+                StackLog.note(String(format: "move dy=%.1f len=%.0f p=%.4f sheet=%.2f", dy, StackPull.pullLength(n), p,
+                                     StackPull.sheetTravel(n) * p)
+                              + (0..<n).map { String(format: " k%d=%.2f", $0, StackPull.peekOffset(k: $0, n: n, p: p)) }.joined())
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { pull = p }
+            },
+            ended: { cancelled in
+                StackLog.note("\(cancelled ? "cancel" : "end") p=\(String(format: "%.4f", pull)) still=\(still)")
+                withAnimation(StackPull.settle(still: still)) { pull = 0 }
+            })
     }
 
     private func edge(_ p: Session, _ k: Int) -> some View {
