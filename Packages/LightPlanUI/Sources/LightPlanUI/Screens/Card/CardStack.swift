@@ -32,6 +32,12 @@ struct PeekText {
     var time: String
     /// Перекрывает карточку по времени — время терракотой (веб `.peek-t.over`).
     var over: Bool
+    /// Вторая строка, «где»: город слева, точка съёмки справа (веб `placeTown`,
+    /// `place`). Нет обоих — строки нет.
+    var town: String
+    var spot: String
+    /// Третья строка: первая строка заметки (веб `notes.split("\n")[0].trim()`).
+    var note: String
 
     init(_ p: Session, card s: Session, app: AppModel) {
         let f = PlannerFacts(app: app, dark: true)
@@ -43,6 +49,10 @@ struct PeekText {
         // (ревью GPT к 4224ce1).
         let d = p.day.days(since: s.day) * 1440
         over = p.start + d < s.endMinute && s.start < p.endMinute + d
+        town = p.placeTown
+        spot = p.place
+        note = (p.notes.split(separator: "\n", omittingEmptySubsequences: false).first.map(String.init) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -124,33 +134,60 @@ struct CardStack<Sheet: View>: View {
         let x = PeekText(p, card: s, app: app)
         let w = PlannerWords(lexicon: app.lexicon, orgs: app.orgs)
         return Button { app.openCard(id: p.id) } label: {
-            HStack(spacing: 7) {
-                Group {
-                    if let n = w.iconName(p) { Icon(n, size: 14, line: 1.5) }
-                    else { Icon(genre: p.genre?.rawValue ?? "", size: 14, line: 1.5) }
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 7) {
+                    Group {
+                        if let n = w.iconName(p) { Icon(n, size: 14, line: 1.5) }
+                        else { Icon(genre: p.genre?.rawValue ?? "", size: 14, line: 1.5) }
+                    }
+                    .foregroundStyle(pal.brass)
+                    .frame(width: 14, height: 14)
+                    Text(x.genre + (x.name.isEmpty ? "" : " ·")).foregroundStyle(pal.ink6)
+                        .fixedSize()
+                    if !x.name.isEmpty {
+                        Text(x.name).font(webFont(11.5, 600)).foregroundStyle(pal.ink3)
+                            .lineLimit(1).truncationMode(.tail)
+                            .shotNode("card.peekName.\(k)")
+                    }
+                    if p.repeatInfo != nil {
+                        Icon("repeat", size: 12).foregroundStyle(pal.ink5)
+                            .frame(width: 12, height: 12)
+                            .padding(.leading, -3)
+                    }
+                    Spacer(minLength: 0)
+                    Text(x.time).monospacedDigit().foregroundStyle(x.over ? pal.terra : pal.ink4)
+                        .fixedSize()
+                        .shotNode("card.peekTime.\(k)", text: x.time)
                 }
-                .foregroundStyle(pal.brass)
-                .frame(width: 14, height: 14)
-                Text(x.genre + (x.name.isEmpty ? "" : " ·")).foregroundStyle(pal.ink6)
-                    .fixedSize()
-                if !x.name.isEmpty {
-                    Text(x.name).font(webFont(11.5, 600)).foregroundStyle(pal.ink3)
-                        .lineLimit(1).truncationMode(.tail)
-                        .shotNode("card.peekName.\(k)")
+                .foregroundStyle(pal.ink4)
+                .frame(height: 18)
+                // Строки под кромкой открываются оттянутым листом (веб `.peek-sub`):
+                // «где» — 7 pt под первой, заметка — 4 pt ниже, обе `--ink-7`/`--ink-8`
+                // в одну строку. Строка веба — 12 pt: текст стоит по её середине.
+                if !x.town.isEmpty || !x.spot.isEmpty {
+                    HStack(spacing: 10) {
+                        Text(x.town).lineLimit(1).truncationMode(.tail)
+                            .frame(height: 12)
+                            .shotNode("card.peekTown.\(k)", text: x.town)
+                        if !x.spot.isEmpty {
+                            Spacer(minLength: 0)
+                            Text(x.spot).lineLimit(1).truncationMode(.tail)
+                                .frame(height: 12)
+                                .shotNode("card.peekSpot.\(k)", text: x.spot)
+                        }
+                    }
+                    .foregroundStyle(pal.ink7)
+                    .padding(.top, 7)
                 }
-                if p.repeatInfo != nil {
-                    Icon("repeat", size: 12).foregroundStyle(pal.ink5)
-                        .frame(width: 12, height: 12)
-                        .padding(.leading, -3)
+                if !x.note.isEmpty {
+                    Text(x.note).lineLimit(1).truncationMode(.tail)
+                        .foregroundStyle(pal.ink8)
+                        .frame(height: 12)
+                        .shotNode("card.peekNote.\(k)", text: x.note)
+                        .padding(.top, 4)
                 }
-                Spacer(minLength: 0)
-                Text(x.time).monospacedDigit().foregroundStyle(x.over ? pal.terra : pal.ink4)
-                    .fixedSize()
-                    .shotNode("card.peekTime.\(k)", text: x.time)
             }
             .font(webFont(11.5))
-            .foregroundStyle(pal.ink4)
-            .frame(height: 18)
             .padding(EdgeInsets(top: 4, leading: 16, bottom: 0, trailing: 16))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .contentShape(Rectangle())

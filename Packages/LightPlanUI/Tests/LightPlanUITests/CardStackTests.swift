@@ -120,6 +120,32 @@ struct CardStackTests {
         #expect(x.over)
     }
 
+    /// Край соседа «Семья Ким» с городом, точкой и заметкой, как в записи.
+    private func peek(town: String, spot: String, notes: String) -> PeekText {
+        let a = app { snap in
+            let i = snap.sessions.firstIndex { $0.id == "sd_sep_clash_b" }!
+            snap.sessions[i].placeTown = town
+            snap.sessions[i].place = spot
+            snap.sessions[i].notes = notes
+        }
+        return PeekText(rec(a, "sd_sep_clash_b"), card: rec(a, "sd_sep_clash_a"), app: a)
+    }
+
+    /// 29.3а: оттянутый край — «где» (город слева, точка справа) и первая
+    /// строка заметки (веб `.peek-sub`, `notes.split("\n")[0].trim()`).
+    @Test func edgeSubRowsPlaceAndNote() {
+        let all = peek(town: "Томск", spot: "Лагерный сад", notes: "Собака боится вспышки")
+        #expect(all.town == "Томск" && all.spot == "Лагерный сад" && all.note == "Собака боится вспышки")
+        let noSpot = peek(town: "Северск", spot: "", notes: "")
+        #expect(noSpot.town == "Северск" && noSpot.spot.isEmpty && noSpot.note.isEmpty)
+        let noPlace = peek(town: "", spot: "", notes: "Студия оплачена")
+        #expect(noPlace.town.isEmpty && noPlace.spot.isEmpty && noPlace.note == "Студия оплачена")
+        let threeLines = peek(town: "Томск", spot: "", notes: "  первая строка \nвторая\nтретья")
+        #expect(threeLines.note == "первая строка")
+        // Первая строка пустая — у веба заметки на краю нет, вторую он не подставляет.
+        #expect(peek(town: "", spot: "", notes: "\nвторая").note.isEmpty)
+    }
+
     /// Встреча вечером у портрета днём: «Встреча», имена пары, без пересечения.
     @Test func edgeOfMeeting() {
         let a = app()
