@@ -45,10 +45,14 @@ struct ImageLinkStateTests {
         var result: Result<Data, ImageLinkFailure> = .success(pinTestPNG)
         var delay: Duration = .zero
         private var _asked: [(String, Bool)] = []
+        private var _finished = 0
+        /// Сколько запросов дождалось ответа (после `delay`): событие для теста вместо окна настоящих мс.
+        var finished: Int { lock.withLock { _finished } }
         var asked: [(link: String, viaServer: Bool)] { lock.withLock { _asked.map { (link: $0.0, viaServer: $0.1) } } }
         func picture(at link: String, viaServer: Bool) async throws -> Data {
             lock.withLock { _asked.append((link, viaServer)) }
             if delay != .zero { try await Task.sleep(for: delay) }
+            lock.withLock { _finished += 1 }
             return try result.get()
         }
     }
@@ -156,7 +160,9 @@ struct ImageLinkStateTests {
         app.mbAddLink(link)
         let id = frames(app)[0].id
         app.mbEdit { lib, _ in lib.dropShot(id) }
-        try? await Task.sleep(for: .milliseconds(400))
+        // Ждём события, а не 400 мс: под нагрузкой полного набора поток пула мог взяться за запрос позже окна.
+        await until("запрос дошёл до читалки и вернулся") { r.finished == 1 }
+        for _ in 0..<20 { await Task.yield() }   // возврат ответа на главный актор и отказ приложения от файла
         #expect(frames(app).isEmpty && files(dir) == 0 && r.asked.count == 1)
     }
 

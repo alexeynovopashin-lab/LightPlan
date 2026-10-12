@@ -140,7 +140,10 @@ public actor ForeignReachDetector {
         }
     }
 
+    /// Остановить слежение. Ответ пробы, что ещё летит, больше ничего не меняет: эпоха сменилась (иначе
+    /// `finish` принял бы его и завёл таймер уже после `stop()`).
     public func stop() {
+        epoch += 1
         watching?.cancel(); watching = nil
         timer?.cancel(); timer = nil
         inflight?.task.cancel(); inflight = nil
@@ -206,8 +209,11 @@ public actor ForeignReachDetector {
 
     /// Пауза до следующей проверки берётся по итогу пробы, а не по состоянию на запуске: после «недоступно» — 2 мин.
     /// Задача держит детектор слабо — на время ожидания он не «залипает» в памяти.
+    /// Таймер заводится только пока идёт слежение (`start()` без `stop()`): ручная проверка без `start()` — разовая,
+    /// сама себя по кругу не гоняет.
     private func scheduleNext() {
-        timer?.cancel()
+        timer?.cancel(); timer = nil
+        guard watching != nil else { return }
         let wait = state == .unreachable ? intervals.unreachable : intervals.reachable
         let pause = self.pause
         timer = Task { [weak self] in
@@ -229,6 +235,9 @@ public actor ForeignReachDetector {
             return first ?? false
         }
     }
+
+    /// Заведён ли таймер следующей проверки (для тестов: «не заводится после `stop()` и без `start()`»).
+    var timerArmed: Bool { timer != nil }
 
     private func set(_ new: ForeignReach) {
         guard new != state else { return }

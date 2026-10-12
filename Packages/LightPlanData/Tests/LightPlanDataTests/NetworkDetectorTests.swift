@@ -201,6 +201,34 @@ struct ForeignReachDetectorTests {
         await d.stop()
     }
 
+    @Test("stop(): проба, что ещё летела, отвечает позже — ответ не принимается и таймер не заводится")
+    func stopInvalidatesTheFlyingProbe() async {
+        let probe = ScriptedProbe(.deaf)
+        let d = ForeignReachDetector(probe: probe, sleep: neverPause, pause: neverPause)
+        await d.start()                                    // без слежения за путём первая проба идёт сразу
+        #expect(await until { await probe.calls == 1 })
+        await d.stop()
+        await probe.release(true)                          // «глухая» проба ответила уже после stop()
+        #expect(await until { await probe.calls == 1 })    // дать ответу дойти до детектора
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(await d.state == .unknown)
+        #expect(await d.timerArmed == false)
+    }
+
+    @Test("Ручная проверка без start() не заводит таймер; со start() — заводит; после stop() — гасит")
+    func timerFollowsTheWatch() async {
+        let probe = ScriptedProbe(.answers)
+        let d = ForeignReachDetector(probe: probe, sleep: neverPause, pause: neverPause)
+        #expect(await d.recheck() == .reachable)
+        #expect(await d.timerArmed == false)               // слежения нет — таймера нет
+        await d.start()
+        #expect(await until { await d.timerArmed })        // слежение пошло, проба кончилась — таймер есть
+        await d.stop()
+        #expect(await d.timerArmed == false)
+        #expect(await d.recheck() == .reachable)           // ручная проверка после stop() тоже без таймера
+        #expect(await d.timerArmed == false)
+    }
+
     @Test("Подписчик получает нынешнее состояние и перемены")
     func changesStream() async {
         let probe = ScriptedProbe(.answers)
