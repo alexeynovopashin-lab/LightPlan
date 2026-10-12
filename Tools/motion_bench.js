@@ -6,10 +6,13 @@
    какая кривая и длительность подходят лучше всего (E1, ease-out, ease-in-out, линейная), смещение, прозрачность.
 
      node Tools/motion_bench.js [--scenario month,week,day,bar,fan,tab,tabs,ring] [--theme dark|light] [--reduce]
-                                [--skip-build] [--out <папка>] [--check] [--keep] [--again]
+                                [--skip-build] [--out <папка>] [--check] [--keep] [--again] [--drop-video]
 
    `--check` сверяет числа с бетой (красный = выход 1); без него только печатает. `--reduce` включает
-   «Уменьшение движения» симулятора на время прогона. Видео и кадры лежат в `--out`. */
+   «Уменьшение движения» симулятора на время прогона. Видео и кадры лежат в `--out`.
+   Что остаётся после прогона: `video.mp4` — по умолчанию (по нему `--again` пересчитывает числа без
+   записи заново), `frames.bin` — только с `--keep` (`--again` собирает его из видео сам). `--drop-video`
+   удаляет и видео: места меньше, но `--again` без нового прогона уже не получится (его ошибка это назовёт). */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -69,6 +72,7 @@ async function scenario(udid, name) {
   const logFile = path.join(dir, 'bench.log'), report = path.join(dir, 'native.json'), video = path.join(dir, 'video.mp4');
   const spec = M.SPEC[name];
   if (AGAIN) {
+    for (const f of [report, logFile, video]) if (!fs.existsSync(f)) throw new Error('--again: нет ' + f + ' — прогона с этим --out/--theme/--reduce не было или видео удалили (--drop-video); запустите без --again');
     const nodes = JSON.parse(fs.readFileSync(report, 'utf8')).nodes, log = fs.readFileSync(logFile, 'utf8');
     const region = spec.region(nodes, log);
     return { dir, log, nodes, fr: frames(video, region.rect, path.join(dir, 'frames.bin')), region };
@@ -115,8 +119,12 @@ async function scenario(udid, name) {
       console.log('\n== ' + name + (args.reduce ? ' (уменьшение движения)' : '') + ' · ' + THEME + ' ==');
       for (const l of res.lines) console.log('  ' + l);
       fs.writeFileSync(path.join(r.dir, 'result.json'), JSON.stringify(res, null, 1));
-      // Видео и кадры велики (до сотен МБ на сценарий): без --keep после подсчёта удаляются, числа и журнал остаются.
-      if (!args.keep && !AGAIN) for (const f of ['video.mp4', 'frames.bin']) fs.rmSync(path.join(r.dir, f), { force: true });
+      // frames.bin велик (до сотен МБ на сценарий) и воспроизводим из видео: без --keep удаляется. video.mp4 нужен `--again`
+      // и остаётся, пока не просили --drop-video (раньше стирались оба — и `--again` после обычного прогона не работал).
+      if (!AGAIN) {
+        if (!args.keep) fs.rmSync(path.join(r.dir, 'frames.bin'), { force: true });
+        if (args['drop-video']) fs.rmSync(path.join(r.dir, 'video.mp4'), { force: true });
+      }
       red += res.red;
     }
   } finally {

@@ -5,14 +5,19 @@
 # а основной идентификатор скрипт даёт только из `main`.
 #
 #   Tools/phone.sh install [--main] [--dry-run]   собрать, поставить, запустить
-#   Tools/phone.sh uninstall [--main|<slug>]      снять приложение (ветка закрыта)
-#   Tools/phone.sh list                           что стоит на телефоне и из какого коммита
+#   Tools/phone.sh uninstall [--main|slotA|<ветка>|<старый слаг>]   снять приложение (ветка закрыта)
+#   Tools/phone.sh list                           слот, ветка, sha, что стоит на телефоне; свободные слоты
 #   make phone ARGS="install"
 #
-# Ветка → приложение (Latin, коротко):
-#   main      → «Light Plan», Novopashin.LightPlan          (только из main)
-#   wt/26     → «LP 26»,      Novopashin.LightPlan.wt26
-#   wt/24a    → «LP 24a»,     Novopashin.LightPlan.wt24a
+# Ветка → приложение. Бесплатная подпись Apple даёт 10 новых App ID за 7 дней, а идентификатор
+# «из имени ветки» тратил по одному на каждый шаг (12.10 лимит кончился). Поэтому пул из
+# четырёх постоянных идентификаторов — слоты Novopashin.LightPlan.slotA … slotD:
+#   main      → «Light Plan», Novopashin.LightPlan          (только из main, слот не занимает)
+#   wt/29-3g  → «LP 29-3g»,   один из слотов; имя — из записи «слот → ветка → sha → время»
+# Слот выбирается так: тот же, что у этой ветки → свободный → самый старый слот ветки,
+# уже слитой в main (его приложение заменится) → иначе стоп, называем, что снять.
+# Запись — `~/.light_plan_phone.tsv` (идентификатор, ветка, sha, время). Старые идентификаторы
+# `Novopashin.LightPlan.wt…` в пул не входят, но `uninstall wt26` и `list` с ними работают.
 # `--main` просит основное приложение явно; из ветки — отказ (код 2).
 # `list` печатает у каждого приложения ту же запись, что строка «Сборка» в его «Настройках».
 # Телефон должен быть «available (paired)»; нет — код 3, просим подключить и разблокировать.
@@ -25,6 +30,8 @@ DEVICE_ID="5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F"   # iPhone ALno (15 Pro Max). �
 DEVICE_NAME="iPhone ALno"
 MAIN_BID="Novopashin.LightPlan"
 RECORD="${LP_PHONE_RECORD:-$HOME/.light_plan_phone.tsv}"   # bid<TAB>branch<TAB>sha<TAB>время
+
+SLOTS=(slotA slotB slotC slotD)
 
 die() { echo "phone.sh: $1" >&2; exit "${2:-1}"; }
 
@@ -55,6 +62,68 @@ branch_app() {
   echo "$s|LP $rest"
 }
 
+# Последняя запись идентификатора. Вторым аргументом `all` — вместе с бронью (5-е поле `reserved`).
+rec_last() {
+  awk -F'\t' -v b="$1" -v all="${2:-}" '$1==b && (all=="all" || $5!="reserved")' "$RECORD" 2>/dev/null | tail -1
+}
+
+# Ветка слита в main (локальный или origin/main)? sha — запасной след, если ветку уже удалили.
+branch_closed() {
+  local b="$1" s="${2%% *}" ref="" m
+  s="${s%+}"
+  for r in "refs/heads/$b" "refs/remotes/origin/$b"; do
+    git -C "$root" rev-parse -q --verify "$r^{commit}" >/dev/null 2>&1 && { ref="$r"; break; }
+  done
+  if [ -z "$ref" ] && [ -n "$s" ] && git -C "$root" rev-parse -q --verify "$s^{commit}" >/dev/null 2>&1; then ref="$s"; fi
+  [ -n "$ref" ] || return 1
+  for m in refs/heads/main refs/remotes/origin/main; do
+    git -C "$root" rev-parse -q --verify "$m^{commit}" >/dev/null 2>&1 \
+      && git -C "$root" merge-base --is-ancestor "$ref" "$m" 2>/dev/null && return 0
+  done
+  return 1
+}
+
+# Слот для ветки → в stdout «slotX<TAB>почему». Нет слота — отчёт в stderr, код 2.
+pick_slot() {
+  local branch="$1" s bid rec b sh t oldest="" oldest_t="" free=""
+  for s in "${SLOTS[@]}"; do
+    bid="$MAIN_BID.$s"; rec="$(rec_last "$bid" all)"
+    b="$(cut -f2 <<<"$rec")"
+    [ -n "$rec" ] && [ "$b" = "$branch" ] && { printf '%s\tтот же слот, что у этой ветки\n' "$s"; return 0; }
+  done
+  for s in "${SLOTS[@]}"; do
+    bid="$MAIN_BID.$s"; rec="$(rec_last "$bid" all)"; b="$(cut -f2 <<<"$rec")"
+    if [ -z "$rec" ] || [ "$b" = "-" ]; then free="$s"; break; fi
+  done
+  [ -n "$free" ] && { printf '%s\tсвободный слот\n' "$free"; return 0; }
+  for s in "${SLOTS[@]}"; do
+    bid="$MAIN_BID.$s"; rec="$(rec_last "$bid" all)"
+    b="$(cut -f2 <<<"$rec")"; sh="$(cut -f3 <<<"$rec")"; t="$(cut -f4 <<<"$rec")"
+    if branch_closed "$b" "$sh"; then
+      if [ -z "$oldest" ] || [[ "$t" < "$oldest_t" ]]; then oldest="$s"; oldest_t="$t"; fi
+    fi
+  done
+  [ -n "$oldest" ] && { printf '%s\tсамый старый слот закрытой ветки (%s, слита в main)\n' "$oldest" "$(cut -f2 <<<"$(rec_last "$MAIN_BID.$oldest" all)")"; return 0; }
+  {
+    echo "phone.sh: все четыре слота заняты ветками, не слитыми в main. Снять одну (если она закрыта):"
+    for s in "${SLOTS[@]}"; do
+      rec="$(rec_last "$MAIN_BID.$s" all)"
+      echo "  $s — $(cut -f2 <<<"$rec") @ $(cut -f3 <<<"$rec") · $(cut -f4 <<<"$rec")   →   Tools/phone.sh uninstall $s"
+    done
+  } >&2
+  return 2
+}
+
+# Блокировка на выбор слота: две сессии не берут один слот.
+lock_slots() {
+  local d="$RECORD.lock" i=0
+  until mkdir "$d" 2>/dev/null; do
+    i=$((i + 1)); [ $i -gt 50 ] && { rm -rf "$d"; mkdir "$d" 2>/dev/null || die "не взял блокировку $d" 1; break; }
+    sleep 0.2
+  done
+  trap 'rm -rf "$RECORD.lock"' EXIT
+}
+
 need_phone() {
   if xcrun devicectl list devices 2>/dev/null | grep -E "^$DEVICE_NAME[[:space:]]" | grep -qE '[[:space:]]available \(paired\)'; then return 0; fi
   echo "phone.sh: $DEVICE_NAME не «available (paired)» — попросить Алексея подключить кабель и разблокировать экран." >&2
@@ -64,16 +133,20 @@ need_phone() {
 case "$cmd" in
   install)
     IFS='|' read -r slug name < <(branch_app "$branch")
-    bid="$MAIN_BID${slug:+.$slug}"
     if [ "$want_main" = 1 ] && [ "$branch" != "main" ]; then
       die "основное приложение «Light Plan» ($MAIN_BID) ставится только из main, сейчас ветка $branch. Из ветки — без --main: получится «$name»." 2
     fi
-    # Этот идентификатор уже занят другой веткой (`wt/a-b` и `wt/ab` сводятся к одному слагу) — не затирать.
-    owner="$(grep -F "$bid"$'\t' "$RECORD" 2>/dev/null | tail -1 | cut -f2)"
-    if [ -n "$owner" ] && [ "$owner" != "$branch" ] && [ "$bid" != "$MAIN_BID" ]; then
-      die "идентификатор $bid уже занят веткой $owner — установка затёрла бы её приложение. Сначала phone.sh uninstall ${bid##*.}, если та ветка закрыта." 2
+    if [ "$branch" = "main" ]; then
+      bid="$MAIN_BID"; why="основное приложение"
+    else
+      [ "$dry" = 1 ] || lock_slots
+      pick="$(pick_slot "$branch")" || exit $?
+      slot="${pick%%$'\t'*}"; why="${pick#*$'\t'}"; bid="$MAIN_BID.$slot"
+      # Бронь сразу (5-е поле `reserved`): параллельная сессия увидит слот занятым, а `list` не покажет чужое «до».
+      [ "$dry" = 1 ] || printf '%s\t%s\t%s\t%s\treserved\n' "$bid" "$branch" "$sha$dirty" "$(date '+%Y-%m-%d %H:%M')" >> "$RECORD"
+      rm -rf "$RECORD.lock"
     fi
-    [ "$dry" = 1 ] && echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid" && exit 0
+    [ "$dry" = 1 ] && echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid (${slot:+слот ${slot#slot} — }$why)" && exit 0
     need_phone
     dd="/tmp/cc-phone-${slug:-main}"
     log="/tmp/cc-phone-${slug:-main}.log"
@@ -97,27 +170,45 @@ case "$cmd" in
     else
       launched="стоит, но не запустилось (телефон заблокирован?) — открыть значок вручную"
     fi
-    echo "на телефоне: «$name» ($bid) из $branch @ $sha$dirty — $launched"
+    echo "на телефоне: «$name» ($bid${slot:+, слот ${slot#slot}}) из $branch @ $sha$dirty — $launched"
     ;;
 
   uninstall)
+    # Слот («slotA»), ветка, которая сейчас стоит в слоте («wt/29-3g»), старый слаг («wt26», «br…») или ветка по-старому.
+    holder_of() {   # ветка → идентификатор слота, где она записана последней
+      local sl r
+      for sl in "${SLOTS[@]}"; do
+        r="$(rec_last "$MAIN_BID.$sl" all)"
+        [ "$(cut -f2 <<<"$r")" = "$1" ] && { echo "$MAIN_BID.$sl"; return 0; }
+      done
+      return 1
+    }
     if [ "$want_main" = 1 ]; then bid="$MAIN_BID"
     elif [ -n "$slug_arg" ]; then
-      # Слаг («wt26», «br…») или сама ветка («wt/26», «26»).
       case "$slug_arg" in
-        */*)                           IFS='|' read -r s _ < <(branch_app "$slug_arg") ;;   # полное имя ветки — как при установке
-        wt[A-Za-z0-9]*|br[A-Za-z0-9]*) s="$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
-        *)                             s="wt$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
+        slot[A-D]) bid="$MAIN_BID.$slug_arg" ;;
+        *)
+          if bid="$(holder_of "$slug_arg")"; then :
+          else
+            case "$slug_arg" in
+              */*)                            IFS='|' read -r s _ < <(branch_app "$slug_arg") ;;   # полное имя ветки — как при установке
+              wt[A-Za-z0-9]*|br[A-Za-z0-9]*) s="$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
+              *)                             s="wt$(printf '%s' "$slug_arg" | tr -cd 'A-Za-z0-9')" ;;
+            esac
+            bid="$MAIN_BID.$s"
+          fi ;;
       esac
-      bid="$MAIN_BID.$s"
     else
-      IFS='|' read -r slug name < <(branch_app "$branch"); bid="$MAIN_BID${slug:+.$slug}"
       [ "$branch" = "main" ] && die "из main основное приложение снимается только явно: uninstall --main" 2
+      if ! bid="$(holder_of "$branch")"; then
+        IFS='|' read -r slug name < <(branch_app "$branch"); bid="$MAIN_BID.$slug"
+      fi
     fi
     [ "$dry" = 1 ] && echo "dry-run: снять $bid" && exit 0
     need_phone
     xcrun devicectl device uninstall app --device "$DEVICE_ID" "$bid" > /tmp/cc-phone-uninstall.log 2>&1 \
       || { tail -3 /tmp/cc-phone-uninstall.log; die "не снято: $bid (devicectl вернул ошибку)" 5; }
+    case "$bid" in "$MAIN_BID".slot[A-D]) printf '%s\t-\t-\t%s\n' "$bid" "$(date '+%Y-%m-%d %H:%M')" >> "$RECORD" ;; esac   # слот свободен
     echo "снято: $bid"
     ;;
 
@@ -127,15 +218,20 @@ case "$cmd" in
     xcrun devicectl device info apps --device "$DEVICE_ID" --json-output "$out" > /tmp/cc-phone-apps.log 2>&1 \
       || { tail -3 /tmp/cc-phone-apps.log; die "не прочитал список приложений" 4; }
     echo "на $DEVICE_NAME (коммит — по записи установок $RECORD):"
-    jq -r '.result.apps[]? | select(.bundleIdentifier|startswith("Novopashin.LightPlan")) | [.bundleIdentifier,.name]|@tsv' "$out" \
-    | while IFS=$'\t' read -r bid name; do
-        rec="$(grep -F "$bid"$'\t' "$RECORD" 2>/dev/null | tail -1)"
-        if [ -n "$rec" ]; then
-          IFS=$'\t' read -r _ b s t <<<"$rec"
-          s="${s% (+ не закоммиченное)}"; [ "$s" != "$(cut -f3 <<<"$rec")" ] && s="$s+"   # старая запись: «(+ не закоммиченное)» = «+»
-          echo "  «$name» $bid — Сборка · $("$root/Tools/build_stamp.sh" line "$b" "$s" "${t%% *}")"
-        else echo "  «$name» $bid — записи об установке нет (ставилось не скриптом)"; fi
-      done
+    seen=" "
+    while IFS=$'\t' read -r bid name; do
+      seen="$seen$bid "
+      case "$bid" in "$MAIN_BID".slot[A-D]) where="слот ${bid##*slot} · " ;; *) where="" ;; esac
+      rec="$(rec_last "$bid")"
+      if [ -n "$rec" ]; then
+        IFS=$'\t' read -r _ b s t <<<"$rec"
+        s="${s% (+ не закоммиченное)}"; [ "$s" != "$(cut -f3 <<<"$rec")" ] && s="$s+"   # старая запись: «(+ не закоммиченное)» = «+»
+        echo "  «$name» $bid — ${where}Сборка · $("$root/Tools/build_stamp.sh" line "$b" "$s" "${t%% *}")"
+      else echo "  «$name» $bid — записи об установке нет (ставилось не скриптом)"; fi
+    done < <(jq -r '.result.apps[]? | select(.bundleIdentifier|startswith("Novopashin.LightPlan")) | [.bundleIdentifier,.name]|@tsv' "$out")
+    for sl in "${SLOTS[@]}"; do
+      case "$seen" in *" $MAIN_BID.$sl "*) ;; *) echo "  слот ${sl#slot} ($MAIN_BID.$sl) — свободен" ;; esac
+    done
     ;;
 
   *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; [ -z "$cmd" ] || exit 1 ;;

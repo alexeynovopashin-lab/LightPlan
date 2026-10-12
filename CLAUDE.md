@@ -108,29 +108,32 @@ Build on Alexey's iPhone — for his word at the end of an iteration. Device: **
 (15 Pro Max, `5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F`). Never «iPhone Elena» — not his.
 Free signing team until the Developer Program is paid: the build expires in 7 days, reinstall.
 
-**Branches sit side by side on the phone (Alexey, 2026-09-28).** One bundle id
-for every branch meant each install replaced the previous one: iteration 24
-overwrote the dome fix he was checking. So:
+**Branches sit side by side on the phone (Alexey, 2026-09-28; pool since 2026-10-12).** One bundle id
+for every branch meant each install replaced the previous one. So:
 - `Novopashin.LightPlan` («Light Plan» on the home screen) = `main` only;
   reinstall it after a merge to `main`.
-- A branch installs as its own app: bundle id `Novopashin.LightPlan.<slug>`,
-  home-screen name `LP <slug>` (`wt/24a` → `wt24a`, «LP 24a»; Latin, short).
-  Tell Alexey the icon name he is checking.
+- A branch installs into one of **four permanent slots**, bundle ids `Novopashin.LightPlan.slotA` … `slotD`,
+  home-screen name `LP <branch>` (`wt/24a` → «LP 24a»; the name comes from the record, not from the id).
+  An id made from the branch name spent one of the free team's 10 new App IDs per 7 days on every step
+  (limit hit 03.10 and 12.10); four fixed ids are all it ever registers.
+- Slot choice: the branch's own slot → a free slot → the oldest slot whose branch is merged into `main`
+  (its app is replaced) → otherwise the script stops and names the four branches and the `uninstall` to run.
+  The record `slot → branch → sha → time` is `~/.light_plan_phone.tsv`.
 - Each copy has its own data: seed it there if the check needs data.
-- Branch merged or dropped → uninstall its app (commands below).
-- Free team caps how many apps/App IDs it signs (from Apple docs, not measured
-  here); a signing error about the limit → uninstall closed branches, tell him.
+- Branch merged or dropped → `uninstall` it (commands below); the slot frees up.
+- Old per-branch ids (`Novopashin.LightPlan.wt…`) are not in the pool; `uninstall wt26` and `list` still work with them.
+- Tell Alexey the icon name he is checking.
 
 One script does all of it — do not hand-build for the phone:
 
 ```
-make phone ARGS="install"          # name + bundle id from the branch, build, install, launch
-make phone ARGS="list"             # what stands on the phone: «Сборка · branch · sha · DD.MM», same line as at the bottom of its Settings (build_stamp phase)
-make phone ARGS="uninstall 24a"    # closed branch (uninstall --main only from Alexey's word)
-make checkstep ARGS="wt/26 main --type код --tests"   # step check: four lines yes/no
+make phone ARGS="install"          # slot + name from the branch, build, install, launch
+make phone ARGS="list"             # slot, «Сборка · branch · sha · DD.MM» (same line as at the bottom of its Settings), free slots
+make phone ARGS="uninstall slotB" # a slot, or a branch standing in one (`wt/24a`); uninstall --main only from Alexey's word
+make checkstep ARGS="wt/26 main --type код --tests --full"   # step check: five lines yes/no
 ```
 
-`Tools/phone.sh`: `main` → «Light Plan»; any other branch → `LP <rest>` with its own id;
+`Tools/phone.sh`: `main` → «Light Plan»; any other branch → `LP <rest>` in a pool slot (see above);
 `--main` from a branch is refused (exit 2); the phone must be «available (paired)» (else exit 3 —
 ask him to plug in and unlock); prints what stands and from which commit. Second barrier,
 independent of the script: the build phase (`Tools/check_phone_id.sh` via `check_boundaries.sh`)
@@ -139,6 +142,9 @@ fails a device build (`PLATFORM_NAME=iphoneos`) with `Novopashin.LightPlan` from
 `Tools/check_step.sh <branch> [<base>] [--type код|данные|документы] [--tests]`: commit ahead,
 non-empty diff, GPT review of the last pushed commit present and not red (public GitHub API,
 `curl`), new tests fail on the parent commit (`--tests` = a build; without it the line says
+«не проверялась», exit 2), full set not redder than the base (`--full` = two `xcodebuild test` runs on
+simulator `LP checkstep`; failed tests of the branch vs the merge-base by name — «нет» only for a test that is red
+on the branch and green on the base; a test already red on the base is «да» with a note; without the flag
 «не проверялась», exit 2). Any «нет» → exit 1. Run it before the report.
 
 `launch` fails with «Locked» when the phone is locked — the app is installed anyway; tell him to

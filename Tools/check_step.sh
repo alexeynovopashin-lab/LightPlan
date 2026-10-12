@@ -1,9 +1,9 @@
 #!/bin/bash
-# Проверка шага: четыре строки да/нет вместо «кажется, готово» (итерация 26т,
+# Проверка шага: пять строк да/нет вместо «кажется, готово» (итерация 26т,
 # метод работы 29.09: правила про ревью и про тесты держались на памяти треда).
 #
-#   Tools/check_step.sh <ветка> [<база>] [--type код|данные|документы] [--tests]
-#   make checkstep ARGS="wt/26 main --type код --tests"
+#   Tools/check_step.sh <ветка> [<база>] [--type код|данные|документы] [--tests] [--full]
+#   make checkstep ARGS="wt/26 main --type код --tests --full"
 #
 #   1. коммит в ветке впереди базы (база по умолчанию — main);
 #   2. дифф без сгенерированного не пустой (N файлов) — тот же отбор, что у ревью GPT;
@@ -11,6 +11,11 @@
 #      (открытый API GitHub через curl, без gh; GITHUB_TOKEN — если упрётесь в лимит);
 #   4. новые тесты падают на родительском коммите — это сборка, поэтому по флагу
 #      --tests. Без флага строка «не проверялась», а не «да».
+#   5. полный набор тестов не краснее базы (общий предок ветки и базы): упавшие на ветке против упавших на базе,
+#      поимённо. «Нет» — только если на ветке упал тест, который на базе проходил. Тест, красный и на базе, —
+#      «да» с пометкой «уже красный на базе». Это два полных прогона `xcodebuild test` на симуляторе `LP checkstep`
+#      (минуты), поэтому по флагу --full; без флага — «не проверялась». Доп. аргументы xcodebuild (сузить набор,
+#      например для самопроверки): LP_FULL_TESTING_ARGS="-only-testing:LightPlanUITests/FormFlowTests".
 # Тип шага (по умолчанию код): у «кода» жёлтый запуск ревью (в пуше только
 # данные) = «нет»; у «данных» и «документов» жёлтое — да, а тесты не требуются.
 #
@@ -20,11 +25,12 @@ set -u
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root" || exit 1
 
-branch=""; base=""; type="код"; run_tests=0
+branch=""; base=""; type="код"; run_tests=0; run_full=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --type) type="${2:-}"; shift ;;
     --tests) run_tests=1 ;;
+    --full) run_full=1 ;;
     -*) echo "check_step.sh: не знаю флага $1" >&2; exit 1 ;;
     *) if [ -z "$branch" ]; then branch="$1"; else base="$1"; fi ;;
   esac
@@ -32,7 +38,7 @@ while [ $# -gt 0 ]; do
 done
 base="${base:-main}"
 case "$type" in код|данные|документы) ;; *) echo "check_step.sh: --type код|данные|документы" >&2; exit 1 ;; esac
-[ -n "$branch" ] || { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+[ -n "$branch" ] || { sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 git rev-parse -q --verify "$branch^{commit}" >/dev/null || { echo "check_step.sh: нет ветки $branch" >&2; exit 1; }
 git rev-parse -q --verify "$base^{commit}" >/dev/null || { echo "check_step.sh: нет базы $base" >&2; exit 1; }
 
@@ -41,6 +47,13 @@ EXCL=(':(exclude)*.generated.swift' ':(exclude)*.xcstrings' ':(exclude)*.json' '
       ':(exclude)**/Fixtures/**' ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.pdf')
 
 fails=0; skipped=0
+WTS=(); TMPS=()
+cleanup() {
+  local w
+  for w in ${WTS[@]+"${WTS[@]}"}; do git worktree remove --force "$w" >/dev/null 2>&1; rm -rf "$(dirname "$w")"; done
+  for w in ${TMPS[@]+"${TMPS[@]}"}; do rm -rf "$w"; done
+}
+trap cleanup EXIT
 row() { # да|нет|?  текст
   case "$1" in да) ;; нет) fails=$((fails + 1)) ;; *) skipped=$((skipped + 1)) ;; esac
   printf '%-3s %s\n' "$1" "$2"
@@ -75,7 +88,7 @@ else
   fi
   auth=(); [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
   api() { curl -sS -m 30 ${auth[@]+"${auth[@]}"} -H 'Accept: application/vnd.github+json' -o "$2" -w '%{http_code}' "https://api.github.com/repos/$repo/$1" 2>/dev/null; }
-  tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+  tmp="$(mktemp -d)"; TMPS+=("$tmp")
   c1="$(api "commits/$pushed/comments?per_page=100" "$tmp/c.json")"
   c2="$(api "actions/runs?head_sha=$pushed&per_page=20" "$tmp/r.json")"
   if [ "$unpushed" = 1 ]; then
@@ -128,7 +141,7 @@ else
     wt="$(mktemp -d)/base"
     git worktree add -q --detach "$wt" "$mb" 2>/dev/null || { row нет "4. не смог поднять папку с родительским коммитом"; wt=""; }
     if [ -n "$wt" ]; then
-      trap 'git worktree remove --force "$wt" >/dev/null 2>&1; rm -rf "$(dirname "$wt")" "${tmp:-/nonexistent}"' EXIT
+      WTS+=("$wt")
       # Тесты ветки поверх кода родителя.
       while IFS= read -r f; do mkdir -p "$wt/$(dirname "$f")"; git show "$branch:$f" > "$wt/$f"; done <<<"$tfiles"
       pkgs="$(printf '%s\n' "$tfiles" | sed -E 's#^(Packages/[^/]+)/.*#\1#' | sort -u)"
@@ -160,8 +173,81 @@ else
   fi
 fi
 
+# 5. Полный набор не краснее базы.
+if [ "$type" != "код" ]; then
+  row да "5. полный набор не требуется (тип «$type»)"
+elif [ "$run_full" = 0 ]; then
+  row "?" "5. не проверялась: полный набор — два прогона xcodebuild test, запускать с --full"
+else
+  simline="$(LP_SIM="LP checkstep" node "$root/Tools/sim.js" 2>/dev/null | tail -1)"
+  udid="$(printf '%s' "$simline" | awk -F' · ' '{print $3}')"
+  if [ -z "$udid" ]; then
+    row "?" "5. не удалось получить симулятор «LP checkstep» (Tools/sim.js): $simline"
+  else
+    fulldir="$(mktemp -d)"; TMPS+=("$fulldir" /tmp/cc-checkstep-dd-branch /tmp/cc-checkstep-dd-base)
+    # failed_tests <папка проекта> <метка>  → файл $fulldir/<метка>.failed (имена), код: 0 — прогон дошёл до итога, 1 — нет итога (сборка)
+    failed_tests() {
+      local dir="$1" lab="$2" bundle log
+      bundle="$fulldir/$lab.xcresult"; log="$fulldir/$lab.log"
+      rm -rf "/tmp/cc-checkstep-dd-$lab"
+      ( cd "$dir" && xcodebuild test -project LightPlan.xcodeproj -scheme LightPlan-iOS \
+          -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "/tmp/cc-checkstep-dd-$lab" \
+          -resultBundlePath "$bundle" ${LP_FULL_TESTING_ARGS:-} ) > "$log" 2>&1
+      cp "$log" "/tmp/cc-checkstep-full-$lab.log"
+      [ -d "$bundle" ] || return 1
+      xcrun xcresulttool get test-results tests --path "$bundle" 2>/dev/null | jq -r '
+        def w($p): ($p + [.name]) as $q
+          | (if .nodeType == "Test Case" and .result == "Failed" then ($q[1:] | join("/")) else empty end),
+            (.children[]? | w($q));
+        .testNodes[]? | w([])' | sort -u > "$fulldir/$lab.failed" || return 1
+      # Прогон без единого теста (фильтр промахнулся, набор не собрался) — не итог.
+      xcrun xcresulttool get test-results summary --path "$bundle" 2>/dev/null \
+        | jq -e '(.passedTests + .failedTests + .skippedTests) > 0' >/dev/null 2>&1 || return 1
+      return 0
+    }
+    bwt="$(mktemp -d)/branch"; basewt="$(mktemp -d)/base"
+    git worktree add -q --detach "$bwt" "$branch" 2>/dev/null && WTS+=("$bwt") || bwt=""
+    git worktree add -q --detach "$basewt" "$mb" 2>/dev/null && WTS+=("$basewt") || basewt=""
+    if [ -z "$bwt" ] || [ -z "$basewt" ]; then
+      row "?" "5. не смог поднять папки ветки и общего предка для полного прогона"
+    else
+      echo "    (строка 5: полный набор на предке ${mb:0:7}, затем на ветке — минуты; журналы /tmp/cc-checkstep-full-{base,branch}.log)"
+      if ! failed_tests "$basewt" base; then
+        row "?" "5. на общем предке ${mb:0:7} полный прогон не дал итога (не собрался или нет тестов) — сравнивать не с чем, журнал /tmp/cc-checkstep-full-base.log"
+      elif ! failed_tests "$bwt" branch; then
+        row нет "5. на ветке полный прогон не дал итога (на предке собирался: упало $(wc -l < "$fulldir/base.failed" | tr -d ' ')) — не собирается или нет тестов, журнал /tmp/cc-checkstep-full-branch.log"
+      else
+        nbase="$(wc -l < "$fulldir/base.failed" | tr -d ' ')"; nbr="$(wc -l < "$fulldir/branch.failed" | tr -d ' ')"
+        newred="$(comm -13 "$fulldir/base.failed" "$fulldir/branch.failed")"
+        same="$(comm -12 "$fulldir/base.failed" "$fulldir/branch.failed")"
+        fixed="$(comm -23 "$fulldir/base.failed" "$fulldir/branch.failed")"
+        tail=""
+        [ -n "$same" ] && tail="$tail; уже красные на базе: $(printf '%s\n' "$same" | paste -sd',' - | sed 's/,/, /g')"
+        [ -n "$fixed" ] && tail="$tail; на ветке починены: $(printf '%s\n' "$fixed" | paste -sd',' - | sed 's/,/, /g')"
+        if [ -z "$newred" ]; then
+          row да "5. полный набор не краснее базы: упало на базе $nbase, на ветке $nbr, новых 0$tail"
+        else
+          # Новые красные — ещё раз в одиночку: нестабильный тест (хвост 29б, п. 2) отличается от настоящей поломки.
+          alone=""
+          while IFS= read -r t; do
+            [ -n "$t" ] || continue
+            ( cd "$bwt" && xcodebuild test -project LightPlan.xcodeproj -scheme LightPlan-iOS \
+                -destination "platform=iOS Simulator,id=$udid" -derivedDataPath /tmp/cc-checkstep-dd-branch \
+                -resultBundlePath "$fulldir/alone.xcresult" -only-testing:"$t" ) > "$fulldir/alone.log" 2>&1
+            if jq -e '.failedTests == 0 and .passedTests > 0' <(xcrun xcresulttool get test-results summary --path "$fulldir/alone.xcresult" 2>/dev/null) >/dev/null 2>&1
+            then alone="$alone [$t: в одиночку проходит — похоже на нестабильный]"
+            else alone="$alone [$t: падает и в одиночку]"; fi
+            rm -rf "$fulldir/alone.xcresult"
+          done <<<"$newred"
+          row нет "5. полный набор краснее базы: на базе $nbase, на ветке $nbr, новых упавших $(printf '%s\n' "$newred" | wc -l | tr -d ' '): $(printf '%s\n' "$newred" | paste -sd',' - | sed 's/,/, /g')$alone$tail"
+        fi
+      fi
+    fi
+  fi
+fi
+
 echo "---"
-if [ "$fails" -gt 0 ]; then echo "итог: нет ($fails из 4) — шаг не принят"; exit 1; fi
+if [ "$fails" -gt 0 ]; then echo "итог: нет ($fails из 5) — шаг не принят"; exit 1; fi
 if [ "$skipped" -gt 0 ]; then echo "итог: «нет» нет, но $skipped строк не проверялось — не «всё да»"; exit 2; fi
-echo "итог: да, все четыре"
+echo "итог: да, все пять"
 exit 0

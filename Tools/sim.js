@@ -11,7 +11,8 @@
 
    Модулем: `const sim = require('./sim'); const dev = sim.device(root);`
    Командой:  node Tools/sim.js           — какой симулятор у этой ветки
-              node Tools/sim.js --prune   — удалить `LP …` веток, которых нет */
+              node Tools/sim.js --prune   — удалить `LP …` веток, которых нет
+              node Tools/sim.js --help    — эта справка (симулятор не создаётся) */
 const path = require('path');
 const { execFileSync } = require('child_process');
 
@@ -68,7 +69,18 @@ module.exports = { device, nameFor, stale };
 
 if (require.main === module) {
   const root = path.resolve(__dirname, '..');
-  if (process.argv.includes('--prune')) {
+  const argv = process.argv.slice(2);
+  const usage = () => console.log([
+    'Tools/sim.js — симулятор этой ветки (`LP <ветка>`, iPhone 17 Pro Max).',
+    '  make sims                  показать симулятор ветки; создаётся при первом запуске, если его нет',
+    '  make sims ARGS=--prune     удалить `LP …` веток, которых нет в репозитории',
+    '  make sims ARGS=--help      эта справка (ничего не создаёт)',
+    '  LP_SIM=<имя>               своё имя симулятора вместо `LP <ветка>`',
+  ].join('\n'));
+  if (argv.includes('--help') || argv.includes('-h')) { usage(); process.exit(0); }
+  const unknown = argv.filter(a => a !== '--prune');
+  if (unknown.length) { console.error('sim.js: не знаю аргумента ' + unknown.join(' ') + ' — симулятор не создан\n'); usage(); process.exit(2); }
+  if (argv.includes('--prune')) {
     const old = stale(root);
     for (const d of old) {
       try { run('xcrun', ['simctl', 'shutdown', d.udid], { stdio: 'ignore' }); } catch (e) {}

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /* «Подробно» на экране «Свет»: где стоит кнопка относительно нижней панели (29.2г) и куда раскрывается список (29.2г-3).
    Для каждой модели iPhone, обеих тем и четырёх текстов («спокойно», «сильный ветер», ночь с «Теней нет», «дымка» — все восемь строк) ставит
-   сборку Debug на свой симулятор `LP29d <модель>`, открывает «Свет» в «Астро» (кнопка есть только там) и читает рамки
+   сборку Debug на свой симулятор `LP29d <модель>` (перед стартом гасит все загруженные `LP …` и `LP29d …`), открывает «Свет» в «Астро» (кнопка есть только там) и читает рамки
    из `-LPShotReport`, в двух видах: закрытый и раскрытый (`-LPShotSpoiler 2`: раскрыт и стоит в начале). Меряет:
      зазор  = верх узла `timebar` (нижней панели) − низ узла `spoiler` (кнопки). Это ИЗМЕРЕНИЕ, не условие: кнопка в
               потоке прокрутки, её видимость без прокрутки зависит от модели (слово Алексея 10.10: решит отдельно);
               ≤ 0 печатается пометкой «под панелью», красным не считается. `--min-gap <pt>` включает порог (0 — как
-              требовала версия 29.2г: кнопка видна целиком);
+              требовала версия 29.2г: кнопка видна целиком; зазор ровно 0 при `--min-gap 0` красный: `gap <= 0`);
      раскрытый вид (узлы `spoiler.list`, `spoiler.g0`): список начинается у низа кнопки (над кнопкой 0 px), шапку не
               накрывает, у него высота > 0, первый ряд есть, лежит в рамке списка и начинается у её верха
               (`--selftest` — проверка самой проверки: нормальный список и испорченные, без симулятора);
@@ -48,6 +48,15 @@ function listProblems(list, g0, head, sp) {
   if (list.y < head - 0.5) why.push('список накрывает шапку');
   return why;
 }
+/* Порог зазора: `--min-gap <pt>` красит зазор меньше порога; зазор ≤ 0 (кнопка под панелью) красный, когда порог
+   задан — иначе `--min-gap 0` пропускал зазор ровно 0 (ревью GPT к 6bc2131). Без порога — только пометка. */
+function gapWhy(gap, min) {
+  if (min === null) return [];
+  if (gap <= 0) return [`зазор ${gap.toFixed(1)} ≤ 0`];
+  if (gap < min) return [`зазор ${gap.toFixed(1)} < ${min}`];
+  return [];
+}
+
 if (args.selftest) {
   const sp = { x: 24, y: 700, w: 340, h: 43 }, head = 120;
   const ok = { x: 24, y: 743, w: 340, h: 400 }, g = { x: 24, y: 743, w: 340, h: 120 };
@@ -62,6 +71,13 @@ if (args.selftest) {
     ['с зазором под кнопкой', listProblems({ ...ok, y: 790 }, { ...g, y: 790 }, head, sp), true],
     ['накрывает шапку', listProblems({ ...ok, y: 93 }, { ...g, y: 93 }, head, { ...sp, y: 50 }), true],
   ];
+  cases.push(
+    ['зазор 0, порог 0', gapWhy(0, 0), true],
+    ['зазор -3, порог 0', gapWhy(-3, 0), true],
+    ['зазор 0,1, порог 0', gapWhy(0.1, 0), false],
+    ['зазор 0, порога нет', gapWhy(0, null), false],
+    ['зазор 5, порог 8', gapWhy(5, 8), true],
+  );
   let bad = 0;
   for (const [name, why, wantRed] of cases) {
     const okc = (why.length > 0) === wantRed; if (!okc) bad++;
@@ -116,8 +132,9 @@ function device(model) {
     run('xcrun', ['simctl', 'create', name, 'com.apple.CoreSimulator.SimDeviceType.' + model, RUNTIME]); created = true;
     d = all().find(x => x.name === name);
   }
-  /* Два загруженных симулятора разом заклинивают `simctl launch` (замер 29.2г-2): чужие `LP29d …` гасим. */
-  for (const o of all()) if (o.name.startsWith('LP29d ') && o.udid !== d.udid && o.state === 'Booted') {
+  /* Два загруженных симулятора разом заклинивают `simctl launch` (замер 29.2г-2): гасим любые чужие `LP …`
+     (ветки, стенд движений) и `LP29d …`. */
+  for (const o of all()) if (/^LP\w* /.test(o.name) && o.udid !== d.udid && o.state === 'Booted') {
     try { run('xcrun', ['simctl', 'shutdown', o.udid], { stdio: 'ignore', timeout: 60000 }); } catch (e) {}
   }
   if (d.state !== 'Booted') { try { run('xcrun', ['simctl', 'boot', d.udid]); } catch (e) {} run('xcrun', ['simctl', 'bootstatus', d.udid, '-b'], { stdio: 'ignore' }); }
@@ -178,7 +195,7 @@ for (const model of MODELS) {
       const gap = tb.y - bottomOf(sp);
       const why = [], note = [];
       if (gap <= 0) { note.push('под панелью'); if (view === 'closed' || VIEWS.length === 1) under++; }
-      if (MIN_GAP !== null && gap < MIN_GAP) why.push(`зазор ${gap.toFixed(1)} < ${MIN_GAP}`);
+      why.push(...gapWhy(gap, MIN_GAP));
       if (closedY === null) closedY = sp.y;
       else if (Math.abs(sp.y - closedY) > 0.5) why.push(`кнопка уехала на ${(sp.y - closedY).toFixed(1)}`);
       if (view === 'open') why.push(...listProblems(list, g0, head, sp));
