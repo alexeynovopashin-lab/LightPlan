@@ -81,11 +81,15 @@ enum HapticEvent: String, CaseIterable, Sendable {
     /// Кадр опущен на новое место (веб `21871`).
     case mbFrameDrop
 
+    // Новое в 29.3г: у беты свайпа по строке нет — тик по обычаю iOS.
+    /// Свайп влево по строке съёмки раскрыл кнопку «Удалить».
+    case rowReveal
+
     var kind: HapticKind {
         switch self {
         case .genreHold, .spotDrop, .sight: .medium
         case .deadlineStop, .dayNotch, .cardBlockLift, .routePointLift, .tab, .segment, .scopeButton, .scopeItem,
-             .mapSave, .skySwap, .dayStripDate, .daySwipe, .laneDot, .mbSortZone: .selection
+             .mapSave, .skySwap, .dayStripDate, .daySwipe, .laneDot, .mbSortZone, .rowReveal: .selection
         case .fan, .dayLift, .mbHold, .mbCover, .mbSortOn, .mbSortLift, .mbFrameLift: .light
         case .mbSortSaved, .mbFrameDrop: .medium
         }

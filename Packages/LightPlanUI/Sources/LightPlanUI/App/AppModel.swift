@@ -236,6 +236,8 @@ public final class AppModel {
     public var binOpen = false
     /// Полёт в корзину при стирании (29.7): круг, плашка-цель, звук. Один на приложение.
     @ObservationIgnored let binFlight = BinFlight()
+    /// Свайп влево по строке съёмки (29.3г): открыта одна строка на всё приложение.
+    @ObservationIgnored let rowSwipe = RowSwipe()
     /// Лист «Занять время» (веб `#blkSheet`) с заготовкой; `nil` — закрыт.
     public var blockSheet: BlockDraft?
     /// Открытая карточка — id записи (итерация 25, `AppModel+Card`).

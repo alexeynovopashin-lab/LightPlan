@@ -460,7 +460,16 @@ struct PlannerDayList: View {
         }
     }
 
-    private func row(_ it: DayItem, _ pal: Palette) -> some View {
+    /// Строка записи — со свайпом влево «Удалить» (29.3г); у занятости свайпа нет (как и веера).
+    @ViewBuilder private func row(_ it: DayItem, _ pal: Palette) -> some View {
+        if let s = it.session {
+            line(it, pal).rowSwipe(app, key: "m." + s.id, id: s.id, corner: 12, word: f.t.t("swipe.del"))
+        } else {
+            line(it, pal)
+        }
+    }
+
+    private func line(_ it: DayItem, _ pal: Palette) -> some View {
         HStack(spacing: 10) {
             if let b = it.block {
                 // Занятость тише съёмки (`.plan-row.busy`).
@@ -504,7 +513,7 @@ struct PlannerDayList: View {
         .contentShape(Rectangle())
         // Занятость — тапом в свой лист; запись — удержанием в веер (у
         // занятости веера нет, веб `if (b.dataset.b) return`).
-        .modifier(RowAct(app: app, it: it, fan: $fan))
+        .modifier(RowAct(app: app, it: it, fan: $fan, swipeKey: it.session.map { "m." + $0.id }))
     }
 
     private func icon(_ s: Session, _ it: DayItem, _ pal: Palette) -> some View {
@@ -607,6 +616,8 @@ struct RowAct: ViewModifier {
     @Binding var fan: FanTarget?
     var grip: DayGrip? = nil
     var lane = false
+    /// Строка со свайпом (29.3г): тап по открытой кнопке только закрывает её.
+    var swipeKey: String? = nil
 
     func body(content: Content) -> some View {
         if let b = it.block {
@@ -619,6 +630,7 @@ struct RowAct: ViewModifier {
             content
                 .onTapGesture {
                     if grip?.swallows == true { DayGripLog.note("swallow card \(s.id)"); return }
+                    if let k = swipeKey, app.rowSwipe.takesTap(k) { return }
                     DayGripLog.note("tap card \(s.id)")
                     withAnimation(overlaySlide) { app.openCard(id: s.id) }
                 }

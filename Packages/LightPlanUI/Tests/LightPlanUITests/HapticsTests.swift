@@ -26,6 +26,8 @@ struct HapticsTests {
         // кадр опущен, удержание кадра, удержание обложки)
         .daySwipe, .laneDot,
         .mbSortOn, .mbSortLift, .mbSortZone, .mbSortSaved, .mbFrameLift, .mbFrameDrop, .mbHold, .mbCover,
+        // 29.3г: свайп по строке съёмки раскрыл «Удалить» — тик выбора (у беты жеста нет, обычай iOS).
+        .rowReveal,
     ]
 
     @Test func carriedTypesDoNotChange() {
@@ -44,7 +46,8 @@ struct HapticsTests {
     }
 
     @Test func switchesTickWithSelection() {
-        for e: HapticEvent in [.tab, .segment, .scopeButton, .scopeItem, .mapSave, .skySwap, .dayStripDate, .daySwipe, .laneDot] {
+        for e: HapticEvent in [.tab, .segment, .scopeButton, .scopeItem, .mapSave, .skySwap, .dayStripDate, .daySwipe, .laneDot,
+                               .rowReveal] {
             #expect(e.kind == .selection, "\(e)")
         }
     }

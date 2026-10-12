@@ -83,7 +83,7 @@ public struct PlannerScreenView: View {
         .overlay(alignment: .topLeading) { scopeMenu(pal, f) }
         .background(pal.surface.ignoresSafeArea())
         .simultaneousGesture(swipe)
-        .modifier(OutsideTouch(grip: grip, fan: $fan, part: part))
+        .modifier(OutsideTouch(grip: grip, fan: $fan, part: part, rows: app.rowSwipe))
         .coordinateSpace(name: plannerFanSpace)
         .overlay { EventFan(app: app, f: f, fan: $fan) }
         .edgeBackBase(app, .planner)
@@ -233,9 +233,12 @@ public struct PlannerScreenView: View {
         DragGesture(minimumDistance: 20)
             .onEnded { g in
                 if grip.blocksSwipe { DayGripLog.note("swipe blocked dx=\(Int(g.translation.width))"); return }
+                // Свайп по строке съёмки (29.3г) — её жест, вид не листается.
+                if app.rowSwipe.blocksSwipe { RowSwipeLog.note("screen swipe blocked dx=\(Int(g.translation.width))"); return }
                 let dx = g.translation.width, dy = g.translation.height
                 guard abs(dx) >= 60, abs(dy) <= 40 else { return }
                 DayGripLog.note("swipe step dx=\(Int(dx))")
+                RowSwipeLog.note("screen swipe step dx=\(Int(dx)) dy=\(Int(dy)) scope=\(app.planner.scope)")
                 flip(dx < 0 ? 1 : -1)
             }
     }
@@ -271,6 +274,8 @@ private struct OutsideTouch: ViewModifier {
     let grip: DayGrip
     @Binding var fan: FanTarget?
     let part: PartDay
+    /// Касание мимо строк закрывает открытую кнопку «Удалить» (29.3г): прокрутка, тап в стороне, свайп экрана.
+    let rows: RowSwipe
 
     func body(content: Content) -> some View {
         #if os(iOS)
@@ -280,6 +285,7 @@ private struct OutsideTouch: ViewModifier {
             // Лента получает то же касание в том же такте, но порядок не обещан:
             // решаем тактом позже, когда она уже отметилась.
             Task { @MainActor in
+                rows.outsideTouch(stamp: stamp)
                 guard grip.laneTouch != stamp else { return }
                 if grip.selected != nil { DayGripLog.note("deselect outside") }
                 grip.deselect()

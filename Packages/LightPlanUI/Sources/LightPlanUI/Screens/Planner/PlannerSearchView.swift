@@ -51,6 +51,10 @@ struct PlannerSearchView: View {
         } action: { _, v in scroll = (v[0], v[1], max(1, v[2])) }
         .overlay(alignment: .bottomTrailing) { jump(pal) }
         .background(pal.surface.ignoresSafeArea())
+        #if os(iOS)
+        // Касание мимо строк закрывает открытую кнопку «Удалить» (29.3г), как в «Съёмках».
+        .gesture(TouchProbe { stamp in Task { @MainActor in app.rowSwipe.outsideTouch(stamp: stamp) } })
+        #endif
         .task {
             // Клавиатура — когда слой почти доехал (веб: 350 мс).
             try? await Task.sleep(for: .milliseconds(350))
@@ -76,6 +80,7 @@ struct PlannerSearchView: View {
         let name = !who.isEmpty ? who
             : s.kind == .meet ? f.t.t("day.meet") : s.kind == .event ? f.t.t("day.event") : words.typeName(s)
         return Button {
+            if app.rowSwipe.takesTap("s." + s.id) { return }
             close()
             app.planner.enterDay(s.day)
             nav.lentaOpen = false
@@ -95,6 +100,8 @@ struct PlannerSearchView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // Свайп влево «Удалить» (29.3г).
+        .rowSwipe(app, key: "s." + s.id, id: s.id, corner: 10, word: f.t.t("swipe.del"))
     }
 
     /// Кнопка «в конец / в начало» (веб `jumpAttach`): видна, когда лишнего не

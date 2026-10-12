@@ -179,7 +179,12 @@ private struct WeekRow: View {
         }
         .padding(.horizontal, 12).padding(.vertical, 9)
         .contentShape(Rectangle())
-        .onTapGesture { withAnimation(overlaySlide) { app.openCard(id: s.id) } }
+        .onTapGesture {
+            if app.rowSwipe.takesTap("w." + s.id) { return }
+            withAnimation(overlaySlide) { app.openCard(id: s.id) }
+        }
+        // Свайп влево «Удалить» (29.3г); строка без своей подложки — кнопка скруглена как плашка дня.
+        .rowSwipe(app, key: "w." + s.id, id: s.id, corner: 10, word: f.t.t("swipe.del"))
     }
 
     /// Раскрытый день (`.wk-more`): рассвет, закат, золотой час и погода.
