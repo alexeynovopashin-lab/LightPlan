@@ -182,9 +182,14 @@ struct CardPanesBlock: View {
         let rows = layout(app.cardPanes(s, phase: phase))
         VStack(spacing: 9) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                // `.ev-grid` тянет ячейки строки к самой высокой (`align-items: stretch`):
+                // вырос сосед — плитка выросла следом (Алексей, 11.10). `fixedSize` по
+                // вертикали отдаёт строке высоту самой высокой плитки, `maxHeight: .infinity`
+                // в `pane` растягивает остальных до неё; содержимое стоит сверху, как у `.pane`.
                 HStack(alignment: .top, spacing: 9) {
                     ForEach(row, id: \.self) { p in pane(p) }
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .shotNode("card.block.place")
@@ -225,7 +230,7 @@ struct CardPanesBlock: View {
             if p.kind == .next, let sub = p.sub { nextLine(sub, at: p.at).padding(.top, 8) }
         }
         .padding(.horizontal, 14).padding(.vertical, 13)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shotNode("card.pane.\(String(describing: p.kind))")
     }

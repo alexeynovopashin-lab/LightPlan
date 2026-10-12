@@ -155,7 +155,10 @@ const R27_SHOTS = ['a', 'b', 'c', 'd'].map((x, i) => ({ id: 'sh_r27_' + x, k: 'i
   tags: [['bride'], ['couple', 'evening'], ['walk'], ['details']][i] }));
 const R27_BOARDS = [{ id: 'bd_r27_own', kind: 'shoot', sid: 'sd_sep_wed', genre: 'wedding', items: ['sh_r27_a', 'sh_r27_b'], name: null, cover: null },
   { id: 'bd_r27_set', kind: 'tpl', genre: 'wedding', items: ['sh_r27_b', 'sh_r27_c', 'sh_r27_d'], name: null, cover: null }];
-const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet', ...Object.keys(R27)];
+/* `panes` (29.2з): «Настя и Родион» с выездом и тремя пунктами оборудования — «Гостей» и «Выезд» в одной
+   строке, «Оборудование» одно (растянуто на ряд). Сверяется высота плиток строки; один день, до съёмки. */
+const PANES = 'sd_oct_wed_kem';
+const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet', 'panes', ...Object.keys(R27)];
 const phases = (args.phases || 'before,during,after').split(',');
 // Стена часов Барнаула (+7, без перехода) в минуту `m` суток записи `iso`.
 /* Мудборды, организации, «Контакты», опросник, встреча (итерация 28, шаг 10б). Кадры — ссылки
@@ -621,8 +624,8 @@ function markdown(results) {
     list.push({ name, dir, screen: 'planner', theme, moment: 'day', scope: 'month', layer, seed: seedFile });
   }
   if (screens.includes('card') && !args['only-sheets'] && !args['only-forms'] && !args['only-layers']) {
-    for (const g of cards) for (const ph of CARDS[g] ? phases : g === 'tune' ? ['before'] : ['during']) for (const theme of themes) {
-      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : R27[g] ? CARDS.event : CARDS[g] || 'sd_sep_clash_a';
+    for (const g of cards) for (const ph of CARDS[g] ? phases : g === 'tune' || g === 'panes' ? ['before'] : ['during']) for (const theme of themes) {
+      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : g === 'panes' ? PANES : R27[g] ? CARDS.event : CARDS[g] || 'sd_sep_clash_a';
       const name = ['card', g, ph, theme].join('-');
       const dir = path.join(OUT, name);
       fs.mkdirSync(dir, { recursive: true });
@@ -636,6 +639,7 @@ function markdown(results) {
           { ...b, id: 'shot_st_late', min: 1140, end: 1200, dur: 60, contact: 'Ольга Верх', persons: [] }];
       }
       if (g === 'finish') s.manualEnd = true;
+      if (g === 'panes') s.sessions = s.sessions.map(x => x.id !== id ? x : { ...x, gear: ['body', 'lens', 'flash'] });
       if (R27[g]) {
         // Копия записи: `s` — поверхностная, правка общего объекта протекла бы в другие сценарии (ревью GPT к 7d3362c).
         const at = s.sessions.findIndex(x => x.id === id);
