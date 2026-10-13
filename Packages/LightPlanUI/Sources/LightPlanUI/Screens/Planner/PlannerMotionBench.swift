@@ -102,11 +102,13 @@ enum MotionBench {
             for id in ids { mark("bin restore"); PlanMotion.restore(app, id: id); await wait(1.6) }
         case "block":
             app.openBlockSheet(day: app.planner.selected)
-            await wait(12)   // строки листа выставляет `BlockSheet.task` (4 раза с паузой 1,6 с)
+            await wait(15)   // строки листа выставляет `BlockSheet.task` (6 раз с паузой 1,6 с)
         case "cell":
             for d in [d1, d2, d1, d2] { mark("cell tap"); PlanMotion.tapMonthCell(app, d); await wait(1.6) }
         case "wcell":
-            for d in [d1, d2, d1, d2] { mark("wcell tap"); PlanMotion.tapWeekRow(app, d); await wait(1.6) }
+            // Строки недели на экране — дни выбранной недели: стучим по соседям выбранного дня (ревью GPT к fbc0826).
+            let w1 = st.selected.adding(days: -1), w2 = st.selected.adding(days: 1)
+            for d in [w1, w2, w1, w2] { mark("wcell tap"); PlanMotion.tapWeekRow(app, d); await wait(1.6) }
         case "scope":
             for s in [CalScope.week, .month, .week, .month] { mark("scope \(s)"); PlanMotion.setScope(app, s); await wait(1.6) }
         case "m2d":
@@ -120,10 +122,10 @@ enum MotionBench {
 }
 
 extension MotionBench {
-    /// Лист «Занять время»: четыре раскрытия строки даты «С» — те же `toggle`, что тап по капсуле.
+    /// Лист «Занять время»: шесть переключений строки даты «С» — те же `toggle`, что тап по капсуле.
     static func blockRows(_ log: (String) -> Void, toggle: @MainActor () -> Void) async {
         try? await Task.sleep(for: .seconds(3))
-        for _ in 0..<5 {
+        for _ in 0..<6 {   // шесть: меряются последние четыре — раскрыть, закрыть, раскрыть, закрыть
             log("block row"); toggle()
             try? await Task.sleep(for: .seconds(1.6))
         }
