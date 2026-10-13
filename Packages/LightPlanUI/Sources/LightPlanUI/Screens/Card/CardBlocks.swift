@@ -246,18 +246,21 @@ struct CardPanesBlock: View {
             .font(webFont(12)).lineLimit(1)
     }
 
-    /// Справа у места: знак и градус (19), слово неба (12).
+    /// Справа у места: знак и градус (19), слово неба (12). Высоты — как `.pn-wx` беты: градус
+    /// `line-height: 1` (19, не 22,6 натурального), знак 22 с полями −3 (16), слово 12 × 1,1 = 13,2,
+    /// зазор 1: колонка 33,2 pt, ниже знака 38 — плитка 64, не 65,5 (29.2з).
     private func weather(_ w: CardPaneWeather) -> some View {
-        VStack(alignment: .trailing, spacing: 2) {
+        VStack(alignment: .trailing, spacing: 1) {
             HStack(spacing: 4) {
                 if let sky = w.sky {
                     Icon(sky, size: 22, line: 1.4)
                         .foregroundStyle(sky == "clear" ? pal.brassSoft : sky == "rain" ? pal.blue : pal.ink4)
                         .frame(width: 24, height: 22)
+                        .padding(.vertical, -3)
                 }
-                Text(w.temp).font(webFont(19)).foregroundStyle(pal.ink)
+                Text(w.temp).font(webFont(19)).foregroundStyle(pal.ink).frame(height: 19)
             }
-            Text(w.word).font(webFont(12)).foregroundStyle(pal.ink6)
+            Text(w.word).font(webFont(12)).foregroundStyle(pal.ink6).frame(height: 12 * 1.1)
         }
         .fixedSize()
     }

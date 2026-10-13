@@ -123,4 +123,19 @@ struct CardPaneRowsTests {
         let left = try #require(l.last)
         #expect(abs(left - 63) < 0.7, "одинокая плитка: \(left) pt")
     }
+
+    /// Плитка «Место» с колонкой погоды (знак + градус 19 + слово 12) — 64 pt, как у беты: колонка
+    /// `.pn-wx` ниже знака 38 (градус `line-height: 1` = 19, слово 12 × 1,1 = 13,2, зазор 1), и плитка
+    /// не растёт. Раньше градус занимал 22,6 pt, колонка — 38,9 > 38, плитка — 65,5 (29.2з).
+    @Test func placeTileWithWeatherKeepsBetaHeight() throws {
+        let (img, panes) = try render {
+            $0.place = "Парк Горького"
+            $0.latitude = 55.73
+            $0.longitude = 37.6
+        }
+        #expect(panes == 1)
+        let l = runs(img, x: leftX)
+        let left = try #require(l.last)
+        #expect(abs(left - 63) < 0.7, "плитка «Место»: \(left) pt")
+    }
 }
