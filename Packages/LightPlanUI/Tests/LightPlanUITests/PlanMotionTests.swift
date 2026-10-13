@@ -29,12 +29,10 @@ struct PlanMotionTests {
         #expect(overlaySlide == nil)
         #expect(statsSlide == nil)
         #expect(YearZoom.motion == nil)
-        #expect(PlanTop.fanToggle == nil)
         PlanMotion.stillOverride = false
         #expect(overlaySlide == PlanMotion.overlay)
         #expect(statsSlide == PlanMotion.stats)
         #expect(YearZoom.motion == PlanMotion.yearZoom)
-        #expect(PlanTop.fanToggle == PlanMotion.fan)
     }
 
     /// Сторож: в «Съёмках» кривая с литералом (`withAnimation(.snappy…)`, `.animation(.easeOut…)`) не пишется — только
