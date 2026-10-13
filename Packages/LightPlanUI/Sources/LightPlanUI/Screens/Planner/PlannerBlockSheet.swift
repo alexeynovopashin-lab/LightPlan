@@ -104,7 +104,12 @@ struct BlockSheet: View {
         .shotNode("blk.sheet")
         .presentationDetents([.height(min(contentHeight, windowHeight * 0.86))])
         .presentationDragIndicator(.hidden)
-        .animation(.snappy(duration: 0.25), value: open)
+        .animation(PlanMotion.pick(PlanMotion.snap), value: open)
+        #if DEBUG && os(iOS)
+        .task {
+            if MotionBench.isBlock { await MotionBench.blockRows({ PartDayLog.note("motion block \($0)") }) { toggle(.fromDate) } }
+        }
+        #endif
     }
 
     // MARK: - Вид занятости

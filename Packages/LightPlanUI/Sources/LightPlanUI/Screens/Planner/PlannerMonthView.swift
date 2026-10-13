@@ -209,7 +209,7 @@ struct MonthCell: View {
         Button {
             // Второй тап по выбранному числу — вход в день разрезом месяца (29.2а), первый — только выбор.
             if let part, app.planner.entersDay(on: day) { part.enter(app, still: still); return }
-            withAnimation(.snappy(duration: 0.25)) { _ = app.planner.tapMonthCell(day) }
+            PlanMotion.tapMonthCell(app, day)
         } label: {
             // Цифра — в своей зоне на одной высоте у всех клеток, подписи — в зоне ниже (28и):
             // число подписей высоту клетки и положение цифры не меняет.
@@ -632,7 +632,7 @@ struct RowAct: ViewModifier {
                     if grip?.swallows == true { DayGripLog.note("swallow card \(s.id)"); return }
                     if let k = swipeKey, app.rowSwipe.takesTap(k) { return }
                     DayGripLog.note("tap card \(s.id)")
-                    withAnimation(overlaySlide) { app.openCard(id: s.id) }
+                    PlanMotion.openCard(app, id: s.id)
                 }
                 .modifier(FanHold(id: s.id, fan: $fan, off: lane))
                 // Плашка, что улетает в корзину из веера, формы или карточки (29.7).

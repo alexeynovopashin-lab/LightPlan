@@ -44,8 +44,8 @@ struct YearZoom: Equatable {
     /// Лента в начале — обратное преобразование: `translate(−t/k) scale(1/k)`.
     var u: CGSize { CGSize(width: -t.width / k, height: -t.height / k) }
 
-    /// Кривая и длительность веба: 460 мс, `cubic-bezier(0.3, 0.7, 0.1, 1)`.
-    static let motion = Animation.timingCurve(0.3, 0.7, 0.1, 1, duration: 0.46)
+    /// Кривая и длительность веба: 460 мс, `cubic-bezier(0.3, 0.7, 0.1, 1)` — `PlanMotion.yearZoom`.
+    static var motion: Animation? { PlanMotion.pick(PlanMotion.yearZoom) }
 }
 
 /// Пространство, в котором меряются сетки обоих слоёв года.
@@ -87,8 +87,7 @@ struct YearStage: View {
     }
 }
 
-/// Выезд слоя снизу (веб `.overlay`: 0,42 с, `cubic-bezier(0.25, 1, 0.4, 1)`).
-let overlaySlide = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.42)
+// `overlaySlide` — выезд слоя снизу (веб `.overlay`: 0,42 с, E1) — теперь в `PlanMotion.swift`.
 
 // MARK: - Общие куски слоёв
 
@@ -233,28 +232,28 @@ struct YearLentaView: View {
         return VStack(spacing: 0) {
             HStack {
                 OverlayBack(title: f.t.t("nav.shoots"), node: "year.back") {
-                    withAnimation(overlaySlide) { nav.lentaOpen = false }
+                    PlanMotion.lenta(app, nav, open: false)
                 }
                 Spacer()
                 HStack(spacing: 2) {
                     OverlayIconButton(kind: .add, color: pal.brass, label: f.t.t("plan.newShoot"), node: "year.add") {
                         // Веб закрывает ленту и открывает форму на выбранном дне
                         // календаря, с начала его окна света.
-                        withAnimation(overlaySlide) { nav.lentaOpen = false }
+                        PlanMotion.lenta(app, nav, open: false)
                         app.openForm(day: app.planner.selected)
                     }
                     if YearMath.work(app.sessions, year: nav.year).count > 0 {
                         OverlayIconButton(kind: .stats, color: pal.brass, label: f.t.t("plan.stats"), node: "year.stats") {
-                            withAnimation(statsSlide) { nav.statsOpen = true }
+                            PlanMotion.stats(nav, open: true)
                         }
                     }
                     OverlayIconButton(kind: .search, color: pal.brass, label: f.t.t("plan.search"), node: "year.search") {
-                        withAnimation(overlaySlide) { nav.searchOpen = true }
+                        PlanMotion.search(nav, open: true)
                     }
                 }
             }
             Button {
-                withAnimation(overlaySlide) { nav.year12Open = true }
+                PlanMotion.year12(nav, open: true)
             } label: {
                 Text(String(shown))
                     .font(webFont(30, 650)).tracking(-0.5).monospacedDigit()
@@ -290,7 +289,7 @@ struct YearLentaView: View {
         return VStack(alignment: .leading, spacing: 0) {
             Button {
                 app.planner.enterMonth(first, today: today)
-                withAnimation(overlaySlide) { nav.lentaOpen = false }
+                PlanMotion.lenta(app, nav, open: false)
             } label: {
                 Text(f.dates.monthTitleN(first.month - 1))
                     .font(webFont(15, 600)).tracking(-0.1)
@@ -413,7 +412,7 @@ struct Year12View: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     OverlayBack(title: f.t.t("year.one"), node: "y12.back") {
-                        withAnimation(overlaySlide) { nav.year12Open = false }
+                        PlanMotion.year12(nav, open: false)
                     }
                     HStack {
                         arrow(-1, pal)
@@ -535,8 +534,8 @@ struct Year12View: View {
             try? await Task.sleep(for: .milliseconds(16))
             z.e = 1
             withAnimation(YearZoom.motion) { nav.zoom?.e = 1 }
-            withAnimation(.linear(duration: 0.16)) { nav.zoom?.lentaAlpha = 1 }
-            withAnimation(.linear(duration: 0.2).delay(0.06)) { nav.zoom?.sourceAlpha = 0 }
+            withAnimation(PlanMotion.pick(PlanMotion.yearFadeIn)) { nav.zoom?.lentaAlpha = 1 }
+            withAnimation(PlanMotion.pick(PlanMotion.yearFadeOut)) { nav.zoom?.sourceAlpha = 0 }
             try? await Task.sleep(for: .milliseconds(480))
             var off = Transaction()
             off.disablesAnimations = true

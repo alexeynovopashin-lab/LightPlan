@@ -5,7 +5,7 @@
    в серые байты, `Tools/motion/measure.js` считает числа: когда началось и кончилось, сколько кадров в пути,
    какая кривая и длительность подходят лучше всего (E1, ease-out, ease-in-out, линейная), смещение, прозрачность.
 
-     node Tools/motion_bench.js [--scenario month,week,day,bar,fan,tab,tabs,ring] [--theme dark|light] [--reduce]
+     node Tools/motion_bench.js [--scenario month,week,day,bar,fan,tab,tabs,ring,card,stats,search,year,year12,evfan,undo,bin,block,cell,wcell,scope,m2d] [--theme dark|light] [--reduce]
                                 [--skip-build] [--out <папка>] [--check] [--keep] [--again] [--drop-video]
 
    `--check` сверяет числа с бетой (красный = выход 1); без него только печатает. `--reduce` включает
@@ -38,7 +38,7 @@ const BUNDLE = 'Novopashin.LightPlan';
 const ZONE = 'Asia/Barnaul';
 const THEME = args.theme || 'dark';
 const AGAIN = !!args.again;   // не писать заново: пересчитать числа по видео и журналу, что лежат в --out
-const SCENARIOS = (args.scenario || 'month,week,day,bar,fan,tab,tabs,ring').split(',');
+const SCENARIOS = (args.scenario || 'month,week,day,bar,fan,tab,tabs,ring,card,stats,search,year,year12,evfan,undo,bin,block,cell,wcell,scope,m2d').split(',');
 
 function build(udid) {
   const dd = path.join(OUT, 'DerivedData');
@@ -87,7 +87,7 @@ async function scenario(udid, name) {
     '-LPShotName', path.join(FX, 'place_barnaul.json'), '-LPShotScreen', 'planner', '-LPShotScope', spec.scope,
     '-LPShotReport', report, '-LPShotReportDelay', '3', '-LPPartLog', logFile, '-LPMotionBench', name],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
-  for (let i = 0; i < 240 && !(fs.existsSync(logFile) && / done/.test(fs.readFileSync(logFile, 'utf8'))); i++) await sleep(250);
+  for (let i = 0; i < 240 && !(fs.existsSync(logFile) && / motion \w+ done/.test(fs.readFileSync(logFile, 'utf8'))); i++) await sleep(250);
   await sleep(1200);
   rec.kill('SIGINT');
   await new Promise(r => rec.on('exit', r));

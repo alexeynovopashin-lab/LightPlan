@@ -241,7 +241,7 @@ final class PartDay {
         split(app, from: .month, row: i.flatMap { rows[$0 / 7] }, days: i.map { i in grid[(i / 7 * 7)..<(i / 7 * 7 + 7)].map { $0 } } ?? [],
               gap: MonthMetrics.colGap, view: screen, still: still, frozenAt: frozenAt) { app.planner.enterSelectedDay() }
         #else
-        withAnimation(.snappy(duration: 0.25)) { app.planner.enterSelectedDay() }
+        withAnimation(PlanMotion.pick(PlanMotion.snap)) { app.planner.enterSelectedDay() }
         #endif
     }
 
@@ -556,7 +556,7 @@ enum PartDayBench {
             try? await Task.sleep(for: .milliseconds(100))
             PartDayLog.note("bench enter \(way) shift=\(app.planner.dayShift)")
             if old, k >= 6 { withAnimation(nil) { nav.lentaOpen = false }; app.planner.enterDay(app.planner.selected) }
-            else if old { withAnimation(.snappy(duration: 0.25)) { _ = app.planner.tapMonthCell(app.planner.selected) } }
+            else if old { withAnimation(.snappy(duration: 0.25)) { _ = app.planner.tapMonthCell(app.planner.selected) } }   // bench-old: прежний вход, нарочно без выбора движения
             else if k < 3 { part.enter(app, still: still) } else if k < 6 { fan() }
             else { part.enter(app, nav: nav, day: app.planner.selected, still: still) }
             try? await Task.sleep(for: .seconds(0.6))

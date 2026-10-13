@@ -11,7 +11,17 @@ enum MotionBench {
     static var name: String? { UserDefaults.standard.string(forKey: "LPMotionBench") }
     static var on: Bool { name != nil }
 
-    static func run(_ app: AppModel, flip: @escaping (Int) -> Void, fan: @escaping () -> Void) async {
+    /// Что стенду нужно от экрана «Съёмок»: тот же `flip`, веер видов, веер удержания и вход в день, что у пальца (29.2ж).
+    struct Rig {
+        let nav: PlannerNav
+        let evFan: (Bool) -> Void
+        let enterDay: () -> Void
+    }
+
+    /// Лист «Занять время» (`block`): тот же стенд выставляет строки даты внутри листа (`BlockSheet.task`).
+    static var isBlock: Bool { name == "block" }
+
+    static func run(_ app: AppModel, flip: @escaping (Int) -> Void, fan: @escaping () -> Void, rig: Rig) async {
         guard let name else { return }
         func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
         func mark(_ s: String) { PartDayLog.note("motion \(name) \(s)") }
@@ -37,6 +47,8 @@ enum MotionBench {
             let walk: [AppTab] = [.light, .map, .planner, .settings, .light, .planner, .map, .settings, .planner, .light, .settings, .map, .light]
             app.tab = walk[0]; await wait(2)
             for t in walk.dropFirst() { mark("tab \(t)"); app.tab = t; await wait(1.6) }
+        case "card", "stats", "search", "year", "year12", "evfan", "undo", "bin", "block", "cell", "wcell", "scope", "m2d":
+            await moves(name, app, rig, wait: wait, mark: mark)
         case "ring":
             // Дни месяца с рангом «просрочено» — кольцо дышит только у них.
             let st = app.planner
@@ -48,6 +60,73 @@ enum MotionBench {
         default: break
         }
         mark("done")
+    }
+
+    /// Движения «Съёмок» 29.2ж: каждое — то же именованное действие `PlanMotion`, что у пальца. Разминка (первая пара)
+    /// не меряется: стенд берёт последние `trig` событий.
+    private static func moves(_ name: String, _ app: AppModel, _ rig: Rig, wait: (Double) async -> Void, mark: (String) -> Void) async {
+        let nav = rig.nav
+        let sid = app.sessions.first?.id ?? ""
+        let st = app.planner
+        let days = st.monthGrid.filter { PlannerState.sameMonth($0, st.month) }
+        let d1 = days.first { $0.day == 10 } ?? days[0], d2 = days.first { $0.day == 17 } ?? days[1]
+        // Разминка: первое открытие тянет за собой содержимое, замеру нужно чистое движение.
+        func pair(_ n: Int, _ on: () -> Void, _ off: () -> Void, _ a: String, _ b: String) async {
+            for _ in 0..<n { mark(a); on(); await wait(1.6); mark(b); off(); await wait(1.6) }
+        }
+        switch name {
+        case "card":
+            await pair(3, { PlanMotion.openCard(app, id: sid) }, { PlanMotion.closeCard(app) }, "card open", "card close")
+        case "stats":
+            await pair(3, { PlanMotion.stats(nav, open: true) }, { PlanMotion.stats(nav, open: false) }, "stats open", "stats close")
+        case "search":
+            await pair(3, { PlanMotion.search(nav, open: true) }, { PlanMotion.search(nav, open: false) }, "search open", "search close")
+        case "year":
+            await pair(3, { PlanMotion.lenta(app, nav, open: true) }, { PlanMotion.lenta(app, nav, open: false) }, "year open", "year close")
+        case "year12":
+            PlanMotion.lenta(app, nav, open: true); await wait(2)
+            await pair(3, { PlanMotion.year12(nav, open: true) }, { PlanMotion.year12(nav, open: false) }, "year12 open", "year12 close")
+        case "evfan":
+            await pair(3, { rig.evFan(true) }, { rig.evFan(false) }, "evfan open", "evfan close")
+        case "undo":
+            let ids = app.sessions.prefix(3).map(\.id)
+            for id in ids {
+                mark("undo show"); app.trashSession(id: id); await wait(1.6)
+                mark("undo take"); PlanMotion.takeUndo(app); await wait(1.6)
+            }
+        case "bin":
+            let ids = Array(app.sessions.prefix(4).map(\.id))
+            for id in ids { app.trashSession(id: id); await wait(0.3) }
+            await wait(7)   // полоса «Вернуть» ушла сама
+            app.binOpen = true; await wait(3)
+            for id in ids { mark("bin restore"); PlanMotion.restore(app, id: id); await wait(1.6) }
+        case "block":
+            app.openBlockSheet(day: app.planner.selected)
+            await wait(12)   // строки листа выставляет `BlockSheet.task` (4 раза с паузой 1,6 с)
+        case "cell":
+            for d in [d1, d2, d1, d2] { mark("cell tap"); PlanMotion.tapMonthCell(app, d); await wait(1.6) }
+        case "wcell":
+            for d in [d1, d2, d1, d2] { mark("wcell tap"); PlanMotion.tapWeekRow(app, d); await wait(1.6) }
+        case "scope":
+            for s in [CalScope.week, .month, .week, .month] { mark("scope \(s)"); PlanMotion.setScope(app, s); await wait(1.6) }
+        case "m2d":
+            for _ in 0..<3 {
+                mark("m2d enter"); rig.enterDay(); await wait(2.4)
+                mark("m2d exit"); PlanMotion.setScope(app, .month); await wait(1.6)
+            }
+        default: break
+        }
+    }
+}
+
+extension MotionBench {
+    /// Лист «Занять время»: четыре раскрытия строки даты «С» — те же `toggle`, что тап по капсуле.
+    static func blockRows(_ log: (String) -> Void, toggle: @MainActor () -> Void) async {
+        try? await Task.sleep(for: .seconds(3))
+        for _ in 0..<5 {
+            log("block row"); toggle()
+            try? await Task.sleep(for: .seconds(1.6))
+        }
     }
 }
 #endif

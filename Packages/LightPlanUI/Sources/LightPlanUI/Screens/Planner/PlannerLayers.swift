@@ -31,8 +31,7 @@ struct PlannerLayers: View {
     }
 }
 
-/// Слой статистики въезжает справа (`.overlay-right`: 0,36 с).
-let statsSlide = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.36)
+// `statsSlide` (`.overlay-right`: 0,36 с) — в `PlanMotion.swift`.
 
 // MARK: - Веер удержания
 
@@ -121,7 +120,7 @@ struct EventFan: View {
             }
         }
         .haptic(.fan, trigger: fan?.id) { _, new in new != nil && fan?.lane != true }
-        .animation(.easeOut(duration: 0.16), value: fan)
+        .animation(PlanMotion.pick(PlanMotion.fan), value: fan)
     }
 
     private func who(_ s: Session) -> String {
@@ -173,7 +172,7 @@ struct UndoBar: View {
                         .shotNode("undo.text", text: u.text)
                     Spacer(minLength: 0)
                     if u.what != .notice { Button {
-                        withAnimation(.easeOut(duration: 0.2)) { app.takeUndo() }
+                        PlanMotion.takeUndo(app)
                     } label: {
                         Text(app.lexicon.t(u.actionKey)).font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(pal.brass).padding(.vertical, 2)
@@ -192,12 +191,12 @@ struct UndoBar: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: u.token) {
                     try? await Task.sleep(for: .seconds(UndoOffer.seconds))
-                    withAnimation(.timingCurve(0.25, 1, 0.4, 1, duration: 0.32)) { app.expireUndo(u.token) }
+                    withAnimation(PlanMotion.pick(PlanMotion.undoBar)) { app.expireUndo(u.token) }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .animation(.timingCurve(0.25, 1, 0.4, 1, duration: 0.32), value: app.undo?.token)
+        .animation(PlanMotion.pick(PlanMotion.undoBar), value: app.undo?.token)
     }
 }
 
@@ -258,10 +257,10 @@ struct BinSheet: View {
                         sub: t.t("bin.wipeAsk", ["n": t.count("unit.shoot", app.trashed.count)]),
                         ok: t.t("ask.wipe"), cancel: t.t("ask.cancel")) { yes in
                 asking = false
-                if yes { withAnimation(.easeOut(duration: 0.2)) { app.clearBin() } }
+                if yes { withAnimation(PlanMotion.pick(PlanMotion.bin)) { app.clearBin() } }
             }
         }
-        .animation(.easeOut(duration: 0.2), value: app.trashed.count)
+        .animation(PlanMotion.pick(PlanMotion.bin), value: app.trashed.count)
     }
 
     private func row(_ s: Session, _ f: PlannerFacts, _ pal: Palette) -> some View {
@@ -279,7 +278,7 @@ struct BinSheet: View {
             }
             Spacer(minLength: 0)
             Button {
-                withAnimation(.easeOut(duration: 0.2)) { app.restoreSession(id: s.id) }
+                PlanMotion.restore(app, id: s.id)
             } label: {
                 Text(f.t.t("plan.undo")).font(.system(size: 13)).foregroundStyle(pal.brassDeep)
                     .padding(.vertical, 8).padding(.horizontal, 14)

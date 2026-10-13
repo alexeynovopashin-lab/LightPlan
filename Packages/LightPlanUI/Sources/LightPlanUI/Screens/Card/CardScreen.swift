@@ -87,7 +87,7 @@ struct CardScreen: View {
     private func bar(_ pal: Palette) -> some View {
         HStack(spacing: 0) {
             FormBarButton(node: "card.back", kind: .close, label: t.t("card.close")) {
-                withAnimation(overlaySlide) { app.closeCard() }
+                PlanMotion.closeCard(app)
             }
             Spacer(minLength: 10)
             // Режим перестановки прячет «＋» и «Заполнить»: палец, ведущий блок,

@@ -49,7 +49,7 @@ private struct WeekRow: View {
         let wx = f.weather(day)
         HStack(alignment: .top, spacing: 10) {
             Button {
-                withAnimation(.snappy(duration: 0.25)) { app.planner.tapWeekRow(day) }
+                PlanMotion.tapWeekRow(app, day)
             } label: {
                 VStack(spacing: 1) {
                     Text("\(day.day)").font(webFont(19, isToday ? 650 : 400)).monospacedDigit()
@@ -181,7 +181,7 @@ private struct WeekRow: View {
         .contentShape(Rectangle())
         .onTapGesture {
             if app.rowSwipe.takesTap("w." + s.id) { return }
-            withAnimation(overlaySlide) { app.openCard(id: s.id) }
+            PlanMotion.openCard(app, id: s.id)
         }
         // Свайп влево «Удалить» (29.3г); строка без своей подложки — кнопка скруглена как плашка дня.
         .rowSwipe(app, key: "w." + s.id, id: s.id, corner: 10, word: f.t.t("swipe.del"))

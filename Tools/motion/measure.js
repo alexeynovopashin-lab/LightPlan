@@ -292,6 +292,7 @@ function rise(fr, ev) {
 }
 
 /* ---------- сценарии ---------- */
+const FULL = { rect: [0, 60, 440, 800] };
 const SPEC = {
   month: {
     scope: 'month', trig: 3,
@@ -321,6 +322,28 @@ const SPEC = {
     scope: 'month', trig: 12,
     region: () => ({ rect: [0, 62, 440, 56] }),   // верх экрана под часами: шапка вкладки (город/дата/погода «Света», кнопки «Съёмок»)
   },
+  // 29.2ж: места «Съёмок», где движение шло без проверки «Уменьшения движения». Область — весь экран под часами;
+  // мера та же, что у `day`: кадры события, не похожие ни на начало, ни на конец. `mid` — подпись каждого события по порядку.
+  card:   { scope: 'month', trig: 4, region: () => FULL, mid: ['карточка открывается', 'карточка закрывается'] },
+  stats:  { scope: 'month', trig: 4, region: () => FULL, mid: ['статистика въезжает', 'статистика уходит'] },
+  search: { scope: 'month', trig: 4, region: () => ({ rect: [0, 60, 440, 480] }),   // без клавиатуры: она системная, поднимается после 0,35 с
+           mid: ['поиск выезжает', 'поиск уходит'] },
+  year:   { scope: 'month', trig: 4, region: () => FULL, mid: ['лента года выезжает', 'лента года уходит'] },
+  year12: { scope: 'month', trig: 4, region: () => FULL, mid: ['«год целиком» выезжает', '«год целиком» уходит'] },
+  evfan:  { scope: 'month', trig: 4, region: () => FULL, mid: ['веер удержания открывается', 'веер удержания закрывается'] },
+  undo:   { scope: 'month', trig: 4, region: () => FULL, mid: ['полоса «Вернуть» въезжает', '«Вернуть» нажата, полоса уходит'] },
+  bin:    { scope: 'month', trig: 4, region: () => FULL, mid: ['«Вернуть» из корзины'] },
+  block:  { scope: 'month', trig: 4, region: () => FULL, mid: ['строка даты листа раскрывается', 'строка даты листа закрывается'] },
+  // две ячейки, по которым стучит стенд (10 и 17 число): на всём месяце подсветка выбора ниже порога событий
+  cell:   { scope: 'month', trig: 4, region: nodes => {
+    const a = nodes['cal.n.10-0'], b = nodes['cal.n.17-0'];
+    if (!a || !b) throw new Error('нет рамок чисел 10 и 17');
+    const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+    return { rect: [x, y, Math.max(a.x + a.w, b.x + b.w) - x, Math.max(a.y + a.h, b.y + b.h) - y] };
+  }, mid: ['тап по ячейке месяца'] },
+  wcell:  { scope: 'week', trig: 4, region: nodes => { const c = nodes.week; return { rect: [0, c.y, 440, 300] }; }, mid: ['тап по строке недели'] },
+  scope:  { scope: 'month', trig: 4, region: () => FULL, mid: ['смена вида: неделя', 'смена вида: месяц'] },
+  m2d:    { scope: 'month', trig: 6, region: () => FULL, mid: ['месяц → день', 'день → месяц'] },
   ring: {
     scope: 'month', trig: 0, now: process.env.LP_RING_NOW || '2026-10-26T13:00:00+07:00',   // позже сида: сдачи октября уже просрочены
     region: (nodes, log) => {
@@ -367,7 +390,7 @@ function analyze(name, r, opt) {
     return res;
   }
 
-  if (name === 'day') {
+  if (name === 'day' || spec.mid) {
     // День листается въездом ленты (сдвиг 18 pt + проявление 0,22 с). Кадр события — начало, конец или промежуточный
     // (ни тот ни другой): при «Уменьшении движения» промежуточных нет, лента меняется одним кадром.
     res.day = ev.list.map((x, n) => {
@@ -375,13 +398,14 @@ function analyze(name, r, opt) {
       const base = sad(S, E) || 1;
       let mid = 0;
       for (let k = a; k <= b; k++) { const f = fr.data[k]; if (sad(f, S) / base > 0.02 && sad(f, E) / base > 0.02) mid++; }
-      return { n, inPath: mid, frames: b - a + 1, span: fr.ts[x.i1] - fr.ts[x.i0], base: base / f_len(S) };
+      return { n, inPath: mid, frames: b - a + 1, span: fr.ts[x.i1] - fr.ts[x.i0], base: base / f_len(S),
+               label: spec.mid ? spec.mid[n % spec.mid.length] : '' };
     });
-    res.day.forEach(o => lines.push(`шаг ${o.n + 1}: кадров события ${o.frames}, из них в пути (не начало и не конец) ${o.inPath}, движение ${ms(o.span)} мс (от первого до последнего изменившегося кадра), разница начала и конца ${r3(o.base)} на пиксель`));
+    res.day.forEach(o => lines.push((o.label ? `${o.label}: ` : '') + `шаг ${o.n + 1}: кадров события ${o.frames}, из них в пути (не начало и не конец) ${o.inPath}, движение ${ms(o.span)} мс (от первого до последнего изменившегося кадра), разница начала и конца ${r3(o.base)} на пиксель`));
     if (opt.check) res.day.forEach(o => {
-      if (o.base < 0.5) { bad(false, `шаг ${o.n + 1}: день на кадрах не сменился (разница ${r3(o.base)}) — не проверено`); return; }
+      if (o.base < (spec.mid ? 0.05 : 0.5)) { bad(false, `шаг ${o.n + 1}: день на кадрах не сменился (разница ${r3(o.base)}) — не проверено`); return; }
       if (opt.still) bad(o.inPath === 0, `шаг ${o.n + 1}: при уменьшении движения кадров в пути ${o.inPath}, нужно 0`);
-      else bad(o.inPath >= 3, `шаг ${o.n + 1}: кадров в пути ${o.inPath}, нужно ≥ 3 (въезд 0,22 с)`);
+      else bad(o.inPath >= (spec.minMid ?? 3), `шаг ${o.n + 1}: кадров в пути ${o.inPath}, нужно ≥ ${spec.minMid ?? 3} (въезд 0,22 с)`);
     });
     return res;
   }
@@ -433,7 +457,7 @@ function analyze(name, r, opt) {
   res.prog = ev.list.map((e, n) => ({ n, frames: e.i1 - e.i0 + 1 }));
   lines.push('кадров движения на видео: ' + res.prog.map(o => o.frames).join(', '));
   if (name === 'bar') bar(fr, r, lines, res, bad, opt);
-  if (name === 'fan') fan(fr, r, lines, res, bad, opt);
+  if (name === 'fan') fan(fr, r, lines, res, bad, opt, ev);
   return res;
 }
 
@@ -513,11 +537,20 @@ function bar(fr, r, lines, res, bad, opt) {
 }
 
 /* Веер: доля пути `scopeIn` из журнала (ease-out 0,16 с) и поза на первом кадре из чисел беты. */
-function fan(fr, r, lines, res, bad, opt) {
+function fan(fr, r, lines, res, bad, opt, ev) {
   const runs = poseRuns(r.log, 'scopeIn', markTimes(r.log).slice(0, 2), 0.8);
   const open = runStats(runs[0], lines, 'открытие веера', 0.16);
-  runStats(runs[1], lines, 'закрытие веера', 0.16);
+  const close = runStats(runs[1], lines, 'закрытие веера', 0.16);
   res.fan = { open };
+  if (opt.still) {
+    // 29.2ж: при «Уменьшении движения» веер видов появляется и исчезает сразу — ни одного промежуточного значения,
+    // а видео при этом видит и открытие, и закрытие (иначе стенд ничего не проверил).
+    if (opt.check) {
+      bad(open.n === 0 && close.n === 0, `веер видов: при уменьшении движения кадров в пути ${open.n} и ${close.n}, нужно 0`);
+      bad(ev.list.length >= 2, 'веер видов: на видео нет двух событий — не проверено');
+    }
+    return;
+  }
   if (open.n >= 3) {
     const sc = 0.94 + 0.06 * open.first, dy = -10 * (1 - sc) - 6 * (1 - open.first);
     lines.push(`  поза на первом кадре: масштаб ${r3(sc)}, сдвиг вверх ${r3(-dy)} pt (старт беты: 0,94 и 6 pt)`);

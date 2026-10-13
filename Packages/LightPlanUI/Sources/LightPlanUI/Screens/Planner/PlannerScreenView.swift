@@ -93,7 +93,12 @@ public struct PlannerScreenView: View {
         .task { if PartDayBench.on { await PartDayBench.run(app, part: part, nav: nav, fan: enterFromFan) } }
         .task {
             if MotionBench.on {
-                await MotionBench.run(app, flip: flip, fan: { withAnimation(PlanTop.fanToggle) { scopeOpen.toggle() } })
+                let sid = app.sessions.first?.id ?? ""
+                let rig = MotionBench.Rig(
+                    nav: nav,
+                    evFan: { on in fan = on ? FanTarget(id: sid, anchor: CGRect(x: 40, y: 330, width: 300, height: 44)) : nil },
+                    enterDay: { part.enter(app, still: still) })
+                await MotionBench.run(app, flip: flip, fan: { withAnimation(PlanTop.fanToggle) { scopeOpen.toggle() } }, rig: rig)
             }
         }
         #endif
@@ -177,7 +182,7 @@ public struct PlannerScreenView: View {
                         Haptics.play(.scopeItem)
                         if app.planner.scope == .month, s == .day { enterFromFan(); return }
                         scopeOpen = false
-                        withAnimation(.snappy(duration: 0.25)) { app.planner.setScope(s) }
+                        PlanMotion.setScope(app, s)
                     } label: {
                         HStack(spacing: 10) {
                             Icon("check", size: 16, line: 2.2).foregroundStyle(pal.brass).opacity(on ? 1 : 0)
@@ -326,7 +331,7 @@ private struct PlanTop: View {
     @Environment(\.colorScheme) private var scheme
 
     /// Открытие и закрытие веера видов (кнопка вида и стенд движений).
-    static let fanToggle = Animation.easeOut(duration: 0.16)
+    static var fanToggle: Animation? { PlanMotion.pick(PlanMotion.fan) }
 
     var body: some View {
         let pal = Palette(scheme)
@@ -359,11 +364,11 @@ private struct PlanTop: View {
                     .accessibilityLabel(f.t.t("plan.newShoot"))
                 Button {
                     nav.year = app.planner.month.year
-                    withAnimation(statsSlide) { nav.statsOpen = true }
+                    PlanMotion.stats(nav, open: true)
                 } label: { action(.stats, pal.brass, "plan.stats") }
                     .buttonStyle(.plain)
                     .accessibilityLabel(f.t.t("plan.stats"))
-                Button { withAnimation(overlaySlide) { nav.searchOpen = true } } label: { action(.search, pal.ink, "plan.search") }
+                Button { PlanMotion.search(nav, open: true) } label: { action(.search, pal.ink, "plan.search") }
                     .buttonStyle(.plain)
                     .accessibilityLabel(f.t.t("plan.search"))
             }
@@ -377,7 +382,7 @@ private struct PlanTop: View {
     /// не сдвигая слово. Не помещается — сжимается, с оси не уходит (`PlanTitleLayout`).
     private func titleButton(_ pal: Palette, rightButtons: Int) -> some View {
         Button {
-            withAnimation(overlaySlide) { nav.openLenta(from: app.planner.month) }
+            PlanMotion.lenta(app, nav, open: true)
         } label: {
             Text(title)
                 .font(webFont(18, 650)).tracking(-0.3)

@@ -64,7 +64,7 @@ struct PlannerSearchView: View {
 
     private func close() {
         focused = false
-        withAnimation(overlaySlide) { nav.searchOpen = false }
+        PlanMotion.search(nav, open: false)
     }
 
     private func empty(_ key: String, _ pal: Palette) -> some View {
@@ -86,7 +86,7 @@ struct PlannerSearchView: View {
             nav.lentaOpen = false
             nav.year12Open = false
             nav.statsOpen = false
-            withAnimation(overlaySlide) { app.openCard(id: s.id) }
+            PlanMotion.openCard(app, id: s.id)
         } label: {
             HStack(spacing: 10) {
                 Text(f.dates.dMonShort(f.date(s.day))).font(webFont(16).monospacedDigit()).foregroundStyle(pal.brass)
@@ -110,7 +110,7 @@ struct PlannerSearchView: View {
         if scroll.overflow >= 0.6 * scroll.visible {
             let down = scroll.offset < scroll.overflow / 2
             Button {
-                withAnimation(.easeInOut(duration: 0.35)) {
+                withAnimation(PlanMotion.pick(PlanMotion.jump)) {
                     if down { position.scrollTo(edge: .bottom) } else { position.scrollTo(edge: .top) }
                 }
             } label: {
