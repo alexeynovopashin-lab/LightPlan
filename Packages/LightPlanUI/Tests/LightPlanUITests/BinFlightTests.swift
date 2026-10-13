@@ -193,4 +193,31 @@ struct BinFlightTests {
         #expect(Set(lib.board("sh")?.bin.map(\.id) ?? []) == ["a", "d"], "\(lib.board("sh")?.bin.map(\.id) ?? [])")
         #expect(lib.shot("a") != nil && lib.shot("d") != nil && lib.shot("b") != nil)
     }
+
+    /// Хвост 29.7: отметил «a», «d» → подтвердил → пока летит, отметил «b» → после глотка из выбора ушли
+    /// только стёртые, «b» остался отмеченным (раньше выбор обнулялся целиком).
+    @Test func pickMadeDuringFlightSurvivesTheGulp() async {
+        BinFlightControl.calm(false)
+        defer { BinFlightControl.reset() }
+        let app = moodModel()
+        app.openMbFolder(boardId: "sh")
+        app.toggleMbPicking(); app.toggleMbPick("a"); app.toggleMbPick("d")
+        app.mbConfirmRemovePicked()
+        app.toggleMbPick("b")
+        try? await Task.sleep(for: .milliseconds(1500))
+        #expect(app.mbLibrary().board("sh")?.items == ["b", "c"])
+        #expect(app.mb.pick?.ids == ["b"], "выбор: \(app.mb.pick?.ids ?? [])")
+    }
+
+    /// Ничего не отмечали за полёт — выбор кончается, как раньше.
+    @Test func pickEndsWhenNothingElseWasMarked() async {
+        BinFlightControl.calm(false)
+        defer { BinFlightControl.reset() }
+        let app = moodModel()
+        app.openMbFolder(boardId: "sh")
+        app.toggleMbPicking(); app.toggleMbPick("a"); app.toggleMbPick("d")
+        app.mbConfirmRemovePicked()
+        try? await Task.sleep(for: .milliseconds(1500))
+        #expect(app.mb.pick == nil)
+    }
 }
