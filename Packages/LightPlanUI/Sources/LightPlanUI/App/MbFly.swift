@@ -59,6 +59,11 @@ final class MbFly {
     @ObservationIgnored var animate: (Animation, () -> Void, @escaping () -> Void) -> Void = { a, body, done in
         withAnimation(a, completionCriteria: .logicallyComplete, body, completion: done)
     }
+    /// Отложенный вызов подчистки. Тест подставляет свои часы: окна в миллисекундах за очередью главного актора
+    /// в полном наборе не держатся (замер 13.10: подчистка пришла на 2,65 с позже).
+    @ObservationIgnored var after: (Double, @escaping @MainActor () -> Void) -> Void = { d, f in
+        DispatchQueue.main.asyncAfter(deadline: .now() + d) { MainActor.assumeIsolated { f() } }
+    }
     /// Номер полёта в процессе: тест читает журнал только своего полёта.
     @ObservationIgnored let id: Int = MbFly.takeID()
     @ObservationIgnored nonisolated(unsafe) private static var lastID = 0
@@ -96,7 +101,7 @@ final class MbFly {
             MbFlyLog.note(n, "fly", flight: self.id)
             self.animate(MbFlyTimeline.curve, { self.k = 1 }) { [weak self] in self?.land(n) }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + MbFlyTimeline.sweep) { [weak self] in
+        after(MbFlyTimeline.sweep) { [weak self] in
             guard let self, n == self.run, self.board != nil else { return }
             MbFlyLog.note(n, "sweep", flight: self.id)
             self.clear()
