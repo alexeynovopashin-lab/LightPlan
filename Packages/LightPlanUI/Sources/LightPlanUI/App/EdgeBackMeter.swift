@@ -33,7 +33,7 @@ final class EdgeBackMeter: NSObject {
 
     nonisolated private static let counts = OSAllocatedUnfairLock<[String: Int]>(initialState: [:])
     nonisolated static func count(_ name: String) { counts.withLock { $0[name, default: 0] += 1 } }
-    nonisolated private static func snapshot() -> [String: Int] { counts.withLock { $0 } }
+    nonisolated static func snapshot() -> [String: Int] { counts.withLock { $0 } }
 
     // MARK: жизнь замера
 
