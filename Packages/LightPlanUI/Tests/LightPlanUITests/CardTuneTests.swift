@@ -1,5 +1,9 @@
 import Testing
 import Foundation
+import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 @testable import LightPlanUI
 import LightPlanCore
 import LightPlanDomain
@@ -123,6 +127,44 @@ struct CardTuneTests {
         for _ in 0..<100 where app.cardTuneMoves != 0 { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(app.cardTuneMoves == 0 && !app.cardTuneMoving)
     }
+
+    #if os(iOS)
+    /// Окно с живым циклом отрисовки: без него `completion` у `withAnimation` срабатывает прямо в вызове, счётчик
+    /// хода никогда не бывает выше нуля, и подъём после тапа тест не видит (ревью GPT к a43568b). Здесь у плитки,
+    /// что зависит от `cardTuning`, есть настоящая анимация высоты, и ход идёт — счётчик виден на 1, затем на 2.
+    @Test func moveCounterIsRaisedWhileTheAnimationRunsAndFallsBackToZero() async throws {
+        let app = model()
+        app.openCard(id: "p")
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 440, height: 956))
+        window.rootViewController = UIHostingController(rootView: TunePlate(app: app))
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        try await Task.sleep(for: .milliseconds(150))      // первый кадр окна
+        #expect(app.cardTuneMoves == 0)
+
+        app.toggleCardTuning(still: false)
+        #expect(app.cardTuning)
+        #expect(app.cardTuneMoves == 1 && app.cardTuneMoving)          // ход идёт: подъём виден
+        app.toggleCardTuning(still: false)                              // тап посреди хода
+        #expect(!app.cardTuning)
+        #expect(app.cardTuneMoves == 2)                                 // оба хода открыты, ни один не погасил обрезку раньше
+        var peak = app.cardTuneMoves
+        for _ in 0..<200 where app.cardTuneMoves != 0 {
+            peak = max(peak, app.cardTuneMoves)
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(peak == 2)
+        #expect(app.cardTuneMoves == 0 && !app.cardTuneMoving)         // и досчитал до нуля
+    }
+
+    /// Плитка, высота которой зависит от режима: нужна, чтобы у `withAnimation` было что анимировать.
+    private struct TunePlate: View {
+        let app: AppModel
+        var body: some View {
+            Color.red.frame(width: 100, height: app.cardTuning ? 20 : 200)
+        }
+    }
+    #endif
 
     // MARK: - Порядок, тумблер, сброс
 
