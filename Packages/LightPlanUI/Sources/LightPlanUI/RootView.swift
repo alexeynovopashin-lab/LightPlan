@@ -192,6 +192,20 @@ private struct Shell: View {
         .onOpenURL { app.openQuestLink($0) }
         // Жест «назад» от левого края (28з): один распознаватель на окно, слои записываются `.edgeBack`.
         .background { EdgeBackHost(app: app) }
+        #if os(iOS)
+        // Сортировка мудборда (29.3б): тап мимо плиток верхнего слоя выводит из режима (веб `mbTapUp`);
+        // поверх листа мудборда — нет: лист закрывается первым.
+        .background {
+            MbSortTapOutHost(sorting: { [weak app] in app?.mbSort.on == true },
+                             keeps: { [weak app] p in app.map { $0.mb.sheet != nil || $0.mbSort.keeps(p, layer: $0.mbSortLayer) } ?? true },
+                             leave: { [weak app] in app?.mbSort.off() })
+        }
+        #endif
+        // Escape выводит из режима, если поверх нет листа (веб `mbSortKey`). Отдельным видом: флаг режима,
+        // прочитанный в этом теле, пересобирал бы при входе в режим весь корень (замер 29.3б: 49,8 мс CPU на кадр).
+        .background { MbSortEscape(app: app) }
+        // Ушли с экрана — вышли из режима (веб `go` → `mbSortOff`).
+        .onChange(of: app.tab) { app.mbSort.off() }
         #if DEBUG && os(iOS)
         // Свидетель касаний (29.4): кто взял жест — только при `-LPMapGestureLog`.
         .background { TouchWitnessHost() }

@@ -12,6 +12,7 @@ struct MoodboardShelf: View {
     @Environment(\.colorScheme) private var scheme
 
     private var t: Lexicon { app.lexicon }
+    private var row: String { "shelf." + genre }
 
     var body: some View {
         let pal = Palette(scheme)
@@ -33,12 +34,18 @@ struct MoodboardShelf: View {
                         let n = b.items.filter { id in lib.shots.contains { $0.id == id } }.count
                         MbTile(boardId: b.id, genre: genre, count: n,
                                title: Moodboard.title(of: b, genreName: genreName),
-                               sub: t.count("unit.frame", n), node: "mb.folder.\(i)") {
-                            withAnimation(overlaySlide) { app.openMbFolder(boardId: b.id) }
+                               sub: t.count("unit.frame", n), node: "mb.folder.\(i)",
+                               sort: MbSortTile(sort: app.mbSort, row: row, key: b.id, nth: i + 1)) {
+                            app.mbTileTap(board: b.id) { withAnimation(overlaySlide) { app.openMbFolder(boardId: b.id) } }
                         }
+                        .modifier(MbSortSlot(sort: app.mbSort, row: row, key: b.id))
+                        .mbSortHit(app.mbSort, "shelf.\(b.id)")
                     }
                     MbAddTile(title: t.t("mb.newFolder"), node: "mb.shelfAdd") { app.openMbNewFolder(genre: genre) }
+                        .mbSortHit(app.mbSort, "shelf.add")
                 }
+                // Папки полки переставляются тем же жестом (веб `mbFolderReorder`); подсказки у полки нет.
+                .mbSortRow(app.mbSort, row: row, keys: shelf.folders.map(\.id), first: 0) { app.mbSetFolderOrder($0) }
                 .padding(.top, 14)
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)

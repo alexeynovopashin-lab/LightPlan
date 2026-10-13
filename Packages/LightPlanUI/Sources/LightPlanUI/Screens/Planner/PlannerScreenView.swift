@@ -240,6 +240,8 @@ public struct PlannerScreenView: View {
                 if grip.blocksSwipe { DayGripLog.note("swipe blocked dx=\(Int(g.translation.width))"); return }
                 // Свайп по строке съёмки (29.3г) — её жест, вид не листается.
                 if app.rowSwipe.blocksSwipe { RowSwipeLog.note("screen swipe blocked dx=\(Int(g.translation.width))"); return }
+                // В режиме сортировки мудборда ряд принадлежит пальцу целиком — календарь не листается (веб L34416).
+                if app.mbSort.blocksSwipe { MbSortLog.note("screen swipe blocked dx=\(Int(g.translation.width))"); return }
                 let dx = g.translation.width, dy = g.translation.height
                 guard abs(dx) >= 60, abs(dy) <= 40 else { return }
                 DayGripLog.note("swipe step dx=\(Int(dx))")

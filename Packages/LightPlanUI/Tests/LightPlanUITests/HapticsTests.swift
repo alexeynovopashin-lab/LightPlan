@@ -64,8 +64,18 @@ struct HapticsTests {
         #expect(Haptics.ownedByTimebar["dome.hour"] != nil)
     }
 
-    @Test func reservedEventsAreExactlyTheSixMoodboardGestures() {
+    /// 29.3б подключила сортировку подборок; ждёт жеста только драг кадров в папке (29.3в).
+    @Test func reservedEventsAreExactlyTheTwoFrameGestures() {
         let waiting = Set(HapticEvent.allCases.filter(\.awaitsGesture))
-        #expect(waiting == [.mbSortOn, .mbSortLift, .mbSortZone, .mbSortSaved, .mbFrameLift, .mbFrameDrop])
+        #expect(waiting == [.mbFrameLift, .mbFrameDrop])
+    }
+
+    /// Вибрации беты 12 / 14 / 5 / 20 мс → лёгкий, лёгкий, выбор, средний; звука у мудборда нет.
+    @Test func sortEventsKeepBetaWeights() {
+        #expect(HapticEvent.mbSortOn.kind == .light)
+        #expect(HapticEvent.mbSortLift.kind == .light)
+        #expect(HapticEvent.mbSortZone.kind == .selection)
+        #expect(HapticEvent.mbSortSaved.kind == .medium)
+        for e in [HapticEvent.mbSortOn, .mbSortLift, .mbSortZone, .mbSortSaved] { #expect(e.sound == nil, "\(e)") }
     }
 }

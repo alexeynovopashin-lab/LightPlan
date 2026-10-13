@@ -6,8 +6,8 @@ import LightPlanDomain
 
 /// Под лентой дня и тремя кнопками: ручка-сводка и тело с плитками «Съёмки» и «Подборки».
 /// Свёрнутая ручка — карточка с веером трёх обложек; раскрытая — тонкая подпись со
-/// стрелкой (справка 28, п. 2.1). Подсказка про сортировку не показывается: переставлять
-/// в 5а нечего, жест — итерация 29 (ошибка веба 24 в нативе не повторяется).
+/// стрелкой (справка 28, п. 2.1). Подсказка про сортировку — только когда есть что переставлять:
+/// две подборки жанров и больше (ошибка веба 24 в нативе не повторяется); жест — 29.3б (`MbSortDrag`).
 struct MoodboardStrip: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
@@ -100,6 +100,7 @@ struct MoodboardStrip: View {
             }
             MbSectionLabel(text: t.t("mb.sets"), top: shoots.isEmpty ? 0 : 18)
             row(sets, withAdd: true, all: sets, lib, node: "mb.g")
+            if sets.count > 1 { MbSortHint(app: app) }
         }
         .transition(.opacity)
     }
@@ -107,24 +108,42 @@ struct MoodboardStrip: View {
     private func row(_ list: [MbFolder], withAdd: Bool, all: [MbFolder], _ lib: RefLibrary, node: String) -> some View {
         let t = f.t
         let r = Moodboard.row(list, withAdd: withAdd)
-        return MbTileGrid {
+        let sort = app.mbSort
+        // Переставляются только жанры (у съёмок порядок календарный, веб L22060); ряд — свой у каждой сетки.
+        let rowKey: String? = withAdd ? "strip.g" : nil
+        let lead = withAdd ? 1 : 0
+        let keys = r.shown.map { $0.genre ?? $0.boardId }
+        let grid = MbTileGrid {
             if withAdd {
                 MbAddTile(title: t.t("mb.newTitle"), node: "mb.add") { app.openMbNew() }
+                    .mbSortHit(sort, "strip.add")
             }
             ForEach(Array(r.shown.enumerated()), id: \.element.id) { i, fo in
                 let l = app.mbLabels(fo, lib)
+                let key = keys[i]
                 MbTile(boardId: fo.boardId, genre: fo.genre, count: fo.frameCount, title: l.title, sub: l.sub,
                        node: "\(node).\(i)",
-                       hold: fo.kind == .shoot ? { app.openMbBoardCard(fo.boardId) } : nil) {
-                    withAnimation(overlaySlide) { app.openMbFolder(fo) }
+                       hold: fo.kind == .shoot ? { app.openMbBoardCard(fo.boardId) } : nil,
+                       sort: MbSortTile(sort: sort, row: rowKey, key: key, nth: lead + i + 1)) {
+                    app.mbTileTap(board: app.mbSheetBoard(fo)) { withAnimation(overlaySlide) { app.openMbFolder(fo) } }
                 }
+                .modifier(MbSortSlot(sort: sort, row: rowKey ?? "", key: rowKey == nil ? "" : key))
+                .mbSortHit(sort, "strip.\(node).\(fo.boardId)")
                 .binSubject(app, "board." + fo.boardId)
             }
             if let badge = r.badge {
                 MbMoreTile(cells: Moodboard.mosaic(hidden: r.hidden, all: all), badge: badge, title: t.t("mb.all"),
-                           node: "\(node).more") {
+                           node: "\(node).more", sort: MbSortTile(sort: sort, key: "more", nth: lead + r.shown.count + 1, minus: false)) {
                     withAnimation(overlaySlide) { app.openMbGallery() }
                 }
+                .mbSortHit(sort, "strip.\(node).more")
+            }
+        }
+        return Group {
+            if let rowKey {
+                grid.mbSortRow(sort, row: rowKey, keys: keys, first: lead) { app.mbSetGenreOrder($0) }
+            } else {
+                grid
             }
         }
     }

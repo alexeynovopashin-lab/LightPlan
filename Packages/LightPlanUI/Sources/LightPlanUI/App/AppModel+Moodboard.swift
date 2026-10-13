@@ -167,6 +167,41 @@ extension AppModel {
     @discardableResult
     func mbMerge(_ from: String, into: String) -> [String] { mbEdit { $0.merge(from, into: into, now: $1) } }
 
+    // MARK: сортировка (29.3б)
+
+    /// Порядок жанров ряда после переноса (веб `mbSetGenreOrder` + `mbOrderSaved`).
+    func mbSetGenreOrder(_ genres: [String]) { mbEdit { lib, _ in lib.setGenreOrder(genres) } }
+
+    /// Порядок папок полки после переноса (веб `mbSetFolderOrder`).
+    func mbSetFolderOrder(_ ids: [String]) { mbEdit { lib, _ in lib.setFolderOrder(ids) } }
+
+    /// Тап по плитке (веб `click` в `mbStartDrag`): после подъёма и отпускания — ничего; в режиме
+    /// сортировки плитка со знаком подборки зовёт её лист, полка с несколькими папками (`board == nil`)
+    /// открывается; вне режима — `open`.
+    func mbTileTap(board: String?, open: () -> Void) {
+        if mbSort.swallows { MbSortLog.note("tap swallowed"); return }
+        if mbSort.on, let board {
+            MbSortLog.note("tap sheet \(board)")
+            openMbBoardCard(board)
+            return
+        }
+        open()
+    }
+
+    /// Верхний слой с плитками для тапа мимо: полка, галерея или полоса «Съёмок»; поверх папки,
+    /// карточки или чужого экрана плиток нет (`""`), и любой тап выводит из режима, как у веба.
+    var mbSortLayer: String {
+        if mb.folder != nil || card != nil || docsNav.isOpen || org.listOpen { return "" }
+        if mb.shelf != nil { return "shelf" }
+        if mb.galleryOpen { return "gallery" }
+        return tab == .planner ? "strip" : ""
+    }
+
+    /// Знак подборки плитки для листа (веб `mbDragId`): у жанра с несколькими папками его нет.
+    func mbSheetBoard(_ f: MbFolder) -> String? {
+        f.kind == .genre && f.boardIds.count > 1 ? nil : f.boardId
+    }
+
     /// Новая папка жанра с именем; пустое имя — `nil`, ничего не пишется.
     @discardableResult
     func mbAddFolder(genre: String, name: String) -> String? {

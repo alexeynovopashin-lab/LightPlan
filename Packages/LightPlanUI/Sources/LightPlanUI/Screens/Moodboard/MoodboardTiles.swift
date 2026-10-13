@@ -91,15 +91,18 @@ struct MbTile: View {
     let title: String
     let sub: String
     var node = ""
-    /// Удержание 0,42 с (веб `MB_HOLD`): у съёмок — карточка подборки; у жанров до 29 удержанию нечего делать.
+    /// Удержание 0,42 с (веб `MB_HOLD`) у съёмок — карточка подборки. У жанров и папок полки удержание
+    /// включает сортировку — его ведёт распознаватель ряда (`mbSortRow`), не плитка.
     var hold: (() -> Void)? = nil
+    /// Режим сортировки (29.3б): обложка качается, носит минус, поднятая — крупнее.
+    var sort: MbSortTile? = nil
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let pal = Palette(scheme)
         let face = VStack(alignment: .leading, spacing: 0) {
-            MbArt(boardId: boardId, genre: genre, count: count)
+            MbSortArt(tile: sort) { MbArt(boardId: boardId, genre: genre, count: count) }
             Text(title).font(webFont(12.5, 600)).foregroundStyle(pal.ink2).lineLimit(1).padding(.top, 7)
             Text(sub).font(webFont(11)).foregroundStyle(pal.ink5).lineLimit(1).padding(.top, 1)
         }
@@ -109,6 +112,15 @@ struct MbTile: View {
             face
                 .gesture(LongPressGesture(minimumDuration: 0.42, maximumDistance: 8).onEnded { _ in hold() }
                     .exclusively(before: TapGesture().onEnded { action() }))
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { action() }
+                .shotNode(node, text: title)
+        } else if sort?.row != nil {
+            // Переставляемая плитка — тап, не `Button`: удержание ряда (`mbSortRow`) ждало бы отказа кнопки
+            // до самого отпускания, и подъёма не было бы (замер 29.3б), как у ленты дня с `onTapGesture`.
+            face
+                .onTapGesture { action() }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { action() }
@@ -150,6 +162,8 @@ struct MbMoreTile: View {
     let badge: Int
     let title: String
     var node = ""
+    /// Режим сортировки: «Все» качается вместе с рядом, минуса у неё нет (веб `.mb-tile.more`).
+    var sort: MbSortTile? = nil
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
 
@@ -157,22 +171,7 @@ struct MbMoreTile: View {
         let pal = Palette(scheme)
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
-                GeometryReader { g in
-                    let w = g.size.width
-                    ZStack(alignment: .topLeading) {
-                        RoundedRectangle(cornerRadius: 11, style: .continuous).fill(pal.sheet)
-                            .frame(width: w - 10, height: w - 5).rotationEffect(.degrees(-3.5)).offset(x: 5, y: -1)
-                        RoundedRectangle(cornerRadius: 11, style: .continuous).fill(pal.sheet4)
-                            .frame(width: w - 6, height: w - 3).rotationEffect(.degrees(2.5)).offset(x: 3, y: 0)
-                        mosaic(w)
-                        Text("+\(badge)").font(webFont(10.5, 600)).foregroundStyle(.white).monospacedDigit()
-                            .padding(.horizontal, 5).frame(minWidth: 19, minHeight: 19)
-                            .background(Capsule().fill(Color.black.opacity(0.55)))
-                            .frame(width: w, height: w, alignment: .topTrailing)
-                            .padding(.top, 6).padding(.trailing, -6)
-                    }
-                }
-                .aspectRatio(1, contentMode: .fit)
+                MbSortArt(tile: sort) { art(pal) }
                 Text(title).font(webFont(12.5, 600)).foregroundStyle(pal.ink2).lineLimit(1).padding(.top, 7)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -180,6 +179,25 @@ struct MbMoreTile: View {
         }
         .buttonStyle(.plain)
         .shotNode(node, text: "+\(badge)")
+    }
+
+    private func art(_ pal: Palette) -> some View {
+        GeometryReader { g in
+            let w = g.size.width
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 11, style: .continuous).fill(pal.sheet)
+                    .frame(width: w - 10, height: w - 5).rotationEffect(.degrees(-3.5)).offset(x: 5, y: -1)
+                RoundedRectangle(cornerRadius: 11, style: .continuous).fill(pal.sheet4)
+                    .frame(width: w - 6, height: w - 3).rotationEffect(.degrees(2.5)).offset(x: 3, y: 0)
+                mosaic(w)
+                Text("+\(badge)").font(webFont(10.5, 600)).foregroundStyle(.white).monospacedDigit()
+                    .padding(.horizontal, 5).frame(minWidth: 19, minHeight: 19)
+                    .background(Capsule().fill(Color.black.opacity(0.55)))
+                    .frame(width: w, height: w, alignment: .topTrailing)
+                    .padding(.top, 6).padding(.trailing, -6)
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
     }
 
     /// Ячейки 2×2 без зазора; меньше четырёх — растягиваются по месту (веб `.mb-cover.mo`).

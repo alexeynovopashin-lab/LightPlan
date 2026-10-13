@@ -104,27 +104,36 @@ struct MoodboardGallery: View {
         let folders = app.mbFolders(lib)
         let shoots = Moodboard.galleryShoots(folders, sessions: app.sessions)
         let sets = folders.filter { $0.kind == .genre }
+        let keys = sets.map { $0.genre ?? $0.boardId }
         MbSectionLabel(text: t.t("nav.shoots"), top: 30)
         if shoots.isEmpty {
             Text(t.t("mb.noShootFolders")).font(webFont(14)).foregroundStyle(pal.ink6).padding(.vertical, 8)
         } else {
-            MbTileGrid { ForEach(Array(shoots.enumerated()), id: \.element.id) { tile($1, $0, lib, node: "mb.gs") } }
+            MbTileGrid { ForEach(Array(shoots.enumerated()), id: \.element.id) { tile($1, $0, lib, node: "mb.gs", row: nil, nth: $0 + 1) } }
         }
         MbSectionLabel(text: t.t("mb.sets"), top: 48)
         MbTileGrid {
             MbAddTile(title: t.t("mb.newTitle"), node: "mb.gadd") { focused = false; app.openMbNew() }
-            ForEach(Array(sets.enumerated()), id: \.element.id) { tile($1, $0, lib, node: "mb.gg") }
+                .mbSortHit(app.mbSort, "gallery.add")
+            ForEach(Array(sets.enumerated()), id: \.element.id) { tile($1, $0, lib, node: "mb.gg", row: "gallery.g", nth: $0 + 2) }
         }
+        // Переставляются жанры (веб `mbGenreReorder` в `renderMbGallery`); съёмки — календарём.
+        .mbSortRow(app.mbSort, row: "gallery.g", keys: keys, first: 1) { app.mbSetGenreOrder($0) }
+        if sets.count > 1 { MbSortHint(app: app) }
     }
 
-    private func tile(_ fo: MbFolder, _ i: Int, _ lib: RefLibrary, node: String) -> some View {
+    private func tile(_ fo: MbFolder, _ i: Int, _ lib: RefLibrary, node: String, row: String?, nth: Int) -> some View {
         let l = app.mbLabels(fo, lib)
+        let key = fo.genre ?? fo.boardId
         return MbTile(boardId: fo.boardId, genre: fo.genre, count: fo.frameCount, title: l.title, sub: l.sub,
                       node: "\(node).\(i)",
-                      hold: fo.kind == .shoot ? { focused = false; app.openMbBoardCard(fo.boardId) } : nil) {
+                      hold: fo.kind == .shoot ? { focused = false; app.openMbBoardCard(fo.boardId) } : nil,
+                      sort: MbSortTile(sort: app.mbSort, row: row, key: key, nth: nth)) {
             focused = false
-            withAnimation(overlaySlide) { app.openMbFolder(fo) }
+            app.mbTileTap(board: app.mbSheetBoard(fo)) { withAnimation(overlaySlide) { app.openMbFolder(fo) } }
         }
+        .modifier(MbSortSlot(sort: app.mbSort, row: row ?? "", key: row == nil ? "" : key))
+        .mbSortHit(app.mbSort, "gallery.\(node).\(fo.boardId)")
         .binSubject(app, "board." + fo.boardId)
     }
 
