@@ -66,7 +66,7 @@ struct MoodboardFrameFlyTests {
         }
         #expect(d.order == ["b", "c", "a", "d", "e"])
         var written: [[String]] = []
-        let out = d.drop { written.append($0) }
+        let out = d.drop { o, home in written.append(o); #expect(home == items); return true }
         #expect(out == .reordered(["b", "c", "a", "d", "e"]))
         #expect(written == [["b", "c", "a", "d", "e"]])
         #expect(d.settling)
@@ -81,7 +81,7 @@ struct MoodboardFrameFlyTests {
         d.move(to: CGPoint(x: c.midX + 0.8, y: c.midY - 0.7))
         #expect(!d.moved)
         var written = 0
-        #expect(d.drop { _ in written += 1 } == .menu("b"))
+        #expect(d.drop { _, _ in written += 1; return true } == .menu("b"))
         #expect(written == 0)
     }
 
@@ -93,7 +93,7 @@ struct MoodboardFrameFlyTests {
         #expect(d.begin(id: "a", items: items, at: CGPoint(x: c.midX, y: c.midY)))
         d.move(to: CGPoint(x: c.midX + 20, y: c.midY + 10))
         var written = 0
-        #expect(d.drop { _ in written += 1 } == .same)
+        #expect(d.drop { _, _ in written += 1; return true } == .same)
         #expect(written == 0)
     }
 
@@ -104,12 +104,24 @@ struct MoodboardFrameFlyTests {
         let items = ["a", "b", "c", "d", "e"]
         let c = d.cells(items)[0]
         #expect(d.begin(id: "a", items: items, at: CGPoint(x: c.midX, y: c.midY)))
-        d.drop { _ in }
+        d.drop { _, _ in true }
         #expect(!d.begin(id: "b", items: items, at: .zero))
         // Ждём посадки опросом, а не окном: в полном наборе главный актор занят чужими тестами.
         for _ in 0..<60 where d.active { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(!d.active)
         #expect(d.begin(id: "b", items: items, at: CGPoint(x: c.midX, y: c.midY + 300)))
+    }
+
+    /// Запись отказала (подборку поменяли за время жеста) — исход «отказано», кадр ложится на прежнее место.
+    @Test func refusedWriteLandsHome() {
+        let d = drag()
+        let items = ["a", "b", "c", "d", "e"]
+        let c0 = d.cells(items)[0], c2 = d.cells(items)[2]
+        #expect(d.begin(id: "a", items: items, at: CGPoint(x: c0.midX, y: c0.midY)))
+        d.move(to: CGPoint(x: c2.midX, y: c2.midY))
+        #expect(d.order != items)
+        #expect(d.drop { _, _ in false } == .refused)
+        #expect(d.order == items)
     }
 
     /// Новый порядок доходит до подборки (`mbEdit` → `RefLibrary.reorder`) и папки.
@@ -119,6 +131,8 @@ struct MoodboardFrameFlyTests {
         #expect(app.mbReorderFrames(["c", "a", "b", "d", "e"], of: "tpl"))
         #expect(app.mbFolderScene(app.mbLibrary())?.list.map(\.id) == ["c", "a", "b", "d", "e"])
         #expect(!app.mbReorderFrames(["c", "a", "b", "d"], of: "tpl"), "неполный порядок не пишется")
+        #expect(!app.mbReorderFrames(["a", "b", "c", "d", "e"], of: "tpl", from: ["a", "b", "c", "d", "e"]),
+                "подборку переставили с подъёма — не пишется")
     }
 
     /// Кривые беты: подъём 0,22 с, соседи 0,22 с, посадка 0,3 с.
@@ -187,8 +201,16 @@ struct MoodboardFrameFlyTests {
         #expect(f.board == nil && !f.hidesHero("tpl"))
         let phases = MbFlyLog.journal.filter { $0.flight == f.id }.map(\.phase).filter { $0 != "hero" }
         // Обычно «посадка → погасла»; под нагрузкой полного набора может успеть подчистка — тоже верный конец.
-        #expect(Array(phases.prefix(2)) == ["launch", "fly"] && ["gone", "sweep"].contains(phases.last ?? ""), "\(phases)")
-        if phases.contains("land") { #expect(phases.suffix(2) == ["land", "gone"] || phases.last == "sweep", "\(phases)") }
+        let ok: [[String]] = [["launch", "fly", "land", "gone"], ["launch", "fly", "land", "sweep"], ["launch", "fly", "sweep"]]
+        #expect(ok.contains(phases), "\(phases)")
+    }
+
+    /// Ждём фазу «полёт» этого клона (она начинается со следующего хода главной очереди, как `requestAnimationFrame`).
+    private func waitFly(_ f: MbFly) async {
+        for _ in 0..<100 where !MbFlyLog.journal.contains(where: { $0.flight == f.id && $0.phase == "fly" }) {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(MbFlyLog.journal.contains { $0.flight == f.id && $0.phase == "fly" })
     }
 
     /// Подставные часы: отложенные вызовы копятся, тест сам решает, когда их «наступило».
@@ -199,28 +221,32 @@ struct MoodboardFrameFlyTests {
 
     /// Анимация не кончилась (вкладка в фоне, экран сменился) — клон снимает подчистка через 0,9 с от старта; у веба
     /// такой клон оставался лежать поверх папки.
-    @Test func stalledCloneIsSweptAtNinetyHundredths() {
+    @Test func stalledCloneIsSweptAtNinetyHundredths() async {
         let f = fly(still: false)
         let clock = FakeClock()
         f.animate = { _, body, _ in body() }   // анимация без конца
         f.after = { d, run in clock.queue.append((d, run)) }
         f.launch(board: "tpl", genre: nil) {}
         #expect(clock.queue.map(\.delay) == [MbFlyTimeline.sweep])
-        #expect(f.board == "tpl", "до подчистки клон на месте")
+        await waitFly(f)
+        #expect(f.board == "tpl" && f.k == 1, "полёт идёт, до подчистки клон на месте")
         clock.fire(0)
         #expect(f.board == nil && !f.hidesHero("tpl"))
         #expect(MbFlyLog.journal.filter { $0.flight == f.id }.map(\.phase).last == "sweep")
     }
 
     /// Второй тап поверх идущего полёта: подчистка первого не снимает клон второго.
-    @Test func newerFlightOwnsTheClone() {
+    @Test func newerFlightOwnsTheClone() async {
         let f = fly(still: false)
         let clock = FakeClock()
         f.animate = { _, body, _ in body() }
         f.after = { d, run in clock.queue.append((d, run)) }
         f.sources["two"] = CGRect(x: 10, y: 10, width: 100, height: 100)
         f.launch(board: "tpl", genre: nil) {}
+        await waitFly(f)   // второй тап — во время полёта первого, а не до его начала
+        #expect(f.board == "tpl" && f.k == 1)
         f.launch(board: "two", genre: nil) {}
+        #expect(f.board == "two" && f.k == 0, "второй полёт начинается с плитки")
         clock.fire(0)
         #expect(f.board == "two", "подчистка первого полёта второй не трогает")
         clock.fire(1)

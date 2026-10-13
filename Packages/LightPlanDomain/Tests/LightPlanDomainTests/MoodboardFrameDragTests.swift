@@ -126,4 +126,12 @@ struct MoodboardFrameDragTests {
         #expect(lib.board("B")?.items == ["a", "b", "c"])
         #expect(lib.board("B")?.mt == nil)
     }
+
+    /// Подборку переставили за время жеста (другое устройство) — порядок жеста её не затирает.
+    @Test func reorderRefusesWhenBoardChangedSinceLift() {
+        var lib = library()
+        do { let ok = lib.reorder(["b", "a", "c"], of: "B", expecting: ["a", "b", "c"], now: 1); #expect(ok) }
+        do { let ok = lib.reorder(["c", "a", "b"], of: "B", expecting: ["a", "b", "c"], now: 2); #expect(!ok) }
+        #expect(lib.board("B")?.items == ["b", "a", "c"])
+    }
 }

@@ -103,11 +103,14 @@ public enum MbFrameDragRules {
 
 extension RefLibrary {
     /// Новый порядок кадров подборки после перестановки пальцем (веб `board.items = order`). Пишется, только если
-    /// это те же ссылки в другом порядке: подборку могли поменять за время жеста (импорт Pinterest, лист кадра), и
-    /// старый порядок затёр бы новые кадры. Тот же порядок — `false`, ничего не меняется.
+    /// это те же ссылки в другом порядке и (`expecting`) подборка не менялась с подъёма: за время жеста её могли
+    /// поменять (импорт Pinterest, другое устройство), и порядок жеста затёр бы чужую правку. Тот же порядок —
+    /// `false`, ничего не меняется.
     @discardableResult
-    public mutating func reorder(_ order: [String], of boardId: String, now: Double? = nil) -> Bool {
+    public mutating func reorder(_ order: [String], of boardId: String, expecting home: [String]? = nil,
+                                 now: Double? = nil) -> Bool {
         guard let i = boards.firstIndex(where: { $0.id == boardId }), order != boards[i].items,
+              home.map({ $0 == boards[i].items }) ?? true,
               order.sorted() == boards[i].items.sorted() else { return false }
         boards[i].items = order
         if let now { boards[i].mt = now }

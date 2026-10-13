@@ -296,7 +296,7 @@ struct MoodboardFolder: View {
         }
         .frame(width: gridW, height: CGFloat(place.height), alignment: .topLeading)
         .mbFrameGrid(drag, on: reorder, items: sc.board.items,
-                     commit: { app.mbReorderFrames($0, of: boardId) },
+                     commit: { app.mbReorderFrames($0, of: boardId, from: $1) },
                      menu: { focused = false; app.openMbItem(shot: $0) })
         .shotNode("mb.fgrid", text: "\(frames.count)")
     }

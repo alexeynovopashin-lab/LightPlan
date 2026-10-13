@@ -111,22 +111,26 @@ final class MbFrameDrag {
         case reordered([String])
         /// Повели, но вернули на своё место.
         case same
+        /// Повели, а запись отказала: подборку поменяли за время жеста. Кадр ложится на прежнее место, без отдачи.
+        case refused
     }
 
-    /// Отпустили (веб `release`): кадр ложится на место 0,3 с, порядок пишется сразу (`commit`), если сменился.
+    /// Отпустили (веб `release`): кадр ложится на место 0,3 с, порядок пишется сразу (`commit(порядок, порядок на
+    /// подъёме)`), если сменился. Касание, отнятое системой, — то же отпускание (веб `pointercancel` → `release`).
     @discardableResult
-    func drop(commit: ([String]) -> Void) -> Outcome? {
+    func drop(commit: ([String], [String]) -> Bool) -> Outcome? {
         guard let l = lift, !settling else { return nil }
-        let out: Outcome = !moved ? .menu(l.id) : (order != l.home ? .reordered(order) : .same)
+        var out: Outcome = !moved ? .menu(l.id) : (order != l.home ? .reordered(order) : .same)
+        if case .reordered(let o) = out, !commit(o, l.home) {
+            out = .refused
+            order = l.home   // кадр ложится туда, откуда взят: на экране то, что записано
+        }
         settling = true
         #if DEBUG && os(iOS)
         meter?.beginSettle()
         #endif
         MbFrameLog.note("drop hand=\(Self.f(hand.x)),\(Self.f(hand.y)) to=\(order.firstIndex(of: l.id) ?? -1) \(Self.word(out))")
-        if case .reordered(let o) = out {
-            commit(o)
-            Haptics.play(.mbFrameDrop)
-        }
+        if case .reordered = out { Haptics.play(.mbFrameDrop) }
         let wait = still() ? 0 : MbFrameMotion.landDuration
         DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in self?.finish() }
         return out
@@ -170,6 +174,7 @@ final class MbFrameDrag {
         case .menu: "menu"
         case .reordered: "reordered"
         case .same: "same"
+        case .refused: "refused"
         }
     }
 }
@@ -285,7 +290,7 @@ private struct MbFramePos: ViewModifier, @preconcurrency Animatable {
 extension View {
     /// Сетка папки, которую можно переставлять: один распознаватель на сетку (образец 29.3б).
     /// `items` — `items[]` подборки, `commit` — запись нового порядка, `menu` — лист кадра по удержанию без сдвига.
-    func mbFrameGrid(_ drag: MbFrameDrag, on: Bool, items: [String], commit: @escaping ([String]) -> Void,
+    func mbFrameGrid(_ drag: MbFrameDrag, on: Bool, items: [String], commit: @escaping ([String], [String]) -> Bool,
                      menu: @escaping (String) -> Void) -> some View {
         modifier(MbFrameGridModifier(drag: drag, on: on, items: items, commit: commit, menu: menu))
     }
@@ -295,7 +300,7 @@ struct MbFrameGridModifier: ViewModifier {
     let drag: MbFrameDrag
     let on: Bool
     let items: [String]
-    let commit: ([String]) -> Void
+    let commit: ([String], [String]) -> Bool
     let menu: (String) -> Void
 
     func body(content: Content) -> some View {
