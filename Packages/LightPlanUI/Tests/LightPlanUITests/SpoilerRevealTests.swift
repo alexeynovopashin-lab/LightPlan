@@ -22,4 +22,10 @@ struct SpoilerRevealTests {
         #expect(SpoilerReveal.chevronAngle(expanded: false) == 90)
         #expect(SpoilerReveal.chevronAngle(expanded: true) == 270)
     }
+
+    /// Подпись кнопки «Подробно» меняется вместе со списком: у беты `today.hide`, пока он раскрыт (29.2г, хвост 29.9).
+    @Test func labelFollowsExpansion() {
+        #expect(SpoilerReveal.label(expanded: false, closed: "Подробно", open: "Свернуть") == "Подробно")
+        #expect(SpoilerReveal.label(expanded: true, closed: "Подробно", open: "Свернуть") == "Свернуть")
+    }
 }

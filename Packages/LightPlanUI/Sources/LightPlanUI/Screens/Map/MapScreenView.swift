@@ -581,7 +581,8 @@ struct MapScreenView: View {
                 }
             }
             .padding(.horizontal, 24)
-            LightSpoilerView(groups: summary.pro, open: light.proMode, title: app.lexicon.t("today.details"))
+            LightSpoilerView(groups: summary.pro, open: light.proMode, title: app.lexicon.t("today.details"),
+                             openTitle: app.lexicon.t("today.hide"))
                 .padding(.horizontal, 24)
         }
     }
