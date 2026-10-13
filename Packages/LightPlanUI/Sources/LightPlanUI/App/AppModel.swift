@@ -244,6 +244,8 @@ public final class AppModel {
     public var binOpen = false
     /// Полёт в корзину при стирании (29.7): круг, плашка-цель, звук. Один на приложение.
     @ObservationIgnored let binFlight = BinFlight()
+    /// Полёт обложки в шапку папки мудборда (29.3в). Один на приложение.
+    @ObservationIgnored let mbFly = MbFly()
     /// Свайп влево по строке съёмки (29.3г): открыта одна строка на всё приложение.
     @ObservationIgnored let rowSwipe = RowSwipe()
     /// Лист «Занять время» (веб `#blkSheet`) с заготовкой; `nil` — закрыт.

@@ -125,8 +125,9 @@ struct MoodboardStrip: View {
                        node: "\(node).\(i)",
                        hold: fo.kind == .shoot ? { app.openMbBoardCard(fo.boardId) } : nil,
                        sort: MbSortTile(sort: sort, row: rowKey, key: key, nth: lead + i + 1)) {
-                    app.mbTileTap(board: app.mbSheetBoard(fo)) { withAnimation(overlaySlide) { app.openMbFolder(fo) } }
+                    app.mbTileTap(board: app.mbSheetBoard(fo)) { app.openMbFolderFlying(fo) }
                 }
+                .mbFlySource(app, fo.boardId)
                 .modifier(MbSortSlot(sort: sort, row: rowKey ?? "", key: rowKey == nil ? "" : key))
                 .mbSortHit(sort, "strip.\(node).\(fo.boardId)")
                 .binSubject(app, "board." + fo.boardId)

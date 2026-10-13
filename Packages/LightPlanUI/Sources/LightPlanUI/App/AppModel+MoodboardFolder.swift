@@ -69,6 +69,10 @@ extension AppModel {
         resetMbFolderInput()
     }
 
+    /// Новый порядок кадров после перестановки пальцем (29.3в, веб `board.items = order; saveAll()`).
+    @discardableResult
+    func mbReorderFrames(_ order: [String], of boardId: String) -> Bool { mbEdit { $0.reorder(order, of: boardId, now: $1) } }
+
     /// «Назад»: режим выбора живёт не дольше папки; опустевшая подборка съёмки без имени
     /// исчезает (веб `boardPrune` в `mbFolderBack`). Пустая жанровая остаётся.
     func closeMbFolder() {

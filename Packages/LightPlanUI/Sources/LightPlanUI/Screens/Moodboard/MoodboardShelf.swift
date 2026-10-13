@@ -36,8 +36,9 @@ struct MoodboardShelf: View {
                                title: Moodboard.title(of: b, genreName: genreName),
                                sub: t.count("unit.frame", n), node: "mb.folder.\(i)",
                                sort: MbSortTile(sort: app.mbSort, row: row, key: b.id, nth: i + 1)) {
-                            app.mbTileTap(board: b.id) { withAnimation(overlaySlide) { app.openMbFolder(boardId: b.id) } }
+                            app.mbTileTap(board: b.id) { app.flyIntoMbFolder(b.id) }
                         }
+                        .mbFlySource(app, b.id)
                         .modifier(MbSortSlot(sort: app.mbSort, row: row, key: b.id))
                         .mbSortHit(app.mbSort, "shelf.\(b.id)")
                     }

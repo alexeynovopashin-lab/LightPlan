@@ -130,8 +130,9 @@ struct MoodboardGallery: View {
                       hold: fo.kind == .shoot ? { focused = false; app.openMbBoardCard(fo.boardId) } : nil,
                       sort: MbSortTile(sort: app.mbSort, row: row, key: key, nth: nth)) {
             focused = false
-            app.mbTileTap(board: app.mbSheetBoard(fo)) { withAnimation(overlaySlide) { app.openMbFolder(fo) } }
+            app.mbTileTap(board: app.mbSheetBoard(fo)) { app.openMbFolderFlying(fo) }
         }
+        .mbFlySource(app, fo.boardId)
         .modifier(MbSortSlot(sort: app.mbSort, row: row ?? "", key: row == nil ? "" : key))
         .mbSortHit(app.mbSort, "gallery.\(node).\(fo.boardId)")
         .binSubject(app, "board." + fo.boardId)

@@ -64,10 +64,10 @@ struct HapticsTests {
         #expect(Haptics.ownedByTimebar["dome.hour"] != nil)
     }
 
-    /// 29.3б подключила сортировку подборок; ждёт жеста только драг кадров в папке (29.3в).
-    @Test func reservedEventsAreExactlyTheTwoFrameGestures() {
+    /// 29.3б подключила сортировку подборок, 29.3в — драг кадров в папке: жеста, которого ждёт событие, не осталось.
+    @Test func noMoodboardEventAwaitsAGestureAfterBothSteps() {
         let waiting = Set(HapticEvent.allCases.filter(\.awaitsGesture))
-        #expect(waiting == [.mbFrameLift, .mbFrameDrop])
+        #expect(waiting.isEmpty, "\(waiting)")
     }
 
     /// Вибрации беты 12 / 14 / 5 / 20 мс → лёгкий, лёгкий, выбор, средний; звука у мудборда нет.
@@ -77,5 +77,12 @@ struct HapticsTests {
         #expect(HapticEvent.mbSortZone.kind == .selection)
         #expect(HapticEvent.mbSortSaved.kind == .medium)
         for e in [HapticEvent.mbSortOn, .mbSortLift, .mbSortZone, .mbSortSaved] { #expect(e.sound == nil, "\(e)") }
+    }
+
+    /// Вибрации беты 16 / 20 мс (`mbFrameLift` / `mbFrameDrop`) → лёгкий и средний; звука у мудборда нет.
+    @Test func frameEventsKeepBetaWeights() {
+        #expect(HapticEvent.mbFrameLift.kind == .light)
+        #expect(HapticEvent.mbFrameDrop.kind == .medium)
+        #expect(HapticEvent.mbFrameLift.sound == nil && HapticEvent.mbFrameDrop.sound == nil)
     }
 }

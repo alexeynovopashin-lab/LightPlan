@@ -10,6 +10,7 @@ import LightPlanDomain
 /// Картинок нет до 30 (решение Алексея 1Б): ссылка — квадрат «сайт / хвост пути», остальное — штриховка.
 /// Шестерёнка открывает меню подборки (лист, шаг 5в); в выборе — «Добавить в…», «Переместить…», «Убрать N»;
 /// долгий тап по кадру и тап по ссылке без картинки — лист кадра; долгий тап по обложке — лист обложки.
+/// На голой сетке удержание поднимает кадр: повели — перестановка, отпустили не двигая — лист кадра (29.3в).
 /// Плитка «+» (лист «Фото / Ссылка») последней в сетке и кнопки «Фото» / «Ссылка» внизу — шаг 5г
 /// (решение Алексея 30.09, «кнопка Фото должна работать»); картинки в плитках вместо штриховки — 5д.
 struct MoodboardFolder: View {
@@ -25,6 +26,8 @@ struct MoodboardFolder: View {
     @State private var position = ScrollPosition(edge: .top)
     @State private var confirmRemove = false
     @State private var picked: [PhotosPickerItem] = []
+    /// Перестановка кадров пальцем (29.3в).
+    @State private var drag = MbFrameDrag()
     @FocusState private var focused: Bool
 
     private var t: Lexicon { app.lexicon }
@@ -66,7 +69,7 @@ struct MoodboardFolder: View {
                 if app.mb.folderSearchOpen { field(pal) }
                 if !sc.sections.isEmpty { rail(sc, pal) }
                 gridLabel(sc, pal)
-                grid(sc, pal)
+                grid(sc, pal).zIndex(drag.active ? 1 : 0)   // поднятый кадр — поверх строк под сеткой
                 if app.mb.pick != nil { pickActions(pal) } else { addRow(pal) }
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
@@ -132,7 +135,16 @@ struct MoodboardFolder: View {
     private func head(_ sc: MbFolderScene, _ pal: Palette) -> some View {
         HStack(alignment: .top, spacing: 12) {
             MbCover(boardId: sc.board.id, genre: sc.genre, radius: 14, mark: 0.42, stroke: 1.5)
-                .frame(width: 58, height: 58).shotNode("mb.folderHero")
+                .frame(width: 58, height: 58)
+                // Полёт обложки (29.3в): шапка пишет своё место в покое и прячется, пока клон летит к ней. Место в окне
+                // едет вместе с въезжающей папкой (замер: x 464 → 24 за 0,42 с), поэтому x — в пространстве папки
+                // (во всю ширину окна, в покое с нуля), y — в окне: папка въезжает сбоку, высота не меняется.
+                .onGeometryChange(for: CGRect.self) { g in
+                    let local = g.frame(in: .named("mbf")), win = g.frame(in: .global)
+                    return CGRect(x: local.minX, y: win.minY, width: win.width, height: win.height)
+                } action: { app.mbFly.hero(sc.board.id, $0) }
+                .opacity(app.mbFly.hidesHero(sc.board.id) ? 0 : 1)
+                .shotNode("mb.folderHero")
                 .onLongPressGesture(minimumDuration: 0.42, maximumDistance: 8) {
                     if !app.mbLibrary().coverCandidates(sc.board.id).isEmpty { Haptics.play(.mbCover); app.openMbCover() }
                 }
@@ -256,39 +268,54 @@ struct MoodboardFolder: View {
 
     /// `column-count: 2`, зазор 8, ширина колонки 158: первая колонка сверху вниз, потом вторая.
     /// Плитка «+» последней — шаг 5в (`MbFolderView.showsAddTile` решает, когда она стоит).
+    /// Места плиток считаются (`MbFrameDragRules.layout`), а не складываются колонками: при перестановке (29.3в)
+    /// кадр переходит из колонки в колонку и едет туда сдвигом, а не появляется заново.
     private func masonry(_ sc: MbFolderScene, _ pal: Palette) -> some View {
-        let w = (gridW - 8) / 2
-        let frames = sc.shown
+        let w = Double((gridW - 8) / 2)
+        let reorder = MbFrameDragRules.reorderable(picking: app.mb.pick != nil, filtered: sc.filtered, sort: sc.board.sort)
+        let frames = reorder && drag.active ? Self.inOrder(drag.order, sc.list) : sc.shown
         let adds = MbFolderView.showsAddTile(filtered: sc.filtered, picking: app.mb.pick != nil, shownCount: frames.count)
         // Корзина — отдельная плитка мудборда съёмки, без превью, только знак; у жанровых подборок её нет (29б).
         let bin = showsBinTile(sc)
-        let extras: [Extra] = (adds ? [.add] : []) + (bin ? [.bin] : [])
-        let hs = frames.map { MbFolderView.tileHeight($0, width: Double(w)) } + extras.map { _ in Double(w) }
-        let n = RefColumns.firstColumnCount(heights: hs)
-        func col(_ a: ArraySlice<Double>) -> Double { a.reduce(0, +) + Double(max(0, a.count - 1)) * 8 }
-        // «+» и корзина — последние в порядке колонок: в первой, если она вместила всё, иначе во второй.
-        func column(_ range: Range<Int>) -> some View {
-            VStack(spacing: 8) {
-                ForEach(Array(range), id: \.self) { i in
-                    Group {
-                        if i < frames.count { tile(frames[i], sc, pal) }
-                        else if extras[i - frames.count] == .add { addTile(pal) }
-                        else { binTile(sc, pal) }
-                    }
-                    .frame(width: w, height: CGFloat(hs[i]))
+        let extras = (adds ? [Self.addKey] : []) + (bin ? [Self.binKey] : [])
+        let byId = Dictionary(sc.list.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let place = Self.layout(frames, extras: extras, width: w)
+        let list = sc.list
+        drag.cells = { order in Self.layout(Self.inOrder(order, list), extras: extras, width: w).cells }
+        let boardId = sc.board.id
+        return ZStack(alignment: .topLeading) {
+            ForEach(place.cells, id: \.id) { c in
+                Group {
+                    if let f = byId[c.id] { tile(f, sc, pal, reorder: reorder) }
+                    else if c.id == Self.addKey { addTile(pal) }
+                    else { binTile(sc, pal) }
                 }
-                Spacer(minLength: 0)
+                .frame(width: CGFloat(c.w), height: CGFloat(c.h))
+                .modifier(MbFrameSlot(drag: drag, id: c.id, cell: c, pal: pal))
             }
         }
-        return HStack(alignment: .top, spacing: 8) {
-            column(0..<n)
-            column(n..<hs.count)
-        }
-        .frame(height: CGFloat(max(col(hs[..<n]), col(hs[n...]))), alignment: .top)
+        .frame(width: gridW, height: CGFloat(place.height), alignment: .topLeading)
+        .mbFrameGrid(drag, on: reorder, items: sc.board.items,
+                     commit: { app.mbReorderFrames($0, of: boardId) },
+                     menu: { focused = false; app.openMbItem(shot: $0) })
         .shotNode("mb.fgrid", text: "\(frames.count)")
     }
 
-    private enum Extra { case add, bin }
+    private static let addKey = "+add", binKey = "+bin"
+
+    /// Кадры в порядке `items[]` (ссылка на кадр, которого нет в фонде, пропускается — как `MbFolderView.frames`).
+    private static func inOrder(_ order: [String], _ list: [RefFrame]) -> [RefFrame] {
+        let byId = Dictionary(list.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return order.compactMap { byId[$0] }
+    }
+
+    /// Места кадров и плиток «+» / корзины (квадраты) в сетке.
+    private static func layout(_ frames: [RefFrame], extras: [String], width w: Double)
+        -> (cells: [MbFrameDragRules.Cell], height: Double) {
+        let ids = frames.map(\.id) + extras
+        let hs = frames.map { MbFolderView.tileHeight($0, width: w) } + extras.map { _ in w }
+        return MbFrameDragRules.layout(ids: ids, heights: hs, column: w)
+    }
 
     /// Плитка корзины стоит у подборки съёмки в спокойном виде: без выбора и без фильтра по слову или поиску.
     private func showsBinTile(_ sc: MbFolderScene) -> Bool {
@@ -341,7 +368,7 @@ struct MoodboardFolder: View {
         }
     }
 
-    private func tile(_ f: RefFrame, _ sc: MbFolderScene, _ pal: Palette) -> some View {
+    private func tile(_ f: RefFrame, _ sc: MbFolderScene, _ pal: Palette, reorder: Bool) -> some View {
         let picked = app.mb.pick?.contains(f.id) ?? false
         let hidden = app.mbViewerFrameId == f.id && app.mb.pager != nil
         let tap = {
@@ -351,6 +378,7 @@ struct MoodboardFolder: View {
             _ = app.openMbFrame(f.id, shown: sc.shown)
         }
         // Удержание 0,42 с — лист кадра; сдвиг больше 8 pt его отменяет (веб `MB_HOLD`). В выборе — только отметка.
+        // На голой сетке удержание ведёт распознаватель сетки (`mbFrameGrid`): подъём, перенос или лист кадра.
         return ZStack(alignment: .topTrailing) {
             if MbFolderView.isBareLink(f), let u = f.url { linkTile(u, pal) }
             else { RefPicture(frame: f, images: app.refImages, pal: pal, radius: 10).opacity(picked ? 0.55 : 1) }
@@ -358,9 +386,13 @@ struct MoodboardFolder: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .gesture(LongPressGesture(minimumDuration: 0.42, maximumDistance: 8).onEnded { _ in
-            if app.mb.pick == nil { Haptics.play(.mbHold); app.openMbItem(shot: f.id) }
-        }.exclusively(before: TapGesture().onEnded { tap() }))
+        .gesture(reorder
+            // Тап — жестом, не `Button`: иначе удержание сетки ждало бы отказа кнопки (замер 29.3б). Подъём и
+            // отпускание — не тап (веб `consumed`).
+            ? AnyGesture(TapGesture().onEnded { if !drag.swallows { tap() } })
+            : AnyGesture(LongPressGesture(minimumDuration: 0.42, maximumDistance: 8).onEnded { _ in
+                if app.mb.pick == nil { Haptics.play(.mbHold); app.openMbItem(shot: f.id) }
+            }.exclusively(before: TapGesture().onEnded { tap() }).map { _ in () }))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { tap() }

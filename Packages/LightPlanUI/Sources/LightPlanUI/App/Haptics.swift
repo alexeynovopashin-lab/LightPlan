@@ -67,7 +67,7 @@ enum HapticEvent: String, CaseIterable, Sendable {
     /// Удержание обложки в папке — выбор обложки (веб `23200`).
     case mbCover
 
-    // Мудборд: сортировка подборок (29.3б, `MbSortDrag`); драг кадров в папке ждёт 29.3в.
+    // Мудборд: сортировка подборок (29.3б, `MbSortDrag`); драг кадров в папке (29.3в, `MbFrameDrag`).
     /// Вход в режим сортировки (веб `21430`).
     case mbSortOn
     /// Плитка поднята (веб `21556`).
@@ -118,13 +118,9 @@ enum HapticEvent: String, CaseIterable, Sendable {
         }
     }
 
-    /// События, которых в нативе пока нет жестом: подключает 29.3в.
-    var awaitsGesture: Bool {
-        switch self {
-        case .mbFrameLift, .mbFrameDrop: true
-        default: false
-        }
-    }
+    /// События, которых в нативе пока нет жестом. Сортировка подборок подключена в 29.3б, драг кадров в 29.3в — сейчас
+    /// таких нет; свойство читает `SoundTests`, и новое зарезервированное событие встанет сюда.
+    var awaitsGesture: Bool { false }
 }
 
 @MainActor
