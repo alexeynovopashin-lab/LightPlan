@@ -5,18 +5,54 @@ import SwiftUI
 /// `preserveAspectRatio="xMidYMid meet"` у `#mapLight`. Кегли и толщины
 /// масштабируются вместе с ним, как у SVG.
 ///
-/// Пальцу прибор не мешает — карта под ним тащится; ловят касание только
-/// светила, прицелом 16 (диск 4,5–5,5 пальцем не попасть).
+/// Пальцу прибор не мешает — карта под ним тащится. Светила ловят тап
+/// прицелом 16 (диск 4,5–5,5 пальцем не попасть), но не своим видом поверх
+/// карты: тот съедал касание целиком, и протяжка или щипок, начатые на солнце,
+/// не двигали карту (замер 29.4; у беты `sunHit` — та же мёртвая точка). Тап
+/// приходит от холста и попадание считает `bodyAt`, как у булавок. Свой вид
+/// цели ловит касание только без холста (`catches`: карта вне сети).
 struct MapInstrumentView: View {
     let scene: MapInstrument.Scene
     let optic: CGRect
+    var catches = false
     let onTapSun: (Double, Double) -> Void
     let onTapMoon: (Double, Double) -> Void
 
-    var body: some View {
+    /// Прицел светила в точках `viewBox`.
+    static let hitRadius: CGFloat = 16
+
+    /// `viewBox` в окне `optic`: масштаб и левый верхний угол.
+    static func fit(_ optic: CGRect) -> (s: CGFloat, ox: CGFloat, oy: CGFloat) {
         let s = min(optic.width / MapInstrument.size.width, optic.height / MapInstrument.size.height)
-        let ox = optic.minX + (optic.width - MapInstrument.size.width * s) / 2
-        let oy = optic.minY + (optic.height - MapInstrument.size.height * s) / 2
+        return (s, optic.minX + (optic.width - MapInstrument.size.width * s) / 2,
+                optic.minY + (optic.height - MapInstrument.size.height * s) / 2)
+    }
+
+    /// Какое светило под точкой `p` (точки экрана в кадре прибора, до поворота ротора). Солнце лежит выше луны,
+    /// как у беты (`sunHit` добавлен после `moonHit`): на пересечении берёт солнце.
+    static func bodyAt(_ p: CGPoint, scene: MapInstrument.Scene, optic: CGRect) -> MapInstrument.Chip? {
+        let (s, ox, oy) = fit(optic)
+        let r = hitRadius * s
+        func near(_ q: CGPoint?) -> Bool {
+            guard let q else { return false }
+            return hypot(p.x - (ox + q.x * s), p.y - (oy + q.y * s)) <= r
+        }
+        if near(scene.sunAt), let h = scene.sunHorizontal { return .tapSun(az: h.az, alt: h.alt) }
+        if near(scene.moonAt), let h = scene.moonHorizontal { return .tapMoon(az: h.az, alt: h.alt) }
+        return nil
+    }
+
+    /// Тап холста (точка `p` в квадрате холста стороной `side`) — светило или мимо. Обе половины ротора — кадр
+    /// экрана `size` с одним углом и одной осью, холст стоит посередине кадра: поворот у них общий, и снимать его
+    /// не нужно. Погашенный прибор (`shown == false`: маршрут, подмена низа) тап не ловит.
+    static func canvasTap(_ p: CGPoint, side: CGFloat, size: CGSize, scene: MapInstrument.Scene, optic: CGRect,
+                          shown: Bool) -> MapInstrument.Chip? {
+        guard shown else { return nil }
+        return bodyAt(CGPoint(x: p.x + (size.width - side) / 2, y: p.y + (size.height - side) / 2), scene: scene, optic: optic)
+    }
+
+    var body: some View {
+        let (s, ox, oy) = Self.fit(optic)
         let toScreen = { (p: CGPoint) in CGPoint(x: ox + p.x * s, y: oy + p.y * s) }
         let rect = { (r: CGRect) in CGRect(x: ox + r.minX * s, y: oy + r.minY * s, width: r.width * s, height: r.height * s) }
 
@@ -31,10 +67,10 @@ struct MapInstrumentView: View {
             marks(toScreen: toScreen, rect: rect, scale: s)
 
             if let p = scene.sunAt, let h = scene.sunHorizontal {
-                target(toScreen(p), r: 16 * s) { onTapSun(h.az, h.alt) }
+                target(toScreen(p), r: Self.hitRadius * s) { onTapSun(h.az, h.alt) }
             }
             if let p = scene.moonAt, let h = scene.moonHorizontal {
-                target(toScreen(p), r: 16 * s) { onTapMoon(h.az, h.alt) }
+                target(toScreen(p), r: Self.hitRadius * s) { onTapMoon(h.az, h.alt) }
             }
         }
     }
@@ -44,6 +80,7 @@ struct MapInstrumentView: View {
             .frame(width: 2 * r, height: 2 * r)
             .position(p)
             .onTapGesture(perform: action)
+            .allowsHitTesting(catches)
     }
 
     // MARK: - Узлы пары

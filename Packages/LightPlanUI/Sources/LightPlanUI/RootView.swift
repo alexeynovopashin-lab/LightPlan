@@ -178,6 +178,10 @@ private struct Shell: View {
         .onOpenURL { app.openQuestLink($0) }
         // Жест «назад» от левого края (28з): один распознаватель на окно, слои записываются `.edgeBack`.
         .background { EdgeBackHost(app: app) }
+        #if DEBUG && os(iOS)
+        // Свидетель касаний (29.4): кто взял жест — только при `-LPMapGestureLog`.
+        .background { TouchWitnessHost() }
+        #endif
         .onAppear {
             // Слои «Съёмок» лежат под вкладкой в дереве всегда: берём их, только пока вкладка выбрана.
             app.edgeBack.isLive = { [weak app] l in l.z >= EdgeBackRule.shellFloor || app?.tab == .planner }
