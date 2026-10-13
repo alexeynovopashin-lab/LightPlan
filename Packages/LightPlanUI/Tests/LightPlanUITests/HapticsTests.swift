@@ -28,6 +28,8 @@ struct HapticsTests {
         .mbSortOn, .mbSortLift, .mbSortZone, .mbSortSaved, .mbFrameLift, .mbFrameDrop, .mbHold, .mbCover,
         // 29.3г: свайп по строке съёмки раскрыл «Удалить» — тик выбора (у беты жеста нет, обычай iOS).
         .rowReveal,
+        // 29.6а: смена суток на барабане таймбара — `swoosh()` беты, затвор.
+        .timebarDayFlip,
     ]
 
     @Test func carriedTypesDoNotChange() {
