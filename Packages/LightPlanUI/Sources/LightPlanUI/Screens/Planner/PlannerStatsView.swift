@@ -296,7 +296,12 @@ struct HalfGauge: View {
 /// Ровное свечение по периметру (веб `glow-flow`, 14 с): центр тени обходит
 /// круг радиусом 3, яркость дышит ×0,85…1,15. Без движения, если система
 /// просит меньше движения.
+///
+/// Обновляется 10 раз в секунду, не каждый кадр (хвост 29.3а, замер на симуляторе: `.animation` пересчитывал
+/// свечение на каждом кадре экрана, 181 пересчёт за 3 с). Центр тени идёт 1,35 pt/с: шаг 0,13 pt — треть
+/// пикселя на 3×, глазу ровно; яркость за шаг меняется на 1,4 % от своей величины.
 struct WarnGlow: ViewModifier {
+    static let step: TimeInterval = 0.1
     let rgb: (Double, Double, Double)
     let alpha: Double
     @Environment(\.accessibilityReduceMotion) private var still
@@ -306,7 +311,8 @@ struct WarnGlow: ViewModifier {
         if still {
             content.shadow(color: c.opacity(alpha), radius: 8)
         } else {
-            TimelineView(.animation) { tl in
+            TimelineView(.animation(minimumInterval: Self.step)) { tl in
+                let _ = EdgeBackCount.hit("WarnGlow")
                 let ph = tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 14) / 14 * 2 * .pi
                 content.shadow(color: c.opacity(alpha * (1 + 0.15 * sin(2 * ph))), radius: 8,
                                x: 3 * cos(ph), y: 3 * sin(ph))

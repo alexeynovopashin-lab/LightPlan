@@ -114,13 +114,15 @@ extension AppModel {
     }
 
     /// То же с зафиксированными кадрами и подборкой: стирание идёт через полёт в корзину (0,6 с после «Убрать»),
-    /// выбор за это время мог смениться — `mb.pick` здесь не читается (29.7). Экран трогаем, только если он ещё
-    /// на этой подборке.
+    /// выбор за это время мог смениться — стираются зафиксированные кадры (29.7). Выбор не сбрасывается целиком:
+    /// из него уходят только стёртые кадры, то, что отметили за секунду полёта, остаётся; ничего не осталось —
+    /// выбор кончается, как у `mbSelDel`. Экран трогаем, только если он ещё на этой подборке.
     func mbRemove(_ picked: [String], from id: String) {
         guard !picked.isEmpty else { return }
         mbDiscard(picked, from: id)
         guard mb.folder == id else { return }
-        mb.pick = nil
+        let rest = (mb.pick?.ids ?? []).filter { !picked.contains($0) }
+        mb.pick = rest.isEmpty ? nil : MbPick(ids: rest)
         mb.pager = nil; mb.viewerIds = []
         if mbLibrary().board(id) == nil { mb.folder = nil; resetMbFolderInput() }
     }

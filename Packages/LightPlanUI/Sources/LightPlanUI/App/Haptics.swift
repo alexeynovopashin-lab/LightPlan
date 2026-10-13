@@ -81,6 +81,10 @@ enum HapticEvent: String, CaseIterable, Sendable {
     /// Кадр опущен на новое место (веб `21871`).
     case mbFrameDrop
 
+    // Хвост 29.6а.
+    /// Смена суток на барабане таймбара (веб `drumDayFlip` → `swoosh()`): тик и затвор, один на вызов.
+    case timebarDayFlip
+
     // Новое в 29.3г: у беты свайпа по строке нет — тик по обычаю iOS.
     /// Свайп влево по строке съёмки раскрыл кнопку «Удалить».
     case rowReveal
@@ -90,7 +94,7 @@ enum HapticEvent: String, CaseIterable, Sendable {
         case .genreHold, .spotDrop, .sight: .medium
         case .deadlineStop, .dayNotch, .cardBlockLift, .routePointLift, .tab, .segment, .scopeButton, .scopeItem,
              .mapSave, .skySwap, .dayStripDate, .daySwipe, .laneDot, .mbSortZone, .rowReveal: .selection
-        case .fan, .dayLift, .mbHold, .mbCover, .mbSortOn, .mbSortLift, .mbFrameLift: .light
+        case .fan, .dayLift, .mbHold, .mbCover, .mbSortOn, .mbSortLift, .mbFrameLift, .timebarDayFlip: .light
         case .mbSortSaved, .mbFrameDrop: .medium
         }
     }
@@ -108,6 +112,8 @@ enum HapticEvent: String, CaseIterable, Sendable {
              .daySwipe,            // смена дня свайпом, только «день» (34397)
              .laneDot:             // точка ленты маршрута карточки (28920)
             .click
+        case .timebarDayFlip:      // `swoosh()` в `drumDayFlip` (32248): затвор, не щелчок
+            .shutter
         default: nil
         }
     }

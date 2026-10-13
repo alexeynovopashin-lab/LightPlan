@@ -10,7 +10,9 @@ struct LightSpoilerView: View {
     /// Режим экрана — Просто/Астро. Имя внутри повторяет то, что снаружи
     /// зовётся `proMode`, здесь короче, конфликта нет: это разные типы.
     let open: Bool
+    /// `today.details` — подпись свёрнутого; `today.hide` — раскрытого (в бете подпись меняется в тот же клик, что и список).
     let title: String
+    let openTitle: String
 
     /// Пара снимков (28е): `-LPShotSpoiler 1` — раскрыт сразу и прокручен к плашке неба; `2` (прибор `make lightfit`) —
     /// раскрыт и стоит в начале, без прокрутки.
@@ -55,7 +57,7 @@ struct LightSpoilerView: View {
                         BarsGlyph()
                             .stroke(pal.ink4, style: StrokeStyle(lineWidth: 1.6 * 17 / 24, lineCap: .round, lineJoin: .round))
                             .frame(width: 17, height: 17)
-                        Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.ink2)
+                        Text(SpoilerReveal.label(expanded: expanded, closed: title, open: openTitle)).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.ink2)
                         // Как у беты: вниз 90°, раскрытый — ещё +180° по часовой (вниз → влево → вверх).
                         Icon("chevron", size: 16, line: 2.4)
                             .foregroundStyle(pal.ink4)
@@ -157,6 +159,8 @@ enum SpoilerReveal {
     static func visibleHeight(natural: CGFloat, reveal: CGFloat) -> CGFloat { max(0, min(natural, reveal)) }
     /// `.chv.dn` — 90° (вниз), `.spoiler.open .chev` — ещё +180° по часовой (вниз → влево → вверх).
     static func chevronAngle(expanded: Bool) -> Double { expanded ? 270 : 90 }
+    /// `#spoilerBtn .lbl`: «Подробно» ↔ «Свернуть» (`today.details` / `today.hide`) по тому же признаку, что и шеврон.
+    static func label(expanded: Bool, closed: String, open: String) -> String { expanded ? open : closed }
 }
 
 /// Столбики кнопки «Подробно» — свой SVG в разметке веба (`M5 20V11M10 20V4

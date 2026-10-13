@@ -152,9 +152,20 @@ struct MapScreenView: View {
                                           onCamera: { cam in
                                               feed.camera = cam
                                               // Карту двинули пальцем — полоса точки уходит.
-                                              if cam.byHand, bar.spot != nil { closeBar() }
+                                              if cam.byHand, bar.spot != nil {
+                                                  TouchWitness.note(String(format: "bar close: camera by hand zoom=%.2f", cam.zoom))
+                                                  closeBar()
+                                              }
                                           },
                                           onTap: { p in
+                                              // Светило — над булавками (прибор выше слоя точек); прибор гаснет
+                                              // в маршруте и при подмене низа — тогда и тап его не ловит.
+                                              if let c = MapInstrumentView.canvasTap(p, side: side, size: size, scene: scene,
+                                                                                     optic: optic(size, floor: floor),
+                                                                                     shown: !routeMode && !dockOut) {
+                                                  tap(c)
+                                                  return
+                                              }
                                               tapMap(screenPoint(p, side: side, size: size, cy: cy), size: size, cy: cy)
                                           },
                                           fallback: app.mapFallbackArmed
@@ -201,7 +212,8 @@ struct MapScreenView: View {
                 }
 
                 ZStack(alignment: .topLeading) {
-                    MapInstrumentView(scene: scene, optic: optic(size, floor: floor), onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
+                    MapInstrumentView(scene: scene, optic: optic(size, floor: floor), catches: app.mapOffline,
+                                      onTapSun: { tap(.tapSun(az: $0, alt: $1)) },
                                       onTapMoon: { tap(.tapMoon(az: $0, alt: $1)) })
                         // Прибор гаснет вместе с уходящим низом, но не едет:
                         // он лежит на карте, а не в доке (`#mapLight`).
@@ -378,6 +390,17 @@ struct MapScreenView: View {
         }
         #if DEBUG
         .task { await shotHeading() }
+        // Журнал жестов (29.4, `-LPMapGestureLog`): что сказала «Карта» до и после касания.
+        .onAppear {
+            guard TouchWitness.url != nil else { return }
+            TouchWitness.probe = { [feed, rotor] in
+                let c = feed.camera
+                return String(format: "tab=%@ zoom=%.2f lat=%.5f lon=%.5f bare=%@ shut=%@ bar=%@ rotor=%.0f layers=%@ fan=%@",
+                              "\(app.tab)", c?.zoom ?? -1, c?.center.latitude ?? 0, c?.center.longitude ?? 0,
+                              "\(bare)", "\(app.mapFoldShut)", "\(bar.spot != nil)", rotor.angle,
+                              "\(layersOpen)", "\(fanOpen)")
+            }
+        }
         #endif
     }
 
@@ -581,7 +604,8 @@ struct MapScreenView: View {
                 }
             }
             .padding(.horizontal, 24)
-            LightSpoilerView(groups: summary.pro, open: light.proMode, title: app.lexicon.t("today.details"))
+            LightSpoilerView(groups: summary.pro, open: light.proMode, title: app.lexicon.t("today.details"),
+                             openTitle: app.lexicon.t("today.hide"))
                 .padding(.horizontal, 24)
         }
     }
@@ -1041,6 +1065,7 @@ struct MapScreenView: View {
     /// `openSpotName`: `edit` — в поле нынешнее имя; `quiet` — тап «что это
     /// за точка»: клавиатура не поднимается, полоса гаснет через 5 с.
     private func openBar(_ sp: Spot, edit: Bool, quiet: Bool, keyboard: Bool = true) {
+        TouchWitness.note("bar open \(sp.id) quiet=\(quiet)")
         holdBar()
         // Набранное в прежней полосе — прежней точке, раньше, чем откроется новая.
         if let r = bar.open(sp.id, focused: barFocus, keyboard: !quiet && keyboard) {
@@ -1063,6 +1088,7 @@ struct MapScreenView: View {
 
     /// Закрытие без записи (`closeSpotName`); набранное записывает уход фокуса.
     private func closeBar() {
+        TouchWitness.note("bar close")
         holdBar()
         if barFocus { barFocus = false } else { bar.drop() }
     }

@@ -63,6 +63,8 @@ struct SoundTests {
     private static let clicking: Set<HapticEvent> = [
         .deadlineStop, .fan, .dayLift, .dayNotch, .routePointLift, .dayStripDate, .daySwipe, .laneDot,
     ]
+    /// Затвор `swoosh()` беты: смена суток на барабане (29.6а).
+    private static let shuttering: Set<HapticEvent> = [.timebarDayFlip]
 
     private static func played(_ body: () -> Void) -> [SoundPlay] {
         let before = SoundCenter.journal.count
@@ -72,7 +74,7 @@ struct SoundTests {
 
     @Test func everyHapticEventSoundsOrStaysQuietAsTheBetaDoes() {
         for e in HapticEvent.allCases {
-            #expect((e.sound != nil) == Self.clicking.contains(e), "\(e)")
+            #expect((e.sound != nil) == (Self.clicking.contains(e) || Self.shuttering.contains(e)), "\(e)")
         }
     }
 
@@ -82,8 +84,11 @@ struct SoundTests {
         UserDefaults.standard.set(true, forKey: SoundCenter.enabledKey)
         for e in HapticEvent.allCases where !e.awaitsGesture {
             let log = Self.played { Haptics.play(e) }
-            #expect(log.count == (Self.clicking.contains(e) ? 1 : 0), "\(e): \(log.count)")
-            if let p = log.first { #expect(p.event == e.rawValue && p.cue == .click) }
+            let sounds = Self.clicking.contains(e) || Self.shuttering.contains(e)
+            #expect(log.count == (sounds ? 1 : 0), "\(e): \(log.count)")
+            if let p = log.first {
+                #expect(p.event == e.rawValue && p.cue == (Self.shuttering.contains(e) ? .shutter : .click))
+            }
         }
     }
 

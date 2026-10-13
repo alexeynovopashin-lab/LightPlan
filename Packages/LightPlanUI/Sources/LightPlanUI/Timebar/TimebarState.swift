@@ -191,7 +191,17 @@ public final class TimebarState {
         touches += 1
         let shift = machine.dragRibbon(translation: translation, clipWidth: clipWidth)
         if machine.ribbonMode == .lane { checkHourMark() }
-        if shift != 0 { syncSolarDay() }
+        if shift != 0 {
+            syncSolarDay()
+            dayFlipped()
+        }
+    }
+
+    /// Барабан перешёл границу суток: у беты `swoosh()` стоит в `drumDayFlip` — затвор и вибрация, один раз на
+    /// вызов, сколько бы суток он ни пересёк. У ленты часов (`ribbonDayFlip`) звука нет. Срыв играет своё (`fire`).
+    private func dayFlipped() {
+        guard machine.ribbonMode == .drum else { return }
+        Haptics.play(.timebarDayFlip)
     }
 
     /// `tapAt` — место пальца, если жест оказался тапом (сдвиг меньше 6 pt),
@@ -219,6 +229,7 @@ public final class TimebarState {
         let shift = machine.tapDrumCell(offset: offset)
         guard shift != 0 else { return }
         syncSolarDay()
+        dayFlipped()
         let from = machine.settleDrum()
         // Чем дальше ехать, тем дольше — одинаковое время на одну и на
         // четыре ячейки читалось бы как рывок.

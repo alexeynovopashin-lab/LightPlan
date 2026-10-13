@@ -66,6 +66,12 @@
   intervals**: ~60 % of a late frame there is the main thread sleeping on the sim's renderer (`wait_image_queue`).
   Layer shadow is a 20 pt gradient strip left of the edge (`EdgeShade`), never `.shadow` on the content (that shades every
   child). Only the visible tab moves under a layer (`.edgeBackBase(app, .tabs, shown:)`): moving all four cost ~9 ms/frame.
+- **Who took a touch (29.4).** `-LPMapGestureLog <file>` (Debug, `App/TouchWitness.swift`): a passive recognizer on the
+  window writes one line per touch — where the fingers landed (view), which recognizers began/ended, which stayed quiet,
+  and the «Карта» state before/after (zoom, centre, bare, fold, name bar, rotor). Drive it with `touch_path` /
+  `touch2_path` one call at a time (calls sent together overlap). Anything hit-testable drawn over the map canvas eats
+  pan and pinch that start on it: taps on map things come from the canvas (`onTap`) and are hit-tested in code
+  (`MapSpots.hit`, `MapInstrumentView.bodyAt`).
 - **Glass never takes a rotation (28п).** `.glassEffect` under `rotationEffect` (or `scaleEffect`) swells into the
   bounding rectangle of the whole layer at angles that are not multiples of 90° (measured: three spot plates → one
   ≈ 420 × 415 pt slab). On «Карта» the rotor is two halves with the same angle (canvas, veil, road / instrument)

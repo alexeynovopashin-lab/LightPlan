@@ -126,7 +126,20 @@ public struct SettingsView: View {
             if let c = app.startChapter, let ch = Chapter(rawValue: c) { path = [ch]; app.startChapter = nil }
         }
         // Глава закрывает панель вкладок, как у веба.
-        .onChange(of: path, initial: true) { app.chapterOpen = !path.isEmpty }
+        .onChange(of: path, initial: true) {
+            app.chapterOpen = !path.isEmpty
+            // Небо лежит поверх корня «Настроек»; открылась глава — небо кончается сразу, иначе его
+            // затемнение остаётся поверх главы до конца 2,4 с (ревью GPT к 442bd8e, хвост 29.9).
+            if !path.isEmpty, sky != nil { endSky(reason: "chapter open") }
+        }
+    }
+
+    /// Небо кончается: слой убирается, таймер снимается, звёзды на кнопке проявляются (как по концу срока).
+    private func endSky(reason: String) {
+        SkyLog.note("end \(reason)")
+        skyTimer?.cancel()
+        sky = nil
+        withAnimation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.7)) { skyWaiting = false }
     }
 
     /// Порт `renderSetNav`. Чужие главы (оповещения, хранилище) до своих

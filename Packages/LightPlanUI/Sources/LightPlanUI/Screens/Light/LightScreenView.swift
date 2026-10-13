@@ -51,7 +51,8 @@ public struct LightScreenView: View {
                     telemetryList(telemetry, pal)
                         .padding(.horizontal, 24)
 
-                    LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"))
+                    LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
+                                     openTitle: model.lexiconWord("today.hide"))
                         .padding(.horizontal, 24)
 
                     // `.screen-action { margin-top: auto }`: в «Просто» кнопка
