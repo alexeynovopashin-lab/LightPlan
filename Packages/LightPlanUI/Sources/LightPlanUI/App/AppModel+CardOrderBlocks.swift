@@ -180,11 +180,15 @@ extension AppModel {
     }
 
     /// Студию называем словом, а не именем: «Фотостудия Томсон» (веб `studioNamed`).
-    private func studioSpotName(_ id: String?) -> String {
+    /// Выбран зал — он вторым словом, как в плитке студийного часа: «Фотостудия
+    /// Томсон. Зал Эдисон» (`studio.hallOf`, веб `studioTitle`; 29.11).
+    func studioSpotName(_ id: String?, hallId: String? = nil) -> String {
         guard let id, let st = snapshot.studios.first(where: { $0.id == id }), !st.name.isEmpty else { return "" }
         let word = lexicon.t("studio.tileOnly", ["name": ""]).trimmingCharacters(in: .whitespaces)
-        if !word.isEmpty && st.name.lowercased().contains(word.lowercased()) { return st.name }
-        return lexicon.t("studio.tileOnly", ["name": st.name])
+        let name = !word.isEmpty && st.name.lowercased().contains(word.lowercased())
+            ? st.name : lexicon.t("studio.tileOnly", ["name": st.name])
+        guard let hallId, let hall = st.halls.first(where: { $0.id == hallId })?.name, !hall.isEmpty else { return name }
+        return lexicon.t("studio.hallOf", ["studio": name, "hall": hall])
     }
 
     /// О каком месте говорит плитка (веб `cardSpot`): у дня с маршрутом — точка,
@@ -196,12 +200,12 @@ extension AppModel {
             let i = DayTileText.current(route, nowMinute(of: s))
             let r = route[i >= 0 ? i : 0]
             let stop = Stops.place(of: r, spots: snapshot.spots, studios: snapshot.studios)
-            var name = studioSpotName(r.studioId)
+            var name = studioSpotName(r.studioId, hallId: r.hallId)
             if name.isEmpty { name = shortPlace(stop?.name ?? (r.placeText.isEmpty ? r.name : r.placeText)) }
             if name.isEmpty { name = shortPlace(s.placeText) }
             return (name, r.start ?? s.start, stop?.point ?? anchorPoint)
         }
-        var name = studioSpotName(s.studioId)
+        var name = studioSpotName(s.studioId, hallId: s.hallId)
         if name.isEmpty { name = shortPlace(s.placeText) }
         if name.isEmpty { name = homeCityName }
         return (name, s.start, anchorPoint)
