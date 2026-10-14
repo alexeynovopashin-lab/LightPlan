@@ -54,8 +54,8 @@ public protocol NotificationCentering: Sendable {
     /// Показать системный вопрос. `true` — разрешили.
     func requestAuthorization() async -> Bool
     func pending() async -> [PendingAlert]
-    /// Поставить запрос; тот же идентификатор заменяет ожидающий.
-    func add(_ alert: ScheduledAlert) async
+    /// Поставить запрос; тот же идентификатор заменяет ожидающий. `false` — система отказала.
+    func add(_ alert: ScheduledAlert) async -> Bool
     func remove(ids: [String]) async
 }
 
@@ -71,6 +71,8 @@ public struct NotificationScheduler: Sendable {
         public var kept: [String] = []
         /// Не влезли под потолок системы.
         public var dropped: [String] = []
+        /// Система отказала при постановке: расписание применено не целиком.
+        public var failed: [String] = []
     }
 
     public let center: any NotificationCentering
@@ -106,8 +108,7 @@ public struct NotificationScheduler: Sendable {
             if let sig = have[alert.id], sig == alert.signature {
                 report.kept.append(alert.id)
             } else {
-                await center.add(alert)
-                report.added.append(alert.id)
+                if await center.add(alert) { report.added.append(alert.id) } else { report.failed.append(alert.id) }
             }
         }
         return report

@@ -355,6 +355,8 @@ public final class AppModel {
     public internal(set) var alertAuth: NotificationAuthorization = .notDetermined
     @ObservationIgnored var alertGen = 0
     @ObservationIgnored var alertForce = false
+    /// Номер последнего нажатия на тумблер «Студийный час»: ответ на старое нажатие ничего не пишет.
+    @ObservationIgnored var alertWish = 0
     @ObservationIgnored var alertChain: Task<Void, Never>?
     /// Отпечатки того, что последний раз поставили в систему: без правки данных система не опрашивается.
     @ObservationIgnored var alertApplied: [String]?

@@ -25,7 +25,7 @@ struct StudioAlertsTests {
             return grant
         }
         func pending() -> [PendingAlert] { table.values.map { PendingAlert(id: $0.id, signature: $0.signature) } }
-        func add(_ alert: ScheduledAlert) { table[alert.id] = alert }
+        func add(_ alert: ScheduledAlert) -> Bool { table[alert.id] = alert; return true }
         func remove(ids: [String]) { ids.forEach { table[$0] = nil } }
         func foreignOne() { table["lp.other.1"] = ScheduledAlert(id: "lp.other.1", sessionId: "", fire: Moment(milliseconds: 0),
                                                               offsetHours: 0, title: "", body: "") }
@@ -137,6 +137,16 @@ struct StudioAlertsTests {
         await settle(app)
         #expect(await fake.table.isEmpty)
         #expect(await fake.asked == 1)
+    }
+
+    @Test func lastTapWinsWhenTheAnswerComesLate() async {
+        let fake = Fake(.notDetermined)
+        let app = model(Self.snapshot(), center: fake)
+        app.setStudioAlerts(true)
+        app.setStudioAlerts(false)       // нажали снова, пока шёл системный вопрос
+        await settle(app)
+        #expect(app.studioAlertsWanted == false)
+        #expect(await fake.table.isEmpty)
     }
 
     @Test func switchingOffRemovesAllOursAndLeavesForeignAlone() async {

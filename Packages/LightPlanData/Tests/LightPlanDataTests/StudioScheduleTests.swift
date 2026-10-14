@@ -156,6 +156,11 @@ import UserNotifications
         #expect(n2.map(\.stage) == [2])
         #expect(n2.map(\.fire) == [Self.at(720)])
         #expect(n2.map(\.minutesLeft) == [1])
+        // 12:00–12:10: вторая ступень (12:00) ровно на начале, первая раньше — сигнал один, вторая ступень.
+        let n3 = Self.notices(Self.session(cells: [(720, 730)]))
+        #expect(n3.map(\.stage) == [2])
+        #expect(n3.map(\.fire) == [Self.at(720)])
+        #expect(n3.map(\.minutesLeft) == [5])
         // 12:00–12:04: дедлайн 11:59 раньше начала — человек его не застанет, молчим.
         #expect(Self.notices(Self.session(cells: [(720, 724)])).isEmpty)
     }
@@ -261,7 +266,13 @@ actor FakeCenter: NotificationCentering {
         table.values.map { PendingAlert(id: $0.id, signature: $0.signature) }
             + foreign.map { PendingAlert(id: $0, signature: nil) }
     }
-    func add(_ alert: ScheduledAlert) { table[alert.id] = alert; adds.append(alert.id) }
+    var refuse: Set<String> = []
+    func add(_ alert: ScheduledAlert) -> Bool {
+        if refuse.contains(alert.id) { return false }
+        table[alert.id] = alert; adds.append(alert.id)
+        return true
+    }
+    func setRefuse(_ ids: Set<String>) { refuse = ids }
     func remove(ids: [String]) { ids.forEach { table[$0] = nil }; foreign.removeAll { ids.contains($0) }; removes += ids }
     func setForeign(_ n: Int) { foreign = (0..<n).map { "other.\($0)" } }
     func resetLog() { adds = []; removes = [] }
@@ -311,6 +322,18 @@ actor FakeCenter: NotificationCentering {
         let r2 = await sched.sync([])
         #expect(r2.removed.count == 2)
         #expect(await center.table.isEmpty)
+    }
+
+    @Test func refusedRequestIsReportedAndRetriedNotRememberedAsAdded() async {
+        let center = FakeCenter()
+        await center.setRefuse(["lp.studio.s1.0.2"])
+        let sched = NotificationScheduler(center: center)
+        let a = Self.alerts(StudioScheduleTests.session(cells: [(720, 780)]))
+        let r1 = await sched.sync(a)
+        #expect(r1.added == ["lp.studio.s1.0.1"] && r1.failed == ["lp.studio.s1.0.2"])
+        await center.setRefuse([])
+        let r2 = await sched.sync(a)
+        #expect(r2.added == ["lp.studio.s1.0.2"] && r2.kept == ["lp.studio.s1.0.1"] && r2.failed.isEmpty)
     }
 
     @Test func foreignRequestsAreLeftAloneButCountUnderTheCeiling() async {

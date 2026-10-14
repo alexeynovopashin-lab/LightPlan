@@ -55,7 +55,7 @@ public struct SystemNotificationCenter: NotificationCentering {
         }
     }
 
-    public func add(_ alert: ScheduledAlert) async {
+    public func add(_ alert: ScheduledAlert) async -> Bool {
         let content = UNMutableNotificationContent()
         content.title = alert.title
         content.body = alert.body
@@ -63,7 +63,12 @@ public struct SystemNotificationCenter: NotificationCentering {
         content.threadIdentifier = "lp.studio"
         content.userInfo = ["sig": alert.signature, "session": alert.sessionId]
         let trigger = Self.trigger(fire: alert.fire.date, offsetHours: alert.offsetHours)
-        try? await center.add(UNNotificationRequest(identifier: alert.id, content: content, trigger: trigger))
+        do {
+            try await center.add(UNNotificationRequest(identifier: alert.id, content: content, trigger: trigger))
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// Что система на самом деле держит (не наша таблица, а её): по строке на запрос — идентификатор, момент

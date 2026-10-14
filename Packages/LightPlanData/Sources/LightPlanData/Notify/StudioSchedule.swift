@@ -72,17 +72,12 @@ public enum StudioSchedule {
             // веб молчит (`left < 0`).
             guard deadline >= w.from else { continue }
             let key = cell.index.map(String.init) ?? "r"
-            // Ступень приходит на `deadline − 10` / `− 5`. Веб молчит, пока
-            // аренда не началась (`nm < rw.from`), и в момент начала говорит
-            // сразу ту ступень, что уже наступила: если вторая ступень
-            // раньше начала — первой нет вовсе, вторая встаёт на начало.
-            let second = deadline - say[1]
-            var slots: [(stage: Int, minute: Int)] = []
-            if second < w.from {
-                slots = [(2, w.from)]
-            } else {
-                slots = [(1, max(deadline - say[0], w.from)), (2, second)]
-            }
+            // Ступень приходит на `deadline − 10` / `− 5`. Веб молчит, пока аренда не началась (`nm < rw.from`),
+            // и в момент начала говорит одну ступень — ту, что уже наступила. Поэтому обе ступени, раньше
+            // начала, схлопываются в начало, а две на одной минуте — в одну, вторую.
+            let m2 = max(deadline - say[1], w.from)
+            let m1 = max(deadline - say[0], w.from)
+            let slots: [(stage: Int, minute: Int)] = m1 < m2 ? [(1, m1), (2, m2)] : [(2, m2)]
             for slot in slots {
                 let wall = WallTime(day: s.day, minutes: slot.minute)
                 let fire = wall.moment(utcOffsetHours: offsetHours)

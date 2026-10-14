@@ -43,6 +43,8 @@ extension AppModel {
     /// Тумблер «Студийный час». Включение — первый и единственный момент, когда у системы просят право
     /// уведомлять (не на запуске). Отказ ничего не ломает: тумблер остаётся выключенным, расписания нет.
     public func setStudioAlerts(_ on: Bool) {
+        alertWish += 1
+        let wish = alertWish
         Task { [weak self] in
             guard let self else { return }
             if on, let center = alertCenter {
@@ -52,6 +54,8 @@ extension AppModel {
                     auth = await center.authorization()
                 }
                 alertAuth = auth
+                // Пока шёл системный вопрос, человек нажал ещё раз: действует последнее нажатие.
+                guard wish == alertWish else { return syncStudioAlerts(force: true) }
                 // Своего «Разрешить все» у натива пока нет: включая студийный час руками, человек разрешает.
                 writeNotif(["studio": true, "all": true])
             } else {
@@ -111,8 +115,9 @@ extension AppModel {
             let sig = plan.map { $0.id + "=" + $0.signature }
             if !force, alertApplied == sig { return }
             let report = await scheduler.sync(plan)
-            alertApplied = sig
-            await alertLog("sync plan=\(plan.count) added=\(report.added.count) removed=\(report.removed.count) kept=\(report.kept.count) dropped=\(report.dropped.count)")
+            // Система отказала в части запросов — план не считается применённым, следующая сверка попробует снова.
+            alertApplied = report.failed.isEmpty ? sig : nil
+            await alertLog("sync plan=\(plan.count) added=\(report.added.count) removed=\(report.removed.count) kept=\(report.kept.count) dropped=\(report.dropped.count) failed=\(report.failed.count)")
         }
     }
 
