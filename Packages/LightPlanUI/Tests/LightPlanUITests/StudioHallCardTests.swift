@@ -86,13 +86,22 @@ struct StudioHallCardTests {
         return DayTileText(s, phase: a.phase(of: s), app: a)
     }
 
-    @Test func pastPointIsNotSoon() {
-        // Точка 14:15–14:40, съёмка 15:15; сейчас 14:43 — точка уже началась.
+    @Test func finishedPointBeforeTheShootShowsThePlanNotSoon() {
+        // Точка 14:15–14:40, съёмка 15:15; сейчас 14:43 — точка кончилась, съёмка не началась.
         let a = app("2026-09-21T14:43:00+06:00", session: shoot(hall: nil, point: (855, 880)), studios: [studio()])
         let t = tile(a)
-        #expect(!t.now.contains("Скоро"), "было «Скоро: Фотостудия»")
+        #expect(!t.now.contains("Скоро"), "было «Скоро: Фотостудия» с отрицательным остатком")
+        #expect(!t.now.contains("Сейчас"), "кончившаяся точка — не «Сейчас» (ревью GPT к f10a1e5)")
         #expect(!t.plainLeft.contains("через") && !t.plainLeft.contains("−"))
+        #expect(t.now.contains("14:15") && t.now.contains("14:40"), "план дня: «14:15 – 14:40»")
+    }
+
+    @Test func runningPointBeforeTheShootIsNow() {
+        // Точка 14:15–15:00, сейчас 14:43 — точка идёт.
+        let a = app("2026-09-21T14:43:00+06:00", session: shoot(hall: nil, point: (855, 900)), studios: [studio()])
+        let t = tile(a)
         #expect(t.now.replacingOccurrences(of: "\u{00A0}", with: " ") == "Сейчас: Фотостудия")
+        #expect(!t.plainLeft.contains("через"))
     }
 
     @Test func futurePointIsStillSoon() {

@@ -58,17 +58,18 @@ struct DayTileText {
         // День с точками кончается концом последней, а не её началом.
         let last = route[route.count - 1]
         let lastEnd = last.end ?? last.start ?? firstT
-        // Точка, чьё начало уже прошло, — «Сейчас», и до начала съёмки: лента ниже
-        // её и так светит текущей. «Скоро: X через −28 мин» говорил о том, что
-        // уже было (29.11; веб пишет то же — «через −1 ч −28 мин», web_defects П8).
-        if phase == .during || phase == .before, cur >= 0, let nowMin {
+        // Точка уже началась и ещё не кончилась — «Сейчас», и до начала съёмки: лента ниже её
+        // и так светит текущей. Кончилась, а съёмка не началась — план дня, а не «Скоро: X
+        // через −28 мин» (29.11; веб пишет то же «через −1 ч −28 мин», web_defects П8).
+        if cur >= 0, let nowMin,
+           phase == .during || (phase == .before && (route[cur].end ?? .max) > nowMin) {
             now = t.t("day.nowAt", ["name": route[cur].name])
             if cur + 1 < route.count, let nt = route[cur + 1].start {
                 left = t.t("day.leftNext", ["left": b(f.durLabel(nt - nowMin)), "next": route[cur + 1].name])
             } else {
                 left = t.t("day.lastPoint")
             }
-        } else if let nowMin, phase == .before || phase == .during {
+        } else if let nowMin, cur < 0, phase == .before || phase == .during {
             // Сегодня до первой точки — «Скоро: …». И «во время» до первой
             // точки тоже: съёмку начали раньше неё (Алексей, 28.09). Веб здесь
             // пишет «Съёмка закончена» — ошибку эталона не переносим.

@@ -117,6 +117,17 @@ import LightPlanDomain
         #expect(f.route[0].start == 930)
     }
 
+    @Test func stopWithOwnEndDoesNotFollowOnSharedStart() {
+        // Начало точки совпало с началом съёмки, а конец — свой: это уже не «время съёмки».
+        var f = EventForm.new(id: "x7", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)
+        f.duration = 60
+        f.addStop()
+        f.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        f.setStopTime(0, end: true, minute: 810, hint: "Старт")
+        f.setStart(minute: 900)
+        #expect(f.route[0].start == 780 && f.route[0].end == 810, "частичное совпадение точку не двигает")
+    }
+
     @Test func bookedStudioStopStaysWhereTheBookingPut() {
         var f = EventForm.new(id: "x6", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)
         f.duration = 60

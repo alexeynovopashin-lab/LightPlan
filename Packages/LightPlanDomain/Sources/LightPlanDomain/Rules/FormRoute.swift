@@ -185,17 +185,20 @@ extension EventForm {
         }
     }
 
-    /// Съёмку подвинули — точки со студией, чьи часы совпадали с её окном, едут
-    /// следом: фотограф их не менял, они и были «время съёмки». Свои часы точки
+    /// Съёмку подвинули — точки со студией, чьи часы целиком совпадали с её окном,
+    /// едут следом: фотограф их не менял, они и были «время съёмки». Свои часы точки
     /// и точки по брони (часы даёт студия) остаются. Вызывается после правки
     /// начала или конца с прежним окном.
     mutating func carryStudioStops(from old: (start: Int, end: Int)) {
         guard bookingRef == nil else { return }
         let new = (start: start, end: start + duration)
         guard new != old else { return }
-        for i in route.indices where route[i].studioId != nil {
-            if route[i].start == old.start { route[i].start = new.start }
-            if route[i].end == old.end { route[i].end = new.end }
+        // Едет точка, у которой совпали оба края: одно совпавшее число — ещё не «время
+        // съёмки» (начало могли оставить, а конец задать свой; ревью GPT к f10a1e5).
+        for i in route.indices where route[i].studioId != nil
+            && route[i].start == old.start && route[i].end == old.end {
+            route[i].start = new.start
+            route[i].end = new.end
         }
     }
 
