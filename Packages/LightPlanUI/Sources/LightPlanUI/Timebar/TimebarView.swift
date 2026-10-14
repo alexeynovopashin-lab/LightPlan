@@ -15,12 +15,16 @@ public struct TimebarView: View {
     /// На карте таймбар лежит на общем стекле дока: ни поверхности, ни
     /// волоска (`body[data-tab="s-map"] .timebar` веба).
     let bare: Bool
+    /// Свой ответ кнопке «↺ сейчас»: экран AR (29.8в.3) возвращает ручку плавно, кадр за кадром. `nil` — как у
+    /// «Света» и «Карты»: `jumpToNow()`.
+    let onNow: (() -> Void)?
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false) {
+    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false, onNow: (() -> Void)? = nil) {
         self.state = state
         self.showRibbon = showRibbon
         self.bare = bare
+        self.onNow = onNow
     }
 
     public var body: some View {
@@ -53,7 +57,7 @@ public struct TimebarView: View {
             if state.nowButtonVisible {
                 // `.now-tick`: 11/600, разрядка 0,4, `--brass-deep`; поле
                 // 9 · 14 — для пальца, а не для глаза.
-                Button { state.jumpToNow() } label: {
+                Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {
                     Text(state.nowButtonLabel)
                         .font(.system(size: 11, weight: .semibold))
                         .tracking(0.4)

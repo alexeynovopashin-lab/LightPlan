@@ -193,7 +193,7 @@ struct SunARSceneTests {
         let north = Self.scene(az: 0, alt: 10)
         let southCount = south.arc.reduce(0) { $0 + $1.count }
         let northCount = north.arc.reduce(0) { $0 + $1.count }
-        let all = SunTrack.arc(day: Self.day, in: Self.place).filter { $0.altitude >= -6 }.count
+        let all = SunTrack.arc(day: Self.day, in: Self.place).filter { $0.altitude >= SunTrack.arcFrom }.count
         #expect(southCount < all && northCount < all)
         #expect(southCount > 0)
     }
@@ -205,8 +205,8 @@ struct SunARSceneTests {
         let ma = try! #require(a.marker), mb = try! #require(b.marker)
         #expect(abs(ma.x - mb.x) < 1e-6 && abs(ma.y - mb.y) < 1e-6)
         #expect(a.hours.count == b.hours.count)
-        let pa: [ScreenPoint] = a.arc.flatMap { $0 }
-        let pb: [ScreenPoint] = b.arc.flatMap { $0 }
+        let pa: [ScreenPoint] = a.arc.flatMap { $0.map(\.point) }
+        let pb: [ScreenPoint] = b.arc.flatMap { $0.map(\.point) }
         #expect(pa.count == pb.count)
         var worst = 0.0
         for (p, q) in zip(pa, pb) { worst = max(worst, abs(p.x - q.x), abs(p.y - q.y)) }
@@ -252,9 +252,9 @@ struct SunARSceneTests {
         let s = Self.scene(az: 90, alt: 0)
         let run = try #require(s.horizon.max { $0.count < $1.count })
         #expect(run.allSatisfy { abs($0.y - 426) < 1e-6 })
-        let east = try #require(s.cardinals.first { $0.index == 1 })
+        let east = try #require(s.cardinals.first { $0.index == 2 })
         #expect(abs(east.point.x - 196.5) < 1e-6)
-        #expect(s.cardinals.first { $0.index == 3 } == nil)    // запад позади
+        #expect(s.cardinals.first { $0.index == 6 } == nil)    // запад позади
     }
 
     // MARK: - Два маркера: «сейчас» и выбранный момент (29.8в.2)
@@ -311,5 +311,172 @@ struct SunARSceneTests {
         #expect(g.nowMarker != nil)
         #expect(g.nowGhost)
         #expect(!g.markerGhost)
+    }
+}
+
+/// Вид AR по замечаниям Алексея (шаг 29.8в.3): свет вдоль дуги, пунктир под горизонтом, восход и закат на
+/// горизонте, восемь сторон света, пороги отдачи, строка «до заката».
+struct SunARLightTests {
+    static let moscow = SunTrackTests.moscow
+    static let screen = ScreenViewport(width: 393, height: 852)
+    static let optics = CameraOptics.typical
+    static let equinox = CivilDate(year: 2026, month: 3, day: 20)
+    /// Мурманск (68,97° с. ш.): полярный день с конца мая — по нему ищется пограничный день.
+    static let murmansk = Place(latitude: 68.9733, longitude: 33.0855, zone: ZoneID("Europe/Moscow")!)
+
+    static func scene(day: CivilDate, place: Place, az: Double = 180, alt: Double = 0, minutes: Double = 12 * 60) -> SunARScene {
+        let solar = SolarDay(date: day, place: place)
+        return SunARScene.make(basis: CameraBasis(azimuth: az, altitude: alt), optics: optics, viewport: screen,
+                               arc: SunTrack.arc(day: day, in: place),
+                               sun: SunTrack.sample(day: day, minutes: minutes, in: place), solar: solar)
+    }
+
+    // MARK: - Дуга цветом света
+
+    @Test("каждая точка дуги несёт состояние света своей высоты — тот же LightState, что у таймбара")
+    func arcPointsCarryLightState() {
+        let day = Self.equinox
+        let solar = SolarDay(date: day, place: Self.moscow)
+        // Камера смотрит на юг и чуть вниз: в кадре и дневная часть дуги, и сумеречная.
+        let s = Self.scene(day: day, place: Self.moscow, az: 180, alt: 5)
+        let pts = s.arc.flatMap { $0 }
+        #expect(!pts.isEmpty)
+        for p in pts {
+            let want = LightState(elevation: p.altitude, morning: p.minutes < solar.solarNoon).code
+            #expect(p.state == want, "минута \(p.minutes): \(p.state) вместо \(want)")
+        }
+        // Полдень равноденствия в Москве (≈ 34°): «день»; у горизонта над ним — «золотой час».
+        let states = Set(pts.map(\.state))
+        #expect(states.contains(.golden) || states.contains(.evening) || states.contains(.morningWarm))
+        #expect(pts.contains { $0.state == .day || $0.state == .morning })
+    }
+
+    @Test("дуга идёт ниже горизонта до −18° пунктиром: точки с видимой высотой < 0 помечены, глубже −18° дуги нет")
+    func arcContinuesBelowHorizon() {
+        // Взгляд на север-вниз и на юг-вниз: ночная часть дуги в кадре.
+        var below = 0, above = 0, deepest = 0.0
+        for az in [0.0, 180] {
+            let s = Self.scene(day: Self.equinox, place: Self.moscow, az: az, alt: -25)
+            for p in s.arc.flatMap({ $0 }) {
+                if p.isBelowHorizon { below += 1 } else { above += 1 }
+                deepest = min(deepest, p.altitude)
+                #expect(p.altitude >= SunTrack.arcFrom)
+                #expect(p.isBelowHorizon == (SunTrack.apparent(altitude: p.altitude) < 0))
+            }
+        }
+        #expect(below > 0, "под горизонтом точек нет")
+        #expect(deepest < -6, "дуга оборвана на прежнем пороге −6°: самая глубокая точка \(deepest)°")
+        _ = above
+    }
+
+    @Test("состояния под горизонтом идут по порядку закат → сумерки → синий час → астро")
+    func belowHorizonStatesInOrder() {
+        // Вечерняя половина дуги равноденствия, минуты по возрастанию: закат, затем всё темнее.
+        let day = Self.equinox
+        let solar = SolarDay(date: day, place: Self.moscow)
+        let evening = SunTrack.arc(day: day, in: Self.moscow).filter { $0.minutes > solar.solarNoon && $0.altitude < -0.833 && $0.altitude >= SunTrack.arcFrom }
+        let codes = evening.map { LightState(elevation: $0.altitude, morning: false).code }
+        let order: [LightCode] = [.sunset, .dusk, .blue, .deepDusk, .astroDusk]
+        var last = 0
+        for c in codes {
+            let i = order.firstIndex(of: c)
+            #expect(i != nil, "неожиданное состояние \(c)")
+            if let i { #expect(i >= last); last = i }
+        }
+        #expect(Set(codes).count >= 4)
+    }
+
+    // MARK: - Восход и закат на горизонте
+
+    @Test("обычный день: восход и закат на линии горизонта, минуты и азимуты — те же, что у SolarDay")
+    func eventsOnHorizon() throws {
+        let day = Self.equinox
+        let solar = SolarDay(date: day, place: Self.moscow)
+        let s = Self.scene(day: day, place: Self.moscow, az: 270, alt: 0)
+        let set = try #require(s.events.first { $0.kind == .sunset })
+        #expect(abs(set.minutes - (try #require(solar.set))) < 1e-9)
+        #expect(abs(set.azimuth - solar.azimuth(at: set.minutes)) < 1e-9)
+        // Камера смотрит на запад ровно на горизонт: метка заката в центре кадра по горизонтали и на линии.
+        let p = try #require(set.point)
+        #expect(abs(p.y - 426) < 1e-6)
+        #expect(abs(p.x - 196.5) < 40, "закат на \(set.azimuth)°, камера на 270°: x = \(p.x)")
+        let rise = try #require(s.events.first { $0.kind == .sunrise })
+        #expect(rise.point == nil, "восток за спиной у камеры, метки на экране быть не должно")
+    }
+
+    @Test("полярный день: ни восхода, ни заката — событий нет; полярная ночь — тоже")
+    func noEventsInPolarDay() {
+        let june = CivilDate(year: 2026, month: 6, day: 21)
+        let s = Self.scene(day: june, place: Self.murmansk)
+        #expect(SolarDay(date: june, place: Self.murmansk).polar == .day)
+        #expect(s.events.isEmpty)
+        let dec = CivilDate(year: 2026, month: 12, day: 21)
+        #expect(SolarDay(date: dec, place: Self.murmansk).polar == .night)
+        #expect(Self.scene(day: dec, place: Self.murmansk).events.isEmpty)
+    }
+
+    @Test("пограничный день: метка заката есть в точности в те сутки, где у SolarDay есть закат; граница найдена")
+    func sunsetEventAtPolarBoundary() {
+        var withSet = 0, without = 0
+        var lastWith: CivilDate?, firstWithout: CivilDate?
+        var d = CivilDate(year: 2026, month: 5, day: 1)
+        for _ in 0..<60 {
+            let solar = SolarDay(date: d, place: Self.murmansk)
+            let s = Self.scene(day: d, place: Self.murmansk, az: 0, alt: 0)
+            let has = s.events.contains { $0.kind == .sunset }
+            #expect(has == (solar.set != nil), "\(d): закат у SolarDay \(String(describing: solar.set)), метка \(has)")
+            let hasRise = s.events.contains { $0.kind == .sunrise }
+            #expect(hasRise == (solar.rise != nil), "\(d): восход")
+            if solar.set != nil { withSet += 1; lastWith = d } else { without += 1; if firstWithout == nil { firstWithout = d } }
+            d = d.adding(days: 1)
+        }
+        #expect(withSet > 0 && without > 0, "граница полярного дня за май–июнь не найдена: с закатом \(withSet), без \(without)")
+        #expect(lastWith != nil && firstWithout != nil)
+    }
+
+    // MARK: - Стороны света
+
+    @Test("восемь сторон света через 45°; основные (С, В, Ю, З) — чётные индексы")
+    func eightCardinals() throws {
+        // Широкий кадр не нужен: проверяем по индексам, считая проекцию на каждый из восьми азимутов отдельно.
+        var seen = Set<Int>()
+        for az in stride(from: 0.0, to: 360, by: 45) {
+            let s = Self.scene(day: Self.equinox, place: Self.moscow, az: az, alt: 0)
+            let c = try #require(s.cardinals.first { $0.index == Int(az / 45) }, "азимут \(az)° не в кадре")
+            #expect(abs(c.point.x - 196.5) < 1e-6)
+            #expect(c.isMain == (Int(az) % 90 == 0))
+            seen.insert(c.index)
+        }
+        #expect(seen == Set(0..<8))
+    }
+
+    // MARK: - Пороги отдачи
+
+    @Test("пороги: +6,05° (золотой час), −0,833° (закат), −4° и −6° (синий час); в обе стороны")
+    func thresholds() {
+        #expect(SunTrack.lightThresholds == [6.05, -0.833, -4, -6])
+        #expect(SunTrack.thresholdsCrossed(from: 10, to: -8) == 4)
+        #expect(SunTrack.thresholdsCrossed(from: -8, to: 10) == 4)
+        #expect(SunTrack.thresholdsCrossed(from: 7, to: 5) == 1)          // начало золотого часа
+        #expect(SunTrack.thresholdsCrossed(from: 5, to: 3) == 0)          // внутри золотого часа
+        #expect(SunTrack.thresholdsCrossed(from: 0.5, to: -1.5) == 1)     // закат
+        #expect(SunTrack.thresholdsCrossed(from: -3, to: -5) == 1)        // синий час начался
+        #expect(SunTrack.thresholdsCrossed(from: 40, to: 20) == 0)        // в полдень порогов нет
+    }
+
+    // MARK: - Строка «до заката»
+
+    @Test("строка под временем: до рассвета → до заката → после заката; полярные сутки — без события")
+    func eventNote() throws {
+        let solar = SolarDay(date: Self.equinox, place: Self.moscow)
+        let rise = try #require(solar.rise), set = try #require(solar.set)
+        #expect(SunTrack.note(at: rise - 30, solar: solar) == .untilSunrise(30))
+        #expect(SunTrack.note(at: set - 87, solar: solar) == .untilSunset(87))
+        #expect(SunTrack.note(at: set + 12, solar: solar) == .afterSunset(12))
+        #expect(SunTrack.note(at: set, solar: solar) == .afterSunset(0))
+        let polar = SolarDay(date: CivilDate(year: 2026, month: 6, day: 21), place: Self.murmansk)
+        #expect(SunTrack.note(at: 600, solar: polar) == .polarDay)
+        let night = SolarDay(date: CivilDate(year: 2026, month: 12, day: 21), place: Self.murmansk)
+        #expect(SunTrack.note(at: 600, solar: night) == .polarNight)
     }
 }

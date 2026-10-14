@@ -483,3 +483,187 @@ struct SunARTests {
         func fetchAir(at place: Place) async throws -> [CivilDate: [Int: AirSample]] { throw Offline() }
     }
 }
+
+// MARK: - Вид по замечаниям Алексея (шаг 29.8в.3)
+
+extension SunARTests {
+    private static let moscow = Place(latitude: 55.7558, longitude: 37.6173, zone: ZoneID("Europe/Moscow")!)
+    private static let barnaulCoord = GeoCoordinate(latitude: 53.3548, longitude: 83.7698)
+    private static let moscowCoord = GeoCoordinate(latitude: 55.7558, longitude: 37.6173)
+
+    /// «Где я» телефона: отдаёт заданную точку (или молчит) и по желанию «доступ уже дан».
+    private final class PhoneLocator: DeviceLocating {
+        var fix: GeoCoordinate?
+        var authorized = false
+        init(_ fix: GeoCoordinate?, authorized: Bool = false) { self.fix = fix; self.authorized = authorized }
+        func currentFix() async -> DeviceFix { fix.map { .fix($0) } ?? .unavailable }
+        var isAlreadyAuthorized: Bool { authorized }
+    }
+    private struct QuietGeocoder: ReverseGeocoding {
+        func answer(for c: GeoCoordinate) async throws -> GeocodeAnswer {
+            GeocodeAnswer(locality: nil, region: nil, country: nil, zoneIdentifier: nil)
+        }
+    }
+    private struct NoCity: CityLookup {
+        func cities(matching query: String) async throws -> [CityHit] { [] }
+    }
+    private struct NoWx: WeatherSource {
+        struct Offline: Error {}
+        func fetchHourly(at place: Place) async throws -> HourlyWeather { throw Offline() }
+        func fetchAir(at place: Place) async throws -> [CivilDate: [Int: AirSample]] { throw Offline() }
+    }
+
+    private func app(locator: PhoneLocator) -> AppModel {
+        AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
+                 locator: locator, geocoder: QuietGeocoder(), cityLookup: NoCity(), weatherSource: NoWx())
+    }
+
+    // MARK: Место по телефону
+
+    @Test("AR считает для места телефона, а не выбранного: высота и азимут — для Москвы, пояс — московский")
+    func placeIsThePhones() async throws {
+        let a = app(locator: PhoneLocator(Self.moscowCoord))
+        _ = await a.locateHere()
+        let chosen = Place(latitude: Self.barnaulCoord.latitude, longitude: Self.barnaulCoord.longitude,
+                           zone: ZoneID("Asia/Barnaul")!)
+        let moment = Moment(ISO8601DateFormatter().date(from: "2026-09-23T12:00:00Z")!)
+        a.openSunAR(chosen: chosen, moment: moment)
+        let target = try #require(a.sunAR)
+        guard case .phone(let place, let far?) = target.choice else {
+            Issue.record("место не телефонное: \(target.choice)"); return
+        }
+        #expect(abs(place.latitude - Self.moscow.latitude) < 1e-9 && abs(place.longitude - Self.moscow.longitude) < 1e-9)
+        #expect(far > 2900, "Барнаул дальше 2900 км от Москвы: \(far)")
+        let m = SunARModel(target: target, source: nil, camera: nil, calibrationFlag: MemoryFlagProxy())
+        let wall = SunTrack.wallClock(of: moment, in: place)
+        let wantPhone = SunTrack.sample(day: wall.day, minutes: wall.minutes, in: place)
+        let wallChosen = SunTrack.wallClock(of: moment, in: chosen)
+        let wantChosen = SunTrack.sample(day: wallChosen.day, minutes: wallChosen.minutes, in: chosen)
+        #expect(m.sun.azimuth == wantPhone.azimuth && m.sun.altitude == wantPhone.altitude)
+        #expect(abs(m.sun.altitude - wantChosen.altitude) > 1, "для двух мест высота должна различаться")
+        #expect(m.place.zone == place.zone)
+    }
+
+    @Test("телефон положения не дал — берётся выбранное место, плашка «выбранное в приложении»")
+    func placeFallsBackToChosen() async throws {
+        let a = app(locator: PhoneLocator(nil))
+        _ = await a.locateHere()
+        let chosen = Place(latitude: Self.barnaulCoord.latitude, longitude: Self.barnaulCoord.longitude,
+                           zone: ZoneID("Asia/Barnaul")!)
+        a.openSunAR(chosen: chosen, moment: Moment(Date()))
+        #expect(a.sunAR?.choice == .chosen(chosen))
+    }
+
+    @Test("выбранное место в пределах 50 км от телефона — плашки нет; дальше — расстояние названо")
+    func farPlateThreshold() {
+        let near = Place(latitude: 55.80, longitude: 37.70, zone: ZoneID("Europe/Moscow")!)     // ≈ 6 км
+        let far = Place(latitude: 56.50, longitude: 37.60, zone: ZoneID("Europe/Moscow")!)      // ≈ 83 км
+        #expect(SunARPlaceChoice.resolve(phone: Self.moscow, chosen: near) == .phone(Self.moscow, chosenFarKm: nil))
+        guard case .phone(_, let km?) = SunARPlaceChoice.resolve(phone: Self.moscow, chosen: far) else {
+            Issue.record("83 км должны назваться"); return
+        }
+        #expect(km > 50 && km < 100)
+    }
+
+    @Test("телефон ответил позже входа: место меняется, а мгновение остаётся тем же (меняются часы и пояс)")
+    func lateFixKeepsInstant() {
+        let chosen = barnaul
+        let moment = Moment(ISO8601DateFormatter().date(from: "2026-09-23T06:00:00Z")!)
+        let m = SunARModel(target: SunARTarget(choice: .chosen(chosen), moment: moment), source: nil,
+                           camera: nil, calibrationFlag: MemoryFlagProxy())
+        let before = m.moment
+        m.apply(choice: .phone(Self.moscow, chosenFarKm: 3500))
+        #expect(m.place == Self.moscow)
+        #expect(m.moment == before, "мгновение сдвинулось при смене места")
+        #expect(m.sun == SunTrack.sample(at: before, in: Self.moscow))
+    }
+
+    // MARK: Таймбар, пороги, строка «до заката»
+
+    @Test("ручка проходит золотой час, закат и синий час: по одному щелчку на порог — в день равноденствия восемь")
+    func thresholdHaptics() {
+        let m = SunARModel(target: SunARTarget(place: barnaul, moment: Moment(ISO8601DateFormatter().date(from: "2026-09-23T06:00:00Z")!)),
+                           source: nil, camera: nil, calibrationFlag: MemoryFlagProxy())
+        var clicks = 0
+        m.thresholdHaptic = { clicks += 1 }
+        m.set(minutes: m.timebar.machine.mint + 1)
+        m.minuteMoved()
+        var t = m.timebar.machine.mint
+        while t < m.timebar.machine.maxt - 1 {
+            t += 5
+            m.set(minutes: t)
+            m.minuteMoved()
+        }
+        // Утром −6°, −4°, −0,833°, +6,05°; вечером столько же в обратном порядке.
+        #expect(clicks == 8, "щелчков \(clicks)")
+    }
+
+    @Test("порог не щёлкает без движения и внутри одного состояния света")
+    func noHapticWithinState() {
+        let m = SunARModel(target: SunARTarget(place: barnaul, moment: Moment(ISO8601DateFormatter().date(from: "2026-09-23T06:00:00Z")!)),
+                           source: nil, camera: nil, calibrationFlag: MemoryFlagProxy())
+        var clicks = 0
+        m.thresholdHaptic = { clicks += 1 }
+        m.set(minutes: 700); m.minuteMoved()
+        m.set(minutes: 705); m.minuteMoved()
+        m.set(minutes: 705); m.minuteMoved()
+        #expect(clicks == 0)
+    }
+
+    @Test("строка под временем следует за ручкой: до рассвета → до заката → после заката")
+    func noteFollowsTheKnob() throws {
+        let m = SunARModel(target: SunARTarget(place: barnaul, moment: Moment(ISO8601DateFormatter().date(from: "2026-09-23T06:00:00Z")!)),
+                           source: nil, camera: nil, calibrationFlag: MemoryFlagProxy())
+        let rise = try #require(m.solar.rise), set = try #require(m.solar.set)
+        m.set(minutes: rise - 20)
+        #expect(m.eventNote == .untilSunrise(20))
+        m.set(minutes: set - 87)
+        #expect(m.eventNote == .untilSunset(87))
+        m.set(minutes: set + 15)
+        #expect(m.eventNote == .afterSunset(15))
+    }
+
+    @Test("нижний блок — настоящий таймбар: ползунок передаёт разряд, день листается, дуга пересчитывается")
+    func timebarFlipsTheDay() {
+        let m = SunARModel(target: SunARTarget(place: barnaul, moment: Moment(ISO8601DateFormatter().date(from: "2026-09-23T06:00:00Z")!)),
+                           source: nil, camera: nil, calibrationFlag: MemoryFlagProxy())
+        let day = m.day, arc = m.arc
+        m.jump(to: day.adding(days: 1), minutes: 600)
+        #expect(m.day == day.adding(days: 1))
+        #expect(m.arc != arc)
+        #expect(m.solar == SolarDay(date: day.adding(days: 1), place: barnaul))
+    }
+
+    // MARK: Чернила
+
+    @Test("чернила таймбара (ink4 краёв) на нижней панели: контраст на белом, сером и чёрном фоне не ниже 4,5")
+    func panelContrast() {
+        // ink4 тёмной схемы 0x8A8478; панель — 0F0E0C с непрозрачностью `panelOpacity`, лежит на фоне кадра.
+        let ink = (0x8A, 0x84, 0x78).self
+        let l = 0.2126 * SunARInk.luminance(Double(ink.0) / 255) + 0.7152 * SunARInk.luminance(Double(ink.1) / 255)
+            + 0.0722 * SunARInk.luminance(Double(ink.2) / 255)
+        var lines: [String] = []
+        for (name, bg) in [("белый", 1.0), ("серый", 0.5), ("чёрный", 0.0)] {
+            let a = SunARInk.panelOpacity
+            let ch = a * (14.0 / 255) + (1 - a) * bg
+            let plate = SunARInk.luminance(ch)
+            let ratio = (l + 0.05) / (plate + 0.05)
+            lines.append(String(format: "%@ %.2f", name, ratio))
+            #expect(ratio >= 4.5, "\(name): \(ratio)")
+        }
+        print("SUNAR_PANEL_CONTRAST " + lines.joined(separator: " | "))
+    }
+
+    @Test("жила дуги отделима от белой кромки, кромка от обводки: ширины убывают на ≥ 1 pt с каждой стороны")
+    func arcLayersNest() {
+        #expect(SunARInk.arcOutlineWidth - SunARInk.arcWidth >= 2)
+        #expect(SunARInk.arcWidth - SunARInk.arcCoreWidth >= 2)
+        #expect(SunARInk.nowLensDiameter == 48 && SunARInk.pickedLensDiameter == 34)
+    }
+}
+
+/// Флаг калибровки в памяти для тестов выше.
+@MainActor
+private final class MemoryFlagProxy: ARCalibrationFlag {
+    var seen = true
+}

@@ -10,9 +10,15 @@ enum SunARInk {
     static let plateOpacity = 0.6
     /// Тёмная обводка под линией дуги и горизонта.
     static let outlineOpacity = 0.6
-    /// Ширина светлой линии дуги и её обводки, pt.
-    static let arcWidth: CGFloat = 3
-    static let arcOutlineWidth: CGFloat = 7
+    /// Дуга (29.8в.3), снизу вверх: тёмная обводка → белая кромка → жила цвета света. До 29.8в.3 было
+    /// 7 → 3 (белая линия без жилы); теперь белая кромка шире на жилу, и по 1 pt белого остаётся с каждой стороны.
+    static let arcOutlineWidth: CGFloat = 9
+    static let arcWidth: CGFloat = 5
+    static let arcCoreWidth: CGFloat = 3
+    /// Под горизонтом дуга идёт пунктиром: штрих и просвет, pt.
+    static let arcDash: [CGFloat] = [7, 6]
+    /// Подотрезков цвета на отрезок дуги между двумя точками (шаг 10 минут): переход цвета плавный, не ступенька.
+    static let arcColorSteps = 4
     static let horizonWidth: CGFloat = 1.5
     static let horizonOutlineWidth: CGFloat = 4.5
 
@@ -20,9 +26,24 @@ enum SunARInk {
     static let light = Color.white
     /// Диск солнца.
     static let sunFill = Color(hex: 0xFFC24D)
-    /// Метка солнца: радиус и отступ подписи от центра (над диском или под ним), pt.
-    static let markerRadius: CGFloat = 11
-    static let markerLabelOffset: CGFloat = 28
+    /// Метки солнца — стеклянные линзы (29.8в.3), диаметр, pt. Было: диск «сейчас» 22 (радиус 11) и кольцо
+    /// выбранного момента того же размера.
+    static let nowLensDiameter: CGFloat = 48
+    static let pickedLensDiameter: CGFloat = 34
+    /// Просвет между краем линзы и подписью, pt.
+    static let markerLabelGap: CGFloat = 14
+    /// Малая метка восхода и заката на горизонте, диаметр, pt.
+    static let eventDot: CGFloat = 8
+    /// Нижняя панель со временем и таймбаром: тёмная поверхность «Света» (`0F0E0C`) почти без просвета —
+    /// чернила таймбара (`ink4` на краях) читаются на любом кадре.
+    static let panelOpacity = 0.94
+    static let panelColor = Color(hex: 0x0F0E0C)
+
+    /// Цвет состояния света на этой высоте — остановка рельса таймбара «Света» (`PathStops`), без прозрачности.
+    static func stateColor(altitude: Double) -> Color {
+        let c = PathStops.at(altitude).rgb
+        return Color(.sRGB, red: Double(c.0) / 255, green: Double(c.1) / 255, blue: Double(c.2) / 255, opacity: 1)
+    }
     /// Земля под горизонтом в состоянии «нет камеры».
     static let groundOpacity = 0.42
 

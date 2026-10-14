@@ -963,7 +963,7 @@ struct MapScreenView: View {
                        node: "map.arBtn", action: {
             let tb = app.light.timebar
             let picked = SunTrack.moment(day: tb.machine.selectedDate, minutes: tb.machine.viewMinute, in: tb.place)
-            withAnimation(PlanMotion.pick(PlanMotion.overlay)) { app.openSunAR(place: tb.place, moment: picked) }
+            withAnimation(PlanMotion.pick(PlanMotion.overlay)) { app.openSunAR(chosen: tb.place, moment: picked) }
         }) {
             Text("AR").font(.system(size: 11, weight: .bold)).tracking(0.2)
         }

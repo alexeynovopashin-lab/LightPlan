@@ -28,8 +28,47 @@ public enum SunTrack {
     /// (`MIN_ALTITUDE` в `findSolarPassage`). Сам маркер ниже порога не исчезает, а идёт призраком.
     public static let visibleFrom: Degrees = -6
 
+    /// Ниже этой высоты дуга не продолжается вовсе: конец астрономических сумерек, где «Свет» красит шкалу
+    /// последним цветом. От −6° до сюда дуга идёт пунктиром (шаг 29.8в.3) — сумерки видны до самой ночи.
+    public static let arcFrom: Degrees = -18
+
     /// Шаг точек дуги, минуты.
     public static let arcStep: Minutes = 10
+
+    /// Высоты (геометрические), на которых свет меняет характер для съёмки: начало золотого часа (+6,05°,
+    /// порог `LightState`), закат (−0,833°), начало синего часа (−4°) и его конец (−6°). Ручка, пересёкшая
+    /// порог, отдаёт тем же щелчком, что и час на таймбаре (шаг 29.8в.3).
+    public static let lightThresholds: [Degrees] = [6.05, -0.833, -4, -6]
+
+    /// Сколько порогов лежит между двумя высотами (в любую сторону).
+    public static func thresholdsCrossed(from a: Degrees, to b: Degrees) -> Int {
+        lightThresholds.reduce(0) { n, t in (a - t) * (b - t) < 0 ? n + 1 : n }
+    }
+
+    /// Строка «до заката …» под временем: что ближайшее и сколько минут до него или после него.
+    public enum EventNote: Sendable, Equatable {
+        case untilSunrise(Minutes)
+        case untilSunset(Minutes)
+        case afterSunset(Minutes)
+        /// Солнце весь день над горизонтом / весь день под ним: события нет.
+        case polarDay
+        case polarNight
+    }
+
+    /// Ближайшее к `minutes` событие дня: рассвет, закат, или время после заката.
+    public static func note(at minutes: Minutes, solar: SolarDay) -> EventNote {
+        switch solar.polar {
+        case .day: return .polarDay
+        case .night: return .polarNight
+        case .normal: break
+        }
+        if let r = solar.rise, minutes < r { return .untilSunrise(r - minutes) }
+        if let s = solar.set {
+            return minutes < s ? .untilSunset(s - minutes) : .afterSunset(minutes - s)
+        }
+        // Восход был, а заката в этих сутках нет: до конца суток солнце над горизонтом.
+        return .polarDay
+    }
 
     /// День и минуты по часам места для момента: тот же приём, что у `TimebarState.wallNow` — грубая дата
     /// из UTC берёт смещение пояса, дальше `WallTime`-арифметика. Минуты дробные: ползунок идёт плавно.

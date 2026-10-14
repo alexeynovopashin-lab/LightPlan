@@ -202,7 +202,15 @@
     "ar.calHold": "Хорошо. Теперь подержите телефон ровно",
     "ar.calReady": "Готово",
     "ar.calNoSensor": "Датчика нет, калибровка пропущена",
-    "ar.calSkip": "Пропустить"
+    "ar.calSkip": "Пропустить",
+    "ar.placeChosen": "Место: выбранное в приложении",
+    "ar.placePhoneFar": "Место: по телефону · выбранное в приложении — в {d}",
+    "ar.untilSunset": "до заката {d}",
+    "ar.afterSunset": "после заката {d}",
+    "ar.untilDawn": "до рассвета {d}",
+    "ar.sunsetAt": "закат {t}",
+    "ar.sunriseAt": "восход {t}",
+    "ar.durHM": "{h} ч {m} мин"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -406,7 +414,15 @@
     "ar.calHold": "Good. Now hold the phone steady",
     "ar.calReady": "Done",
     "ar.calNoSensor": "No sensor, calibration skipped",
-    "ar.calSkip": "Skip"
+    "ar.calSkip": "Skip",
+    "ar.placeChosen": "Place: the one chosen in the app",
+    "ar.placePhoneFar": "Place: by the phone · the one chosen in the app is {d} away",
+    "ar.untilSunset": "until sunset {d}",
+    "ar.afterSunset": "{d} after sunset",
+    "ar.untilDawn": "until sunrise {d}",
+    "ar.sunsetAt": "sunset {t}",
+    "ar.sunriseAt": "sunrise {t}",
+    "ar.durHM": "{h}h {m}m"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -610,7 +626,15 @@
     "ar.calHold": "Bien. Ahora mantén el teléfono firme",
     "ar.calReady": "Listo",
     "ar.calNoSensor": "Sin sensor, calibración omitida",
-    "ar.calSkip": "Omitir"
+    "ar.calSkip": "Omitir",
+    "ar.placeChosen": "Lugar: el elegido en la app",
+    "ar.placePhoneFar": "Lugar: por el teléfono · el elegido en la app está a {d}",
+    "ar.untilSunset": "hasta el atardecer {d}",
+    "ar.afterSunset": "{d} después del atardecer",
+    "ar.untilDawn": "hasta el amanecer {d}",
+    "ar.sunsetAt": "atardecer {t}",
+    "ar.sunriseAt": "salida del sol {t}",
+    "ar.durHM": "{h} h {m} min"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -813,7 +837,15 @@
     "ar.calHold": "いいですね。そのまま安定して持ってください",
     "ar.calReady": "完了",
     "ar.calNoSensor": "センサーがないため、較正をスキップしました",
-    "ar.calSkip": "スキップ"
+    "ar.calSkip": "スキップ",
+    "ar.placeChosen": "場所：アプリで選んだ場所",
+    "ar.placePhoneFar": "場所：スマホの位置・アプリで選んだ場所は{d}先",
+    "ar.untilSunset": "日の入りまで{d}",
+    "ar.afterSunset": "日の入りから{d}",
+    "ar.untilDawn": "日の出まで{d}",
+    "ar.sunsetAt": "日の入り {t}",
+    "ar.sunriseAt": "日の出 {t}",
+    "ar.durHM": "{h}時間{m}分"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -1016,6 +1048,14 @@
     "ar.calHold": "很好。现在请保持手机平稳",
     "ar.calReady": "完成",
     "ar.calNoSensor": "没有传感器，已跳过校准",
-    "ar.calSkip": "跳过"
+    "ar.calSkip": "跳过",
+    "ar.placeChosen": "地点：应用中选择的地点",
+    "ar.placePhoneFar": "地点：按手机位置 · 应用中选择的地点在{d}外",
+    "ar.untilSunset": "距日落{d}",
+    "ar.afterSunset": "日落后{d}",
+    "ar.untilDawn": "距日出{d}",
+    "ar.sunsetAt": "日落{t}",
+    "ar.sunriseAt": "日出{t}",
+    "ar.durHM": "{h}小时{m}分钟"
   }
 }

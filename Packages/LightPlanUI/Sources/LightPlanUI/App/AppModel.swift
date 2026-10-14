@@ -46,6 +46,8 @@ public final class AppModel {
     public var placeSheetOpen = false
     /// Слой AR: дуга солнца поверх камеры (29.8в). `nil` — закрыт. Вход — место и момент, откуда открыли — не помним.
     var sunAR: SunARTarget?
+    /// Номер захода AR: ответ телефона, пришедший после закрытия экрана, ничего не меняет.
+    @ObservationIgnored var sunARSession = 0
     /// Путь, на котором лист открывается (пара снимков открывает его сразу на
     /// «Месте» или «Геопозиции»); кнопка шапки — всегда развилка.
     var placeSheetStart: PlaceSheetForm.Way = .fork
@@ -353,7 +355,7 @@ public final class AppModel {
     @ObservationIgnored var reachTask: Task<Void, Never>?
     /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
     @ObservationIgnored var pinTask: Task<Void, Never>?
-    private let locator: any DeviceLocating
+    let locator: any DeviceLocating
 
     init(snapshot: Snapshot, store: Store?, language: String, zone: TimeZone = .current,
          locator: any DeviceLocating, geocoder: any ReverseGeocoding, cityLookup: any CityLookup,

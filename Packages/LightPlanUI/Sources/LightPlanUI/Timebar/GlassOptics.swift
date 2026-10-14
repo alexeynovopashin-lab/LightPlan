@@ -38,6 +38,16 @@ enum GlassOptics {
         return library.glassRing(.float2(center), .float2(radii.width, radii.height), .float(width),
                                  .float(ringShift), .float(o.saturation), .float(o.brightness))
     }
+
+    /// Линза экрана AR (шаг 29.8в.3): тот же шейдер кольца `glassRing`, только круглая и шире ручки — линза 48 pt
+    /// без 3-пунктового кольца почти не гнула бы. Кромка 7 pt, сдвиг до 5.
+    static let lensShift = 5.0
+
+    static func lens(center: CGPoint, radius: Double, width: Double, scheme: ColorScheme) -> Shader {
+        let o = optic(scheme)
+        return library.glassRing(.float2(center), .float2(radius, radius), .float(width),
+                                 .float(lensShift), .float(o.saturation), .float(o.brightness))
+    }
 }
 
 /// Тень фигуры только СНАРУЖИ, как CSS `box-shadow`: внешняя тень веба

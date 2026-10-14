@@ -12,8 +12,21 @@ import AVFoundation
 /// Нужна именно `Place`, а не одна координата: подписи часов на дуге — по часам места, а пояс у координаты
 /// не вычисляется без места (Томск и Москва в одном и том же моменте показывают часы с разницей в четыре часа).
 struct SunARTarget: Equatable {
-    let place: Place
+    /// Для какого места считается солнце: телефон или, если он положения не дал, выбранное в приложении.
+    var choice: SunARPlaceChoice
     let moment: Moment
+
+    var place: Place { choice.place }
+
+    init(choice: SunARPlaceChoice, moment: Moment) {
+        self.choice = choice
+        self.moment = moment
+    }
+
+    /// Место задано прямо (тесты, отладка): считается как «выбранное».
+    init(place: Place, moment: Moment) {
+        self.init(choice: .chosen(place), moment: moment)
+    }
 }
 
 /// Был ли экран калибровки показан на этом устройстве. Флаг устройства, как «Щелчки слайдера»: в снимок съёмок и
@@ -39,14 +52,38 @@ final class DeviceCalibrationFlag: ARCalibrationFlag {
 /// Состояние экрана AR: поворот телефона, камера, выбранный момент и «сейчас», калибровка компаса.
 @MainActor @Observable
 final class SunARModel {
-    let place: Place
+    /// Откуда место: телефон или выбранное в приложении. Меняется, когда телефон ответил позже, чем открылся экран.
+    private(set) var choice: SunARPlaceChoice
+    var place: Place { choice.place }
+
+    /// Таймбар экрана «Свет» — тот же компонент (шаг 29.8в.3), но свой, не тот, что у «Света»: ползунок AR
+    /// не двигает время приложения. День и минута выбранного момента живут в его машине времени.
+    let timebar: TimebarState
 
     /// День ползунка и минуты по часам места — выбранный момент (то, что выбрали на карте при входе, и дальше
     /// ползунок AR).
-    private(set) var day: CivilDate
-    var minutes: Double
-    /// Дуга выбранного дня — точки через 10 минут от полуночи до полуночи.
-    private(set) var arc: [SunSample]
+    var day: CivilDate { timebar.machine.selectedDate }
+    var minutes: Double { timebar.machine.viewMinute }
+
+    /// Дуга выбранного дня — точки через 10 минут от полуночи до полуночи. Считается по требованию и держится,
+    /// пока не сменились день и место (ползунок перелистывает сутки сам, передачей разряда).
+    var arc: [SunSample] {
+        let d = day, p = place
+        if let c = arcCache, c.day == d, c.place == p { return c.arc }
+        let a = SunTrack.arc(day: d, in: p)
+        arcCache = (d, p, a)
+        return a
+    }
+    @ObservationIgnored private var arcCache: (day: CivilDate, place: Place, arc: [SunSample])?
+
+    /// Сутки выбранного дня: восход, закат, полдень — для строки «до заката» и меток на горизонте.
+    var solar: SolarDay { timebar.solarDay }
+
+    /// Высота солнца в прошлый отсчёт ползунка: по ней видно, что ручка пересекла порог света.
+    @ObservationIgnored private var lastAltitude: Double?
+    @ObservationIgnored private var lastDay: CivilDate?
+    /// Отдача на пороге — тот же щелчок, что у таймбара на часе (второго не заводим).
+    @ObservationIgnored var thresholdHaptic: (@MainActor () -> Void)?
 
     /// Часы «сейчас» для маркера «сейчас»; обновляются `refreshNow`.
     private(set) var nowMoment: Moment
@@ -86,12 +123,15 @@ final class SunARModel {
 
     init(target: SunARTarget, source: (any AttitudeSource)?, camera: (any ARCameraDriving)? = nil,
          clock: @escaping @MainActor () -> Moment = { Moment(Date()) },
-         calibrationFlag: (any ARCalibrationFlag)? = nil, forceCalibration: Bool = false) {
-        place = target.place
+         calibrationFlag: (any ARCalibrationFlag)? = nil, forceCalibration: Bool = false,
+         language: String = "ru", clockPreference: ClockPreference = .auto) {
+        choice = target.choice
         let wall = SunTrack.wallClock(of: target.moment, in: target.place)
-        day = wall.day
-        minutes = wall.minutes
-        arc = SunTrack.arc(day: wall.day, in: target.place)
+        // Часы таймбара — часы модели: «сейчас» и кнопка «↺ сейчас» тикают от одного источника (в тестах подставного).
+        timebar = TimebarState(place: target.place, date: wall.day, weather: nil, language: language,
+                               clockPreference: clockPreference,
+                               now: { MainActor.assumeIsolated { clock().date } })
+        timebar.show(day: wall.day, minute: wall.minutes)
         self.source = source
         #if os(iOS)
         driver = camera ?? ARCameraRig()
@@ -117,6 +157,9 @@ final class SunARModel {
 
     /// Солнце в выбранную минуту выбранного дня.
     var sun: SunSample { SunTrack.sample(day: day, minutes: minutes, in: place) }
+
+    /// Строка под временем: «до заката …», «после заката …», «до рассвета …».
+    var eventNote: SunTrack.EventNote { SunTrack.note(at: minutes, solar: solar) }
 
     /// Солнце сию минуту.
     var sunNow: SunSample { SunTrack.sample(at: nowMoment, in: place) }
@@ -239,9 +282,34 @@ final class SunARModel {
         look = Look(azimuth: az, altitude: min(85, max(-85, start.altitude + dy * perPoint)))
     }
 
+    /// Телефон ответил позже, чем открылся экран (или выбранное место заменено телефонным): считаем для нового
+    /// места. Момент остаётся тем же — меняются часы места и пояс, а не мгновение.
+    func apply(choice new: SunARPlaceChoice) {
+        guard new != choice else { return }
+        let instant = moment
+        let old = place
+        choice = new
+        guard new.place != old else { return }
+        timebar.setPlace(new.place)
+        let wall = SunTrack.wallClock(of: instant, in: new.place)
+        timebar.show(day: wall.day, minute: wall.minutes)
+        lastAltitude = nil
+    }
+
     /// Выбрать минуту дня; день не меняется.
     func set(minutes m: Double) {
-        minutes = min(1440, max(0, m))
+        timebar.dragDome(to: m)
+    }
+
+    /// Ручка таймбара сдвинулась: если между прошлым и нынешним положением лежит порог света (золотой час,
+    /// закат, синий час) — одна отдача. День сменился передачей разряда — у неё своя отдача, порог не считаем.
+    func minuteMoved() {
+        let altitude = sun.altitude
+        defer { lastAltitude = altitude; lastDay = day }
+        guard let was = lastAltitude, lastDay == day else { return }
+        if SunTrack.thresholdsCrossed(from: was, to: altitude) > 0 {
+            if let thresholdHaptic { thresholdHaptic() } else { timebar.haptics.detent() }
+        }
     }
 
     /// Кнопка «Сейчас»: день и минута сегодняшние в месте.
@@ -250,11 +318,7 @@ final class SunARModel {
     }
 
     func jump(to day: CivilDate, minutes m: Double) {
-        if day != self.day {
-            self.day = day
-            arc = SunTrack.arc(day: day, in: place)
-        }
-        minutes = min(1440, max(0, m))
+        timebar.show(day: day, minute: m)
     }
 
     /// «Сейчас» одним шагом: выбранный момент — текущий.
@@ -263,4 +327,7 @@ final class SunARModel {
         let n = nowTarget(now: nowMoment)
         jump(to: n.day, minutes: n.minutes)
     }
+
+    /// Выбранный день и минута в таймбаре — отсюда «сейчас» плавно едет кадр за кадром (экран).
+    var wallNow: (day: CivilDate, minutes: Double) { nowTarget(now: nowMoment) }
 }
