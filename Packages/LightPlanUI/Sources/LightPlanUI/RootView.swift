@@ -43,6 +43,8 @@ public struct RootView: View {
             // Вернулись на экран — если прогноза или воздуха всё ещё нет, спросить сразу (28ж): раньше один
             // сорвавшийся запрос оставлял приложение без прогноза до перезапуска.
             if phase == .active, let app { app.light.weather.resume(); app.sweepMbBins() }
+            // И расписание студийного часа сверяется с данными и с разрешением (его могли дать в настройках iPhone).
+            if phase == .active, let app { app.syncStudioAlerts(force: true) }
         }
     }
 }
