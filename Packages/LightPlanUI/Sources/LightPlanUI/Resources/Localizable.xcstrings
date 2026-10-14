@@ -47630,6 +47630,76 @@
         }
       }
     },
+    "set.studioAlertDenied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уведомления выключены в настройках iPhone. Включите их там — и сигнал будет приходить. Пока их нет, отсчёт виден в открытой карточке."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications are off in iPhone Settings. Turn them on there and the signal will come. Until then the countdown shows in the open card."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las notificaciones están desactivadas en Ajustes del iPhone. Actívalas allí y el aviso llegará. Mientras tanto, la cuenta atrás se ve en la tarjeta abierta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhoneの設定で通知がオフになっています。そこでオンにすると通知が届きます。それまでは、開いたカードにカウントダウンが表示されます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 设置中的通知已关闭。在那里开启后即可收到提醒。在此之前，倒计时会显示在打开的卡片中。"
+          }
+        }
+      }
+    },
+    "set.studioAlertNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сигнал за 10 и за 5 минут до выхода из зала — даже когда приложение закрыто и нет сети."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A signal 10 and 5 minutes before you leave the hall — even when the app is closed and there is no network."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un aviso 10 y 5 minutos antes de salir de la sala, incluso con la app cerrada y sin red."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スタジオを出る10分前と5分前にお知らせします。アプリを閉じていても、ネットワークがなくても届きます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在离开影棚前10分钟和5分钟提醒——应用关闭、没有网络时也会提醒。"
+          }
+        }
+      }
+    },
     "set.syncOff" : {
       "extractionState" : "manual",
       "localizations" : {

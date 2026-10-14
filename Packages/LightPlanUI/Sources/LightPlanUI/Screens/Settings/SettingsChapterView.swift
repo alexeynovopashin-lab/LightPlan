@@ -26,7 +26,7 @@ struct SettingsChapterView: View {
             case .profile: profile
             case .view: view
             case .shoots: shoots
-            case .alerts: feedback; foreign("set.notify")
+            case .alerts: feedback; studioAlerts
             case .places: places
             case .store: moodboardRow; orgsRow; binRow
             case .data: foreign("set.data"); foreign("set.icsImport"); foreign("cloud.title")
@@ -145,6 +145,39 @@ struct SettingsChapterView: View {
             .padding(.bottom, 16)
             .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
             .shotNode("item.0", text: t.t("set.clicks"))
+    }
+
+    /// «Уведомления» (30а): пока один живой тумблер — «Студийный час» (`notif.studio`; у веба своей строки нет, слово
+    /// взято у баннера). Три прежних пустышки — вечерний брифинг, утреннее уточнение, напоминание о выезде — не
+    /// оживают: у них нет механизма. Включение — момент, когда у системы просят право уведомлять; отказ строкой
+    /// говорит, где его выдать, и ничего не ломает.
+    @ViewBuilder private var studioAlerts: some View {
+        let pal = Palette(colorScheme)
+        SecLabel(text: t.t("set.notify"), node: "sec.1")
+        HStack(spacing: 12) {
+            Text(t.t("studio.sayT")).font(.system(size: 15)).foregroundStyle(pal.ink)
+            Spacer(minLength: 0)
+            Toggle("", isOn: Binding(
+                get: { app.studioAlertsOn },
+                set: { on in
+                    // Отказ — спросить снова нельзя: ведём в настройки iPhone, там и выдаётся.
+                    if on, app.studioAlertsNeedSettings { openSystemSettings() } else { app.setStudioAlerts(on) }
+                }))
+                .labelsHidden().tint(pal.brass)
+                .frame(height: 31)
+                .shotNode("studio.toggle", text: app.studioAlertsOn ? "on" : "off")
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 15)
+        .padding(.bottom, 16)
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+        SetNote(text: t.t(app.studioAlertsNeedSettings ? "set.studioAlertDenied" : "set.studioAlertNote"), node: "note.1")
+    }
+
+    private func openSystemSettings() {
+        #if os(iOS)
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+        #endif
     }
 
     // MARK: - Съёмки

@@ -348,6 +348,17 @@ public final class AppModel {
     public internal(set) var foreignReach: ForeignReach = .unknown
     /// Идёт ручная проверка по кнопке «Проверить снова».
     public internal(set) var netChecking = false
+    /// Система уведомлений для студийного часа (30а). `nil` — в тестах и снимках: расписание тогда не
+    /// ставится никуда; настоящую даёт `live()`.
+    @ObservationIgnored var alertCenter: (any NotificationCentering)?
+    /// Что система сказала о праве уведомлять; тумблер «Студийный час» показывает его честно.
+    public internal(set) var alertAuth: NotificationAuthorization = .notDetermined
+    @ObservationIgnored var alertGen = 0
+    @ObservationIgnored var alertForce = false
+    @ObservationIgnored var alertChain: Task<Void, Never>?
+    /// Отпечатки того, что последний раз поставили в систему: без правки данных система не опрашивается.
+    @ObservationIgnored var alertApplied: [String]?
+    @ObservationIgnored let alertPresenter = NotificationPresenter()
     @ObservationIgnored var reachTask: Task<Void, Never>?
     /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
     @ObservationIgnored var pinTask: Task<Void, Never>?
@@ -472,6 +483,7 @@ public final class AppModel {
             .map { PolicyPinterestReader($0) { await hub.policy() } }
         model.imageLinks = ImageLinkReader(direct: DirectImageFetcher(), server: PinterestClient.live(config: PinterestConfig.load())) { await hub.policy() }
         model.attachNetwork(hub)
+        model.attachAlerts()        // студийный час по расписанию, пока приложение закрыто (30а)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)
@@ -616,6 +628,7 @@ public final class AppModel {
     /// `after` идёт, когда снимок записан на диск и запись подтверждена (без диска — сразу): так стирают файлы кадров, что ушли
     /// из данных, — оборвись приложение раньше, в данных остался бы кадр без картинки (ревью GPT к a2549e7).
     func persist(then after: (@Sendable () -> Void)? = nil) {
+        syncStudioAlerts()      // расписание студийного часа — функция данных (30а)
         guard let store else { after?(); return }
         let snap = snapshot, prev = saving
         saving = Task {
