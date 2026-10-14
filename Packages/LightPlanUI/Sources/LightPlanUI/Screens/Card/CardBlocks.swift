@@ -217,7 +217,11 @@ struct CardPanesBlock: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if let k = p.label { paneKey(k, pal) }
                     if let t = p.title {
-                        Text(t).font(webFont(15)).foregroundStyle(pal.ink).lineLimit(1).padding(.top, p.label == nil ? 0 : 2)
+                        // Место со студией и залом («Фотостудия Томсон. Зал Эдисон», 29.11) — до двух строк: зал
+                        // второй частью заголовка не должен прятаться за многоточием.
+                        Text(t).font(webFont(15)).foregroundStyle(pal.ink).lineLimit(p.kind == .place ? 2 : 1)
+                            .fixedSize(horizontal: false, vertical: p.kind == .place)
+                            .padding(.top, p.label == nil ? 0 : 2)
                     }
                     if let v = p.value { Text(v).font(webFont(17)).monospacedDigit().foregroundStyle(pal.ink) }
                     if p.kind != .next, let sub = p.sub {

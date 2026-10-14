@@ -171,6 +171,20 @@ extension AppModel {
                     app.setFormCity(c)
                     app.editForm { $0.setTrip(true) }   // родного города в засеве нет — выезд руками
                 }
+                // Студия в точке (29.11): `LPShotFormStop tomson|bare|hall` — съёмка 13:00–14:00, точка со студией
+                // из засева (`tomson`), со студией без залов (`bare`) или с выбранным залом (`hall`).
+                if let mode = UserDefaults.standard.string(forKey: "LPShotFormStop") {
+                    app.editForm { $0.setStart(minute: 780); $0.duration = 60 }
+                    if app.form?.route.isEmpty == true { app.addFormStop() }
+                    if mode == "bare" {
+                        let bare = Studio(id: "shot_bare", name: "Лофт без залов", latitude: 56.47, longitude: 84.97)
+                        app.snapshot.studios.insert(bare, at: 0)
+                        app.setFormStopStudio(0, studio: bare)
+                    } else if let st = app.studios.first(where: { $0.id == "sd_st_tomson" }) {
+                        app.setFormStopStudio(0, studio: st)
+                        if mode == "hall" { app.setFormStopHall(0, hall: st.halls.first) }
+                    }
+                }
                 // Путь «Фотостудия» точки (шаг 4б): `defaults write … LPShotFormStudio 1`.
                 if UserDefaults.standard.bool(forKey: "LPShotFormStudio") {
                     if app.form?.route.isEmpty == true { app.addFormStop() }

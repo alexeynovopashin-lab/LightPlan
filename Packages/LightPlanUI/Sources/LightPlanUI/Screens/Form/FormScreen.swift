@@ -72,6 +72,15 @@ struct FormScreen: View {
                 .padding(.horizontal, 24)
             }
             .onAppear { Self.launchScroll.map { id in DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { proxy.scrollTo(id, anchor: .top) } } }
+            #if DEBUG
+            // Снимок сценария (29.11): `-LPShotStopWheel start|end|hall` открывает барабан у точки 0.
+            .onAppear {
+                guard let w = UserDefaults.standard.string(forKey: "LPShotStopWheel") else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    stopWheel = w == "hall" ? .hall(0) : w == "end" ? .end(0) : .start(0)
+                }
+            }
+            #endif
             }
             .scrollDismissesKeyboard(.interactively)
             #if os(iOS)
