@@ -1,9 +1,9 @@
 {
  "me": {
-  "city": "Барнаул",
-  "cityLat": 53.3548,
-  "cityLon": 83.7698,
-  "cityAt": "Барнаул",
+  "city": "Томск",
+  "cityLat": 56.4977,
+  "cityLon": 84.9744,
+  "cityAt": "Томск",
   "cityCC": "ru",
   "met": true
  },
@@ -161,12 +161,12 @@
    "persons": [],
    "place": "Томсон",
    "placeTown": "Томск",
-   "placeAddr": "Томск, Красноармейская, 101",
+   "placeAddr": "Томск, Красноармейская, 101а",
    "placeLat": 56.472,
    "placeLon": 84.97,
    "placeCity": true,
    "studioId": "sd_st_tomson",
-   "hallId": "sd_h_tesla",
+   "hallId": "sd_h_sfera",
    "rentFrom": 720,
    "rentTo": 780,
    "wish": [],
@@ -569,7 +569,7 @@
    "persons": [],
    "place": "Томсон",
    "placeTown": "Томск",
-   "placeAddr": "Томск, Красноармейская, 101",
+   "placeAddr": "Томск, Красноармейская, 101а",
    "placeLat": 56.472,
    "placeLon": 84.97,
    "placeCity": true,
@@ -676,7 +676,7 @@
    ],
    "place": "Томсон",
    "placeTown": "Томск",
-   "placeAddr": "Томск, Красноармейская, 101",
+   "placeAddr": "Томск, Красноармейская, 101а",
    "placeLat": 56.472,
    "placeLon": 84.97,
    "placeCity": true,
@@ -784,12 +784,12 @@
    "persons": [],
    "place": "Томсон",
    "placeTown": "Томск",
-   "placeAddr": "Томск, Красноармейская, 101",
+   "placeAddr": "Томск, Красноармейская, 101а",
    "placeLat": 56.472,
    "placeLon": 84.97,
    "placeCity": true,
    "studioId": "sd_st_tomson",
-   "hallId": "sd_h_tesla",
+   "hallId": "sd_h_sfera",
    "rentFrom": 840,
    "rentTo": 930,
    "wish": [],
@@ -1777,8 +1777,8 @@
   {
    "id": "sd_st_tomson",
    "name": "Томсон",
-   "address": "Томск, Красноармейская, 101",
-   "tel": "+7 961 887-80-78",
+   "address": "Томск, Красноармейская, 101а",
+   "tel": "+7 923 412-33-30",
    "town": "Томск",
    "lat": 56.472,
    "lon": 84.97,
@@ -1789,8 +1789,12 @@
      "name": "Эдисон"
     },
     {
-     "id": "sd_h_tesla",
-     "name": "Тесла"
+     "id": "sd_h_sfera",
+     "name": "Сфера"
+    },
+    {
+     "id": "sd_h_vegas",
+     "name": "Вегас"
     }
    ]
   },

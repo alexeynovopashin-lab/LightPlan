@@ -449,6 +449,19 @@ public final class AppModel {
         }
     }
 
+    /// Снимок на старте. `fresh` — файла данных ещё нет. Тестовая копия ветки на свежей установке
+    /// получает засев (город Алексея и его студия лежат в нём); данные, которые уже есть,
+    /// и основное приложение засев не видят. Не разобрался файл — пустой снимок в памяти,
+    /// файл не трогаем, пока человек сам что-нибудь не поменяет.
+    static func startSnapshot(store: Store, fresh: Bool, bundleID: String?, now: Date = Date()) async -> Snapshot {
+        var snapshot = (try? await store.load()) ?? Snapshot()
+        if fresh, bundleID != "Novopashin.LightPlan", let seed = TestSeed.snapshot(now: now) {
+            snapshot = seed
+            try? await store.saveNow(seed)
+        }
+        return snapshot
+    }
+
     /// Живое приложение: снимок из папки приложения, Apple для места и имени,
     /// Open-Meteo для погоды.
     public static func live() async -> AppModel {
@@ -463,14 +476,7 @@ public final class AppModel {
         let seeded = dir.map { !FileManager.default.fileExists(atPath: $0.appendingPathComponent("light-plan.json").path) }
             ?? false
         if let store {
-            // Не разобрался файл — пустой снимок в памяти, файл не трогаем,
-            // пока человек сам что-нибудь не поменяет.
-            snapshot = (try? await store.load()) ?? Snapshot()
-            if seeded, Bundle.main.bundleIdentifier != "Novopashin.LightPlan",
-               let seed = TestSeed.snapshot() {
-                snapshot = seed
-                try? await store.saveNow(seed)
-            }
+            snapshot = await Self.startSnapshot(store: store, fresh: seeded, bundleID: Bundle.main.bundleIdentifier)
         }
         // Пустая жанровая папка на каждый включённый жанр — один раз, пишется сразу (веб `mbSeeded`).
         if RefLibrary.seedGenreFolders(in: &snapshot.extra, genres: Moodboard.enabledGenres(snapshot.genres).map(\.rawValue),
