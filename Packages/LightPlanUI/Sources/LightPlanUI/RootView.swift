@@ -125,6 +125,13 @@ private struct Shell: View {
                 .transition(.move(edge: .trailing))
                 .zIndex(BackZ.orgCard)
             }
+            // Слой AR (29.8в): дуга солнца поверх камеры; вход — место и момент, откуда открыли, экрану безразлично.
+            if let target = app.sunAR {
+                SunARScreen(app: app, target: target)
+                    .edgeBack(app, z: BackZ.sunAR) { app.closeSunAR() }
+                    .transition(.move(edge: .bottom))
+                    .zIndex(BackZ.sunAR)
+            }
             // Затемнение под листом места (`.scrim` веба, чёрный 0,55): лист
             // iOS 26 на неполной высоте экран под собой не затемняет.
             Color.black.opacity(app.placeSheetOpen ? 0.55 : 0)
@@ -138,7 +145,7 @@ private struct Shell: View {
         // Панель веба 84 pt вместе с полосой «домой»: над безопасной зоной
         // из неё видно 84 − низ зоны, остальное уходит под полосу.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil && !app.mb.isOpen && !app.org.isOpen && !app.docsNav.isOpen {
+            if !app.chapterOpen && !app.plannerPageOpen && app.card == nil && !app.mb.isOpen && !app.org.isOpen && !app.docsNav.isOpen && app.sunAR == nil {
                 GeometryReader { geo in
                     TabBarView(tab: $app.tab, lexicon: app.lexicon)
                         .shotNode("tabbar")
@@ -183,6 +190,9 @@ private struct Shell: View {
         .background { TouchWitnessHost() }
         #endif
         .onAppear {
+            #if DEBUG
+            app.debugOpenSunAR()
+            #endif
             // Слои «Съёмок» лежат под вкладкой в дереве всегда: берём их, только пока вкладка выбрана.
             app.edgeBack.isLive = { [weak app] l in l.z >= EdgeBackRule.shellFloor || app?.tab == .planner }
         }

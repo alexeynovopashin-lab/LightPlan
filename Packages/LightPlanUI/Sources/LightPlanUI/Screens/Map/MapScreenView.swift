@@ -282,6 +282,10 @@ struct MapScreenView: View {
                     .position(x: size.width - 12 - 17, y: ctlBot - 12 - 17)
                 routeButton(pal, darkCanvas: darkCanvas)
                     .position(x: size.width - 12 - 17, y: ctlBot - 54 - 17)
+                // Над «Маршрутом» (96 над низом, шаг 29.8в): слой AR на точке карты. Вход временный — слово
+                // Алексея 14.10, экран AR от места входа не зависит.
+                arButton(pal, darkCanvas: darkCanvas)
+                    .position(x: size.width - 12 - 17, y: ctlBot - 96 - 17)
 
                 // Возврат низа — по центру, там, где панель была (`.map-bare-btn`).
                 if bare && !routeMode {
@@ -952,6 +956,16 @@ struct MapScreenView: View {
         }
     }
 
+    /// «AR» (шаг 29.8в): дуга солнца на выбранный день поверх камеры. Точка — под булавкой карты, момент — сейчас.
+    private func arButton(_ pal: Palette, darkCanvas: Bool) -> some View {
+        MapRoundButton(pal: pal, darkCanvas: darkCanvas, on: false, label: app.lexicon.t("ar.open"),
+                       node: "map.arBtn", action: {
+            withAnimation(PlanMotion.pick(PlanMotion.overlay)) { app.openSunAR(place: app.light.timebar.place) }
+        }) {
+            Text("AR").font(.system(size: 11, weight: .bold)).tracking(0.2)
+        }
+    }
+
     /// «Моё место» (`detectLocation`): карта и место приложения — туда, где
     /// телефон. Разрешение спрашивается здесь же, как у листа места.
     private func hereButton(_ pal: Palette, darkCanvas: Bool) -> some View {
@@ -1181,7 +1195,7 @@ private struct LayersGlyph: Shape {
 
 /// Знак живого компаса — свой SVG в разметке веба: круг r 8,5 и стрелка
 /// `M15 9l-2 5-4 1 2-5z`.
-private struct HeadingGlyph: Shape {
+struct HeadingGlyph: Shape {
     func path(in rect: CGRect) -> Path {
         let k = min(rect.width, rect.height) / 24
         var p = Path(ellipseIn: CGRect(x: 3.5, y: 3.5, width: 17, height: 17))

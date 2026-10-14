@@ -44,6 +44,8 @@ public final class AppModel {
     public let placeSearch: any PlaceSearch
     /// Лист «Где снимаем» открыт: кнопка места в шапке «Света» и «Карты».
     public var placeSheetOpen = false
+    /// Слой AR: дуга солнца поверх камеры (29.8в). `nil` — закрыт. Вход — место и момент, откуда открыли — не помним.
+    var sunAR: SunARTarget?
     /// Путь, на котором лист открывается (пара снимков открывает его сразу на
     /// «Месте» или «Геопозиции»); кнопка шапки — всегда развилка.
     var placeSheetStart: PlaceSheetForm.Way = .fork

@@ -184,7 +184,16 @@
     "mb.binBack": "Вернуть",
     "mb.binGoWeek": "Убранное уйдёт в корзину этого мудборда. Что нигде больше не лежит, пропадёт через 7 дней.",
     "mb.binGoShoot": "Убранное уйдёт в корзину этого мудборда. Что нигде больше не лежит, пропадёт после окончания съёмки.",
-    "mb.binGoNever": "Убранное уйдёт в корзину этого мудборда и останется там, пока вы её не очистите."
+    "mb.binGoNever": "Убранное уйдёт в корзину этого мудборда и останется там, пока вы её не очистите.",
+    "ar.open": "Солнце в камере",
+    "ar.now": "Сейчас",
+    "ar.time": "Время",
+    "ar.figure8": "Проведите телефоном восьмёркой",
+    "ar.drag": "Ведите пальцем, чтобы осмотреться",
+    "ar.noCamera": "Камеры нет: на экране дуга солнца и компас.",
+    "ar.cameraDenied": "Нет доступа к камере: дуга и компас работают без неё. Разрешить можно в настройках телефона.",
+    "ar.cameraRestricted": "Камера ограничена на этом телефоне: дуга и компас работают без неё.",
+    "ar.cameraFailed": "Камера не включилась: дуга и компас работают без неё."
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -370,7 +379,16 @@
     "mb.binBack": "Restore",
     "mb.binGoWeek": "Removed frames go to this moodboard’s bin. Anything that lies nowhere else is deleted after 7 days.",
     "mb.binGoShoot": "Removed frames go to this moodboard’s bin. Anything that lies nowhere else is deleted when the shoot ends.",
-    "mb.binGoNever": "Removed frames go to this moodboard’s bin and stay there until you empty it."
+    "mb.binGoNever": "Removed frames go to this moodboard’s bin and stay there until you empty it.",
+    "ar.open": "Sun in the camera",
+    "ar.now": "Now",
+    "ar.time": "Time",
+    "ar.figure8": "Move the phone in a figure of eight",
+    "ar.drag": "Drag to look around",
+    "ar.noCamera": "No camera: the screen shows the sun arc and the compass.",
+    "ar.cameraDenied": "No camera access: the arc and compass work without it. You can allow it in the phone settings.",
+    "ar.cameraRestricted": "The camera is restricted on this phone: the arc and compass work without it.",
+    "ar.cameraFailed": "The camera did not start: the arc and compass work without it."
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -556,7 +574,16 @@
     "mb.binBack": "Restaurar",
     "mb.binGoWeek": "Lo quitado va a la papelera de este moodboard. Lo que no esté en otro sitio se borra a los 7 días.",
     "mb.binGoShoot": "Lo quitado va a la papelera de este moodboard. Lo que no esté en otro sitio se borra al terminar la sesión.",
-    "mb.binGoNever": "Lo quitado va a la papelera de este moodboard y se queda allí hasta que la vacíe."
+    "mb.binGoNever": "Lo quitado va a la papelera de este moodboard y se queda allí hasta que la vacíe.",
+    "ar.open": "Sol en la cámara",
+    "ar.now": "Ahora",
+    "ar.time": "Hora",
+    "ar.figure8": "Mueve el teléfono en forma de ocho",
+    "ar.drag": "Arrastra para mirar alrededor",
+    "ar.noCamera": "Sin cámara: la pantalla muestra el arco del sol y la brújula.",
+    "ar.cameraDenied": "Sin acceso a la cámara: el arco y la brújula funcionan sin ella. Puedes permitirla en los ajustes del teléfono.",
+    "ar.cameraRestricted": "La cámara está restringida en este teléfono: el arco y la brújula funcionan sin ella.",
+    "ar.cameraFailed": "La cámara no se inició: el arco y la brújula funcionan sin ella."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -741,7 +768,16 @@
     "mb.binBack": "戻す",
     "mb.binGoWeek": "外したカットはこのムードボードのゴミ箱に入ります。ほかにないものは7日後に消えます。",
     "mb.binGoShoot": "外したカットはこのムードボードのゴミ箱に入ります。ほかにないものは撮影の終了後に消えます。",
-    "mb.binGoNever": "外したカットはこのムードボードのゴミ箱に入り、空にするまで残ります。"
+    "mb.binGoNever": "外したカットはこのムードボードのゴミ箱に入り、空にするまで残ります。",
+    "ar.open": "カメラで太陽を見る",
+    "ar.now": "今",
+    "ar.time": "時刻",
+    "ar.figure8": "スマートフォンを8の字に動かしてください",
+    "ar.drag": "指でなぞって見回せます",
+    "ar.noCamera": "カメラがありません。太陽の弧とコンパスを表示します。",
+    "ar.cameraDenied": "カメラへのアクセスがありません。弧とコンパスはカメラなしでも使えます。許可は端末の設定からできます。",
+    "ar.cameraRestricted": "このスマートフォンではカメラが制限されています。弧とコンパスはカメラなしでも使えます。",
+    "ar.cameraFailed": "カメラを起動できませんでした。弧とコンパスはカメラなしでも使えます。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -926,6 +962,15 @@
     "mb.binBack": "恢复",
     "mb.binGoWeek": "移除的图片会进入此情绪板的回收站。不在其他位置的图片将在 7 天后删除。",
     "mb.binGoShoot": "移除的图片会进入此情绪板的回收站。不在其他位置的图片将在拍摄结束后删除。",
-    "mb.binGoNever": "移除的图片会进入此情绪板的回收站，直到您清空前一直保留。"
+    "mb.binGoNever": "移除的图片会进入此情绪板的回收站，直到您清空前一直保留。",
+    "ar.open": "相机中的太阳",
+    "ar.now": "现在",
+    "ar.time": "时间",
+    "ar.figure8": "请将手机画“8”字",
+    "ar.drag": "拖动手指环顾四周",
+    "ar.noCamera": "没有相机：屏幕显示太阳弧线和指南针。",
+    "ar.cameraDenied": "无法使用相机：弧线和指南针无需相机即可使用。可在手机设置中允许。",
+    "ar.cameraRestricted": "此手机限制了相机：弧线和指南针无需相机即可使用。",
+    "ar.cameraFailed": "相机未能启动：弧线和指南针无需相机即可使用。"
   }
 }
