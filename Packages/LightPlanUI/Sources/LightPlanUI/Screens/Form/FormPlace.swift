@@ -54,7 +54,7 @@ struct FormPlaceBlock: View {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(0..<n, id: \.self) { i in
                             row(i, f, last: i == n - 1 && askIdx != i, pal, t)
-                            if wheel?.stop == i { wheelView(i, f, pal) }
+                            if wheel?.stop == i { wheelBlock(i, f, pal, t) }
                             if waysShown, askIdx == i { ways(i, inList: true, pal, t) }
                         }
                         if !forStop { addButton(f, pal, t) }
@@ -219,6 +219,28 @@ struct FormPlaceBlock: View {
     }
 
     // MARK: - Колёса
+
+    /// Колесо точки с круглой «галочкой» справа внизу (29.11): значение уже
+    /// живое, галочка — «закончил»: колесо закрывается, как от тапа мимо.
+    @ViewBuilder
+    private func wheelBlock(_ i: Int, _ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
+        wheelView(i, f, pal)
+            .overlay(alignment: .bottomTrailing) {
+                Button {
+                    withAnimation(.easeOut(duration: 0.34)) { wheel = nil }
+                } label: {
+                    Icon("check", size: 17, line: 2.2).foregroundStyle(pal.brass)
+                        .frame(width: 36, height: 36)
+                        .background(Color(hex: 0xE2A44C, alpha: 0.16), in: Circle())
+                        .overlay(Circle().strokeBorder(pal.pressBrass, lineWidth: 1))
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 6).padding(.bottom, 0)
+                .accessibilityLabel(t.t("form.stopDone"))
+                .shotNode("form.stopWheel.done")
+            }
+    }
 
     @ViewBuilder
     private func wheelView(_ i: Int, _ f: EventForm, _ pal: Palette) -> some View {
