@@ -198,7 +198,9 @@ final class SunARModel {
         case .granted: break
         }
         let outcome = await driver.run()
-        guard started, epoch == mine else { driver.stop(); return }
+        // Экран закрыли, пока камера поднималась: `stop()` уже поставил остановку в очередь камеры после запуска.
+        // Останавливать отсюда ещё раз нельзя — при повторном открытии это выключило бы уже новую сессию.
+        guard started, epoch == mine else { return }
         camera = outcome.state
         if let o = outcome.optics { optics = o }
     }
@@ -220,7 +222,8 @@ final class SunARModel {
     /// Закрыть калибровку: «Готово», «Пропустить» или «датчика нет». Любой выход помечает экран увиденным —
     /// второй раз сам не появляется. Камера, если ещё не поднималась, поднимается теперь.
     func finishCalibration() async {
-        guard calibrating else { return }
+        // После `stop()` экран закрыт: «Готово», показанное на закрывающемся экране, флаг не ставит.
+        guard calibrating, started else { return }
         calibrating = false
         flag.seen = true
         await startCamera()

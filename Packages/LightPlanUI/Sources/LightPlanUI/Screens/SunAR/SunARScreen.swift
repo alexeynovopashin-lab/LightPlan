@@ -72,15 +72,15 @@ struct SunARScreen: View {
                         .transition(.opacity)
                         .task(id: model.calibrationPhase) {
                             // «Готово» и «нет датчика» экран не держит: показал итог — и дальше к камере.
+                            // Закрыли экран, пока «Готово» на виду, — задача отменена, калибровку не завершаем.
+                            let dwell: Duration
                             switch model.calibrationPhase {
-                            case .ready:
-                                try? await Task.sleep(for: .milliseconds(900))
-                                await model.finishCalibration()
-                            case .noSensor:
-                                try? await Task.sleep(for: .milliseconds(1800))
-                                await model.finishCalibration()
-                            case .measuring: break
+                            case .ready: dwell = .milliseconds(900)
+                            case .noSensor: dwell = .milliseconds(1800)
+                            case .measuring: return
                             }
+                            do { try await Task.sleep(for: dwell) } catch { return }
+                            await model.finishCalibration()
                         }
                 }
             }

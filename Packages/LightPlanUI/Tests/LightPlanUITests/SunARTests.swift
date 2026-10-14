@@ -140,36 +140,69 @@ struct SunARTests {
         var seen = false
     }
 
-    /// Камера, которой тест управляет сам: разрешение либо сразу, либо висит, пока тест не «нажмёт» ответ.
+    /// Камера, которой тест управляет сам: разрешение (и запуск) либо сразу, либо висят, пока тест не «нажмёт» ответ.
+    /// Счётчик вызовов растёт в одной секции с сохранением ожидания: тест, дождавшийся счётчика, отвечает уже по
+    /// сохранённому (ревью GPT к 9d2cc58, пункт 3). Ответ, пришедший раньше вопроса, запоминается.
     private final class FakeCamera: ARCameraDriving, @unchecked Sendable {
         private let lock = NSLock()
         private var waiting: CheckedContinuation<ARCameraAuthorization, Never>?
+        private var early: ARCameraAuthorization?
+        private var runWaiting: [CheckedContinuation<ARCameraOutcome, Never>] = []
         private var _authorizeCalls = 0, _runCalls = 0, _stopCalls = 0
         let immediate: ARCameraAuthorization?
+        let holdRun: Bool
 
-        init(immediate: ARCameraAuthorization? = .granted) { self.immediate = immediate }
+        init(immediate: ARCameraAuthorization? = .granted, holdRun: Bool = false) {
+            self.immediate = immediate
+            self.holdRun = holdRun
+        }
 
         var authorizeCalls: Int { lock.withLock { _authorizeCalls } }
         var runCalls: Int { lock.withLock { _runCalls } }
         var stopCalls: Int { lock.withLock { _stopCalls } }
 
         func authorize() async -> ARCameraAuthorization {
-            lock.withLock { _authorizeCalls += 1 }
-            if let immediate { return immediate }
-            return await withCheckedContinuation { c in lock.withLock { waiting = c } }
+            if let immediate {
+                lock.withLock { _authorizeCalls += 1 }
+                return immediate
+            }
+            return await withCheckedContinuation { (c: CheckedContinuation<ARCameraAuthorization, Never>) in
+                let ready = lock.withLock { () -> ARCameraAuthorization? in
+                    _authorizeCalls += 1
+                    if let a = early { early = nil; return a }
+                    waiting = c
+                    return nil
+                }
+                if let ready { c.resume(returning: ready) }
+            }
         }
 
         /// Человек нажал в системном окне.
         func answer(_ a: ARCameraAuthorization) {
             let c = lock.withLock { () -> CheckedContinuation<ARCameraAuthorization, Never>? in
-                let c = waiting; waiting = nil; return c
+                guard let c = waiting else { early = a; return nil }
+                waiting = nil
+                return c
             }
             c?.resume(returning: a)
         }
 
         func run() async -> ARCameraOutcome {
-            lock.withLock { _runCalls += 1 }
-            return ARCameraOutcome(state: .running, optics: nil)
+            guard holdRun else {
+                lock.withLock { _runCalls += 1 }
+                return ARCameraOutcome(state: .running, optics: nil)
+            }
+            return await withCheckedContinuation { (c: CheckedContinuation<ARCameraOutcome, Never>) in
+                lock.withLock { _runCalls += 1; runWaiting.append(c) }
+            }
+        }
+
+        /// Запуск сессии закончился (по порядку вызовов).
+        func finishRun(_ index: Int) {
+            let c = lock.withLock { () -> CheckedContinuation<ARCameraOutcome, Never>? in
+                index < runWaiting.count ? runWaiting[index] : nil
+            }
+            c?.resume(returning: ARCameraOutcome(state: .running, optics: nil))
         }
 
         func stop() { lock.withLock { _stopCalls += 1 } }
@@ -381,6 +414,41 @@ struct SunARTests {
         await starting.value
         #expect(cam.runCalls == 0, "сессия не должна подниматься за закрытым экраном")
         #expect(m.camera != .running)
+    }
+
+    @Test("закрыли и открыли заново, пока старый запуск камеры не вернулся: из старой задачи камера не гасится")
+    func staleRunDoesNotStopNewSession() async {
+        let cam = FakeCamera(immediate: .granted, holdRun: true)
+        let flag = MemoryFlag()
+        flag.seen = true
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: Feed(), camera: cam, flag: flag)
+        let first = Task { await m.start() }
+        for _ in 0..<400 where cam.runCalls < 1 { await Task.yield() }
+        #expect(cam.runCalls == 1)
+        m.stop()                      // закрыли: одна остановка от самого `stop`
+        let second = Task { await m.start() }
+        for _ in 0..<400 where cam.runCalls < 2 { await Task.yield() }
+        #expect(cam.runCalls == 2)
+        let stopsBefore = cam.stopCalls
+        cam.finishRun(0)              // старый запуск вернулся с опозданием
+        await first.value
+        #expect(cam.stopCalls == stopsBefore, "старая задача не должна гасить новую сессию")
+        cam.finishRun(1)
+        await second.value
+        #expect(m.camera == .running)
+        m.stop()
+    }
+
+    @Test("экран закрыт, пока показано «Готово»: калибровка не завершается и флаг не ставится")
+    func calibrationNotFinishedAfterClose() async {
+        let feed = Feed()
+        let flag = MemoryFlag()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, flag: flag)
+        await m.start()
+        #expect(m.calibrating)
+        m.stop()
+        await m.finishCalibration()
+        #expect(!flag.seen, "закрытый экран не отмечает калибровку пройденной")
     }
 
     @Test("экран открыт до конца окна: «Разрешить» поднимает камеру")
