@@ -42,7 +42,8 @@ public enum SunTrack {
 
     /// Сколько порогов лежит между двумя высотами (в любую сторону).
     public static func thresholdsCrossed(from a: Degrees, to b: Degrees) -> Int {
-        lightThresholds.reduce(0) { n, t in (a - t) * (b - t) < 0 ? n + 1 : n }
+        // Сторона порога — «ниже него» (`< t`): отсчёт ровно на пороге лежит выше, значит щелчок будет на одном шаге.
+        lightThresholds.reduce(0) { n, t in (a < t) != (b < t) ? n + 1 : n }
     }
 
     /// Строка «до заката …» под временем: что ближайшее и сколько минут до него или после него.

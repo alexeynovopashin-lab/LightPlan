@@ -462,6 +462,10 @@ struct SunARLightTests {
         #expect(SunTrack.thresholdsCrossed(from: 0.5, to: -1.5) == 1)     // закат
         #expect(SunTrack.thresholdsCrossed(from: -3, to: -5) == 1)        // синий час начался
         #expect(SunTrack.thresholdsCrossed(from: 40, to: 20) == 0)        // в полдень порогов нет
+        // Отсчёт ровно на пороге: щелчок один — на одном из двух шагов, не ноль и не два (ревью GPT к 5e03f85).
+        #expect(SunTrack.thresholdsCrossed(from: 7, to: 6.05) + SunTrack.thresholdsCrossed(from: 6.05, to: 5) == 1)
+        #expect(SunTrack.thresholdsCrossed(from: 5, to: 6.05) + SunTrack.thresholdsCrossed(from: 6.05, to: 7) == 1)
+        #expect(SunTrack.thresholdsCrossed(from: -4, to: -4) == 0)
     }
 
     // MARK: - Строка «до заката»
