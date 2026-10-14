@@ -60,7 +60,7 @@ struct DayTileText {
         let lastEnd = last.end ?? last.start ?? firstT
         // Точка, чьё начало уже прошло, — «Сейчас», и до начала съёмки: лента ниже
         // её и так светит текущей. «Скоро: X через −28 мин» говорил о том, что
-        // уже было (29.11; веб пишет то же — «через −1 ч −28 мин», web_defects К24).
+        // уже было (29.11; веб пишет то же — «через −1 ч −28 мин», web_defects П8).
         if phase == .during || phase == .before, cur >= 0, let nowMin {
             now = t.t("day.nowAt", ["name": route[cur].name])
             if cur + 1 < route.count, let nt = route[cur + 1].start {
