@@ -72,6 +72,19 @@ struct SunARScreen: View {
 
     @ViewBuilder
     private func background(size: CGSize, sun: SunSample, pal: Palette) -> some View {
+        #if DEBUG
+        // Замер контраста (`-LPSunARBackdrop white|gray|black`): сплошной фон вместо кадра, чтобы по снимку
+        // посчитать контраст дуги и подписей на самых тяжёлых фонах.
+        if let b = UserDefaults.standard.string(forKey: "LPSunARBackdrop") {
+            Color(white: b == "white" ? 1 : b == "gray" ? 0.5 : 0)
+        } else { realBackground(size: size, sun: sun, pal: pal) }
+        #else
+        realBackground(size: size, sun: sun, pal: pal)
+        #endif
+    }
+
+    @ViewBuilder
+    private func realBackground(size: CGSize, sun: SunSample, pal: Palette) -> some View {
         #if os(iOS)
         if model.camera.isLive {
             ARCameraPreview(session: model.cameraSession)
@@ -308,6 +321,8 @@ struct SunAROverlay: View {
             for h in scene.hours {
                 let c = CGPoint(h.point)
                 guard bounds.contains(c) else { continue }
+                // Солнце стоит на часе — подпись часа лежала бы под диском: её роль играет панель времени.
+                if let m = scene.marker, hypot(m.x - h.point.x, m.y - h.point.y) < 26 { continue }
                 let dot = CGRect(x: c.x - 3.5, y: c.y - 3.5, width: 7, height: 7)
                 ctx.fill(Path(ellipseIn: dot.insetBy(dx: -1.5, dy: -1.5)), with: .color(.black.opacity(SunARInk.outlineOpacity)))
                 ctx.fill(Path(ellipseIn: dot), with: .color(SunARInk.light))
