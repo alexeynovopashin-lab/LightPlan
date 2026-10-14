@@ -269,18 +269,22 @@ public struct EventForm: Equatable, Sendable {
     public mutating func setStart(day d: CivilDate? = nil, minute m: Int? = nil) {
         if let d { day = d; dayUnset = false }
         if let m {
+            let old = (start: start, end: start + duration)
             start = m
             timeIsProposed = false
             timeFromLight = false
+            carryStudioStops(from: old)
         }
     }
 
     /// Конец правят руками (веб `setEndFrom`): длительность из дня и минуты конца.
     /// Конец раньше начала — описка, сдвигается на следующие сутки.
     public mutating func setEnd(dayOffset: Int, minuteOfDay: Int) {
+        let old = (start: start, end: start + duration)
         var d = dayOffset * 1440 + minuteOfDay - start
         while d < Self.minDuration { d += 1440 }
         duration = min(d, Self.maxDuration)
+        carryStudioStops(from: old)
     }
 
     // MARK: - Клиент, организация

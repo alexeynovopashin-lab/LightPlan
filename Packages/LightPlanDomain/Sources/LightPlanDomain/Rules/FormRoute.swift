@@ -173,10 +173,29 @@ extension EventForm {
     }
 
     /// Студия в точку: зал сбрасывается, у безымянной точки имя — «Фотостудия».
+    /// Точка без своих часов берёт часы съёмки целиком — начало и конец (слово
+    /// Алексея, 14.10: съёмка 13:00–14:00 → студия 13:00–14:00). Часы, которые
+    /// фотограф уже поставил, не трогаются; по-разному — правит он сам.
     public mutating func setStopStudio(_ i: Int, studio: Studio, studioWord: String, spots: [Spot], studios: [Studio]) {
+        let window = (start, start + duration)
         editStop(i, spots: spots, studios: studios) {
             $0.studioId = studio.id; $0.spotId = nil; $0.hallId = nil; $0.placeText = studio.name
             if $0.name.trimmingCharacters(in: .whitespaces).isEmpty { $0.name = studioWord }
+            if $0.start == nil && $0.end == nil { $0.start = window.0; $0.end = window.1 }
+        }
+    }
+
+    /// Съёмку подвинули — точки со студией, чьи часы совпадали с её окном, едут
+    /// следом: фотограф их не менял, они и были «время съёмки». Свои часы точки
+    /// и точки по брони (часы даёт студия) остаются. Вызывается после правки
+    /// начала или конца с прежним окном.
+    mutating func carryStudioStops(from old: (start: Int, end: Int)) {
+        guard bookingRef == nil else { return }
+        let new = (start: start, end: start + duration)
+        guard new != old else { return }
+        for i in route.indices where route[i].studioId != nil {
+            if route[i].start == old.start { route[i].start = new.start }
+            if route[i].end == old.end { route[i].end = new.end }
         }
     }
 

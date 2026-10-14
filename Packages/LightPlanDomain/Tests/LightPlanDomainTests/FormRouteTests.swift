@@ -72,6 +72,62 @@ import LightPlanDomain
         #expect(t.place == "Лагерный сад" && t.latitude == 56.45 && t.studioId == nil)
     }
 
+    // MARK: - 29.11, пункт 1: часы студии — часы съёмки
+
+    @Test func studioStopTakesTheShootWindow() {
+        // Съёмка 13:00–14:00 (слово Алексея 14.10): студия в точке встаёт на те же часы.
+        var f = EventForm.new(id: "x3", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)
+        f.duration = 60
+        f.addStop()
+        f.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        #expect(f.route[0].start == 780 && f.route[0].end == 840)
+        #expect(f.session(orgName: nil, and: " и ", studios: [lumen]).rentFrom == 780)
+    }
+
+    @Test func studioStopKeepsHoursThePhotographerSet() {
+        var f = EventForm.new(id: "x4", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)
+        f.duration = 60
+        f.addStop()
+        f.setStopTime(0, end: false, minute: 690, hint: "Старт")
+        f.setStopTime(0, end: true, minute: 735, hint: "Старт")
+        f.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        #expect(f.route[0].start == 690 && f.route[0].end == 735, "своё время точки не затирается")
+        // Одно из двух поставлено — второе тоже не выдумывается.
+        var g = f
+        g.editStop(0) { $0.end = nil }
+        g.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        #expect(g.route[0].start == 690 && g.route[0].end == nil)
+    }
+
+    @Test func studioStopFollowsTheShootUntilTouched() {
+        // Причина 14:15–14:40 при съёмке 15:15–16:15: точку поставили на часы
+        // съёмки, съёмку подвинули, а точка осталась на прежних.
+        var f = EventForm.new(id: "x5", day: day, start: 855, fromLight: false, genre: .portrait, light: nil, home: home)
+        f.duration = 60
+        f.addStop()
+        f.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        #expect(f.route[0].start == 855 && f.route[0].end == 915)
+        f.setStart(minute: 915)
+        #expect(f.route[0].start == 915 && f.route[0].end == 975, "съёмка 15:15–16:15 — студия там же")
+        f.setEnd(dayOffset: 0, minuteOfDay: 1050)
+        #expect(f.route[0].end == 1050, "конец съёмки тянет конец точки")
+        // Своё время точки съёмка не двигает.
+        f.setStopTime(0, end: false, minute: 930, hint: "Старт")
+        f.setStart(minute: 960)
+        #expect(f.route[0].start == 930)
+    }
+
+    @Test func bookedStudioStopStaysWhereTheBookingPut() {
+        var f = EventForm.new(id: "x6", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)
+        f.duration = 60
+        f.addStop()
+        f.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        f.applyBooking(ref: "B1", hallId: "h1", start: 780, end: 840,
+                       label: { "\($0), зал \($1)" }, spots: [], studios: [lumen])
+        f.setStart(minute: 900)
+        #expect(f.route[0].start == 780 && f.route[0].end == 840, "бронь — факт студии, съёмка его не двигает")
+    }
+
     @Test func stopTimeTakesHintAsName() {
         var f = fresh(.wedding)
         #expect(f.stopTimeSeed(0, end: false) == 900)
