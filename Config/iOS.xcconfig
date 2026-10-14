@@ -21,4 +21,4 @@ INFOPLIST_FILE = Config/Info-iOS.plist
 INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Light Plan finds out where you are to work out light and weather for your place. Your coordinates go to Open-Meteo for the forecast or, where it is unreachable, to our server in Yandex Cloud; Apple looks up the place name. Exact coordinates are not sent anywhere else.
 // Камера — слой AR (шаг 29.8в): дуга солнца поверх живого кадра. Спрашивается при первом входе в AR и только если
 // камера есть. Кадры нигде не сохраняются и никуда не уходят (превью без выхода кадров и без записи).
-INFOPLIST_KEY_NSCameraUsageDescription = Камера нужна, чтобы показать, где будет солнце: Light Plan накладывает дугу солнца на живой кадр. Кадры не сохраняются и никуда не отправляются.
+INFOPLIST_KEY_NSCameraUsageDescription = Light Plan uses the camera to show where the sun will be: it draws the sun’s arc over the live view. Frames are not saved and are not sent anywhere.

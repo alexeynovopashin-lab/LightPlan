@@ -72,6 +72,42 @@
           }
         }
       }
+    },
+    "NSCameraUsageDescription": {
+      "comment": "Текст системного запроса камеры (29.8в, слой AR): кадры нигде не сохраняются и не уходят. Базовое значение — английский в Config/iOS.xcconfig, переводы — здесь; формулировку согласует Алексей.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan uses the camera to show where the sun will be: it draws the sun’s arc over the live view. Frames are not saved and are not sent anywhere."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Камера нужна, чтобы показать, где будет солнце: Light Plan накладывает дугу солнца на живой кадр. Кадры не сохраняются и никуда не отправляются."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan usa la cámara para mostrar dónde estará el sol: dibuja el arco del sol sobre la imagen en vivo. Las imágenes no se guardan ni se envían a ningún sitio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Planは、太陽がどこに来るかを示すためにカメラを使います。ライブ映像に太陽の軌道を重ねて表示します。映像は保存も送信もされません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan 使用相机来显示太阳的位置：在实时画面上叠加太阳轨迹。画面不会被保存，也不会发送到任何地方。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
