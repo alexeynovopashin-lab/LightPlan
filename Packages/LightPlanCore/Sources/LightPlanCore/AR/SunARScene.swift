@@ -29,6 +29,11 @@ public struct SunARScene: Sendable, Equatable {
     public let marker: ScreenPoint?
     /// Солнце ниже порога видимости дуги: маркер идёт призраком, а не пропадает.
     public let markerGhost: Bool
+    /// Выбранный момент — это «сейчас»: маркер один, и он же «сейчас» (метки сливаются, подпись одна).
+    public let markerIsNow: Bool
+    /// Солнце прямо сейчас (второй маркер); `nil` — за камерой, или метки слились, или «сейчас» не передали.
+    public let nowMarker: ScreenPoint?
+    public let nowGhost: Bool
     /// Многоугольник «земли» под горизонтом — для фона без камеры. `nil`, когда земли в кадре нет.
     public let ground: [ScreenPoint]?
 
@@ -36,8 +41,13 @@ public struct SunARScene: Sendable, Equatable {
     /// но разрыв за камерой ловится по ним.
     public static let horizonStep: Degrees = 5
 
+    /// - Parameters:
+    ///   - sun: солнце в выбранный момент (маркер «выбранный», дуга — этого дня).
+    ///   - now: солнце сию минуту; `nil` — «сейчас» экрану не передали.
+    ///   - pickedIsNow: выбранный момент равен «сейчас» — второго маркера нет, подпись одна.
     public static func make(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport,
-                            arc: [SunSample], sun: SunSample) -> SunARScene {
+                            arc: [SunSample], sun: SunSample, now: SunSample? = nil,
+                            pickedIsNow: Bool = false) -> SunARScene {
         func proj(_ az: Degrees, _ alt: Degrees) -> ScreenPoint? {
             SkyProjection.project(azimuth: az, altitude: alt, basis: basis, optics: optics, viewport: viewport)
         }
@@ -75,9 +85,17 @@ public struct SunARScene: Sendable, Equatable {
         }
 
         let marker = proj(sun.azimuth, sun.apparentAltitude)
+        // Метка «сейчас» — отдельная, когда выбранный момент не сейчас.
+        var nowMarker: ScreenPoint?
+        var nowGhost = false
+        if let now, !pickedIsNow {
+            nowMarker = proj(now.azimuth, now.apparentAltitude)
+            nowGhost = now.altitude < SunTrack.visibleFrom
+        }
 
         return SunARScene(horizon: horizon, arc: segments, hours: hours, cardinals: cardinals,
                           marker: marker, markerGhost: sun.altitude < SunTrack.visibleFrom,
+                          markerIsNow: pickedIsNow, nowMarker: nowMarker, nowGhost: nowGhost,
                           ground: groundPolygon(basis: basis, horizon: horizon, viewport: viewport))
     }
 

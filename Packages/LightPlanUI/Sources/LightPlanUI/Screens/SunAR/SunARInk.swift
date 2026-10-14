@@ -20,6 +20,9 @@ enum SunARInk {
     static let light = Color.white
     /// Диск солнца.
     static let sunFill = Color(hex: 0xFFC24D)
+    /// Метка солнца: радиус и отступ подписи от центра (над диском или под ним), pt.
+    static let markerRadius: CGFloat = 11
+    static let markerLabelOffset: CGFloat = 28
     /// Земля под горизонтом в состоянии «нет камеры».
     static let groundOpacity = 0.42
 

@@ -193,7 +193,16 @@
     "ar.noCamera": "Камеры нет: на экране дуга солнца и компас.",
     "ar.cameraDenied": "Нет доступа к камере: дуга и компас работают без неё. Разрешить можно в настройках телефона.",
     "ar.cameraRestricted": "Камера ограничена на этом телефоне: дуга и компас работают без неё.",
-    "ar.cameraFailed": "Камера не включилась: дуга и компас работают без неё."
+    "ar.cameraFailed": "Камера не включилась: дуга и компас работают без неё.",
+    "ar.nowTag": "сейчас",
+    "ar.magnetic": "Курс магнитный: дуга может уходить на ~10° (включите геолокацию)",
+    "ar.calibrate": "Калибровка",
+    "ar.calTitle": "Калибровка компаса",
+    "ar.calHint": "Проведите телефоном восьмёркой, пока шкала не заполнится",
+    "ar.calHold": "Хорошо. Теперь подержите телефон ровно",
+    "ar.calReady": "Готово",
+    "ar.calNoSensor": "Датчика нет, калибровка пропущена",
+    "ar.calSkip": "Пропустить"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -388,7 +397,16 @@
     "ar.noCamera": "No camera: the screen shows the sun arc and the compass.",
     "ar.cameraDenied": "No camera access: the arc and compass work without it. You can allow it in the phone settings.",
     "ar.cameraRestricted": "The camera is restricted on this phone: the arc and compass work without it.",
-    "ar.cameraFailed": "The camera did not start: the arc and compass work without it."
+    "ar.cameraFailed": "The camera did not start: the arc and compass work without it.",
+    "ar.nowTag": "now",
+    "ar.magnetic": "Magnetic heading: the arc may be off by ~10° (turn on location)",
+    "ar.calibrate": "Calibrate",
+    "ar.calTitle": "Compass calibration",
+    "ar.calHint": "Move the phone in a figure of eight until the bar fills",
+    "ar.calHold": "Good. Now hold the phone steady",
+    "ar.calReady": "Done",
+    "ar.calNoSensor": "No sensor, calibration skipped",
+    "ar.calSkip": "Skip"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -583,7 +601,16 @@
     "ar.noCamera": "Sin cámara: la pantalla muestra el arco del sol y la brújula.",
     "ar.cameraDenied": "Sin acceso a la cámara: el arco y la brújula funcionan sin ella. Puedes permitirla en los ajustes del teléfono.",
     "ar.cameraRestricted": "La cámara está restringida en este teléfono: el arco y la brújula funcionan sin ella.",
-    "ar.cameraFailed": "La cámara no se inició: el arco y la brújula funcionan sin ella."
+    "ar.cameraFailed": "La cámara no se inició: el arco y la brújula funcionan sin ella.",
+    "ar.nowTag": "ahora",
+    "ar.magnetic": "Rumbo magnético: el arco puede desviarse ~10° (activa la ubicación)",
+    "ar.calibrate": "Calibrar",
+    "ar.calTitle": "Calibración de la brújula",
+    "ar.calHint": "Mueve el teléfono en forma de ocho hasta que se llene la barra",
+    "ar.calHold": "Bien. Ahora mantén el teléfono firme",
+    "ar.calReady": "Listo",
+    "ar.calNoSensor": "Sin sensor, calibración omitida",
+    "ar.calSkip": "Omitir"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -777,7 +804,16 @@
     "ar.noCamera": "カメラがありません。太陽の弧とコンパスを表示します。",
     "ar.cameraDenied": "カメラへのアクセスがありません。弧とコンパスはカメラなしでも使えます。許可は端末の設定からできます。",
     "ar.cameraRestricted": "このスマートフォンではカメラが制限されています。弧とコンパスはカメラなしでも使えます。",
-    "ar.cameraFailed": "カメラを起動できませんでした。弧とコンパスはカメラなしでも使えます。"
+    "ar.cameraFailed": "カメラを起動できませんでした。弧とコンパスはカメラなしでも使えます。",
+    "ar.nowTag": "今",
+    "ar.magnetic": "磁北基準の方位です。弧が約10°ずれることがあります（位置情報をオンに）",
+    "ar.calibrate": "較正",
+    "ar.calTitle": "コンパスの較正",
+    "ar.calHint": "バーがいっぱいになるまで、スマートフォンを8の字に動かしてください",
+    "ar.calHold": "いいですね。そのまま安定して持ってください",
+    "ar.calReady": "完了",
+    "ar.calNoSensor": "センサーがないため、較正をスキップしました",
+    "ar.calSkip": "スキップ"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -971,6 +1007,15 @@
     "ar.noCamera": "没有相机：屏幕显示太阳弧线和指南针。",
     "ar.cameraDenied": "无法使用相机：弧线和指南针无需相机即可使用。可在手机设置中允许。",
     "ar.cameraRestricted": "此手机限制了相机：弧线和指南针无需相机即可使用。",
-    "ar.cameraFailed": "相机未能启动：弧线和指南针无需相机即可使用。"
+    "ar.cameraFailed": "相机未能启动：弧线和指南针无需相机即可使用。",
+    "ar.nowTag": "现在",
+    "ar.magnetic": "方位为磁北：弧线可能偏差约 10°（请开启定位）",
+    "ar.calibrate": "校准",
+    "ar.calTitle": "指南针校准",
+    "ar.calHint": "沿“8”字形移动手机，直到进度条填满",
+    "ar.calHold": "很好。现在请保持手机平稳",
+    "ar.calReady": "完成",
+    "ar.calNoSensor": "没有传感器，已跳过校准",
+    "ar.calSkip": "跳过"
   }
 }

@@ -956,11 +956,14 @@ struct MapScreenView: View {
         }
     }
 
-    /// «AR» (шаг 29.8в): дуга солнца на выбранный день поверх камеры. Точка — под булавкой карты, момент — сейчас.
+    /// «AR» (шаги 29.8в, 29.8в.2): дуга солнца на выбранный день поверх камеры. Место и момент — те, что стоят на
+    /// карте: день и время таймбара (экран AR двигает выбранный момент дальше сам, «сейчас» у него отдельная метка).
     private func arButton(_ pal: Palette, darkCanvas: Bool) -> some View {
         MapRoundButton(pal: pal, darkCanvas: darkCanvas, on: false, label: app.lexicon.t("ar.open"),
                        node: "map.arBtn", action: {
-            withAnimation(PlanMotion.pick(PlanMotion.overlay)) { app.openSunAR(place: app.light.timebar.place) }
+            let tb = app.light.timebar
+            let picked = SunTrack.moment(day: tb.machine.selectedDate, minutes: tb.machine.viewMinute, in: tb.place)
+            withAnimation(PlanMotion.pick(PlanMotion.overlay)) { app.openSunAR(place: tb.place, moment: picked) }
         }) {
             Text("AR").font(.system(size: 11, weight: .bold)).tracking(0.2)
         }

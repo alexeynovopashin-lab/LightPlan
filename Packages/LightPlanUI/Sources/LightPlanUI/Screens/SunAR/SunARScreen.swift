@@ -22,7 +22,12 @@ struct SunARScreen: View {
     init(app: AppModel, target: SunARTarget) {
         self.app = app
         self.target = target
-        _model = State(initialValue: SunARModel(target: target, source: SunARSources.attitude()))
+        #if DEBUG
+        // `-LPSunARStill 1`: кадр «Уменьшения движения» в симуляторе (статичная восьмёрка калибровки).
+        if UserDefaults.standard.bool(forKey: "LPSunARStill") { PlanMotion.stillOverride = true }
+        #endif
+        _model = State(initialValue: SunARModel(target: target, source: SunARSources.attitude(),
+                                                forceCalibration: SunARSources.forceCalibration))
     }
 
     private var t: Lexicon { app.lexicon }
@@ -36,7 +41,7 @@ struct SunARScreen: View {
             let viewport = ScreenViewport(width: size.width, height: size.height)
             let sun = model.sun
             let scene = SunARScene.make(basis: model.aim, optics: model.optics, viewport: viewport,
-                                        arc: model.arc, sun: sun)
+                                        arc: model.arc, sun: sun, now: model.sunNow, pickedIsNow: model.pickedIsNow)
             let clock = ClockText(language: app.language, preference: app.light.clockPreference)
             ZStack(alignment: .topLeading) {
                 background(size: size, sun: sun, pal: pal)
@@ -50,20 +55,49 @@ struct SunARScreen: View {
                     .fill(Color.black.opacity(SunARInk.groundOpacity))
                     .allowsHitTesting(false)
                 }
-                SunAROverlay(scene: scene, clock: clock, cardinals: ["card.n", "card.e", "card.s", "card.w"].map { t.t($0) })
+                SunAROverlay(scene: scene, clock: clock, cardinals: ["card.n", "card.e", "card.s", "card.w"].map { t.t($0) },
+                             nowTag: t.t("ar.nowTag"), pickedLabel: pickedLabel(clock: clock))
                     .frame(width: size.width, height: size.height)
                     .allowsHitTesting(false)
-                    .shotNode("ar.overlay", text: String(format: "marker=%@ arcSegments=%d hours=%d",
+                    .shotNode("ar.overlay", text: String(format: "marker=%@ now=%@ merged=%d arcSegments=%d hours=%d",
                                                          scene.marker.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
-                                                         scene.arc.count, scene.hours.count))
+                                                         scene.nowMarker.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
+                                                         scene.markerIsNow ? 1 : 0, scene.arc.count, scene.hours.count))
                 controls(size: size, safe: safe, sun: sun, clock: clock)
+                if model.calibrating {
+                    SunARCalibrationView(progress: model.calibrationProgress, phase: model.calibrationPhase,
+                                         accuracyEnough: model.calibration.accuracySufficient,
+                                         lexicon: t, onSkip: { Task { await model.finishCalibration() } })
+                        .frame(width: size.width, height: size.height)
+                        .transition(.opacity)
+                        .task(id: model.calibrationPhase) {
+                            // «Готово» и «нет датчика» экран не держит: показал итог — и дальше к камере.
+                            switch model.calibrationPhase {
+                            case .ready:
+                                try? await Task.sleep(for: .milliseconds(900))
+                                await model.finishCalibration()
+                            case .noSensor:
+                                try? await Task.sleep(for: .milliseconds(1800))
+                                await model.finishCalibration()
+                            case .measuring: break
+                            }
+                        }
+                }
             }
+            .animation(PlanMotion.pick(.easeOut(duration: 0.2)), value: model.calibrating)
             .frame(width: size.width, height: size.height)
             .contentShape(Rectangle())
             .gesture(look(size: size))
             .ignoresSafeArea()
         }
         .task { await model.start() }
+        .task {
+            // «Сейчас» едет, север мог стать истинным (включили геолокацию, пока экран открыт).
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(10))
+                model.refreshNow()
+            }
+        }
         .onDisappear { model.stop() }
         .accessibilityElement(children: .contain)
     }
@@ -86,8 +120,8 @@ struct SunARScreen: View {
     @ViewBuilder
     private func realBackground(size: CGSize, sun: SunSample, pal: Palette) -> some View {
         #if os(iOS)
-        if model.camera.isLive {
-            ARCameraPreview(session: model.cameraSession)
+        if model.camera.isLive, let session = model.cameraSession {
+            ARCameraPreview(session: session)
         } else {
             skyGradient(sun: sun, pal: pal)
         }
@@ -125,10 +159,26 @@ struct SunARScreen: View {
         let aim = model.aim.aim
         return ZStack(alignment: .top) {
             VStack(spacing: 8) {
-                HStack(alignment: .center) {
+                HStack(alignment: .center, spacing: 8) {
                     backButton
                     Spacer(minLength: 8)
+                    if model.hasSensor { calibrateButton }
                     headingChip(aim)
+                }
+                if model.magneticOnly {
+                    // Тихая строка в левом углу: не модалка, поверх кадра, пропадает, когда север стал истинным.
+                    HStack(spacing: 0) {
+                        Text(t.t("ar.magnetic"))
+                            .font(.system(size: 13)).multilineTextAlignment(.leading)
+                            .foregroundStyle(SunARInk.light)
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.black.opacity(SunARInk.plateOpacity)))
+                            .frame(maxWidth: size.width * 0.8, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .shotNode("ar.magnetic", text: t.t("ar.magnetic"))
+                        Spacer(minLength: 0)
+                    }
                 }
                 if model.unsteady {
                     plate(Text(t.t("ar.figure8")).font(.system(size: 13)))
@@ -188,6 +238,19 @@ struct SunARScreen: View {
         .shotNode("ar.back", text: t.t("nav.back"))
     }
 
+    /// «Калибровка» — рядом с компасом: повторить восьмёрку, когда курс уплывает.
+    private var calibrateButton: some View {
+        Button { model.beginCalibration() } label: {
+            Text(t.t("ar.calibrate")).font(.system(size: 14, weight: .medium))
+                .foregroundStyle(SunARInk.light)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(Capsule().fill(Color.black.opacity(SunARInk.plateOpacity)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .shotNode("ar.calibrate", text: t.t("ar.calibrate"))
+    }
+
     private func headingChip(_ aim: HorizontalPoint) -> some View {
         HStack(spacing: 6) {
             HeadingGlyph()
@@ -212,7 +275,7 @@ struct SunARScreen: View {
     // MARK: - Время
 
     private func timePanel(sun: SunSample, clock: ClockText) -> some View {
-        let atNow = isNow
+        let atNow = model.pickedIsNow
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Circle().fill(SunARInk.sunFill).frame(width: 10, height: 10)
@@ -247,9 +310,17 @@ struct SunARScreen: View {
         .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.black.opacity(SunARInk.plateOpacity)))
     }
 
+    /// Подпись выбранной метки на дуге: время, а если день не сегодняшний — с датой («15 июн · 18:42»).
+    /// `nil`, когда метка одна и это «сейчас».
+    private func pickedLabel(clock: ClockText) -> String? {
+        guard !model.pickedIsNow else { return nil }
+        let time = clock.fmt(model.minutes)
+        return dayCaption.map { "\($0) · \(time)" } ?? time
+    }
+
     /// Дата под часами, когда день не сегодняшний — иначе «18:42» неоднозначно.
     private var dayCaption: String? {
-        let today = model.nowTarget().day
+        let today = model.nowTarget(now: model.nowMoment).day
         guard model.day != today else { return nil }
         var parts = DateComponents()
         parts.year = model.day.year; parts.month = model.day.month; parts.day = model.day.day
@@ -263,15 +334,11 @@ struct SunARScreen: View {
         return f.string(from: d)
     }
 
-    private var isNow: Bool {
-        let n = model.nowTarget()
-        return n.day == model.day && abs(n.minutes - model.minutes) < 1
-    }
-
     /// «Сейчас»: день сегодняшний в месте, минута плывёт к текущей; при «Уменьшении движения» — сразу.
     private func goNow() {
         glide?.cancel()
-        let n = model.nowTarget()
+        model.refreshNow()
+        let n = model.nowTarget(now: model.nowMoment)
         model.jump(to: n.day, minutes: model.minutes)
         let from = model.minutes, to = n.minutes
         guard !PlanMotion.still, abs(to - from) > 1 else { model.set(minutes: to); return }
@@ -297,6 +364,10 @@ struct SunAROverlay: View {
     let scene: SunARScene
     let clock: ClockText
     let cardinals: [String]
+    /// Подпись метки «сейчас» («сейчас»).
+    let nowTag: String
+    /// Подпись выбранной метки: время (и дата, если не сегодня); `nil` — метка одна и это «сейчас».
+    let pickedLabel: String?
 
     var body: some View {
         Canvas { ctx, size in
@@ -322,7 +393,9 @@ struct SunAROverlay: View {
                 let c = CGPoint(h.point)
                 guard bounds.contains(c) else { continue }
                 // Солнце стоит на часе — подпись часа лежала бы под диском: её роль играет панель времени.
-                if let m = scene.marker, hypot(m.x - h.point.x, m.y - h.point.y) < 26 { continue }
+                if [scene.marker, scene.nowMarker].contains(where: { m in
+                    m.map { hypot($0.x - h.point.x, $0.y - h.point.y) < 26 } ?? false
+                }) { continue }
                 let dot = CGRect(x: c.x - 3.5, y: c.y - 3.5, width: 7, height: 7)
                 ctx.fill(Path(ellipseIn: dot.insetBy(dx: -1.5, dy: -1.5)), with: .color(.black.opacity(SunARInk.outlineOpacity)))
                 ctx.fill(Path(ellipseIn: dot), with: .color(SunARInk.light))
@@ -335,19 +408,44 @@ struct SunAROverlay: View {
                 guard bounds.contains(p), c.index < cardinals.count else { continue }
                 label(&ctx, cardinals[c.index], at: CGPoint(x: p.x, y: p.y + 18), size: 13, weight: .semibold)
             }
-            // Солнце в выбранный момент.
-            if let m = scene.marker {
-                let c = CGPoint(m)
-                if bounds.contains(c) {
-                    let r = 11.0
-                    let disc = CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)
-                    let fade = scene.markerGhost ? 0.4 : 1.0
-                    ctx.fill(Path(ellipseIn: disc.insetBy(dx: -4, dy: -4)), with: .color(.black.opacity(SunARInk.outlineOpacity * fade)))
-                    ctx.fill(Path(ellipseIn: disc), with: .color(SunARInk.sunFill.opacity(fade)))
-                    ctx.stroke(Path(ellipseIn: disc), with: .color(SunARInk.light.opacity(fade)), lineWidth: 2.5)
+            // Метки солнца. «Сейчас» — залитый диск с подписью; выбранный момент — контур с подписью времени.
+            // Слились (выбранный момент = сейчас) — один залитый диск и одна подпись «сейчас».
+            let picked = scene.marker.map(CGPoint.init)
+            let now = scene.markerIsNow ? picked : scene.nowMarker.map(CGPoint.init)
+            let nowFade = scene.markerIsNow ? (scene.markerGhost ? 0.4 : 1.0) : (scene.nowGhost ? 0.4 : 1.0)
+            let pickedFade = scene.markerGhost ? 0.4 : 1.0
+            // Подписи не наезжают друг на друга: верхняя метка подписана сверху, нижняя — снизу.
+            let nowAbove = !(picked != nil && now != nil && !scene.markerIsNow && picked!.y < now!.y)
+            if !scene.markerIsNow, let c = picked, bounds.contains(c) {
+                ring(&ctx, at: c, fade: pickedFade)
+                if let text = pickedLabel {
+                    label(&ctx, text, at: CGPoint(x: c.x, y: c.y + (nowAbove ? 1 : -1) * SunARInk.markerLabelOffset),
+                          size: 12, opacity: pickedFade)
                 }
             }
+            if let c = now, bounds.contains(c) {
+                disc(&ctx, at: c, fade: nowFade)
+                label(&ctx, nowTag, at: CGPoint(x: c.x, y: c.y + (nowAbove ? -1 : 1) * SunARInk.markerLabelOffset),
+                      size: 12, weight: .semibold, opacity: nowFade)
+            }
         }
+    }
+
+    /// «Сейчас»: залитый диск солнца с белым кольцом на тёмной обводке.
+    private func disc(_ ctx: inout GraphicsContext, at c: CGPoint, fade: Double) {
+        let r = SunARInk.markerRadius
+        let disc = CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)
+        ctx.fill(Path(ellipseIn: disc.insetBy(dx: -4, dy: -4)), with: .color(.black.opacity(SunARInk.outlineOpacity * fade)))
+        ctx.fill(Path(ellipseIn: disc), with: .color(SunARInk.sunFill.opacity(fade)))
+        ctx.stroke(Path(ellipseIn: disc), with: .color(SunARInk.light.opacity(fade)), lineWidth: 2.5)
+    }
+
+    /// Выбранный момент: контурная метка — кольцо того же размера без заливки, тёмная обводка снаружи и внутри.
+    private func ring(_ ctx: inout GraphicsContext, at c: CGPoint, fade: Double) {
+        let r = SunARInk.markerRadius
+        let rect = CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)
+        ctx.stroke(Path(ellipseIn: rect), with: .color(.black.opacity(SunARInk.outlineOpacity * fade)), lineWidth: 6.5)
+        ctx.stroke(Path(ellipseIn: rect), with: .color(SunARInk.light.opacity(fade)), lineWidth: 2.5)
     }
 
     private func polyline(_ pts: [ScreenPoint]) -> Path {
@@ -373,14 +471,27 @@ struct SunAROverlay: View {
 enum SunARSources {
     static func attitude() -> (any AttitudeSource)? {
         #if DEBUG
-        if let list = UserDefaults.standard.string(forKey: "LPSunARPose"), let poses = ScriptedAttitude.poses(list) {
-            return ScriptedAttitude(poses: poses)
+        // `-LPSunARPose az,alt,roll[,точность]` (список через `;`), `-LPSunARNorth magnetic` — подставной курс
+        // от магнитного севера: так в симуляторе видно плашку «Курс магнитный».
+        let d = UserDefaults.standard
+        if let list = d.string(forKey: "LPSunARPose"), let script = ScriptedAttitude.script(list) {
+            let north: AttitudeNorth = d.string(forKey: "LPSunARNorth") == "magnetic" ? .magneticNorth : .trueNorth
+            return ScriptedAttitude(poses: script.poses, accuracies: script.accuracies, north: north)
         }
         #endif
         #if os(iOS)
         return CoreMotionAttitude()
         #else
         return nil
+        #endif
+    }
+
+    /// `-LPSunARCalib 1` (отладка): показать калибровку, даже если флаг «уже видел» стоит.
+    static var forceCalibration: Bool {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "LPSunARCalib")
+        #else
+        false
         #endif
     }
 }

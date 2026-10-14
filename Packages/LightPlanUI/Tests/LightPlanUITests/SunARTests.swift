@@ -134,6 +134,270 @@ struct SunARTests {
         #expect(app.sunAR == nil)
     }
 
+    // MARK: - Подставные камера и флаг (29.8в.2)
+
+    private final class MemoryFlag: ARCalibrationFlag {
+        var seen = false
+    }
+
+    /// Камера, которой тест управляет сам: разрешение либо сразу, либо висит, пока тест не «нажмёт» ответ.
+    private final class FakeCamera: ARCameraDriving, @unchecked Sendable {
+        private let lock = NSLock()
+        private var waiting: CheckedContinuation<ARCameraAuthorization, Never>?
+        private var _authorizeCalls = 0, _runCalls = 0, _stopCalls = 0
+        let immediate: ARCameraAuthorization?
+
+        init(immediate: ARCameraAuthorization? = .granted) { self.immediate = immediate }
+
+        var authorizeCalls: Int { lock.withLock { _authorizeCalls } }
+        var runCalls: Int { lock.withLock { _runCalls } }
+        var stopCalls: Int { lock.withLock { _stopCalls } }
+
+        func authorize() async -> ARCameraAuthorization {
+            lock.withLock { _authorizeCalls += 1 }
+            if let immediate { return immediate }
+            return await withCheckedContinuation { c in lock.withLock { waiting = c } }
+        }
+
+        /// Человек нажал в системном окне.
+        func answer(_ a: ARCameraAuthorization) {
+            let c = lock.withLock { () -> CheckedContinuation<ARCameraAuthorization, Never>? in
+                let c = waiting; waiting = nil; return c
+            }
+            c?.resume(returning: a)
+        }
+
+        func run() async -> ARCameraOutcome {
+            lock.withLock { _runCalls += 1 }
+            return ARCameraOutcome(state: .running, optics: nil)
+        }
+
+        func stop() { lock.withLock { _stopCalls += 1 } }
+    }
+
+    private final class MutableClock {
+        var moment: Moment
+        init(_ iso: String) { moment = Moment(ISO8601DateFormatter().date(from: iso)!) }
+        func advance(minutes: Double) { moment = Moment(milliseconds: moment.milliseconds + Int64(minutes * 60_000)) }
+    }
+
+    private func model(at iso: String, now: String? = nil, source: (any AttitudeSource)? = nil,
+                       camera: FakeCamera = FakeCamera(), flag: MemoryFlag = MemoryFlag(),
+                       force: Bool = false, clock: MutableClock? = nil) -> (SunARModel, MutableClock) {
+        let c = clock ?? MutableClock(now ?? iso)
+        let m = SunARModel(target: target(iso), source: source, camera: camera, clock: { c.moment },
+                           calibrationFlag: flag, forceCalibration: force)
+        return (m, c)
+    }
+
+    // MARK: - Два маркера
+
+    @Test("вход с выбранным на карте моментом: модель встаёт на этот день и минуту, а не на «сейчас»")
+    func entryKeepsPickedMoment() {
+        // Выбрано 21 июня 14:25 по часам места; «сейчас» — 23 сентября.
+        let day = CivilDate(year: 2026, month: 6, day: 21)
+        let picked = SunTrack.moment(day: day, minutes: 14 * 60 + 25, in: barnaul)
+        let clock = MutableClock("2026-09-23T06:00:00Z")
+        let m = SunARModel(target: SunARTarget(place: barnaul, moment: picked), source: nil,
+                           camera: FakeCamera(), clock: { clock.moment }, calibrationFlag: MemoryFlag())
+        #expect(m.day == day)
+        #expect(abs(m.minutes - (14 * 60 + 25)) < 1e-3)
+        #expect(!m.pickedIsNow)
+    }
+
+    @Test("выбранный момент = сейчас: метки сливаются в одну, подпись одна")
+    func mergedWhenPickedIsNow() {
+        let (m, _) = model(at: "2026-09-23T06:00:00Z")
+        #expect(m.pickedIsNow)
+        let scene = SunARScene.make(basis: CameraBasis(azimuth: 190, altitude: 40), optics: .typical,
+                                    viewport: ScreenViewport(width: 393, height: 852), arc: m.arc, sun: m.sun,
+                                    now: m.sunNow, pickedIsNow: m.pickedIsNow)
+        #expect(scene.markerIsNow)
+        #expect(scene.marker != nil && scene.nowMarker == nil)
+    }
+
+    @Test("другой день, то же время: два маркера, «сейчас» от ползунка не зависит, дуга — выбранного дня")
+    func differentDayTwoMarkers() throws {
+        let (m, _) = model(at: "2026-12-21T06:00:00Z", now: "2026-09-23T06:00:00Z")
+        #expect(!m.pickedIsNow)
+        let nowAz = m.sunNow.azimuth
+        #expect(m.sun.altitude != m.sunNow.altitude)
+        let basis = CameraBasis(azimuth: 190, altitude: 20)
+        let scene = SunARScene.make(basis: basis, optics: .typical, viewport: ScreenViewport(width: 393, height: 852),
+                                    arc: m.arc, sun: m.sun, now: m.sunNow, pickedIsNow: m.pickedIsNow)
+        let a = try #require(scene.marker), b = try #require(scene.nowMarker)
+        #expect(hypot(a.x - b.x, a.y - b.y) > 20)
+        // Ползунок двигает выбранный момент, «сейчас» стоит.
+        m.set(minutes: m.minutes + 120)
+        #expect(m.sunNow.azimuth == nowAz)
+        // Дуга — декабрьская (день выбранный): в полдень высота ниже, чем в сентябре.
+        let noonDec = m.arc.max { $0.altitude < $1.altitude }!.altitude
+        let noonSep = SunTrack.arc(day: m.nowTarget().day, in: barnaul).max { $0.altitude < $1.altitude }!.altitude
+        #expect(noonDec < noonSep - 10)
+    }
+
+    @Test("«Сейчас»: после ползунка выбранный момент возвращается на текущий и метки сливаются")
+    func nowButtonMerges() {
+        let (m, _) = model(at: "2026-09-23T06:00:00Z")
+        m.set(minutes: m.minutes + 180)
+        #expect(!m.pickedIsNow)
+        m.jumpToNow()
+        #expect(m.pickedIsNow)
+        #expect(m.day == m.nowTarget().day)
+    }
+
+    @Test("«сейчас» едет: через десять минут маркер сдвинулся, выбранный остался на месте")
+    func nowMarkerTicks() {
+        let (m, clock) = model(at: "2026-09-23T06:00:00Z")
+        let before = m.sunNow
+        let picked = m.sun
+        clock.advance(minutes: 10)
+        m.refreshNow()
+        #expect(m.sunNow.azimuth != before.azimuth)
+        #expect(m.sun == picked)
+        #expect(!m.pickedIsNow)
+    }
+
+    // MARK: - Плашка «Курс магнитный»
+
+    @Test("магнитный север — плашка есть; север стал истинным — пропала")
+    func magneticBanner() async {
+        let feed = Feed()
+        feed.north = .magneticNorth
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, flag: { let f = MemoryFlag(); f.seen = true; return f }())
+        await m.start()
+        #expect(m.magneticOnly)
+        feed.north = .trueNorth
+        m.refreshNow()
+        #expect(!m.magneticOnly)
+        m.stop()
+    }
+
+    @Test("истинный север с самого начала — плашки нет")
+    func noBannerOnTrueNorth() async {
+        let feed = Feed()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, flag: { let f = MemoryFlag(); f.seen = true; return f }())
+        await m.start()
+        #expect(!m.magneticOnly)
+        m.stop()
+    }
+
+    // MARK: - Калибровка
+
+    /// Отсчёты на 30 Гц, курс стоит; возвращает время после последнего.
+    private func pump(_ feed: Feed, from t0: Double, seconds: Double, accuracy: MagneticAccuracy?) -> Double {
+        var t = t0
+        while t < t0 + seconds - 1e-9 {
+            feed.push?(AttitudeSample(time: t, basis: CameraBasis(azimuth: 120, altitude: 10), rotationRate: 1,
+                                      magneticAccuracy: accuracy))
+            t += 1.0 / 30
+        }
+        return t
+    }
+
+    @Test("первый вход: калибровка до камеры; системное окно камеры — только после неё")
+    func calibrationBeforeCamera() async {
+        let feed = Feed()
+        let cam = FakeCamera()
+        let flag = MemoryFlag()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, camera: cam, flag: flag)
+        await m.start()
+        #expect(m.calibrating)
+        #expect(cam.authorizeCalls == 0, "окно камеры до калибровки не появляется")
+        var t = pump(feed, from: 0, seconds: 3, accuracy: .low)
+        #expect(m.calibrationPhase == .measuring, "low не годится, как бы долго курс ни стоял")
+        #expect(m.calibrationProgress >= 0.5 && m.calibrationProgress < 1)
+        t = pump(feed, from: t, seconds: 0.2, accuracy: .medium)
+        #expect(m.calibrationPhase == .ready)
+        #expect(m.calibrationProgress == 1)
+        await m.finishCalibration()
+        #expect(!m.calibrating)
+        #expect(flag.seen)
+        #expect(cam.authorizeCalls == 1 && cam.runCalls == 1)
+        #expect(m.camera == .running)
+        m.stop()
+    }
+
+    @Test("датчика нет: «нет датчика», калибровка не залипает — выход и камера как обычно")
+    func calibrationWithoutSensor() async {
+        let cam = FakeCamera()
+        let flag = MemoryFlag()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: nil, camera: cam, flag: flag)
+        await m.start()
+        #expect(m.calibrating)
+        #expect(m.calibrationPhase == .noSensor)
+        #expect(m.calibrationProgress == 0)
+        await m.finishCalibration()
+        #expect(!m.calibrating && flag.seen)
+        #expect(cam.runCalls == 1)
+        m.stop()
+    }
+
+    @Test("пропуск: «Пропустить» выходит из калибровки без «Готово», камера включается, флаг стоит")
+    func calibrationSkip() async {
+        let feed = Feed()
+        let cam = FakeCamera()
+        let flag = MemoryFlag()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, camera: cam, flag: flag)
+        await m.start()
+        _ = pump(feed, from: 0, seconds: 0.5, accuracy: .uncalibrated)
+        #expect(m.calibrationPhase == .measuring)
+        await m.finishCalibration()
+        #expect(!m.calibrating && flag.seen && cam.runCalls == 1)
+        m.stop()
+    }
+
+    @Test("повторный вход: сам калибровка не появляется, камера сразу; кнопка «Калибровка» открывает её снова")
+    func calibrationNotShownTwice() async {
+        let feed = Feed()
+        let flag = MemoryFlag()
+        flag.seen = true
+        let cam = FakeCamera()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, camera: cam, flag: flag)
+        await m.start()
+        #expect(!m.calibrating)
+        #expect(cam.authorizeCalls == 1 && cam.runCalls == 1)
+        m.beginCalibration()
+        #expect(m.calibrating && m.calibrationPhase == .measuring)
+        await m.finishCalibration()
+        #expect(cam.authorizeCalls == 1, "камера повторно не поднимается")
+        m.stop()
+    }
+
+    // MARK: - Камера и закрытый экран (ревью GPT к e7db105, пункт 1)
+
+    @Test("экран закрыли, пока висело системное окно камеры: после «Разрешить» камера не поднимается")
+    func cameraNotStartedAfterClose() async {
+        let cam = FakeCamera(immediate: nil)
+        let flag = MemoryFlag()
+        flag.seen = true
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: Feed(), camera: cam, flag: flag)
+        let starting = Task { await m.start() }
+        // Ждём, пока модель дойдёт до системного окна.
+        for _ in 0..<200 where cam.authorizeCalls == 0 { await Task.yield() }
+        #expect(cam.authorizeCalls == 1)
+        m.stop()                       // человек закрыл экран, окно ещё на месте
+        cam.answer(.granted)           // и только потом нажал «Разрешить»
+        await starting.value
+        #expect(cam.runCalls == 0, "сессия не должна подниматься за закрытым экраном")
+        #expect(m.camera != .running)
+    }
+
+    @Test("экран открыт до конца окна: «Разрешить» поднимает камеру")
+    func cameraStartsWhenOpen() async {
+        let cam = FakeCamera(immediate: nil)
+        let flag = MemoryFlag()
+        flag.seen = true
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: Feed(), camera: cam, flag: flag)
+        let starting = Task { await m.start() }
+        for _ in 0..<200 where cam.authorizeCalls == 0 { await Task.yield() }
+        cam.answer(.granted)
+        await starting.value
+        #expect(cam.runCalls == 1)
+        #expect(m.camera == .running)
+        m.stop()
+    }
+
     private final class IdleLocator: DeviceLocating {
         func currentFix() async -> DeviceFix { .unavailable }
     }

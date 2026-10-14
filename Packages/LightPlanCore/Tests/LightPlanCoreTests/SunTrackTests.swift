@@ -256,4 +256,60 @@ struct SunARSceneTests {
         #expect(abs(east.point.x - 196.5) < 1e-6)
         #expect(s.cardinals.first { $0.index == 3 } == nil)    // запад позади
     }
+
+    // MARK: - Два маркера: «сейчас» и выбранный момент (29.8в.2)
+
+    private func twoMarkers(picked: SunSample, now: SunSample?, pickedIsNow: Bool = false,
+                            basis: CameraBasis = CameraBasis(azimuth: 190, altitude: 30)) -> SunARScene {
+        SunARScene.make(basis: basis, optics: Self.optics, viewport: Self.screen, arc: [], sun: picked,
+                        now: now, pickedIsNow: pickedIsNow)
+    }
+
+    @Test("выбранный момент = сейчас: маркер один (он же «сейчас»), второго нет")
+    func pickedIsNowMerges() throws {
+        let sun = SunTrack.sample(day: Self.day, minutes: 14 * 60, in: Self.place)
+        let s = twoMarkers(picked: sun, now: sun, pickedIsNow: true)
+        #expect(s.markerIsNow)
+        #expect(s.marker != nil)
+        #expect(s.nowMarker == nil)
+    }
+
+    @Test("тот же день, другой час: два маркера в разных местах; «сейчас» от выбранного не зависит")
+    func differentHourTwoMarkers() throws {
+        let picked = SunTrack.sample(day: Self.day, minutes: 17 * 60, in: Self.place)
+        let now = SunTrack.sample(day: Self.day, minutes: 12 * 60, in: Self.place)
+        let s = twoMarkers(picked: picked, now: now)
+        let a = try #require(s.marker), b = try #require(s.nowMarker)
+        #expect(!s.markerIsNow)
+        #expect(hypot(a.x - b.x, a.y - b.y) > 30)
+        // «Сейчас» стоит там, где его сосчитал независимый вызов проекции.
+        let q = try #require(SkyProjection.project(azimuth: now.azimuth, altitude: now.apparentAltitude,
+                                                   basis: CameraBasis(azimuth: 190, altitude: 30),
+                                                   optics: Self.optics, viewport: Self.screen))
+        #expect(abs(b.x - q.x) < 1e-6 && abs(b.y - q.y) < 1e-6)
+    }
+
+    @Test("тот же час другого дня: маркеры не совпадают (солнце в июне и в декабре стоит по-разному)")
+    func differentDayTwoMarkers() throws {
+        let june = SunTrack.sample(day: Self.day, minutes: 12 * 60, in: Self.place)
+        let dec = SunTrack.sample(day: CivilDate(year: 2026, month: 12, day: 21), minutes: 12 * 60, in: Self.place)
+        let s = twoMarkers(picked: dec, now: june)
+        let a = try #require(s.marker), b = try #require(s.nowMarker)
+        #expect(abs(a.y - b.y) > 100, "в декабре солнце в полдень много ниже: \(a) против \(b)")
+    }
+
+    @Test("«сейчас» за камерой — метки нет, выбранный маркер на месте; «сейчас» ниже порога — призрак")
+    func nowBehindAndGhost() throws {
+        let picked = SunTrack.sample(day: Self.day, minutes: 13 * 60, in: Self.place)
+        let behind = SunSample(minutes: 0, azimuth: 10, altitude: 20)
+        let s = twoMarkers(picked: picked, now: behind, basis: CameraBasis(azimuth: 190, altitude: 30))
+        #expect(s.marker != nil)
+        #expect(s.nowMarker == nil)
+
+        let night = SunSample(minutes: 0, azimuth: 190, altitude: -20)
+        let g = twoMarkers(picked: picked, now: night, basis: CameraBasis(azimuth: 190, altitude: 0))
+        #expect(g.nowMarker != nil)
+        #expect(g.nowGhost)
+        #expect(!g.markerGhost)
+    }
 }
