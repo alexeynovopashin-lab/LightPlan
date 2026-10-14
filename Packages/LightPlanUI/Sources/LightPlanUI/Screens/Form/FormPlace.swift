@@ -190,20 +190,7 @@ struct FormPlaceBlock: View {
             .accessibilityLabel(t.t("form.pickSpotAria"))
             .shotNode("form.stop.\(i).pin")
             if r.studioId != nil {
-                let open = wheel == .hall(i)
-                Button { self.open(.hall(i)) } label: {
-                    Text(r.placeText).font(.system(size: 13)).lineLimit(1)
-                        .foregroundStyle(open ? pal.brass : pal.ink4)
-                        .padding(.vertical, open ? 7 : 0).padding(.horizontal, open ? 11 : 0)
-                        .background(open ? Color(hex: 0xE2A44C, alpha: 0.16) : .clear,
-                                    in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                        .padding(.vertical, open ? -7 : 0).padding(.horizontal, open ? -11 : 0)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(t.t("form.pickHallAria"))
-                .shotNode("form.stop.\(i).hall")
+                hallButton(i, r, pal, t)
             } else {
                 TextField("", text: Binding(get: { app.form?.route[safe: i]?.placeText ?? "" }, set: {
                     app.setFormStopPlaceText(i, $0)
@@ -216,6 +203,46 @@ struct FormPlaceBlock: View {
                     .shotNode("form.stop.\(i).place")
             }
         }
+    }
+
+    /// Зал студии точки (29.11): кнопка, а не просто строка. Залы есть — подпись
+    /// «Выбрать зал», пока не выбран, потом «Студия, зал X»; залов нет — «Добавить
+    /// зал» ведёт в карточку студии (Место → студия → залы). Раскрытый — барабан.
+    private func hallButton(_ i: Int, _ r: RoutePoint, _ pal: Palette, _ t: Lexicon) -> some View {
+        let st = app.studios.first { $0.id == r.studioId }
+        let hasHalls = !(st?.halls.isEmpty ?? true)
+        let open = wheel == .hall(i)
+        let ask: String? = r.hallId != nil && hasHalls ? nil : t.t(hasHalls ? "form.hallPick" : "form.hallAdd")
+        return HStack(spacing: 0) {
+            Button {
+                if hasHalls {
+                    self.open(.hall(i))
+                } else {
+                    wheel = nil
+                    app.openStopPlace(i, way: .studio, openCard: true)
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Icon("hall", size: 13, line: 1.5).foregroundStyle(open ? pal.brass : pal.ink5)
+                    Text(r.placeText).font(.system(size: 13)).lineLimit(1).truncationMode(.tail)
+                        .foregroundStyle(open ? pal.brass : pal.ink4)
+                    if let ask {
+                        Text(ask).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brass)
+                            .lineLimit(1).fixedSize()
+                    }
+                    Icon("chevron", size: 10, line: 2.4).foregroundStyle(open ? pal.brass : pal.ink6)
+                        .rotationEffect(.degrees(hasHalls ? (open ? -90 : 90) : 0))
+                }
+                .padding(.vertical, 5).padding(.horizontal, 10)
+                .background(open ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Capsule())
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(t.t(hasHalls ? "form.pickHallAria" : "form.hallAdd"))
+            .shotNode("form.stop.\(i).hall")
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Колёса

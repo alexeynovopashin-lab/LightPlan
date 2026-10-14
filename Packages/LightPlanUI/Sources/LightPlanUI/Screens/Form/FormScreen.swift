@@ -87,7 +87,7 @@ struct FormScreen: View {
             .sheet(isPresented: $kitSheet) { KitSheet(app: app) }
             // Лист «Где снимаем» для точки дня: форма лежит поверх оболочки, её лист встал бы под форму.
             .sheet(isPresented: Binding(get: { app.placeSheetStop != nil }, set: { if !$0 { app.placeSheetStop = nil } }),
-                   onDismiss: { app.placeSheetStart = .fork }) {
+                   onDismiss: { app.placeSheetStart = .fork; app.placeSheetOpenCard = false }) {
                 PlaceSheet(app: app, windowHeight: screenHeight)
             }
             // «Занять время» из строки «Время в пути» — тоже поверх формы (веб `openRoadSheet`).

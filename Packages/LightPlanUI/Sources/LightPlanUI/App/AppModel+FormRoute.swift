@@ -13,8 +13,9 @@ extension AppModel {
     // MARK: - Точки
 
     /// Лист «Где снимаем» для точки `i`, сразу на пути `way` (веб `openLocSheet("stop", way, i)`).
-    func openStopPlace(_ i: Int, way: PlaceSheetForm.Way) {
+    func openStopPlace(_ i: Int, way: PlaceSheetForm.Way, openCard: Bool = false) {
         placeSheetStart = way
+        placeSheetOpenCard = openCard
         placeSheetStop = i
     }
 

@@ -220,7 +220,9 @@
     "ar.entry.whyDenied": "Нет доступа к геопозиции. Разрешить можно в настройках телефона; пока можно оставить выбранное место.",
     "ar.entry.whyNoFix": "Не удалось определить, где вы. Можно попробовать ещё раз или оставить выбранное место.",
     "ar.entry.busy": "Определяю место…",
-    "form.stopDone": "Готово"
+    "form.stopDone": "Готово",
+    "form.hallPick": "Выбрать зал",
+    "form.hallAdd": "Добавить зал"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -442,7 +444,9 @@
     "ar.entry.whyDenied": "No access to location. You can allow it in the phone settings; for now you can keep the chosen place.",
     "ar.entry.whyNoFix": "Could not tell where you are. You can try again or keep the chosen place.",
     "ar.entry.busy": "Finding your location…",
-    "form.stopDone": "Done"
+    "form.stopDone": "Done",
+    "form.hallPick": "Choose a hall",
+    "form.hallAdd": "Add a hall"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -664,7 +668,9 @@
     "ar.entry.whyDenied": "Sin acceso a la ubicación. Puede permitirlo en los ajustes del teléfono; por ahora puede dejar el lugar elegido.",
     "ar.entry.whyNoFix": "No se pudo determinar dónde está. Puede intentarlo de nuevo o dejar el lugar elegido.",
     "ar.entry.busy": "Buscando su ubicación…",
-    "form.stopDone": "Listo"
+    "form.stopDone": "Listo",
+    "form.hallPick": "Elegir sala",
+    "form.hallAdd": "Añadir sala"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -885,7 +891,9 @@
     "ar.entry.whyDenied": "位置情報にアクセスできません。電話の設定で許可できます。いまは選んだ場所のままにもできます。",
     "ar.entry.whyNoFix": "現在地を特定できませんでした。もう一度試すか、選んだ場所のままにできます。",
     "ar.entry.busy": "現在地を確認中…",
-    "form.stopDone": "完了"
+    "form.stopDone": "完了",
+    "form.hallPick": "ホールを選ぶ",
+    "form.hallAdd": "ホールを追加"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -1106,6 +1114,8 @@
     "ar.entry.whyDenied": "无法访问定位。可在手机设置中允许；目前可保留所选地点。",
     "ar.entry.whyNoFix": "无法确定你的位置。可重试，或保留所选地点。",
     "ar.entry.busy": "正在确定位置…",
-    "form.stopDone": "完成"
+    "form.stopDone": "完成",
+    "form.hallPick": "选择厅",
+    "form.hallAdd": "添加厅"
   }
 }

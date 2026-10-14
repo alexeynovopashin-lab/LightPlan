@@ -54,6 +54,7 @@ struct PlaceSheet: View {
             // Студия точки открывается уже выбранной (веб `openLocSheet`, `pickStudio(st0)`).
             if let st = app.studios.first(where: { $0.id == r.studioId }) {
                 _studioDraft = State(initialValue: StudioDraft(st, fallback: app.place.coordinate))
+                if app.placeSheetOpenCard { _studioEdit = State(initialValue: st.id) }
             }
         }
         // Пустой список студий сразу открывает карточку новой (веб: «не тупик»).
