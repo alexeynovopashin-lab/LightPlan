@@ -282,6 +282,10 @@ struct SunARGlassTests {
                 #expect(d >= 20, "\(moments[i].0) и \(moments[j].0) почти одного цвета: \(d)")
             }
         }
+        for (i, m) in moments.enumerated() {
+            let c = rgb[i]
+            print(String(format: "ARTINT %@ alt=%+.1f rgb=(%.0f,%.0f,%.0f) lum=%.3f sat=%.2f", m.0, m.1, c.r * 255, c.g * 255, c.b * 255, lum(c), sat(c)))
+        }
         let lums = rgb.map(lum)
         #expect(lums[0] == lums.max())
         #expect(lums[4] == lums.min())
