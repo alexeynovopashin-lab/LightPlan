@@ -40,8 +40,9 @@ enum GlassOptics {
     }
 
     /// Линза экрана AR (шаг 29.8в.3): тот же шейдер кольца `glassRing`, только круглая и шире ручки — линза 48 pt
-    /// без 3-пунктового кольца почти не гнула бы. Кромка 7 pt, сдвиг до 5.
-    static let lensShift = 5.0
+    /// без 3-пунктового кольца почти не гнула бы. Кромка до 9 pt, сдвиг у края — `SunARInk.lensShift` (29.8в.5:
+    /// 8 pt, было 5 при кромке 7).
+    static let lensShift = Double(SunARInk.lensShift)
 
     static func lens(center: CGPoint, radius: Double, width: Double, scheme: ColorScheme) -> Shader {
         let o = optic(scheme)

@@ -63,6 +63,13 @@ public struct SunARScene: Sendable, Equatable {
     /// Солнце прямо сейчас (второй маркер); `nil` — за камерой, или метки слились, или «сейчас» не передали.
     public let nowMarker: ScreenPoint?
     public let nowGhost: Bool
+    /// Геометрическая высота солнца в выбранный момент и «сейчас» (шаг 29.8в.5): по ней диск метки берёт цвет
+    /// света. `nowAltitude` — `nil`, когда «сейчас» не передали или метки слились.
+    public let markerAltitude: Degrees
+    public let nowAltitude: Degrees?
+    /// Видимая высота ниже линии горизонта: диск солнца идёт с пунктирным контуром, как дуга под горизонтом.
+    public let markerBelowHorizon: Bool
+    public let nowBelowHorizon: Bool
     /// Многоугольник «земли» под горизонтом — для фона без камеры. `nil`, когда земли в кадре нет.
     public let ground: [ScreenPoint]?
 
@@ -135,14 +142,20 @@ public struct SunARScene: Sendable, Equatable {
         // Метка «сейчас» — отдельная, когда выбранный момент не сейчас.
         var nowMarker: ScreenPoint?
         var nowGhost = false
+        var nowAltitude: Degrees?
+        var nowBelowHorizon = false
         if let now, !pickedIsNow {
             nowMarker = proj(now.azimuth, now.apparentAltitude)
             nowGhost = now.altitude < SunTrack.visibleFrom
+            nowAltitude = now.altitude
+            nowBelowHorizon = now.apparentAltitude < 0
         }
 
         return SunARScene(horizon: horizon, arc: segments, hours: hours, cardinals: cardinals, events: events,
                           marker: marker, markerGhost: sun.altitude < SunTrack.visibleFrom,
                           markerIsNow: pickedIsNow, nowMarker: nowMarker, nowGhost: nowGhost,
+                          markerAltitude: sun.altitude, nowAltitude: nowAltitude,
+                          markerBelowHorizon: sun.apparentAltitude < 0, nowBelowHorizon: nowBelowHorizon,
                           ground: groundPolygon(basis: basis, horizon: horizon, viewport: viewport))
     }
 

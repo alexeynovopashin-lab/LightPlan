@@ -32,15 +32,21 @@ enum SunARInk {
     static let pickedLensDiameter: CGFloat = 34
     static let moonNowDiameter: CGFloat = 40
     static let moonPickedDiameter: CGFloat = 30
-    /// Тёплый оттенок стекла солнца и холодный серебристый — луны. Одним цветом ночью их не различить
-    /// (в астро-ночь цвета тёмные), поэтому различает ещё и форма: у солнца лучики, у луны — фаза.
+    /// Оттенок стекла солнца «по умолчанию» (в калибровке и у стрелки за краем) и холодный серебристый — луны.
+    /// Метка солнца на экране берёт оттенок по состоянию света (`sunDiscTint`). Солнце и луну различает не
+    /// только цвет: у луны внутри фаза, у солнца под горизонтом контур пунктирный (шаг 29.8в.5).
     static let sunTint = Color(hex: 0xFFC24D)
     static let moonTint = Color(hex: 0xC9D6EA)
-    static let glassTintOpacity = 0.30
-    /// Лучики солнца по кромке: число, просвет от края диска и длина, pt.
-    static let rayCount = 8
-    static let rayGap: CGFloat = 3
-    static let rayLength: CGFloat = 7
+    static let glassTintOpacity = 0.42
+    /// Призрак (светило под горизонтом): прозрачность заливки диска и контура. Контур держится заметнее заливки —
+    /// пунктир читается и на тёмном небе, и на светлом.
+    static let ghostFill = 0.4
+    static let ghostContour = 0.85
+    /// Пунктир контура призрака: штрих и просвет, pt.
+    static let ghostDash: [CGFloat] = [3.5, 3]
+    /// Линза диска (шаг 29.8в.5): гнущая кромка и сдвиг у самого края, pt. Одни числа у слоя Metal (кадр камеры),
+    /// у `LensRefraction` (дуга и подписи под диском) и у юнит-теста.
+    static let lensShift: CGFloat = 8
     /// Внутренний отступ рисунка фазы от края стекла луны, pt.
     static let moonInset: CGFloat = 4.5
     /// Дуга луны — тоньше солнечной: обводка и жила, pt.
@@ -61,14 +67,43 @@ enum SunARInk {
     /// Высота касания кнопок (HIG), pt.
     static let touch: CGFloat = 44
 
-    /// Ширина гнущей кромки диска: у 48 pt — 7, у 30 pt — 6 (не больше пятой части диаметра).
-    static func rim(for diameter: CGFloat) -> CGFloat { min(7, diameter * 0.2) }
+    /// Ширина гнущей кромки диска: у 48 pt — 9, у 30 pt — 7,5 (не больше четверти диаметра).
+    static func rim(for diameter: CGFloat) -> CGFloat { min(9, diameter * 0.25) }
 
     /// Цвет состояния света на этой высоте — остановка рельса таймбара «Света» (`PathStops`), без прозрачности.
     static func stateColor(altitude: Double) -> Color {
         let c = PathStops.at(altitude).rgb
         return Color(.sRGB, red: Double(c.0) / 255, green: Double(c.1) / 255, blue: Double(c.2) / 255, opacity: 1)
     }
+    /// Оттенок диска солнца на этой геометрической высоте (шаг 29.8в.5, слово Алексея 15.10: «должно переходить
+    /// в рассветные/закатные цвета»). Основа — остановки рельса «Света» (`PathStops`), те же, что красят дугу в
+    /// этой точке; цвет меняется непрерывно по высоте, а значит и по ручке таймбара.
+    ///
+    /// Две поправки поверх таблицы, обе по слову задачи: (1) выше золотого часа таблица идёт в серо-бежевый
+    /// (138, 132, 120) — оттенок рельса, а не солнца; диск плавно уходит от янтаря к светло-жёлтому между 6° и 30°;
+    /// (2) у самого горизонта — красно-оранжевая примесь («закат — красно-оранжевый»), пик у −0,8° (центр диска
+    /// на горизонте, когда виден край), ширина ±3°. Ниже горизонта — таблица как есть: розово-синий −4…−6°,
+    /// тёмно-синий −12…−18°.
+    static func sunDiscRGB(altitude: Double) -> (r: Double, g: Double, b: Double) {
+        let stop = PathStops.at(altitude).rgb
+        var c = (r: Double(stop.0), g: Double(stop.1), b: Double(stop.2))
+        func mix(_ to: (Double, Double, Double), _ k: Double) {
+            c = (c.r + (to.0 - c.r) * k, c.g + (to.1 - c.g) * k, c.b + (to.2 - c.b) * k)
+        }
+        // Выше золотого часа: янтарь → светло-жёлтый, гладкая ступенька (3t² − 2t³).
+        let t = min(1, max(0, (altitude - 6) / (30 - 6)))
+        mix((255, 233, 160), t * t * (3 - 2 * t))
+        // Красно-оранжевый у горизонта: треугольник с пиком 0,55 у −0,8°.
+        let tri = max(0, 1 - abs(altitude + 0.8) / 3)
+        mix((232, 98, 52), 0.55 * tri)
+        return (c.r / 255, c.g / 255, c.b / 255)
+    }
+
+    static func sunDiscTint(altitude: Double) -> Color {
+        let c = sunDiscRGB(altitude: altitude)
+        return Color(.sRGB, red: c.r, green: c.g, blue: c.b, opacity: 1)
+    }
+
     /// Земля под горизонтом в состоянии «нет камеры».
     static let groundOpacity = 0.42
 

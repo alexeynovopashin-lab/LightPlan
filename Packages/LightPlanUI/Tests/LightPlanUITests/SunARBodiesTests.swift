@@ -56,21 +56,21 @@ struct SunARBodiesTests {
         #expect(SunARInk.moonNowDiameter == 40 && SunARInk.moonPickedDiameter == 30)
     }
 
-    @Test("солнце и луна различимы форме и знаком, не только цветом: у солнца лучики и тёплый оттенок, у луны — фаза и холодный")
-    func sunAndMoonDifferByShape() {
-        #expect(SunARInk.rayCount == 8)
-        let s = SunARMark(id: "sun.now", kind: .sun, center: .zero, diameter: 48, fade: 1)
+    @Test("солнце и луна различимы не только цветом: у луны фаза и серебристый оттенок, у солнца — свет дня; лучиков нет, контур пунктиром ниже горизонта")
+    func sunAndMoonDiffer() {
+        let s = SunARMark(id: "sun.now", kind: .sun, center: .zero, diameter: 48, fade: 1, altitude: 40)
         let l = SunARMark(id: "moon.now", kind: .moon(illuminated: 0.5, waxing: true, limb: 0), center: .zero, diameter: 40, fade: 1)
         #expect(s.isSun && !l.isSun)
         #expect(s.kind != l.kind)
-        // Оттенки стекла разные: тёплый красный канал выше синего, холодный — наоборот.
-        func rgb(_ c: Color) -> (Double, Double, Double) {
-            let r = UIColorBridge.rgb(c)
-            return r
-        }
-        let warm = rgb(SunARInk.sunTint), cold = rgb(SunARInk.moonTint)
-        #expect(warm.0 > warm.2 + 0.3)
+        // Солнце днём тёплое (красный выше синего), луна серебристая (синий не ниже красного).
+        func rgb(_ c: Color) -> (Double, Double, Double) { UIColorBridge.rgb(c) }
+        let warm = rgb(s.tint), cold = rgb(l.tint)
+        #expect(warm.0 > warm.2 + 0.2)
         #expect(cold.2 >= cold.0)
+        // Контур пунктиром — только у солнца под горизонтом.
+        let night = SunARMark(id: "sun.now", kind: .sun, center: .zero, diameter: 48, fade: SunARMarks.ghostFade,
+                              altitude: -20, belowHorizon: true)
+        #expect(night.dashedContour && !s.dashedContour && !l.dashedContour)
     }
 
     @Test("луна под горизонтом идёт призраком 0,4, а не пропадает; над горизонтом — 1")
@@ -156,11 +156,12 @@ struct SunARBodiesTests {
         #expect(ARFrameMapping.fromSamples(view: .zero, origin: .zero, right: CGPoint(x: 1, y: 0), bottom: CGPoint(x: 0, y: 1)) == nil)
     }
 
-    @Test("гнущая кромка: 7 pt у диска 48, 6 pt у 30, не больше пятой части диаметра")
+    @Test("гнущая кромка: 9 pt у диска 48, 7,5 pt у 30, не больше четверти диаметра; сдвиг у края 8 pt")
     func rim() {
-        #expect(SunARInk.rim(for: 48) == 7)
-        #expect(SunARInk.rim(for: 30) == 6)
-        #expect(SunARInk.rim(for: 20) == 4)
+        #expect(SunARInk.rim(for: 48) == 9)
+        #expect(SunARInk.rim(for: 30) == 7.5)
+        #expect(SunARInk.rim(for: 20) == 5)
+        #expect(SunARInk.lensShift == 8)
     }
 
     // MARK: Плашка входа

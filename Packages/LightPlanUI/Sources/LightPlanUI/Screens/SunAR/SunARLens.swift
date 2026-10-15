@@ -227,7 +227,7 @@ final class ARLensRenderer: @unchecked Sendable {
         guard let enc = cmd.makeRenderCommandEncoder(descriptor: pass) else { return false }
 
         let s = Float(scale)
-        var frame = FrameGPU(view: SIMD2(Float(view.width) * s, Float(view.height) * s), scale: s, shift: 5 * s,
+        var frame = FrameGPU(view: SIMD2(Float(view.width) * s, Float(view.height) * s), scale: s, shift: Float(SunARInk.lensShift) * s,
                              m0: SIMD2(Float(mapping.origin.x), Float(mapping.origin.y)),
                              mx: SIMD2(Float(mapping.dx.x), Float(mapping.dx.y)),
                              my: SIMD2(Float(mapping.dy.x), Float(mapping.dy.y)))

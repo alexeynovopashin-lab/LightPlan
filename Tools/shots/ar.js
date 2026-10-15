@@ -5,9 +5,13 @@
    путь «кадр → слой Metal → диск» работает как с настоящей камерой. Место телефона подставляется
    (`-LPSunARPhone`), поворот — `-LPSunARPose`, момент — `-LPSunARMoment`.
 
-   Сценарии: day (солнце в кадре, луна ниже горизонта), night_moon (луна в фазе, солнце за краем — стрелка),
-   night_mw (Млечный Путь и луна, ядро над горизонтом), entry_far (плашка входа: выбранное далеко от
-   телефона), entry_off (плашка входа: нет доступа к геопозиции).
+   Сценарии: day (солнце в кадре, луна ниже горизонта), sunset (солнце на горизонте: красно-оранжевый диск,
+   дуга и линия горизонта в диске гнутся), blue (синий час: солнце под горизонтом — призрак, контур пунктиром),
+   dusk_both (солнце-призрак и луна в одном кадре: различие без цвета), night_moon (луна в фазе, солнце за
+   краем — стрелка), night_mw (Млечный Путь и луна, ядро над горизонтом), toggles (оба включателя и курс в
+   ряду: рамки не накладываются; на узком симуляторе — `LP_SIM="<имя SE>"`), entry_far (плашка входа:
+   выбранное далеко от телефона), entry_off (плашка входа: нет доступа к геопозиции).
+   `--only a,b` — только эти сценарии.
 
    Числа из отчёта приложения (рамки узлов): диаметры меток, высота касания кнопок, присутствие слоёв,
    стрелки и плашки. Любое нарушение — код 1.
@@ -28,7 +32,15 @@ const TOMSK = '56.4977,84.9744,Asia/Tomsk', MOSCOW = '55.7558,37.6173,Europe/Mos
 /* Сценарии: now — «сейчас» приложения, moment — выбранный момент, pose — азимут,высота,крен. */
 const SCENARIOS = [
   { name: 'day', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,24,0', phone: TOMSK,
+    moon: true, mw: false, camera: true, merged: true },
+  { name: 'sunset', now: '2026-10-20T17:00:00+07:00', moment: '2026-10-20T11:00:00Z', pose: '251,4,0', phone: TOMSK,
+    moon: false, mw: false, camera: true },
+  { name: 'blue', now: '2026-10-20T19:00:00+07:00', moment: '2026-10-20T12:00:00Z', pose: '263,0,0', phone: TOMSK,
+    moon: false, mw: false, camera: true },
+  { name: 'dusk_both', now: '2026-10-12T19:30:00+07:00', moment: '2026-10-12T12:30:00Z', pose: '262,0,0', phone: TOMSK,
     moon: true, mw: false, camera: true },
+  { name: 'toggles', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,24,0', phone: TOMSK,
+    moon: true, mw: true, camera: true, merged: true },
   { name: 'night_moon', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: TOMSK,
     moon: true, mw: false, camera: true },
   { name: 'night_mw', now: '2026-08-20T22:00:00+07:00', moment: '2026-08-20T15:00:00Z', pose: '198,14,0', phone: TOMSK,
@@ -53,6 +65,18 @@ function verdict(sc, nodes) {
   }
   touch('ar.back'); touch('ar.moonToggle'); touch('ar.mwToggle');
   if (nodes['ar.moonToggle'] && nodes['ar.moonToggle'].w < 43.9) bad.push('включатель луны уже 44');
+  // Ряд кнопок: рамки не накладываются друг на друга.
+  const row = ['ar.back', 'ar.calibrate', 'ar.heading', 'ar.moonToggle', 'ar.mwToggle'].filter(k => nodes[k]);
+  for (let i = 0; i < row.length; i++) for (let j = i + 1; j < row.length; j++) {
+    const a = nodes[row[i]], b = nodes[row[j]];
+    const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    if (ox > 0.5 && oy > 0.5) bad.push(`${row[i]} и ${row[j]} накладываются на ${ox.toFixed(1)} × ${oy.toFixed(1)} pt`);
+  }
+  // Время «сейчас» на метке не пишется: подпись — только у выбранного момента, и это время, а не слово.
+  const lab = nodes['ar.label.picked'];
+  if (lab && /сейчас/i.test(lab.text || '')) bad.push('на метке написано «сейчас»: ' + lab.text);
+  if (sc.merged && lab) bad.push('метка одна («сейчас»), а подпись есть: ' + lab.text);
+  if (!sc.merged && !sc.entry && sc.camera && lab === undefined && /sun\.picked/.test(Object.keys(nodes).join(','))) bad.push('у выбранного момента нет подписи времени');
   need('ar.panel');
   const marks = Object.keys(nodes).filter(k => k.startsWith('ar.mark.'));
   const sun = marks.filter(k => /sun/.test(k)), moon = marks.filter(k => /moon/.test(k));
@@ -100,7 +124,9 @@ function verdict(sc, nodes) {
   const flag = (k, v) => ['-lightplan.native.sunar.' + k, v ? 'YES' : 'NO'];
 
   const rows = [];
+  const only = args.only ? String(args.only).split(',') : null;
   for (const sc of SCENARIOS) {
+    if (only && !only.includes(sc.name)) continue;
     const dir = path.join(OUT, sc.name);
     fs.mkdirSync(dir, { recursive: true });
     const report = path.join(dir, 'native.json');

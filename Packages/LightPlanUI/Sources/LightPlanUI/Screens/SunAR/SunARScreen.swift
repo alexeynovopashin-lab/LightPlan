@@ -26,7 +26,10 @@ struct SunARScreen: View {
         // `-LPSunARStill 1`: кадр «Уменьшения движения» в симуляторе (статичная восьмёрка калибровки).
         if UserDefaults.standard.bool(forKey: "LPSunARStill") { PlanMotion.stillOverride = true }
         #endif
+        // «Сейчас» — часы приложения: у снимков (`-LPShotNow`) и тестов оно подставное, у людей — настоящее.
+        let appNow = app.now
         _model = State(initialValue: SunARModel(target: target, source: SunARSources.attitude(),
+                                                clock: { Moment(appNow()) },
                                                 forceCalibration: SunARSources.forceCalibration,
                                                 language: app.language, clockPreference: app.light.clockPreference))
     }
@@ -51,42 +54,25 @@ struct SunARScreen: View {
                 ? model.nightScene(basis: model.aim, optics: model.optics, viewport: viewport) : nil
             let marks = SunARMarks.make(sun: scene, night: night, screen: size)
             let clock = ClockText(language: app.language, preference: app.light.clockPreference)
+            // Слои снизу вверх (порядок — предмет замера 29.8в.5, `SunARLayers`): камера и слой Metal → полоса
+            // Млечного Пути → дуга и подписи часов (в дисках вырезана) → по каждой метке линза, затем налёт →
+            // подпись выбранного момента.
             ZStack(alignment: .topLeading) {
-                backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: marks)
-                    .shotNode("ar.background", text: "\(model.camera)")
-                if !model.camera.isLive {
-                    // Кадр рисует SwiftUI (небо без камеры): кромка диска гнёт его копию. Под дугой.
-                    let copy = AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: []))
-                    ForEach(marks) { m in
-                        LensRefraction(diameter: m.diameter, backdrop: copy, origin: m.origin, screen: size, fade: m.fade)
-                            .position(x: m.center.x, y: m.center.y)
-                    }
+                if SunARLayers.shown(.camera) {
+                    backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: marks)
+                        .shotNode("ar.background", text: "\(model.camera)")
                 }
-                if let night, night.milkyWayOn {
-                    SunARMilkyWayLayer(scene: night, coreLabel: t.t("ar.mwCore"))
+                SunARSkyStack(scene: scene, night: night, marks: marks, size: size, clock: clock,
+                              cardinals: cardinalNames(), coreLabel: t.t("ar.mwCore"),
+                              eventText: { eventText($0, clock: clock) },
+                              // Без камеры небо рисует SwiftUI, и его гнёт сама линза; с камерой — слой Metal.
+                              sky: model.camera.isLive ? nil
+                                  : AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: [])),
+                              markText: markText)
+                if SunARLayers.shown(.labels) {
+                    SunARMarkLabels(pickedLabel: pickedLabel(clock: clock), marks: marks, screen: size)
                         .frame(width: size.width, height: size.height)
-                        .shotNode("ar.milkyWay", text: String(format: "polys=%d core=%@ ghost=%d", night.band.count,
-                                                              night.core.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
-                                                              night.skyGhost ? 1 : 0))
                 }
-                SunAROverlay(scene: scene, moonArc: night?.arc ?? [],
-                             moonDiscs: marks.filter { !$0.isSun }.map { ($0.center, $0.radius) },
-                             clock: clock, cardinals: cardinalNames(),
-                             eventText: { eventText($0, clock: clock) })
-                    .frame(width: size.width, height: size.height)
-                    .allowsHitTesting(false)
-                    .shotNode("ar.overlay", text: String(format: "marker=%@ now=%@ merged=%d arcSegments=%d hours=%d events=%d",
-                                                         scene.marker.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
-                                                         scene.nowMarker.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
-                                                         scene.markerIsNow ? 1 : 0, scene.arc.count, scene.hours.count,
-                                                         scene.events.count))
-                // Диски стекла — поверх дуги и подписей часов.
-                ForEach(marks) { m in
-                    SunARMarkPaint(mark: m, shotText: markText(m))
-                }
-                SunARMarkLabels(scene: scene, nowTag: t.t("ar.nowTag"), pickedLabel: pickedLabel(clock: clock),
-                                marks: marks, screen: size)
-                    .frame(width: size.width, height: size.height)
                 ForEach(pointerItems(sun: sun, night: night, size: size, safe: safe, viewport: viewport)) { item in
                     SunARPointerView(item: item, screen: size, labelFlipY: size.height - panelHeight - 40)
                 }
@@ -189,7 +175,7 @@ struct SunARScreen: View {
     // MARK: - Фон
 
     /// Кадр под всем остальным: камера или небо, а без камеры ещё и «земля» под горизонтом. С камерой над
-    /// превью лежит слой Metal, который гнёт кромку дисков (`marks`); без неё кромку гнёт `LensRefraction`.
+    /// превью лежит слой Metal, который гнёт кадр под дисками (`marks`); без неё кадр-небо гнёт `LensRefraction`.
     @ViewBuilder
     private func backdropStack(size: CGSize, sun: SunSample, pal: Palette, ground: [ScreenPoint]?,
                                marks: [SunARMark]) -> some View {
@@ -588,10 +574,22 @@ struct SunAROverlay: View {
     let cardinals: [String]
     /// «закат 18:21» / «восход 06:12».
     let eventText: (SunARScene.HorizonEvent) -> String
+    /// Левый верхний угол холста в окне экрана. Ноль — холст на весь экран; копия под линзой диска
+    /// (`LensRefraction`) рисует тот же кадр в маленьком холсте, сдвинутом на эту точку.
+    var origin: CGPoint = .zero
+    /// Диски меток: внутри них оригинал не рисуется — вместо него гнутая копия под линзой.
+    var holes: [SunARHole] = []
 
     var body: some View {
-        Canvas { ctx, size in
-            let bounds = CGRect(origin: .zero, size: size).insetBy(dx: -40, dy: -40)
+        Canvas { ctxIn, size in
+            var ctx = ctxIn
+            ctx.translateBy(x: -origin.x, y: -origin.y)
+            // Видимая часть окна экрана в его же координатах: за её пределами отрезки дуги не красятся.
+            let view = CGRect(origin: origin, size: size)
+            let bounds = view.insetBy(dx: -40, dy: -40)
+            if !holes.isEmpty {
+                ctx.clip(to: SunARHole.clipArea(view, holes: holes), style: FillStyle(eoFill: true))
+            }
             // Горизонт: тёмная обводка, под ней светлая линия.
             for run in scene.horizon where run.count > 1 {
                 let p = polyline(run)
@@ -603,17 +601,13 @@ struct SunAROverlay: View {
             // Дуга луны — тонкой линией, под горизонтом пунктиром; под дугой солнца.
             if !moonArc.isEmpty {
                 ctx.drawLayer { layer in
-                    var area = Path(CGRect(origin: .zero, size: size).insetBy(dx: -200, dy: -200))
-                    for d in moonDiscs {
-                        area.addEllipse(in: CGRect(x: d.center.x - d.radius, y: d.center.y - d.radius,
-                                                   width: 2 * d.radius, height: 2 * d.radius))
-                    }
+                    let area = SunARHole.clipArea(view, holes: moonDiscs.map { SunARHole(center: $0.center, radius: $0.radius) })
                     layer.clip(to: area, style: FillStyle(eoFill: true))
                     for run in moonArc where run.count > 1 { drawMoonArc(&layer, run) }
                 }
             }
             // Дуга солнца: цвет света по точкам, под горизонтом пунктиром.
-            for run in scene.arc where run.count > 1 { drawArc(&ctx, run) }
+            for run in scene.arc where run.count > 1 { drawArc(&ctx, run, view: view) }
             // Точки часов и подписи.
             for h in scene.hours {
                 let c = CGPoint(h.point)
@@ -654,7 +648,7 @@ struct SunAROverlay: View {
     /// Дуга одного отрезка: тёмная обводка, белая кромка, цветная жила. Участки ниже горизонта — пунктиром
     /// (штрих и просвет одни на все три слоя, фаза сквозная). Цвет жилы плавно перетекает: каждый отрезок между
     /// точками дуги режется на `arcColorSteps` частей, высота между точками линейная.
-    private func drawArc(_ ctx: inout GraphicsContext, _ run: [SunARScene.ArcPoint]) {
+    private func drawArc(_ ctx: inout GraphicsContext, _ run: [SunARScene.ArcPoint], view: CGRect) {
         var i = 0
         while i < run.count - 1 {
             // Подряд идущие отрезки одного вида — одна ломаная.
@@ -675,6 +669,15 @@ struct SunAROverlay: View {
             for k in 0..<(part.count - 1) {
                 let a = part[k], b = part[k + 1]
                 let ax = CGFloat(a.point.x), ay = CGFloat(a.point.y), bx = CGFloat(b.point.x), by = CGFloat(b.point.y)
+                // Отрезок вне видимого окна (с запасом на обводку) цвет не рисует; длину набираем, чтобы фаза
+                // пунктира дальше совпала с полным холстом.
+                let reach = SunARInk.arcOutlineWidth
+                let box = CGRect(x: min(ax, bx) - reach, y: min(ay, by) - reach,
+                                 width: abs(bx - ax) + 2 * reach, height: abs(by - ay) + 2 * reach)
+                guard box.intersects(view) else {
+                    length += hypot(bx - ax, by - ay)
+                    continue
+                }
                 for q in 0..<n {
                     let t0 = CGFloat(q) / CGFloat(n), t1 = CGFloat(q + 1) / CGFloat(n)
                     let p0 = CGPoint(x: ax + (bx - ax) * t0, y: ay + (by - ay) * t0)
