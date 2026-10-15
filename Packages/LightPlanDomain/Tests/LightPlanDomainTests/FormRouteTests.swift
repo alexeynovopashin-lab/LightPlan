@@ -117,6 +117,46 @@ import LightPlanDomain
         #expect(f.route[0].start == 930)
     }
 
+    @Test func manualHoursEqualToTheShootWindowDoNotFollow() {
+        // Фотограф сам поставил ровно время съёмки: это его выбор, а не «время съёмки» (29.11б).
+        var f = EventForm.new(id: "x8", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)
+        f.duration = 60
+        f.addStop()
+        f.setStopTime(0, end: false, minute: 780, hint: "Старт")
+        f.setStopTime(0, end: true, minute: 840, hint: "Старт")
+        f.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        #expect(!f.route[0].hoursAuto)
+        f.setStart(minute: 900)
+        #expect(f.route[0].start == 780 && f.route[0].end == 840, "ручные часы не едут")
+        // Автоматические — едут; ручная правка снимает признак.
+        var g = EventForm.new(id: "x9", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)
+        g.duration = 60
+        g.addStop()
+        g.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        #expect(g.route[0].hoursAuto)
+        g.setStart(minute: 900)
+        #expect(g.route[0].start == 900 && g.route[0].end == 960)
+        g.setStopTime(0, end: false, minute: 900, hint: "Старт")
+        #expect(!g.route[0].hoursAuto, "тот же час, набранный руками, — уже ручной")
+        g.setStart(minute: 1000)
+        #expect(g.route[0].start == 900)
+    }
+
+    @Test func hoursOriginSurvivesDraftAndOldRecordsAreManual() throws {
+        var f = EventForm.new(id: "x10", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)
+        f.duration = 60
+        f.addStop()
+        f.setStopStudio(0, studio: lumen, studioWord: "Фотостудия", spots: [], studios: [lumen])
+        let data = try #require(f.draftData())
+        let back = try #require(EventForm.fromDraft(data))
+        #expect(back.route[0].hoursAuto, "признак переживает черновик")
+        // Запись без ключа (до 29.11б) — ручные часы.
+        let old = try JSONDecoder().decode(RoutePoint.self, from: Data(#"{"t":780,"t2":840,"n":"","p":"Люмен","studioId":"st1"}"#.utf8))
+        #expect(!old.hoursAuto)
+        let new = try JSONEncoder().encode(f.route[0])
+        #expect(try JSONDecoder().decode(RoutePoint.self, from: new).hoursAuto)
+    }
+
     @Test func stopWithOwnEndDoesNotFollowOnSharedStart() {
         // Начало точки совпало с началом съёмки, а конец — свой: это уже не «время съёмки».
         var f = EventForm.new(id: "x7", day: day, start: 780, fromLight: false, genre: .portrait, light: nil, home: home)

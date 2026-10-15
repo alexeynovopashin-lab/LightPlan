@@ -205,6 +205,11 @@ struct FormPlaceBlock: View {
         }
     }
 
+    /// Знак строки зала. Знак `hall` в словаре — здание с колоннами, ЗАГС; студии он
+    /// не принадлежит, хоть в строке и стоит слово «зал». Строка зала бывает только у
+    /// точки со студией — знак студии (29.11б).
+    static let hallRowSign = "studio"
+
     /// Зал студии точки (29.11): кнопка, а не просто строка. Залы есть — подпись
     /// «Выбрать зал», пока не выбран, потом «Студия, зал X»; залов нет — «Добавить
     /// зал» ведёт в карточку студии (Место → студия → залы). Раскрытый — барабан.
@@ -223,7 +228,7 @@ struct FormPlaceBlock: View {
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Icon("hall", size: 13, line: 1.5).foregroundStyle(open ? pal.brass : pal.ink5)
+                    Icon(Self.hallRowSign, size: 13, line: 1.5).foregroundStyle(open ? pal.brass : pal.ink5)
                     Text(r.placeText).font(.system(size: 13)).lineLimit(1).truncationMode(.tail)
                         .foregroundStyle(open ? pal.brass : pal.ink4)
                     if let ask {

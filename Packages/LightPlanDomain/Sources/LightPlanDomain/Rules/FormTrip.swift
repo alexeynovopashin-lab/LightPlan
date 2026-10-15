@@ -66,6 +66,7 @@ extension EventForm {
             }
             if let start { r.start = start }
             if let end { r.end = end }
+            if start != nil || end != nil { r.hoursAuto = false }
         }
     }
 }

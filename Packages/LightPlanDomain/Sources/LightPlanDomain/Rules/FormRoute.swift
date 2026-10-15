@@ -152,6 +152,7 @@ extension EventForm {
     public mutating func setStopTime(_ i: Int, end: Bool, minute m: Int, hint: String) {
         guard route.indices.contains(i) else { return }
         if end { route[i].end = m } else { route[i].start = m }
+        route[i].hoursAuto = false
         if route[i].name.trimmingCharacters(in: .whitespaces).isEmpty { route[i].name = hint }
         routeSeeded = false
     }
@@ -169,6 +170,7 @@ extension EventForm {
     public mutating func setStopPlace(_ i: Int, spot: Spot, spots: [Spot], studios: [Studio]) {
         editStop(i, spots: spots, studios: studios) {
             $0.spotId = spot.id; $0.studioId = nil; $0.hallId = nil; $0.placeText = spot.name
+            $0.hoursAuto = false
         }
     }
 
@@ -181,21 +183,21 @@ extension EventForm {
         editStop(i, spots: spots, studios: studios) {
             $0.studioId = studio.id; $0.spotId = nil; $0.hallId = nil; $0.placeText = studio.name
             if $0.name.trimmingCharacters(in: .whitespaces).isEmpty { $0.name = studioWord }
-            if $0.start == nil && $0.end == nil { $0.start = window.0; $0.end = window.1 }
+            if $0.start == nil && $0.end == nil { $0.start = window.0; $0.end = window.1; $0.hoursAuto = true }
         }
     }
 
-    /// Съёмку подвинули — точки со студией, чьи часы целиком совпадали с её окном,
-    /// едут следом: фотограф их не менял, они и были «время съёмки». Свои часы точки
-    /// и точки по брони (часы даёт студия) остаются. Вызывается после правки
-    /// начала или конца с прежним окном.
+    /// Съёмку подвинули — точки со студией, чьи часы поставило само приложение
+    /// (`hoursAuto`), едут следом: они и были «время съёмки». Часы, которые поставил
+    /// фотограф, остаются, даже если равны окну съёмки до минуты; точки по брони
+    /// (часы даёт студия) тоже. Вызывается после правки начала или конца с прежним окном.
     mutating func carryStudioStops(from old: (start: Int, end: Int)) {
         guard bookingRef == nil else { return }
         let new = (start: start, end: start + duration)
         guard new != old else { return }
-        // Едет точка, у которой совпали оба края: одно совпавшее число — ещё не «время
-        // съёмки» (начало могли оставить, а конец задать свой; ревью GPT к f10a1e5).
-        for i in route.indices where route[i].studioId != nil
+        // Едет точка с признаком «часы автоматические» и обоими краями на старом окне:
+        // совпадение чисел само по себе ничего не говорит о том, кто их поставил (шаг 29.11б).
+        for i in route.indices where route[i].studioId != nil && route[i].hoursAuto
             && route[i].start == old.start && route[i].end == old.end {
             route[i].start = new.start
             route[i].end = new.end

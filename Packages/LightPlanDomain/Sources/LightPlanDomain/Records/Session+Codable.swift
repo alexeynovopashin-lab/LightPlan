@@ -206,9 +206,9 @@ extension Person: Codable {
     }
 }
 
-/// `t`, `t2`, `n`, `p`, `placeId`, `studioId`, `hallId`, `walk`.
+/// `t`, `t2`, `n`, `p`, `placeId`, `studioId`, `hallId`, `walk`, `tAuto` (только у нас).
 extension RoutePoint: Codable {
-    enum CodingKeys: String, CodingKey { case t, t2, n, p, placeId, studioId, hallId, walk }
+    enum CodingKeys: String, CodingKey { case t, t2, n, p, placeId, studioId, hallId, walk, tAuto }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -220,7 +220,8 @@ extension RoutePoint: Codable {
             spotId: try c.decodeIfPresent(String.self, forKey: .placeId),
             studioId: try c.decodeIfPresent(String.self, forKey: .studioId),
             hallId: try c.decodeIfPresent(String.self, forKey: .hallId),
-            walk: try c.decodeIfPresent(Bool.self, forKey: .walk) ?? false
+            walk: try c.decodeIfPresent(Bool.self, forKey: .walk) ?? false,
+            hoursAuto: try c.decodeIfPresent(Bool.self, forKey: .tAuto) ?? false
         )
     }
 
@@ -234,6 +235,7 @@ extension RoutePoint: Codable {
         try c.encodeIfPresent(studioId, forKey: .studioId)
         try c.encodeIfPresent(hallId, forKey: .hallId)
         try c.encode(walk, forKey: .walk)
+        if hoursAuto { try c.encode(true, forKey: .tAuto) }
     }
 }
 

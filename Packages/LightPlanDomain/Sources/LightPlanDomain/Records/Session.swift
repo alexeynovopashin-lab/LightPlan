@@ -262,9 +262,14 @@ public struct RoutePoint: Sendable, Hashable {
     public var hallId: String?
     /// `walk` — до этой точки идут пешком.
     public var walk: Bool
+    /// `tAuto` — часы точки поставлены самим приложением («студия на время съёмки»), а не
+    /// фотографом. Только такие часы едут за съёмкой. Нет признака (запись до 29.11б) —
+    /// часы ручные.
+    public var hoursAuto: Bool
 
     public init(start: Int?, end: Int? = nil, name: String, placeText: String = "",
-                spotId: String? = nil, studioId: String? = nil, hallId: String? = nil, walk: Bool = false) {
+                spotId: String? = nil, studioId: String? = nil, hallId: String? = nil, walk: Bool = false,
+                hoursAuto: Bool = false) {
         self.start = start
         self.end = end
         self.name = name
@@ -273,6 +278,7 @@ public struct RoutePoint: Sendable, Hashable {
         self.studioId = studioId
         self.hallId = hallId
         self.walk = walk
+        self.hoursAuto = hoursAuto
     }
 }
 

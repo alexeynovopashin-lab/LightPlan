@@ -448,7 +448,7 @@ extension EventForm {
         var delv: String, done: Bool, doneAt: Date?
     }
     private struct DraftStop: Codable {
-        var t: Int?, t2: Int?, n: String, p: String, placeId: String?, studioId: String?, hallId: String?, walk: Bool
+        var t: Int?, t2: Int?, n: String, p: String, placeId: String?, studioId: String?, hallId: String?, walk: Bool, tAuto: Bool?
     }
     private struct DraftPlace: Codable {
         var name: String, town: String, addr: String, lat: Double?, lon: Double?, city: Bool, typed: Bool?
@@ -466,7 +466,8 @@ extension EventForm {
                       repRule: repeatRule?.rawValue, repN: repeatRule == nil ? nil : repeatCount,
                       repOn: repeatRule == nil ? nil : repeatBlocks.map(\.rawValue).sorted(),
                       route: route.map { DraftStop(t: $0.start, t2: $0.end, n: $0.name, p: $0.placeText, placeId: $0.spotId,
-                                                   studioId: $0.studioId, hallId: $0.hallId, walk: $0.walk) },
+                                                   studioId: $0.studioId, hallId: $0.hallId, walk: $0.walk,
+                                                   tAuto: $0.hoursAuto ? true : nil) },
                       seeded: routeSeeded,
                       place: DraftPlace(name: sessionPlace.name, town: sessionPlace.town, addr: sessionPlace.address,
                                         lat: sessionPlace.latitude, lon: sessionPlace.longitude, city: sessionPlace.isCity,
@@ -498,7 +499,8 @@ extension EventForm {
         if let on = d.repOn { f.repeatBlocks = Set(on.compactMap(RepeatBlock.init(rawValue:))) }
         if let r = d.route {
             f.route = r.map { RoutePoint(start: $0.t, end: $0.t2, name: $0.n, placeText: $0.p, spotId: $0.placeId,
-                                         studioId: $0.studioId, hallId: $0.hallId, walk: $0.walk) }
+                                         studioId: $0.studioId, hallId: $0.hallId, walk: $0.walk,
+                                         hoursAuto: $0.tAuto ?? false) }
             f.routeSeeded = d.seeded ?? false
         }
         if let p = d.place {
