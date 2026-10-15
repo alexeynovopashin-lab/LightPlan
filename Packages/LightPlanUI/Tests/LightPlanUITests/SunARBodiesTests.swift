@@ -213,7 +213,7 @@ struct SunARBodiesTests {
 
     /// Ждёт, пока модель войдёт в состояние (ответ телефона идёт через `await`).
     private func settle(_ a: AppModel, until done: @MainActor () -> Bool) async throws {
-        for _ in 0..<120 where !done() { try await Task.sleep(for: .milliseconds(25)) }
+        for _ in 0..<240 where !done() { try await Task.sleep(for: .milliseconds(25)) }
     }
 
     @Test("телефон дальше 50 км от выбранного места — плашка с расстоянием; рядом — AR открывается сразу, без плашки")
@@ -259,19 +259,21 @@ struct SunARBodiesTests {
         let a = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
                          locator: slow, geocoder: QuietGeocoder(), cityLookup: NoCity(), weatherSource: NoWx())
         a.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
-        try await Task.sleep(for: .milliseconds(600))
-        // Телефон молчит дольше 0,4 с: плашка «Определяю место…».
+        // Телефон молчит дольше 0,4 с: плашка «Определяю место…». Ждём состояние, а не срок: под нагрузкой
+        // очередь главного актора отстаёт на десятки миллисекунд.
+        try await settle(a) { a.sunAREntry?.reason == .locating && slow.pending }
         #expect(a.sunAREntry?.reason == .locating)
         a.dismissSunAREntry()
         slow.answer(.fix(moscowFix))
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(150))
         #expect(a.sunAREntry == nil && a.sunAR == nil)
         // И отказ после закрытия — тоже в пустоту.
         a.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
-        try await Task.sleep(for: .milliseconds(100))
+        try await settle(a) { slow.pending }
+        #expect(slow.pending)
         a.dismissSunAREntry()
         slow.answer(.denied)
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: .milliseconds(150))
         #expect(a.sunAREntry == nil && a.sunAR == nil)
     }
 
