@@ -127,6 +127,11 @@ private struct Shell: View {
                 .transition(.move(edge: .trailing))
                 .zIndex(BackZ.orgCard)
             }
+            // Плашка перед входом в AR (29.8в.4): геолокации нет или место далеко. Над картой, под самим AR.
+            if let entry = app.sunAREntry {
+                SunAREntryPlate(app: app, entry: entry)
+                    .zIndex(BackZ.sunAR - 0.05)
+            }
             // Слой AR (29.8в): дуга солнца поверх камеры; вход — место и момент, откуда открыли, экрану безразлично.
             if let target = app.sunAR {
                 SunARScreen(app: app, target: target)

@@ -1,52 +1,34 @@
 import SwiftUI
 
-/// Стеклянная линза и стеклянная плашка поверх живого кадра (шаг 29.8в.3, экран AR).
+/// Стеклянный диск и стеклянная плашка поверх живого кадра (шаги 29.8в.3, 29.8в.4, экран AR).
 ///
 /// Рецепт — тот же, что у ручки таймбара и окна барабана: прозрачное стекло без размытия, середина один к
 /// одному, у кромки гнётся (`GlassOptics`, `Glass.metal`), блик сверху, волосок чернил снаружи, тень только
 /// снаружи (`OuterShadow`). Рецепт живёт здесь, в `Timebar/`: `Tools/check_glass.sh` нарисованный блик вне
 /// этой папки не пускает.
 ///
-/// Линза не закрывает то, на что наведена: середина пустая, настоящее светило видно в ней как есть.
+/// С 29.8в.4 метка — сплошной диск, а не кольцо, и лежит ПОВЕРХ дуги и подписей (слово Алексея 14.10: «бубликом
+/// и за линией, выглядит плохо»). Поэтому рецепт в двух слоях:
+/// - `LensRefraction` — гнутый у кромки кадр; лежит ПОД дугой. На телефоне его рисует слой Metal (`SunARLens`),
+///   в симуляторе и без камеры — этот вид из копии фона;
+/// - `LensGlass` — налёт цвета, блик, волосок и тень; лежит НАД дугой и подписями, дуга видна сквозь стекло.
 struct LensGlass: View {
-    /// Диаметр линзы, pt.
+    /// Диаметр диска, pt.
     let diameter: CGFloat
-    /// Цвет состояния света этого момента: кольцо окрашено им.
+    /// Оттенок стекла: тёплый у солнца, серебристый у луны.
     let tint: Color
-    /// Ширина кольца с кромкой, pt.
-    var ring: CGFloat = 7
-    /// Прозрачность кольца: сквозь него просвечивает кадр.
-    var tintOpacity: Double = 0.5
-    /// Кадр под линзой, когда его можно подать в шейдер (SwiftUI-фон без камеры): кромка гнёт именно его.
-    /// У живого превью камеры (UIKit) шейдер ничего не читает — там `nil`, кромка без изгиба.
-    var backdrop: AnyView?
-    /// Левый верхний угол линзы в окне экрана — чтобы фон под ней встал на то же место.
-    var origin: CGPoint = .zero
-    /// Размер окна экрана — по нему фон под линзой растягивается так же, как сам фон.
-    var screen: CGSize = .zero
+    /// Прозрачность налёта: сквозь него просвечивает кадр и дуга.
+    var tintOpacity: Double = SunARInk.glassTintOpacity
     var fade: Double = 1
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let pal = Palette(colorScheme)
-        let r = diameter / 2
+        let ring = SunARInk.rim(for: diameter)
         ZStack {
-            if let backdrop {
-                // Копия фона под линзой, изогнутая у кромки; середина не рисуется (маска-кольцо), поэтому
-                // всё, что лежит над кадром — дуга, подписи, — видно сквозь неё без искажений.
-                backdrop
-                    .frame(width: screen.width, height: screen.height)
-                    .offset(x: -origin.x, y: -origin.y)
-                    .frame(width: diameter, height: diameter, alignment: .topLeading)
-                    .clipped()
-                    .layerEffect(GlassOptics.lens(center: CGPoint(x: r, y: r), radius: r, width: ring, scheme: colorScheme),
-                                 maxSampleOffset: CGSize(width: GlassOptics.lensShift, height: GlassOptics.lensShift))
-                    .mask(Circle().strokeBorder(.white, lineWidth: ring))
-            }
-            // Налёт цвета света на кольце.
-            Circle().strokeBorder(tint.opacity(tintOpacity), lineWidth: ring)
+            Circle().fill(tint.opacity(tintOpacity))
             // Налёт прозрачного стекла.
-            Circle().strokeBorder(pal.glassFill, lineWidth: ring)
+            Circle().fill(pal.glassFill)
             // Кромка: сверху свет, снизу тень толщины — как у кольца ручки.
             Circle().inset(by: 0.5)
                 .stroke(LinearGradient(stops: [.init(color: pal.glassShine, location: 0),
@@ -55,14 +37,43 @@ struct LensGlass: View {
                                                .init(color: .black.opacity(0.28), location: 1)],
                                        startPoint: .top, endPoint: .bottom),
                         lineWidth: 1)
-            // Внутренний волосок: где кончается кольцо и начинается чистая середина.
-            Circle().inset(by: ring).stroke(tint.opacity(0.7), lineWidth: 0.75)
+            // Внутренний волосок: где кончается гнущая кромка и начинается чистая середина.
+            Circle().inset(by: ring).stroke(tint.opacity(0.55), lineWidth: 0.75)
         }
         .overlay(Circle().inset(by: -1).stroke(pal.inkA22, lineWidth: 1))
         .frame(width: diameter, height: diameter)
         .background(OuterShadow(shape: Circle(), color: .black.opacity(0.45), radius: 5.5, y: 3))
         .opacity(fade)
         .allowsHitTesting(false)
+    }
+}
+
+/// Кромка диска, гнущая кадр, для случая, когда кадр рисует SwiftUI (небо без камеры): копия фона под диском,
+/// сдвиг у кромки — тот же шейдер, что у ручки (`glassRing`); середина один к одному.
+struct LensRefraction: View {
+    let diameter: CGFloat
+    /// Кадр под диском. Его кромка и гнёт.
+    let backdrop: AnyView
+    /// Левый верхний угол диска в окне экрана — чтобы фон под ним встал на то же место.
+    let origin: CGPoint
+    /// Размер окна экрана — по нему фон под диском растягивается так же, как сам фон.
+    let screen: CGSize
+    var fade: Double = 1
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let r = diameter / 2
+        backdrop
+            .frame(width: screen.width, height: screen.height)
+            .offset(x: -origin.x, y: -origin.y)
+            .frame(width: diameter, height: diameter, alignment: .topLeading)
+            .clipped()
+            .layerEffect(GlassOptics.lens(center: CGPoint(x: r, y: r), radius: r, width: SunARInk.rim(for: diameter),
+                                          scheme: colorScheme),
+                         maxSampleOffset: CGSize(width: GlassOptics.lensShift, height: GlassOptics.lensShift))
+            .clipShape(Circle())
+            .opacity(fade)
+            .allowsHitTesting(false)
     }
 }
 

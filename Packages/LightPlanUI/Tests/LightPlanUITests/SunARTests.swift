@@ -635,24 +635,8 @@ extension SunARTests {
     }
 
     // MARK: Чернила
-
-    @Test("чернила таймбара (ink4 краёв) на нижней панели: контраст на белом, сером и чёрном фоне не ниже 4,5")
-    func panelContrast() {
-        // ink4 тёмной схемы 0x8A8478; панель — 0F0E0C с непрозрачностью `panelOpacity`, лежит на фоне кадра.
-        let ink = (0x8A, 0x84, 0x78).self
-        let l = 0.2126 * SunARInk.luminance(Double(ink.0) / 255) + 0.7152 * SunARInk.luminance(Double(ink.1) / 255)
-            + 0.0722 * SunARInk.luminance(Double(ink.2) / 255)
-        var lines: [String] = []
-        for (name, bg) in [("белый", 1.0), ("серый", 0.5), ("чёрный", 0.0)] {
-            let a = SunARInk.panelOpacity
-            let ch = a * (14.0 / 255) + (1 - a) * bg
-            let plate = SunARInk.luminance(ch)
-            let ratio = (l + 0.05) / (plate + 0.05)
-            lines.append(String(format: "%@ %.2f", name, ratio))
-            #expect(ratio >= 4.5, "\(name): \(ratio)")
-        }
-        print("SUNAR_PANEL_CONTRAST " + lines.joined(separator: " | "))
-    }
+    // Контраст текста на нижней панели считается по снимкам (`Tools/ar_contrast.py`): панель — системное
+    // стекло `.glassEffect`, его цвет не лежит в константах (29.8в.4).
 
     @Test("жила дуги отделима от белой кромки, кромка от обводки: ширины убывают на ≥ 1 pt с каждой стороны")
     func arcLayersNest() {

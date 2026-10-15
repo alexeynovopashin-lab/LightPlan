@@ -212,7 +212,15 @@
     "ar.untilDawn": "до рассвета {d}",
     "ar.sunsetAt": "закат {t}",
     "ar.sunriseAt": "восход {t}",
-    "ar.durHM": "{h} ч {m} мин"
+    "ar.durHM": "{h} ч {m} мин",
+    "ar.mwCore": "ядро",
+    "ar.entry.useMine": "Использовать моё местоположение",
+    "ar.entry.keep": "Оставить «{name}»",
+    "ar.entry.whyOff": "AR показывает небо там, где вы стоите. Геолокация выключена — выбранное в приложении место может оказаться не тем.",
+    "ar.entry.whyFar": "Вы далеко от выбранного места: {d}. AR показывает небо там, где вы стоите.",
+    "ar.entry.whyDenied": "Нет доступа к геопозиции. Разрешить можно в настройках телефона; пока можно оставить выбранное место.",
+    "ar.entry.whyNoFix": "Не удалось определить, где вы. Можно попробовать ещё раз или оставить выбранное место.",
+    "ar.entry.busy": "Определяю место…"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -426,7 +434,15 @@
     "ar.untilDawn": "until sunrise {d}",
     "ar.sunsetAt": "sunset {t}",
     "ar.sunriseAt": "sunrise {t}",
-    "ar.durHM": "{h}h {m}m"
+    "ar.durHM": "{h}h {m}m",
+    "ar.mwCore": "core",
+    "ar.entry.useMine": "Use my location",
+    "ar.entry.keep": "Keep “{name}”",
+    "ar.entry.whyOff": "AR shows the sky where you stand. Location is off, so the place chosen in the app may not be the right one.",
+    "ar.entry.whyFar": "You are far from the chosen place: {d}. AR shows the sky where you stand.",
+    "ar.entry.whyDenied": "No access to location. You can allow it in the phone settings; for now you can keep the chosen place.",
+    "ar.entry.whyNoFix": "Could not tell where you are. You can try again or keep the chosen place.",
+    "ar.entry.busy": "Finding your location…"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -640,7 +656,15 @@
     "ar.untilDawn": "hasta el amanecer {d}",
     "ar.sunsetAt": "atardecer {t}",
     "ar.sunriseAt": "salida del sol {t}",
-    "ar.durHM": "{h} h {m} min"
+    "ar.durHM": "{h} h {m} min",
+    "ar.mwCore": "núcleo",
+    "ar.entry.useMine": "Usar mi ubicación",
+    "ar.entry.keep": "Dejar «{name}»",
+    "ar.entry.whyOff": "AR muestra el cielo donde está. La ubicación está desactivada, así que el lugar elegido en la app puede no ser el correcto.",
+    "ar.entry.whyFar": "Está lejos del lugar elegido: {d}. AR muestra el cielo donde está.",
+    "ar.entry.whyDenied": "Sin acceso a la ubicación. Puede permitirlo en los ajustes del teléfono; por ahora puede dejar el lugar elegido.",
+    "ar.entry.whyNoFix": "No se pudo determinar dónde está. Puede intentarlo de nuevo o dejar el lugar elegido.",
+    "ar.entry.busy": "Buscando su ubicación…"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -853,7 +877,15 @@
     "ar.untilDawn": "日の出まで{d}",
     "ar.sunsetAt": "日の入り {t}",
     "ar.sunriseAt": "日の出 {t}",
-    "ar.durHM": "{h}時間{m}分"
+    "ar.durHM": "{h}時間{m}分",
+    "ar.mwCore": "中心核",
+    "ar.entry.useMine": "現在地を使う",
+    "ar.entry.keep": "「{name}」のままにする",
+    "ar.entry.whyOff": "ARはいま立っている場所の空を表示します。位置情報がオフのため、アプリで選んだ場所が実際の場所と異なる可能性があります。",
+    "ar.entry.whyFar": "選んだ場所から離れています（{d}）。ARはいま立っている場所の空を表示します。",
+    "ar.entry.whyDenied": "位置情報にアクセスできません。電話の設定で許可できます。いまは選んだ場所のままにもできます。",
+    "ar.entry.whyNoFix": "現在地を特定できませんでした。もう一度試すか、選んだ場所のままにできます。",
+    "ar.entry.busy": "現在地を確認中…"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -1066,6 +1098,14 @@
     "ar.untilDawn": "距日出{d}",
     "ar.sunsetAt": "日落{t}",
     "ar.sunriseAt": "日出{t}",
-    "ar.durHM": "{h}小时{m}分钟"
+    "ar.durHM": "{h}小时{m}分钟",
+    "ar.mwCore": "银心",
+    "ar.entry.useMine": "使用我的位置",
+    "ar.entry.keep": "保留「{name}」",
+    "ar.entry.whyOff": "AR 显示你所在位置的天空。定位已关闭，应用中选择的地点可能不是你所在的地方。",
+    "ar.entry.whyFar": "你离所选地点较远：{d}。AR 显示你所在位置的天空。",
+    "ar.entry.whyDenied": "无法访问定位。可在手机设置中允许；目前可保留所选地点。",
+    "ar.entry.whyNoFix": "无法确定你的位置。可重试，或保留所选地点。",
+    "ar.entry.busy": "正在确定位置…"
   }
 }

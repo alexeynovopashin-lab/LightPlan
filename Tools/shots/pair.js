@@ -47,6 +47,8 @@ const args = {};
 process.argv.slice(2).forEach((a, i, all) => {
   if (a.startsWith('--')) args[a.slice(2)] = all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : '1';
 });
+// 29.8в.4: экран AR — только натив, свой сценарий (`Tools/shots/ar.js`).
+if (args.screens === 'ar') { require('./ar.js'); return; }
 if (args.help) {
   console.log(`Пара снимков «веб / натив» (Tools/shots/pair.js). Запуск из корня натива; ничего не строит и не снимает с --help.
   --screens light,map,planner,settings,card,m28   какие экраны (по умолчанию все)

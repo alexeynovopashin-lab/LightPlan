@@ -1,0 +1,318 @@
+import Foundation
+
+/// Луна и Млечный Путь в слое AR (шаг 29.8в.4). Своих расчётов неба здесь нет: положение и фаза луны —
+/// `MoonSample` / `MoonPhase`, ядро и полоса — `MilkyWay`; ниже только то, чего ядру не хватало слою AR:
+/// суточная дуга луны шагом дуги солнца, наклон освещённой кромки на экране, контур освещённой части диска,
+/// полоса в точках экрана и стрелка к светилу за краем кадра.
+
+// MARK: - Луна
+
+/// Луна в один момент по часам места: положение (`MoonSample`) и, по требованию, фаза.
+public struct MoonARSample: Sendable, Equatable {
+    /// Минуты от полуночи по часам места.
+    public let minutes: Minutes
+    public let moon: MoonSample
+
+    public init(minutes: Minutes, moon: MoonSample) {
+        self.minutes = minutes
+        self.moon = moon
+    }
+
+    public var azimuth: Degrees { moon.azimuth }
+    /// Геометрическая высота.
+    public var altitude: Degrees { moon.altitude }
+    /// Видимая высота: добавка рефракции та же, что у солнца (`SunTrack.apparent`).
+    public var apparentAltitude: Degrees { SunTrack.apparent(altitude: moon.altitude) }
+    /// Освещённая доля и положение в цикле — `MoonPhase` ядра.
+    public var phase: MoonPhase { moon.phase }
+    /// Под горизонтом луна идёт призраком, а не исчезает (правило «светило не исчезает»).
+    public var isGhost: Bool { moon.altitude < 0 }
+}
+
+public enum MoonTrack {
+    public static func sample(day: CivilDate, minutes: Minutes, in place: Place) -> MoonARSample {
+        MoonARSample(minutes: minutes, moon: MoonSample(date: day, minutes: minutes, place: place))
+    }
+
+    public static func sample(at moment: Moment, in place: Place) -> MoonARSample {
+        let wall = SunTrack.wallClock(of: moment, in: place)
+        return sample(day: wall.day, minutes: wall.minutes, in: place)
+    }
+
+    /// Дуга суток луны: точки через `step` минут от полуночи до полуночи по часам места, как у дуги солнца.
+    /// Смещение пояса берётся один раз на сутки: сотни точек на одну дату.
+    public static func arc(day: CivilDate, in place: Place, step: Minutes = SunTrack.arcStep) -> [MoonARSample] {
+        let offset = place.zone.utcOffsetHours(on: day)
+        var out: [MoonARSample] = []
+        var t = 0.0
+        while t <= 1440 + 1e-9 {
+            let moon = MoonSample(date: day, minutes: t, latitude: place.latitude, longitude: place.longitude,
+                                  utcOffsetHours: offset)
+            out.append(MoonARSample(minutes: t, moon: moon))
+            t += step
+        }
+        return out
+    }
+}
+
+public enum MoonLimb {
+    /// Куда на экране смотрит светлая кромка луны: направление от луны к солнцу, радианы в обычной математической
+    /// оси экрана (0 — вправо, π/2 — вверх). Освещённая сторона луны всегда обращена к солнцу, поэтому по этому
+    /// направлению и ставится рисунок фазы; от наклона кадра, широты и часа он не зависит иначе, чем само небо.
+    /// `nil` — солнце и луна в одной точке или в противоположных: направления нет.
+    ///
+    /// Направление берётся в касательной плоскости к небу у луны и переводится в экран маленьким шагом (так
+    /// учтена перспектива у края кадра); если шаг не ложится на экран — по осям камеры.
+    public static func brightLimbAngle(moon: HorizontalPoint, sun: HorizontalPoint, basis: CameraBasis,
+                                       optics: CameraOptics, viewport: ScreenViewport) -> Double? {
+        let m = SkyVector(azimuth: moon.azimuth, altitude: moon.altitude)
+        let s = SkyVector(azimuth: sun.azimuth, altitude: sun.altitude)
+        let k = s.dot(m)
+        let t = SkyVector(east: s.east - m.east * k, north: s.north - m.north * k, up: s.up - m.up * k)
+        let len = t.dot(t).squareRoot()
+        guard len > 1e-6 else { return nil }
+        let u = SkyVector(east: t.east / len, north: t.north / len, up: t.up / len)
+        // Шаг в 1°: достаточно мал, чтобы быть касательной, и достаточно велик, чтобы разность не потерялась.
+        let e = 1.0 * Double.pi / 180
+        let moved = SkyVector(east: m.east * cos(e) + u.east * sin(e), north: m.north * cos(e) + u.north * sin(e),
+                              up: m.up * cos(e) + u.up * sin(e)).horizontal
+        if let p0 = SkyProjection.project(azimuth: moon.azimuth, altitude: moon.altitude, basis: basis,
+                                          optics: optics, viewport: viewport),
+           let p1 = SkyProjection.project(azimuth: moved.azimuth, altitude: moved.altitude, basis: basis,
+                                          optics: optics, viewport: viewport) {
+            let dx = p1.x - p0.x, dy = p1.y - p0.y
+            if dx * dx + dy * dy > 1e-12 { return atan2(-dy, dx) }
+        }
+        let x = u.dot(basis.right), y = u.dot(basis.up)
+        guard x * x + y * y > 1e-12 else { return nil }
+        return atan2(y, x)
+    }
+}
+
+public enum MoonDisc {
+    /// Освещённая часть диска единичного радиуса: ось `+x` смотрит на солнце, `y` вниз, центр в нуле. Контур
+    /// замкнут: правая дуга сверху вниз, терминатор снизу вверх. Новолуние (доля < 1 %) — пустой контур: рисующий
+    /// оставляет тонкий контур диска, а не пустоту.
+    ///
+    /// Терминатор — половина эллипса с горизонтальной полуосью `|1 − 2f|`: у четверти он прямой, у серпа
+    /// выгнут к кромке, у «почти полной» уходит за центр.
+    public static func litOutline(fraction f: Double, steps: Int = 32) -> [ScreenPoint] {
+        guard f >= 0.01 else { return [] }
+        let t = 1 - 2 * min(1, max(0, f))
+        var out: [ScreenPoint] = []
+        for i in 0...steps {
+            let phi = Double.pi * Double(i) / Double(steps)
+            out.append(ScreenPoint(x: sin(phi), y: -cos(phi)))
+        }
+        for i in 0...steps {
+            let phi = Double.pi - Double.pi * Double(i) / Double(steps)
+            out.append(ScreenPoint(x: t * sin(phi), y: -cos(phi)))
+        }
+        return out
+    }
+}
+
+// MARK: - Млечный Путь
+
+public enum MilkyWayAR {
+    /// Край полосы в точке: левый и правый края — линии галактической широты ±полуширина, перевод в экваториальные
+    /// координаты — `MilkyWay.equatorial`. Константы неба, считаются один раз.
+    private static let edges: [(left: EquatorialPoint, right: EquatorialPoint)] = MilkyWay.band.map { p in
+        (MilkyWay.equatorial(galacticLongitude: p.longitude, galacticLatitude: p.halfWidth),
+         MilkyWay.equatorial(galacticLongitude: p.longitude, galacticLatitude: -p.halfWidth))
+    }
+
+    /// Полоса над головой в этот момент: края по точкам `MilkyWay.band` (121 точка шагом 3°).
+    public static func band(day: CivilDate, minutes: Minutes, in place: Place) -> [(left: HorizontalPoint, right: HorizontalPoint)] {
+        let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: place.zone.utcOffsetHours(on: day))
+        return edges.map { e in
+            (Sky.horizontal(e.left, days: d, latitude: place.latitude, longitude: place.longitude),
+             Sky.horizontal(e.right, days: d, latitude: place.latitude, longitude: place.longitude))
+        }
+    }
+
+    /// Ядро — `MilkyWay.corePosition`, второй расчёт не заводится.
+    public static func core(day: CivilDate, minutes: Minutes, in place: Place) -> HorizontalPoint {
+        MilkyWay.corePosition(date: day, minutes: minutes, place: place)
+    }
+
+    /// Небо не тёмное: солнце выше −6° (видимый порог дуги солнца). Днём полоса идёт призраком.
+    public static func isGhost(sunAltitude: Degrees) -> Bool { sunAltitude > SunTrack.visibleFrom }
+
+    /// Непрозрачность полосы: ночью 1 (рисующий умножает на свой тон), днём — призрак 0,25.
+    public static let ghostOpacity = 0.25
+}
+
+// MARK: - Стрелка к светилу за краем кадра
+
+/// Прямоугольник экрана, в котором светило считается «в кадре» и где живёт стрелка: окно без полос под кнопками
+/// сверху и под панелью снизу.
+public struct ScreenBox: Sendable, Equatable {
+    public let minX, minY, maxX, maxY: Double
+
+    public init(minX: Double, minY: Double, maxX: Double, maxY: Double) {
+        self.minX = minX; self.minY = minY; self.maxX = maxX; self.maxY = maxY
+    }
+
+    public func contains(_ p: ScreenPoint) -> Bool {
+        p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY
+    }
+}
+
+public struct EdgePointer: Sendable, Equatable {
+    /// Где на краю рамки стоит значок.
+    public let point: ScreenPoint
+    /// Куда смотрит стрелка на экране: радианы в оси экрана (0 — вправо, π/2 — вниз).
+    public let angle: Double
+}
+
+public enum EdgePointing {
+    /// `nil` — светило в рамке: стрелка не нужна. Иначе — точка на краю рамки в сторону светила. За спиной
+    /// (глубина ≤ порога проекции) направление берётся по осям камеры: куда повернуть телефон, чтобы вернуть его.
+    public static func pointer(azimuth: Degrees, altitude: Degrees, basis: CameraBasis, optics: CameraOptics,
+                               viewport: ScreenViewport, box: ScreenBox) -> EdgePointer? {
+        let t = SkyVector(azimuth: azimuth, altitude: altitude)
+        let z = t.dot(basis.forward)
+        let cx = viewport.width / 2, cy = viewport.height / 2
+        var dx: Double, dy: Double
+        if z > SkyProjection.minDepth,
+           let p = SkyProjection.project(azimuth: azimuth, altitude: altitude, basis: basis, optics: optics, viewport: viewport) {
+            if box.contains(p) { return nil }
+            dx = p.x - cx; dy = p.y - cy
+        } else {
+            dx = t.dot(basis.right); dy = -t.dot(basis.up)
+            // Ровно за спиной: направления нет, стрелка смотрит вниз (повернуть телефон можно в любую сторону).
+            if dx * dx + dy * dy < 1e-9 { dx = 0; dy = 1 }
+        }
+        // Луч из центра окна до границы рамки.
+        var s = Double.infinity
+        if dx > 1e-12 { s = min(s, (box.maxX - cx) / dx) } else if dx < -1e-12 { s = min(s, (box.minX - cx) / dx) }
+        if dy > 1e-12 { s = min(s, (box.maxY - cy) / dy) } else if dy < -1e-12 { s = min(s, (box.minY - cy) / dy) }
+        guard s.isFinite, s > 0 else { return nil }
+        return EdgePointer(point: ScreenPoint(x: cx + dx * s, y: cy + dy * s), angle: atan2(dy, dx))
+    }
+}
+
+// MARK: - Сцена
+
+/// Всё, что экран AR рисует для луны и Млечного Пути, в точках окна. Чистая функция, как `SunARScene`.
+/// Что выключено переключателем, во вход не подаётся — и в сцене пусто (ни расчёта, ни рисования).
+public struct NightSkyARScene: Sendable, Equatable {
+
+    public struct MoonMark: Sendable, Equatable {
+        /// Центр метки; `nil` — луна за камерой.
+        public let point: ScreenPoint?
+        public let azimuth: Degrees
+        public let altitude: Degrees
+        public let illuminated: Double
+        public let waxing: Bool
+        /// Радианы в оси экрана (0 — вправо, π/2 — вверх): куда смотрит светлая кромка.
+        public let limbAngle: Double?
+        public let ghost: Bool
+    }
+
+    public struct ArcPoint: Sendable, Equatable {
+        public let point: ScreenPoint
+        public let isBelowHorizon: Bool
+    }
+
+    /// Луна: сутки выбранного дня, выбранный момент, «сейчас» и солнце в эти моменты (по нему ставится кромка).
+    public struct MoonInput {
+        public let arc: [MoonARSample]
+        public let picked: MoonARSample
+        public let now: MoonARSample?
+        public let sunAtPicked: HorizontalPoint
+        public let sunAtNow: HorizontalPoint?
+
+        public init(arc: [MoonARSample], picked: MoonARSample, now: MoonARSample?,
+                    sunAtPicked: HorizontalPoint, sunAtNow: HorizontalPoint?) {
+            self.arc = arc; self.picked = picked; self.now = now
+            self.sunAtPicked = sunAtPicked; self.sunAtNow = sunAtNow
+        }
+    }
+
+    /// Млечный Путь: края полосы и ядро в этот момент, высота солнца — для призрака днём.
+    public struct MilkyWayInput {
+        public let band: [(left: HorizontalPoint, right: HorizontalPoint)]
+        public let core: HorizontalPoint
+        public let sunAltitude: Degrees
+
+        public init(band: [(left: HorizontalPoint, right: HorizontalPoint)], core: HorizontalPoint, sunAltitude: Degrees) {
+            self.band = band; self.core = core; self.sunAltitude = sunAltitude
+        }
+    }
+
+    /// Луна в выбранный момент; `nil` — луна выключена.
+    public let picked: MoonMark?
+    /// Луна сию минуту; `nil`, когда метки слились или луна выключена.
+    public let now: MoonMark?
+    /// Дуга луны выбранного дня: видимая часть, отрезками, разорванными за камерой.
+    public let arc: [[ArcPoint]]
+    /// Полоса Млечного Пути многоугольниками: левый край вперёд, правый назад.
+    public let band: [[ScreenPoint]]
+    /// Центр ядра на экране; `nil` — за камерой или Млечный Путь выключен.
+    public let core: ScreenPoint?
+    public let coreAzimuth: Degrees
+    public let coreAltitude: Degrees
+    /// Млечный Путь включён.
+    public let milkyWayOn: Bool
+    /// Небо светлое: полоса и ядро идут призраком.
+    public let skyGhost: Bool
+
+    /// Луна ниже −18° (как дуга солнца) не рисуется.
+    public static let arcFrom: Degrees = -18
+
+    public static func make(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport,
+                            moon: MoonInput?, milkyWay: MilkyWayInput?) -> NightSkyARScene {
+        func proj(_ az: Degrees, _ alt: Degrees) -> ScreenPoint? {
+            SkyProjection.project(azimuth: az, altitude: alt, basis: basis, optics: optics, viewport: viewport)
+        }
+        func mark(_ m: MoonARSample, sun: HorizontalPoint) -> MoonMark {
+            let ph = m.phase
+            let visible = HorizontalPoint(altitude: m.apparentAltitude, azimuth: m.azimuth)
+            return MoonMark(point: proj(m.azimuth, m.apparentAltitude), azimuth: m.azimuth, altitude: m.altitude,
+                            illuminated: ph.fraction, waxing: ph.cycle < 0.5,
+                            limbAngle: MoonLimb.brightLimbAngle(moon: visible, sun: sun, basis: basis, optics: optics,
+                                                                viewport: viewport),
+                            ghost: m.isGhost)
+        }
+
+        var segments: [[ArcPoint]] = []
+        var pickedMark: MoonMark?, nowMark: MoonMark?
+        if let moon {
+            var run: [ArcPoint] = []
+            for s in moon.arc {
+                guard s.altitude >= arcFrom, let p = proj(s.azimuth, s.apparentAltitude) else {
+                    if !run.isEmpty { segments.append(run); run = [] }
+                    continue
+                }
+                run.append(ArcPoint(point: p, isBelowHorizon: s.apparentAltitude < 0))
+            }
+            if !run.isEmpty { segments.append(run) }
+            pickedMark = mark(moon.picked, sun: moon.sunAtPicked)
+            nowMark = moon.now.map { mark($0, sun: moon.sunAtNow ?? moon.sunAtPicked) }
+        }
+
+        // Полоса: подряд идущие точки, у которых оба края ложатся на экран; разрыв — новый многоугольник.
+        var polys: [[ScreenPoint]] = []
+        var coreOnScreen: ScreenPoint?
+        if let milkyWay {
+            var left: [ScreenPoint] = [], right: [ScreenPoint] = []
+            func flush() {
+                if left.count >= 2 { polys.append(left + right.reversed()) }
+                left = []; right = []
+            }
+            for b in milkyWay.band {
+                if let l = proj(b.left.azimuth, b.left.altitude), let r = proj(b.right.azimuth, b.right.altitude) {
+                    left.append(l); right.append(r)
+                } else { flush() }
+            }
+            flush()
+            coreOnScreen = proj(milkyWay.core.azimuth, milkyWay.core.altitude)
+        }
+        return NightSkyARScene(picked: pickedMark, now: nowMark, arc: segments, band: polys, core: coreOnScreen,
+                               coreAzimuth: milkyWay?.core.azimuth ?? 0, coreAltitude: milkyWay?.core.altitude ?? 0,
+                               milkyWayOn: milkyWay != nil,
+                               skyGhost: milkyWay.map { MilkyWayAR.isGhost(sunAltitude: $0.sunAltitude) } ?? false)
+    }
+}

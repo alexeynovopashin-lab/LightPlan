@@ -24,20 +24,45 @@ enum SunARInk {
 
     /// Светлое: линия, текст.
     static let light = Color.white
-    /// Диск солнца.
+    /// Диск солнца (в калибровке).
     static let sunFill = Color(hex: 0xFFC24D)
-    /// Метки солнца — стеклянные линзы (29.8в.3), диаметр, pt. Было: диск «сейчас» 22 (радиус 11) и кольцо
-    /// выбранного момента того же размера.
+    /// Метки солнца и луны — стеклянные диски (29.8в.4; до этого были кольца, 29.8в.3), диаметр, pt:
+    /// «сейчас» крупнее выбранного момента.
     static let nowLensDiameter: CGFloat = 48
     static let pickedLensDiameter: CGFloat = 34
-    /// Просвет между краем линзы и подписью, pt.
+    static let moonNowDiameter: CGFloat = 40
+    static let moonPickedDiameter: CGFloat = 30
+    /// Тёплый оттенок стекла солнца и холодный серебристый — луны. Одним цветом ночью их не различить
+    /// (в астро-ночь цвета тёмные), поэтому различает ещё и форма: у солнца лучики, у луны — фаза.
+    static let sunTint = Color(hex: 0xFFC24D)
+    static let moonTint = Color(hex: 0xC9D6EA)
+    static let glassTintOpacity = 0.30
+    /// Лучики солнца по кромке: число, просвет от края диска и длина, pt.
+    static let rayCount = 8
+    static let rayGap: CGFloat = 3
+    static let rayLength: CGFloat = 7
+    /// Внутренний отступ рисунка фазы от края стекла луны, pt.
+    static let moonInset: CGFloat = 4.5
+    /// Дуга луны — тоньше солнечной: обводка и жила, pt.
+    static let moonArcOutlineWidth: CGFloat = 3.5
+    static let moonArcWidth: CGFloat = 1.5
+    /// Просвет между краем метки и подписью, pt.
     static let markerLabelGap: CGFloat = 14
     /// Малая метка восхода и заката на горизонте, диаметр, pt.
     static let eventDot: CGFloat = 8
-    /// Нижняя панель со временем и таймбаром: тёмная поверхность «Света» (`0F0E0C`) почти без просвета —
-    /// чернила таймбара (`ink4` на краях) читаются на любом кадре.
-    static let panelOpacity = 0.94
-    static let panelColor = Color(hex: 0x0F0E0C)
+    /// Полоса Млечного Пути и ядро: тон и непрозрачность слоёв ночью (днём — на `MilkyWayAR.ghostOpacity`).
+    static let milkyWayTone = Color(hex: 0xDCE6FF)
+    static let coreTone = Color(hex: 0xFFEBC2)
+    /// Стрелка у края: диаметр стеклянного кружка, pt.
+    static let pointerDiameter: CGFloat = 44
+    /// Стекло кнопок: стандартное `.glassEffect`, но с тёмным оттенком. Над белым небом чистое стекло светлое и
+    /// белый текст на нём исчезал (измерено 1,02 : 1); с оттенком — `Tools/ar_contrast.py`.
+    static let buttonGlass = Glass.regular.tint(Color.black.opacity(0.7))
+    /// Высота касания кнопок (HIG), pt.
+    static let touch: CGFloat = 44
+
+    /// Ширина гнущей кромки диска: у 48 pt — 7, у 30 pt — 6 (не больше пятой части диаметра).
+    static func rim(for diameter: CGFloat) -> CGFloat { min(7, diameter * 0.2) }
 
     /// Цвет состояния света на этой высоте — остановка рельса таймбара «Света» (`PathStops`), без прозрачности.
     static func stateColor(altitude: Double) -> Color {

@@ -33,6 +33,8 @@ struct SunARScreen: View {
 
     private var t: Lexicon { app.lexicon }
 
+    @State private var panelHeight: CGFloat = 200
+
     var body: some View {
         let pal = Palette(scheme)
         GeometryReader { g in
@@ -44,11 +46,32 @@ struct SunARScreen: View {
             let scene = SunARScene.make(basis: model.aim, optics: model.optics, viewport: viewport,
                                         arc: model.arc, sun: sun, now: model.sunNow, pickedIsNow: model.pickedIsNow,
                                         solar: model.solar)
+            // Луна и Млечный Путь — только то, что включено: выключенное не считается и не рисуется.
+            let night: NightSkyARScene? = (model.moonOn || model.milkyWayOn)
+                ? model.nightScene(basis: model.aim, optics: model.optics, viewport: viewport) : nil
+            let marks = SunARMarks.make(sun: scene, night: night, screen: size)
             let clock = ClockText(language: app.language, preference: app.light.clockPreference)
             ZStack(alignment: .topLeading) {
-                backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground)
+                backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: marks)
                     .shotNode("ar.background", text: "\(model.camera)")
-                SunAROverlay(scene: scene, clock: clock, cardinals: cardinalNames(),
+                if !model.camera.isLive {
+                    // Кадр рисует SwiftUI (небо без камеры): кромка диска гнёт его копию. Под дугой.
+                    let copy = AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: []))
+                    ForEach(marks) { m in
+                        LensRefraction(diameter: m.diameter, backdrop: copy, origin: m.origin, screen: size, fade: m.fade)
+                            .position(x: m.center.x, y: m.center.y)
+                    }
+                }
+                if let night, night.milkyWayOn {
+                    SunARMilkyWayLayer(scene: night, coreLabel: t.t("ar.mwCore"))
+                        .frame(width: size.width, height: size.height)
+                        .shotNode("ar.milkyWay", text: String(format: "polys=%d core=%@ ghost=%d", night.band.count,
+                                                              night.core.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
+                                                              night.skyGhost ? 1 : 0))
+                }
+                SunAROverlay(scene: scene, moonArc: night?.arc ?? [],
+                             moonDiscs: marks.filter { !$0.isSun }.map { ($0.center, $0.radius) },
+                             clock: clock, cardinals: cardinalNames(),
                              eventText: { eventText($0, clock: clock) })
                     .frame(width: size.width, height: size.height)
                     .allowsHitTesting(false)
@@ -57,13 +80,16 @@ struct SunARScreen: View {
                                                          scene.nowMarker.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
                                                          scene.markerIsNow ? 1 : 0, scene.arc.count, scene.hours.count,
                                                          scene.events.count))
-                SunARMarkers(scene: scene, pickedAltitude: sun.altitude, nowAltitude: model.sunNow.altitude,
-                             nowTag: t.t("ar.nowTag"), pickedLabel: pickedLabel(clock: clock),
-                             backdrop: model.camera.isLive ? nil
-                                 : AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground)),
-                             screen: size)
+                // Диски стекла — поверх дуги и подписей часов.
+                ForEach(marks) { m in
+                    SunARMarkPaint(mark: m, shotText: markText(m))
+                }
+                SunARMarkLabels(scene: scene, nowTag: t.t("ar.nowTag"), pickedLabel: pickedLabel(clock: clock),
+                                marks: marks, screen: size)
                     .frame(width: size.width, height: size.height)
-                    .allowsHitTesting(false)
+                ForEach(pointerItems(sun: sun, night: night, size: size, safe: safe, viewport: viewport)) { item in
+                    SunARPointerView(item: item, screen: size, labelFlipY: size.height - panelHeight - 40)
+                }
                 controls(size: size, safe: safe, sun: sun, clock: clock)
                 if model.calibrating {
                     SunARCalibrationView(progress: model.calibrationProgress, phase: model.calibrationPhase,
@@ -106,14 +132,69 @@ struct SunARScreen: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// Строка узла для снимков: что за метка и где.
+    private func markText(_ m: SunARMark) -> String {
+        let kind: String
+        switch m.kind {
+        case .sun: kind = "sun"
+        case .moon(let f, let waxing, let limb):
+            kind = String(format: "moon f=%.3f %@ limb=%@", f, waxing ? "wax" : "wan",
+                          limb.map { String(format: "%.1f", $0 * 180 / .pi) } ?? "—")
+        }
+        return String(format: "%@ d=%.0f at=%.1f,%.1f fade=%.1f", kind, m.diameter, m.center.x, m.center.y, m.fade)
+    }
+
+    /// Стрелки к светилам, ушедшим за кадр: солнце всегда, луна и ядро — когда включены. Рамка — окно без полос
+    /// под кнопками сверху и под панелью снизу.
+    private func pointerItems(sun: SunSample, night: NightSkyARScene?, size: CGSize, safe: EdgeInsets,
+                              viewport: ScreenViewport) -> [SunARPointerItem] {
+        guard !model.calibrating else { return [] }
+        // Рамка учитывает размер самого значка: центр не ближе радиуса и просвета к краю, а сверху — ниже двух
+        // рядов кнопок (курс и включатели могут встать в два ряда).
+        let inset = SunARInk.pointerDiameter / 2 + 8
+        let box = ScreenBox(minX: inset, minY: safe.top + 8 + 2 * (SunARInk.touch + 8) + inset, maxX: size.width - inset,
+                            maxY: size.height - panelHeight - max(safe.bottom, 12) - 4 - inset)
+        // Светило, чей диск виден на экране над панелью (хоть краем), стрелки не получает: она бы лежала на нём.
+        let shown = CGRect(x: 0, y: 0, width: size.width, height: size.height - panelHeight - max(safe.bottom, 12) - 4)
+        func item(_ id: String, _ body: SunARPointerItem.Body, az: Double, alt: Double, text: String,
+                  fade: Double) -> SunARPointerItem? {
+            if let p = SkyProjection.project(azimuth: az, altitude: alt, basis: model.aim, optics: model.optics,
+                                             viewport: viewport), shown.contains(CGPoint(x: p.x, y: p.y)) { return nil }
+            guard let p = EdgePointing.pointer(azimuth: az, altitude: alt, basis: model.aim, optics: model.optics,
+                                               viewport: viewport, box: box) else { return nil }
+            return SunARPointerItem(id: id, body: body, pointer: p, text: text, fade: fade)
+        }
+        func label(_ az: Double, _ alt: Double) -> String {
+            let a = az.rounded() == 360 ? 0 : az.rounded()
+            return String(format: "%.0f° · %+.0f°", a, alt.rounded())
+        }
+        var out: [SunARPointerItem] = []
+        if let i = item("sun", .sun, az: sun.azimuth, alt: sun.apparentAltitude,
+                        text: label(sun.azimuth, sun.altitude), fade: sun.altitude < SunTrack.visibleFrom ? 0.6 : 1) {
+            out.append(i)
+        }
+        if let m = night?.picked, let i = item("moon", .moon(illuminated: m.illuminated, waxing: m.waxing),
+                                               az: m.azimuth, alt: m.altitude, text: label(m.azimuth, m.altitude),
+                                               fade: m.ghost ? 0.6 : 1) {
+            out.append(i)
+        }
+        if let night, night.milkyWayOn,
+           let i = item("core", .core, az: night.coreAzimuth, alt: night.coreAltitude,
+                        text: label(night.coreAzimuth, night.coreAltitude), fade: night.skyGhost ? 0.6 : 1) {
+            out.append(i)
+        }
+        return out
+    }
+
     // MARK: - Фон
 
-    /// Кадр под всем остальным: камера или небо, а без камеры ещё и «земля» под горизонтом. Тот же набор подаётся
-    /// в линзы: у кромки они гнут именно его (живое превью камеры — вид UIKit, шейдер его не читает).
+    /// Кадр под всем остальным: камера или небо, а без камеры ещё и «земля» под горизонтом. С камерой над
+    /// превью лежит слой Metal, который гнёт кромку дисков (`marks`); без неё кромку гнёт `LensRefraction`.
     @ViewBuilder
-    private func backdropStack(size: CGSize, sun: SunSample, pal: Palette, ground: [ScreenPoint]?) -> some View {
+    private func backdropStack(size: CGSize, sun: SunSample, pal: Palette, ground: [ScreenPoint]?,
+                               marks: [SunARMark]) -> some View {
         ZStack {
-            background(size: size, sun: sun, pal: pal)
+            background(size: size, sun: sun, pal: pal, marks: marks)
             if !model.camera.isLive, let ground {
                 Path { p in
                     p.move(to: CGPoint(ground[0]))
@@ -139,23 +220,23 @@ struct SunARScreen: View {
     }
 
     @ViewBuilder
-    private func background(size: CGSize, sun: SunSample, pal: Palette) -> some View {
+    private func background(size: CGSize, sun: SunSample, pal: Palette, marks: [SunARMark]) -> some View {
         #if DEBUG
         // Замер контраста (`-LPSunARBackdrop white|gray|black`): сплошной фон вместо кадра, чтобы по снимку
         // посчитать контраст дуги и подписей на самых тяжёлых фонах.
         if let b = UserDefaults.standard.string(forKey: "LPSunARBackdrop") {
             Color(white: b == "white" ? 1 : b == "gray" ? 0.5 : 0)
-        } else { realBackground(size: size, sun: sun, pal: pal) }
+        } else { realBackground(size: size, sun: sun, pal: pal, marks: marks) }
         #else
-        realBackground(size: size, sun: sun, pal: pal)
+        realBackground(size: size, sun: sun, pal: pal, marks: marks)
         #endif
     }
 
     @ViewBuilder
-    private func realBackground(size: CGSize, sun: SunSample, pal: Palette) -> some View {
+    private func realBackground(size: CGSize, sun: SunSample, pal: Palette, marks: [SunARMark]) -> some View {
         #if os(iOS)
-        if model.camera.isLive, let session = model.cameraSession {
-            ARCameraPreview(session: session)
+        if model.camera.isLive, let feed = model.cameraFeed {
+            ARCameraBackdrop(feed: feed, lenses: marks.map(\.lensSpec))
         } else {
             skyGradient(sun: sun, pal: pal)
         }
@@ -189,15 +270,33 @@ struct SunARScreen: View {
 
     // MARK: - Кнопки
 
+    /// Кнопки AR — стандартное стекло `.glassEffect` в системной форме капсулы, высота касания 44 pt (слово
+    /// Алексея 14.10: «кнопки стеклянные, в соответствии со стандартами»). Верхний ряд — в одном контейнере стекла.
     private func controls(size: CGSize, safe: EdgeInsets, sun: SunSample, clock: ClockText) -> some View {
         let aim = model.aim.aim
         return ZStack(alignment: .top) {
             VStack(spacing: 8) {
-                HStack(alignment: .center, spacing: 8) {
-                    backButton
-                    Spacer(minLength: 8)
-                    if model.hasSensor { calibrateButton }
-                    headingChip(aim)
+                // Ряд: «Назад» слева; курс, «Калибровка» и два включателя справа. Не уместился в одну строку —
+                // включатели уходят второй строкой под курс.
+                GlassEffectContainer(spacing: 8) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .center, spacing: 8) {
+                            backButton
+                            Spacer(minLength: 8)
+                            if model.hasSensor { calibrateButton }
+                            headingChip(aim)
+                            bodyToggles
+                        }
+                        VStack(alignment: .trailing, spacing: 8) {
+                            HStack(alignment: .center, spacing: 8) {
+                                backButton
+                                Spacer(minLength: 8)
+                                if model.hasSensor { calibrateButton }
+                                headingChip(aim)
+                            }
+                            bodyToggles
+                        }
+                    }
                 }
                 if model.magneticOnly {
                     // Тихая строка в левом углу: не модалка, поверх кадра, пропадает, когда север стал истинным.
@@ -291,11 +390,12 @@ struct SunARScreen: View {
                 Text(t.t("nav.back")).font(webFont(15))
             }
             .foregroundStyle(SunARInk.light)
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(Capsule().fill(Color.black.opacity(SunARInk.plateOpacity)))
+            .padding(.horizontal, 14)
+            .frame(minHeight: SunARInk.touch)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .glassEffect(SunARInk.buttonGlass.interactive(), in: Capsule())
         .shotNode("ar.back", text: t.t("nav.back"))
     }
 
@@ -304,11 +404,12 @@ struct SunARScreen: View {
         Button { model.beginCalibration() } label: {
             Text(t.t("ar.calibrate")).font(.system(size: 14, weight: .medium))
                 .foregroundStyle(SunARInk.light)
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(Capsule().fill(Color.black.opacity(SunARInk.plateOpacity)))
+                .padding(.horizontal, 14)
+                .frame(minHeight: SunARInk.touch)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .glassEffect(SunARInk.buttonGlass.interactive(), in: Capsule())
         .shotNode("ar.calibrate", text: t.t("ar.calibrate"))
     }
 
@@ -321,9 +422,44 @@ struct SunARScreen: View {
                 .font(.system(size: 14, weight: .medium).monospacedDigit())
         }
         .foregroundStyle(SunARInk.light)
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(Capsule().fill(Color.black.opacity(SunARInk.plateOpacity)))
+        .padding(.horizontal, 14)
+        .frame(minHeight: SunARInk.touch)
+        .glassEffect(SunARInk.buttonGlass, in: Capsule())
         .shotNode("ar.heading", text: String(format: "%.0f", aim.azimuth))
+    }
+
+    /// Включатели «Луна» и «Млечный Путь» (в одном ряду с курсом). Состояние помнится между входами. Включённый
+    /// стоит с тоном своего светила: луна серебристым, Млечный Путь холодным.
+    private var bodyToggles: some View {
+        HStack(spacing: 8) {
+            bodyToggle(on: model.moonOn, label: t.t("layer.moon"), tint: SunARInk.moonTint, node: "ar.moonToggle") {
+                model.setMoon(!model.moonOn)
+            } icon: {
+                let m = model.moonPicked.phase
+                MoonToggleIcon(illuminated: m.fraction, waxing: m.cycle < 0.5)
+            }
+            bodyToggle(on: model.milkyWayOn, label: t.t("layer.mw"), tint: SunARInk.milkyWayTone, node: "ar.mwToggle") {
+                model.setMilkyWay(!model.milkyWayOn)
+            } icon: {
+                MilkyWayToggleIcon()
+            }
+        }
+    }
+
+    private func bodyToggle<Glyph: View>(on: Bool, label: String, tint: Color, node: String, action: @escaping () -> Void,
+                                         @ViewBuilder icon: () -> Glyph) -> some View {
+        Button(action: action) {
+            icon()
+                .frame(width: SunARInk.touch, height: SunARInk.touch)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .glassEffect(SunARInk.buttonGlass.interactive(), in: Capsule())
+        // Включён — кромка тоном светила (рисованный контур, не блик): тёмное стекло одно и то же, значок читается.
+        .overlay(Capsule().stroke(tint.opacity(on ? 0.95 : 0), lineWidth: 1.5).allowsHitTesting(false))
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+        .shotNode(node, text: label + (on ? " on" : " off"))
     }
 
     private func plate(_ text: Text) -> some View {
@@ -336,8 +472,8 @@ struct SunARScreen: View {
     // MARK: - Время
 
     /// Нижний блок — таймбар экрана «Свет» (`TimebarView`): те же цвета дня, стеклянная ручка, щелчки, срыв на
-    /// соседние сутки. Над ним время, строка «до заката …» и мелко азимут с высотой. Тёмная поверхность и
-    /// тёмная схема: камера всегда тёмная подложка, чернила светлые (светлая тема — не инверсия).
+    /// соседние сутки. Над ним время, строка «до заката …» и мелко азимут с высотой. Матовое стекло и тёмная
+    /// схема: камера всегда тёмная подложка, чернила светлые (светлая тема — не инверсия).
     private func timePanel(sun: SunSample, clock: ClockText) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -362,7 +498,11 @@ struct SunARScreen: View {
         }
         .foregroundStyle(SunARInk.light)
         .padding(.horizontal, 16).padding(.top, 12)
-        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(SunARInk.panelColor.opacity(SunARInk.panelOpacity)))
+        // Матовое стекло — системное `.glassEffect` на скруглённой плашке (слово Алексея 14.10: «панель внизу
+        // плохая, должно быть матовое стекло»). Размывает кадр под собой, чернила светлые.
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { panelHeight = $0 }
+        .shotNode("ar.panel", text: "bottom panel")
         .environment(\.colorScheme, .dark)
     }
 
@@ -435,9 +575,14 @@ private extension CGPoint {
 }
 
 /// Горизонт, дуга цветом света, часы, стороны света, восход и закат — одним `Canvas`: всё считано в
-/// `SunARScene`, здесь только рисование. Метки солнца — линзы, они лежат выше (`SunARMarkers`).
+/// `SunARScene` и `NightSkyARScene`, здесь только рисование. Метки светил — стеклянные диски, они лежат выше
+/// (`SunARMarkPaint`).
 struct SunAROverlay: View {
     let scene: SunARScene
+    /// Дуга луны выбранного дня (пусто, когда луна выключена): тонкая серебристая линия.
+    let moonArc: [[NightSkyARScene.ArcPoint]]
+    /// Диски луны: под ними дуга самой луны не рисуется — линия через рисунок фазы читалась бы мусором.
+    var moonDiscs: [(center: CGPoint, radius: CGFloat)] = []
     let clock: ClockText
     /// Восемь румбов от севера по часовой: С, СВ, В, ЮВ, Ю, ЮЗ, З, СЗ.
     let cardinals: [String]
@@ -454,6 +599,18 @@ struct SunAROverlay: View {
                            style: StrokeStyle(lineWidth: SunARInk.horizonOutlineWidth, lineCap: .round, lineJoin: .round))
                 ctx.stroke(p, with: .color(SunARInk.light.opacity(0.85)),
                            style: StrokeStyle(lineWidth: SunARInk.horizonWidth, lineCap: .round, lineJoin: .round))
+            }
+            // Дуга луны — тонкой линией, под горизонтом пунктиром; под дугой солнца.
+            if !moonArc.isEmpty {
+                ctx.drawLayer { layer in
+                    var area = Path(CGRect(origin: .zero, size: size).insetBy(dx: -200, dy: -200))
+                    for d in moonDiscs {
+                        area.addEllipse(in: CGRect(x: d.center.x - d.radius, y: d.center.y - d.radius,
+                                                   width: 2 * d.radius, height: 2 * d.radius))
+                    }
+                    layer.clip(to: area, style: FillStyle(eoFill: true))
+                    for run in moonArc where run.count > 1 { drawMoonArc(&layer, run) }
+                }
             }
             // Дуга солнца: цвет света по точкам, под горизонтом пунктиром.
             for run in scene.arc where run.count > 1 { drawArc(&ctx, run) }
@@ -536,6 +693,24 @@ struct SunAROverlay: View {
         }
     }
 
+    /// Дуга луны: тёмная обводка и тонкая серебристая жила; участки под горизонтом — пунктиром.
+    private func drawMoonArc(_ ctx: inout GraphicsContext, _ run: [NightSkyARScene.ArcPoint]) {
+        var i = 0
+        while i < run.count - 1 {
+            let dashed = run[i].isBelowHorizon && run[i + 1].isBelowHorizon
+            var j = i + 1
+            while j < run.count - 1, (run[j].isBelowHorizon && run[j + 1].isBelowHorizon) == dashed { j += 1 }
+            let path = polyline(run[i...j].map(\.point))
+            let cap: CGLineCap = dashed ? .butt : .round
+            func style(_ w: CGFloat) -> StrokeStyle {
+                StrokeStyle(lineWidth: w, lineCap: cap, lineJoin: .round, dash: dashed ? SunARInk.arcDash : [])
+            }
+            ctx.stroke(path, with: .color(.black.opacity(SunARInk.outlineOpacity)), style: style(SunARInk.moonArcOutlineWidth))
+            ctx.stroke(path, with: .color(SunARInk.moonTint), style: style(SunARInk.moonArcWidth))
+            i = j
+        }
+    }
+
     private func polyline(_ pts: [ScreenPoint]) -> Path {
         var p = Path()
         p.move(to: CGPoint(pts[0]))
@@ -551,65 +726,6 @@ struct SunAROverlay: View {
         ctx.fill(Path(roundedRect: pill, cornerRadius: pill.height / 2), with: .color(.black.opacity(SunARInk.plateOpacity * opacity)))
         ctx.draw(resolved, at: c, anchor: .center)
     }
-}
-
-/// Метки солнца — стеклянные линзы (шаг 29.8в.3): «сейчас» 48 pt, выбранный момент 34 pt; кольцо окрашено светом
-/// этого момента, середина прозрачна один к одному — настоящее светило видно в ней как есть. Подписи — на
-/// стеклянных плашках. Слились (выбранный момент = сейчас) — одна линза 48 pt и одна подпись «сейчас».
-struct SunARMarkers: View {
-    let scene: SunARScene
-    let pickedAltitude: Double
-    let nowAltitude: Double
-    let nowTag: String
-    let pickedLabel: String?
-    /// Кадр, который кромка линзы гнёт; `nil` у живой камеры.
-    let backdrop: AnyView?
-    let screen: CGSize
-
-    var body: some View {
-        let bounds = CGRect(origin: .zero, size: screen).insetBy(dx: -60, dy: -60)
-        let picked = scene.marker.map { CGPoint(x: $0.x, y: $0.y) }
-        let now = scene.markerIsNow ? picked : scene.nowMarker.map { CGPoint(x: $0.x, y: $0.y) }
-        let nowFade = scene.markerIsNow ? (scene.markerGhost ? 0.4 : 1.0) : (scene.nowGhost ? 0.4 : 1.0)
-        let pickedFade = scene.markerGhost ? 0.4 : 1.0
-        // Подписи не наезжают друг на друга: верхняя метка подписана сверху, нижняя — снизу.
-        let nowAbove = !(picked != nil && now != nil && !scene.markerIsNow && picked!.y < now!.y)
-        let nowD = SunARInk.nowLensDiameter, pickedD = SunARInk.pickedLensDiameter
-        ZStack(alignment: .topLeading) {
-            if !scene.markerIsNow, let c = picked, bounds.contains(c) {
-                lens(c, diameter: pickedD, altitude: pickedAltitude, fade: pickedFade)
-                if let text = pickedLabel {
-                    plate(text, weight: .medium, at: CGPoint(x: c.x, y: c.y + (nowAbove ? 1 : -1) * (pickedD / 2 + SunARInk.markerLabelGap)),
-                          fade: pickedFade)
-                }
-            }
-            if let c = now, bounds.contains(c) {
-                lens(c, diameter: nowD, altitude: scene.markerIsNow ? pickedAltitude : nowAltitude, fade: nowFade)
-                plate(nowTag, weight: .semibold, at: CGPoint(x: c.x, y: c.y + (nowAbove ? -1 : 1) * (nowD / 2 + SunARInk.markerLabelGap)),
-                      fade: nowFade)
-            }
-        }
-    }
-
-    private func lens(_ c: CGPoint, diameter d: CGFloat, altitude: Double, fade: Double) -> some View {
-        LensGlass(diameter: d, tint: SunARInk.stateColor(altitude: altitude), backdrop: backdrop,
-                  origin: CGPoint(x: c.x - d / 2, y: c.y - d / 2), screen: screen, fade: fade)
-            .position(x: c.x, y: c.y)
-    }
-
-    private func plate(_ text: String, weight: Font.Weight, at c: CGPoint, fade: Double) -> some View {
-        Text(text)
-            .font(.system(size: 12, weight: weight).monospacedDigit())
-            .foregroundStyle(SunARInk.light)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(GlassPlate(shape: Capsule(), opacity: SunARInk.plateOpacity))
-            .opacity(fade)
-            .position(x: min(max(c.x, halfWidth(text) + 8), screen.width - halfWidth(text) - 8), y: c.y)
-    }
-
-    /// Половина ширины плашки по числу знаков (цифры одной ширины, 12 pt ≈ 7 pt на знак + поля) — чтобы плашка
-    /// у края кадра не уезжала за экран.
-    private func halfWidth(_ text: String) -> CGFloat { (CGFloat(text.count) * 7 + 16) / 2 }
 }
 
 /// Откуда экран берёт поворот телефона: датчик на телефоне, подставной — в отладочной сборке по аргументу

@@ -2,7 +2,29 @@ import Foundation
 import LightPlanCore
 import LightPlanData
 
-/// Слой AR (шаги 29.8в, 29.8в.3): вход и выход. Экран получает место и момент.
+/// Что показывает плашка перед входом в AR и почему она появилась (шаг 29.8в.4).
+struct SunAREntry: Equatable {
+    enum Reason: Equatable {
+        /// Доступ к геопозиции ещё не спрашивали / служба выключена.
+        case off
+        /// Отказано или ограничено системой.
+        case denied
+        /// Доступ есть, точку получить не удалось.
+        case noFix
+        /// Доступ есть, ищем точку.
+        case locating
+        /// Выбранное в приложении место дальше порога (50 км) от телефона.
+        case far(km: Double)
+    }
+
+    var chosen: Place
+    /// Название выбранного места — как в шапке приложения.
+    var name: String
+    var moment: Moment
+    var reason: Reason
+}
+
+/// Слой AR (шаги 29.8в, 29.8в.3, 29.8в.4): вход и выход. Экран получает место и момент.
 extension AppModel {
     /// Открыть AR в этот момент. Момент по умолчанию — «сейчас».
     ///
@@ -14,6 +36,115 @@ extension AppModel {
         sunAR = SunARTarget(choice: .resolve(phone: phoneSpot(), chosen: chosen), moment: moment)
         let session = sunARSession
         Task { await refreshSunARPhone(chosen: chosen, session: session) }
+    }
+
+    /// Вход в AR с кнопки карты (шаг 29.8в.4). Слово Алексея 14.10: «режим AR всегда включается там, где находится
+    /// пользователь»; если геопозиции нет или выбранное в приложении место дальше 50 км от телефона — плашка с
+    /// двумя действиями перед переходом. Выбор живёт только на этот вход и место приложения не меняет.
+    func beginSunAR(chosen: Place, name: String, moment: Moment = Moment(Date())) {
+        sunAREntryBusy = false
+        var authorized = locator.isAlreadyAuthorized
+        #if DEBUG
+        if Self.debugPhoneSpot != nil { authorized = true }
+        #endif
+        guard authorized else {
+            // Ещё не спрашивали — «выключена»; отказали или ограничено — «нет доступа».
+            sunAREntry = SunAREntry(chosen: chosen, name: name, moment: moment,
+                                    reason: locator.needsPermission ? .off : .denied)
+            return
+        }
+        if let phone = phoneSpot() {
+            if case .phone(_, let far?) = SunARPlaceChoice.resolve(phone: phone, chosen: chosen) {
+                sunAREntry = SunAREntry(chosen: chosen, name: name, moment: moment, reason: .far(km: far))
+            } else {
+                sunAREntry = nil
+                openSunAR(chosen: chosen, moment: moment)
+            }
+            return
+        }
+        // Доступ есть, а точки ещё не было: плашка «Определяю место…», пока телефон отвечает.
+        sunAREntry = SunAREntry(chosen: chosen, name: name, moment: moment, reason: .locating)
+        sunARSession += 1
+        let session = sunARSession
+        Task { await resolveSunAREntry(session: session) }
+    }
+
+    private func resolveSunAREntry(session: Int) async {
+        guard let entry = sunAREntry, session == sunARSession else { return }
+        switch await deviceFixForAR() {
+        case .fix(let c):
+            let phone = await phonePlace(at: c)
+            guard sunAREntry != nil, session == sunARSession else { return }
+            if case .phone(_, let far?) = SunARPlaceChoice.resolve(phone: phone, chosen: entry.chosen) {
+                sunAREntry?.reason = .far(km: far)
+            } else {
+                sunAREntry = nil
+                openSunAR(phone: phone, chosen: entry.chosen, moment: entry.moment)
+            }
+        case .denied, .restricted: sunAREntry?.reason = .denied
+        case .unavailable: sunAREntry?.reason = .noFix
+        }
+    }
+
+    /// «Использовать моё местоположение»: системное окно, если ещё не спрашивали; отказ — плашка снова, с
+    /// пояснением и вторым вариантом.
+    func sunARUseMyLocation() {
+        guard let entry = sunAREntry, !sunAREntryBusy else { return }
+        sunAREntryBusy = true
+        sunARSession += 1
+        let session = sunARSession
+        Task {
+            let fix = await deviceFixForAR()
+            sunAREntryBusy = false
+            guard sunAREntry != nil, session == sunARSession else { return }
+            switch fix {
+            case .fix(let c):
+                let phone = await phonePlace(at: c)
+                guard sunAREntry != nil, session == sunARSession else { return }
+                sunAREntry = nil
+                openSunAR(phone: phone, chosen: entry.chosen, moment: entry.moment)
+            case .denied, .restricted: sunAREntry?.reason = .denied
+            case .unavailable: sunAREntry?.reason = .noFix
+            }
+        }
+    }
+
+    /// «Оставить «<место>»»: экран считает для выбранного в приложении места, только на этот вход.
+    func sunARKeepChosen() {
+        guard let entry = sunAREntry else { return }
+        sunAREntry = nil
+        sunAREntryBusy = false
+        sunARSession += 1
+        sunAR = SunARTarget(choice: .chosen(entry.chosen), moment: entry.moment)
+    }
+
+    func dismissSunAREntry() {
+        sunAREntry = nil
+        sunAREntryBusy = false
+        sunARSession += 1
+    }
+
+    /// Точка телефона. В отладочной сборке `-LPSunARPhone` подставляет её (в симуляторе датчика места нет).
+    private func deviceFixForAR() async -> DeviceFix {
+        #if DEBUG
+        if let p = Self.debugPhoneSpot { return .fix(GeoCoordinate(latitude: p.latitude, longitude: p.longitude)) }
+        #endif
+        return await locator.currentFix()
+    }
+
+    private func phonePlace(at c: GeoCoordinate) async -> Place {
+        #if DEBUG
+        if let p = Self.debugPhoneSpot { return p }
+        #endif
+        _ = await place.learnZone(at: c)
+        return Place(latitude: c.latitude, longitude: c.longitude, zone: place.zones.zoneOrEstimate(at: c))
+    }
+
+    /// AR по месту телефона, найденному на входе: экран считает для него, плашки «выбранное далеко» не будет —
+    /// человек выбрал своё место сам.
+    func openSunAR(phone: Place, chosen: Place, moment: Moment) {
+        sunARSession += 1
+        sunAR = SunARTarget(choice: .phone(phone, chosenFarKm: nil), moment: moment)
     }
 
     /// Прямо заданное место (тесты, отладка): без обращения к телефону.
@@ -69,7 +200,11 @@ extension AppModel {
         if let s = d.string(forKey: "LPSunARMoment"), let date = ISO8601DateFormatter().date(from: s) {
             moment = Moment(date)
         }
-        openSunAR(chosen: light.timebar.place, moment: moment)
+        if d.bool(forKey: "LPSunAREntry") {
+            beginSunAR(chosen: light.timebar.place, name: light.locationName, moment: moment)
+        } else {
+            openSunAR(chosen: light.timebar.place, moment: moment)
+        }
     }
     #endif
 }

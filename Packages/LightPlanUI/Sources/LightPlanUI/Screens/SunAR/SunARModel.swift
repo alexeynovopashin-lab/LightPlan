@@ -49,6 +49,32 @@ final class DeviceCalibrationFlag: ARCalibrationFlag {
     }
 }
 
+/// Включатели «Луна» и «Млечный Путь» на экране AR (шаг 29.8в.4). Флаги устройства, как калибровка: в снимок
+/// съёмок и в облако не уходят, помнятся между входами. По умолчанию выключены.
+@MainActor
+protocol ARBodiesSettings: AnyObject {
+    var moon: Bool { get set }
+    var milkyWay: Bool { get set }
+}
+
+@MainActor
+final class DeviceBodiesSettings: ARBodiesSettings {
+    static let moonKey = "lightplan.native.sunar.moon"
+    static let milkyWayKey = "lightplan.native.sunar.milkyWay"
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+
+    var moon: Bool {
+        get { defaults.bool(forKey: Self.moonKey) }
+        set { defaults.set(newValue, forKey: Self.moonKey) }
+    }
+    var milkyWay: Bool {
+        get { defaults.bool(forKey: Self.milkyWayKey) }
+        set { defaults.set(newValue, forKey: Self.milkyWayKey) }
+    }
+}
+
 /// Состояние экрана AR: поворот телефона, камера, выбранный момент и «сейчас», калибровка компаса.
 @MainActor @Observable
 final class SunARModel {
@@ -117,13 +143,72 @@ final class SunARModel {
     private var cameraRequested = false
 
     #if os(iOS)
-    /// Сессия для превью; `nil` у подставной камеры (тесты).
-    var cameraSession: AVCaptureSession? { (driver as? ARCameraRig)?.session }
+    /// Откуда фон берёт кадр: сессия с превью и слоем дисков, подставная камера (отладка) — или `nil`
+    /// у подставной камеры тестов.
+    var cameraFeed: ARFrameFeed? { (driver as? ARFrameFeeding)?.feed }
     #endif
+
+    // MARK: - Луна и Млечный Путь (29.8в.4)
+
+    private let bodies: any ARBodiesSettings
+    private(set) var moonOn: Bool
+    private(set) var milkyWayOn: Bool
+
+    func setMoon(_ on: Bool) {
+        moonOn = on
+        bodies.moon = on
+    }
+
+    func setMilkyWay(_ on: Bool) {
+        milkyWayOn = on
+        bodies.milkyWay = on
+    }
+
+    /// Луна в выбранный момент и «сейчас».
+    var moonPicked: MoonARSample { MoonTrack.sample(day: day, minutes: minutes, in: place) }
+    var moonNow: MoonARSample { MoonTrack.sample(at: nowMoment, in: place) }
+
+    /// Дуга луны выбранного дня: держится, пока не сменились день и место.
+    var moonArc: [MoonARSample] {
+        let d = day, p = place
+        if let c = moonArcCache, c.day == d, c.place == p { return c.arc }
+        let a = MoonTrack.arc(day: d, in: p)
+        moonArcCache = (d, p, a)
+        return a
+    }
+    @ObservationIgnored private var moonArcCache: (day: CivilDate, place: Place, arc: [MoonARSample])?
+
+    /// Полоса Млечного Пути на выбранный момент: держится, пока не сдвинулась минута.
+    private var band: [(left: HorizontalPoint, right: HorizontalPoint)] {
+        let d = day, p = place, m = minutes
+        if let c = bandCache, c.day == d, c.place == p, c.minutes == m { return c.band }
+        let b = MilkyWayAR.band(day: d, minutes: m, in: p)
+        bandCache = (d, p, m, b)
+        return b
+    }
+    @ObservationIgnored private var bandCache: (day: CivilDate, place: Place, minutes: Minutes,
+                                                 band: [(left: HorizontalPoint, right: HorizontalPoint)])?
+
+    /// Луна и Млечный Путь на экране камеры — только то, что включено. Расчёт — ядра (`MoonSample`, `MoonPhase`,
+    /// `MilkyWay`), здесь он только собирается в сцену.
+    func nightScene(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport) -> NightSkyARScene {
+        let s = sun
+        let sunPicked = HorizontalPoint(altitude: s.apparentAltitude, azimuth: s.azimuth)
+        let n = sunNow
+        let moon: NightSkyARScene.MoonInput? = moonOn
+            ? .init(arc: moonArc, picked: moonPicked, now: pickedIsNow ? nil : moonNow, sunAtPicked: sunPicked,
+                    sunAtNow: HorizontalPoint(altitude: n.apparentAltitude, azimuth: n.azimuth))
+            : nil
+        let mw: NightSkyARScene.MilkyWayInput? = milkyWayOn
+            ? .init(band: band, core: MilkyWayAR.core(day: day, minutes: minutes, in: place), sunAltitude: s.altitude)
+            : nil
+        return NightSkyARScene.make(basis: basis, optics: optics, viewport: viewport, moon: moon, milkyWay: mw)
+    }
 
     init(target: SunARTarget, source: (any AttitudeSource)?, camera: (any ARCameraDriving)? = nil,
          clock: @escaping @MainActor () -> Moment = { Moment(Date()) },
          calibrationFlag: (any ARCalibrationFlag)? = nil, forceCalibration: Bool = false,
+         bodies: (any ARBodiesSettings)? = nil,
          language: String = "ru", clockPreference: ClockPreference = .auto) {
         choice = target.choice
         let wall = SunTrack.wallClock(of: target.moment, in: target.place)
@@ -134,13 +219,23 @@ final class SunARModel {
         timebar.show(day: wall.day, minute: wall.minutes)
         self.source = source
         #if os(iOS)
+        #if DEBUG
+        // `-LPSunARFakeCamera 1`: подставные кадры для симулятора (проверка слоя дисков и замеры).
+        let synthetic: (any ARCameraDriving)? = UserDefaults.standard.bool(forKey: "LPSunARFakeCamera") ? SyntheticCameraRig() : nil
+        driver = camera ?? synthetic ?? ARCameraRig()
+        #else
         driver = camera ?? ARCameraRig()
+        #endif
         #else
         driver = camera ?? NoCameraRig()
         #endif
         self.clock = clock
         nowMoment = clock()
         flag = calibrationFlag ?? DeviceCalibrationFlag()
+        let b = bodies ?? DeviceBodiesSettings()
+        self.bodies = b
+        moonOn = b.moon
+        milkyWayOn = b.milkyWay
         self.forceCalibration = forceCalibration
         // Взгляд без датчика — на солнце в полдень, чуть над горизонтом: дуга видна с первой секунды.
         let noon = SolarDay(date: wall.day, place: target.place)

@@ -701,6 +701,251 @@
         }
       }
     },
+    "ar.entry.busy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Определяю место…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finding your location…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando su ubicación…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在地を確認中…"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在确定位置…"
+          }
+        }
+      }
+    },
+    "ar.entry.keep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить «{name}»"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep “{name}”"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dejar «{name}»"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「{name}」のままにする"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留「{name}」"
+          }
+        }
+      }
+    },
+    "ar.entry.useMine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать моё местоположение"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use my location"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar mi ubicación"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在地を使う"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用我的位置"
+          }
+        }
+      }
+    },
+    "ar.entry.whyDenied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет доступа к геопозиции. Разрешить можно в настройках телефона; пока можно оставить выбранное место."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No access to location. You can allow it in the phone settings; for now you can keep the chosen place."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin acceso a la ubicación. Puede permitirlo en los ajustes del teléfono; por ahora puede dejar el lugar elegido."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "位置情報にアクセスできません。電話の設定で許可できます。いまは選んだ場所のままにもできます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法访问定位。可在手机设置中允许；目前可保留所选地点。"
+          }
+        }
+      }
+    },
+    "ar.entry.whyFar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы далеко от выбранного места: {d}. AR показывает небо там, где вы стоите."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You are far from the chosen place: {d}. AR shows the sky where you stand."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Está lejos del lugar elegido: {d}. AR muestra el cielo donde está."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選んだ場所から離れています（{d}）。ARはいま立っている場所の空を表示します。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你离所选地点较远：{d}。AR 显示你所在位置的天空。"
+          }
+        }
+      }
+    },
+    "ar.entry.whyNoFix" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось определить, где вы. Можно попробовать ещё раз или оставить выбранное место."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not tell where you are. You can try again or keep the chosen place."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo determinar dónde está. Puede intentarlo de nuevo o dejar el lugar elegido."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在地を特定できませんでした。もう一度試すか、選んだ場所のままにできます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法确定你的位置。可重试，或保留所选地点。"
+          }
+        }
+      }
+    },
+    "ar.entry.whyOff" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AR показывает небо там, где вы стоите. Геолокация выключена — выбранное в приложении место может оказаться не тем."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AR shows the sky where you stand. Location is off, so the place chosen in the app may not be the right one."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AR muestra el cielo donde está. La ubicación está desactivada, así que el lugar elegido en la app puede no ser el correcto."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ARはいま立っている場所の空を表示します。位置情報がオフのため、アプリで選んだ場所が実際の場所と異なる可能性があります。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AR 显示你所在位置的天空。定位已关闭，应用中选择的地点可能不是你所在的地方。"
+          }
+        }
+      }
+    },
     "ar.figure8" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -767,6 +1012,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "方位为磁北：弧线可能偏差约 10°（请开启定位）"
+          }
+        }
+      }
+    },
+    "ar.mwCore" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "core"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "núcleo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中心核"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心"
           }
         }
       }
