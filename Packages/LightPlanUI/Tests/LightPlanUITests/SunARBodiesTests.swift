@@ -211,18 +211,68 @@ struct SunARBodiesTests {
         #expect(b.sunAR == nil && b.sunAREntry?.reason == .denied)
     }
 
-    @Test("телефон дальше 50 км от выбранного места — плашка с расстоянием; рядом — AR открывается сразу")
-    func entryWhenFarOrNear() async {
+    /// Ждёт, пока модель войдёт в состояние (ответ телефона идёт через `await`).
+    private func settle(_ a: AppModel, until done: @MainActor () -> Bool) async throws {
+        for _ in 0..<120 where !done() { try await Task.sleep(for: .milliseconds(25)) }
+    }
+
+    @Test("телефон дальше 50 км от выбранного места — плашка с расстоянием; рядом — AR открывается сразу, без плашки")
+    func entryWhenFarOrNear() async throws {
         let far = app(EntryLocator(fix: .fix(moscowFix), authorized: true))
-        _ = await far.locateHere()
         far.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
+        try await settle(far) { far.sunAREntry != nil }
         #expect(far.sunAR == nil)
         if case .far(let km)? = far.sunAREntry?.reason { #expect(km > 2500 && km < 3500) } else { Issue.record("нет плашки «далеко»") }
         let near = app(EntryLocator(fix: .fix(barnaulFix), authorized: true))
-        _ = await near.locateHere()
         near.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
+        try await settle(near) { near.sunAR != nil }
         #expect(near.sunAREntry == nil)
         #expect(near.sunAR != nil)
+    }
+
+    @Test("решение — по свежей точке, не по старой: старая рядом с выбранным, свежая далеко — плашка, AR не открыт")
+    func entryUsesFreshFix() async throws {
+        let locator = EntryLocator(fix: .fix(barnaulFix), authorized: true)
+        let a = app(locator)
+        _ = await a.locateHere()                 // старая точка телефона — рядом с выбранным местом
+        try await Task.sleep(for: .milliseconds(200))
+        let stale = try #require(a.phoneSpot())
+        #expect(abs(stale.longitude - barnaulFix.longitude) < 1e-6)
+        locator.fix = .fix(moscowFix)            // телефон уже в Москве
+        a.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
+        try await settle(a) { a.sunAREntry != nil || a.sunAR != nil }
+        #expect(a.sunAR == nil)
+        if case .far? = a.sunAREntry?.reason {} else { Issue.record("плашки «далеко» нет: \(String(describing: a.sunAREntry))") }
+    }
+
+    private final class SlowLocator: DeviceLocating {
+        private var waiter: CheckedContinuation<DeviceFix, Never>?
+        func currentFix() async -> DeviceFix { await withCheckedContinuation { waiter = $0 } }
+        var isAlreadyAuthorized: Bool { true }
+        var pending: Bool { waiter != nil }
+        func answer(_ fix: DeviceFix) { waiter?.resume(returning: fix); waiter = nil }
+    }
+
+    @Test("ответ телефона пришёл после того, как плашку закрыли: ничего не меняется, AR не открывается")
+    func lateAnswerIsIgnored() async throws {
+        let slow = SlowLocator()
+        let a = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
+                         locator: slow, geocoder: QuietGeocoder(), cityLookup: NoCity(), weatherSource: NoWx())
+        a.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
+        try await Task.sleep(for: .milliseconds(600))
+        // Телефон молчит дольше 0,4 с: плашка «Определяю место…».
+        #expect(a.sunAREntry?.reason == .locating)
+        a.dismissSunAREntry()
+        slow.answer(.fix(moscowFix))
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(a.sunAREntry == nil && a.sunAR == nil)
+        // И отказ после закрытия — тоже в пустоту.
+        a.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
+        try await Task.sleep(for: .milliseconds(100))
+        a.dismissSunAREntry()
+        slow.answer(.denied)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(a.sunAREntry == nil && a.sunAR == nil)
     }
 
     @Test("«Использовать моё местоположение»: точка есть — AR по телефону, место приложения не тронуто; отказ — плашка снова с пояснением")
@@ -230,6 +280,8 @@ struct SunARBodiesTests {
         let granted = app(EntryLocator(fix: .fix(moscowFix), authorized: true))
         _ = await granted.locateHere()
         granted.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
+        try await settle(granted) { granted.sunAREntry != nil }
+        #expect(granted.sunAREntry != nil)
         let appPlace = granted.light.timebar.place
         granted.sunARUseMyLocation()
         for _ in 0..<80 where granted.sunAR == nil { try await Task.sleep(for: .milliseconds(25)) }

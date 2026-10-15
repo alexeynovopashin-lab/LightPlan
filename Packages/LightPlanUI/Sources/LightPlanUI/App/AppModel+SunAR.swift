@@ -53,36 +53,42 @@ extension AppModel {
                                     reason: locator.needsPermission ? .off : .denied)
             return
         }
-        if let phone = phoneSpot() {
-            if case .phone(_, let far?) = SunARPlaceChoice.resolve(phone: phone, chosen: chosen) {
-                sunAREntry = SunAREntry(chosen: chosen, name: name, moment: moment, reason: .far(km: far))
-            } else {
-                sunAREntry = nil
-                openSunAR(chosen: chosen, moment: moment)
-            }
-            return
-        }
-        // Доступ есть, а точки ещё не было: плашка «Определяю место…», пока телефон отвечает.
-        sunAREntry = SunAREntry(chosen: chosen, name: name, moment: moment, reason: .locating)
+        // Доступ есть: решение — по свежей точке, а не по старой (ревью GPT к 4f8cb91: со старой точкой экран молча
+        // переключался на новую уже после входа). Ответ быстрый — плашки нет; медленный — через 0,4 с «Определяю место…».
+        sunAREntry = nil
         sunARSession += 1
         let session = sunARSession
-        Task { await resolveSunAREntry(session: session) }
+        Task { await decideSunAREntry(chosen: chosen, name: name, moment: moment, session: session) }
+        Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard session == sunARSession, sunAR == nil, sunAREntry == nil else { return }
+            sunAREntry = SunAREntry(chosen: chosen, name: name, moment: moment, reason: .locating)
+        }
     }
 
-    private func resolveSunAREntry(session: Int) async {
-        guard let entry = sunAREntry, session == sunARSession else { return }
-        switch await deviceFixForAR() {
-        case .fix(let c):
-            let phone = await phonePlace(at: c)
-            guard sunAREntry != nil, session == sunARSession else { return }
-            if case .phone(_, let far?) = SunARPlaceChoice.resolve(phone: phone, chosen: entry.chosen) {
-                sunAREntry?.reason = .far(km: far)
-            } else {
-                sunAREntry = nil
-                openSunAR(phone: phone, chosen: entry.chosen, moment: entry.moment)
-            }
-        case .denied, .restricted: sunAREntry?.reason = .denied
-        case .unavailable: sunAREntry?.reason = .noFix
+    /// Свежая точка телефона и решение: рядом — AR сразу; далеко — плашка с расстоянием; нет точки — плашка с
+    /// причиной. Точки не пришло (нет сигнала) — старая точка лучше, чем ничего. Каждый шаг после ожидания
+    /// проверяет номер захода: ответ от отменённого входа ничего не меняет.
+    private func decideSunAREntry(chosen: Place, name: String, moment: Moment, session: Int) async {
+        let fix = await deviceFixForAR()
+        guard session == sunARSession, sunAR == nil else { return }
+        var phone: Place?
+        switch fix {
+        case .fix(let c): phone = await phonePlace(at: c)
+        case .unavailable: phone = phoneSpot()
+        case .denied, .restricted: break
+        }
+        guard session == sunARSession, sunAR == nil else { return }
+        guard let phone else {
+            let reason: SunAREntry.Reason = fix == .unavailable ? .noFix : .denied
+            sunAREntry = SunAREntry(chosen: chosen, name: name, moment: moment, reason: reason)
+            return
+        }
+        if case .phone(_, let far?) = SunARPlaceChoice.resolve(phone: phone, chosen: chosen) {
+            sunAREntry = SunAREntry(chosen: chosen, name: name, moment: moment, reason: .far(km: far))
+        } else {
+            sunAREntry = nil
+            openSunAR(phone: phone, chosen: chosen, moment: moment)
         }
     }
 

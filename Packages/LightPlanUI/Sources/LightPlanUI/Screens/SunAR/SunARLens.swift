@@ -442,7 +442,7 @@ struct ARCameraBackdrop: UIViewRepresentable {
     func updateUIView(_ v: ARBackdropView, context: Context) {
         switch feed {
         case .session(_, let renderer):
-            if let c = v.preview.connection, c.isVideoRotationAngleSupported(90) { c.videoRotationAngle = 90 }
+            v.applyRotation()
             renderer?.set(lenses: lenses)
         case .synthetic(let renderer):
             renderer.set(lenses: lenses)
@@ -468,7 +468,18 @@ struct ARCameraBackdrop: UIViewRepresentable {
 
         override func layoutSubviews() {
             super.layoutSubviews()
+            applyRotation()
             lensView.frame = bounds
+        }
+
+        /// Портрет: превью повёрнуто на 90° от датчика. Угол ставится до того, как у превью спрашивают соответствие
+        /// окна и кадра; поменялся — соответствие считается заново (ревью GPT к 4f8cb91).
+        @discardableResult
+        func applyRotation() -> Bool {
+            guard let c = preview.connection, c.isVideoRotationAngleSupported(90), c.videoRotationAngle != 90 else { return false }
+            c.videoRotationAngle = 90
+            lensView.refreshMapping(force: true)
+            return true
         }
     }
 }
