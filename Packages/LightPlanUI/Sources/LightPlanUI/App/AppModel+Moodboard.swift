@@ -138,6 +138,7 @@ extension AppModel {
         var lib = before
         let r = body(&lib, Double(nowMs))
         lib.write(into: &snapshot.extra)
+        mbFly.prune(alive: Set(lib.boards.map(\.id)))
         // Кадр ушёл из последней подборки — его файл тоже (шаг 5г), но только когда снимок без кадра
         // уже записан; кадр в другой подборке файл держит.
         let gone = RefLibrary.orphanImages(before: before, after: lib)

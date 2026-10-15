@@ -49,6 +49,14 @@ final class MbSort {
     @ObservationIgnored var armed: String?
     @ObservationIgnored private var zone = 0
     @ObservationIgnored private var commit: (([String]) -> Void)?
+    /// Порядок ключей каждого ряда на экране сейчас: сетка сообщает его при каждой смене (`track`). К записи
+    /// сверяется с порядком на подъёме — подборки могли поменяться за время жеста (ревью GPT к 29.3б).
+    @ObservationIgnored private(set) var live: [String: [String]] = [:]
+    /// Отложенный вызов записи. Тест подставляет свои часы: окна в миллисекундах за очередью главного актора
+    /// в полном наборе не держатся (замер 13.10).
+    @ObservationIgnored var after: (Double, @escaping @MainActor () -> Void) -> Void = { d, f in
+        DispatchQueue.main.asyncAfter(deadline: .now() + d) { MainActor.assumeIsolated { f() } }
+    }
 
     #if DEBUG && os(iOS)
     /// Прибор кадров 28з на время жеста (только с `-LPMbSortLog`): пропущенные кадры и CPU главного потока.
@@ -91,6 +99,12 @@ final class MbSort {
 
     // MARK: перенос
 
+    /// Ряд сообщает свой порядок ключей на экране.
+    func track(_ row: String, keys: [String]) { live[row] = keys }
+
+    /// Ряд за время жеста стал другим: то, что в руке, писать нельзя (`lift.home` — порядок на подъёме).
+    private func stale(_ l: Lift) -> Bool { live[l.row].map { $0 != l.home } ?? false }
+
     func cells(_ row: String, count: Int, first: Int) -> [MbSortRules.Cell] {
         let r = rows[row] ?? RowSize()
         return MbSortRules.cells(count: count, first: first, width: Double(r.width), tileHeight: Double(r.tileH))
@@ -103,6 +117,7 @@ final class MbSort {
         let cells = cells(row, count: keys.count, first: first)
         guard cells.count == keys.count, cells.first.map({ $0.w > 0 && $0.h > 0 }) == true else { return false }
         lift = Lift(row: row, me: key, home: keys, cells: cells, from: from)
+        live[row] = keys
         order = keys
         hand = .zero
         zone = from
@@ -131,16 +146,21 @@ final class MbSort {
     func drop() {
         guard let l = lift, !settling else { return }
         settling = true
+        // Ряд уже другой — плитка ложится туда, откуда взята, а не в клетку нового порядка.
+        if stale(l) { order = l.home }
         #if DEBUG && os(iOS)
         meter?.beginSettle()
         #endif
         MbSortLog.note("drop hand=\(Self.f(Double(hand.width))),\(Self.f(Double(hand.height))) to=\(order.firstIndex(of: l.me) ?? -1)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + MbSortRules.settleDelay) { [weak self] in self?.finish() }
+        after(MbSortRules.settleDelay) { [weak self] in self?.finish() }
     }
 
     private func finish() {
         guard let l = lift else { return }
-        let ord = order, changed = ord != l.home, write = commit
+        // Порядок, что в руке, пишется только на тот ряд, с которого поднят; разошёлся — не пишем, ряд на экране
+        // уже актуальный, он и остаётся.
+        let refused = stale(l)
+        let ord = order, changed = !refused && ord != l.home, write = commit
         var t = Transaction()
         t.disablesAnimations = true
         withTransaction(t) {
@@ -151,7 +171,7 @@ final class MbSort {
         swallowTill = Self.clock + 0.35
         meterStop()
         if changed { Haptics.play(.mbSortSaved) }
-        MbSortLog.note(changed ? "saved order=\(ord.joined(separator: ","))" : "same")
+        MbSortLog.note(refused ? "refused" : changed ? "saved order=\(ord.joined(separator: ","))" : "same")
     }
 
     // MARK: что рисует плитка
@@ -391,6 +411,7 @@ struct MbSortRowModifier: ViewModifier {
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { w in
                 sort.rows[row, default: MbSort.RowSize()].width = w
             }
+            .onChange(of: keys, initial: true) { _, k in sort.track(row, keys: k) }
             .gesture(gesture)
             .zIndex(sort.lift?.row == row ? 1 : 0)
         #else

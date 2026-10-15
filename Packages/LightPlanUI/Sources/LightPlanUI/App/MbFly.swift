@@ -69,6 +69,11 @@ final class MbFly {
     @ObservationIgnored nonisolated(unsafe) private static var lastID = 0
     private static func takeID() -> Int { lastID += 1; return lastID }
 
+    /// Подборки, которых больше нет, место плитки не держат: словарь не растёт (ревью GPT к 29.3в).
+    func prune(alive: Set<String>) {
+        if sources.keys.contains(where: { !alive.contains($0) }) { sources = sources.filter { alive.contains($0.key) } }
+    }
+
     /// Шапка этой папки спрятана: клон ещё летит к ней.
     func hidesHero(_ boardId: String) -> Bool { board == boardId && !landed }
 

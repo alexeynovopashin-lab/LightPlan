@@ -124,6 +124,24 @@ struct MoodboardFrameFlyTests {
         #expect(d.order == items)
     }
 
+    /// Подборка исчезла (удалена или слита) — запись места её плитки уходит; чужие остаются (ревью GPT к 29.3в).
+    @Test func vanishedBoardForgetsItsCoverSpot() {
+        let app = model()
+        var snap = app.snapshot
+        snap.extra["boards"] = .array(["tpl", "two", "three"].map {
+            .object(["id": .string($0), "kind": .string("tpl"), "genre": .string("wedding"), "items": .array([])])
+        })
+        app.snapshot = snap
+        let r = CGRect(x: 10, y: 10, width: 100, height: 100)
+        for id in ["tpl", "two", "three", "ghost"] { app.mbFly.sources[id] = r }
+        app.mbDeleteBoard("two")
+        #expect(app.mbFly.sources["two"] == nil, "удалённая подборка")
+        #expect(app.mbFly.sources["ghost"] == nil, "подборки с таким знаком нет")
+        #expect(Set(app.mbFly.sources.keys) == ["tpl", "three"])
+        app.mbMerge("three", into: "tpl")
+        #expect(Set(app.mbFly.sources.keys) == ["tpl"], "слитая подборка")
+    }
+
     /// Новый порядок доходит до подборки (`mbEdit` → `RefLibrary.reorder`) и папки.
     @Test func reorderReachesFolder() {
         let app = model()
