@@ -130,6 +130,21 @@ struct TestSeedOwnDataTests {
         }
     }
 
+    /// Слова Алексея: студия на набережной называется просто «Набережная»; залы Томсона не задеты.
+    @Test func embankmentStudioIsNamedNaberezhnaya() async throws {
+        let (store, dir) = tempStore(); defer { try? FileManager.default.removeItem(at: dir) }
+        let snap = await AppModel.startSnapshot(store: store, fresh: true, bundleID: "Novopashin.LightPlan.Test")
+        let a = app(snap)
+        let st = try #require(a.studios.first { $0.id == "sd_st_sfera" })
+        #expect(st.name == "Набережная")
+        #expect(st.address == "Томск, Набережная реки Ушайки, 12")
+        #expect(st.halls.map(\.name) == ["Циклорама", "Лофт"])
+        #expect(!a.studios.contains { $0.name.contains("Сфера на Набережной") })
+        #expect(a.studios.first { $0.id == "sd_st_tomson" }?.halls.map(\.name) == ["Эдисон", "Сфера", "Вегас"])
+        // Записи засева, привязанные к студии, подписаны тем же именем.
+        for s in snap.sessions where s.studioId == "sd_st_sfera" { #expect(s.place == "Набережная") }
+    }
+
     @Test func existingUserDataIsNotSeededOver() async throws {
         let (store, dir) = tempStore(); defer { try? FileManager.default.removeItem(at: dir) }
         var own = Snapshot()
