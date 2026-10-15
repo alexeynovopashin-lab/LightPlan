@@ -171,17 +171,60 @@ struct PinterestImportTests {
 
     // MARK: остановка
 
-    @Test func stopInTheMiddleKeepsWhatArrivedAndDropsTheRest() async {
-        let fake = Fake(delay: .milliseconds(15)), sink = Sink()
-        let task = Task { await run(pins(100), fake, sink, concurrency: 4) }
-        try? await Task.sleep(for: .milliseconds(120))
+    /// Читалка без часов: первые `free` картинок отдаёт сразу, остальные запросы «висят», пока их не отменят;
+    /// при отмене `landing` из них успевают долететь (картинка пришла в тот же миг, что и «Остановить»), прочие обрываются.
+    /// Тест ждёт события «столько-то запросов повисло», а не миллисекунд: главный актор может стоять за чужими тестами.
+    actor Gated: PinterestReading {
+        let free: Int
+        let landing: Int
+        private var calls = 0
+        private var closed = false
+        private var waiters: [CheckedContinuation<Void, Error>] = []
+        private var parkedWatch: (count: Int, cont: CheckedContinuation<Void, Never>)?
+        init(free: Int, landing: Int = 0) { self.free = free; self.landing = landing }
+
+        func board(link: String) async throws -> PinterestBoard { PinterestBoard(name: "", pinCount: 0, truncated: false, pins: []) }
+        func preview(of page: String) async throws -> Data { Data([1]) }
+        func image(at address: String) async throws -> Data {
+            calls += 1
+            if calls > free {
+                try await withTaskCancellationHandler {
+                    try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
+                        if closed { c.resume(throwing: CancellationError()); return }
+                        waiters.append(c)
+                        if let w = parkedWatch, waiters.count >= w.count { parkedWatch = nil; w.cont.resume() }
+                    }
+                } onCancel: { Task { await self.closeAndRelease() } }
+            }
+            return Data(address.utf8)
+        }
+        private func closeAndRelease() {
+            closed = true
+            let w = waiters; waiters = []
+            for (i, c) in w.enumerated() { if i < landing { c.resume() } else { c.resume(throwing: CancellationError()) } }
+        }
+        /// Возвращается, когда висят не меньше `count` запросов.
+        func untilParked(_ count: Int) async {
+            if waiters.count >= count { return }
+            await withCheckedContinuation { parkedWatch = (count, $0) }
+        }
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func stopInTheMiddleKeepsWhatArrivedAndDropsTheRest() async {
+        // Десять картинок пришли, четыре запроса (весь «пул») висят — вот тут и нажимают «Остановить»;
+        // две из висящих долетают вместе с отменой, две обрываются.
+        let gate = Gated(free: 10, landing: 2), sink = Sink()
+        let task = Task { await runPinImport(pins: pins(100), reader: gate, concurrency: 4, batchSize: 6, retryDelay: .zero,
+                                             progress: { p, _ in sink.tick(p) }, commit: { sink.commit($0) }) }
+        await gate.untilParked(4)
         task.cancel()
         let r = await task.value
         #expect(r.stopped && !r.done)
-        #expect(r.added > 0 && r.added < 100)
-        #expect(r.added + r.pending.count == 100)
+        #expect(r.added == 12)                                       // пришло ровно то, что пришло (10 + 2 долетевших); оборванное не засчитано
+        #expect(r.pending.count == 88 && r.added + r.pending.count == 100)
         #expect(r.failed == 0)                                       // остановка не сбой
-        #expect(Set(sink.added).count == sink.added.count)
+        #expect(Set(sink.added).count == sink.added.count && sink.added.count == 12)
         // Повтор после остановки доводит доску до конца без дублей.
         let rest = await run(r.pending, Fake(), sink)
         #expect(rest.done && sink.added.count == 100 && rest.duplicates == 0)
