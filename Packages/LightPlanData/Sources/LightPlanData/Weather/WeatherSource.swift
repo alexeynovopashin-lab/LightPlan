@@ -14,27 +14,52 @@ public protocol WeatherSource: Sendable {
 /// Сырой ответ Open-Meteo `/v1/forecast` — только имена полей, порт JSON без
 /// перевода: перевод в `HourlyWeather` — прямое переложение полей, значения
 /// не трогаются.
+///
+/// Час, которого у службы нет, приходит `null` (замер 16 октября 2026: для
+/// Москвы и Крыма — индексы 502 и 503 из 504 по всем полям разом; для Томска
+/// пустых нет). Ряды `[Double]` роняли весь ответ на первом `null`, и экран
+/// говорил «Прогноз недоступен». Теперь ряды читаются с дырами, а
+/// `toHourlyWeather` убирает такие часы из всех рядов сразу.
 struct OpenMeteoHourlyResponse: Decodable {
     struct Hourly: Decodable {
         let time: [String]
-        let cloud_cover: [Double]
-        let cloud_cover_low, cloud_cover_mid, cloud_cover_high: [Double]?
-        let relative_humidity_2m: [Double]?
-        let temperature_2m: [Double]
-        let wind_speed_10m: [Double]
-        let wind_direction_10m, wind_gusts_10m: [Double]?
-        let precipitation: [Double]
-        let weather_code: [Int]
+        let cloud_cover: [Double?]
+        let cloud_cover_low, cloud_cover_mid, cloud_cover_high: [Double?]?
+        let relative_humidity_2m: [Double?]?
+        let temperature_2m: [Double?]
+        let wind_speed_10m: [Double?]
+        let wind_direction_10m, wind_gusts_10m: [Double?]?
+        let precipitation: [Double?]
+        let weather_code: [Int?]
     }
     let hourly: Hourly
 }
 
 extension OpenMeteoHourlyResponse.Hourly {
+    /// Пустой час (`null` в любом из полученных рядов) в прогноз не попадает и
+    /// числом не подменяется («без имитации», Алексей, 02.10): он уходит из
+    /// всех рядов разом, ряды остаются одной длины на `time`. Хвост из пустых
+    /// часов — это «прогноз до последнего полного часа»; дыра в середине —
+    /// просто отсутствующий час, потребители ищут часы по строке времени.
     func toHourlyWeather() -> HourlyWeather {
-        HourlyWeather(time: time, cloud: cloud_cover, cloudLow: cloud_cover_low, cloudMid: cloud_cover_mid,
-                      cloudHigh: cloud_cover_high, humidity: relative_humidity_2m, temperature: temperature_2m,
-                      windSpeed: wind_speed_10m, windDirection: wind_direction_10m, windGusts: wind_gusts_10m,
-                      precipitation: precipitation, weatherCode: weather_code)
+        func has<T>(_ row: [T?]?, _ i: Int) -> Bool {
+            guard let row else { return true }          // ряда нет вовсе — это не пустой час
+            return i < row.count && row[i] != nil
+        }
+        let keep = time.indices.filter { i in
+            has(cloud_cover, i) && has(temperature_2m, i) && has(wind_speed_10m, i)
+                && has(precipitation, i) && has(weather_code, i)
+                && has(cloud_cover_low, i) && has(cloud_cover_mid, i) && has(cloud_cover_high, i)
+                && has(relative_humidity_2m, i) && has(wind_direction_10m, i) && has(wind_gusts_10m, i)
+        }
+        func pick<T>(_ row: [T?]) -> [T] { keep.map { row[$0]! } }
+        func pick<T>(_ row: [T?]?) -> [T]? { row.map { pick($0) as [T] } }
+        return HourlyWeather(time: keep.map { time[$0] }, cloud: pick(cloud_cover),
+                             cloudLow: pick(cloud_cover_low), cloudMid: pick(cloud_cover_mid),
+                             cloudHigh: pick(cloud_cover_high), humidity: pick(relative_humidity_2m),
+                             temperature: pick(temperature_2m), windSpeed: pick(wind_speed_10m),
+                             windDirection: pick(wind_direction_10m), windGusts: pick(wind_gusts_10m),
+                             precipitation: pick(precipitation), weatherCode: pick(weather_code))
     }
 }
 
