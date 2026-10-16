@@ -71,10 +71,13 @@ function verdict(nodes, screen) {
       const dir = path.join(OUT, dev.label + '_' + theme);
       fs.mkdirSync(dir, { recursive: true });
       const report = path.join(dir, 'native.json');
+      // Тема живёт в снимке данных, а не в системе: свой seed на каждую тему.
+      const seedFile = path.join(dir, 'seed.json');
+      fs.writeFileSync(seedFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(FX, 'seed.json'), 'utf8')), theme }));
       fs.rmSync(report, { force: true });
       try { run('xcrun', ['simctl', 'terminate', dev.udid, BUNDLE], { stdio: 'ignore', timeout: 10000 }); } catch (e) {}
       run('xcrun', ['simctl', 'launch', dev.udid, BUNDLE, '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
-        '-LPShotNow', '2026-10-20T12:00:00+07:00', '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', path.join(FX, 'seed.json'),
+        '-LPShotNow', '2026-10-20T12:00:00+07:00', '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', seedFile,
         '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'), '-LPShotAir', path.join(FX, 'air_barnaul.json'),
         '-LPShotName', path.join(FX, 'place_barnaul.json'), '-LPShotScreen', 'planner', '-LPShotReportDelay', '4',
         '-LPStudioAsk', '1', '-LPShotReport', report]);

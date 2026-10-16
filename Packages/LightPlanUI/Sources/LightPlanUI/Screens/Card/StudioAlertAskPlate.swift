@@ -31,8 +31,8 @@ struct StudioAlertAskPlate: View {
             .padding(20)
             .frame(maxWidth: 360)
             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .padding(.horizontal, 24)
             .shotNode("studio.ask")
+            .padding(.horizontal, 24)
         }
         .transition(.opacity)
     }
