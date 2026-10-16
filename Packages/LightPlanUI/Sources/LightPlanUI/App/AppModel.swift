@@ -372,6 +372,10 @@ public final class AppModel {
     @ObservationIgnored var alertForce = false
     /// Номер последнего нажатия на тумблер «Студийный час»: ответ на старое нажатие ничего не пишет.
     @ObservationIgnored var alertWish = 0
+    /// Плашка перед системным окном (30а.2) стоит на экране.
+    public internal(set) var studioAlertAsk = false
+    /// Проверка «показывать ли плашку» после сохранения съёмки: тесты ждут её.
+    @ObservationIgnored var alertOfferTask: Task<Void, Never>?
     @ObservationIgnored var alertChain: Task<Void, Never>?
     /// Отпечатки того, что последний раз поставили в систему: без правки данных система не опрашивается.
     @ObservationIgnored var alertApplied: [String]?

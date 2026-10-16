@@ -294,6 +294,7 @@ extension AppModel {
         form = nil
         formIsDraft = false
         formNote = nil
+        offerStudioAlerts(after: s)
         return s
     }
 

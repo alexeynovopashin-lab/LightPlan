@@ -16,9 +16,9 @@ extension AppModel {
 
     /// Память «что приложению разрешено говорить» — `notif` снимка, тот же ключ и те же имена, что у веба
     /// (`notifPrefs`): `all` и `studio`, по умолчанию оба включены; остальные ключи объекта не трогаем.
-    private static func notifFlag(_ key: String, in snapshot: Snapshot) -> Bool {
+    private static func notifFlag(_ key: String, _ fallback: Bool = true, in snapshot: Snapshot) -> Bool {
         if case .object(let o)? = snapshot.extra["notif"], case .bool(let v)? = o[key] { return v }
-        return true
+        return fallback
     }
 
     /// Хочет ли человек студийный час: `notifOn("studio")` веба — главное «Разрешить все» и своё значение.
@@ -31,6 +31,41 @@ extension AppModel {
 
     /// Отказали в разрешении, а человек хочет сигнал: строка ведёт в настройки iPhone, а не спрашивает снова.
     public var studioAlertsNeedSettings: Bool { studioAlertsWanted && alertAuth == .denied }
+
+    /// Плашка уже показывалась: память между запусками — `notif.studioAsked` в снимке (веб ключ не знает и не трогает).
+    var studioAlertAsked: Bool { Self.notifFlag("studioAsked", false, in: snapshot) }
+
+    // MARK: - Плашка перед системным окном (30а.2)
+
+    /// После первого сохранения съёмки со студией и часами — своя плашка вместо молчаливого системного окна.
+    /// Показывается только когда система ещё не спрашивала (`notDetermined`), человек не выключил студийный час
+    /// сам и плашки раньше не было; разрешено или отказано в системе — плашка ни к чему (тумблер включится сам
+    /// по правилу 30а / строка ведёт в настройки iPhone). Системное окно здесь не вызывается никогда.
+    func offerStudioAlerts(after s: Session) {
+        guard let center = alertCenter, !studioAlertAsked, !studioAlertAsk, studioAlertsWanted,
+              RentWindow.of(s, studios: snapshot.studios, now: nil) != nil else { return }
+        alertOfferTask = Task { [weak self] in
+            let auth = await center.authorization()
+            guard let self else { return }
+            alertAuth = auth
+            guard auth == .notDetermined, !studioAlertAsked, !studioAlertAsk else { return }
+            writeNotif(["studioAsked": true])
+            studioAlertAsk = true
+        }
+    }
+
+    #if DEBUG
+    /// Снимки (`-LPStudioAsk 1`): плашка на экране сразу, без сохранения и без системы.
+    func debugShowStudioAsk() {
+        if UserDefaults.standard.bool(forKey: "LPStudioAsk") { studioAlertAsk = true }
+    }
+    #endif
+
+    /// «Да»: плашка закрыта, дальше как нажатие на тумблер — системное окно, разрешили — тумблер включён.
+    public func answerStudioAlertAsk(yes: Bool) {
+        studioAlertAsk = false
+        if yes { setStudioAlerts(true) }
+    }
 
     private func writeNotif(_ changes: [String: Bool]) {
         var o: [String: JSONValue] = [:]

@@ -132,6 +132,11 @@ private struct Shell: View {
                 SunAREntryPlate(app: app, entry: entry)
                     .zIndex(BackZ.sunAR - 0.05)
             }
+            // Плашка перед системным окном уведомлений (30а.2): после первого сохранения съёмки со студией.
+            if app.studioAlertAsk {
+                StudioAlertAskPlate(app: app)
+                    .zIndex(BackZ.sunAR - 0.04)
+            }
             // Слой AR (29.8в): дуга солнца поверх камеры; вход — место и момент, откуда открыли, экрану безразлично.
             if let target = app.sunAR {
                 SunARScreen(app: app, target: target)
@@ -215,6 +220,7 @@ private struct Shell: View {
         .onAppear {
             #if DEBUG
             app.debugOpenSunAR()
+            app.debugShowStudioAsk()
             #endif
             // Слои «Съёмок» лежат под вкладкой в дереве всегда: берём их, только пока вкладка выбрана.
             app.edgeBack.isLive = { [weak app] l in l.z >= EdgeBackRule.shellFloor || app?.tab == .planner }
