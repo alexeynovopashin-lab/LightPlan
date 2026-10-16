@@ -119,10 +119,17 @@ struct CardDayTile: View {
                 top(x)
                 rich(x.left).font(webFont(12.5)).foregroundStyle(pal.ink4)
                     .shotNode("card.dayLeft", text: x.plainLeft).padding(.top, 3)
-                if !route.isEmpty {
-                    CardLane(app: app, s: s, route: route, golden: app.laneGolden(s, route: route, phase: phase),
-                             phase: phase, pal: pal)
+                // Лента — когда на нити две точки и больше (с «Золотым» тоже); иначе строки списка (29.11в).
+                let golden = app.laneGolden(s, route: route, phase: phase)
+                switch DayTilePoints.of(s, golden: golden) {
+                case .lane(let r):
+                    CardLane(app: app, s: s, route: r, golden: golden, phase: phase, pal: pal)
                         .padding(.top, 12)
+                case .list(let rows):
+                    CardDayList(app: app, s: s, rows: rows, phase: phase, pal: pal)
+                        .padding(.top, 10)
+                case .none:
+                    EmptyView()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
