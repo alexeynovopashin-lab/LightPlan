@@ -5112,7 +5112,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从“{name}”（{when}）开车约需{need}，而您有{have}。"
+            "value" : "从“{name}”（{when}）开车约需{need}，而你有{have}。"
           }
         }
       }
@@ -5847,7 +5847,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "备份和文件进入Google Drive上应用的隐藏文件夹。其余Drive对应用不可见。访问会在您保持登录Google时自动续期。"
+            "value" : "备份和文件进入Google Drive上应用的隐藏文件夹。其余Drive对应用不可见。访问会在你保持登录Google时自动续期。"
           }
         }
       }
@@ -14017,7 +14017,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开系统发送 — 邮件、即时通讯、Telegram。未经您操作不会发送任何内容。"
+            "value" : "打开系统发送 — 邮件、即时通讯、Telegram。未经你操作不会发送任何内容。"
           }
         }
       }
@@ -21830,7 +21830,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尚无地点。地图标题中的书签保存图钉所指的位置（世界任何角落都可以），并请您为它命名。"
+            "value" : "尚无地点。地图标题中的书签保存图钉所指的位置（世界任何角落都可以），并请你为它命名。"
           }
         }
       }
@@ -21865,7 +21865,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "目前为空。地图标题中的书签保存图钉所指的位置（世界任何角落都可以），并请您为它命名。"
+            "value" : "目前为空。地图标题中的书签保存图钉所指的位置（世界任何角落都可以），并请你为它命名。"
           }
         }
       }
@@ -23539,7 +23539,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォトスタジオ"
+            "value" : "スタジオ"
           }
         },
         "zh" : {
@@ -23562,7 +23562,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "hall, address and phone"
+            "value" : "room, address and phone"
           }
         },
         "es" : {
@@ -23574,13 +23574,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ホール、住所、電話番号"
+            "value" : "ルーム、住所、電話番号"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "场地、地址与电话"
+            "value" : "拍摄厅、地址与电话"
           }
         }
       }
@@ -46680,7 +46680,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "界面翻译正在波浪式进行：部分标签目前仍为俄语，无论您选择什么。"
+            "value" : "界面翻译正在波浪式进行：部分标签目前仍为俄语，无论你选择什么。"
           }
         }
       }
@@ -48115,7 +48115,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拍摄、地点和设置保存在您的设备上。没有任何数据发送到我们的服务器——因为不存在。"
+            "value" : "拍摄、地点和设置保存在你的设备上。没有任何数据发送到我们的服务器——因为不存在。"
           }
         }
       }
@@ -48220,7 +48220,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "{err}。您的数据未受影响。"
+            "value" : "{err}。你的数据未受影响。"
           }
         }
       }
@@ -49655,7 +49655,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您的号码就是对外的地址：活动组织者据此把您的拍摄接入他们的计划。可以先留空，之后再填。"
+            "value" : "你的号码就是对外的地址：活动组织者据此把你的拍摄接入他们的计划。可以先留空，之后再填。"
           }
         }
       }
@@ -49690,7 +49690,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您居住或当前所在的城市，以及您的电话号码。新拍摄默认在该城市，前往其他城市应用会自己判断。两项都可在设置中修改。"
+            "value" : "你居住或当前所在的城市，以及你的电话号码。新拍摄默认在该城市，前往其他城市应用会自己判断。两项都可在设置中修改。"
           }
         }
       }
@@ -49760,7 +49760,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您在哪里工作"
+            "value" : "你在哪里工作"
           }
         }
       }
@@ -57985,7 +57985,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "光线按您拍摄的位置计算。点击顶部可更改地点 — 通过地理位置、搜索或坐标。"
+            "value" : "光线按你拍摄的位置计算。点击顶部可更改地点 — 通过地理位置、搜索或坐标。"
           }
         }
       }
@@ -61365,7 +61365,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您期望{wish}。该日预报：{sky}。"
+            "value" : "你期望{wish}。该日预报：{sky}。"
           }
         }
       }

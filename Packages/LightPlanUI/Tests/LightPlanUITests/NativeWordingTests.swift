@@ -121,16 +121,56 @@ struct NativeWordingTests {
 
     // MARK: китайский на «你»
 
-    /// «您» — вежливое «вы». Приложение говорит «你» (шаг 30а.5). Проверка идёт по `lang_native.json`:
-    /// у слов веба (`beta/lang.js`, заморожен) «您» стоит в 13 ключах, их приложение не переопределяет.
+    /// «您» — вежливое «вы». Приложение говорит «你» (шаги 30а.5 и 30а.6). Проверка идёт и по
+    /// `lang_native.json` (слова только телефона), и по словам веба (`Fixtures/lang.json` из `beta/lang.js`):
+    /// веб правили 17.10 только в словаре, «您» там сменили на «你» в 13 ключах.
     static let formalZh = "您"
+
+    /// Словарь веба на одном языке: `Fixtures/lang.json`, строки идут в порядке `keys`.
+    private static func webStrings(_ lang: String) throws -> [String: String] {
+        let f = try TextFixtures.load("lang.json", as: TextFixtures.LangFile.self)
+        let t = try #require(f.langs[lang]).t
+        try #require(t.count == f.keys.count, "lang.json: \(lang) \(t.count) строк при \(f.keys.count) ключах")
+        return Dictionary(uniqueKeysWithValues: zip(f.keys, t))
+    }
 
     @Test func chineseSpeaksToTheReaderAsNi() throws {
         var bad: [String] = []
         for (key, text) in try Self.strings("zh").sorted(by: { $0.key < $1.key }) where text.contains(Self.formalZh) {
-            bad.append("zh \(key): \(text)")
+            bad.append("zh native \(key): \(text)")
+        }
+        for (key, text) in try Self.webStrings("zh").sorted(by: { $0.key < $1.key }) where text.contains(Self.formalZh) {
+            bad.append("zh web \(key): \(text)")
         }
         #expect(bad.isEmpty, Comment(rawValue: bad.joined(separator: "\n")))
+    }
+
+    // MARK: слова веба: зал студии и студия (шаг 30а.6)
+
+    /// `loc.wayStudioSub` — подпись кнопки «студия» в форме места: «зал, адрес и телефон» (ru не меняли).
+    static let wayStudioSubHall = ["en": "room", "es": "sala", "ja": "ルーム", "zh": "拍摄厅"]
+    /// Слова, которыми зал студии звали до 17.10 (концертный зал, «площадка»).
+    static let wayStudioSubOld = ["en": "hall", "es": "salón", "ja": "ホール", "zh": "场地"]
+
+    @Test func webWayStudioSubSaysRoomOfTheStudio() throws {
+        var bad: [String] = []
+        for lang in Self.langs {
+            let text = try #require(try Self.webStrings(lang)["loc.wayStudioSub"], "нет \(lang) loc.wayStudioSub")
+            if !text.lowercased().contains(Self.wayStudioSubHall[lang]!) { bad.append("\(lang): нет «\(Self.wayStudioSubHall[lang]!)» — \(text)") }
+            if text.lowercased().contains(Self.wayStudioSubOld[lang]!) { bad.append("\(lang): старое «\(Self.wayStudioSubOld[lang]!)» — \(text)") }
+        }
+        #expect(bad.isEmpty, Comment(rawValue: bad.joined(separator: "\n")))
+    }
+
+    @Test func webWayStudioButtonIsStudioInJapanese() throws {
+        #expect(try Self.webStrings("ja")["loc.wayStudio"] == "スタジオ", "кнопка «студия» в ja — «スタジオ», не «フォトスタジオ» (шире на SE на 0,8 pt)")
+    }
+
+    @Test func theFormalAndHallListsCatchTheOldWebWording() {
+        // Порча: строки веба до 30а.6 должны краснить обе проверки.
+        for text in ["您的号码就是对外的地址", "{err}。您的数据未受影响。"] { #expect(text.contains(Self.formalZh), "не поймана порча: \(text)") }
+        let old = ["en": "hall, address and phone", "ja": "ホール、住所、電話番号", "zh": "场地、地址与电话"]
+        for (lang, text) in old { #expect(text.lowercased().contains(Self.wayStudioSubOld[lang]!), "не поймана порча: \(text)") }
     }
 
     @Test func theFormalListCatchesTheOldWording() {

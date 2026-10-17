@@ -130,6 +130,17 @@ struct LabelFitTests {
         #expect(Self.lineCount(text, size: slot.size, tracking: 0, avail: slot.avail(430)) == 2, "и на 15 Pro Max (430 pt) не хватает: 108,1 > 104")
     }
 
+    /// Шаг 30а.6: «スタジオ» вместо «フォトスタジオ» — слово кнопки пути умещается в одну строку на SE (375 pt) и на 430 pt.
+    @Test func japaneseStudioLabelFitsOneLine() throws {
+        let strings = try Self.catalog()
+        let text = try #require(Self.value(strings, "loc.wayStudio", "ja"))
+        #expect(text == "スタジオ", "ja loc.wayStudio: \(text)")
+        let slot = Self.slots[0]
+        for w in Self.widths {
+            #expect(Self.lineCount(text, size: slot.size, tracking: 0, avail: slot.avail(w)) == 1, "«\(text)» не в одну строку при \(Int(w)) pt")
+        }
+    }
+
     /// Раскладка отдаёт кнопке две строки, как и считает таблица: если вернуть `lineLimit(1)`, подпись режется «…».
     @Test func waysLabelKeepsTwoLinesInTheLayout() throws {
         let url = TextFixtures.root.appendingPathComponent("Packages/LightPlanUI/Sources/LightPlanUI/Screens/Form/FormPlace.swift")
