@@ -329,6 +329,8 @@ struct FormPlaceBlock: View {
             way(.studio, icon: "studio", "loc.wayStudio", i, pal, t)
             way(.geo, icon: "route", "loc.wayGeo", i, pal, t)
         }
+        // Подпись может уйти на вторую строку (es «Estudio fotográfico» на 375 pt): кнопки ряда тогда одной высоты.
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.vertical, 12).padding(.leading, inList ? 35 : 15).padding(.trailing, 15)
         .overlay(alignment: .top) { if inList { Rectangle().fill(pal.surface).frame(height: 1) } }
         .shotNode("form.ways")
@@ -343,10 +345,10 @@ struct FormPlaceBlock: View {
         } label: {
             VStack(spacing: 5) {
                 Icon(icon, size: 17, line: 1.6)
-                Text(t.t(key)).font(.system(size: 12)).lineLimit(1).truncationMode(.tail)
+                Text(t.t(key)).font(.system(size: 12)).lineLimit(2).multilineTextAlignment(.center)
             }
             .foregroundStyle(pal.ink3)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.vertical, 10).padding(.horizontal, 4)
             .background(pal.press, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .contentShape(Rectangle())

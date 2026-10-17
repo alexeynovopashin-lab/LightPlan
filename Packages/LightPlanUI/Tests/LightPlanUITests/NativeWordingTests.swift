@@ -119,6 +119,29 @@ struct NativeWordingTests {
         }
     }
 
+    // MARK: китайский на «你»
+
+    /// «您» — вежливое «вы». Приложение говорит «你» (шаг 30а.5). Проверка идёт по `lang_native.json`:
+    /// у слов веба (`beta/lang.js`, заморожен) «您» стоит в 13 ключах, их приложение не переопределяет.
+    static let formalZh = "您"
+
+    @Test func chineseSpeaksToTheReaderAsNi() throws {
+        var bad: [String] = []
+        for (key, text) in try Self.strings("zh").sorted(by: { $0.key < $1.key }) where text.contains(Self.formalZh) {
+            bad.append("zh \(key): \(text)")
+        }
+        #expect(bad.isEmpty, Comment(rawValue: bad.joined(separator: "\n")))
+    }
+
+    @Test func theFormalListCatchesTheOldWording() {
+        // Порча: три строки до шага 30а.5 должны краснить проверку.
+        let old = ["在您清空回收站前一直保留", "移除的图片会进入此情绪板的回收站，直到您清空前一直保留。", "在时段结束前10分钟和5分钟提醒您吗？"]
+        for text in old { #expect(text.contains(Self.formalZh), "не поймана порча: \(text)") }
+        for text in ["在你清空回收站前一直保留", "在时段结束前10分钟和5分钟提醒你吗？"] {
+            #expect(!text.contains(Self.formalZh), "ложная тревога: \(text)")
+        }
+    }
+
     // MARK: набор не разъехался
 
     @Test func fourLanguagesKeepTheSameKeysAsRussian() throws {
