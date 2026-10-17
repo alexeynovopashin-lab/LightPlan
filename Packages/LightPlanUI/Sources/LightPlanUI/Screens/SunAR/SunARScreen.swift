@@ -37,6 +37,8 @@ struct SunARScreen: View {
     private var t: Lexicon { app.lexicon }
 
     @State private var panelHeight: CGFloat = 200
+    /// Низ нижней строки кнопок в окне экрана; `nil` — ещё не измерен (`SunARZones.visibleWindow`).
+    @State private var buttonsBottom: CGFloat?
 
     var body: some View {
         let pal = Palette(scheme)
@@ -137,11 +139,11 @@ struct SunARScreen: View {
         guard !model.calibrating else { return [] }
         // Рамка учитывает размер самого значка: центр не ближе радиуса и просвета к краю, а сверху — ниже двух
         // рядов кнопок (курс и включатели могут встать в два ряда).
-        let inset = SunARInk.pointerDiameter / 2 + 8
-        let box = ScreenBox(minX: inset, minY: safe.top + 8 + 2 * (SunARInk.touch + 8) + inset, maxX: size.width - inset,
-                            maxY: size.height - panelHeight - max(safe.bottom, 12) - 4 - inset)
-        // Светило, чей диск виден на экране над панелью (хоть краем), стрелки не получает: она бы лежала на нём.
-        let shown = CGRect(x: 0, y: 0, width: size.width, height: size.height - panelHeight - max(safe.bottom, 12) - 4)
+        let panelTop = size.height - panelHeight - max(safe.bottom, 12) - 4
+        let box = SunARZones.pointerBox(size: size, safeTop: safe.top, panelTop: panelTop)
+        // Светило, чей диск виден на экране между кнопками и панелью, стрелки не получает: она бы лежала на нём.
+        // Под кнопками и под панелью диска не видно — там стрелка нужна (29.8в.6).
+        let shown = SunARZones.visibleWindow(size: size, safeTop: safe.top, buttonsBottom: buttonsBottom, panelTop: panelTop)
         func item(_ id: String, _ body: SunARPointerItem.Body, az: Double, alt: Double, text: String,
                   fade: Double) -> SunARPointerItem? {
             if let p = SkyProjection.project(azimuth: az, altitude: alt, basis: model.aim, optics: model.optics,
@@ -169,7 +171,16 @@ struct SunARScreen: View {
                         text: label(night.coreAzimuth, night.coreAltitude), fade: night.skyGhost ? 0.6 : 1) {
             out.append(i)
         }
-        return out
+        // Два светила в одной стороне (луна и ядро Млечного Пути) не встают друг на друга: раскладка по периметру.
+        let spreadPoints = SunARPointerLayout.spread(
+            out.map { (CGPoint(x: $0.pointer.point.x, y: $0.pointer.point.y), $0.text) },
+            box: CGRect(x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY),
+            screen: size, flipY: size.height - panelHeight - 40)
+        return zip(out, spreadPoints).map { item, point in
+            SunARPointerItem(id: item.id, body: item.body,
+                             pointer: EdgePointer(point: ScreenPoint(x: point.x, y: point.y), angle: item.pointer.angle),
+                             text: item.text, fade: item.fade)
+        }
     }
 
     // MARK: - Фон
@@ -284,6 +295,8 @@ struct SunARScreen: View {
                         }
                     }
                 }
+                // Низ кнопок в окне экрана: ниже него диск светила виден, выше — закрыт кнопками.
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { buttonsBottom = $0 }
                 if model.magneticOnly {
                     // Тихая строка в левом углу: не модалка, поверх кадра, пропадает, когда север стал истинным.
                     HStack(spacing: 0) {
@@ -579,6 +592,9 @@ struct SunAROverlay: View {
     var origin: CGPoint = .zero
     /// Диски меток: внутри них оригинал не рисуется — вместо него гнутая копия под линзой.
     var holes: [SunARHole] = []
+    /// Весь экран: подписи раскладываются по нему целиком, а не по окну холста, — иначе копия под линзой решала бы
+    /// про подписи иначе, чем оригинал. `nil` — холст и есть экран.
+    var screen: CGSize?
 
     var body: some View {
         Canvas { ctxIn, size in
@@ -608,28 +624,15 @@ struct SunAROverlay: View {
             }
             // Дуга солнца: цвет света по точкам, под горизонтом пунктиром.
             for run in scene.arc where run.count > 1 { drawArc(&ctx, run, view: view) }
-            // Точки часов и подписи.
+            // Точки часов, восхода и заката — значки; подписи ставит раскладка (`SunARLabelLayout`): восход и закат
+            // где стоят, стороны света, часы — только в свободное место.
             for h in scene.hours {
                 let c = CGPoint(h.point)
-                guard bounds.contains(c) else { continue }
-                // Солнце стоит на часе — подпись часа лежала бы под линзой: её роль играет панель времени.
-                if [scene.marker, scene.nowMarker].contains(where: { m in
-                    m.map { hypot($0.x - h.point.x, $0.y - h.point.y) < 36 } ?? false
-                }) { continue }
+                guard bounds.contains(c), !SunARLabelLayout.isUnderSun(h, scene: scene) else { continue }
                 let dot = CGRect(x: c.x - 3.5, y: c.y - 3.5, width: 7, height: 7)
                 ctx.fill(Path(ellipseIn: dot.insetBy(dx: -1.5, dy: -1.5)), with: .color(.black.opacity(SunARInk.outlineOpacity)))
                 ctx.fill(Path(ellipseIn: dot), with: .color(SunARInk.light))
-                label(&ctx, clock.fmt(Double(h.hour * 60)), at: CGPoint(x: c.x, y: c.y - 17), size: 11,
-                      opacity: h.altitude < 0 ? 0.75 : 1)
             }
-            // Стороны света: основные крупнее, промежуточные мелко.
-            for c in scene.cardinals {
-                let p = CGPoint(c.point)
-                guard bounds.contains(p), c.index < cardinals.count, !cardinals[c.index].isEmpty else { continue }
-                label(&ctx, cardinals[c.index], at: CGPoint(x: p.x, y: p.y + (c.isMain ? 18 : 15)),
-                      size: c.isMain ? 13 : 10.5, weight: c.isMain ? .semibold : .medium, opacity: c.isMain ? 1 : 0.9)
-            }
-            // Восход и закат: малая метка на линии горизонта и подпись над ней.
             for e in scene.events {
                 guard let pt = e.point else { continue }
                 let c = CGPoint(pt)
@@ -640,7 +643,10 @@ struct SunAROverlay: View {
                 ctx.fill(Path(ellipseIn: dot.insetBy(dx: -1.5, dy: -1.5)), with: .color(.black.opacity(SunARInk.outlineOpacity)))
                 ctx.fill(Path(ellipseIn: dot), with: .color(tint))
                 ctx.stroke(Path(ellipseIn: dot), with: .color(SunARInk.light), lineWidth: 1.5)
-                label(&ctx, eventText(e), at: CGPoint(x: c.x, y: c.y - 20), size: 11, weight: .semibold)
+            }
+            for l in SunARLabelLayout.make(scene: scene, cardinals: cardinals, eventText: eventText, clock: clock,
+                                       bounds: CGRect(origin: .zero, size: screen ?? size).insetBy(dx: -40, dy: -40)) {
+                label(&ctx, l.text, at: l.center, size: l.fontSize, weight: l.weight, opacity: l.opacity)
             }
         }
     }

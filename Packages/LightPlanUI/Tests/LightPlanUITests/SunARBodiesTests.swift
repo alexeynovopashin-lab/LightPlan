@@ -278,6 +278,61 @@ struct SunARBodiesTests {
         #expect(a.sunAREntry == nil && a.sunAR == nil)
     }
 
+    /// Телефон, который отвечает по одному запросу за раз и в нужном порядке: запросы стоят в очереди.
+    private final class QueueLocator: DeviceLocating {
+        private var waiters: [CheckedContinuation<DeviceFix, Never>] = []
+        /// Сколько ответов уже вышло из `currentFix` к вызывающему.
+        private(set) var delivered = 0
+        func currentFix() async -> DeviceFix {
+            let fix = await withCheckedContinuation { waiters.append($0) }
+            delivered += 1
+            return fix
+        }
+        var isAlreadyAuthorized: Bool { true }
+        var asked: Int { waiters.count }
+        func answer(_ index: Int, _ fix: DeviceFix) { waiters[index].resume(returning: fix) }
+    }
+
+    @Test("ответ старого запроса геопозиции не снимает занятость нового нажатия (шаг 29.8в.6, ревью GPT)")
+    func staleAnswerKeepsNewEntryBusy() async throws {
+        let queue = QueueLocator()
+        let a = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
+                         locator: queue, geocoder: QuietGeocoder(), cityLookup: NoCity(), weatherSource: NoWx())
+        // Вход 1: плашка «Определяю место…» (телефон молчит); вход спрашивает телефон сам, и их запросов может быть больше
+        // одного — счёт ведём не по номерам, а по тому, что стало после каждого шага.
+        a.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
+        try await settle(a) { a.sunAREntry?.reason == .locating }
+        let beforeFirstPress = queue.asked
+        a.sunARUseMyLocation()
+        try await settle(a) { queue.asked > beforeFirstPress }
+        #expect(queue.asked > beforeFirstPress, "нажатие не дошло до телефона")
+        #expect(a.sunAREntryBusy)
+        // Всё, что спрошено к этой минуте, — запросы входа 1: их ответы придут «поздно».
+        let oldRequests = queue.asked
+        // Плашку закрыли и открыли снова (вход 2), нажали ещё раз — замок нового нажатия взят.
+        a.dismissSunAREntry()
+        #expect(!a.sunAREntryBusy)
+        a.beginSunAR(chosen: barnaul, name: "Барнаул", moment: when)
+        try await settle(a) { a.sunAREntry?.reason == .locating }
+        let beforeSecondPress = queue.asked
+        a.sunARUseMyLocation()
+        try await settle(a) { queue.asked > beforeSecondPress }
+        #expect(queue.asked > beforeSecondPress, "второе нажатие не дошло до телефона")
+        #expect(a.sunAREntryBusy)
+        // Запросы входа 1 отвечают поздно: у входа 2 замок остаётся — до этого шага он снимался.
+        for i in 0..<oldRequests { queue.answer(i, .denied) }
+        // Ответ выходит из локатора на фоновом потоке и возвращается на главный актор позже: ждём выхода, затем
+        // даём ему время дойти (как в `lateAnswerIsIgnored`: проверка «ничего не изменилось» без наблюдаемого события).
+        try await settle(a) { queue.delivered == oldRequests }
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(a.sunAREntryBusy, "старый ответ снял занятость нового входа")
+        #expect(a.sunAREntry != nil)
+        // Ответы входа 2 замок снимают.
+        for i in oldRequests..<queue.asked { queue.answer(i, .denied) }
+        try await settle(a) { !a.sunAREntryBusy && a.sunAREntry?.reason == .denied }
+        #expect(a.sunAREntry?.reason == .denied)
+    }
+
     @Test("«Использовать моё местоположение»: точка есть — AR по телефону, место приложения не тронуто; отказ — плашка снова с пояснением")
     func entryUseMine() async throws {
         let granted = app(EntryLocator(fix: .fix(moscowFix), authorized: true))

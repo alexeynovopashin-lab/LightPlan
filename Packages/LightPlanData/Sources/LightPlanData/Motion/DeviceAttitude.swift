@@ -12,13 +12,18 @@ public struct AttitudeSample: Sendable, Equatable {
     public let basis: CameraBasis
     /// Модуль угловой скорости, градусы в секунду: объясняет часть разброса курса (`HeadingSteadiness`).
     public let rotationRate: Double
+    /// Часть вращения, что двигает курс, °/с (`HeadingSteadiness.headingRate`); это число, а не полная скорость,
+    /// идёт в окно устойчивости курса (шаг 29.8в.6).
+    public let headingRate: Double
     /// Точность магнитного поля от системы; `nil` — источник её не сообщает (подставной датчик без поля).
     public let magneticAccuracy: MagneticAccuracy?
 
-    public init(time: TimeInterval, basis: CameraBasis, rotationRate: Double, magneticAccuracy: MagneticAccuracy? = nil) {
+    public init(time: TimeInterval, basis: CameraBasis, rotationRate: Double, headingRate: Double? = nil,
+                magneticAccuracy: MagneticAccuracy? = nil) {
         self.time = time
         self.basis = basis
         self.rotationRate = rotationRate
+        self.headingRate = headingRate ?? rotationRate
         self.magneticAccuracy = magneticAccuracy
     }
 }
@@ -78,13 +83,15 @@ public final class CoreMotionAttitude: AttitudeSource {
             let m = motion.attitude.rotationMatrix
             let r = motion.rotationRate
             let rate = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot() * 180 / Double.pi
+            let rotation = DeviceRotation(
+                m11: m.m11, m12: m.m12, m13: m.m13,
+                m21: m.m21, m22: m.m22, m23: m.m23,
+                m31: m.m31, m32: m.m32, m33: m.m33)
             let sample = AttitudeSample(
                 time: motion.timestamp,
-                basis: CameraBasis(rotation: DeviceRotation(
-                    m11: m.m11, m12: m.m12, m13: m.m13,
-                    m21: m.m21, m22: m.m22, m23: m.m23,
-                    m31: m.m31, m32: m.m32, m33: m.m33)),
+                basis: CameraBasis(rotation: rotation),
                 rotationRate: rate,
+                headingRate: HeadingSteadiness.headingRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation),
                 magneticAccuracy: Self.accuracy(motion.magneticField.accuracy))
             MainActor.assumeIsolated { onSample(sample) }
         }

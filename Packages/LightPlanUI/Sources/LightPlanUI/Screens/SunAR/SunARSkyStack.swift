@@ -24,6 +24,17 @@ struct SunARSkyStack: View {
     /// слои сам: дуга и линза без налёта — чтобы по пикселям мерить смещение линии.
     var layers: Set<SunARLayers>? = nil
 
+    /// Наименьший зазор между плашками подписей горизонта и часов, pt (для снимков; 99 — подпись одна).
+    private var labelGap: CGFloat {
+        #if DEBUG
+        let labels = SunARLabelLayout.make(scene: scene, cardinals: cardinals, eventText: eventText, clock: clock,
+                                           bounds: CGRect(origin: .zero, size: size).insetBy(dx: -40, dy: -40))
+        return SunARLabelLayout.minimumGap(labels) ?? 99
+        #else
+        return 99
+        #endif
+    }
+
     private func shown(_ l: SunARLayers) -> Bool { layers?.contains(l) ?? SunARLayers.shown(l) }
 
     var body: some View {
@@ -39,14 +50,14 @@ struct SunARSkyStack: View {
             }
             if shown(.arc) {
                 SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
-                             cardinals: cardinals, eventText: eventText, holes: holes)
+                             cardinals: cardinals, eventText: eventText, holes: holes, screen: size)
                     .frame(width: size.width, height: size.height)
                     .allowsHitTesting(false)
-                    .shotNode("ar.overlay", text: String(format: "marker=%@ now=%@ merged=%d arcSegments=%d hours=%d events=%d",
+                    .shotNode("ar.overlay", text: String(format: "marker=%@ now=%@ merged=%d arcSegments=%d hours=%d events=%d labelGap=%.1f",
                                                          scene.marker.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
                                                          scene.nowMarker.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
                                                          scene.markerIsNow ? 1 : 0, scene.arc.count, scene.hours.count,
-                                                         scene.events.count))
+                                                         scene.events.count, labelGap))
             }
             ForEach(marks) { m in
                 if shown(.lens) {
@@ -77,7 +88,7 @@ struct SunARSkyStack: View {
             }
             if shown(.arc) {
                 SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
-                             cardinals: cardinals, eventText: eventText, origin: o)
+                             cardinals: cardinals, eventText: eventText, origin: o, screen: size)
                     .frame(width: side.width, height: side.height)
             }
         }

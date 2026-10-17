@@ -3,7 +3,7 @@ import LightPlanCore
 
 /// Метки светил на экране AR (шаги 29.8в.4, 29.8в.5): солнце и луна — стеклянные линзы, различимые и ночью.
 ///
-/// - **Солнце:** диск стекла; оттенок — по состоянию света в этот момент (`SunARInk.sunDiscTint`: день светло-жёлтый,
+/// - **Солнце:** диск стекла; оттенок — по состоянию света в этот момент (`SunARInk.sunGlassTint`: день светло-жёлтый,
 ///   золотой час янтарный, закат красно-оранжевый, синий час розово-синий, ночью тёмно-синий). Под горизонтом
 ///   контур пунктиром. 48 pt «сейчас», 34 pt выбранный. Лучиков нет.
 /// - **Луна:** диск стекла холодного серебристого оттенка; внутри — фаза из ядра (`MoonPhase`): освещённая часть
@@ -36,7 +36,7 @@ struct SunARMark: Equatable, Identifiable {
     var isSun: Bool { if case .sun = kind { return true } else { return false } }
 
     /// Оттенок стекла: у солнца — по состоянию света на его высоте, у луны — серебристый.
-    var tint: Color { isSun ? SunARInk.sunDiscTint(altitude: altitude) : SunARInk.moonTint }
+    var tint: Color { isSun ? SunARInk.sunGlassTint(altitude: altitude) : SunARInk.moonTint }
 
     /// Контур пунктиром: солнце ниже линии горизонта. У луны контур сплошной — её отличает фаза.
     var dashedContour: Bool { isSun && belowHorizon }
@@ -112,7 +112,8 @@ struct SunARMarkPaint: View {
         ZStack {
             switch mark.kind {
             case .sun:
-                LensGlass(diameter: d, tint: mark.tint, fade: mark.fade, dashedContour: mark.dashedContour)
+                LensGlass(diameter: d, tint: mark.tint, multiply: SunARInk.sunMultiply, veil: SunARInk.sunVeil,
+                          fade: mark.fade, dashedContour: mark.dashedContour)
             case .moon(let illuminated, let waxing, let limb):
                 LensGlass(diameter: d, tint: mark.tint, fade: mark.fade)
                 MoonPhaseGlyph(illuminated: illuminated, waxing: waxing, limb: limb)
@@ -373,8 +374,9 @@ struct SunARPointerView: View {
         }
         .frame(width: d, height: d)
         .opacity(item.fade)
-        .position(x: p.x, y: p.y)
+        // Узел — до `position`: рамка значка, а не всего экрана (по ней сверяется зазор между стрелками, 29.8в.6).
         .shotNode("ar.pointer." + item.id, text: item.text)
+        .position(x: p.x, y: p.y)
         .overlay(alignment: .topLeading) {
             let w = (CGFloat(item.text.count) * 7 + 16)
             let below = p.y + d / 2 + 14 < labelFlipY
@@ -384,6 +386,7 @@ struct SunARPointerView: View {
                 .padding(.horizontal, 8).padding(.vertical, 3)
                 .background(GlassPlate(shape: Capsule(), opacity: SunARInk.plateOpacity))
                 .fixedSize()
+                .shotNode("ar.pointerLabel." + item.id, text: item.text)
                 .position(x: min(max(p.x, w / 2 + 8), screen.width - w / 2 - 8),
                           y: below ? p.y + d / 2 + 14 : p.y - d / 2 - 14)
                 .opacity(item.fade)

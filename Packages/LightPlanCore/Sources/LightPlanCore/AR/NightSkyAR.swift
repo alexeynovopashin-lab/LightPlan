@@ -164,6 +164,11 @@ public struct EdgePointer: Sendable, Equatable {
     public let point: ScreenPoint
     /// Куда смотрит стрелка на экране: радианы в оси экрана (0 — вправо, π/2 — вниз).
     public let angle: Double
+
+    public init(point: ScreenPoint, angle: Double) {
+        self.point = point
+        self.angle = angle
+    }
 }
 
 public enum EdgePointing {

@@ -45,6 +45,12 @@ const SCENARIOS = [
     moon: true, mw: false, camera: true },
   { name: 'night_mw', now: '2026-08-20T22:00:00+07:00', moment: '2026-08-20T15:00:00Z', pose: '198,14,0', phone: TOMSK,
     moon: true, mw: true, camera: true },
+  // 29.8в.6: подписи у горизонта на рассвете («восход 07:57» рядом с часом «08:00»): зазор между плашками ≥ 4 pt.
+  { name: 'sunrise', now: '2026-10-17T09:00:00+07:00', moment: '2026-10-17T02:00:00Z', pose: '107.4,6,0', phone: TOMSK,
+    moon: false, mw: false, camera: true, merged: true, sunrise: true },
+  // 29.8в.6: диск солнца под верхними кнопками не виден — стрелка к нему нужна.
+  { name: 'under_buttons', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,-2,0', phone: TOMSK,
+    moon: false, mw: false, camera: true, merged: true, underButtons: true },
   { name: 'entry_far', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: MOSCOW,
     moon: false, mw: false, camera: false, entry: true },
   { name: 'entry_off', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: null,
@@ -78,6 +84,28 @@ function verdict(sc, nodes) {
   if (sc.merged && lab) bad.push('метка одна («сейчас»), а подпись есть: ' + lab.text);
   if (!sc.merged && !sc.entry && sc.camera && lab === undefined && /sun\.picked/.test(Object.keys(nodes).join(','))) bad.push('у выбранного момента нет подписи времени');
   need('ar.panel');
+  // Стрелки за краем не накладываются друг на друга (значки и подписи), зазор ≥ 8 pt (29.8в.6).
+  const pts = Object.keys(nodes).filter(k => /^ar\.pointer(Label)?\./.test(k));
+  const idOf = k => k.replace(/^ar\.pointer(Label)?\./, '');
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+    if (idOf(pts[i]) === idOf(pts[j])) continue;
+    const a = nodes[pts[i]], b = nodes[pts[j]];
+    const dx = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w)), dy = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h));
+    const gap = dx > 0 && dy > 0 ? Math.hypot(dx, dy) : Math.max(dx, dy);
+    if (gap < 8) bad.push(`${pts[i]} и ${pts[j]}: зазор ${gap.toFixed(1)} pt < 8`);
+  }
+  if (sc.sunrise) {
+    const m = /labelGap=(-?[0-9.]+)/.exec((nodes['ar.overlay'] || {}).text || '');
+    if (!m) bad.push('в отчёте нет labelGap'); else if (+m[1] < 4) bad.push(`подписи у горизонта: зазор ${m[1]} pt < 4`);
+  }
+  if (sc.underButtons) {
+    // Низ кнопок — самой нижней из них (на узком экране включатели стоят второй строкой).
+    const bottom = Math.max(...['ar.back', 'ar.moonToggle', 'ar.mwToggle'].filter(k => nodes[k]).map(k => nodes[k].y + nodes[k].h));
+    const mark = nodes['ar.mark.sun.now'];
+    if (!mark) bad.push('диска солнца нет в кадре');
+    else if (mark.y + mark.h / 2 > bottom) bad.push(`диск не под кнопками: центр y ${(mark.y + mark.h / 2).toFixed(0)}, низ кнопок ${bottom.toFixed(0)}`);
+    else if (!nodes['ar.pointer.sun']) bad.push('диск под кнопками, а стрелки к солнцу нет');
+  }
   const marks = Object.keys(nodes).filter(k => k.startsWith('ar.mark.'));
   const sun = marks.filter(k => /sun/.test(k)), moon = marks.filter(k => /moon/.test(k));
   for (const k of sun) if (![48, 34].includes(Math.round(nodes[k].w))) bad.push(`${k}: диаметр ${nodes[k].w} не 48/34`);
@@ -146,8 +174,8 @@ function verdict(sc, nodes) {
     run('xcrun', ['simctl', 'io', udid, 'screenshot', '--type=png', path.join(dir, 'native.png')], { stdio: 'ignore' });
     const nodes = JSON.parse(fs.readFileSync(report, 'utf8')).nodes || {};
     const bad = verdict(sc, nodes);
-    const marks = Object.fromEntries(Object.keys(nodes).filter(k => /^ar\.(mark|pointer|milkyWay|moonToggle|mwToggle|entry)/.test(k))
-      .map(k => [k, { w: +nodes[k].w.toFixed(1), h: +nodes[k].h.toFixed(1), text: nodes[k].text }]));
+    const marks = Object.fromEntries(Object.keys(nodes).filter(k => /^ar\.(mark|pointer|milkyWay|moonToggle|mwToggle|entry|overlay|back)/.test(k))
+      .map(k => [k, { x: +nodes[k].x.toFixed(1), y: +nodes[k].y.toFixed(1), w: +nodes[k].w.toFixed(1), h: +nodes[k].h.toFixed(1), text: nodes[k].text }]));
     rows.push({ scenario: sc.name, bad, nodes: marks });
   }
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(rows, null, 1));

@@ -337,4 +337,98 @@ struct SunARGlassTests {
             #expect(picked.tint != now.tint)
         }
     }
+
+    // MARK: Насыщенность диска (29.8в.6)
+
+    /// Три фона замера: белый (кадр на ярком небе: яркость 0,95), серый, чёрный.
+    private let backdrops: [(name: String, level: Double)] = [("белый", 0.95), ("серый", 0.5), ("чёрный", 0.0)]
+
+    /// Затухание призрака на этой высоте — как в `SunARMarks` (ниже `SunTrack.visibleFrom` метка идёт призраком).
+    private func fade(at altitude: Double) -> Double { altitude < SunTrack.visibleFrom ? SunARMarks.ghostFade : 1 }
+
+    @Test("насыщенность диска на белом, сером и чёрном: золотой час и закат ≥ 0,55, под горизонтом и призрак ≥ 0,40, день остаётся светло-жёлтым (≤ 0,40)")
+    func discSaturationOnThreeBackdrops() {
+        var worstGolden = 1.0, worstBelow = 1.0, dayMax = 0.0
+        var alt = -30.0
+        while alt <= 45 {
+            for b in backdrops {
+                let sat = SunARInk.saturation(SunARInk.sunDiscOnBackdrop(altitude: alt, fade: fade(at: alt), backdrop: b.level))
+                if alt >= -1, alt <= 6 { worstGolden = min(worstGolden, sat) }
+                if alt < -1.5 { worstBelow = min(worstBelow, sat) }
+                if alt >= 30 { dayMax = max(dayMax, sat) }
+            }
+            alt += 0.25
+        }
+        print(String(format: "ARSAT золотой час и закат %.3f · под горизонтом и призрак %.3f · день не больше %.3f", worstGolden, worstBelow, dayMax))
+        #expect(worstGolden >= 0.55, "золотой час и закат: \(worstGolden)")
+        #expect(worstBelow >= 0.40, "под горизонтом и призрак: \(worstBelow)")
+        #expect(dayMax <= 0.40, "днём диск уже не светло-жёлтый: \(dayMax)")
+    }
+
+    @Test("тон по таблице света не теряется: у стекла тот же тон (HSV) с точностью 12°, что у цвета света — на золотом часе, закате, синем часе и ночью")
+    func glassKeepsTheTone() {
+        func hue(_ c: (r: Double, g: Double, b: Double)) -> Double {
+            let mx = max(c.r, c.g, c.b), mn = min(c.r, c.g, c.b), d = mx - mn
+            guard d > 0 else { return 0 }
+            var h: Double
+            if mx == c.r { h = (c.g - c.b) / d } else if mx == c.g { h = 2 + (c.b - c.r) / d } else { h = 4 + (c.r - c.g) / d }
+            h *= 60
+            return h < 0 ? h + 360 : h
+        }
+        for alt in [40.0, 3, -0.8, -2, -5, -8, -12, -20] {
+            let table = hue(SunARInk.sunDiscRGB(altitude: alt)), glass = hue(SunARInk.sunGlassRGB(altitude: alt))
+            var d = abs(table - glass)
+            if d > 180 { d = 360 - d }
+            #expect(d <= 12, "высота \(alt): тон стекла \(glass)°, света \(table)°")
+        }
+    }
+
+    @Test("цвет стекла меняется непрерывно: за минуту суток канал сдвигается меньше чем на 8 из 255 — Томск 14.10 и 21.06, 56,5° на равноденствие")
+    func glassTintIsContinuous() {
+        func altitude(minutes m: Double, lat: Double, declination: Double) -> Double {
+            let h = (m - 720) / 4 * .pi / 180, la = lat * .pi / 180, de = declination * .pi / 180
+            return asin(sin(la) * sin(de) + cos(la) * cos(de) * cos(h)) * 180 / .pi
+        }
+        var worst = 0.0
+        // Томск 14.10 — настоящий ход солнца приложения; ещё два дня — приближённая формула (то же, что считал замер).
+        var prev: (r: Double, g: Double, b: Double)?
+        let day = CivilDate(year: 2026, month: 10, day: 14)
+        for m in 0..<1440 {
+            let c = SunARInk.sunGlassRGB(altitude: SunTrack.sample(day: day, minutes: Double(m), in: tomsk).altitude)
+            if let p = prev { worst = max(worst, 255 * max(abs(c.r - p.r), abs(c.g - p.g), abs(c.b - p.b))) }
+            prev = c
+        }
+        let tomskWorst = worst
+        for (lat, decl) in [(56.5, -8.2), (56.5, 0.0), (55.7, 23.4)] {
+            prev = nil
+            for m in 0..<1440 {
+                let c = SunARInk.sunGlassRGB(altitude: altitude(minutes: Double(m), lat: lat, declination: decl))
+                if let p = prev { worst = max(worst, 255 * max(abs(c.r - p.r), abs(c.g - p.g), abs(c.b - p.b))) }
+                prev = c
+            }
+        }
+        print(String(format: "ARSAT скачок стекла за минуту: Томск 14.10 %.2f, все дни %.2f из 255", tomskWorst, worst))
+        #expect(worst < 8, "самый большой скачок канала за минуту: \(worst) из 255")
+    }
+
+    /// Насыщенность по пикселям: тот же код, что идёт на экран (`SunARMarkPaint` → `LensGlass`), на сплошном фоне.
+    private func renderedSaturation(altitude: Double, background: Color) throws -> Double {
+        let mark = SunARMark(id: "sun.now", kind: .sun, center: CGPoint(x: 196, y: 400), diameter: 48,
+                             fade: fade(at: altitude), altitude: altitude, belowHorizon: altitude < 0)
+        let px = try render(SunARMarkPaint(mark: mark), background: background)
+        let c = px.rgb(196, 400)
+        return SunARInk.saturation((c.0, c.1, c.2))
+    }
+
+    @Test("насыщенность по пикселям на белом, сером и чёрном: диск золотого часа ≥ 0,55, призрак ≥ 0,40 (на экране рисует тот же LensGlass)")
+    func renderedDiscSaturation() throws {
+        let fills: [(String, Color)] = [("белый", Color(white: 0.95)), ("серый", Color(white: 0.5)), ("чёрный", .black)]
+        for (name, bg) in fills {
+            let golden = try renderedSaturation(altitude: 3, background: bg)
+            let ghost = try renderedSaturation(altitude: -12, background: bg)
+            print(String(format: "ARSAT пиксели %@: золотой час %.3f, призрак −12° %.3f", name, golden, ghost))
+            #expect(golden >= 0.55, "\(name) фон: золотой час \(golden)")
+            #expect(ghost >= 0.40, "\(name) фон: призрак \(ghost)")
+        }
+    }
 }

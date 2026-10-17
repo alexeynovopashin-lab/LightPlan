@@ -307,13 +307,13 @@ final class SunARModel {
         // У зенита и надира курс не определён: отсчёт в окно устойчивости не берём.
         let usable = abs(aim.altitude) < 75
         if usable {
-            steadiness.add(time: s.time, heading: aim.azimuth, rate: s.rotationRate)
+            steadiness.add(time: s.time, heading: aim.azimuth, rate: s.headingRate)
             let now = steadiness.isUnsteady
             if now != unsteady { unsteady = now }
         }
         if calibrating {
             calibration.add(time: s.time, accuracy: s.magneticAccuracy, heading: usable ? aim.azimuth : nil,
-                            rate: s.rotationRate)
+                            rate: s.headingRate)
         }
         // Север мог определиться по первому отсчёту (источник выставляет его в `start`).
         if north == nil, let n = source?.north { north = n }

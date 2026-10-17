@@ -14,6 +14,11 @@ import SwiftUI
 ///   Лежит ВЫШЕ дуги: оригинал дуги внутри диска вырезан (`SunARHole`), на его месте — гнутая копия. На телефоне
 ///   кадр камеры гнёт ещё и слой Metal (`SunARLens`) под дугой — те же ширина кромки и сдвиг;
 /// - `LensGlass` — налёт оттенка, свет по кромке, контур и тень. Лежит над линзой.
+///
+/// Цвет диска (шаг 29.8в.6): налёт с обычным смешиванием на светлом фоне разбеливается, поэтому у солнца под налётом
+/// лежит ещё слой «умножение» (`multiply`): окрашенное стекло — цвет света на любом сером фоне тот же, только
+/// темнее. Слой «умножение» лежит снаружи группы затухания призрака: внутри группы с прозрачностью он не видел
+/// бы фона.
 struct LensGlass: View {
     /// Диаметр диска, pt.
     let diameter: CGFloat
@@ -21,6 +26,10 @@ struct LensGlass: View {
     let tint: Color
     /// Прозрачность налёта: сквозь него просвечивает кадр и дуга.
     var tintOpacity: Double = SunARInk.glassTintOpacity
+    /// Непрозрачность слоя «умножение» тем же оттенком: 0 — слоя нет (луна), у солнца `SunARInk.sunMultiply`.
+    var multiply: Double = 0
+    /// Белый налёт стекла (`SunARInk.moonVeil` / `sunVeil`).
+    var veil: Double = SunARInk.moonVeil
     /// Призрак: светило под горизонтом — налёт и тень тише (`SunARInk.ghostFill`).
     var fade: Double = 1
     /// Контур пунктиром (солнце ниже горизонта): держится заметнее налёта (`SunARInk.ghostContour`).
@@ -29,26 +38,31 @@ struct LensGlass: View {
     var body: some View {
         let ring = SunARInk.rim(for: diameter)
         ZStack {
-            Circle().fill(tint.opacity(tintOpacity))
-            // Налёт прозрачного стекла.
-            Circle().fill(Color.white.opacity(0.07))
-            // Свет по кромке: сверху плотный, к середине высоты гаснет — как у кольца ручки и у `KnobGlass`.
-            Circle().inset(by: 0.75)
-                .stroke(LinearGradient(stops: [.init(color: .white.opacity(0.92), location: 0),
-                                               .init(color: .white.opacity(0.35), location: 0.22),
-                                               .init(color: .white.opacity(0), location: 0.5)],
-                                       startPoint: .top, endPoint: .bottom),
-                        lineWidth: 1.5)
-            // Низ кромки темнеет: стекло имеет толщину.
-            Circle().inset(by: 0.75)
-                .stroke(LinearGradient(stops: [.init(color: .black.opacity(0), location: 0.55),
-                                               .init(color: .black.opacity(0.32), location: 1)],
-                                       startPoint: .top, endPoint: .bottom),
-                        lineWidth: 1.5)
-            // Внутренний волосок: где кончается гнущая кромка и начинается чистая середина.
-            Circle().inset(by: ring).stroke(tint.opacity(0.5), lineWidth: 0.75)
+            if multiply > 0 {
+                Circle().fill(tint).opacity(multiply).blendMode(.multiply)
+            }
+            ZStack {
+                Circle().fill(tint.opacity(tintOpacity))
+                // Налёт прозрачного стекла.
+                if veil > 0 { Circle().fill(Color.white.opacity(veil)) }
+                // Свет по кромке: сверху плотный, к середине высоты гаснет — как у кольца ручки и у `KnobGlass`.
+                Circle().inset(by: 0.75)
+                    .stroke(LinearGradient(stops: [.init(color: .white.opacity(0.92), location: 0),
+                                                   .init(color: .white.opacity(0.35), location: 0.22),
+                                                   .init(color: .white.opacity(0), location: 0.5)],
+                                           startPoint: .top, endPoint: .bottom),
+                            lineWidth: 1.5)
+                // Низ кромки темнеет: стекло имеет толщину.
+                Circle().inset(by: 0.75)
+                    .stroke(LinearGradient(stops: [.init(color: .black.opacity(0), location: 0.55),
+                                                   .init(color: .black.opacity(0.32), location: 1)],
+                                           startPoint: .top, endPoint: .bottom),
+                            lineWidth: 1.5)
+                // Внутренний волосок: где кончается гнущая кромка и начинается чистая середина.
+                Circle().inset(by: ring).stroke(tint.opacity(0.5), lineWidth: 0.75)
+            }
+            .opacity(fade)
         }
-        .opacity(fade)
         .overlay { contour }
         .frame(width: diameter, height: diameter)
         .background(OuterShadow(shape: Circle(), color: .black.opacity(0.45 * fade), radius: 5.5, y: 3))

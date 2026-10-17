@@ -101,8 +101,12 @@ extension AppModel {
         let session = sunARSession
         Task {
             let fix = await deviceFixForAR()
+            // Номер входа — первым: ответ отменённого входа не трогает ничего, в том числе занятость нового
+            // (закрыли плашку, открыли снова и нажали — старый ответ не должен снять замок с нового нажатия).
+            // Закрытие и «Оставить» сами снимают занятость.
+            guard session == sunARSession else { return }
             sunAREntryBusy = false
-            guard sunAREntry != nil, session == sunARSession else { return }
+            guard sunAREntry != nil else { return }
             switch fix {
             case .fix(let c):
                 let phone = await phonePlace(at: c)

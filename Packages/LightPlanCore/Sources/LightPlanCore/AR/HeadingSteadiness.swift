@@ -7,6 +7,10 @@ import Foundation
 /// Обычный поворот на 30°/с даёт разброс 15° за 0,5 с — это не неисправность. Поэтому из разброса вычитается то,
 /// что объясняет гироскоп (средняя скорость поворота × окно): остаток больше 5° — курс прыгает при телефоне,
 /// который почти не вращается.
+///
+/// Вычитается не полная угловая скорость телефона, а та её часть, что двигает курс (`headingRate`, шаг 29.8в.6):
+/// крен вокруг оси камеры и наклон вверх-вниз курс не меняют, и полная скорость списывала бы на них настоящий
+/// скачок компаса (ревью GPT к 29.8в.3–4).
 public struct HeadingSteadiness: Sendable {
     public static let window: TimeInterval = 0.5
     public static let tolerance: Degrees = 5
@@ -25,7 +29,8 @@ public struct HeadingSteadiness: Sendable {
 
     public init() {}
 
-    /// Занести отсчёт. `rate` — скорость вращения телефона целиком, градусы в секунду (модуль угловой скорости).
+    /// Занести отсчёт. `rate` — скорость, с которой вращение телефона двигает курс, градусы в секунду (`headingRate`);
+    /// без датчика, где известна только полная скорость, — она (верхняя оценка: тише предупреждение, не громче).
     public mutating func add(time: TimeInterval, heading: Degrees, rate: Double) {
         readings.append(Reading(time: time, heading: heading, rate: rate))
         readings.removeAll { time - $0.time > Self.window }
@@ -46,6 +51,20 @@ public struct HeadingSteadiness: Sendable {
         let spread = Self.circularSpread(readings.map(\.heading))
         let meanRate = readings.map(\.rate).reduce(0, +) / Double(readings.count)
         return max(0, spread - meanRate * Self.window)
+    }
+
+    /// Скорость изменения азимута оси камеры при вращении телефона, °/с (модуль).
+    ///
+    /// Ось камеры `p`, высота `a`, угловая скорость `ω`: `ṗ = ω × p`, азимут идёт по горизонтальной части `ṗ`, откуда
+    /// `Ȧ = (ω_вверх − (ω·p) sin a) / cos² a`. В осях устройства (камера смотрит вдоль −Z, строка 3 матрицы —
+    /// ось Z устройства в системе «север, запад, вверх») `ω_вверх = ωx·m13 + ωy·m23 + ωz·m33`, `ω·p = −ωz`,
+    /// `sin a = −m33`, и компонента `ωz` сокращается: `Ȧ = (ωx·m13 + ωy·m23) / (1 − m33²)`.
+    /// Крен (ω вдоль оси камеры) и наклон при горизонтальной камере дают 0. Около зенита знаменатель → 0, поэтому
+    /// он не меньше 0,067 (высота 75°, выше отсчёты в окно не берутся).
+    /// - Parameter angularVelocity: `CMDeviceMotion.rotationRate`, радианы в секунду, оси устройства.
+    public static func headingRate(angularVelocity w: (x: Double, y: Double, z: Double), rotation m: DeviceRotation) -> Double {
+        let denominator = max(1 - m.m33 * m.m33, 0.067)
+        return abs(w.x * m.m13 + w.y * m.m23) / denominator * 180 / Double.pi
     }
 
     public mutating func reset() {

@@ -104,6 +104,87 @@ enum SunARInk {
         return Color(.sRGB, red: c.r, green: c.g, blue: c.b, opacity: 1)
     }
 
+    // MARK: Насыщенность диска (шаг 29.8в.6)
+
+    // Слово Алексея 17.10: «слабая насыщенность солнечного маркера, на закате и перед закатом, он не сильно меняет
+    // оттенок». Замер 17.10 (`Tools/ar_disc_sat.py`, сплошной фон, камера на солнце): налёт 0,42 с обычным
+    // смешиванием разбеливается фоном — золотой час +3° (насыщенность цвета 0,66) стоял на белом 0,24, на сером
+    // 0,34, на чёрном 0,55; синий час −5° (цвет 0,27) — 0,12 / 0,15 / 0,23. Сверху белый налёт 0,07 и затухание
+    // призрака ×0,4 на всё сразу. Теперь диск — окрашенное стекло: слой «умножение» цветом света (на любом сером
+    // фоне это тот же цвет, только темнее, насыщенность не теряется) и обычный налёт поверх, чтобы диск был виден
+    // и на чёрном. Белого налёта у солнца нет: на чёрном он снимал ≈0,1 насыщенности.
+
+    /// Непрозрачность слоя «умножение» у диска солнца (у луны слоя нет).
+    static let sunMultiply = 1.0
+    /// Белый налёт стекла: у луны прежний, у солнца нет.
+    static let moonVeil = 0.07
+    static let sunVeil = 0.0
+
+    /// Нижняя граница насыщенности цвета стекла по высоте солнца, узлы (высота → граница), между ними линейно.
+    /// Ниже золотого часа таблица «Света» бледна (синий час −5° — 0,27), и цвет того же тона доводится до границы;
+    /// от −1° и выше таблица сама насыщеннее, поправка молчит. Днём границы нет: диск остаётся светло-жёлтым.
+    static let glassSaturationKnots: [(altitude: Double, floor: Double)] = [
+        (-30, 0.42), (-4, 0.42), (-1.2, 0.55), (-1, 0.55), (0, 0),
+    ]
+    /// Полуширина сглаживания таблицы по высоте, градусы. Рельс «Света» ломается у −4° («перелом к синему»: за 2°
+    /// красно-розовый становится синим), а поднятая насыщенность умножает этот излом: без сглаживания канал за
+    /// минуту суток уходил на 10,9 из 255, со сглаживанием — меньше 8 (тест `glassTintIsContinuous`).
+    static let glassSmoothing = 1.0
+
+    static func glassSaturationFloor(altitude: Double) -> Double {
+        let k = glassSaturationKnots
+        if altitude <= k[0].altitude { return k[0].floor }
+        for i in 1..<k.count where altitude <= k[i].altitude {
+            let (lo, hi) = (k[i - 1], k[i])
+            return lo.floor + (hi.floor - lo.floor) * (altitude - lo.altitude) / (hi.altitude - lo.altitude)
+        }
+        return 0
+    }
+
+    /// Цвет стекла солнца на этой геометрической высоте: цвет света (`sunDiscRGB`), усреднённый по высоте на
+    /// ±`glassSmoothing`, и поднятая до `glassSaturationFloor` насыщенность — тон и яркость те же (HSV).
+    static func sunGlassRGB(altitude: Double) -> (r: Double, g: Double, b: Double) {
+        let n = 9
+        var sum = (r: 0.0, g: 0.0, b: 0.0)
+        for i in 0..<n {
+            let c = sunDiscRGB(altitude: altitude + glassSmoothing * (2 * Double(i) / Double(n - 1) - 1))
+            sum = (sum.r + c.r, sum.g + c.g, sum.b + c.b)
+        }
+        let c = (r: sum.r / Double(n), g: sum.g / Double(n), b: sum.b / Double(n))
+        let v = max(c.r, c.g, c.b)
+        let s = v == 0 ? 0 : (v - min(c.r, c.g, c.b)) / v
+        let want = glassSaturationFloor(altitude: altitude)
+        guard s > 0, want > s else { return c }
+        // Насыщенность растёт, тон и яркость v стоят: расстояние канала до v умножается на want / s.
+        let k = want / s
+        func lift(_ x: Double) -> Double { min(1, max(0, v - (v - x) * k)) }
+        return (lift(c.r), lift(c.g), lift(c.b))
+    }
+
+    static func sunGlassTint(altitude: Double) -> Color {
+        let c = sunGlassRGB(altitude: altitude)
+        return Color(.sRGB, red: c.r, green: c.g, blue: c.b, opacity: 1)
+    }
+
+    /// Цвет диска солнца на сером фоне яркости `backdrop` (канал 0…1) — тот же рецепт слоёв, что рисует `LensGlass`:
+    /// «умножение» цветом, затем налёт `glassTintOpacity` и белый налёт под общим затуханием призрака `fade`.
+    /// Для юнит-теста: на экране то же самое меряет `Tools/ar_disc_sat.py`.
+    static func sunDiscOnBackdrop(altitude: Double, fade: Double, backdrop: Double) -> (r: Double, g: Double, b: Double) {
+        let t = sunGlassRGB(altitude: altitude)
+        func channel(_ tint: Double) -> Double {
+            let multiplied = backdrop * (1 - sunMultiply + sunMultiply * tint)
+            let tinted = multiplied * (1 - glassTintOpacity * fade) + tint * glassTintOpacity * fade
+            return tinted * (1 - sunVeil * fade) + sunVeil * fade
+        }
+        return (channel(t.r), channel(t.g), channel(t.b))
+    }
+
+    /// Насыщенность HSV: `0…1`.
+    static func saturation(_ c: (r: Double, g: Double, b: Double)) -> Double {
+        let mx = max(c.r, c.g, c.b)
+        return mx == 0 ? 0 : (mx - min(c.r, c.g, c.b)) / mx
+    }
+
     /// Земля под горизонтом в состоянии «нет камеры».
     static let groundOpacity = 0.42
 

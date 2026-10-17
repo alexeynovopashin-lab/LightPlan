@@ -122,6 +122,21 @@ struct SunARTests {
         m2.stop()
     }
 
+    @Test("телефон крутят вокруг оси камеры (полная скорость 90°/с, на курс уходит 0), а курс прыгает на 8° — модель поднимает подсказку (29.8в.6)")
+    func rollDoesNotHideCompassJump() async {
+        let feed = Feed()
+        let m = SunARModel(target: target("2026-09-23T06:00:00Z"), source: feed)
+        await m.start()
+        var t = 0.0
+        for i in 0..<20 {
+            let az = i % 2 == 0 ? 100.0 : 108
+            feed.push?(AttitudeSample(time: t, basis: CameraBasis(azimuth: az, altitude: 10), rotationRate: 90, headingRate: 0))
+            t += 0.05
+        }
+        #expect(m.unsteady, "скачок курса списан на вращение, которое курс не двигает")
+        m.stop()
+    }
+
     @Test("слой открывается местом и моментом и закрывается; других сведений о входе у него нет")
     func openAndClose() {
         let app = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
