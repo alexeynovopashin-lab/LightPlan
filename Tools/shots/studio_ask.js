@@ -47,10 +47,11 @@ function verdict(nodes, screen) {
   const existing = JSON.parse(run('xcrun', ['simctl', 'list', 'devices', 'available', '-j'])).devices;
   const runtime = Object.keys(existing).find(r => existing[r].some(d => d.udid === main.udid));
   for (const e of EXTRA) {
-    let d = Object.values(existing).flat().find(x => x.name === e.name);
+    // Чужой симулятор с тем же именем берём как есть и не удаляем: `own` — только у созданных этим запуском.
+    const d = Object.values(existing).flat().find(x => x.name === e.name);
     const udid = d ? d.udid : run('xcrun', ['simctl', 'create', e.name, e.type, runtime]).trim();
     try { run('xcrun', ['simctl', 'boot', udid], { stdio: 'ignore' }); } catch (x) {}
-    devices.push({ label: e.label, udid, own: true });
+    devices.push({ label: e.label, udid, own: !d });
   }
   if (!args['skip-build']) {
     const log = path.join(OUT, 'xcodebuild.log');

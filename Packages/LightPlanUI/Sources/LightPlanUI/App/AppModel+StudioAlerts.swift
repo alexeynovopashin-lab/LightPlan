@@ -42,16 +42,22 @@ extension AppModel {
     /// сам и плашки раньше не было; разрешено или отказано в системе — плашка ни к чему (тумблер включится сам
     /// по правилу 30а / строка ведёт в настройки iPhone). Системное окно здесь не вызывается никогда.
     func offerStudioAlerts(after s: Session) {
-        guard let center = alertCenter, !studioAlertAsked, !studioAlertAsk, studioAlertsWanted,
-              RentWindow.of(s, studios: snapshot.studios, now: nil) != nil else { return }
+        guard canOfferStudioAlerts(for: s.id), let center = alertCenter else { return }
         alertOfferTask = Task { [weak self] in
             let auth = await center.authorization()
             guard let self else { return }
             alertAuth = auth
-            guard auth == .notDetermined, !studioAlertAsked, !studioAlertAsk else { return }
-            writeNotif(["studioAsked": true])
+            // Пока система отвечала, человек мог выключить студийный час, запись — уйти или смениться.
+            guard auth == .notDetermined, canOfferStudioAlerts(for: s.id) else { return }
             studioAlertAsk = true
         }
+    }
+
+    /// Все условия показа плашки — их же проверяем заново после ожидания ответа системы.
+    private func canOfferStudioAlerts(for sessionId: String) -> Bool {
+        guard alertCenter != nil, !studioAlertAsked, !studioAlertAsk, studioAlertsWanted,
+              let s = snapshot.sessions.first(where: { $0.id == sessionId }) else { return false }
+        return RentWindow.of(s, studios: snapshot.studios, now: nil) != nil
     }
 
     #if DEBUG
@@ -64,6 +70,8 @@ extension AppModel {
     /// «Да»: плашка закрыта, дальше как нажатие на тумблер — системное окно, разрешили — тумблер включён.
     public func answerStudioAlertAsk(yes: Bool) {
         studioAlertAsk = false
+        // «Спрашивали» — по ответу, не по показу: закрыли приложение при открытой плашке — спросим в следующий раз.
+        writeNotif(["studioAsked": true])
         if yes { setStudioAlerts(true) }
     }
 

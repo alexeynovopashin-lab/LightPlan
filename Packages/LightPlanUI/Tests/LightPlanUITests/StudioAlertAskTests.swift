@@ -26,6 +26,22 @@ struct StudioAlertAskTests {
         func remove(ids: [String]) {}
     }
 
+    /// Центр с управляемой задержкой: `authorization()` стоит, пока тест не вызовет `release()`. Без sleep.
+    private actor Gated: NotificationCentering {
+        private var waiters: [CheckedContinuation<Void, Never>] = []
+        private var open = false
+        var waiting: Int { waiters.count }
+        func release() { open = true; waiters.forEach { $0.resume() }; waiters = [] }
+        func authorization() async -> NotificationAuthorization {
+            if !open { await withCheckedContinuation { waiters.append($0) } }
+            return .notDetermined
+        }
+        func requestAuthorization() -> Bool { true }
+        func pending() -> [PendingAlert] { [] }
+        func add(_ alert: ScheduledAlert) -> Bool { true }
+        func remove(ids: [String]) {}
+    }
+
     private struct DryWeather: WeatherSource {
         func fetchHourly(at place: Place) async throws -> HourlyWeather {
             HourlyWeather(time: [], cloud: [], temperature: [], windSpeed: [], precipitation: [], weatherCode: [])
@@ -61,6 +77,15 @@ struct StudioAlertAskTests {
     }
 
     private func model(_ snap: Snapshot, center: Fake?) -> AppModel {
+        let now = ISO8601DateFormatter().date(from: "2026-10-19T10:00:00+03:00")!
+        let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
+                           locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
+                           weatherSource: DryWeather(), now: { now })
+        app.alertCenter = center
+        return app
+    }
+
+    private func modelGated(_ snap: Snapshot, center: Gated) -> AppModel {
         let now = ISO8601DateFormatter().date(from: "2026-10-19T10:00:00+03:00")!
         let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
                            locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
@@ -184,5 +209,37 @@ struct StudioAlertAskTests {
         let app = model(Self.snapshot(extra: ["notif": .object(["studio": .bool(false)])]), center: fake)
         await save(app)
         #expect(app.studioAlertAsk == false)
+    }
+
+    // MARK: - Гонки и память
+
+    @Test func toggleTurnedOffWhileTheSystemAnswersNoPlate() async {
+        let gate = Gated()
+        let app = modelGated(Self.snapshot(), center: gate)
+        app.openForm(editing: "s1")
+        #expect(app.saveForm() != nil)
+        for _ in 0..<10_000 where await gate.waiting == 0 { await Task.yield() }
+        #expect(await gate.waiting >= 1, "предложение ждёт ответа системы")
+        app.setStudioAlerts(false)
+        for _ in 0..<10_000 where app.studioAlertsWanted { await Task.yield() }
+        #expect(app.studioAlertsWanted == false)
+        await gate.release()
+        await app.alertOfferTask?.value
+        #expect(app.studioAlertAsk == false, "за время ожидания тумблер выключили")
+    }
+
+    @Test func closingTheAppWithThePlateOpenDoesNotSpendTheOffer() async {
+        let app = model(Self.snapshot(), center: Fake(.notDetermined))
+        await save(app)
+        #expect(app.studioAlertAsk)
+        // Приложение закрыли, не ответив: в памяти отметки нет, новый запуск спросит снова.
+        let relaunched = model(app.snapshotForTests, center: Fake(.notDetermined))
+        await save(relaunched)
+        #expect(relaunched.studioAlertAsk, "ответа не было — плашка вернётся")
+    }
+
+    @Test func plateTextIsTheStudioHourWording() {
+        let app = model(Self.snapshot(), center: nil)
+        #expect(app.lexicon.t("studio.askT") == "Предупреждать за 10 и 5 минут до конца студийного часа?")
     }
 }
