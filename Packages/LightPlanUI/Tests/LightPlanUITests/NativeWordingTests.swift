@@ -182,6 +182,50 @@ struct NativeWordingTests {
         }
     }
 
+    // MARK: слова веба: зал студии в пяти оставшихся ключах (шаг 30а.7)
+
+    /// Ключи веба, где ru говорит «зал»: выход из зала, «без зала», выбор зала, поиск по залу.
+    static let webHallKeys = ["studio.leaveIn", "studio.leaveNow", "form.hallNone", "form.pickHallAria", "loc.studioFindPh"]
+    /// Слова, которыми зал звали до 30а.7: концертный «hall», «ホール», «厅» без «拍摄», «场地», «影棚厅»;
+    /// а в zh ещё «影棚» вместо зала в трёх ключах (выход, «без зала», поиск).
+    static let webHallOld: [String: [String]] = ["en": ["hall"], "ja": ["ホール"], "zh": ["场地", "影棚厅"]]
+
+    private static func oldHallHits(_ lang: String, _ key: String, _ text: String) -> [String] {
+        var hits = (webHallOld[lang] ?? []).filter { text.lowercased().contains($0) }
+        if lang == "zh", !matches("(?<!拍摄)厅", in: text).isEmpty { hits.append("厅") }
+        // «影棚» вместо зала: в «Выбрать зал студии» студия по смыслу есть, в остальных четырёх — нет.
+        if lang == "zh", key != "form.pickHallAria", text.contains("影棚") { hits.append("影棚") }
+        return hits
+    }
+
+    @Test func webHallKeysSayRoomNotHall() throws {
+        var bad: [String] = []
+        for lang in Self.langs {
+            let s = try Self.webStrings(lang)
+            for key in Self.webHallKeys {
+                let text = try #require(s[key], "нет \(lang) \(key)")
+                if !text.lowercased().contains(Self.hallWord[lang]!) { bad.append("\(lang) \(key): нет «\(Self.hallWord[lang]!)» — \(text)") }
+                let hits = Self.oldHallHits(lang, key, text)
+                if !hits.isEmpty { bad.append("\(lang) \(key): старое \(hits) — \(text)") }
+            }
+        }
+        #expect(bad.isEmpty, Comment(rawValue: bad.joined(separator: "\n")))
+    }
+
+    @Test func theWebHallListCatchesTheOldWording() {
+        // Порча: строки веба до 30а.7 должны краснить проверку.
+        let old: [(String, String, String)] = [
+            ("en", "studio.leaveNow", "Time to leave the hall. {where}."), ("en", "form.hallNone", "no hall"),
+            ("en", "loc.studioFindPh", "Name, address or hall"),
+            ("ja", "form.hallNone", "ホールなし"), ("ja", "form.pickHallAria", "スタジオのホールを選ぶ"),
+            ("zh", "studio.leaveIn", "{left}后离开影棚。{where}。"), ("zh", "form.hallNone", "无影棚厅"),
+            ("zh", "form.pickHallAria", "选择影棚厅"), ("zh", "loc.studioFindPh", "名称、地址或场地")]
+        for (lang, key, text) in old { #expect(!Self.oldHallHits(lang, key, text).isEmpty, "не поймана порча: \(lang) \(key) \(text)") }
+        for (lang, key, text) in [("zh", "form.hallNone", "无拍摄厅"), ("en", "form.pickHallAria", "Pick a studio room")] {
+            #expect(Self.oldHallHits(lang, key, text).isEmpty, "ложная тревога: \(text)")
+        }
+    }
+
     // MARK: набор не разъехался
 
     @Test func fourLanguagesKeepTheSameKeysAsRussian() throws {
