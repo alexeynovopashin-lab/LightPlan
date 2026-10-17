@@ -37,6 +37,8 @@ struct SunARMark: Equatable, Identifiable {
 
     /// Оттенок стекла: у солнца — по состоянию света на его высоте, у луны — серебристый.
     var tint: Color { isSun ? SunARInk.sunGlassTint(altitude: altitude) : SunARInk.moonTint }
+    /// Цвет слоя «умножение» (только у солнца): у призрака чистый тон (`SunARInk.sunMultiplyRGB`).
+    var multiplyTint: Color { SunARInk.sunMultiplyTint(altitude: altitude, fade: fade) }
 
     /// Контур пунктиром: солнце ниже линии горизонта. У луны контур сплошной — её отличает фаза.
     var dashedContour: Bool { isSun && belowHorizon }
@@ -112,7 +114,8 @@ struct SunARMarkPaint: View {
         ZStack {
             switch mark.kind {
             case .sun:
-                LensGlass(diameter: d, tint: mark.tint, multiply: SunARInk.sunMultiply, veil: SunARInk.sunVeil,
+                LensGlass(diameter: d, tint: mark.tint, multiply: SunARInk.sunMultiplyOpacity(fade: mark.fade),
+                          multiplyTint: mark.multiplyTint, veil: SunARInk.sunVeil,
                           fade: mark.fade, dashedContour: mark.dashedContour)
             case .moon(let illuminated, let waxing, let limb):
                 LensGlass(diameter: d, tint: mark.tint, fade: mark.fade)

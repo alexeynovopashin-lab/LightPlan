@@ -49,8 +49,11 @@ const SCENARIOS = [
   { name: 'sunrise', now: '2026-10-17T09:00:00+07:00', moment: '2026-10-17T02:00:00Z', pose: '107.4,6,0', phone: TOMSK,
     moon: false, mw: false, camera: true, merged: true, sunrise: true },
   // 29.8в.6: диск солнца под верхними кнопками не виден — стрелка к нему нужна.
-  { name: 'under_buttons', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,-2,0', phone: TOMSK,
+  { name: 'under_buttons', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,-4,0', phone: TOMSK,
     moon: false, mw: false, camera: true, merged: true, underButtons: true },
+  // 29.8в.7: центр диска в окне видимости, верхний край под кнопками — стрелка всё равно нужна.
+  { name: 'half_hidden', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,2.6,0', phone: TOMSK,
+    moon: false, mw: false, camera: true, merged: true, halfHidden: true },
   { name: 'entry_far', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: MOSCOW,
     moon: false, mw: false, camera: false, entry: true },
   { name: 'entry_off', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: null,
@@ -103,8 +106,18 @@ function verdict(sc, nodes) {
     const bottom = Math.max(...['ar.back', 'ar.moonToggle', 'ar.mwToggle'].filter(k => nodes[k]).map(k => nodes[k].y + nodes[k].h));
     const mark = nodes['ar.mark.sun.now'];
     if (!mark) bad.push('диска солнца нет в кадре');
-    else if (mark.y + mark.h / 2 > bottom) bad.push(`диск не под кнопками: центр y ${(mark.y + mark.h / 2).toFixed(0)}, низ кнопок ${bottom.toFixed(0)}`);
+    // Диск скрыт целиком (вся рамка выше низа кнопок), а не только центр (29.8в.7).
+    else if (mark.y + mark.h > bottom) bad.push(`диск не скрыт под кнопками целиком: низ диска y ${(mark.y + mark.h).toFixed(0)}, низ кнопок ${bottom.toFixed(0)}`);
     else if (!nodes['ar.pointer.sun']) bad.push('диск под кнопками, а стрелки к солнцу нет');
+  }
+  if (sc.halfHidden) {
+    // Центр диска уже в окне видимости, верхний край ещё под кнопками: стрелка нужна, пока диск виден не целиком.
+    const bottom = Math.max(...['ar.back', 'ar.moonToggle', 'ar.mwToggle'].filter(k => nodes[k]).map(k => nodes[k].y + nodes[k].h));
+    const mark = nodes['ar.mark.sun.now'];
+    if (!mark) bad.push('диска солнца нет в кадре');
+    else if (mark.y >= bottom + 8) bad.push(`диск не залез под кнопки: верх y ${mark.y.toFixed(0)}, низ кнопок ${bottom.toFixed(0)}`);
+    else if (mark.y + mark.h / 2 < bottom + 8) bad.push(`центр диска ещё под кнопками (y ${(mark.y + mark.h / 2).toFixed(0)}): сценарий не про край`);
+    else if (!nodes['ar.pointer.sun']) bad.push('диск виден не целиком (край под кнопками), а стрелки к солнцу нет');
   }
   const marks = Object.keys(nodes).filter(k => k.startsWith('ar.mark.'));
   const sun = marks.filter(k => /sun/.test(k)), moon = marks.filter(k => /moon/.test(k));

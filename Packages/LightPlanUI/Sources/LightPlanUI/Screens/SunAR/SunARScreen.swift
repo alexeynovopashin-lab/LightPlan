@@ -141,13 +141,15 @@ struct SunARScreen: View {
         // рядов кнопок (курс и включатели могут встать в два ряда).
         let panelTop = size.height - panelHeight - max(safe.bottom, 12) - 4
         let box = SunARZones.pointerBox(size: size, safeTop: safe.top, panelTop: panelTop)
-        // Светило, чей диск виден на экране между кнопками и панелью, стрелки не получает: она бы лежала на нём.
-        // Под кнопками и под панелью диска не видно — там стрелка нужна (29.8в.6).
+        // Светило, чей диск виден на экране между кнопками и панелью ЦЕЛИКОМ, стрелки не получает: она бы лежала на нём.
+        // Диск, залезший краем под кнопки, под панель или за край экрана, виден не весь — стрелка нужна (29.8в.7;
+        // в 29.8в.6 сверялся только центр диска).
         let shown = SunARZones.visibleWindow(size: size, safeTop: safe.top, buttonsBottom: buttonsBottom, panelTop: panelTop)
         func item(_ id: String, _ body: SunARPointerItem.Body, az: Double, alt: Double, text: String,
-                  fade: Double) -> SunARPointerItem? {
+                  fade: Double, radius: CGFloat) -> SunARPointerItem? {
             if let p = SkyProjection.project(azimuth: az, altitude: alt, basis: model.aim, optics: model.optics,
-                                             viewport: viewport), shown.contains(CGPoint(x: p.x, y: p.y)) { return nil }
+                                             viewport: viewport),
+               SunARZones.discFullyVisible(center: CGPoint(x: p.x, y: p.y), radius: radius, in: shown) { return nil }
             guard let p = EdgePointing.pointer(azimuth: az, altitude: alt, basis: model.aim, optics: model.optics,
                                                viewport: viewport, box: box) else { return nil }
             return SunARPointerItem(id: id, body: body, pointer: p, text: text, fade: fade)
@@ -158,17 +160,20 @@ struct SunARScreen: View {
         }
         var out: [SunARPointerItem] = []
         if let i = item("sun", .sun, az: sun.azimuth, alt: sun.apparentAltitude,
-                        text: label(sun.azimuth, sun.altitude), fade: sun.altitude < SunTrack.visibleFrom ? 0.6 : 1) {
+                        text: label(sun.azimuth, sun.altitude), fade: sun.altitude < SunTrack.visibleFrom ? 0.6 : 1,
+                        radius: (model.pickedIsNow ? SunARInk.nowLensDiameter : SunARInk.pickedLensDiameter) / 2) {
             out.append(i)
         }
         if let m = night?.picked, let i = item("moon", .moon(illuminated: m.illuminated, waxing: m.waxing),
                                                az: m.azimuth, alt: m.altitude, text: label(m.azimuth, m.altitude),
-                                               fade: m.ghost ? 0.6 : 1) {
+                                               fade: m.ghost ? 0.6 : 1,
+                                               radius: (night?.now == nil ? SunARInk.moonNowDiameter : SunARInk.moonPickedDiameter) / 2) {
             out.append(i)
         }
         if let night, night.milkyWayOn,
            let i = item("core", .core, az: night.coreAzimuth, alt: night.coreAltitude,
-                        text: label(night.coreAzimuth, night.coreAltitude), fade: night.skyGhost ? 0.6 : 1) {
+                        text: label(night.coreAzimuth, night.coreAltitude), fade: night.skyGhost ? 0.6 : 1,
+                        radius: SunARInk.coreGlyphRadius) {
             out.append(i)
         }
         // Два светила в одной стороне (луна и ядро Млечного Пути) не встают друг на друга: раскладка по периметру.

@@ -431,4 +431,46 @@ struct SunARGlassTests {
             #expect(ghost >= 0.40, "\(name) фон: призрак \(ghost)")
         }
     }
+
+    // MARK: Призрак пропускает кадр (29.8в.7)
+
+    private func renderedColour(altitude: Double, background: Double) throws -> (r: Double, g: Double, b: Double) {
+        let mark = SunARMark(id: "sun.now", kind: .sun, center: CGPoint(x: 196, y: 400), diameter: 48,
+                             fade: fade(at: altitude), altitude: altitude, belowHorizon: altitude < 0)
+        let c = try render(SunARMarkPaint(mark: mark), background: Color(white: background)).rgb(196, 400)
+        return (c.0, c.1, c.2)
+    }
+
+    private func luminance(_ c: (r: Double, g: Double, b: Double)) -> Double { 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b }
+
+    @Test("призрак пропускает кадр: яркость внутри диска / вне на белом −8° ≥ 0,70, −12° ≥ 0,65, −20° ≥ 0,60, насыщенность ≥ 0,40 на белом, сером и чёрном")
+    func ghostLetsTheFrameThrough() throws {
+        let floors: [(Double, Double)] = [(-8, 0.70), (-12, 0.65), (-20, 0.60)]
+        for (alt, floor) in floors {
+            let white = try renderedColour(altitude: alt, background: 0.95)
+            let through = luminance(white) / 0.95
+            var lowest = 1.0
+            for level in [0.95, 0.5, 0.0] {
+                lowest = min(lowest, SunARInk.saturation(try renderedColour(altitude: alt, background: level)))
+            }
+            print(String(format: "ARSAT призрак %+.0f°: яркость внутри/вне %.3f (порог %.2f), насыщенность на трёх фонах не ниже %.3f", alt, through, floor, lowest))
+            #expect(through >= floor, "призрак \(alt)°: яркость внутри/вне \(through) < \(floor)")
+            #expect(lowest >= 0.40, "призрак \(alt)°: насыщенность \(lowest) < 0,40")
+        }
+    }
+
+    @Test("обычное солнце не изменилось: золотой час и закат — цвет по прежней формуле «умножение × налёт», день не темнее золотого часа")
+    func ordinarySunIsUnchanged() throws {
+        for alt in [3.0, -0.8] {
+            let t = SunARInk.sunGlassRGB(altitude: alt)
+            let got = try renderedColour(altitude: alt, background: 0.95)
+            // Формула f18b07f: фон × цвет (умножение 1,0), затем налёт 0,42 тем же цветом.
+            func expected(_ x: Double) -> Double { 0.95 * x * (1 - SunARInk.glassTintOpacity) + x * SunARInk.glassTintOpacity }
+            #expect(abs(got.r - expected(t.r)) < 0.01 && abs(got.g - expected(t.g)) < 0.01 && abs(got.b - expected(t.b)) < 0.01,
+                    "высота \(alt): \(got) вместо (\(expected(t.r)), \(expected(t.g)), \(expected(t.b)))")
+        }
+        let day = luminance(try renderedColour(altitude: 40, background: 0.95))
+        let golden = luminance(try renderedColour(altitude: 3, background: 0.95))
+        #expect(day >= golden, "день темнее золотого часа: \(day) < \(golden)")
+    }
 }

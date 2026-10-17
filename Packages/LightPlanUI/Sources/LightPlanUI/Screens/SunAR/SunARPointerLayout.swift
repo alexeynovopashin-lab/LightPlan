@@ -21,6 +21,12 @@ enum SunARZones {
         return CGRect(x: 0, y: top, width: size.width, height: max(0, panelTop - top))
     }
 
+    /// Диск виден целиком: вся его рамка внутри окна видимости. Хоть краем под кнопками, под панелью или за краем
+    /// экрана — не целиком, и стрелка нужна (29.8в.7).
+    static func discFullyVisible(center: CGPoint, radius: CGFloat, in window: CGRect) -> Bool {
+        window.contains(CGRect(x: center.x - radius, y: center.y - radius, width: 2 * radius, height: 2 * radius))
+    }
+
     /// Рамка, внутри которой стоят центры стрелок: окно без полос под кнопками и панелью, на радиус значка и просвет
     /// к краю. Верх — всегда запас на две строки: стрелка не лезет под вторую строку кнопок, даже когда её нет.
     static func pointerBox(size: CGSize, safeTop: CGFloat, panelTop: CGFloat) -> ScreenBox {

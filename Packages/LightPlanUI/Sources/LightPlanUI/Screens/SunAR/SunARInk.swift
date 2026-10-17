@@ -59,6 +59,9 @@ enum SunARInk {
     /// Полоса Млечного Пути и ядро: тон и непрозрачность слоёв ночью (днём — на `MilkyWayAR.ghostOpacity`).
     static let milkyWayTone = Color(hex: 0xDCE6FF)
     static let coreTone = Color(hex: 0xFFEBC2)
+    /// Радиус пятна ядра Млечного Пути для проверки «виден целиком» у стрелки: условный (у ядра нет рамки диска,
+    /// замера нет).
+    static let coreGlyphRadius: CGFloat = 13
     /// Стрелка у края: диаметр стеклянного кружка, pt.
     static let pointerDiameter: CGFloat = 44
     /// Стекло кнопок: стандартное `.glassEffect`, но с тёмным оттенком. Над белым небом чистое стекло светлое и
@@ -114,8 +117,12 @@ enum SunARInk {
     // фоне это тот же цвет, только темнее, насыщенность не теряется) и обычный налёт поверх, чтобы диск был виден
     // и на чёрном. Белого налёта у солнца нет: на чёрном он снимал ≈0,1 насыщенности.
 
-    /// Непрозрачность слоя «умножение» у диска солнца (у луны слоя нет).
+    /// Непрозрачность слоя «умножение» у диска солнца (у луны слоя нет). У призрака она умножается на затухание
+    /// (`SunARMarks.ghostFade`): слой «умножение» лежит вне группы затухания и без этого затемнял кадр под призраком
+    /// так же, как под обычным солнцем (замер 17.10: яркость внутри диска / вне на белом — золотой час 0,67, призрак
+    /// −12° 0,41, −20° 0,24; ревью GPT к f18b07f).
     static let sunMultiply = 1.0
+    static func sunMultiplyOpacity(fade: Double) -> Double { sunMultiply * fade }
     /// Белый налёт стекла: у луны прежний, у солнца нет.
     static let moonVeil = 0.07
     static let sunVeil = 0.0
@@ -161,6 +168,24 @@ enum SunARInk {
         return (lift(c.r), lift(c.g), lift(c.b))
     }
 
+    /// Цвет слоя «умножение». У обычного солнца — цвет стекла. У призрака тот же тон, но чистый (V = 1, S = 1): при
+    /// множителе 0,4 такой слой даёт насыщенность 0,40 (тон по таблице тот же), а затемняет кадр на ≈ 0,3 вместо
+    /// ≈ 0,6 (вариант «чистый тон ×0,4», решение 17.10). Без «чистоты» множитель 0,4 давал насыщенность 0,17.
+    static func sunMultiplyRGB(altitude: Double, fade: Double) -> (r: Double, g: Double, b: Double) {
+        let c = sunGlassRGB(altitude: altitude)
+        guard fade < 1 else { return c }
+        let v = max(c.r, c.g, c.b), mn = min(c.r, c.g, c.b)
+        guard v > mn else { return (1, 1, 1) }
+        // Тон (HSV) тот же, насыщенность и яркость — предельные: канал максимума → 1, минимума → 0.
+        func pure(_ x: Double) -> Double { (x - mn) / (v - mn) }
+        return (pure(c.r), pure(c.g), pure(c.b))
+    }
+
+    static func sunMultiplyTint(altitude: Double, fade: Double) -> Color {
+        let c = sunMultiplyRGB(altitude: altitude, fade: fade)
+        return Color(.sRGB, red: c.r, green: c.g, blue: c.b, opacity: 1)
+    }
+
     static func sunGlassTint(altitude: Double) -> Color {
         let c = sunGlassRGB(altitude: altitude)
         return Color(.sRGB, red: c.r, green: c.g, blue: c.b, opacity: 1)
@@ -170,13 +195,14 @@ enum SunARInk {
     /// «умножение» цветом, затем налёт `glassTintOpacity` и белый налёт под общим затуханием призрака `fade`.
     /// Для юнит-теста: на экране то же самое меряет `Tools/ar_disc_sat.py`.
     static func sunDiscOnBackdrop(altitude: Double, fade: Double, backdrop: Double) -> (r: Double, g: Double, b: Double) {
-        let t = sunGlassRGB(altitude: altitude)
-        func channel(_ tint: Double) -> Double {
-            let multiplied = backdrop * (1 - sunMultiply + sunMultiply * tint)
+        let t = sunGlassRGB(altitude: altitude), m = sunMultiplyRGB(altitude: altitude, fade: fade)
+        let k = sunMultiplyOpacity(fade: fade)
+        func channel(_ tint: Double, _ multiply: Double) -> Double {
+            let multiplied = backdrop * (1 - k + k * multiply)
             let tinted = multiplied * (1 - glassTintOpacity * fade) + tint * glassTintOpacity * fade
             return tinted * (1 - sunVeil * fade) + sunVeil * fade
         }
-        return (channel(t.r), channel(t.g), channel(t.b))
+        return (channel(t.r, m.r), channel(t.g, m.g), channel(t.b, m.b))
     }
 
     /// Насыщенность HSV: `0…1`.

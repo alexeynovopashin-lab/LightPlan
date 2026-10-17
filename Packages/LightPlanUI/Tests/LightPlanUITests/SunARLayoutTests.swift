@@ -92,6 +92,30 @@ struct SunARLayoutTests {
         }
     }
 
+    @Test("стрелка нужна, если диск виден не целиком: край под кнопками, под панелью или за краем экрана; центр в окне ничего не решает")
+    func pointerNeededUnlessDiscFullyVisible() {
+        for phone in phones {
+            let panelTop = phone.size.height - 200 - max(phone.safeBottom, 12) - 4
+            for bottom in [phone.safeTop + 8 + SunARInk.touch, phone.safeTop + 8 + 2 * SunARInk.touch + 8] {
+                let w = SunARZones.visibleWindow(size: phone.size, safeTop: phone.safeTop, buttonsBottom: bottom, panelTop: panelTop)
+                let r = SunARInk.nowLensDiameter / 2
+                let x = phone.size.width / 2
+                func visible(_ cx: CGFloat, _ cy: CGFloat) -> Bool { SunARZones.discFullyVisible(center: CGPoint(x: cx, y: cy), radius: r, in: w) }
+                #expect(visible(x, (w.minY + w.maxY) / 2), "\(phone.name): диск посреди окна виден целиком")
+                #expect(visible(x, w.minY + r) && visible(x, w.maxY - r), "\(phone.name): диск вплотную к краям окна виден целиком")
+                // Верхний край диска на 1 pt под кнопками, центр уже в окне — раньше стрелки не было.
+                #expect(!visible(x, w.minY + r - 1), "\(phone.name): верхний край под кнопками")
+                #expect(w.contains(CGPoint(x: x, y: w.minY + r - 1)), "контроль: центр такого диска в окне — прежнее правило стрелку бы не дало")
+                #expect(!visible(x, w.minY - r), "\(phone.name): диск целиком под кнопками")
+                #expect(!visible(x, w.maxY - r + 1), "\(phone.name): нижний край под панелью")
+                #expect(w.contains(CGPoint(x: x, y: w.maxY - r + 1)))
+                #expect(!visible(r - 1, w.midY) && !visible(phone.size.width - r + 1, w.midY), "\(phone.name): край за краем экрана")
+                print(String(format: "ARLAY рамка диска %@: окно y %.1f…%.1f, диск %.0f pt виден целиком при центре y %.1f…%.1f",
+                             phone.name, w.minY, w.maxY, 2 * r, w.minY + r, w.maxY - r))
+            }
+        }
+    }
+
     // MARK: Две стрелки
 
     /// Стрелки луны и ядра Млечного Пути на кадре `toggles` — как их строит экран, до раскладки.

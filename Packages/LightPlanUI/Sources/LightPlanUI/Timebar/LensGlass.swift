@@ -28,6 +28,9 @@ struct LensGlass: View {
     var tintOpacity: Double = SunARInk.glassTintOpacity
     /// Непрозрачность слоя «умножение» тем же оттенком: 0 — слоя нет (луна), у солнца `SunARInk.sunMultiply`.
     var multiply: Double = 0
+    /// Цвет слоя «умножение»; `nil` — цвет стекла (`tint`). У призрака солнца — чистый тон, чтобы множитель 0,4 не
+    /// терял насыщенность.
+    var multiplyTint: Color?
     /// Белый налёт стекла (`SunARInk.moonVeil` / `sunVeil`).
     var veil: Double = SunARInk.moonVeil
     /// Призрак: светило под горизонтом — налёт и тень тише (`SunARInk.ghostFill`).
@@ -39,7 +42,7 @@ struct LensGlass: View {
         let ring = SunARInk.rim(for: diameter)
         ZStack {
             if multiply > 0 {
-                Circle().fill(tint).opacity(multiply).blendMode(.multiply)
+                Circle().fill(multiplyTint ?? tint).opacity(multiply).blendMode(.multiply)
             }
             ZStack {
                 Circle().fill(tint.opacity(tintOpacity))

@@ -89,6 +89,28 @@ def hsv_sat(rgb):
     return colorsys.rgb_to_hsv(*(c / 255 for c in rgb))
 
 
+def luma(c):
+    return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255
+
+
+def frame_colour(img, frame, scale):
+    """Фон снаружи диска: медиана кольца 1,5…2,0 радиуса метки (кадр без диска; дуга и подписи — редкие пиксели)."""
+    cx = (frame['x'] + frame['w'] / 2) * scale
+    cy = (frame['y'] + frame['h'] / 2) * scale
+    r0, r1 = frame['w'] / 2 * scale * 1.5, frame['w'] / 2 * scale * 2.0
+    px = img.convert('RGB').load()
+    chans = ([], [], [])
+    w, h = img.size
+    for y in range(max(0, int(cy - r1)), min(h, int(cy + r1) + 1)):
+        for x in range(max(0, int(cx - r1)), min(w, int(cx + r1) + 1)):
+            d2 = (x - cx) ** 2 + (y - cy) ** 2
+            if r0 * r0 <= d2 <= r1 * r1:
+                p = px[x, y]
+                for i in range(3):
+                    chans[i].append(p[i])
+    return tuple(statistics.median(c) for c in chans)
+
+
 def disc_colour(img, frame, scale):
     cx = (frame['x'] + frame['w'] / 2) * scale
     cy = (frame['y'] + frame['h'] / 2) * scale
@@ -159,16 +181,21 @@ def main():
             h, s, v = hsv_sat(rgb)
             row['sat'][bd] = round(s, 3)
             row['rgb'][bd] = [int(c) for c in rgb]
+            # Сколько кадра остаётся под диском: яркость внутри диска / яркость кадра рядом (чёрный фон — нет делителя).
+            outside = luma(frame_colour(img, mark, scale))
+            row.setdefault('through', {})[bd] = round(luma(rgb) / outside, 3) if outside > 0.05 else None
         row['min'] = min(row['sat'].values())
         row['goal'] = goal
         if goal is not None and row['min'] < goal:
             failures.append('%s: %.2f < %.2f' % (name, row['min'], goal))
         result.append(row)
-    print('%-22s %7s %8s %8s %8s %6s' % ('состояние', 'высота', 'белый', 'серый', 'чёрный', 'цель'))
+    print('%-22s %7s %8s %8s %8s %6s   %s' % ('состояние', 'высота', 'белый', 'серый', 'чёрный', 'цель',
+                                           'яркость внутри/вне: белый, серый'))
     for r in result:
-        print('%-22s %+6.1f° %8.2f %8.2f %8.2f %6s   rgb(белый)=%s' % (
+        print('%-22s %+6.1f° %8.2f %8.2f %8.2f %6s   %.2f, %.2f   rgb(белый)=%s' % (
             r['state'], r['altitude'], r['sat']['white'], r['sat']['gray'], r['sat']['black'],
-            ('≥%.2f' % r['goal']) if r['goal'] else '—', tuple(r['rgb']['white'])))
+            ('≥%.2f' % r['goal']) if r['goal'] else '—', r['through']['white'], r['through']['gray'],
+            tuple(r['rgb']['white'])))
     if opt('--json'):
         json.dump(result, open(opt('--json'), 'w'), ensure_ascii=False, indent=1)
     print('→ ' + out)
