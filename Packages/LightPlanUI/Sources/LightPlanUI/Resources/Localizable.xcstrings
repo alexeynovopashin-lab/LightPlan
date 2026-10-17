@@ -15154,7 +15154,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "no hall"
+            "value" : "no room"
           }
         },
         "es" : {
@@ -15166,13 +15166,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ホールなし"
+            "value" : "ルームなし"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无影棚厅"
+            "value" : "无拍摄厅"
           }
         }
       }
@@ -16204,7 +16204,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pick a studio hall"
+            "value" : "Pick a studio room"
           }
         },
         "es" : {
@@ -16216,13 +16216,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スタジオのホールを選ぶ"
+            "value" : "スタジオのルームを選ぶ"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择影棚厅"
+            "value" : "选择拍摄厅"
           }
         }
       }
@@ -22967,7 +22967,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Name, address or hall"
+            "value" : "Name, address or room"
           }
         },
         "es" : {
@@ -22979,13 +22979,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名前、住所、ホール"
+            "value" : "名前、住所、ルーム"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名称、地址或场地"
+            "value" : "名称、地址或拍摄厅"
           }
         }
       }
@@ -49952,7 +49952,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leave the hall in {left}. {where}."
+            "value" : "Leave the room in {left}. {where}."
           }
         },
         "es" : {
@@ -49964,13 +49964,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "{left}後に退室。{where}。"
+            "value" : "{left}後にルームを出ます。{where}。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "{left}后离开影棚。{where}。"
+            "value" : "{left}后离开拍摄厅。{where}。"
           }
         }
       }
@@ -49987,7 +49987,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Time to leave the hall. {where}."
+            "value" : "Time to leave the room. {where}."
           }
         },
         "es" : {
@@ -49999,13 +49999,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "退室の時間です。{where}。"
+            "value" : "ルームを出る時間です。{where}。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "该离开影棚了。{where}。"
+            "value" : "该离开拍摄厅了。{where}。"
           }
         }
       }
