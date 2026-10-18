@@ -132,6 +132,9 @@ final class SunARModel {
     private(set) var calibration = CompassCalibration()
 
     private var steadiness = HeadingSteadiness()
+    /// Когда щёлкать и когда сигналить (ядро), и как (слой отклика калибровки).
+    private var pacer = CalibrationPacer()
+    private let feedback: any CalibrationFeedback
     private let source: (any AttitudeSource)?
     private let driver: any ARCameraDriving
     private let clock: @MainActor () -> Moment
@@ -208,7 +211,7 @@ final class SunARModel {
     init(target: SunARTarget, source: (any AttitudeSource)?, camera: (any ARCameraDriving)? = nil,
          clock: @escaping @MainActor () -> Moment = { Moment(Date()) },
          calibrationFlag: (any ARCalibrationFlag)? = nil, forceCalibration: Bool = false,
-         bodies: (any ARBodiesSettings)? = nil,
+         bodies: (any ARBodiesSettings)? = nil, feedback: (any CalibrationFeedback)? = nil,
          language: String = "ru", clockPreference: ClockPreference = .auto) {
         choice = target.choice
         let wall = SunTrack.wallClock(of: target.moment, in: target.place)
@@ -232,6 +235,11 @@ final class SunARModel {
         self.clock = clock
         nowMoment = clock()
         flag = calibrationFlag ?? DeviceCalibrationFlag()
+        #if os(iOS)
+        self.feedback = feedback ?? DeviceCalibrationFeedback()
+        #else
+        self.feedback = feedback ?? SilentCalibrationFeedback()
+        #endif
         let b = bodies ?? DeviceBodiesSettings()
         self.bodies = b
         moonOn = b.moon
@@ -312,8 +320,16 @@ final class SunARModel {
             if now != unsteady { unsteady = now }
         }
         if calibrating {
-            // Шкала растёт от движения (гироскоп и положение), точность — то, что отвечает система.
+            // Шкала растёт от движения (положение телефона), точность — то, что отвечает система.
             calibration.add(s.calibrationReading)
+            switch pacer.step(time: s.time, percent: calibration.percent, movementDone: calibration.movementDone) {
+            case .tick: feedback.tick()
+            case .done: feedback.completed()
+            case nil: break
+            }
+            #if DEBUG
+            CalibrationLog.note(time: s.time, calibration: calibration)
+            #endif
         }
         // Север мог определиться по первому отсчёту (источник выставляет его в `start`).
         if north == nil, let n = source?.north { north = n }
@@ -353,6 +369,8 @@ final class SunARModel {
     /// Открыть экран калибровки: первый вход сам, потом — кнопкой «Калибровка».
     func beginCalibration() {
         calibration.reset()
+        pacer.reset()
+        feedback.prepare()
         if !hasSensor { calibration.markNoSensor() }
         calibrating = true
     }
@@ -377,6 +395,7 @@ final class SunARModel {
     func retryCalibration() {
         guard calibrating else { return }
         calibration.reset()
+        pacer.reset()
         if !hasSensor { calibration.markNoSensor() }
     }
 
@@ -439,3 +458,27 @@ final class SunARModel {
     /// Выбранный день и минута в таймбаре — отсюда «сейчас» плавно едет кадр за кадром (экран).
     var wallNow: (day: CivilDate, minutes: Double) { nowTarget(now: nowMoment) }
 }
+
+#if DEBUG
+/// Журнал калибровки (Debug, `-LPSunARCalibLog <файл>`; имя без «/» — файл в `Documents` приложения): раз в 0,5 с
+/// проценты, накопленный наклон по четырём сторонам и размах поворота в градусах, точность от системы. По нему видно,
+/// какая ячейка не закрывается на живом телефоне.
+enum CalibrationLog {
+    nonisolated(unsafe) static let url = UserDefaults.standard.string(forKey: "LPSunARCalibLog").map {
+        $0.hasPrefix("/") ? URL(fileURLWithPath: $0) : URL.documentsDirectory.appending(path: $0)
+    }
+    nonisolated(unsafe) private static var last: TimeInterval = -1
+
+    static func note(time: TimeInterval, calibration c: CompassCalibration) {
+        guard let url, time - last >= 0.5 else { return }
+        last = time
+        let m = c.coverage
+        func d(_ k: MotionCoverage.Cell) -> String { String(format: "%.1f", m.degrees(k)) }
+        let acc = c.accuracy.map { a in "±\(a.degrees.map { String(format: "%.0f", $0) } ?? "—")° lvl=\(a.level?.rawValue ?? -1)" } ?? "—"
+        let line = String(format: "%.2f ", time) + "\(c.percent)% phase=\(c.phase) F=\(d(.tiltForward)) B=\(d(.tiltBack)) L=\(d(.tiltLeft)) R=\(d(.tiltRight)) turn=\(d(.turn)) acc=\(acc)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(data); try? h.close() }
+        else { try? data.write(to: url) }
+    }
+}
+#endif

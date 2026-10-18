@@ -35,7 +35,25 @@ public extension CameraBasis {
     }
 }
 
-/// Охват движения при калибровке компаса (шаг 29.8в.8).
+public extension CameraBasis {
+    /// Поворот вокруг вертикали между положением `previous` и этим, градусы со знаком (против часовой стрелки
+    /// сверху — плюс). Считается из тех же осей камеры, по которым рисуется дуга, поэтому не зависит от знаков и
+    /// осей, в которых система отдаёт угловую скорость: поворот, который видит дуга, видит и калибровка.
+    ///
+    /// Оси устройства в мире «восток, север, вверх» — столбцы `[right | up | −forward]`; приращение
+    /// `ΔR = R · Rᵀ_prev`, поворот вокруг вертикали — `(ΔR₁₀ − ΔR₀₁) / 2` (для малых углов — синус угла).
+    func yawStep(from previous: CameraBasis) -> Double {
+        func columns(_ b: CameraBasis) -> [[Double]] {
+            let x = b.right, y = b.up, z = SkyVector(east: -b.forward.east, north: -b.forward.north, up: -b.forward.up)
+            return [[x.east, y.east, z.east], [x.north, y.north, z.north], [x.up, y.up, z.up]]
+        }
+        let n = columns(self), p = columns(previous)
+        func d(_ i: Int, _ j: Int) -> Double { (0..<3).reduce(0) { $0 + n[i][$1] * p[j][$1] } }
+        return asin(max(-1, min(1, (d(1, 0) - d(0, 1)) / 2))) * 180 / .pi
+    }
+}
+
+/// Охват движения при калибровке компаса (шаги 29.8в.8, 29.8в.8а).
 ///
 /// Магнитометру нужно побывать в разных положениях: тогда система видит поле по всем сторонам телефона и вычитает
 /// из него собственный магнетизм корпуса. Поэтому шкала растёт не от времени и не от курса, а от того, куда
@@ -44,30 +62,33 @@ public extension CameraBasis {
 /// 1. **Наклоны** — направление силы тяжести в осях телефона. Точка отсчёта — положение в первом отсчёте; от неё
 ///    телефон должен отклониться по двум осям экрана в обе стороны: вперёд/назад и влево/вправо (четыре ячейки,
 ///    каждая закрыта наклоном `tiltFull` в её сторону).
-/// 2. **Повороты вокруг вертикали** — накопленный интеграл скорости гироскопа вокруг вертикали (со знаком), влево
-///    и вправо от начала (две ячейки, каждая закрыта поворотом `yawFull`). Интеграл гироскопа, а не курс из
-///    компаса: курс сам неверен, пока компас не откалиброван, и скачком поля его можно «повернуть» без движения.
+/// 2. **Поворот вокруг вертикали** — размах накопленного поворота (наибольшее минус наименьшее значение), одна
+///    ячейка, закрыта размахом `turnFull`. Это шаг положения телефона, а не курс из компаса: курс сам неверен, пока
+///    компас не откалиброван, и скачком поля его можно «повернуть» без движения. Размах, а не «30° влево и 30°
+///    вправо от начала» (29.8в.8): на подставных взмахах руки (шест, кисть, кувырки; 100 прогонов каждого) такие две
+///    ячейки не закрывались в 8–15 % прогонов — накопленный поворот уходит в одну сторону, и обратной стороны
+///    не набирается; у Алексея шкала стояла на 92 % = пять ячеек из шести закрыты, одна на половине.
 ///
 /// Каждая ячейка заполняется линейно от `deadband` до полного значения; в пределах `deadband` отклонение — шум
 /// датчиков и дрожь руки и ячейку не двигает. Заполнение только растёт (рекорд отклонения), назад не идёт.
-/// Шкала — среднее заполнение шести ячеек. Время шкалу не двигает: без новых отсчётов с отклонением она стоит.
+/// Шкала — среднее заполнение пяти ячеек. Время шкалу не двигает: без новых отсчётов с отклонением она стоит.
 public struct MotionCoverage: Sendable {
     /// Наклон, закрывающий ячейку, градусы.
     public static let tiltFull: Double = 15
     /// Ниже этого наклона — шум и дрожь, градусы.
     public static let tiltDeadband: Double = 4
-    /// Поворот вокруг вертикали, закрывающий ячейку, градусы.
-    public static let yawFull: Double = 30
-    public static let yawDeadband: Double = 5
+    /// Размах поворота вокруг вертикали, закрывающий ячейку, градусы.
+    public static let turnFull: Double = 40
+    public static let turnDeadband: Double = 6
     /// Скорость вращения вокруг вертикали ниже этой считается дрейфом нуля гироскопа и не интегрируется, °/с.
     public static let yawRateFloor: Double = 1.5
     /// Пропуск между отсчётами длиннее этого (остановка датчика) в интеграл не берётся, секунды.
     static let maxStep: TimeInterval = 0.2
 
     public enum Cell: Int, CaseIterable, Sendable {
-        case tiltForward, tiltBack, tiltLeft, tiltRight, turnLeft, turnRight
+        case tiltForward, tiltBack, tiltLeft, tiltRight, turn
 
-        public var isTilt: Bool { rawValue < 4 }
+        public var isTilt: Bool { self != .turn }
     }
 
     /// Рекорды отклонения по ячейкам, градусы.
@@ -76,6 +97,8 @@ public struct MotionCoverage: Sendable {
     private var axisU: PhoneVector?
     private var axisV: PhoneVector?
     private var yaw: Double = 0
+    private var yawLow: Double = 0
+    private var yawHigh: Double = 0
     private var lastTime: TimeInterval?
 
     public init() {}
@@ -106,8 +129,9 @@ public struct MotionCoverage: Sendable {
         if let last = lastTime, time > last, time - last <= Self.maxStep {
             let rate = abs(verticalRate) >= Self.yawRateFloor ? verticalRate : 0
             yaw += rate * (time - last)
-            raise(.turnRight, yaw)
-            raise(.turnLeft, -yaw)
+            yawLow = min(yawLow, yaw)
+            yawHigh = max(yawHigh, yaw)
+            best[Cell.turn.rawValue] = yawHigh - yawLow
         }
         lastTime = time
     }
@@ -118,19 +142,26 @@ public struct MotionCoverage: Sendable {
 
     /// Заполнение ячейки `0 … 1`.
     public func fill(_ cell: Cell) -> Double {
-        let (dead, full) = cell.isTilt ? (Self.tiltDeadband, Self.tiltFull) : (Self.yawDeadband, Self.yawFull)
+        let (dead, full) = cell.isTilt ? (Self.tiltDeadband, Self.tiltFull) : (Self.turnDeadband, Self.turnFull)
         return min(1, max(0, (best[cell.rawValue] - dead) / (full - dead)))
     }
 
-    /// Шкала `0 … 1`: среднее заполнение шести ячеек.
+    /// Шкала `0 … 1`: среднее заполнение пяти ячеек.
     public var progress: Double {
         Cell.allCases.map(fill).reduce(0, +) / Double(Cell.allCases.count)
     }
 
-    /// Все шесть ячеек закрыты.
+    /// Все пять ячеек закрыты.
     public var isComplete: Bool { Cell.allCases.allSatisfy { fill($0) >= 1 } }
 
-    /// Чего не хватает: хоть одна ячейка наклона / хоть одна ячейка поворота не закрыта.
-    public var missingTilt: Bool { Cell.allCases.contains { $0.isTilt && fill($0) < 1 } }
-    public var missingTurn: Bool { Cell.allCases.contains { !$0.isTilt && fill($0) < 1 } }
+    /// Накопленное отклонение ячейки, градусы (наклон в её сторону или размах поворота): для журнала отладки.
+    public func degrees(_ cell: Cell) -> Double { best[cell.rawValue] }
+
+    /// Чего не хватает. Оси экрана: «влево-вправо» — крен (ячейки `tiltLeft`, `tiltRight`), «вперёд-назад» — наклон
+    /// от себя и на себя (`tiltForward`, `tiltBack`); подсказка называет ось, а не сторону — какая из сторон «вперёд»,
+    /// зависит от того, как телефон держали в первом отсчёте.
+    public var missingSide: Bool { fill(.tiltLeft) < 1 || fill(.tiltRight) < 1 }
+    public var missingFront: Bool { fill(.tiltForward) < 1 || fill(.tiltBack) < 1 }
+    public var missingTurn: Bool { fill(.turn) < 1 }
+    public var missingTilt: Bool { missingSide || missingFront }
 }

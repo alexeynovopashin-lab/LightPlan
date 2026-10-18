@@ -61,7 +61,7 @@ public struct CompassAccuracy: Sendable, Equatable {
 
 /// Калибровка компаса «восьмёркой» (шаги 29.8в.2, 29.8в.8).
 ///
-/// Шкала — **охват движения** (`MotionCoverage`): наклоны и повороты телефона, измеренные по гироскопу и положению,
+/// Шкала — **охват движения** (`MotionCoverage`): наклоны и поворот телефона, измеренные по гироскопу и положению,
 /// и ничего больше. Неподвижный телефон держит её на нуле сколько угодно, тряска на месте её почти не двигает,
 /// время её не двигает. Точность компаса шкалу не двигает вовсе: её показывает система, и она показана отдельно.
 ///
@@ -85,7 +85,9 @@ public struct CompassCalibration: Sendable {
 
     /// Чего недостаёт движению, когда шкала стоит дольше `stallBeforeHint`.
     public enum Hint: Sendable, Equatable {
-        case tiltMore, turnMore, slower
+        /// Не хватает наклонов по обеим осям / только влево-вправо / только вперёд-назад.
+        case tiltMore, tiltSide, tiltFront
+        case turnMore, slower
     }
 
     /// Порог точности: погрешность курса не больше этого, градусы. Подобран по документации, не по железу:
@@ -164,6 +166,13 @@ public struct CompassCalibration: Sendable {
         }
     }
 
+    /// Шкала в целых процентах, как её видит человек. Сто — только когда все ячейки закрыты: 99,6 % показываются
+    /// как 99, а не округляются вверх до «сто».
+    public var percent: Int { Int((progress * 100).rounded(.down)) }
+
+    /// Движение закончено: все ячейки закрыты. Момент, когда можно перестать водить телефоном.
+    public var movementDone: Bool { phase != .noSensor && coverage.isComplete }
+
     /// «Готово» доступно.
     public var canFinish: Bool { phase == .ready }
 
@@ -171,7 +180,12 @@ public struct CompassCalibration: Sendable {
     public var hint: Hint? {
         guard phase == .measuring, hasReadings, lastTime - lastGrowth >= Self.stallBeforeHint else { return nil }
         if smoothedRate > Self.tooFast { return .slower }
-        if coverage.missingTilt { return .tiltMore }
+        switch (coverage.missingSide, coverage.missingFront) {
+        case (true, true): return .tiltMore
+        case (true, false): return .tiltSide
+        case (false, true): return .tiltFront
+        case (false, false): break
+        }
         if coverage.missingTurn { return .turnMore }
         return nil
     }

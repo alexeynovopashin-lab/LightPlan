@@ -67,13 +67,6 @@ public struct HeadingSteadiness: Sendable {
         return abs(w.x * m.m13 + w.y * m.m23) / denominator * 180 / Double.pi
     }
 
-    /// Скорость вращения телефона вокруг вертикали со знаком, °/с: проекция угловой скорости на «вверх» мира
-    /// (`ω_вверх = ωx·m13 + ωy·m23 + ωz·m33`, см. вывод выше). Крен и наклон её не дают; поворот на месте даёт полную.
-    /// Калибровка интегрирует её, чтобы знать, как далеко телефон повернули (`MotionCoverage`, шаг 29.8в.8).
-    public static func verticalRate(angularVelocity w: (x: Double, y: Double, z: Double), rotation m: DeviceRotation) -> Double {
-        (w.x * m.m13 + w.y * m.m23 + w.z * m.m33) * 180 / Double.pi
-    }
-
     public mutating func reset() {
         readings.removeAll()
         unsteadyUntil = -.infinity

@@ -53,6 +53,9 @@ struct SunARCalibrationView: View {
             if phase != .noSensor {
                 scale
                 accuracy
+                #if DEBUG
+                diagnostics
+                #endif
             }
             message
             if let hint = hintText {
@@ -103,6 +106,8 @@ struct SunARCalibrationView: View {
     private var hintText: String? {
         switch calibration.hint {
         case .tiltMore: return t.t("ar.calHintTilt")
+        case .tiltSide: return t.t("ar.calHintSide")
+        case .tiltFront: return t.t("ar.calHintFront")
         case .turnMore: return t.t("ar.calHintTurn")
         case .slower: return t.t("ar.calHintSlow")
         case nil: return nil
@@ -117,7 +122,7 @@ struct SunARCalibrationView: View {
             HStack {
                 Text(t.t("ar.calMove"))
                 Spacer(minLength: 8)
-                Text("\(Int((p * 100).rounded())) %").monospacedDigit()
+                Text("\(calibration.percent) %").monospacedDigit()
             }
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(SunARInk.light)
@@ -133,7 +138,7 @@ struct SunARCalibrationView: View {
         .animation(PlanMotion.pick(.linear(duration: 0.12)), value: p)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(t.t("ar.calMove"))
-        .accessibilityValue("\(Int((p * 100).rounded())) %")
+        .accessibilityValue("\(calibration.percent) %")
         .shotNode("ar.cal.scale", text: String(format: "%.2f", p))
     }
 
@@ -169,6 +174,20 @@ struct SunARCalibrationView: View {
             }
         }
     }
+
+    #if DEBUG
+    /// Только в отладочной сборке: накопленное отклонение по ячейкам, градусы — видно, какая не закрывается
+    /// (наклон в четыре стороны: нужно 15°; размах поворота: нужно 40°).
+    private var diagnostics: some View {
+        let m = calibration.coverage
+        func d(_ k: MotionCoverage.Cell) -> String { String(format: "%.0f", m.degrees(k)) }
+        let line = "F \(d(.tiltForward)) B \(d(.tiltBack)) L \(d(.tiltLeft)) R \(d(.tiltRight)) / \(Int(MotionCoverage.tiltFull))° · turn \(d(.turn)) / \(Int(MotionCoverage.turnFull))°"
+        return Text(line)
+            .font(.system(size: 10, design: .monospaced))
+            .foregroundStyle(SunARInk.light.opacity(0.45))
+            .shotNode("ar.cal.diag", text: line)
+    }
+    #endif
 
     // MARK: - Кнопки
 

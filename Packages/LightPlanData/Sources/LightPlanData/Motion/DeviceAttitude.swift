@@ -137,6 +137,7 @@ public final class CoreMotionAttitude: AttitudeSource {
     private let heading: HeadingAccuracyFeed
     public private(set) var north: AttitudeNorth?
     private var handler: (@MainActor (AttitudeSample) -> Void)?
+    private var lastPose: (time: TimeInterval, basis: CameraBasis)?
 
     /// - Parameter showsSystemCalibrationPanel: показывать ли системную панель калибровки поверх экрана (и у
     ///   `CMMotionManager`, и у `CLLocationManager`). Выключена: её закрыл бы наш экран.
@@ -157,6 +158,7 @@ public final class CoreMotionAttitude: AttitudeSource {
 
     private func begin() {
         guard let onSample = handler else { return }
+        lastPose = nil
         let frames = CMMotionManager.availableAttitudeReferenceFrames()
         let frame: CMAttitudeReferenceFrame = frames.contains(.xTrueNorthZVertical) ? .xTrueNorthZVertical : .xMagneticNorthZVertical
         north = frame == .xTrueNorthZVertical ? .trueNorth : .magneticNorth
@@ -171,17 +173,29 @@ public final class CoreMotionAttitude: AttitudeSource {
                 m21: m.m21, m22: m.m22, m23: m.m23,
                 m31: m.m31, m32: m.m32, m33: m.m33)
             MainActor.assumeIsolated {
+                let basis = CameraBasis(rotation: rotation)
                 let sample = AttitudeSample(
                     time: motion.timestamp,
-                    basis: CameraBasis(rotation: rotation),
+                    basis: basis,
                     rotationRate: rate,
                     headingRate: HeadingSteadiness.headingRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation),
                     magneticAccuracy: Self.accuracy(motion.magneticField.accuracy),
-                    verticalRate: HeadingSteadiness.verticalRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation),
+                    verticalRate: self.verticalRate(time: motion.timestamp, basis: basis, gyro: rate),
                     headingAccuracy: self.heading.current(at: motion.timestamp))
                 onSample(sample)
             }
         }
+    }
+
+    /// Поворот вокруг вертикали со знаком, °/с — по шагу положения между двумя отсчётами (`CameraBasis.yawStep`), а не
+    /// по проекции угловой скорости: знаки и оси `rotationRate` на живом телефоне не проверялись, а положение — то же,
+    /// по которому рисуется дуга. Считается, только пока гироскоп подтверждает вращение (его модуль выше порога
+    /// дрейфа): скачок магнитной поправки у неподвижного телефона поворотом не считается.
+    private func verticalRate(time: TimeInterval, basis: CameraBasis, gyro: Double) -> Double {
+        defer { lastPose = (time, basis) }
+        guard let last = lastPose, time > last.time, time - last.time <= 0.2,
+              gyro >= MotionCoverage.yawRateFloor else { return 0 }
+        return basis.yawStep(from: last.basis) / (time - last.time)
     }
 
     private nonisolated static func accuracy(_ a: CMMagneticFieldCalibrationAccuracy) -> MagneticAccuracy {

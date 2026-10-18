@@ -31,12 +31,12 @@ const BUNDLE = 'Novopashin.LightPlan';
 const RUNTIME = 'com.apple.CoreSimulator.SimRuntime.iOS-26-5';
 
 const SCENARIOS = [
-  { name: 'start', script: 'still', acc: '25,25', delay: 3, phase: 'measuring', scale: [0, 0], accLine: /25/ },
+  { name: 'start', script: 'still', acc: '25,25', delay: 3, phase: 'measuring', scale: [0, 0], accLine: /25/, buzz: { ticks: [0, 0], done: 0 } },
   { name: 'mid', script: 'eight:0.5', acc: '25,25', delay: 4, phase: 'measuring', scale: [0.4, 0.9], hint: false },
   { name: 'hint', script: 'eight:0.5', acc: '25,25', delay: 18, phase: 'measuring', scale: [0.4, 0.9], hint: true },
   { name: 'notbetter', script: 'eight:1', acc: '25,25', delay: 10, phase: 'notImproved', scale: [1, 1], retry: true, done: false, lang: true },
-  { name: 'ready', script: 'eight:1', acc: '25,8,2', delay: 6, phase: 'ready', scale: [1, 1], done: true, accLine: /25.*8/ },
-  { name: 'ready_late', script: 'eight:1', acc: '25,8,2', delay: 16, phase: 'ready', scale: [1, 1], done: true },
+  { name: 'ready', script: 'eight:1', acc: '25,8,2', delay: 6, phase: 'ready', scale: [1, 1], done: true, accLine: /25.*8/, buzz: { ticks: [10, 99], done: 1 } },
+  { name: 'ready_late', script: 'eight:1', acc: '25,8,2', delay: 16, phase: 'ready', scale: [1, 1], done: true, buzz: { ticks: [10, 99], done: 1 } },
   { name: 'reduce', script: 'eight:1', acc: '25,8,2', delay: 6, phase: 'ready', scale: [1, 1], done: true, reduce: true },
 ];
 const LOC = { ru: 'ru_RU', en: 'en_US', es: 'es_ES', ja: 'ja_JP', zh: 'zh_CN' };
@@ -45,6 +45,22 @@ const DEVICES = {
   15: { pt: 393, type: 'com.apple.CoreSimulator.SimDeviceType.iPhone-15', name: 'LP wt-29-8v8 15' },
   se: { pt: 375, type: 'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation', name: 'LP wt-29-8v8 se' },
 };
+
+/* Журнал отдачи (`-LPHapticLog`): строка на щелчок `calib.tick` и на сигнал конца `calib.done`. Тактильности в симуляторе нет,
+   меряем журнал: сколько щелчков, один ли сигнал, нет ли щелчков после него, не чаще ли 50 мс друг от друга. */
+function buzzVerdict(sc, file) {
+  const bad = [];
+  if (!sc.buzz) return bad;
+  const lines = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter(Boolean) : [];
+  const rows = lines.map(l => { const m = /^([0-9.]+) calib\.(tick|done)/.exec(l); return m && { t: +m[1], k: m[2] }; }).filter(Boolean);
+  const ticks = rows.filter(r => r.k === 'tick'), done = rows.filter(r => r.k === 'done');
+  if (ticks.length < sc.buzz.ticks[0] || ticks.length > sc.buzz.ticks[1]) bad.push(`щелчков ${ticks.length} вне ${sc.buzz.ticks}`);
+  if (done.length !== sc.buzz.done) bad.push(`сигналов конца ${done.length}, ждали ${sc.buzz.done}`);
+  if (done.length && ticks.some(t => t.t > done[0].t)) bad.push('щелчки после сигнала конца');
+  for (let i = 1; i < ticks.length; i++) if (ticks[i].t - ticks[i - 1].t < 0.0495) bad.push(`щелчки через ${(ticks[i].t - ticks[i - 1].t) * 1000 | 0} мс < 50`);
+  sc.buzzCount = `щелчков ${ticks.length}, сигналов ${done.length}`;
+  return bad;
+}
 
 function verdict(sc, nodes, W, H) {
   const bad = [];
@@ -117,7 +133,7 @@ function verdict(sc, nodes, W, H) {
           const dir = path.join(OUT, tag);
           fs.mkdirSync(dir, { recursive: true });
           const report = path.join(dir, 'native.json');
-          fs.rmSync(report, { force: true });
+          fs.rmSync(report, { force: true }); fs.rmSync(path.join(dir, 'haptic.log'), { force: true });
           try { run('xcrun', ['simctl', 'terminate', udid, BUNDLE], { stdio: 'ignore', timeout: 10000 }); } catch (e) {}
           run('xcrun', ['simctl', 'launch', udid, BUNDLE, '-AppleLanguages', `(${lang})`, '-AppleLocale', LOC[lang],
             '-LPShotNow', '2026-10-14T12:00:00+07:00', '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', path.join(FX, 'seed.json'),
@@ -126,16 +142,16 @@ function verdict(sc, nodes, W, H) {
             '-lightplan.native.sunar.calibrationSeen', 'NO', '-lightplan.native.sunar.moon', 'NO', '-lightplan.native.sunar.milkyWay', 'NO',
             '-LPSunAR', '1', '-LPSunARCalib', '1', '-LPSunARMoment', '2026-10-14T05:00:00Z', '-LPSunARPhone', '56.4977,84.9744,Asia/Tomsk',
             '-LPSunARCalibScript', sc.script, '-LPSunARCalibAcc', sc.acc, ...(sc.reduce ? ['-LPSunARReduceMotion', '1'] : []),
-            '-LPShotReport', report]);
+            '-LPShotReport', report, '-LPHapticLog', path.join(dir, 'haptic.log')]);
           for (let i = 0; i < 120 + sc.delay * 4 && !fs.existsSync(report); i++) await sleep(250);
           if (!fs.existsSync(report)) throw new Error('нет рамок: ' + tag);
           await sleep(300);
           run('xcrun', ['simctl', 'io', udid, 'screenshot', '--type=png', path.join(dir, 'native.png')], { stdio: 'ignore' });
           const nodes = JSON.parse(fs.readFileSync(report, 'utf8')).nodes || {};
           const scr = nodes['ar.cal.screen'];
-          const bad = scr ? verdict(sc, nodes, scr.w, scr.h) : ['нет экрана калибровки'];
+          const bad = scr ? [...verdict(sc, nodes, scr.w, scr.h), ...buzzVerdict(sc, path.join(dir, 'haptic.log'))] : ['нет экрана калибровки'];
           const brief = Object.fromEntries(Object.keys(nodes).filter(k => k.startsWith('ar.cal.')).map(k => [k, { x: +nodes[k].x.toFixed(1), y: +nodes[k].y.toFixed(1), w: +nodes[k].w.toFixed(1), h: +nodes[k].h.toFixed(1), text: nodes[k].text }]));
-          rows.push({ tag, bad, nodes: brief });
+          rows.push({ tag, bad, nodes: brief, buzz: sc.buzzCount });
         }
       }
     }
@@ -144,7 +160,7 @@ function verdict(sc, nodes, W, H) {
   }
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(rows, null, 1));
   for (const r of rows) console.log(r.tag + ': ' + (r.bad.length ? 'НАРУШЕНИЯ ' + r.bad.join('; ') : 'ок') +
-    `  шкала=${(r.nodes['ar.cal.scale'] || {}).text} acc=«${(r.nodes['ar.cal.acc'] || {}).text}»`);
+    `  шкала=${(r.nodes['ar.cal.scale'] || {}).text} acc=«${(r.nodes['ar.cal.acc'] || {}).text}»${r.buzz ? '  ' + r.buzz : ''}`);
   console.log('→ ' + OUT);
   const fails = rows.flatMap(r => r.bad.map(m => `${r.tag}: ${m}`));
   if (fails.length) throw new Error('калибровка: ' + fails.length + ' нарушений:\n' + fails.join('\n'));

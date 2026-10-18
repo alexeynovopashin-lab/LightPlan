@@ -189,4 +189,38 @@ struct CompassCalibrationTests {
         #expect(c.progress > 0.5 && c.progress < 1)
         #expect(c.hint == .turnMore)
     }
+
+    @Test("проценты целые и не округляются вверх: 99,5 % — это 99, «сто» только когда все ячейки закрыты")
+    func percentIsHonest() {
+        let almost = run(CalibrationScript(motion: .figureEight(scale: 0.676), accuracy: { _ in (8, nil) }), seconds: 30)
+        #expect(almost.progress > 0.98 && almost.progress < 1, "\(almost.progress)")
+        #expect(almost.percent == Int(almost.progress * 100) && almost.percent < 100 && !almost.movementDone,
+                "\(almost.progress) → \(almost.percent) %")
+        let full = run(CalibrationScript(motion: .figureEight(scale: 1), accuracy: { _ in (8, nil) }), seconds: 30)
+        #expect(full.percent == 100 && full.movementDone)
+        let none = run(CalibrationScript(motion: .still), seconds: 5)
+        #expect(none.percent == 0 && !none.movementDone)
+    }
+
+    @Test("подсказка называет ось: не хватает крена — «влево-вправо», не хватает наклона от себя — «вперёд-назад»")
+    func axisHints() {
+        func g(_ aDeg: Double, _ bDeg: Double) -> PhoneVector {
+            let a = aDeg * .pi / 180, b = bDeg * .pi / 180
+            return PhoneVector(x: sin(a) * cos(b), y: cos(a) * cos(b), z: sin(b))
+        }
+        // Качаем только влево-вправо, поворота нет, 8 секунд: нехватка — вперёд-назад.
+        var c = CompassCalibration()
+        for i in 0..<240 {
+            let t = Double(i) / 30
+            c.add(CalibrationReading(time: t, gravity: g(20 * sin(t * 3), 0), verticalRate: 0, rotationRate: 20))
+        }
+        #expect(c.hint == .tiltFront, "\(String(describing: c.hint))")
+        // Только вперёд-назад — нехватка по оси «влево-вправо».
+        var d = CompassCalibration()
+        for i in 0..<240 {
+            let t = Double(i) / 30
+            d.add(CalibrationReading(time: t, gravity: g(0, 20 * sin(t * 3)), verticalRate: 0, rotationRate: 20))
+        }
+        #expect(d.hint == .tiltSide, "\(String(describing: d.hint))")
+    }
 }

@@ -231,10 +231,11 @@ struct SunARTests {
 
     private func model(at iso: String, now: String? = nil, source: (any AttitudeSource)? = nil,
                        camera: FakeCamera = FakeCamera(), flag: MemoryFlag = MemoryFlag(),
-                       force: Bool = false, clock: MutableClock? = nil) -> (SunARModel, MutableClock) {
+                       force: Bool = false, clock: MutableClock? = nil,
+                       feedback: (any CalibrationFeedback)? = SilentCalibrationFeedback()) -> (SunARModel, MutableClock) {
         let c = clock ?? MutableClock(now ?? iso)
         let m = SunARModel(target: target(iso), source: source, camera: camera, clock: { c.moment },
-                           calibrationFlag: flag, forceCalibration: force)
+                           calibrationFlag: flag, forceCalibration: force, feedback: feedback)
         return (m, c)
     }
 
@@ -344,6 +345,14 @@ struct SunARTests {
         return t0 + seconds
     }
 
+    /// Что отдал слой отклика: щелчки и сигналы конца.
+    @MainActor private final class Recorder: CalibrationFeedback {
+        var ticks = 0, done = 0, prepared = 0
+        func prepare() { prepared += 1 }
+        func tick() { ticks += 1 }
+        func completed() { done += 1 }
+    }
+
     private let improving = CalibrationScript(motion: .figureEight(scale: 1)) { t in (t < 6 ? 25 : 8, nil) }
     private let stuck = CalibrationScript(motion: .figureEight(scale: 1)) { _ in (25, .low) }
 
@@ -449,6 +458,27 @@ struct SunARTests {
         #expect(m.calibrating && m.calibrationPhase == .measuring)
         await m.finishCalibration()
         #expect(cam.authorizeCalls == 1, "камера повторно не поднимается")
+        m.stop()
+    }
+
+    @Test("отклик: неподвижно — тишина; восьмёрка — щелчки на проценты и один сигнал конца; «Ещё раз» — снова")
+    func calibrationFeedback() async {
+        let feed = Feed(), rec = Recorder()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, camera: FakeCamera(), flag: MemoryFlag(), feedback: rec)
+        await m.start()
+        #expect(rec.prepared >= 1, "движок отдачи прогрет при входе в калибровку")
+        let t = pump(feed, CalibrationScript(motion: .still), seconds: 30)
+        #expect(rec.ticks == 0 && rec.done == 0)
+        let t2 = pump(feed, stuck, from: t, seconds: 20)
+        #expect(m.calibration.percent == 100)
+        #expect(rec.done == 1, "сигнал конца один, даже когда точность не годится")
+        #expect(rec.ticks > 10 && rec.ticks <= 99, "щелчков \(rec.ticks)")
+        let ticksAtEnd = rec.ticks
+        pump(feed, stuck, from: t2, seconds: 20)
+        #expect(rec.ticks == ticksAtEnd && rec.done == 1, "после конца отклик молчит")
+        m.retryCalibration()
+        pump(feed, improving, from: t2 + 20, seconds: 20)
+        #expect(rec.done == 2 && rec.ticks > ticksAtEnd, "после «Ещё раз» — заново")
         m.stop()
     }
 
