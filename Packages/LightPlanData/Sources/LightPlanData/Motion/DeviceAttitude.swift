@@ -26,6 +26,9 @@ public struct AttitudeSample: Sendable, Equatable {
     /// Погрешность курса в градусах, как её сообщает системный компас (`CLHeading.headingAccuracy`); `nil` — свежего
     /// ответа нет (поток курса не идёт, нет доступа) или курс недействителен.
     public let headingAccuracy: Degrees?
+    /// `CLHeading.trueHeading`, градусы от истинного севера; `nil` — свежего ответа нет или он недействителен. Читает
+    /// только измеритель отклонения (шаг 29.8в.11): второй независимый источник курса рядом с положением CoreMotion.
+    public let trueHeading: Degrees?
     private let gravityOverride: PhoneVector?
 
     /// Куда в осях телефона смотрит «вверх» мира. Из положения телефона; подставной источник может задать сам.
@@ -33,7 +36,7 @@ public struct AttitudeSample: Sendable, Equatable {
 
     public init(time: TimeInterval, basis: CameraBasis, rotationRate: Double, headingRate: Double? = nil,
                 magneticAccuracy: MagneticAccuracy? = nil, verticalRate: Double = 0,
-                headingAccuracy: Degrees? = nil, gravity: PhoneVector? = nil) {
+                headingAccuracy: Degrees? = nil, trueHeading: Degrees? = nil, gravity: PhoneVector? = nil) {
         self.time = time
         self.basis = basis
         self.rotationRate = rotationRate
@@ -41,6 +44,7 @@ public struct AttitudeSample: Sendable, Equatable {
         self.magneticAccuracy = magneticAccuracy
         self.verticalRate = verticalRate
         self.headingAccuracy = headingAccuracy
+        self.trueHeading = trueHeading
         self.gravityOverride = gravity
     }
 
@@ -86,10 +90,13 @@ public extension AttitudeSource {
 @MainActor
 final class HeadingAccuracyFeed: NSObject {
     static let maxAge: TimeInterval = 3
+    /// Курс для измерителя свежее: устаревший курс при движущемся телефоне дал бы ложное отклонение.
+    static let maxHeadingAge: TimeInterval = 1
 
     private let manager = CLLocationManager()
     private let showsSystemPanel: Bool
     private var latest: (degrees: Degrees, at: TimeInterval)?
+    private var latestTrue: (degrees: Degrees, at: TimeInterval)?
 
     init(showsSystemPanel: Bool) {
         self.showsSystemPanel = showsSystemPanel
@@ -108,6 +115,13 @@ final class HeadingAccuracyFeed: NSObject {
     func stop() {
         manager.stopUpdatingHeading()
         latest = nil
+        latestTrue = nil
+    }
+
+    /// Свежий `trueHeading`, °; `nil` — ответа нет, он старше `maxHeadingAge` или курс недействителен (< 0).
+    func currentTrue(at time: TimeInterval) -> Degrees? {
+        guard let latestTrue, time - latestTrue.at <= Self.maxHeadingAge, latestTrue.degrees >= 0 else { return nil }
+        return latestTrue.degrees
     }
 
     /// Свежая погрешность курса, °; `nil` — ответа нет, он устарел или курс недействителен.
@@ -119,7 +133,9 @@ final class HeadingAccuracyFeed: NSObject {
 
 extension HeadingAccuracyFeed: @preconcurrency CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateHeading h: CLHeading) {
-        latest = (h.headingAccuracy, ProcessInfo.processInfo.systemUptime)
+        let now = ProcessInfo.processInfo.systemUptime
+        latest = (h.headingAccuracy, now)
+        latestTrue = (h.trueHeading, now)
     }
 
     /// Системная панель калибровки («покрутите телефон») поверх нашего экрана. Она решает только показ панели, а не
@@ -182,7 +198,8 @@ public final class CoreMotionAttitude: AttitudeSource {
                     magneticAccuracy: Self.accuracy(motion.magneticField.accuracy),
                     verticalRate: self.verticalRate(time: motion.timestamp, basis: basis,
                                                     gyro: HeadingSteadiness.verticalRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation)),
-                    headingAccuracy: self.heading.current(at: motion.timestamp))
+                    headingAccuracy: self.heading.current(at: motion.timestamp),
+                    trueHeading: self.heading.currentTrue(at: motion.timestamp))
                 onSample(sample)
             }
         }

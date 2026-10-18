@@ -82,6 +82,11 @@ struct SunARScreen: View {
                 ForEach(pointerItems(sun: sun, night: night, size: size, safe: safe, viewport: viewport)) { item in
                     SunARPointerView(item: item, screen: size, labelFlipY: size.height - panelHeight - 40)
                 }
+                #if DEBUG
+                if !model.calibrating {
+                    SunARMeasureCrosshair().frame(width: size.width, height: size.height)
+                }
+                #endif
                 controls(size: size, safe: safe, sun: sun, clock: clock)
                 if model.calibrating {
                     // Сама не закрывается: ни таймера, ни перехода по «Готово» — выход только кнопкой.
@@ -103,6 +108,19 @@ struct SunARScreen: View {
         .onChange(of: model.timebar.touches) { _, _ in glide?.cancel() }
         .onChange(of: target.choice) { _, new in model.apply(choice: new) }
         .task { await model.start() }
+        #if DEBUG
+        .task {
+            // `-LPSunARMeasureAuto N`: N замеров подряд сами, без касаний (кадры и журнал в симуляторе).
+            let n = UserDefaults.standard.integer(forKey: "LPSunARMeasureAuto")
+            guard n > 0 else { return }
+            try? await Task.sleep(for: .seconds(1))
+            for _ in 0..<n {
+                model.beginMeasure()
+                while !Task.isCancelled, model.measure.isCollecting { try? await Task.sleep(for: .milliseconds(100)) }
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+        }
+        #endif
         .task {
             // «Сейчас» едет, север мог стать истинным (включили геолокацию, пока экран открыт).
             while !Task.isCancelled {
@@ -280,6 +298,9 @@ struct SunARScreen: View {
                             backButton
                             Spacer(minLength: 8)
                             if model.hasSensor { calibrateButton }
+                            #if DEBUG
+                            measureButton
+                            #endif
                             headingChip(aim)
                             bodyToggles
                         }
@@ -290,12 +311,22 @@ struct SunARScreen: View {
                                 if model.hasSensor { calibrateButton }
                                 headingChip(aim)
                             }
-                            bodyToggles
+                            HStack(alignment: .center, spacing: 8) {
+                                #if DEBUG
+                                measureButton
+                                #endif
+                                bodyToggles
+                            }
                         }
                     }
                 }
                 // Низ кнопок в окне экрана: ниже него диск светила виден, выше — закрыт кнопками.
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { buttonsBottom = $0 }
+                #if DEBUG
+                if model.measure.plateOpen {
+                    SunARMeasurePlate(station: model.measure, lexicon: t, language: app.language)
+                }
+                #endif
                 if model.magneticOnly {
                     // Тихая строка в левом углу: не модалка, поверх кадра, пропадает, когда север стал истинным.
                     HStack(spacing: 0) {
@@ -410,6 +441,22 @@ struct SunARScreen: View {
         .glassEffect(SunARInk.buttonGlass.interactive(), in: Capsule())
         .shotNode("ar.calibrate", text: t.t("ar.calibrate"))
     }
+
+    #if DEBUG
+    /// «Замер» — рядом с «Калибровкой», только в отладочной сборке (шаг 29.8в.11): 2,5 с отсчётов, итог на плашке.
+    private var measureButton: some View {
+        Button { model.beginMeasure() } label: {
+            Text(t.t("ar.measure")).font(.system(size: 14, weight: .medium))
+                .foregroundStyle(SunARInk.light)
+                .padding(.horizontal, 14)
+                .frame(minHeight: SunARInk.touch)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .glassEffect(SunARInk.buttonGlass.interactive(), in: Capsule())
+        .shotNode("ar.measureButton", text: t.t("ar.measure"))
+    }
+    #endif
 
     private func headingChip(_ aim: HorizontalPoint) -> some View {
         HStack(spacing: 6) {

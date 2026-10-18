@@ -151,6 +151,22 @@ final class SunARModel {
     var cameraFeed: ARFrameFeed? { (driver as? ARFrameFeeding)?.feed }
     #endif
 
+    #if DEBUG
+    /// Измеритель отклонения компаса (шаг 29.8в.11): только отладочная сборка, в выпуске его нет.
+    @ObservationIgnored var measure = MeasureStation()
+
+    /// «Замер»: тело и метка чехла — как на плашке. Отсчёты придут из потока датчиков (`take`).
+    func beginMeasure() {
+        let source: String
+        switch choice {
+        case .phone: source = "phone"
+        case .chosen: source = "chosen"
+        }
+        measure.begin(place: place, placeSource: source, moment: clock(), hasSensor: hasSensor,
+                      trueNorth: north.map { $0 == .trueNorth })
+    }
+    #endif
+
     // MARK: - Луна и Млечный Путь (29.8в.4)
 
     private let bodies: any ARBodiesSettings
@@ -294,6 +310,9 @@ final class SunARModel {
     }
 
     func stop() {
+        #if DEBUG
+        measure.close()
+        #endif
         source?.stop()
         driver.stop()
         started = false
@@ -311,6 +330,9 @@ final class SunARModel {
 
     private func take(_ s: AttitudeSample) {
         basis = s.basis
+        #if DEBUG
+        measure.take(s, moment: clock(), place: place)
+        #endif
         let aim = s.basis.aim
         // У зенита и надира курс не определён: отсчёт в окно устойчивости не берём.
         let usable = abs(aim.altitude) < 75
