@@ -3,6 +3,9 @@ import LightPlanCore
 #if canImport(CoreMotion)
 import CoreMotion
 #endif
+#if canImport(CoreLocation)
+import CoreLocation
+#endif
 
 /// Поворот телефона целиком для слоя AR (шаг 29.8в): куда смотрит задняя камера, наклон и крен.
 /// Курс одним числом (`HeadingSource`) для этого мало: AR нужен весь поворот, а не его горизонтальная часть.
@@ -15,16 +18,36 @@ public struct AttitudeSample: Sendable, Equatable {
     /// Часть вращения, что двигает курс, °/с (`HeadingSteadiness.headingRate`); это число, а не полная скорость,
     /// идёт в окно устойчивости курса (шаг 29.8в.6).
     public let headingRate: Double
-    /// Точность магнитного поля от системы; `nil` — источник её не сообщает (подставной датчик без поля).
+    /// Ступень точности магнитного поля от системы (`CMDeviceMotion.magneticField.accuracy`); `nil` — источник её
+    /// не сообщает (подставной датчик без поля).
     public let magneticAccuracy: MagneticAccuracy?
+    /// Скорость вращения вокруг вертикали со знаком, °/с (гироскоп): калибровка из неё знает, куда повернули.
+    public let verticalRate: Double
+    /// Погрешность курса в градусах, как её сообщает системный компас (`CLHeading.headingAccuracy`); `nil` — свежего
+    /// ответа нет (поток курса не идёт, нет доступа) или курс недействителен.
+    public let headingAccuracy: Degrees?
+    private let gravityOverride: PhoneVector?
+
+    /// Куда в осях телефона смотрит «вверх» мира. Из положения телефона; подставной источник может задать сам.
+    public var gravity: PhoneVector { gravityOverride ?? basis.gravityInPhone }
 
     public init(time: TimeInterval, basis: CameraBasis, rotationRate: Double, headingRate: Double? = nil,
-                magneticAccuracy: MagneticAccuracy? = nil) {
+                magneticAccuracy: MagneticAccuracy? = nil, verticalRate: Double = 0,
+                headingAccuracy: Degrees? = nil, gravity: PhoneVector? = nil) {
         self.time = time
         self.basis = basis
         self.rotationRate = rotationRate
         self.headingRate = headingRate ?? rotationRate
         self.magneticAccuracy = magneticAccuracy
+        self.verticalRate = verticalRate
+        self.headingAccuracy = headingAccuracy
+        self.gravityOverride = gravity
+    }
+
+    /// Отсчёт для калибровки компаса.
+    public var calibrationReading: CalibrationReading {
+        CalibrationReading(time: time, gravity: gravity, verticalRate: verticalRate, rotationRate: rotationRate,
+                           level: magneticAccuracy, headingAccuracy: headingAccuracy)
     }
 }
 
@@ -53,22 +76,82 @@ public extension AttitudeSource {
     func recheckNorth() {}
 }
 
+#if canImport(CoreLocation) && os(iOS)
+/// Живой поток курса системного компаса ради одного числа — `CLHeading.headingAccuracy` (шаг 29.8в.8).
+///
+/// До этого шага на экране AR работал только `CMMotionManager`; `CLLocationManager.startUpdatingHeading` не
+/// запускался нигде, кроме карты, поэтому градусов погрешности экран не видел совсем. Здесь поток идёт, пока открыт
+/// AR, с `headingFilter = kCLHeadingFilterNone` — каждое изменение, в том числе одной точности без сдвига курса.
+/// Ответ старше `maxAge` секунд за свежий не выдаётся: устаревшее число было бы враньём.
+@MainActor
+final class HeadingAccuracyFeed: NSObject {
+    static let maxAge: TimeInterval = 3
+
+    private let manager = CLLocationManager()
+    private let showsSystemPanel: Bool
+    private var latest: (degrees: Degrees, at: TimeInterval)?
+
+    init(showsSystemPanel: Bool) {
+        self.showsSystemPanel = showsSystemPanel
+        super.init()
+        manager.delegate = self
+    }
+
+    var isAvailable: Bool { CLLocationManager.headingAvailable() }
+
+    func start() {
+        guard isAvailable else { return }
+        manager.headingFilter = kCLHeadingFilterNone
+        manager.startUpdatingHeading()
+    }
+
+    func stop() {
+        manager.stopUpdatingHeading()
+        latest = nil
+    }
+
+    /// Свежая погрешность курса, °; `nil` — ответа нет, он устарел или курс недействителен.
+    func current(at time: TimeInterval) -> Degrees? {
+        guard let latest, time - latest.at <= Self.maxAge, latest.degrees >= 0 else { return nil }
+        return latest.degrees
+    }
+}
+
+extension HeadingAccuracyFeed: @preconcurrency CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading h: CLHeading) {
+        latest = (h.headingAccuracy, ProcessInfo.processInfo.systemUptime)
+    }
+
+    /// Системная панель калибровки («покрутите телефон») поверх нашего экрана. Она решает только показ панели, а не
+    /// саму калибровку; по умолчанию не показывается — её закрыл бы наш экран с градусами и кнопками.
+    func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool { showsSystemPanel }
+}
+#endif
+
 #if canImport(CoreMotion) && os(iOS)
 /// `CMMotionManager`: гироскоп, акселерометр и магнитометр слиты системой. Истинный север — как у ARKit в
 /// режиме `gravityAndHeading`; камера и магнитометр здесь независимы, камера может быть и закрыта.
 @MainActor
 public final class CoreMotionAttitude: AttitudeSource {
     private let manager = CMMotionManager()
+    private let heading: HeadingAccuracyFeed
     public private(set) var north: AttitudeNorth?
     private var handler: (@MainActor (AttitudeSample) -> Void)?
 
-    public init() {}
+    /// - Parameter showsSystemCalibrationPanel: показывать ли системную панель калибровки поверх экрана (и у
+    ///   `CMMotionManager`, и у `CLLocationManager`). Выключена: её закрыл бы наш экран.
+    public init(showsSystemCalibrationPanel: Bool = false) {
+        heading = HeadingAccuracyFeed(showsSystemPanel: showsSystemCalibrationPanel)
+        manager.showsDeviceMovementDisplay = showsSystemCalibrationPanel
+    }
 
     public var isAvailable: Bool { manager.isDeviceMotionAvailable }
 
     public func start(_ onSample: @escaping @MainActor (AttitudeSample) -> Void) {
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
         handler = onSample
+        // Поток курса системного компаса — ради погрешности в градусах (см. `HeadingAccuracyFeed`).
+        heading.start()
         begin()
     }
 
@@ -87,13 +170,17 @@ public final class CoreMotionAttitude: AttitudeSource {
                 m11: m.m11, m12: m.m12, m13: m.m13,
                 m21: m.m21, m22: m.m22, m23: m.m23,
                 m31: m.m31, m32: m.m32, m33: m.m33)
-            let sample = AttitudeSample(
-                time: motion.timestamp,
-                basis: CameraBasis(rotation: rotation),
-                rotationRate: rate,
-                headingRate: HeadingSteadiness.headingRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation),
-                magneticAccuracy: Self.accuracy(motion.magneticField.accuracy))
-            MainActor.assumeIsolated { onSample(sample) }
+            MainActor.assumeIsolated {
+                let sample = AttitudeSample(
+                    time: motion.timestamp,
+                    basis: CameraBasis(rotation: rotation),
+                    rotationRate: rate,
+                    headingRate: HeadingSteadiness.headingRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation),
+                    magneticAccuracy: Self.accuracy(motion.magneticField.accuracy),
+                    verticalRate: HeadingSteadiness.verticalRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation),
+                    headingAccuracy: self.heading.current(at: motion.timestamp))
+                onSample(sample)
+            }
         }
     }
 
@@ -116,6 +203,7 @@ public final class CoreMotionAttitude: AttitudeSource {
 
     public func stop() {
         manager.stopDeviceMotionUpdates()
+        heading.stop()
         handler = nil
     }
 }
@@ -180,6 +268,45 @@ public final class ScriptedAttitude: AttitudeSource {
                                             rotationRate: 0, magneticAccuracy: accuracy))
                     try? await Task.sleep(for: tick)
                 } while last || ContinuousClock.now < deadline
+            }
+        }
+    }
+
+    public func stop() {
+        play?.cancel()
+        play = nil
+    }
+}
+
+/// Подставной датчик для экрана калибровки (отладка, `-LPSunARCalibScript`): гонит `CalibrationScript` в реальном
+/// времени 30 раз в секунду. Положение камеры стоит на месте, меняются сила тяжести, поворот и точность —
+/// ровно то, что читает калибровка. Закрывает код экрана и модели, не датчик: настоящие руки и поле — на телефоне.
+@MainActor
+public final class ScriptedCalibrationAttitude: AttitudeSource {
+    public let script: CalibrationScript
+    public let north: AttitudeNorth?
+    private var play: Task<Void, Never>?
+
+    public init(script: CalibrationScript, north: AttitudeNorth = .trueNorth) {
+        self.script = script
+        self.north = north
+    }
+
+    public var isAvailable: Bool { true }
+
+    public func start(_ onSample: @escaping @MainActor (AttitudeSample) -> Void) {
+        play?.cancel()
+        let script = script
+        play = Task { @MainActor in
+            let t0 = ProcessInfo.processInfo.systemUptime
+            while !Task.isCancelled {
+                let now = ProcessInfo.processInfo.systemUptime
+                let r = script.reading(at: now - t0)
+                onSample(AttitudeSample(time: now, basis: CameraBasis(azimuth: 170, altitude: 10),
+                                        rotationRate: r.rotationRate, magneticAccuracy: r.level,
+                                        verticalRate: r.verticalRate, headingAccuracy: r.headingAccuracy,
+                                        gravity: r.gravity))
+                try? await Task.sleep(for: .milliseconds(33))
             }
         }
     }

@@ -1,0 +1,136 @@
+import Foundation
+
+/// Вектор в осях телефона: `x` — вправо по экрану, `y` — к верхнему краю, `z` — из экрана на себя.
+public struct PhoneVector: Sendable, Equatable {
+    public let x, y, z: Double
+
+    public init(x: Double, y: Double, z: Double) {
+        self.x = x; self.y = y; self.z = z
+    }
+
+    public func dot(_ o: PhoneVector) -> Double { x * o.x + y * o.y + z * o.z }
+
+    public func cross(_ o: PhoneVector) -> PhoneVector {
+        PhoneVector(x: y * o.z - z * o.y, y: z * o.x - x * o.z, z: x * o.y - y * o.x)
+    }
+
+    public var length: Double { dot(self).squareRoot() }
+
+    public func scaled(_ k: Double) -> PhoneVector { PhoneVector(x: x * k, y: y * k, z: z * k) }
+
+    public func minus(_ o: PhoneVector) -> PhoneVector { PhoneVector(x: x - o.x, y: y - o.y, z: z - o.z) }
+
+    public var unit: PhoneVector? {
+        let l = length
+        return l > 1e-9 ? scaled(1 / l) : nil
+    }
+}
+
+public extension CameraBasis {
+    /// Куда в осях телефона смотрит «вверх» мира (против силы тяжести). Строится из положения телефона, которое
+    /// система считает по акселерометру и гироскопу, магнитометр здесь не участвует: скачок поля не двигает его.
+    /// Камера смотрит вдоль `−z` телефона, поэтому `z` — минус компонента `forward`.
+    var gravityInPhone: PhoneVector {
+        PhoneVector(x: right.up, y: up.up, z: -forward.up)
+    }
+}
+
+/// Охват движения при калибровке компаса (шаг 29.8в.8).
+///
+/// Магнитометру нужно побывать в разных положениях: тогда система видит поле по всем сторонам телефона и вычитает
+/// из него собственный магнетизм корпуса. Поэтому шкала растёт не от времени и не от курса, а от того, куда
+/// телефон реально отклонился, и считается из двух вещей, которые не зависят от магнитометра:
+///
+/// 1. **Наклоны** — направление силы тяжести в осях телефона. Точка отсчёта — положение в первом отсчёте; от неё
+///    телефон должен отклониться по двум осям экрана в обе стороны: вперёд/назад и влево/вправо (четыре ячейки,
+///    каждая закрыта наклоном `tiltFull` в её сторону).
+/// 2. **Повороты вокруг вертикали** — накопленный интеграл скорости гироскопа вокруг вертикали (со знаком), влево
+///    и вправо от начала (две ячейки, каждая закрыта поворотом `yawFull`). Интеграл гироскопа, а не курс из
+///    компаса: курс сам неверен, пока компас не откалиброван, и скачком поля его можно «повернуть» без движения.
+///
+/// Каждая ячейка заполняется линейно от `deadband` до полного значения; в пределах `deadband` отклонение — шум
+/// датчиков и дрожь руки и ячейку не двигает. Заполнение только растёт (рекорд отклонения), назад не идёт.
+/// Шкала — среднее заполнение шести ячеек. Время шкалу не двигает: без новых отсчётов с отклонением она стоит.
+public struct MotionCoverage: Sendable {
+    /// Наклон, закрывающий ячейку, градусы.
+    public static let tiltFull: Double = 15
+    /// Ниже этого наклона — шум и дрожь, градусы.
+    public static let tiltDeadband: Double = 4
+    /// Поворот вокруг вертикали, закрывающий ячейку, градусы.
+    public static let yawFull: Double = 30
+    public static let yawDeadband: Double = 5
+    /// Скорость вращения вокруг вертикали ниже этой считается дрейфом нуля гироскопа и не интегрируется, °/с.
+    public static let yawRateFloor: Double = 1.5
+    /// Пропуск между отсчётами длиннее этого (остановка датчика) в интеграл не берётся, секунды.
+    static let maxStep: TimeInterval = 0.2
+
+    public enum Cell: Int, CaseIterable, Sendable {
+        case tiltForward, tiltBack, tiltLeft, tiltRight, turnLeft, turnRight
+
+        public var isTilt: Bool { rawValue < 4 }
+    }
+
+    /// Рекорды отклонения по ячейкам, градусы.
+    private var best = [Double](repeating: 0, count: Cell.allCases.count)
+    private var rest: PhoneVector?
+    private var axisU: PhoneVector?
+    private var axisV: PhoneVector?
+    private var yaw: Double = 0
+    private var lastTime: TimeInterval?
+
+    public init() {}
+
+    public mutating func add(time: TimeInterval, gravity: PhoneVector, verticalRate: Double) {
+        guard let g = gravity.unit else { return }
+        if rest == nil {
+            rest = g
+            // Оси наклона: правая сторона экрана и перпендикуляр к ней; если телефон стоит на боку — верхний край.
+            let ex = PhoneVector(x: 1, y: 0, z: 0), ey = PhoneVector(x: 0, y: 1, z: 0)
+            let seed = abs(ex.dot(g)) < 0.9 ? ex : ey
+            if let u = seed.minus(g.scaled(seed.dot(g))).unit {
+                axisU = u
+                axisV = g.cross(u)
+            }
+        }
+        if let g0 = rest, let u = axisU, let v = axisV {
+            // Угол в плоскости (g0, ось): знак — в какую сторону ушёл телефон.
+            let along = g.dot(g0)
+            let a = atan2(g.dot(u), along) * 180 / .pi
+            let b = atan2(g.dot(v), along) * 180 / .pi
+            // `u` смотрит вправо по экрану, `v` — к «вперёд/назад»: имена ячеек условны, важно, что оба направления.
+            raise(.tiltRight, a)
+            raise(.tiltLeft, -a)
+            raise(.tiltForward, b)
+            raise(.tiltBack, -b)
+        }
+        if let last = lastTime, time > last, time - last <= Self.maxStep {
+            let rate = abs(verticalRate) >= Self.yawRateFloor ? verticalRate : 0
+            yaw += rate * (time - last)
+            raise(.turnRight, yaw)
+            raise(.turnLeft, -yaw)
+        }
+        lastTime = time
+    }
+
+    private mutating func raise(_ cell: Cell, _ value: Double) {
+        if value > best[cell.rawValue] { best[cell.rawValue] = value }
+    }
+
+    /// Заполнение ячейки `0 … 1`.
+    public func fill(_ cell: Cell) -> Double {
+        let (dead, full) = cell.isTilt ? (Self.tiltDeadband, Self.tiltFull) : (Self.yawDeadband, Self.yawFull)
+        return min(1, max(0, (best[cell.rawValue] - dead) / (full - dead)))
+    }
+
+    /// Шкала `0 … 1`: среднее заполнение шести ячеек.
+    public var progress: Double {
+        Cell.allCases.map(fill).reduce(0, +) / Double(Cell.allCases.count)
+    }
+
+    /// Все шесть ячеек закрыты.
+    public var isComplete: Bool { Cell.allCases.allSatisfy { fill($0) >= 1 } }
+
+    /// Чего не хватает: хоть одна ячейка наклона / хоть одна ячейка поворота не закрыта.
+    public var missingTilt: Bool { Cell.allCases.contains { $0.isTilt && fill($0) < 1 } }
+    public var missingTurn: Bool { Cell.allCases.contains { !$0.isTilt && fill($0) < 1 } }
+}

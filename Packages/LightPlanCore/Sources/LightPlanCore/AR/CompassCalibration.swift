@@ -1,47 +1,121 @@
 import Foundation
 
 /// Точность магнитного поля, как её отдаёт система (`CMMagneticFieldCalibrationAccuracy`): чем она выше, тем
-/// лучше компас откалиброван.
+/// лучше компас откалиброван. Четыре ступени без градусов — градусы даёт `CLHeading.headingAccuracy`.
 public enum MagneticAccuracy: Int, Sendable, Comparable, CaseIterable {
     case uncalibrated = 0, low, medium, high
 
     public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 }
 
-/// Калибровка компаса «восьмёркой» перед первым включением AR (шаг 29.8в.2).
+/// Один отсчёт для калибровки: положение и вращение телефона (гироскоп и акселерометр) и то, что система
+/// сообщает о точности компаса.
+public struct CalibrationReading: Sendable {
+    public let time: TimeInterval
+    /// Куда в осях телефона смотрит «вверх» мира (`CameraBasis.gravityInPhone`).
+    public let gravity: PhoneVector
+    /// Скорость вращения вокруг вертикали со знаком, °/с (гироскоп).
+    public let verticalRate: Double
+    /// Модуль угловой скорости, °/с.
+    public let rotationRate: Double
+    /// Ступень точности поля (`CMDeviceMotion.magneticField.accuracy`).
+    public let level: MagneticAccuracy?
+    /// Погрешность курса в градусах (`CLHeading.headingAccuracy`); отрицательная — курс недействителен.
+    public let headingAccuracy: Degrees?
+
+    public init(time: TimeInterval, gravity: PhoneVector, verticalRate: Double, rotationRate: Double,
+                level: MagneticAccuracy? = nil, headingAccuracy: Degrees? = nil) {
+        self.time = time
+        self.gravity = gravity
+        self.verticalRate = verticalRate
+        self.rotationRate = rotationRate
+        self.level = level
+        self.headingAccuracy = headingAccuracy
+    }
+}
+
+/// Что система сообщает о точности компаса сейчас. Приложение само магнитометр не калибрует — это делает iOS по
+/// движению телефона; здесь только то, что она ответила.
+public struct CompassAccuracy: Sendable, Equatable {
+    /// Погрешность курса, градусы; `nil` — система не сказала или курс недействителен.
+    public let degrees: Degrees?
+    /// Ступень поля; `nil` — не сообщается.
+    public let level: MagneticAccuracy?
+
+    public init(degrees: Degrees?, level: MagneticAccuracy?) {
+        self.degrees = degrees.flatMap { $0 >= 0 ? $0 : nil }
+        self.level = level
+    }
+
+    /// Система сообщила хоть что-то.
+    public var isKnown: Bool { degrees != nil || level != nil }
+
+    /// Точность не хуже порога. Градусы, если есть, решают одни; без них — ступень поля не ниже `levelFloor`.
+    /// Не сообщает вовсе — не годится: подтвердить нечем.
+    public var isAcceptable: Bool {
+        if let degrees { return degrees <= CompassCalibration.requiredDegrees }
+        if let level { return level >= CompassCalibration.requiredLevel }
+        return false
+    }
+}
+
+/// Калибровка компаса «восьмёркой» (шаги 29.8в.2, 29.8в.8).
 ///
-/// Шкала — настоящий показатель, а не таймер: она складывается из двух измеренных вещей и ни из чего больше.
-/// Первое — точность магнитного поля от системы (не откалиброван → 0, низкая → ½, средняя и выше → 1).
-/// Второе — устойчивость курса: сколько секунд подряд разброс курса за окно, за вычетом объяснённого поворотом
-/// (`HeadingSteadiness.excess`), не выше допуска; полная шкала — `steadyHold` секунд. Без новых отсчётов шкала
-/// стоит: время сам по себе её не двигает.
+/// Шкала — **охват движения** (`MotionCoverage`): наклоны и повороты телефона, измеренные по гироскопу и положению,
+/// и ничего больше. Неподвижный телефон держит её на нуле сколько угодно, тряска на месте её почти не двигает,
+/// время её не двигает. Точность компаса шкалу не двигает вовсе: её показывает система, и она показана отдельно.
 ///
-/// «Готово» — точность не ниже средней и курс устойчив `steadyHold` секунд. Раз достигнутое, остаётся (экран не
-/// мигает на границе). Если система точность не сообщает (`nil`), первое условие считается выполненным и решает
-/// одна устойчивость курса — это то самое «и/или» из слов Алексея; шкала и тогда идёт только по отсчётам.
+/// «Готово» — охват полный **и** точность от системы не хуже порога. Раз достигнутое остаётся. Охват полный, а
+/// точность осталась хуже порога дольше `settle` секунд отсчётов — `.notImproved`: честный ответ «движение сделано,
+/// компас лучше не стал»; если система позже ответит лучше, фаза перейдёт в `.ready` сама.
+/// Калибровка сама не заканчивается: ни перехода, ни таймаута — выходит только человек кнопкой.
 public struct CompassCalibration: Sendable {
     public enum Phase: Sendable, Equatable {
-        /// Идёт: шкала растёт по отсчётам.
+        /// Идёт: шкала растёт по движению.
         case measuring
-        /// Достигнуто: точность и устойчивость.
+        /// Охват полный, ждём ответа системы о точности (первые `settle` секунд).
+        case checking
+        /// Охват полный, точность не хуже порога.
         case ready
+        /// Охват полный, а точность осталась хуже порога: «Ещё раз».
+        case notImproved
         /// Датчика нет — калибровать нечего (симулятор, Mac).
         case noSensor
     }
 
-    /// Сколько секунд подряд курс должен быть устойчив.
-    public static let steadyHold: TimeInterval = 1.5
-    /// Точность, с которой компас считается пригодным.
-    public static let requiredAccuracy: MagneticAccuracy = .medium
+    /// Чего недостаёт движению, когда шкала стоит дольше `stallBeforeHint`.
+    public enum Hint: Sendable, Equatable {
+        case tiltMore, turnMore, slower
+    }
+
+    /// Порог точности: погрешность курса не больше этого, градусы. Подобран по документации, не по железу:
+    /// `CLHeading.headingAccuracy` — максимальная погрешность; ±15° — граница, которую берут как «курс пригоден»,
+    /// и четверть горизонтального поля зрения камеры (≈ 60°). Лучше система в поле нередко и не обещает; пересмотреть
+    /// после замера на телефоне.
+    public static let requiredDegrees: Degrees = 15
+    /// Если градусов нет, а ступень поля есть: не ниже средней (как было в 29.8в.2).
+    public static let requiredLevel: MagneticAccuracy = .medium
+    /// Сколько секунд отсчётов после полного охвата ждать ответа системы, прежде чем сказать «не стало лучше».
+    public static let settle: TimeInterval = 3
+    /// Шкала стоит дольше этого — показать подсказку, чего недостаёт, секунды отсчётов.
+    public static let stallBeforeHint: TimeInterval = 4
+    /// Прибавка шкалы меньше этой не считается движением.
+    static let growthStep: Double = 0.005
+    /// Быстрее этого (сглаженно) — «двигайте медленнее», °/с.
+    public static let tooFast: Double = 120
 
     public private(set) var phase: Phase = .measuring
-    public private(set) var accuracy: MagneticAccuracy?
-    /// С какого момента курс устойчив без перерыва; `nil` — сейчас не устойчив.
-    public private(set) var steadySince: TimeInterval?
-    public private(set) var steadyFor: TimeInterval = 0
+    public private(set) var coverage = MotionCoverage()
+    /// Точность при входе (первая сообщённая) и сейчас.
+    public private(set) var entryAccuracy: CompassAccuracy?
+    public private(set) var accuracy: CompassAccuracy?
 
-    private var steadiness = HeadingSteadiness()
     private var hasReadings = false
+    private var lastTime: TimeInterval = 0
+    private var lastGrowth: TimeInterval = 0
+    private var lastProgress: Double = 0
+    private var coveredAt: TimeInterval?
+    private var smoothedRate: Double = 0
 
     public init() {}
 
@@ -50,62 +124,68 @@ public struct CompassCalibration: Sendable {
         phase = .noSensor
     }
 
-    /// Занести отсчёт. `heading` — `nil`, когда направление телефона у зенита или надира и курс не определён:
-    /// такой отсчёт устойчивость сбрасывает, а точность всё равно учитывает.
-    public mutating func add(time: TimeInterval, accuracy: MagneticAccuracy?, heading: Degrees?, rate: Double) {
+    public mutating func add(_ r: CalibrationReading) {
         guard phase != .noSensor else { return }
-        hasReadings = true
-        self.accuracy = accuracy
-        if let heading {
-            steadiness.add(time: time, heading: heading, rate: rate)
-            if let excess = steadiness.excess, excess <= HeadingSteadiness.tolerance {
-                steadySince = steadySince ?? time
-            } else {
-                steadySince = nil
-            }
-        } else {
-            steadiness.reset()
-            steadySince = nil
+        if !hasReadings {
+            hasReadings = true
+            lastGrowth = r.time
+        } else if r.time > lastTime {
+            smoothedRate += (r.rotationRate - smoothedRate) * min(1, (r.time - lastTime) / 0.5)
         }
-        steadyFor = steadySince.map { max(0, time - $0) } ?? 0
-        if phase == .measuring, accuracySufficient, steadyFor >= Self.steadyHold {
+        lastTime = r.time
+
+        let now = CompassAccuracy(degrees: r.headingAccuracy, level: r.level)
+        accuracy = now
+        if entryAccuracy == nil, now.isKnown { entryAccuracy = now }
+
+        coverage.add(time: r.time, gravity: r.gravity, verticalRate: r.verticalRate)
+        let p = coverage.progress
+        if p >= lastProgress + Self.growthStep {
+            lastProgress = p
+            lastGrowth = r.time
+        }
+
+        if phase == .ready { return }
+        guard coverage.isComplete else { phase = .measuring; return }
+        let done = coveredAt ?? r.time
+        coveredAt = done
+        if now.isAcceptable {
             phase = .ready
+        } else {
+            phase = r.time - done >= Self.settle ? .notImproved : .checking
         }
     }
 
-    /// Точность поля уже годится (или система её не сообщает): остаётся удержать курс.
-    public var accuracySufficient: Bool {
-        guard let accuracy else { return true }
-        return accuracy >= Self.requiredAccuracy
-    }
-
-    /// Шкала `0 … 1`: половина — точность, половина — устойчивость. `1` ровно тогда, когда «Готово».
+    /// Шкала `0 … 1`: охват движения. Без отсчётов — 0.
     public var progress: Double {
         switch phase {
         case .noSensor: return 0
-        case .ready: return 1
-        case .measuring:
-            // Отсчётов ещё не было — шкале двигаться не от чего.
-            guard hasReadings else { return 0 }
-            let q: Double
-            switch accuracy {
-            case nil: q = 1
-            case .uncalibrated: q = 0
-            case .low: q = 0.5
-            case .medium, .high: q = 1
-            }
-            let s = min(1, steadyFor / Self.steadyHold)
-            // До «Готово» шкала не доходит до единицы: единица — это сама готовность.
-            return min(0.999, (q + s) / 2)
+        default: return hasReadings ? coverage.progress : 0
         }
+    }
+
+    /// «Готово» доступно.
+    public var canFinish: Bool { phase == .ready }
+
+    /// Подсказка, пока шкала стоит; `nil` — рано или нечего подсказать.
+    public var hint: Hint? {
+        guard phase == .measuring, hasReadings, lastTime - lastGrowth >= Self.stallBeforeHint else { return nil }
+        if smoothedRate > Self.tooFast { return .slower }
+        if coverage.missingTilt { return .tiltMore }
+        if coverage.missingTurn { return .turnMore }
+        return nil
     }
 
     public mutating func reset() {
         phase = .measuring
+        coverage = MotionCoverage()
+        entryAccuracy = nil
         accuracy = nil
         hasReadings = false
-        steadySince = nil
-        steadyFor = 0
-        steadiness.reset()
+        lastTime = 0
+        lastGrowth = 0
+        lastProgress = 0
+        coveredAt = nil
+        smoothedRate = 0
     }
 }

@@ -312,8 +312,8 @@ final class SunARModel {
             if now != unsteady { unsteady = now }
         }
         if calibrating {
-            calibration.add(time: s.time, accuracy: s.magneticAccuracy, heading: usable ? aim.azimuth : nil,
-                            rate: s.headingRate)
+            // Шкала растёт от движения (гироскоп и положение), точность — то, что отвечает система.
+            calibration.add(s.calibrationReading)
         }
         // Север мог определиться по первому отсчёту (источник выставляет его в `start`).
         if north == nil, let n = source?.north { north = n }
@@ -347,7 +347,7 @@ final class SunARModel {
 
     var calibrationPhase: CompassCalibration.Phase { calibration.phase }
 
-    /// Шкала `0 … 1` — настоящее качество компаса (`CompassCalibration`), не таймер.
+    /// Шкала `0 … 1` — охват движения по гироскопу (`CompassCalibration`), не таймер и не точность.
     var calibrationProgress: Double { calibration.progress }
 
     /// Открыть экран калибровки: первый вход сам, потом — кнопкой «Калибровка».
@@ -357,14 +357,27 @@ final class SunARModel {
         calibrating = true
     }
 
-    /// Закрыть калибровку: «Готово», «Пропустить» или «датчика нет». Любой выход помечает экран увиденным —
-    /// второй раз сам не появляется. Камера, если ещё не поднималась, поднимается теперь.
+    /// Закрыть калибровку: «Готово» (только когда `canFinish`) или «Пропустить»; сама она не закрывается — ни по
+    /// таймеру, ни по «Готово» (шаг 29.8в.8). Любой выход помечает экран увиденным — второй раз сам не появляется. Камера, если ещё не поднималась, поднимается теперь.
     func finishCalibration() async {
         // После `stop()` экран закрыт: «Готово», показанное на закрывающемся экране, флаг не ставит.
         guard calibrating, started else { return }
         calibrating = false
         flag.seen = true
         await startCamera()
+    }
+
+    /// «Готово»: только когда охват полный и точность не хуже порога.
+    func doneCalibration() async {
+        guard calibration.canFinish else { return }
+        await finishCalibration()
+    }
+
+    /// «Ещё раз»: шкала и точность при входе — заново.
+    func retryCalibration() {
+        guard calibrating else { return }
+        calibration.reset()
+        if !hasSensor { calibration.markNoSensor() }
     }
 
     // MARK: - Взгляд и время

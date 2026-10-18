@@ -330,20 +330,24 @@ struct SunARTests {
         m.stop()
     }
 
-    // MARK: - Калибровка
+    // MARK: - Калибровка (шаг 29.8в.8)
 
-    /// Отсчёты на 30 Гц, курс стоит; возвращает время после последнего.
-    private func pump(_ feed: Feed, from t0: Double, seconds: Double, accuracy: MagneticAccuracy?) -> Double {
-        var t = t0
-        while t < t0 + seconds - 1e-9 {
-            feed.push?(AttitudeSample(time: t, basis: CameraBasis(azimuth: 120, altitude: 10), rotationRate: 1,
-                                      magneticAccuracy: accuracy))
-            t += 1.0 / 30
+    /// Гонит подставной поток датчиков в модель; возвращает время после последнего отсчёта.
+    @discardableResult
+    private func pump(_ feed: Feed, _ script: CalibrationScript, from t0: Double = 0, seconds: Double) -> Double {
+        for r in script.readings(from: t0, seconds: seconds) {
+            feed.push?(AttitudeSample(time: r.time, basis: CameraBasis(azimuth: 120, altitude: 10),
+                                      rotationRate: r.rotationRate, magneticAccuracy: r.level,
+                                      verticalRate: r.verticalRate, headingAccuracy: r.headingAccuracy,
+                                      gravity: r.gravity))
         }
-        return t
+        return t0 + seconds
     }
 
-    @Test("первый вход: калибровка до камеры; системное окно камеры — только после неё")
+    private let improving = CalibrationScript(motion: .figureEight(scale: 1)) { t in (t < 6 ? 25 : 8, nil) }
+    private let stuck = CalibrationScript(motion: .figureEight(scale: 1)) { _ in (25, .low) }
+
+    @Test("первый вход: калибровка до камеры; неподвижно — шкала 0 и «Готово» не выходит; восьмёрка + точность — «Готово» кнопкой")
     func calibrationBeforeCamera() async {
         let feed = Feed()
         let cam = FakeCamera()
@@ -352,13 +356,16 @@ struct SunARTests {
         await m.start()
         #expect(m.calibrating)
         #expect(cam.authorizeCalls == 0, "окно камеры до калибровки не появляется")
-        var t = pump(feed, from: 0, seconds: 3, accuracy: .low)
-        #expect(m.calibrationPhase == .measuring, "low не годится, как бы долго курс ни стоял")
-        #expect(m.calibrationProgress >= 0.5 && m.calibrationProgress < 1)
-        t = pump(feed, from: t, seconds: 0.2, accuracy: .medium)
-        #expect(m.calibrationPhase == .ready)
-        #expect(m.calibrationProgress == 1)
-        await m.finishCalibration()
+        let still = CalibrationScript(motion: .still) { _ in (5, .high) }
+        let t = pump(feed, still, seconds: 60)
+        #expect(m.calibrationProgress == 0 && m.calibrationPhase == .measuring)
+        await m.doneCalibration()
+        #expect(m.calibrating, "«Готово» без движения не выходит")
+        pump(feed, improving, from: t, seconds: 20)
+        #expect(m.calibrationPhase == .ready && m.calibrationProgress == 1)
+        #expect(m.calibration.entryAccuracy?.degrees == 5 || m.calibration.entryAccuracy != nil)
+        #expect(m.calibrating, "сама «Готово» с экрана не уходит")
+        await m.doneCalibration()
         #expect(!m.calibrating)
         #expect(flag.seen)
         #expect(cam.authorizeCalls == 1 && cam.runCalls == 1)
@@ -366,8 +373,39 @@ struct SunARTests {
         m.stop()
     }
 
-    @Test("датчика нет: «нет датчика», калибровка не залипает — выход и камера как обычно")
-    func calibrationWithoutSensor() async {
+    @Test("«Готово» стоит на экране сколько угодно: время и новые отсчёты экран не закрывают")
+    func readyDoesNotLeaveByItself() async throws {
+        let feed = Feed()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, camera: FakeCamera(), flag: MemoryFlag())
+        await m.start()
+        let t = pump(feed, improving, seconds: 20)
+        #expect(m.calibrationPhase == .ready)
+        try await Task.sleep(for: .seconds(1.5))
+        pump(feed, improving, from: t, seconds: 120)
+        #expect(m.calibrating && m.calibrationPhase == .ready)
+        m.stop()
+    }
+
+    @Test("восьмёрка полная, а точность не улучшилась: «не стало лучше», «Готово» не выходит, «Ещё раз» начинает заново")
+    func notImprovedAndRetry() async {
+        let feed = Feed()
+        let cam = FakeCamera()
+        let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, camera: cam, flag: MemoryFlag())
+        await m.start()
+        let t = pump(feed, stuck, seconds: 40)
+        #expect(m.calibrationPhase == .notImproved && m.calibrationProgress == 1)
+        await m.doneCalibration()
+        #expect(m.calibrating && cam.runCalls == 0)
+        m.retryCalibration()
+        #expect(m.calibrating && m.calibrationPhase == .measuring && m.calibrationProgress == 0)
+        #expect(m.calibration.entryAccuracy == nil)
+        pump(feed, improving, from: t, seconds: 20)
+        #expect(m.calibrationPhase == .ready)
+        m.stop()
+    }
+
+    @Test("датчика нет: экран остаётся, пока не нажмут «Пропустить» (сам не уходит)")
+    func calibrationWithoutSensor() async throws {
         let cam = FakeCamera()
         let flag = MemoryFlag()
         let (m, _) = model(at: "2026-09-23T06:00:00Z", source: nil, camera: cam, flag: flag)
@@ -375,20 +413,22 @@ struct SunARTests {
         #expect(m.calibrating)
         #expect(m.calibrationPhase == .noSensor)
         #expect(m.calibrationProgress == 0)
+        try await Task.sleep(for: .seconds(2.2))
+        #expect(m.calibrating && cam.runCalls == 0, "старые 1,8 с автоперехода больше нет")
         await m.finishCalibration()
         #expect(!m.calibrating && flag.seen)
         #expect(cam.runCalls == 1)
         m.stop()
     }
 
-    @Test("пропуск: «Пропустить» выходит из калибровки без «Готово», камера включается, флаг стоит")
+    @Test("пропуск: «Пропустить» выходит из калибровки в любую минуту, камера включается, флаг стоит")
     func calibrationSkip() async {
         let feed = Feed()
         let cam = FakeCamera()
         let flag = MemoryFlag()
         let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, camera: cam, flag: flag)
         await m.start()
-        _ = pump(feed, from: 0, seconds: 0.5, accuracy: .uncalibrated)
+        pump(feed, CalibrationScript(motion: .figureEight(scale: 0.5)), seconds: 3)
         #expect(m.calibrationPhase == .measuring)
         await m.finishCalibration()
         #expect(!m.calibrating && flag.seen && cam.runCalls == 1)

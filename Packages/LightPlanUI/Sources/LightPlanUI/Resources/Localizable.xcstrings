@@ -281,72 +281,562 @@
         }
       }
     },
-    "ar.calHint" : {
+    "ar.calAcc" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Проведите телефоном восьмёркой, пока шкала не заполнится"
+            "value" : "Точность компаса: ±{n}°"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Move the phone in a figure of eight until the bar fills"
+            "value" : "Compass accuracy: ±{n}°"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mueve el teléfono en forma de ocho hasta que se llene la barra"
+            "value" : "Precisión de la brújula: ±{n}°"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "バーがいっぱいになるまで、スマートフォンを8の字に動かしてください"
+            "value" : "コンパスの精度: ±{n}°"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "沿“8”字形移动手机，直到进度条填满"
+            "value" : "指南针精度：±{n}°"
           }
         }
       }
     },
-    "ar.calHold" : {
+    "ar.calAccFromTo" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Хорошо. Теперь подержите телефон ровно"
+            "value" : "Точность компаса: была ±{from}°, сейчас ±{to}°"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Good. Now hold the phone steady"
+            "value" : "Compass accuracy: was ±{from}°, now ±{to}°"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bien. Ahora mantén el teléfono firme"
+            "value" : "Precisión de la brújula: era ±{from}°, ahora ±{to}°"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "いいですね。そのまま安定して持ってください"
+            "value" : "コンパスの精度: 以前 ±{from}°、現在 ±{to}°"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "很好。现在请保持手机平稳"
+            "value" : "指南针精度：原为 ±{from}°，现为 ±{to}°"
+          }
+        }
+      }
+    },
+    "ar.calAccLevel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Точность компаса: {level}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compass accuracy: {level}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precisión de la brújula: {level}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コンパスの精度: {level}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指南针精度：{level}"
+          }
+        }
+      }
+    },
+    "ar.calAccNone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Система пока не сообщает точность компаса"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The system does not report compass accuracy yet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El sistema aún no informa la precisión de la brújula"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "システムはまだコンパスの精度を報告していません"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统暂未报告指南针精度"
+          }
+        }
+      }
+    },
+    "ar.calChecking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Движение сделано. Жду ответа компаса…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movement done. Waiting for the compass to answer…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento hecho. Esperando la respuesta de la brújula…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動きは完了しました。コンパスの応答を待っています…"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "动作已完成，正在等待指南针响应…"
+          }
+        }
+      }
+    },
+    "ar.calHintSlow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Двигайте медленнее и плавнее"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move slower and smoother"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muévelo más despacio y con suavidad"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もっとゆっくり、なめらかに動かしてください"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "动作再慢一些、平稳一些"
+          }
+        }
+      }
+    },
+    "ar.calHintTilt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наклоняйте телефон сильнее: вперёд, назад, влево, вправо"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilt the phone more: forward, back, left, right"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclina más el teléfono: delante, atrás, izquierda, derecha"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もっと大きく傾けてください: 前、後ろ、左、右"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再多倾斜一些：向前、向后、向左、向右"
+          }
+        }
+      }
+    },
+    "ar.calHintTurn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поворачивайте телефон шире: влево и вправо"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn the phone wider: left and right"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gira más el teléfono: a izquierda y derecha"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もっと大きく回してください: 左と右"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转动幅度再大一些：向左和向右"
+          }
+        }
+      }
+    },
+    "ar.calHow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рисуйте телефоном в воздухе восьмёрку и поворачивайте кисть: наклоняйте вперёд, назад, влево, вправо."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Draw a figure of eight in the air with the phone and twist your wrist: tilt it forward, back, left and right."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dibuja un ocho en el aire con el teléfono y gira la muñeca: inclínalo hacia delante, atrás, izquierda y derecha."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スマートフォンで空中に8の字を描き、手首をひねってください。前、後ろ、左、右へ傾けます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拿着手机在空中画一个8字，并转动手腕：向前、向后、向左、向右倾斜。"
+          }
+        }
+      }
+    },
+    "ar.calLvl0" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не откалиброван"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "uncalibrated"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sin calibrar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未較正"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未校准"
+          }
+        }
+      }
+    },
+    "ar.calLvl1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "низкая"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "low"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "baja"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "低"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "低"
+          }
+        }
+      }
+    },
+    "ar.calLvl2" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "средняя"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "medium"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "media"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中"
+          }
+        }
+      }
+    },
+    "ar.calLvl3" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "высокая"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "high"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "alta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高"
+          }
+        }
+      }
+    },
+    "ar.calMove" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Движение"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movement"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動き"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "动作"
+          }
+        }
+      }
+    },
+    "ar.calNeed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нужно не хуже ±{n}°"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Needs ±{n}° or better"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se necesita ±{n}° o mejor"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "±{n}°以内が必要です"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要 ±{n}° 或更好"
+          }
+        }
+      }
+    },
+    "ar.calNoAnswer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Движение сделано, но система не подтвердила точность компаса. Отойдите от металла и машины и повторите."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movement done, but the system did not confirm the compass accuracy. Step away from metal and cars and repeat."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento hecho, pero el sistema no confirmó la precisión de la brújula. Aléjate de metal y coches y repite."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動きは完了しましたが、システムがコンパスの精度を確認できませんでした。金属や車から離れて、もう一度行ってください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "动作已完成，但系统未能确认指南针精度。请远离金属和汽车后重试。"
           }
         }
       }
@@ -386,6 +876,41 @@
         }
       }
     },
+    "ar.calNotImproved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Движение сделано, но компас лучше не стал. Отойдите от металла и машины и повторите."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movement done, but the compass did not get better. Step away from metal and cars and repeat."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento hecho, pero la brújula no mejoró. Aléjate de metal y coches y repite."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動きは完了しましたが、コンパスは良くなりませんでした。金属や車から離れて、もう一度行ってください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "动作已完成，但指南针没有变好。请远离金属和汽车后重试。"
+          }
+        }
+      }
+    },
     "ar.calReady" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -417,6 +942,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "完成"
+          }
+        }
+      }
+    },
+    "ar.calReadyMsg" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Движение сделано, точность компаса достаточная. Можно выходить."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movement done, compass accuracy is good enough. You can leave."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento hecho, la precisión de la brújula basta. Puedes salir."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動きは完了し、コンパスの精度は十分です。終了できます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "动作已完成，指南针精度足够，可以退出。"
+          }
+        }
+      }
+    },
+    "ar.calRetry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё раз"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Again"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otra vez"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もう一度"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再来一次"
           }
         }
       }
@@ -487,6 +1082,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "指南针校准"
+          }
+        }
+      }
+    },
+    "ar.calWhy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Так компас увидит магнитное поле со всех сторон и поправит себя. Без движения шкала не растёт."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This lets the compass feel the magnetic field from every side and correct itself. The bar does not move while you hold still."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Así la brújula siente el campo magnético por todos los lados y se corrige. La barra no avanza si no te mueves."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コンパスが磁界をあらゆる方向から感じ取り、自分で補正します。動かさない間はバーは進みません。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这样指南针能从各个方向感受磁场并自行修正。手不动时进度条不会前进。"
           }
         }
       }
@@ -15154,7 +15784,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "no hall"
+            "value" : "no room"
           }
         },
         "es" : {
@@ -15166,13 +15796,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ホールなし"
+            "value" : "ルームなし"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无影棚厅"
+            "value" : "无拍摄厅"
           }
         }
       }
@@ -16204,7 +16834,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pick a studio hall"
+            "value" : "Pick a studio room"
           }
         },
         "es" : {
@@ -16216,13 +16846,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スタジオのホールを選ぶ"
+            "value" : "スタジオのルームを選ぶ"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择影棚厅"
+            "value" : "选择拍摄厅"
           }
         }
       }
@@ -22967,7 +23597,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Name, address or hall"
+            "value" : "Name, address or room"
           }
         },
         "es" : {
@@ -22979,13 +23609,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名前、住所、ホール"
+            "value" : "名前、住所、ルーム"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名称、地址或场地"
+            "value" : "名称、地址或拍摄厅"
           }
         }
       }
@@ -49952,7 +50582,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leave the hall in {left}. {where}."
+            "value" : "Leave the room in {left}. {where}."
           }
         },
         "es" : {
@@ -49964,13 +50594,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "{left}後に退室。{where}。"
+            "value" : "{left}後にルームを出ます。{where}。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "{left}后离开影棚。{where}。"
+            "value" : "{left}后离开拍摄厅。{where}。"
           }
         }
       }
@@ -49987,7 +50617,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Time to leave the hall. {where}."
+            "value" : "Time to leave the room. {where}."
           }
         },
         "es" : {
@@ -49999,13 +50629,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "退室の時間です。{where}。"
+            "value" : "ルームを出る時間です。{where}。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "该离开影棚了。{where}。"
+            "value" : "该离开拍摄厅了。{where}。"
           }
         }
       }

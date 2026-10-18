@@ -23,6 +23,10 @@ struct SunARScreen: View {
         self.app = app
         self.target = target
         #if DEBUG
+        // `-LPSunARReduceMotion 1`: как «Уменьшение движения» у системы — кадр статичной схемы калибровки.
+        if UserDefaults.standard.bool(forKey: "LPSunARReduceMotion") { PlanMotion.stillOverride = true }
+        #endif
+        #if DEBUG
         // `-LPSunARStill 1`: кадр «Уменьшения движения» в симуляторе (статичная восьмёрка калибровки).
         if UserDefaults.standard.bool(forKey: "LPSunARStill") { PlanMotion.stillOverride = true }
         #endif
@@ -80,23 +84,13 @@ struct SunARScreen: View {
                 }
                 controls(size: size, safe: safe, sun: sun, clock: clock)
                 if model.calibrating {
-                    SunARCalibrationView(progress: model.calibrationProgress, phase: model.calibrationPhase,
-                                         accuracyEnough: model.calibration.accuracySufficient,
-                                         lexicon: t, onSkip: { Task { await model.finishCalibration() } })
+                    // Сама не закрывается: ни таймера, ни перехода по «Готово» — выход только кнопкой.
+                    SunARCalibrationView(calibration: model.calibration, lexicon: t,
+                                         onDone: { Task { await model.doneCalibration() } },
+                                         onSkip: { Task { await model.finishCalibration() } },
+                                         onRetry: { model.retryCalibration() })
                         .frame(width: size.width, height: size.height)
                         .transition(.opacity)
-                        .task(id: model.calibrationPhase) {
-                            // «Готово» и «нет датчика» экран не держит: показал итог — и дальше к камере.
-                            // Закрыли экран, пока «Готово» на виду, — задача отменена, калибровку не завершаем.
-                            let dwell: Duration
-                            switch model.calibrationPhase {
-                            case .ready: dwell = .milliseconds(900)
-                            case .noSensor: dwell = .milliseconds(1800)
-                            case .measuring: return
-                            }
-                            do { try await Task.sleep(for: dwell) } catch { return }
-                            await model.finishCalibration()
-                        }
                 }
             }
             .animation(PlanMotion.pick(.easeOut(duration: 0.2)), value: model.calibrating)
@@ -751,13 +745,23 @@ enum SunARSources {
         // `-LPSunARPose az,alt,roll[,точность]` (список через `;`), `-LPSunARNorth magnetic` — подставной курс
         // от магнитного севера: так в симуляторе видно плашку «Курс магнитный».
         let d = UserDefaults.standard
+        // `-LPSunARCalibScript still|shake|eight[:масштаб]`, `-LPSunARCalibAcc вход,итог[,через_сек]` — подставной
+        // поток для экрана калибровки: движение и точность, которые читает калибровка (шаг 29.8в.8).
+        if let name = d.string(forKey: "LPSunARCalibScript"), let script = SunARCalibScripts.make(name, acc: d.string(forKey: "LPSunARCalibAcc")) {
+            return ScriptedCalibrationAttitude(script: script)
+        }
         if let list = d.string(forKey: "LPSunARPose"), let script = ScriptedAttitude.script(list) {
             let north: AttitudeNorth = d.string(forKey: "LPSunARNorth") == "magnetic" ? .magneticNorth : .trueNorth
             return ScriptedAttitude(poses: script.poses, accuracies: script.accuracies, north: north)
         }
         #endif
         #if os(iOS)
-        return CoreMotionAttitude()
+        // `-LPSunARSystemCalPanel 1` (отладка): показывать системную панель калибровки поверх экрана — для сравнения.
+        var panel = false
+        #if DEBUG
+        panel = UserDefaults.standard.bool(forKey: "LPSunARSystemCalPanel")
+        #endif
+        return CoreMotionAttitude(showsSystemCalibrationPanel: panel)
         #else
         return nil
         #endif
@@ -772,3 +776,29 @@ enum SunARSources {
         #endif
     }
 }
+
+#if DEBUG
+/// Подставные сценарии калибровки по аргументам запуска (отладка, кадры симулятора).
+enum SunARCalibScripts {
+    /// `name`: `still`, `shake`, `eight` или `eight:0.5` (масштаб размаха). `acc`: `вход,итог[,через_сек]` — градусы
+    /// погрешности при входе, итоговые и через сколько секунд движения система «отвечает» итоговыми.
+    static func make(_ name: String, acc: String?) -> CalibrationScript? {
+        let parts = name.split(separator: ":").map(String.init)
+        let motion: CalibrationScript.Motion
+        switch parts.first {
+        case "still": motion = .still
+        case "shake": motion = .shake
+        case "eight": motion = .figureEight(scale: parts.count > 1 ? Double(parts[1]) ?? 1 : 1)
+        default: return nil
+        }
+        let v = (acc ?? "").split(separator: ",").compactMap { Double($0) }
+        guard v.count >= 2 else { return CalibrationScript(motion: motion) }
+        let (entry, final, after) = (v[0], v[1], v.count > 2 ? v[2] : 6)
+        return CalibrationScript(motion: motion) { t in (t < after ? entry : final, nil) }
+    }
+}
+#else
+enum SunARCalibScripts {
+    static func make(_ name: String, acc: String?) -> CalibrationScript? { nil }
+}
+#endif
