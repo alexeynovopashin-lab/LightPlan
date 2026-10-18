@@ -103,10 +103,10 @@ struct SunARGlassTests {
     }
 
     private func stack(_ s: (scene: SunARScene, marks: [SunARMark], dy: CGFloat, base: Moment),
-                       layers: Set<SunARLayers>) -> some View {
+                       layers: Set<SunARLayers>, glass: SunARGlassStyle = .own) -> some View {
         SunARSkyStack(scene: s.scene, night: nil, marks: s.marks, size: size, clock: ClockText(language: "ru"),
                       cardinals: [], coreLabel: "", eventText: { _ in "" }, sky: AnyView(Color.black),
-                      layers: layers)
+                      layers: layers, glass: glass)
     }
 
     /// Где линия, лежащая в плоскости `yLine`, видна в колонке `x` внутри диска: точка, чьё «содержимое» (точка за
@@ -185,6 +185,19 @@ struct SunARGlassTests {
         // Колонка в середине диска, окно у линии: оригинал вырезан, копии нет.
         let l = (0..<20).map { px.luma(mark.center.x, yLine - 5 + CGFloat($0) * 0.5) }.max() ?? 0
         #expect(l < 0.05, "линия в диске без линзы: яркость \(l)")
+    }
+
+    @Test("системное стекло (29.8в.9а): дуга под диском целая — гнёт её само стекло, вырез был только для линзы-копии")
+    func systemGlassKeepsTheArcWhole() throws {
+        let s = try lowSunScene()
+        let mark = try #require(s.marks.first { $0.isSun })
+        let yLine = CGFloat(try #require(s.scene.horizon.first?.first).y)
+        let own = try render(stack(s, layers: [.arc], glass: .own))
+        let system = try render(stack(s, layers: [.arc], glass: .system))
+        func peak(_ px: Pixels) -> Double { (0..<20).map { px.luma(mark.center.x, yLine - 5 + CGFloat($0) * 0.5) }.max() ?? 0 }
+        print(String(format: "ARGLASS arc in disc: own %.2f, system %.2f", peak(own), peak(system)))
+        #expect(peak(own) < 0.05, "своё стекло: линия в диске без линзы \(peak(own))")
+        #expect(peak(system) > 0.5, "системное стекло: линии под диском нет (\(peak(system))) — стеклу нечего гнуть")
     }
 
     // MARK: Лучиков нет

@@ -88,6 +88,27 @@ enum SunARMarks {
         }
         return out
     }
+
+    /// Отладка (`-LPSunARMarkPos "sun.now:220,460;sun.picked:236,470"`): метки на заданных точках окна — чтобы
+    /// мерить стекло у линии или наложение двух дисков (`Tools/ar_glass.py`), не подбирая момент и положение.
+    static func debugPlaced(_ marks: [SunARMark]) -> [SunARMark] {
+        #if DEBUG
+        guard let list = UserDefaults.standard.string(forKey: "LPSunARMarkPos") else { return marks }
+        var at: [String: CGPoint] = [:]
+        for part in list.split(separator: ";") {
+            let kv = part.split(separator: ":")
+            let xy = kv.count == 2 ? kv[1].split(separator: ",").compactMap { Double($0) } : []
+            if xy.count == 2 { at[String(kv[0])] = CGPoint(x: xy[0], y: xy[1]) }
+        }
+        return marks.map { m in
+            guard let c = at[m.id] else { return m }
+            return SunARMark(id: m.id, kind: m.kind, center: c, diameter: m.diameter, fade: m.fade,
+                             altitude: m.altitude, belowHorizon: m.belowHorizon)
+        }
+        #else
+        return marks
+        #endif
+    }
 }
 
 #if os(iOS)

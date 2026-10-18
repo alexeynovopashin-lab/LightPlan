@@ -8,13 +8,16 @@
 
 Телефон и энергия этим не мерятся: симулятор считает на видеокарте мака, а не на A-серии.
 
-    python3 Tools/ar_lens_bench.py [--seconds 20] [--out FILE]
+    python3 Tools/ar_lens_bench.py [--seconds 20] [--out FILE] [--extra "-lightplan.native.sunar.glass own"]
+
+`--extra` — аргументы запуска сверх своих: так сравниваются своё и системное стекло дисков (29.8в.9а).
 """
-import json, os, re, subprocess, sys, time
+import json, os, re, shlex, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FX = os.path.join(ROOT, 'Fixtures', 'shots')
 BUNDLE = 'Novopashin.LightPlan'
+EXTRA = shlex.split(sys.argv[sys.argv.index('--extra') + 1]) if '--extra' in sys.argv else []
 
 
 def sh(*a):
@@ -53,7 +56,7 @@ def run(sim, label, pose, seconds, log):
              '-lightplan.native.sunar.calibrationSeen', 'YES', '-lightplan.native.sunar.moon', 'YES',
              '-lightplan.native.sunar.milkyWay', 'NO',
              '-LPSunAR', '1', '-LPSunARMoment', '2026-10-14T05:00:00Z', '-LPSunARPose', pose,
-             '-LPSunARPhone', '56.4977,84.9744,Asia/Tomsk', '-LPSunARFakeCamera', '1', '-LPSunARLensLog', log)
+             '-LPSunARPhone', '56.4977,84.9744,Asia/Tomsk', '-LPSunARFakeCamera', '1', '-LPSunARLensLog', log, *EXTRA)
     pid = int(re.search(r':\s*(\d+)', out).group(1))
     time.sleep(6)                                                # запуск, первая отрисовка
     c0, t0 = cpu_seconds(pid), time.time()

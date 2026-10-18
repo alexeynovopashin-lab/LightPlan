@@ -7,10 +7,11 @@
 (мимо кромки), медиана по каналам, насыщенность HSV. Фоны: белый v = 0,95 (`Color(white: 1)` приложения плюс
 стекло «Света»), серый 0,5, чёрный 0 — фон меряется на том же снимке, у угла экрана.
 
-    python3 Tools/ar_disc_sat.py --app <путь к .app> [--out DIR] [--only a,b] [--json file]
+    python3 Tools/ar_disc_sat.py --app <путь к .app> [--out DIR] [--only a,b] [--json file] [--extra "-ключ значение"]
+`--extra` — аргументы запуска сверх своих (29.8в.9а: `-lightplan.native.sunar.glass own|system`).
 Код 1, если не выполнены цели: закат и золотой час ≥ 0,55, призрак под горизонтом ≥ 0,40 на любом из трёх фонов.
 """
-import colorsys, datetime, json, math, os, re, statistics, subprocess, sys, tempfile, time
+import colorsys, datetime, json, math, os, re, shlex, statistics, subprocess, sys, tempfile, time
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -136,6 +137,7 @@ def main():
     out = opt('--out') or tempfile.mkdtemp(prefix='lp-ar-sat-')
     os.makedirs(out, exist_ok=True)
     only = opt('--only').split(',') if opt('--only') else None
+    extra = shlex.split(opt('--extra', ''))
     udid = sim_udid()
     subprocess.run(['xcrun', 'simctl', 'boot', udid], capture_output=True)
     sh('xcrun', 'simctl', 'install', udid, app)
@@ -161,7 +163,7 @@ def main():
                '-lightplan.native.sunar.calibrationSeen', 'YES', '-lightplan.native.sunar.moon', 'NO',
                '-lightplan.native.sunar.milkyWay', 'NO', '-LPSunAR', '1', '-LPSunARMoment', iso,
                '-LPSunARPose', '%.2f,%.2f,0' % (az, alt), '-LPSunARPhone', '%s,%s,%s' % (LAT, LON, ZONE),
-               '-LPSunARBackdrop', bd, '-LPShotReport', report)
+               '-LPSunARBackdrop', bd, '-LPShotReport', report, *extra)
             for _ in range(240):
                 if os.path.exists(report):
                     break

@@ -41,6 +41,8 @@ struct SunARScreen: View {
     private var t: Lexicon { app.lexicon }
 
     @State private var panelHeight: CGFloat = 200
+    /// Стекло дисков: своё или системное (шаг 29.8в.9а; в отладке — переключатель на экране).
+    @State private var glass = SunARGlassStyle.current()
     /// Низ нижней строки кнопок в окне экрана; `nil` — ещё не измерен (`SunARZones.visibleWindow`).
     @State private var buttonsBottom: CGFloat?
 
@@ -58,11 +60,11 @@ struct SunARScreen: View {
             // Луна и Млечный Путь — только то, что включено: выключенное не считается и не рисуется.
             let night: NightSkyARScene? = (model.moonOn || model.milkyWayOn)
                 ? model.nightScene(basis: model.aim, optics: model.optics, viewport: viewport) : nil
-            let marks = SunARMarks.make(sun: scene, night: night, screen: size)
+            let marks = SunARMarks.debugPlaced(SunARMarks.make(sun: scene, night: night, screen: size))
             let clock = ClockText(language: app.language, preference: app.light.clockPreference)
             // Слои снизу вверх (порядок — предмет замера 29.8в.5, `SunARLayers`): камера и слой Metal → полоса
-            // Млечного Пути → дуга и подписи часов (в дисках вырезана) → по каждой метке линза, затем налёт →
-            // подпись выбранного момента.
+            // Млечного Пути → дуга и подписи часов (у своего стекла в дисках вырезана) → по каждой метке линза и
+            // налёт (своё стекло) или системное стекло (29.8в.9а) → подпись выбранного момента.
             ZStack(alignment: .topLeading) {
                 if SunARLayers.shown(.camera) {
                     backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: marks)
@@ -74,7 +76,7 @@ struct SunARScreen: View {
                               // Без камеры небо рисует SwiftUI, и его гнёт сама линза; с камерой — слой Metal.
                               sky: model.camera.isLive ? nil
                                   : AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: [])),
-                              markText: markText)
+                              markText: markText, glass: glass)
                 if SunARLayers.shown(.labels) {
                     SunARMarkLabels(pickedLabel: pickedLabel(clock: clock), marks: marks, screen: size)
                         .frame(width: size.width, height: size.height)
@@ -232,7 +234,8 @@ struct SunARScreen: View {
     private func realBackground(size: CGSize, sun: SunSample, pal: Palette, marks: [SunARMark]) -> some View {
         #if os(iOS)
         if model.camera.isLive, let feed = model.cameraFeed {
-            ARCameraBackdrop(feed: feed, lenses: marks.map(\.lensSpec))
+            // Системное стекло гнёт кадр само: слою Metal дисков не дают.
+            ARCameraBackdrop(feed: feed, lenses: glass == .own ? marks.map(\.lensSpec) : [])
         } else {
             skyGradient(sun: sun, pal: pal)
         }
@@ -311,6 +314,9 @@ struct SunARScreen: View {
                         Spacer(minLength: 0)
                     }
                 }
+                #if DEBUG
+                glassSwitch
+                #endif
                 if let note = placeNote {
                     // Откуда место: телефон положения не дал — или выбранное в приложении далеко от телефона.
                     HStack(spacing: 0) {
@@ -459,6 +465,30 @@ struct SunARScreen: View {
         .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
         .shotNode(node, text: label + (on ? " on" : " off"))
     }
+
+    #if DEBUG
+    /// Опыт 29.8в.9а, только в отладочной сборке (её ставит `make phone`): какое стекло у дисков. Состояние —
+    /// флаг устройства `lightplan.native.sunar.glass`, помнится между входами. Слова не из словаря: кнопка уйдёт,
+    /// когда Алексей выберет стекло.
+    private var glassSwitch: some View {
+        HStack(spacing: 0) {
+            Button {
+                glass = glass == .own ? .system : .own
+                SunARGlassStyle.set(glass)
+            } label: {
+                Text(verbatim: glass == .own ? "Стекло: своё" : "Стекло: системное")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SunARInk.light)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .glassEffect(SunARInk.buttonGlass.interactive(), in: Capsule())
+            .shotNode("ar.glassSwitch", text: glass.rawValue)
+            Spacer(minLength: 0)
+        }
+    }
+    #endif
 
     private func plate(_ text: Text) -> some View {
         text

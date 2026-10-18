@@ -38,6 +38,8 @@ enum SunARInk {
     static let sunTint = Color(hex: 0xFFC24D)
     static let moonTint = Color(hex: 0xC9D6EA)
     static let glassTintOpacity = 0.42
+    /// Оттенок системного стекла диска (`SunARSystemGlassMark`, шаг 29.8в.9а): та же доля, что у налёта своего.
+    static let systemGlassTint = 0.42
     /// Призрак (светило под горизонтом): прозрачность заливки диска и контура. Контур держится заметнее заливки —
     /// пунктир читается и на тёмном небе, и на светлом.
     static let ghostFill = 0.4

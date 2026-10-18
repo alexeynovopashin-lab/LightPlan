@@ -171,7 +171,9 @@ final class SyntheticCameraRig: ARCameraDriving, ARFrameFeeding, @unchecked Send
         guard let r = ARLensRenderer() else { return nil }
         renderer = r
         r.drawsFullFrame = true
-        for shift in [0, 24] {
+        // `-LPSunARFakeCameraStill 1`: один кадр вместо двух — линия сетки стоит, по ней мерится изгиб (29.8в.9а).
+        let shifts = UserDefaults.standard.bool(forKey: "LPSunARFakeCameraStill") ? [0] : [0, 24]
+        for shift in shifts {
             guard let b = Self.makeFrame(width: 1440, height: 1080, shift: shift) else { return nil }
             buffers.append(b)
         }

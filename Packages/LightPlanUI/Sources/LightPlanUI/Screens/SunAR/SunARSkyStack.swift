@@ -23,6 +23,9 @@ struct SunARSkyStack: View {
     /// Какие слои рисовать. `nil` — по умолчанию (все; в отладке — по `-LPSunARLayers`). Юнит-тест выбирает
     /// слои сам: дуга и линза без налёта — чтобы по пикселям мерить смещение линии.
     var layers: Set<SunARLayers>? = nil
+    /// Стекло дисков (шаг 29.8в.9а): своё — линза-копия над дугой с вырезом и налёт; системное — `.glassEffect`, оно
+    /// само гнёт то, что под ним, поэтому дуга под ним целая.
+    var glass: SunARGlassStyle = .own
 
     /// Наименьший зазор между плашками подписей горизонта и часов, pt (для снимков; 99 — подпись одна).
     private var labelGap: CGFloat {
@@ -38,7 +41,7 @@ struct SunARSkyStack: View {
     private func shown(_ l: SunARLayers) -> Bool { layers?.contains(l) ?? SunARLayers.shown(l) }
 
     var body: some View {
-        let holes = marks.map(SunARHole.init)
+        let holes = glass == .own ? marks.map(SunARHole.init) : []
         let moonDiscs = marks.filter { !$0.isSun }.map { ($0.center, $0.radius) }
         ZStack(alignment: .topLeading) {
             if shown(.milkyWay), let night, night.milkyWayOn {
@@ -60,17 +63,26 @@ struct SunARSkyStack: View {
                                                          scene.events.count, labelGap))
             }
             ForEach(marks) { m in
-                if shown(.lens) {
-                    LensRefraction(diameter: m.diameter, origin: m.origin) { o, side in
-                        lensContent(windowOrigin: o, side: side, moonDiscs: moonDiscs)
-                    }
-                }
-                if shown(.paint) {
-                    SunARMarkPaint(mark: m, shotText: markText(m))
+                if glass == .system {
+                    if shown(.paint) { SunARSystemGlassMark(mark: m, shotText: markText(m)) }
+                } else {
+                    ownMark(m, moonDiscs: moonDiscs)
                 }
             }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private func ownMark(_ m: SunARMark, moonDiscs: [(CGPoint, CGFloat)]) -> some View {
+        if shown(.lens) {
+            LensRefraction(diameter: m.diameter, origin: m.origin) { o, side in
+                lensContent(windowOrigin: o, side: side, moonDiscs: moonDiscs)
+            }
+        }
+        if shown(.paint) {
+            SunARMarkPaint(mark: m, shotText: markText(m))
+        }
     }
 
     /// Что лежит под диском метки, от левого верхнего угла окна линзы: небо без камеры, полоса Млечного Пути и
