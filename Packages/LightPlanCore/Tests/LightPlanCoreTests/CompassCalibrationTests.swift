@@ -154,22 +154,8 @@ struct CompassCalibrationTests {
         #expect(c.phase == .measuring && c.progress == 0 && c.entryAccuracy == nil && c.accuracy == nil)
     }
 
-    // MARK: - Сама калибровка не заканчивается
-
-    @Test("ни один сценарий не завершается сам: фазы только меняются, «выхода» у ядра нет, часы не имеют значения")
-    func nothingEndsByItself() {
-        let scenarios: [CalibrationScript] = [
-            CalibrationScript(motion: .still, accuracy: { _ in (5, .high) }),
-            CalibrationScript(motion: .shake, accuracy: { _ in (5, .high) }),
-            CalibrationScript(motion: .figureEight(scale: 1), accuracy: { _ in (5, .high) }),
-            CalibrationScript(motion: .figureEight(scale: 1), accuracy: { _ in (30, .low) }),
-        ]
-        for s in scenarios {
-            // Час отсчётов: ядро не знает слова «закрыть», а «Готово» — только состояние для кнопки (`canFinish`).
-            let c = run(s, seconds: 3600)
-            #expect(c.phase != .noSensor)
-        }
-    }
+    // «Сама не заканчивается» проверяет модель экрана (`SunARTests`: `readyDoesNotLeaveByItself`,
+    // `calibrationWithoutSensor`, `notImprovedAndRetry`): у ядра нет понятия «закрыть», «Готово» для него — состояние.
 
     // MARK: - Подсказки
 
