@@ -180,22 +180,23 @@ public final class CoreMotionAttitude: AttitudeSource {
                     rotationRate: rate,
                     headingRate: HeadingSteadiness.headingRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation),
                     magneticAccuracy: Self.accuracy(motion.magneticField.accuracy),
-                    verticalRate: self.verticalRate(time: motion.timestamp, basis: basis, gyro: rate),
+                    verticalRate: self.verticalRate(time: motion.timestamp, basis: basis,
+                                                    gyro: HeadingSteadiness.verticalRate(angularVelocity: (r.x, r.y, r.z), rotation: rotation)),
                     headingAccuracy: self.heading.current(at: motion.timestamp))
                 onSample(sample)
             }
         }
     }
 
-    /// Поворот вокруг вертикали со знаком, °/с — по шагу положения между двумя отсчётами (`CameraBasis.yawStep`), а не
-    /// по проекции угловой скорости: знаки и оси `rotationRate` на живом телефоне не проверялись, а положение — то же,
-    /// по которому рисуется дуга. Считается, только пока гироскоп подтверждает вращение (его модуль выше порога
-    /// дрейфа): скачок магнитной поправки у неподвижного телефона поворотом не считается.
+    /// Поворот вокруг вертикали со знаком, °/с — для калибровки (`VerticalRate.agreed`): шаг положения между двумя
+    /// отсчётами (`CameraBasis.yawStep`, те же оси, что рисуют дугу) и проекция гироскопа должны согласиться;
+    /// выбирается меньшее из двух. Одного гироскопа мало: знаки и оси `rotationRate` на живом телефоне не проверялись;
+    /// одного положения мало: оно привязано к магнитному северу, и поправка компаса при наклоне телефона была бы
+    /// принята за поворот.
     private func verticalRate(time: TimeInterval, basis: CameraBasis, gyro: Double) -> Double {
         defer { lastPose = (time, basis) }
-        guard let last = lastPose, time > last.time, time - last.time <= 0.2,
-              gyro >= MotionCoverage.yawRateFloor else { return 0 }
-        return basis.yawStep(from: last.basis) / (time - last.time)
+        guard let last = lastPose, time > last.time, time - last.time <= 0.2 else { return 0 }
+        return VerticalRate.agreed(gyro: gyro, pose: basis.yawStep(from: last.basis) / (time - last.time))
     }
 
     private nonisolated static func accuracy(_ a: CMMagneticFieldCalibrationAccuracy) -> MagneticAccuracy {

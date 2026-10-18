@@ -32,6 +32,24 @@ struct MotionCoverageTests {
         #expect(abs(abs(steepTurned.yawStep(from: steep)) - 10) < 0.5)
     }
 
+    @Test("поворот из двух источников: поправка компаса без вращения гироскопа в шкалу не идёт, больший не берётся")
+    func agreedRate() {
+        #expect(VerticalRate.agreed(gyro: 0, pose: 20) == 0, "компас уточнил север, телефон не вращали")
+        #expect(VerticalRate.agreed(gyro: 0.4, pose: 20) == 0.4, "поправка не больше поворота, что видел гироскоп")
+        #expect(VerticalRate.agreed(gyro: 30, pose: 25) == 25 && VerticalRate.agreed(gyro: -30, pose: -25) == -25)
+        #expect(VerticalRate.agreed(gyro: 10, pose: 40) == 10)
+        #expect(VerticalRate.agreed(gyro: 10, pose: -3) == 0, "знаки разошлись — это поправка, а не поворот")
+    }
+
+    @Test("проекция гироскопа на вертикаль со знаком: стоя вертикально поворот вокруг «верха» телефона — вся скорость")
+    func gyroProjection() {
+        let upright = DeviceRotation(m11: 1, m12: 0, m13: 0, m21: 0, m22: 0, m23: 1, m31: 0, m32: 1, m33: 0)
+        let ccw = HeadingSteadiness.verticalRate(angularVelocity: (0, 0.5, 0), rotation: upright)
+        let cw = HeadingSteadiness.verticalRate(angularVelocity: (0, -0.5, 0), rotation: upright)
+        #expect(abs(ccw - 0.5 * 180 / Double.pi) < 1e-9 && abs(cw + ccw) < 1e-9)
+        #expect(HeadingSteadiness.verticalRate(angularVelocity: (0.5, 0, 0), rotation: upright) == 0, "наклон вокруг вертикали не поворачивает")
+    }
+
     @Test("пять ячеек: наклоны в четыре стороны и размах поворота; каждая заполняется от мёртвой зоны до полного")
     func cellsFill() {
         var m = MotionCoverage()
@@ -114,7 +132,9 @@ struct MotionCoverageTests {
             let b = basis(R)
             let step = prev.map { b.yawStep(from: $0) } ?? 0
             prev = b
-            m.add(time: Double(i) * dt, gravity: b.gravityInPhone, verticalRate: step / dt)
+            // Гироскоп: угловая скорость в осях телефона w, «вверх» мира в них — строка 3 матрицы «мир ← телефон».
+            let gyro = (w.0 * R[2][0] + w.1 * R[2][1] + w.2 * R[2][2]) * 180 / Double.pi
+            m.add(time: Double(i) * dt, gravity: b.gravityInPhone, verticalRate: VerticalRate.agreed(gyro: gyro, pose: step / dt))
         }
         return (m.progress, MotionCoverage.Cell.allCases.map(m.fill))
     }
