@@ -60,9 +60,9 @@ struct MotionCoverageTests {
         m.add(time: 0, gravity: g(0, 0), verticalRate: 0)
         m.add(time: 0.03, gravity: g(15.01, 0), verticalRate: 0)
         #expect(m.fill(.tiltRight) == 1 && m.fill(.tiltLeft) == 0 && m.progress > 0.19 && m.progress < 0.21)
-        m.add(time: 0.06, gravity: g(0, 9.5), verticalRate: 0)
+        m.add(time: 0.06, gravity: g(0, 7), verticalRate: 0)
         let half = m.fill(.tiltBack) + m.fill(.tiltForward)
-        #expect(abs(half - 0.5) < 0.01, "9,5° из диапазона 4…15 — половина ячейки: \(half)")
+        #expect(abs(half - 0.5) < 0.01, "7° из диапазона 4…10 — половина ячейки: \(half)")
         // Поворот в одну сторону на 30°, потом назад на 60° (до −30°): размах 30, затем 60 (возврат его не уменьшает).
         for i in 1...10 { m.add(time: 0.06 + Double(i) * 0.1, gravity: g(0, 0), verticalRate: 30) }
         let after30 = m.degrees(.turn)

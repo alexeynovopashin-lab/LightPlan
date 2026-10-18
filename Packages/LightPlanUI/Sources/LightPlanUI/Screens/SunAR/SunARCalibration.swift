@@ -177,7 +177,7 @@ struct SunARCalibrationView: View {
 
     #if DEBUG
     /// Только в отладочной сборке: накопленное отклонение по ячейкам, градусы — видно, какая не закрывается
-    /// (наклон в четыре стороны: нужно 15°; размах поворота: нужно 40°).
+    /// (наклон в четыре стороны: нужно `MotionCoverage.tiltFull`; размах поворота: `turnFull`).
     private var diagnostics: some View {
         let m = calibration.coverage
         func d(_ k: MotionCoverage.Cell) -> String { String(format: "%.0f", m.degrees(k)) }

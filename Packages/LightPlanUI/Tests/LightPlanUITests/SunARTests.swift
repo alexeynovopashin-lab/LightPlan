@@ -437,7 +437,7 @@ struct SunARTests {
         let flag = MemoryFlag()
         let (m, _) = model(at: "2026-09-23T06:00:00Z", source: feed, camera: cam, flag: flag)
         await m.start()
-        pump(feed, CalibrationScript(motion: .figureEight(scale: 0.5)), seconds: 3)
+        pump(feed, CalibrationScript(motion: .figureEight(scale: 0.3)), seconds: 3)
         #expect(m.calibrationPhase == .measuring)
         await m.finishCalibration()
         #expect(!m.calibrating && flag.seen && cam.runCalls == 1)

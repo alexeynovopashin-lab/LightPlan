@@ -780,7 +780,7 @@ enum SunARSources {
 #if DEBUG
 /// Подставные сценарии калибровки по аргументам запуска (отладка, кадры симулятора).
 enum SunARCalibScripts {
-    /// `name`: `still`, `shake`, `eight` или `eight:0.5` (масштаб размаха). `acc`: `вход,итог[,через_сек]` — градусы
+    /// `name`: `still`, `shake`, `eight` или `eight:0.3` (масштаб размаха). `acc`: `вход,итог[,через_сек]` — градусы
     /// погрешности при входе, итоговые и через сколько секунд движения система «отвечает» итоговыми.
     static func make(_ name: String, acc: String?) -> CalibrationScript? {
         let parts = name.split(separator: ":").map(String.init)

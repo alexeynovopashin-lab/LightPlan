@@ -32,8 +32,8 @@ const RUNTIME = 'com.apple.CoreSimulator.SimRuntime.iOS-26-5';
 
 const SCENARIOS = [
   { name: 'start', script: 'still', acc: '25,25', delay: 3, phase: 'measuring', scale: [0, 0], accLine: /25/, buzz: { ticks: [0, 0], done: 0 } },
-  { name: 'mid', script: 'eight:0.5', acc: '25,25', delay: 4, phase: 'measuring', scale: [0.4, 0.9], hint: false },
-  { name: 'hint', script: 'eight:0.5', acc: '25,25', delay: 18, phase: 'measuring', scale: [0.4, 0.9], hint: true },
+  { name: 'mid', script: 'eight:0.3', acc: '25,25', delay: 4, phase: 'measuring', scale: [0.35, 0.8], hint: false },
+  { name: 'hint', script: 'eight:0.3', acc: '25,25', delay: 18, phase: 'measuring', scale: [0.35, 0.8], hint: true },
   { name: 'notbetter', script: 'eight:1', acc: '25,25', delay: 10, phase: 'notImproved', scale: [1, 1], retry: true, done: false, lang: true },
   { name: 'ready', script: 'eight:1', acc: '25,8,2', delay: 6, phase: 'ready', scale: [1, 1], done: true, accLine: /25.*8/, buzz: { ticks: [10, 99], done: 1 } },
   { name: 'ready_late', script: 'eight:1', acc: '25,8,2', delay: 16, phase: 'ready', scale: [1, 1], done: true, buzz: { ticks: [10, 99], done: 1 } },

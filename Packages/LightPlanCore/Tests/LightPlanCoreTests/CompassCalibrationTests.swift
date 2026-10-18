@@ -60,7 +60,7 @@ struct CompassCalibrationTests {
 
     @Test("половинный размах восьмёрки: шкала растёт, но не полная")
     func halfSwingIsPartial() {
-        let c = run(CalibrationScript(motion: .figureEight(scale: 0.5), accuracy: { _ in (8, .high) }), seconds: 30)
+        let c = run(CalibrationScript(motion: .figureEight(scale: 0.3), accuracy: { _ in (8, .high) }), seconds: 30)
         #expect(c.progress > 0.3 && c.progress < 0.9, "шкала \(c.progress)")
         #expect(c.phase == .measuring)
     }
@@ -192,7 +192,7 @@ struct CompassCalibrationTests {
 
     @Test("проценты целые и не округляются вверх: 99,5 % — это 99, «сто» только когда все ячейки закрыты")
     func percentIsHonest() {
-        let almost = run(CalibrationScript(motion: .figureEight(scale: 0.676), accuracy: { _ in (8, nil) }), seconds: 30)
+        let almost = run(CalibrationScript(motion: .figureEight(scale: 0.452), accuracy: { _ in (8, nil) }), seconds: 30)
         #expect(almost.progress > 0.98 && almost.progress < 1, "\(almost.progress)")
         #expect(almost.percent == Int(almost.progress * 100) && almost.percent < 100 && !almost.movementDone,
                 "\(almost.progress) → \(almost.percent) %")
@@ -222,5 +222,35 @@ struct CompassCalibrationTests {
             d.add(CalibrationReading(time: t, gravity: g(0, 20 * sin(t * 3)), verticalRate: 0, rotationRate: 20))
         }
         #expect(d.hint == .tiltSide, "\(String(describing: d.hint))")
+    }
+
+    // MARK: - Планки (29.8в.8б)
+
+    /// Время, за которое шкала дошла до 100 %; `nil` — не дошла за минуту.
+    private func timeToFull(_ m: CalibrationScript.Motion) -> TimeInterval? {
+        var c = CompassCalibration()
+        for r in CalibrationScript(motion: m, accuracy: { _ in (8, nil) }).readings(seconds: 60) {
+            c.add(r)
+            if c.movementDone { return r.time }
+        }
+        return nil
+    }
+
+    @Test("естественная восьмёрка (наклон ±12°, поворот ±16°) закрывает шкалу за 8 с при круге от 3 до 8 с")
+    func naturalEightClosesWithinEightSeconds() {
+        for period in [3.0, 4.0, 5.0, 6.0, 8.0] {
+            let t = timeToFull(.figure(tilt: 12, yaw: 16, period: period))
+            #expect(t != nil && t! <= 8, "круг за \(period) с: шкала полная за \(String(describing: t)) с")
+        }
+        // Слабее — наклон ±10,5°, поворот ±15° — тоже закрывает; это запас до планки.
+        #expect(timeToFull(.figure(tilt: 10.5, yaw: 15, period: 5)).map { $0 <= 8 } == true)
+    }
+
+    @Test("планки не пустые: наклон ±9° не закрывает, походка (±5° и ±8° раз в 1,2 с) и дрожь — далеко от ста")
+    func barsAreNotEmpty() {
+        #expect(timeToFull(.figure(tilt: 9, yaw: 15, period: 5)) == nil, "±9° — ниже планки наклона")
+        let walk = run(CalibrationScript(motion: .figure(tilt: 5, yaw: 8, period: 1.2)), seconds: 60)
+        #expect(walk.progress < 0.3 && !walk.movementDone, "походка: \(walk.progress)")
+        #expect(timeToFull(.shake) == nil)
     }
 }
