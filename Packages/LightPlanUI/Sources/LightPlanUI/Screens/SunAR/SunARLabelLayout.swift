@@ -55,10 +55,46 @@ enum SunARLabelLayout {
                       width: s.width + 2 * padX, height: s.height + 2 * padY)
     }
 
+    /// Событие дня, с которым совпал выбранный момент, — по минуте, как её читает человек на подписях: «18:13» метки
+    /// и «закат 18:13» у горизонта. Оба текста стояли бы одно на другом (метка лежит на точке события, снимок Алексея
+    /// 18.10). Остаётся одна подпись — на метке момента: она несёт и дату, если день не сегодняшний, а подпись у
+    /// горизонта, которую раскладка тогда не ставит (`make(merged:)`), дала бы то же время второй раз. `nil` — момент
+    /// «сейчас» (на его метке времени нет) или не совпал ни с каким событием.
+    static func mergedEvent(in scene: SunARScene, pickedIsNow: Bool, pickedMinutes: Double,
+                            clock: ClockText) -> SunARScene.HorizonEvent? {
+        guard !pickedIsNow else { return nil }
+        let picked = clock.fmt(pickedMinutes)
+        return scene.events.first { clock.fmt($0.minutes) == picked }
+    }
+
+    /// Текст подписи на метке выбранного момента: время («18:13»), с датой, если день не сегодняшний («15 июн · 18:13»);
+    /// совпал с событием — «закат 18:13» (`mergedEvent`), та же подпись, что стояла бы у горизонта. `nil` — момент «сейчас».
+    static func pickedText(scene: SunARScene, pickedIsNow: Bool, pickedMinutes: Double, clock: ClockText,
+                           dayCaption: String?, eventText: (SunARScene.HorizonEvent) -> String) -> String? {
+        guard !pickedIsNow else { return nil }
+        let time = mergedEvent(in: scene, pickedIsNow: pickedIsNow, pickedMinutes: pickedMinutes, clock: clock)
+            .map(eventText) ?? clock.fmt(pickedMinutes)
+        return dayCaption.map { "\($0) · \(time)" } ?? time
+    }
+
+    /// Плашка подписи метки момента — те же числа и то же правило стороны, что у `SunARMarkLabels` (12 pt, поля 8 · 3;
+    /// метка выше «сейчас» — плашка над диском, иначе под ним, на радиус + `SunARInk.markerLabelGap`). Плашку рисует
+    /// вид; раскладка занимает её место, чтобы часы и стороны света не легли под неё, а тест меряет зазор до неё.
+    static func pickedPill(text: String, scene: SunARScene) -> CGRect? {
+        guard let m = scene.marker else { return nil }
+        let above = scene.nowMarker.map { m.y < $0.y } ?? false
+        let s = textSize(text, size: 12, weight: .medium)
+        let radius = SunARInk.pickedLensDiameter / 2
+        let c = CGPoint(x: m.x, y: m.y + (above ? -1 : 1) * (radius + SunARInk.markerLabelGap))
+        return CGRect(x: c.x - s.width / 2 - 8, y: c.y - s.height / 2 - 3, width: s.width + 16, height: s.height + 6)
+    }
+
     /// Все подписи кадра. `avoidOverlaps == false` — прежнее размещение (каждая на своём месте, без проверок): им
-    /// меряется «до».
+    /// меряется «до». `merged` — событие, чья подпись слита с меткой момента (`mergedEvent`): у горизонта её нет.
+    /// `pickedText` — подпись метки момента: её плашка занимает место, стороны света и часы обходят её.
     static func make(scene: SunARScene, cardinals names: [String], eventText: (SunARScene.HorizonEvent) -> String,
-                     clock: ClockText, bounds: CGRect, avoidOverlaps: Bool = true) -> [Placed] {
+                     clock: ClockText, bounds: CGRect, avoidOverlaps: Bool = true,
+                     merged: SunARScene.HorizonEvent.Kind? = nil, pickedText: String? = nil) -> [Placed] {
         var out: [Placed] = []
         // Занятое: плашки уже поставленных подписей и значки точек (час, восход/закат).
         var taken: [CGRect] = []
@@ -70,6 +106,7 @@ enum SunARLabelLayout {
             guard bounds.contains(c) else { continue }
             eventDots.append(CGRect(x: c.x - dotGlyph / 2, y: c.y - dotGlyph / 2, width: dotGlyph, height: dotGlyph))
         }
+        if let text = pickedText, let plate = pickedPill(text: text, scene: scene) { taken.append(plate) }
         var hourDots: [CGRect] = []
         for h in scene.hours {
             let c = CGPoint(x: h.point.x, y: h.point.y)
@@ -87,7 +124,7 @@ enum SunARLabelLayout {
         for e in scene.events {
             guard let pt = e.point else { continue }
             let c = CGPoint(x: pt.x, y: pt.y)
-            guard bounds.contains(c) else { continue }
+            guard bounds.contains(c), e.kind != merged else { continue }
             let text = eventText(e)
             let at = CGPoint(x: c.x, y: c.y - 20)
             let r = pill(center: at, text: text, size: 11, weight: .semibold)

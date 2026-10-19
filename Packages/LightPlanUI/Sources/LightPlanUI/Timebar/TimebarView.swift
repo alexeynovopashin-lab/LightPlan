@@ -18,12 +18,18 @@ public struct TimebarView: View {
     /// Свой ответ кнопке «↺ сейчас»: экран AR (29.8в.3) возвращает ручку плавно, кадр за кадром. `nil` — как у
     /// «Света» и «Карты»: `jumpToNow()`.
     let onNow: (() -> Void)?
+    /// Свой цвет слова «Сейчас»: экран AR кладёт панель с таймбаром на стекло, тёмное над любым небом (замер 29.8в.10:
+    /// яркость стекла под словом 0,056 над белым и 0,036 над голубым), и латунь `brassDeep` держит там 3,26 и 4,01 к 1.
+    /// `nil` — цвет «Света» и «Карты».
+    let nowInk: Color?
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false, onNow: (() -> Void)? = nil) {
+    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false, nowInk: Color? = nil,
+                onNow: (() -> Void)? = nil) {
         self.state = state
         self.showRibbon = showRibbon
         self.bare = bare
+        self.nowInk = nowInk
         self.onNow = onNow
     }
 
@@ -61,7 +67,7 @@ public struct TimebarView: View {
                     Text(state.nowButtonLabel)
                         .font(.system(size: 11, weight: .semibold))
                         .tracking(0.4)
-                        .foregroundStyle(pal.brassDeep)
+                        .foregroundStyle(nowInk ?? pal.brassDeep)
                         .padding(.vertical, 9).padding(.horizontal, 14)
                         .contentShape(Rectangle())
                 }

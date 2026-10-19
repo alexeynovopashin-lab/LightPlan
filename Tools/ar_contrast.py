@@ -210,6 +210,10 @@ def main():
                     '  %s %.2f:1%s' % (k.replace('ar.', ''), v[0], '' if v[1] is None else '/%.2f' % v[1]) for k, v in cells.items()))
     print('худший у текста панели: %.2f : 1 (цель ≥ 4,5)' % worst_panel)
     red = red or worst_panel < 4.5
+    # «Сейчас» — мелкий текст в таймбаре на стекле (29.8в.10: латунь brassDeep давала 3,26 и 4,01): цель тоже 4,5.
+    worst_now = min((cells[NOW][0] for cells, _ in table.values() if NOW in cells), default=99)
+    print('«Сейчас»: %.2f : 1 (цель ≥ 4,5)' % worst_now)
+    red = red or worst_now < 4.5
     print('цель кнопок: значок ≥ %.1f : 1, кнопка не темнее %.2f подложки; → %s' % (minimum, max_dim, out))
     sys.exit(1 if red else 0)
 

@@ -47,8 +47,10 @@ struct SunARCalibrationView: View {
                 .foregroundStyle(SunARInk.light)
                 .multilineTextAlignment(.center)
                 .shotNode("ar.cal.title", text: t.t("ar.calTitle"))
+            // Чехол и магнитные аксессуары — до восьмёрки, а не после (слово Алексея 18.10): без них движение зря.
+            if phase != .noSensor { magnetPlate }
             figureEight
-                .frame(width: 220, height: 128)
+                .frame(width: 220, height: 108)
                 .accessibilityHidden(true)
             if phase != .noSensor {
                 scale
@@ -88,9 +90,34 @@ struct SunARCalibrationView: View {
         case .ready:
             para(t.t("ar.calReadyMsg"), node: "ar.cal.text")
         case .notImproved:
-            para(calibration.accuracy?.isKnown == true ? t.t("ar.calNotImproved") : t.t("ar.calNoAnswer"),
-                 node: "ar.cal.text")
+            para(t.t(Self.notImprovedKey(accuracyKnown: calibration.accuracy?.isKnown == true)), node: "ar.cal.text")
         }
+    }
+
+    /// Слово для `.notImproved`: «лучше не стало» (чехол и MagSafe, потом металл и машины) говорим только когда система
+    /// назвала точность и она хуже порога; нет ответа — отдельная фраза «система не подтвердила», без обвинений.
+    static func notImprovedKey(accuracyKnown: Bool) -> String { accuracyKnown ? "ar.calNotImproved" : "ar.calNoAnswer" }
+
+    /// Плашка «снимите чехол MagSafe»: янтарный знак и кромка, как у предупреждений; причина — одной фразой.
+    private var magnetPlate: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Icon("warn", size: 20, line: 1.6).foregroundStyle(SunARInk.sunFill).padding(.top, 1)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(t.t("ar.calCase"))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SunARInk.light)
+                Text(t.t("ar.calCaseWhy"))
+                    .font(.system(size: 13))
+                    .foregroundStyle(SunARInk.light.opacity(0.7))
+            }
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(SunARInk.sunFill.opacity(0.14)))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(SunARInk.sunFill.opacity(0.55), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .shotNode("ar.cal.case", text: t.t("ar.calCase"))
     }
 
     private func para(_ s: String, dim: Bool = false, node: String) -> some View {

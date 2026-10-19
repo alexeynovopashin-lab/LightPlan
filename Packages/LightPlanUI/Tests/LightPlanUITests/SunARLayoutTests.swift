@@ -69,6 +69,112 @@ struct SunARLayoutTests {
         }
     }
 
+    // MARK: Момент выбран ровно на событии (29.8в.10)
+
+    private let ru = ClockText(language: "ru", preference: .h24)
+    private func eventWord(_ e: SunARScene.HorizonEvent) -> String {
+        (e.kind == .sunset ? "закат " : "восход ") + ru.fmt(e.minutes)
+    }
+
+    /// Сцена, где выбранный момент отстоит от события на `offset` минут (0 — ровно в минуту события), камера на событии.
+    /// «Сейчас» — по ту же сторону горизонта, где оно ниже метки момента и в кадре: закат — 18:30, после заката;
+    /// восход — 07:20, до восхода. Тогда подпись метки момента над диском — там же, где подпись события (снимок Алексея
+    /// 18.10: оба в одну минуту, «сейчас» чуть позже).
+    private func pickedScene(_ kind: SunARScene.HorizonEvent.Kind, offset: Double = 0, size: CGSize)
+        -> (scene: SunARScene, event: SunARScene.HorizonEvent, minutes: Double)? {
+        let now = moment(kind == .sunset ? "2026-10-17T11:30:00Z" : "2026-10-17T00:20:00Z")
+        let model = SunARModel(target: SunARTarget(place: tomsk, moment: now), source: nil, camera: nil,
+                               clock: { now }, calibrationFlag: MemoryFlag(), bodies: MemoryBodies())
+        let viewport = ScreenViewport(width: Double(size.width), height: Double(size.height))
+        let probe = SunARScene.make(basis: CameraBasis(azimuth: 0, altitude: 5), optics: .typical, viewport: viewport,
+                                    arc: model.arc, sun: model.sun, now: model.sunNow, pickedIsNow: model.pickedIsNow,
+                                    solar: model.solar)
+        guard let ev = probe.events.first(where: { $0.kind == kind }) else { return nil }
+        model.timebar.show(day: model.day, minute: ev.minutes + offset)
+        let scene = SunARScene.make(basis: CameraBasis(azimuth: ev.azimuth, altitude: 6), optics: .typical, viewport: viewport,
+                                    arc: model.arc, sun: model.sun, now: model.sunNow, pickedIsNow: model.pickedIsNow,
+                                    solar: model.solar)
+        guard let event = scene.events.first(where: { $0.kind == kind }), !model.pickedIsNow else { return nil }
+        return (scene, event, model.minutes)
+    }
+
+    /// Наименьший зазор между плашкой метки момента и подписями кадра, pt.
+    private func gapToPicked(_ pill: CGRect, _ labels: [SunARLabelLayout.Placed]) -> CGFloat {
+        labels.map { l -> CGFloat in
+            let dx = max(l.pill.minX - pill.maxX, pill.minX - l.pill.maxX)
+            let dy = max(l.pill.minY - pill.maxY, pill.minY - l.pill.maxY)
+            return (dx > 0 && dy > 0) ? (dx * dx + dy * dy).squareRoot() : max(dx, dy)
+        }.min() ?? 99
+    }
+
+    private func kindsLabel(_ k: SunARScene.HorizonEvent.Kind) -> String { k == .sunset ? "закат" : "восход" }
+
+    @Test("момент ровно в минуту заката и восхода: «закат 18:13» и «18:13» не лежат одна на другой — остаётся одна подпись «закат 18:13», на SE и на 15 Pro Max")
+    func pickedOnEventIsOneLabel() throws {
+        for phone in phones {
+            for kind in [SunARScene.HorizonEvent.Kind.sunset, .sunrise] {
+                let s = try #require(pickedScene(kind, size: phone.size), "\(phone.name): в сцене нет \(kindsLabel(kind))")
+                _ = try #require(s.scene.marker, "\(phone.name): метка момента за кадром")
+                let bounds = CGRect(origin: .zero, size: phone.size).insetBy(dx: -40, dy: -40)
+                let cards = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"]
+                func layout(merged: SunARScene.HorizonEvent.Kind?, picked: String) -> [SunARLabelLayout.Placed] {
+                    SunARLabelLayout.make(scene: s.scene, cardinals: cards, eventText: eventWord, clock: ru, bounds: bounds,
+                                          merged: merged, pickedText: picked)
+                }
+                let mergedKind = SunARLabelLayout.mergedEvent(in: s.scene, pickedIsNow: false, pickedMinutes: s.minutes, clock: ru)?.kind
+                let text = try #require(SunARLabelLayout.pickedText(scene: s.scene, pickedIsNow: false, pickedMinutes: s.minutes,
+                                                                    clock: ru, dayCaption: nil, eventText: eventWord))
+                // Метка момента выше «сейчас» — подпись над диском, там же, где подпись события.
+                let plate = try #require(SunARLabelLayout.pickedPill(text: text, scene: s.scene))
+                let plateOld = try #require(SunARLabelLayout.pickedPill(text: ru.fmt(s.minutes), scene: s.scene))
+                #expect(plate.maxY <= (s.scene.marker?.y ?? 0), "\(phone.name): подпись метки не над диском — сцена не воспроизводит снимок")
+                let before = layout(merged: nil, picked: ru.fmt(s.minutes)), after = layout(merged: mergedKind, picked: text)
+                let gapBefore = gapToPicked(plateOld, before), gapAfter = gapToPicked(plate, after)
+                print(String(format: "ARLAY момент = %@ %@: плашка «%@» (до — «%@»), зазор до %.1f pt, после %.1f pt · подписей события до %d, после %d",
+                             phone.name, kindsLabel(kind), text, ru.fmt(s.minutes), gapBefore, gapAfter,
+                             before.filter { $0.kind == .event }.count, after.filter { $0.kind == .event }.count))
+                #expect(mergedKind == kind, "\(phone.name): событие не опознано как совпавшее: \(String(describing: mergedKind))")
+                #expect(text == eventWord(s.event), "\(phone.name): на метке «\(text)», ждали «\(eventWord(s.event))»")
+                #expect(gapBefore < 0, "\(phone.name): до правки плашки не налезают (зазор \(gapBefore)) — сцена не воспроизводит снимок")
+                #expect(gapAfter >= SunARLabelLayout.gap, "\(phone.name): после правки зазор \(gapAfter) pt")
+                #expect(after.filter { $0.kind == .event }.isEmpty, "\(phone.name): подпись события у горизонта осталась")
+                #expect(text.contains(ru.fmt(s.event.minutes)), "в подписи нет времени события")
+            }
+        }
+    }
+
+    @Test("момент на минуту мимо события, «сейчас» и дата: подписи не сливаются, дата остаётся, на метке «сейчас» подписи нет")
+    func pickedOffEventKeepsBoth() throws {
+        let phone = phones[0]
+        let s = try #require(pickedScene(.sunset, offset: 2, size: phone.size))
+        #expect(SunARLabelLayout.mergedEvent(in: s.scene, pickedIsNow: false, pickedMinutes: s.minutes, clock: ru) == nil,
+                "на две минуты мимо заката подписи не сливаются")
+        #expect(SunARLabelLayout.pickedText(scene: s.scene, pickedIsNow: false, pickedMinutes: s.minutes, clock: ru,
+                                            dayCaption: nil, eventText: eventWord) == ru.fmt(s.minutes))
+        let onEvent = try #require(pickedScene(.sunset, size: phone.size))
+        #expect(SunARLabelLayout.pickedText(scene: onEvent.scene, pickedIsNow: false, pickedMinutes: onEvent.minutes, clock: ru,
+                                            dayCaption: "15 июн", eventText: eventWord) == "15 июн · " + eventWord(onEvent.event),
+                "дата не пропала")
+        #expect(SunARLabelLayout.pickedText(scene: onEvent.scene, pickedIsNow: true, pickedMinutes: onEvent.minutes, clock: ru,
+                                            dayCaption: nil, eventText: eventWord) == nil, "на метке «сейчас» подписи времени нет")
+        #expect(SunARLabelLayout.mergedEvent(in: onEvent.scene, pickedIsNow: true, pickedMinutes: onEvent.minutes, clock: ru) == nil)
+    }
+
+    @Test("справка, не проверка: на сколько минут мимо события плашка метки ещё налезает на подпись у горизонта")
+    func overlapBand() throws {
+        let phone = phones[1]
+        var rows: [String] = []
+        for off in stride(from: -8.0, through: 8.0, by: 2.0) {
+            guard let s = pickedScene(.sunset, offset: off, size: phone.size) else { continue }
+            let bounds = CGRect(origin: .zero, size: phone.size).insetBy(dx: -40, dy: -40)
+            let ls = SunARLabelLayout.make(scene: s.scene, cardinals: ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"],
+                                           eventText: eventWord, clock: ru, bounds: bounds)
+            guard let plate = SunARLabelLayout.pickedPill(text: ru.fmt(s.minutes), scene: s.scene) else { continue }
+            rows.append(String(format: "%+.0f мин: %.1f pt", off, gapToPicked(plate, ls)))
+        }
+        print("ARLAY полоса наложения (подпись метки против подписи заката, 15 Pro Max): " + rows.joined(separator: " · "))
+    }
+
     // MARK: Зоны стрелок
 
     @Test("стрелка нужна светилу под кнопками и под панелью, не нужна на виду между ними (на SE и на 15 Pro Max, одна и две строки кнопок)")

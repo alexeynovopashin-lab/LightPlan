@@ -17,6 +17,10 @@ struct SunARSkyStack: View {
     let cardinals: [String]
     let coreLabel: String
     let eventText: (SunARScene.HorizonEvent) -> String
+    /// Событие, совпавшее с выбранным моментом: его подпись у горизонта не ставится, время написано на метке.
+    var mergedEvent: SunARScene.HorizonEvent.Kind? = nil
+    /// Подпись метки выбранного момента (её плашку рисует `SunARMarkLabels`): раскладка оставляет ей место.
+    var pickedText: String? = nil
     /// Небо без камеры: его кладёт под линзу, чтобы кромка гнула и его. `nil` — кадр гнёт слой Metal под дугой.
     let sky: AnyView?
     var markText: (SunARMark) -> String = { _ in "" }
@@ -31,7 +35,8 @@ struct SunARSkyStack: View {
     private var labelGap: CGFloat {
         #if DEBUG
         let labels = SunARLabelLayout.make(scene: scene, cardinals: cardinals, eventText: eventText, clock: clock,
-                                           bounds: CGRect(origin: .zero, size: size).insetBy(dx: -40, dy: -40))
+                                           bounds: CGRect(origin: .zero, size: size).insetBy(dx: -40, dy: -40),
+                                           merged: mergedEvent, pickedText: pickedText)
         return SunARLabelLayout.minimumGap(labels) ?? 99
         #else
         return 99
@@ -53,7 +58,7 @@ struct SunARSkyStack: View {
             }
             if shown(.arc) {
                 SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
-                             cardinals: cardinals, eventText: eventText, holes: holes, screen: size)
+                             cardinals: cardinals, eventText: eventText, merged: mergedEvent, pickedText: pickedText, holes: holes, screen: size)
                     .frame(width: size.width, height: size.height)
                     .allowsHitTesting(false)
                     .shotNode("ar.overlay", text: String(format: "marker=%@ now=%@ merged=%d arcSegments=%d hours=%d events=%d labelGap=%.1f",
@@ -100,7 +105,7 @@ struct SunARSkyStack: View {
             }
             if shown(.arc) {
                 SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
-                             cardinals: cardinals, eventText: eventText, origin: o, screen: size)
+                             cardinals: cardinals, eventText: eventText, merged: mergedEvent, pickedText: pickedText, origin: o, screen: size)
                     .frame(width: side.width, height: side.height)
             }
         }

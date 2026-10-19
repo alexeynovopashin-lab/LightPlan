@@ -83,12 +83,14 @@ struct SunARScreen: View {
                 SunARSkyStack(scene: scene, night: night, marks: marks, size: size, clock: clock,
                               cardinals: cardinalNames(), coreLabel: t.t("ar.mwCore"),
                               eventText: { eventText($0, clock: clock) },
+                              mergedEvent: mergedEvent(scene: scene, clock: clock)?.kind,
+                              pickedText: pickedLabel(clock: clock, scene: scene),
                               // Без камеры небо рисует SwiftUI, и его гнёт сама линза; с камерой — слой Metal.
                               sky: model.camera.isLive ? nil
                                   : AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: [])),
                               markText: markText, glass: glass)
                 if SunARLayers.shown(.labels) {
-                    SunARMarkLabels(pickedLabel: pickedLabel(clock: clock), marks: marks, screen: size)
+                    SunARMarkLabels(pickedLabel: pickedLabel(clock: clock, scene: scene), marks: marks, screen: size)
                         .frame(width: size.width, height: size.height)
                 }
                 ForEach(pointerItems(sun: sun, night: night, size: size, safe: safe, viewport: viewport)) { item in
@@ -559,7 +561,7 @@ struct SunARScreen: View {
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .shotNode("ar.sunPos", text: String(format: "%.1f %.1f", sun.azimuth, sun.altitude))
             }
-            TimebarView(model.timebar, showRibbon: false, bare: true, onNow: goNow)
+            TimebarView(model.timebar, showRibbon: false, bare: true, nowInk: SunARInk.nowTone, onNow: goNow)
                 .padding(.horizontal, -16)
         }
         .foregroundStyle(SunARInk.light)
@@ -592,10 +594,14 @@ struct SunARScreen: View {
 
     /// Подпись выбранной метки на дуге: время, а если день не сегодняшний — с датой («15 июн · 18:42»).
     /// `nil`, когда метка одна и это «сейчас».
-    private func pickedLabel(clock: ClockText) -> String? {
-        guard !model.pickedIsNow else { return nil }
-        let time = clock.fmt(model.minutes)
-        return dayCaption.map { "\($0) · \(time)" } ?? time
+    private func pickedLabel(clock: ClockText, scene: SunARScene) -> String? {
+        // Момент совпал с закатом или восходом — одна подпись «закат 18:13» вместо двух друг на друге.
+        SunARLabelLayout.pickedText(scene: scene, pickedIsNow: model.pickedIsNow, pickedMinutes: model.minutes, clock: clock,
+                                    dayCaption: dayCaption, eventText: { eventText($0, clock: clock) })
+    }
+
+    private func mergedEvent(scene: SunARScene, clock: ClockText) -> SunARScene.HorizonEvent? {
+        SunARLabelLayout.mergedEvent(in: scene, pickedIsNow: model.pickedIsNow, pickedMinutes: model.minutes, clock: clock)
     }
 
     /// Дата под часами, когда день не сегодняшний — иначе «18:42» неоднозначно.
@@ -654,6 +660,10 @@ struct SunAROverlay: View {
     let cardinals: [String]
     /// «закат 18:21» / «восход 06:12».
     let eventText: (SunARScene.HorizonEvent) -> String
+    /// Событие, слитое с меткой момента: у горизонта его подписи нет (`SunARLabelLayout.mergedEvent`).
+    var merged: SunARScene.HorizonEvent.Kind? = nil
+    /// Подпись метки выбранного момента: её плашке раскладка оставляет место.
+    var pickedText: String? = nil
     /// Левый верхний угол холста в окне экрана. Ноль — холст на весь экран; копия под линзой диска
     /// (`LensRefraction`) рисует тот же кадр в маленьком холсте, сдвинутом на эту точку.
     var origin: CGPoint = .zero
@@ -712,7 +722,8 @@ struct SunAROverlay: View {
                 ctx.stroke(Path(ellipseIn: dot), with: .color(SunARInk.light), lineWidth: 1.5)
             }
             for l in SunARLabelLayout.make(scene: scene, cardinals: cardinals, eventText: eventText, clock: clock,
-                                       bounds: CGRect(origin: .zero, size: screen ?? size).insetBy(dx: -40, dy: -40)) {
+                                       bounds: CGRect(origin: .zero, size: screen ?? size).insetBy(dx: -40, dy: -40),
+                                       merged: merged, pickedText: pickedText) {
                 label(&ctx, l.text, at: l.center, size: l.fontSize, weight: l.weight, opacity: l.opacity)
             }
         }
