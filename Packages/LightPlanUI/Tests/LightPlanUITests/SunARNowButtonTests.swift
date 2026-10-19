@@ -13,6 +13,8 @@ struct SunARNowButtonTests {
     private final class MemoryBodies: ARBodiesSettings {
         var moon = false
         var milkyWay = false
+        var stars = false
+        var constellations = false
     }
     private final class MemoryFlag: ARCalibrationFlag { var seen = true }
     private func moment(_ iso: String) -> Moment { Moment(ISO8601DateFormatter().date(from: iso)!) }

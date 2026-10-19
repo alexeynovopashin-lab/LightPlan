@@ -16,6 +16,8 @@ struct SunARBodiesTests {
     private final class MemoryBodies: ARBodiesSettings {
         var moon = false
         var milkyWay = false
+        var stars = false
+        var constellations = false
     }
     private final class MemoryFlag: ARCalibrationFlag { var seen = true }
 

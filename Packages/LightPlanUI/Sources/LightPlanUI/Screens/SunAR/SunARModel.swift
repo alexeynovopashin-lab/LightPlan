@@ -49,18 +49,22 @@ final class DeviceCalibrationFlag: ARCalibrationFlag {
     }
 }
 
-/// Включатели «Луна» и «Млечный Путь» на экране AR (шаг 29.8в.4). Флаги устройства, как калибровка: в снимок
-/// съёмок и в облако не уходят, помнятся между входами. По умолчанию выключены.
+/// Включатели «Луна», «Млечный Путь», «Звёзды» и «Созвездия» на экране AR (шаги 29.8в.4 и 29.8в.13). Флаги устройства,
+/// как калибровка: в снимок съёмок и в облако не уходят, помнятся между входами. По умолчанию выключены.
 @MainActor
 protocol ARBodiesSettings: AnyObject {
     var moon: Bool { get set }
     var milkyWay: Bool { get set }
+    var stars: Bool { get set }
+    var constellations: Bool { get set }
 }
 
 @MainActor
 final class DeviceBodiesSettings: ARBodiesSettings {
     static let moonKey = "lightplan.native.sunar.moon"
     static let milkyWayKey = "lightplan.native.sunar.milkyWay"
+    static let starsKey = "lightplan.native.sunar.stars"
+    static let constellationsKey = "lightplan.native.sunar.constellations"
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
@@ -72,6 +76,14 @@ final class DeviceBodiesSettings: ARBodiesSettings {
     var milkyWay: Bool {
         get { defaults.bool(forKey: Self.milkyWayKey) }
         set { defaults.set(newValue, forKey: Self.milkyWayKey) }
+    }
+    var stars: Bool {
+        get { defaults.bool(forKey: Self.starsKey) }
+        set { defaults.set(newValue, forKey: Self.starsKey) }
+    }
+    var constellations: Bool {
+        get { defaults.bool(forKey: Self.constellationsKey) }
+        set { defaults.set(newValue, forKey: Self.constellationsKey) }
     }
 }
 
@@ -156,6 +168,18 @@ final class SunARModel {
     private let bodies: any ARBodiesSettings
     private(set) var moonOn: Bool
     private(set) var milkyWayOn: Bool
+    private(set) var starsOn: Bool
+    private(set) var constellationsOn: Bool
+
+    func setStars(_ on: Bool) {
+        starsOn = on
+        bodies.stars = on
+    }
+
+    func setConstellations(_ on: Bool) {
+        constellationsOn = on
+        bodies.constellations = on
+    }
 
     func setMoon(_ on: Bool) {
         moonOn = on
@@ -246,6 +270,25 @@ final class SunARModel {
         return NightSkyARScene.make(basis: basis, optics: optics, viewport: viewport, moon: moon, milkyWay: mw)
     }
 
+    /// Положения звёзд каталога на выбранный момент: держатся, пока не сдвинулась минута или не сменилось место.
+    /// От поворота телефона не зависят, поэтому кадр за кадром считается только проекция.
+    private var starPositions: [HorizontalPoint] {
+        let d = day, p = place, m = minutes
+        if let c = starCache, c.day == d, c.place == p, c.minutes == m { return c.positions }
+        let h = StarSkyAR.horizontals(day: d, minutes: m, in: p)
+        starCache = (d, p, m, h)
+        return h
+    }
+    @ObservationIgnored private var starCache: (day: CivilDate, place: Place, minutes: Minutes, positions: [HorizontalPoint])?
+
+    /// Звёзды и созвездия на экране камеры; `nil` — оба слоя выключены (ни расчёта, ни рисования). Момент — выбранный
+    /// (кнопка «Сейчас» возвращает на текущий), яркость слоя — по высоте солнца в этот момент.
+    func starScene(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport) -> StarSkyARScene? {
+        guard starsOn || constellationsOn else { return nil }
+        return StarSkyAR.make(positions: starPositions, sunAltitude: sun.altitude, basis: basis, optics: optics,
+                              viewport: viewport, stars: starsOn, constellations: constellationsOn)
+    }
+
     init(target: SunARTarget, source: (any AttitudeSource)?, camera: (any ARCameraDriving)? = nil,
          clock: @escaping @MainActor () -> Moment = { Moment(Date()) },
          calibrationFlag: (any ARCalibrationFlag)? = nil, forceCalibration: Bool = false,
@@ -282,6 +325,8 @@ final class SunARModel {
         self.bodies = b
         moonOn = b.moon
         milkyWayOn = b.milkyWay
+        starsOn = b.stars
+        constellationsOn = b.constellations
         self.forceCalibration = forceCalibration
         // Взгляд без датчика — на солнце в полдень, чуть над горизонтом: дуга видна с первой секунды.
         let noon = SolarDay(date: wall.day, place: target.place)

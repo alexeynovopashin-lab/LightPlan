@@ -65,6 +65,16 @@ enum SunARInk {
     /// Полоса Млечного Пути и ядро: тон и непрозрачность слоёв ночью (днём — на `MilkyWayAR.ghostOpacity`).
     static let milkyWayTone = Color(hex: 0xDCE6FF)
     static let coreTone = Color(hex: 0xFFEBC2)
+    /// Звёзды и созвездия (29.8в.13): тон слоя в списке «Слоёв» и точка под кнопкой — тёплый белый у звёзд, холодный
+    /// голубой у созвездий; сами точки на небе почти белые (`StarLook.tint`), линии фигур — тонкие и приглушённые.
+    static let starTone = Color(hex: 0xFFF3D6)
+    static let constellationTone = Color(hex: 0x8FB0E8)
+    /// Линия фигуры: толщина, pt, и непрозрачность при полной яркости слоя.
+    static let figureLineWidth: CGFloat = 0.7
+    static let figureLineOpacity = 0.34
+    /// Подписи: названия созвездий тише названий звёзд (при полной яркости слоя).
+    static let figureNameOpacity = 0.62
+    static let starNameOpacity = 0.82
     /// Радиус пятна ядра Млечного Пути для проверки «виден целиком» у стрелки: условный (у ядра нет рамки диска,
     /// замера нет).
     static let coreGlyphRadius: CGFloat = 13

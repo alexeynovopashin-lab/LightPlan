@@ -1,0 +1,1410 @@
+{
+ "source": "Wikidata Query Service, https://query.wikidata.org/ (CC0)",
+ "query": "SELECT ?code ?item ?ruLabel ?ruTitle ?sys ?sysRuLabel ?sysRuTitle WHERE {\n  VALUES ?code { \"HD 48915\" \"HD 45348\" \"HD 124897\" \"HD 128620\" \"HD 172167\" \"HD 34029\" \"HD 34085\" \"HD 61421\" \"HD 10144\" \"HD 39801\" \"HD 122451\" \"HD 187642\" \"HD 29139\" \"HD 148478\" \"HD 116658\" \"HD 62509\" \"HD 216956\" \"HD 111123\" \"HD 197345\" \"HD 108248\" \"HD 128621\" \"HD 87901\" \"HD 52089\" \"HD 108903\" \"HD 158926\" \"HD 35468\" \"HD 35497\" \"HD 80007\" \"HD 37128\" \"HD 108249\" \"HD 209952\" \"HD 112185\" \"HD 68273\" \"HD 20902\" \"HD 95689\" \"HD 54605\" \"HD 169022\" \"HD 71129\" \"HD 120315\" \"HD 159532\" \"HD 40183\" \"HD 150798\" \"HD 47105\" \"HD 193924\" \"HD 74956\" \"HD 44743\" \"HD 60179\" \"HD 81797\" \"HD 12929\" \"HD 143454\" \"HD 8890\" \"HD 175191\" \"HD 4128\" \"HD 37742\" \"HD 358\" \"HD 6860\" \"HD 38771\" \"HD 123139\" \"HD 131873\" \"HD 159561\" \"HD 214952\" \"HD 19356\" \"HD 102647\" \"HD 110304\" \"HD 194093\" \"HD 78647\" \"HD 3712\" \"HD 36486\" \"HD 139006\" \"HD 164058\" \"HD 66811\" \"HD 80404\" \"HD 12533\" \"HD 432\" \"HD 116656\" \"HD 151680\" \"HD 118716\" \"HD 129056\" \"HD 127972\" \"HD 143275\" \"HD 95418\" \"HD 2261\" \"HD 206778\" \"HD 160578\" \"HD 217906\" \"HD 155125\" \"HD 103287\" \"HD 203280\" \"HD 58350\" \"HD 197989\" \"HD 5394\" \"HD 218045\" \"HD 81188\" }\n  ?item p:P528 ?st . ?st ps:P528 ?code . ?st pq:P972 wd:Q111130 .\n  OPTIONAL { ?item rdfs:label ?ruLabel FILTER(lang(?ruLabel) = \"ru\") }\n  OPTIONAL { ?a schema:about ?item ; schema:isPartOf <https://ru.wikipedia.org/> ; schema:name ?ruTitle }\n  OPTIONAL { ?item wdt:P361 ?sys .\n    OPTIONAL { ?sys rdfs:label ?sysRuLabel FILTER(lang(?sysRuLabel) = \"ru\") }\n    OPTIONAL { ?b schema:about ?sys ; schema:isPartOf <https://ru.wikipedia.org/> ; schema:name ?sysRuTitle } }\n}",
+ "stars": [
+  {
+   "hd": 358,
+   "items": [
+    {
+     "item": "Q13039",
+     "ruLabel": "Альферац",
+     "ruTitle": "Альферац",
+     "partOf": [
+      {
+       "item": "Q1323318",
+       "ruLabel": "Большой квадрат",
+       "ruTitle": "Большой квадрат"
+      },
+      {
+       "item": "Q329182",
+       "ruLabel": "Местный пузырь",
+       "ruTitle": "Местный пузырь"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 432,
+   "items": [
+    {
+     "item": "Q13594",
+     "ruLabel": "Каф",
+     "ruTitle": "Каф",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 2261,
+   "items": [
+    {
+     "item": "Q14251",
+     "ruLabel": "Анкаа",
+     "ruTitle": "Анкаа",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 3712,
+   "items": [
+    {
+     "item": "Q13108",
+     "ruLabel": "Шедар",
+     "ruTitle": "Шедар",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 4128,
+   "items": [
+    {
+     "item": "Q13170",
+     "ruLabel": "бета Кита",
+     "ruTitle": "Бета Кита",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 5394,
+   "items": [
+    {
+     "item": "Q13584",
+     "ruLabel": "гамма Кассиопеи",
+     "ruTitle": "Гамма Кассиопеи",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 6860,
+   "items": [
+    {
+     "item": "Q13043",
+     "ruLabel": "Мирах",
+     "ruTitle": "Мирах",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 8890,
+   "items": [
+    {
+     "item": "Q12980",
+     "ruLabel": "Полярная звезда",
+     "ruTitle": "Полярная звезда",
+     "partOf": [
+      {
+       "item": "Q7254772",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 10144,
+   "items": [
+    {
+     "item": "Q12183",
+     "ruLabel": "Ахернар",
+     "ruTitle": "Ахернар",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 12533,
+   "items": [
+    {
+     "item": "Q13046",
+     "ruLabel": "Гамма Андромеды A",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q66477099",
+       "ruLabel": "Аламак",
+       "ruTitle": "Аламак"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 12929,
+   "items": [
+    {
+     "item": "Q13213",
+     "ruLabel": "Хамаль",
+     "ruTitle": "Хамаль",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 19356,
+   "items": [
+    {
+     "item": "Q13080",
+     "ruLabel": "Алголь",
+     "ruTitle": "Алголь",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 20902,
+   "items": [
+    {
+     "item": "Q13790",
+     "ruLabel": "Мирфак",
+     "ruTitle": "Мирфак",
+     "partOf": [
+      {
+       "item": "Q1072618",
+       "ruLabel": "Скопление Альфа Персея",
+       "ruTitle": "Скопление Альфы Персея"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 29139,
+   "items": [
+    {
+     "item": "Q12170",
+     "ruLabel": "Альдебаран",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q515922",
+       "ruLabel": "Зимний круг",
+       "ruTitle": "Зимний круг"
+      },
+      {
+       "item": "Q88540091",
+       "ruLabel": "Альдебаран",
+       "ruTitle": "Альдебаран"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 34029,
+   "items": [
+    {
+     "item": "Q12970",
+     "ruLabel": "Капелла",
+     "ruTitle": "Капелла (звезда)",
+     "partOf": [
+      {
+       "item": "Q515922",
+       "ruLabel": "Зимний круг",
+       "ruTitle": "Зимний круг"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 34085,
+   "items": [
+    {
+     "item": "Q12126",
+     "ruLabel": "Ригель",
+     "ruTitle": "Ригель (звезда)",
+     "partOf": [
+      {
+       "item": "Q515922",
+       "ruLabel": "Зимний круг",
+       "ruTitle": "Зимний круг"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 35468,
+   "items": [
+    {
+     "item": "Q13066",
+     "ruLabel": "Беллатрикс",
+     "ruTitle": "Беллатрикс",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 35497,
+   "items": [
+    {
+     "item": "Q13508",
+     "ruLabel": "Нат",
+     "ruTitle": "Бета Тельца",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 36486,
+   "items": [
+    {
+     "item": "Q680341",
+     "ruLabel": "Минтака",
+     "ruTitle": "Минтака",
+     "partOf": [
+      {
+       "item": "Q324312",
+       "ruLabel": "Пояс Ориона",
+       "ruTitle": "Пояс Ориона"
+      },
+      {
+       "item": "Q80634730",
+       "ruLabel": null,
+       "ruTitle": null
+      },
+      {
+       "item": "Q86939956",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 37128,
+   "items": [
+    {
+     "item": "Q13070",
+     "ruLabel": "Альнилам",
+     "ruTitle": "Альнилам",
+     "partOf": [
+      {
+       "item": "Q324312",
+       "ruLabel": "Пояс Ориона",
+       "ruTitle": "Пояс Ориона"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 37742,
+   "items": [
+    {
+     "item": "Q66477108",
+     "ruLabel": null,
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q13076",
+       "ruLabel": "Альнитак",
+       "ruTitle": "Альнитак"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 38771,
+   "items": [
+    {
+     "item": "Q14028",
+     "ruLabel": "Саиф",
+     "ruTitle": "Саиф",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 39801,
+   "items": [
+    {
+     "item": "Q12124",
+     "ruLabel": "Бетельгейзе",
+     "ruTitle": "Бетельгейзе",
+     "partOf": [
+      {
+       "item": "Q505816",
+       "ruLabel": "Зимний треугольник",
+       "ruTitle": "Зимний треугольник"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 40183,
+   "items": [
+    {
+     "item": "Q13219",
+     "ruLabel": "бета Возничего",
+     "ruTitle": "Бета Возничего",
+     "partOf": [
+      {
+       "item": "Q1195678",
+       "ruLabel": "Движущаяся группа звёзд Большой Медведицы",
+       "ruTitle": "Движущаяся группа звёзд Большой Медведицы"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 44743,
+   "items": [
+    {
+     "item": "Q13415",
+     "ruLabel": "Мирцам",
+     "ruTitle": "Мирцам",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 45348,
+   "items": [
+    {
+     "item": "Q12189",
+     "ruLabel": "Канопус",
+     "ruTitle": "Канопус",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 47105,
+   "items": [
+    {
+     "item": "Q14238",
+     "ruLabel": "Альхена",
+     "ruTitle": "Альхена",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 48915,
+   "items": [
+    {
+     "item": "Q13415844",
+     "ruLabel": "Сириус A",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q3409",
+       "ruLabel": "Сириус",
+       "ruTitle": "Сириус"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 52089,
+   "items": [
+    {
+     "item": "Q13414",
+     "ruLabel": "Адара",
+     "ruTitle": "Адара",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 54605,
+   "items": [
+    {
+     "item": "Q13411",
+     "ruLabel": "Везен",
+     "ruTitle": "Везен (звезда)",
+     "partOf": [
+      {
+       "item": "Q84278979",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 58350,
+   "items": [
+    {
+     "item": "Q13416",
+     "ruLabel": "эта Большого Пса",
+     "ruTitle": "Алудра",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 60179,
+   "items": [
+    {
+     "item": "Q12069682",
+     "ruLabel": null,
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q1049735",
+       "ruLabel": "Движущаяся группа звёзд Кастора",
+       "ruTitle": "Движущаяся группа звёзд Кастора"
+      },
+      {
+       "item": "Q13029",
+       "ruLabel": "Кастор",
+       "ruTitle": "Кастор (звезда)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 61421,
+   "items": [
+    {
+     "item": "Q13034",
+     "ruLabel": "Процион",
+     "ruTitle": "Процион",
+     "partOf": [
+      {
+       "item": "Q505816",
+       "ruLabel": "Зимний треугольник",
+       "ruTitle": "Зимний треугольник"
+      },
+      {
+       "item": "Q515922",
+       "ruLabel": "Зимний круг",
+       "ruTitle": "Зимний круг"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 62509,
+   "items": [
+    {
+     "item": "Q13028",
+     "ruLabel": "Поллукс",
+     "ruTitle": "Поллукс (звезда)",
+     "partOf": [
+      {
+       "item": "Q515922",
+       "ruLabel": "Зимний круг",
+       "ruTitle": "Зимний круг"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 66811,
+   "items": [
+    {
+     "item": "Q13200",
+     "ruLabel": "дзета Кормы",
+     "ruTitle": "Дзета Кормы",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 68273,
+   "items": [
+    {
+     "item": "Q14235",
+     "ruLabel": "гамма Парусов",
+     "ruTitle": "Гамма Парусов",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 71129,
+   "items": [
+    {
+     "item": "Q66476817",
+     "ruLabel": null,
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q14256",
+       "ruLabel": "Авиор",
+       "ruTitle": "Авиор"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 74956,
+   "items": [
+    {
+     "item": "Q1048396",
+     "ruLabel": "дельта Парусов",
+     "ruTitle": "Дельта Парусов",
+     "partOf": [
+      {
+       "item": "Q980230",
+       "ruLabel": "Ложный крест",
+       "ruTitle": "Ложный Крест"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 78647,
+   "items": [
+    {
+     "item": "Q14245",
+     "ruLabel": "лямбда Парусов",
+     "ruTitle": "Лямбда Парусов",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 80007,
+   "items": [
+    {
+     "item": "Q13174",
+     "ruLabel": "бета Киля",
+     "ruTitle": "Бета Киля",
+     "partOf": [
+      {
+       "item": "Q2552390",
+       "ruLabel": "Бриллиантовый Крест",
+       "ruTitle": "Бриллиантовый Крест"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 80404,
+   "items": [
+    {
+     "item": "Q14247",
+     "ruLabel": "Турайс",
+     "ruTitle": "Йота Киля",
+     "partOf": [
+      {
+       "item": "Q980230",
+       "ruLabel": "Ложный крест",
+       "ruTitle": "Ложный Крест"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 81188,
+   "items": [
+    {
+     "item": "Q14259",
+     "ruLabel": "каппа Парусов",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q980230",
+       "ruLabel": "Ложный крест",
+       "ruTitle": "Ложный Крест"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 81797,
+   "items": [
+    {
+     "item": "Q13577",
+     "ruLabel": "Альфард",
+     "ruTitle": "Альфард",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 87901,
+   "items": [
+    {
+     "item": "Q13013",
+     "ruLabel": "Регул",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q591000",
+       "ruLabel": "Весенний треугольник",
+       "ruTitle": "Весенний треугольник"
+      },
+      {
+       "item": "Q76493786",
+       "ruLabel": "Регул",
+       "ruTitle": "Регул"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 95418,
+   "items": [
+    {
+     "item": "Q13096",
+     "ruLabel": "Мерак",
+     "ruTitle": "Мерак",
+     "partOf": [
+      {
+       "item": "Q1195678",
+       "ruLabel": "Движущаяся группа звёзд Большой Медведицы",
+       "ruTitle": "Движущаяся группа звёзд Большой Медведицы"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 95689,
+   "items": [
+    {
+     "item": "Q13084",
+     "ruLabel": "Дубхе",
+     "ruTitle": "Дубхе",
+     "partOf": [
+      {
+       "item": "Q10460",
+       "ruLabel": "Большой Ковш",
+       "ruTitle": "Большой Ковш"
+      },
+      {
+       "item": "Q7058862",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 102647,
+   "items": [
+    {
+     "item": "Q13015",
+     "ruLabel": "Денебола",
+     "ruTitle": "Денебола",
+     "partOf": [
+      {
+       "item": "Q591000",
+       "ruLabel": "Весенний треугольник",
+       "ruTitle": "Весенний треугольник"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 103287,
+   "items": [
+    {
+     "item": "Q13099",
+     "ruLabel": "Фекда",
+     "ruTitle": "Фекда",
+     "partOf": [
+      {
+       "item": "Q10460",
+       "ruLabel": "Большой Ковш",
+       "ruTitle": "Большой Ковш"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 108248,
+   "items": [
+    {
+     "item": "Q66476660",
+     "ruLabel": "Акрукс",
+     "ruTitle": "Акрукс",
+     "partOf": [
+      {
+       "item": "Q13102",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 108249,
+   "items": [
+    {
+     "item": "Q66476661",
+     "ruLabel": null,
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q13102",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 108903,
+   "items": [
+    {
+     "item": "Q14233",
+     "ruLabel": "Гакрукс",
+     "ruTitle": "Гакрукс",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 110304,
+   "items": [
+    {
+     "item": "Q14226",
+     "ruLabel": "гамма Центавра",
+     "ruTitle": "Гамма Центавра",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 111123,
+   "items": [
+    {
+     "item": "Q13105",
+     "ruLabel": "Бекрукс",
+     "ruTitle": "Бекрукс",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 112185,
+   "items": [
+    {
+     "item": "Q13091",
+     "ruLabel": "Алиот",
+     "ruTitle": "Алиот",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 116656,
+   "items": [
+    {
+     "item": "Q13086",
+     "ruLabel": "Дзета Большой Медведицы A",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q66477109",
+       "ruLabel": "Мицар",
+       "ruTitle": "Мицар"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 116658,
+   "items": [
+    {
+     "item": "Q13008",
+     "ruLabel": "Спика",
+     "ruTitle": "Спика",
+     "partOf": [
+      {
+       "item": "Q591000",
+       "ruLabel": "Весенний треугольник",
+       "ruTitle": "Весенний треугольник"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 118716,
+   "items": [
+    {
+     "item": "Q14228",
+     "ruLabel": "эпсилон Центавра",
+     "ruTitle": "Эпсилон Центавра",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 120315,
+   "items": [
+    {
+     "item": "Q13093",
+     "ruLabel": "Бенетнаш",
+     "ruTitle": "Бенетнаш",
+     "partOf": [
+      {
+       "item": "Q10460",
+       "ruLabel": "Большой Ковш",
+       "ruTitle": "Большой Ковш"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 122451,
+   "items": [
+    {
+     "item": "Q13175",
+     "ruLabel": "Хадар",
+     "ruTitle": "Хадар",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 123139,
+   "items": [
+    {
+     "item": "Q14225",
+     "ruLabel": "Менкент",
+     "ruTitle": "Менкент",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 124897,
+   "items": [
+    {
+     "item": "Q12985",
+     "ruLabel": "Арктур",
+     "ruTitle": "Арктур",
+     "partOf": [
+      {
+       "item": "Q1046412",
+       "ruLabel": "Поток Арктура",
+       "ruTitle": "Поток Арктура"
+      },
+      {
+       "item": "Q591000",
+       "ruLabel": "Весенний треугольник",
+       "ruTitle": "Весенний треугольник"
+      },
+      {
+       "item": "Q8667",
+       "ruLabel": "Волопас",
+       "ruTitle": "Волопас"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 127972,
+   "items": [
+    {
+     "item": "Q14229",
+     "ruLabel": "эта Центавра",
+     "ruTitle": "Эта Центавра",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 128620,
+   "items": [
+    {
+     "item": "Q2090157",
+     "ruLabel": "Альфа Центавра A",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q12176",
+       "ruLabel": "Альфа Центавра",
+       "ruTitle": "Альфа Центавра"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 128621,
+   "items": [
+    {
+     "item": "Q1052548",
+     "ruLabel": "Альфа Центавра B",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q12176",
+       "ruLabel": "Альфа Центавра",
+       "ruTitle": "Альфа Центавра"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 129056,
+   "items": [
+    {
+     "item": "Q14230",
+     "ruLabel": "альфа Волка",
+     "ruTitle": "Альфа Волка",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 131873,
+   "items": [
+    {
+     "item": "Q14059",
+     "ruLabel": "Кохаб",
+     "ruTitle": "Кохаб",
+     "partOf": [
+      {
+       "item": "Q5178560",
+       "ruLabel": null,
+       "ruTitle": null
+      },
+      {
+       "item": "Q7058862",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 139006,
+   "items": [
+    {
+     "item": "Q14046",
+     "ruLabel": "альфа Северной Короны",
+     "ruTitle": "Альфа Северной Короны",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 143275,
+   "items": [
+    {
+     "item": "Q14248",
+     "ruLabel": "дельта Скорпиона",
+     "ruTitle": "Дельта Скорпиона",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 143454,
+   "items": [
+    {
+     "item": "Q557985",
+     "ruLabel": "T Северной Короны",
+     "ruTitle": "T Северной Короны",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 148478,
+   "items": [
+    {
+     "item": "Q12166",
+     "ruLabel": "Антарес",
+     "ruTitle": "Антарес",
+     "partOf": [
+      {
+       "item": "Q67856751",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 150798,
+   "items": [
+    {
+     "item": "Q14242",
+     "ruLabel": "альфа Южного Треугольника",
+     "ruTitle": "Альфа Южного Треугольника",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 151680,
+   "items": [
+    {
+     "item": "Q14249",
+     "ruLabel": "эпсилон Скорпиона",
+     "ruTitle": "Эпсилон Скорпиона",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 155125,
+   "items": [
+    {
+     "item": "Q670536",
+     "ruLabel": "эта Змееносца",
+     "ruTitle": "Эта Змееносца",
+     "partOf": [
+      {
+       "item": "Q10939525",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 158926,
+   "items": [
+    {
+     "item": "Q13023",
+     "ruLabel": "Шаула",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q78603928",
+       "ruLabel": "Шаула",
+       "ruTitle": "Шаула (звёздная система)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 159532,
+   "items": [
+    {
+     "item": "Q14236",
+     "ruLabel": "Саргас",
+     "ruTitle": "Саргас",
+     "partOf": []
+    },
+    {
+     "item": "Q66476703",
+     "ruLabel": "тета Скорпиона",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q14236",
+       "ruLabel": "Саргас",
+       "ruTitle": "Саргас"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 159561,
+   "items": [
+    {
+     "item": "Q13504",
+     "ruLabel": "Рас Альхаге",
+     "ruTitle": "Рас Альхаге",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 160578,
+   "items": [
+    {
+     "item": "Q14253",
+     "ruLabel": "каппа Скорпиона",
+     "ruTitle": "Каппа Скорпиона",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 164058,
+   "items": [
+    {
+     "item": "Q14246",
+     "ruLabel": "Этамин",
+     "ruTitle": "Этамин",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 169022,
+   "items": [
+    {
+     "item": "Q14034",
+     "ruLabel": "Каус Аустралис",
+     "ruTitle": "Каус Аустралис",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 172167,
+   "items": [
+    {
+     "item": "Q3427",
+     "ruLabel": "Вега",
+     "ruTitle": "Вега",
+     "partOf": [
+      {
+       "item": "Q1049735",
+       "ruLabel": "Движущаяся группа звёзд Кастора",
+       "ruTitle": "Движущаяся группа звёзд Кастора"
+      },
+      {
+       "item": "Q324113",
+       "ruLabel": "Летне-осенний треугольник",
+       "ruTitle": "Летне-осенний треугольник"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 175191,
+   "items": [
+    {
+     "item": "Q14036",
+     "ruLabel": "сигма Стрельца",
+     "ruTitle": "Сигма Стрельца",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 187642,
+   "items": [
+    {
+     "item": "Q12975",
+     "ruLabel": "Альтаир",
+     "ruTitle": "Альтаир",
+     "partOf": [
+      {
+       "item": "Q324113",
+       "ruLabel": "Летне-осенний треугольник",
+       "ruTitle": "Летне-осенний треугольник"
+      },
+      {
+       "item": "Q5511885",
+       "ruLabel": null,
+       "ruTitle": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 193924,
+   "items": [
+    {
+     "item": "Q14240",
+     "ruLabel": "альфа Павлина",
+     "ruTitle": "Альфа Павлина",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 194093,
+   "items": [
+    {
+     "item": "Q13327",
+     "ruLabel": "гамма Лебедя",
+     "ruTitle": "Гамма Лебедя",
+     "partOf": [
+      {
+       "item": "Q3698087",
+       "ruLabel": "Северный крест",
+       "ruTitle": "Северный крест (астеризм)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 197345,
+   "items": [
+    {
+     "item": "Q12179",
+     "ruLabel": "Денеб",
+     "ruTitle": "Денеб",
+     "partOf": [
+      {
+       "item": "Q324113",
+       "ruLabel": "Летне-осенний треугольник",
+       "ruTitle": "Летне-осенний треугольник"
+      },
+      {
+       "item": "Q3698087",
+       "ruLabel": "Северный крест",
+       "ruTitle": "Северный крест (астеризм)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 197989,
+   "items": [
+    {
+     "item": "Q13328",
+     "ruLabel": "эпсилон Лебедя",
+     "ruTitle": "Эпсилон Лебедя",
+     "partOf": [
+      {
+       "item": "Q3698087",
+       "ruLabel": "Северный крест",
+       "ruTitle": "Северный крест (астеризм)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 203280,
+   "items": [
+    {
+     "item": "Q13259",
+     "ruLabel": "Альдерамин",
+     "ruTitle": "Альдерамин",
+     "partOf": [
+      {
+       "item": "Q1049735",
+       "ruLabel": "Движущаяся группа звёзд Кастора",
+       "ruTitle": "Движущаяся группа звёзд Кастора"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 206778,
+   "items": [
+    {
+     "item": "Q14255",
+     "ruLabel": "эпсилон Пегаса",
+     "ruTitle": "Эпсилон Пегаса",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 209952,
+   "items": [
+    {
+     "item": "Q854042",
+     "ruLabel": "Альнаир",
+     "ruTitle": "Альнаир",
+     "partOf": [
+      {
+       "item": "Q94879",
+       "ruLabel": "Движущаяся группа звёзд AB Золотой Рыбы",
+       "ruTitle": "Движущаяся группа звёзд AB Золотой Рыбы"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 214952,
+   "items": [
+    {
+     "item": "Q14244",
+     "ruLabel": "бета Журавля",
+     "ruTitle": "Бета Журавля",
+     "partOf": []
+    }
+   ]
+  },
+  {
+   "hd": 216956,
+   "items": [
+    {
+     "item": "Q76446963",
+     "ruLabel": "Фомальгаут A",
+     "ruTitle": null,
+     "partOf": [
+      {
+       "item": "Q1049735",
+       "ruLabel": "Движущаяся группа звёзд Кастора",
+       "ruTitle": "Движущаяся группа звёзд Кастора"
+      },
+      {
+       "item": "Q13169",
+       "ruLabel": "Фомальгаут",
+       "ruTitle": "Фомальгаут"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 217906,
+   "items": [
+    {
+     "item": "Q14258",
+     "ruLabel": "бета Пегаса",
+     "ruTitle": "Бета Пегаса",
+     "partOf": [
+      {
+       "item": "Q1323318",
+       "ruLabel": "Большой квадрат",
+       "ruTitle": "Большой квадрат"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "hd": 218045,
+   "items": [
+    {
+     "item": "Q14262",
+     "ruLabel": "Маркаб",
+     "ruTitle": "Маркаб",
+     "partOf": [
+      {
+       "item": "Q1323318",
+       "ruLabel": "Большой квадрат",
+       "ruTitle": "Большой квадрат"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

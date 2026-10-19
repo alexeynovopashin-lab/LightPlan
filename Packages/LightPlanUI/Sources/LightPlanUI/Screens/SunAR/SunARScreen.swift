@@ -53,6 +53,8 @@ struct SunARScreen: View {
     @State private var glass = SunARGlassStyle.current()
     /// Низ нижней строки кнопок в окне экрана; `nil` — ещё не измерен (`SunARZones.visibleWindow`).
     @State private var buttonsBottom: CGFloat?
+    /// Низ плашек под кнопками (`nil` — ещё не измерен): окно подписей слоя звёзд начинается под ними.
+    @State private var notesBottom: CGFloat?
     /// Список «Слои» открыт. В отладке `-LPSunARLayersOpen 1` открывает его сразу (кадры).
     @State private var layersOpen = SunARScreen.layersOpenAtStart
 
@@ -71,6 +73,11 @@ struct SunARScreen: View {
             let night: NightSkyARScene? = (model.moonOn || model.milkyWayOn)
                 ? model.nightScene(basis: model.aim, optics: model.optics, viewport: viewport) : nil
             let marks = SunARMarks.debugPlaced(SunARMarks.make(sun: scene, night: night, screen: size))
+            // Звёзды и созвездия (29.8в.13): момент и место — те же, что у луны и солнца, «Сейчас» возвращает на текущий.
+            let stars = model.starScene(basis: model.aim, optics: model.optics, viewport: viewport)
+            let pointers = pointerItems(sun: sun, night: night, size: size, safe: safe, viewport: viewport)
+            let panelTop = size.height - panelHeight - max(safe.bottom, 12) - 4
+            let flipY = size.height - panelHeight - 40
             let clock = ClockText(language: app.language, preference: app.light.clockPreference)
             // Слои снизу вверх (порядок — предмет замера 29.8в.5, `SunARLayers`): камера и слой Metal → полоса
             // Млечного Пути → дуга и подписи часов (у своего стекла в дисках вырезана) → по каждой метке линза и
@@ -88,13 +95,21 @@ struct SunARScreen: View {
                               // Без камеры небо рисует SwiftUI, и его гнёт сама линза; с камерой — слой Metal.
                               sky: model.camera.isLive ? nil
                                   : AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: [])),
-                              markText: markText, glass: glass)
+                              markText: markText, glass: glass,
+                              stars: stars, starName: { t.t($0) }, starsDayText: t.t("ar.starsDay"),
+                              starWindow: SunARZones.visibleWindow(size: size, safeTop: safe.top,
+                                                                   buttonsBottom: buttonsBottom.map { max($0, notesBottom ?? 0) },
+                                                                   panelTop: panelTop),
+                              pointerRects: pointers.flatMap {
+                                  SunARPointerLayout.occupied(center: CGPoint(x: $0.pointer.point.x, y: $0.pointer.point.y),
+                                                              text: $0.text, screen: size, flipY: flipY)
+                              })
                 if SunARLayers.shown(.labels) {
                     SunARMarkLabels(pickedLabel: pickedLabel(clock: clock, scene: scene), marks: marks, screen: size)
                         .frame(width: size.width, height: size.height)
                 }
-                ForEach(pointerItems(sun: sun, night: night, size: size, safe: safe, viewport: viewport)) { item in
-                    SunARPointerView(item: item, screen: size, labelFlipY: size.height - panelHeight - 40)
+                ForEach(pointers) { item in
+                    SunARPointerView(item: item, screen: size, labelFlipY: flipY)
                 }
                 controls(size: size, safe: safe, sun: sun, clock: clock)
                 if model.calibrating {
@@ -347,6 +362,9 @@ struct SunARScreen: View {
                 }
                 // Низ кнопок в окне экрана: ниже него диск светила виден, выше — закрыт кнопками.
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { buttonsBottom = $0 }
+                // Плашки под кнопками (курс магнитный, откуда место, «восьмёрка», камера): их низ нужен слою звёзд — его
+                // подписи не лягут под них (29.8в.13).
+                VStack(spacing: 8) {
                 if model.magneticOnly {
                     // Тихая строка в левом углу: не модалка, поверх кадра, пропадает, когда север стал истинным.
                     HStack(spacing: 0) {
@@ -397,6 +415,8 @@ struct SunARScreen: View {
                     .padding(.horizontal, 16)
                     .shotNode("ar.cameraNote", text: why)
                 }
+                }
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { notesBottom = $0 }
                 Spacer(minLength: 0)
             }
             .padding(.top, safe.top + 8)

@@ -30,6 +30,16 @@ struct SunARSkyStack: View {
     /// Стекло дисков (шаг 29.8в.9а): своё — линза-копия над дугой с вырезом и налёт; системное — `.glassEffect`, оно
     /// само гнёт то, что под ним, поэтому дуга под ним целая.
     var glass: SunARGlassStyle = .own
+    /// Звёзды и созвездия (29.8в.13); `nil` — оба слоя выключены.
+    var stars: StarSkyARScene? = nil
+    /// Слово по ключу словаря (`con.Ori`, `star.sirius`) — для подписей слоя.
+    var starName: (String) -> String = { $0 }
+    /// «Звёзд днём не видно».
+    var starsDayText: String = ""
+    /// Окно, в котором живут подписи слоя: между кнопками сверху и панелью снизу.
+    var starWindow: CGRect? = nil
+    /// Занятое стрелками за краем (кружок и подпись каждой): подписи слоя их обходят.
+    var pointerRects: [CGRect] = []
 
     /// Наименьший зазор между плашками подписей горизонта и часов, pt (для снимков; 99 — подпись одна).
     private var labelGap: CGFloat {
@@ -62,6 +72,35 @@ struct SunARSkyStack: View {
 
     private func shown(_ l: SunARLayers) -> Bool { layers?.contains(l) ?? SunARLayers.shown(l) }
 
+    /// Занятое на экране, мимо чего подписи слоя звёзд не ставятся: подписи горизонта, часов и сторон света, плашка
+    /// выбранного момента, диски меток солнца и луны, подпись ядра Млечного Пути, стрелки за краем (29.8в.6, 29.8в.10).
+    var starTaken: [CGRect] {
+        let bounds = CGRect(origin: .zero, size: size).insetBy(dx: -40, dy: -40)
+        var taken = SunARLabelLayout.make(scene: scene, cardinals: cardinals, eventText: eventText, clock: clock,
+                                          bounds: bounds, merged: mergedEvent, pickedText: pickedText).map(\.pill)
+        if let text = pickedText, let plate = SunARLabelLayout.pickedPill(text: text, scene: scene) { taken.append(plate) }
+        taken += marks.map { CGRect(x: $0.center.x - $0.radius, y: $0.center.y - $0.radius,
+                                    width: $0.diameter, height: $0.diameter).insetBy(dx: -2, dy: -2) }
+        if let c = night?.core, night?.milkyWayOn == true {
+            // Подпись ядра: 11 pt по числу знаков, плашка 7 · 2, лежит на 30 pt ниже ядра (`SunARMilkyWayLayer`).
+            let w = CGFloat(coreLabel.count) * 6.5 + 14
+            taken.append(CGRect(x: c.x - w / 2, y: c.y + 30 - 10, width: w, height: 20))
+        }
+        return taken + pointerRects
+    }
+
+    /// Подписи слоя звёзд и дневная плашка. Днём подписывать нечего — звёзд нет, остаётся плашка.
+    private func starLabels(_ stars: StarSkyARScene) -> (labels: [SunARStarLabels.Placed], note: SunARStarLabels.Placed?) {
+        let window = starWindow ?? CGRect(origin: .zero, size: size)
+        let taken = starTaken
+        if stars.daylight {
+            return ([], SunARStarLabels.dayNote(text: starsDayText, taken: taken, window: window))
+        }
+        guard stars.visibility > 0 else { return ([], nil) }
+        let cands = SunARStarLabels.candidates(scene: stars, window: window, name: starName)
+        return (SunARStarLabels.place(cands, taken: taken, window: window), nil)
+    }
+
     var body: some View {
         let holes = glass == .own ? marks.map(SunARHole.init) : []
         let moonDiscs = marks.filter { !$0.isSun }.map { ($0.center, $0.radius) }
@@ -72,6 +111,14 @@ struct SunARSkyStack: View {
                     .shotNode("ar.milkyWay", text: String(format: "polys=%d core=%@ ghost=%d", night.band.count,
                                                           night.core.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
                                                           night.skyGhost ? 1 : 0) + Self.pictureText(night))
+            }
+            if shown(.stars), let stars, stars.isOn {
+                let placed = starLabels(stars)
+                SunARStarLayer(scene: stars, labels: placed.labels, dayNote: placed.note, holes: holes)
+                    .frame(width: size.width, height: size.height)
+                    .shotNode("ar.stars", text: String(format: "dots=%d lines=%d figures=%d labels=%d vis=%.2f day=%d",
+                                                        stars.dots.count, stars.segments.count, stars.figures.count,
+                                                        placed.labels.count, stars.visibility, stars.daylight ? 1 : 0))
             }
             if shown(.arc) {
                 SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
@@ -118,6 +165,10 @@ struct SunARSkyStack: View {
             }
             if shown(.milkyWay), let night, night.milkyWayOn {
                 SunARMilkyWayCanvas(scene: night, origin: o)
+                    .frame(width: side.width, height: side.height)
+            }
+            if shown(.stars), let stars, stars.isOn {
+                SunARStarCanvas(scene: stars, origin: o)
                     .frame(width: side.width, height: side.height)
             }
             if shown(.arc) {

@@ -1,0 +1,97 @@
+# "IAU Catalog of Star Names (IAU-CSN)"
+# IAU Division C Working Group on Star Names (WGSN) https://www.iau.org/science/scientific_bodies/working_groups/280/
+# WGSN Chair: Susanne Hoffmann. WGSN Secretary: Eric Mamajek. Email questions or comments to: starnames@exopla.net
+# Last updated 2022-04-04 (see notes on latest edits at end of file)
+#
+# For use of the contents of the data of this file, we encourage users to cite the official IAU version of the data at:
+$ https://www.iau.org/public/themes/naming_stars/. At times there may be a time delay between the posting of names in this file and what
+# is posted on the IAU website. All IAU-produced products (Images, Videos, Texts) are released under Creative Commons Attribution
+# (i.e. free to use in all perpetuity, world-wide, as long as the source is mentioned). Rows (2) and (5) require UTF-8 encoding
+# (For Firefox browser, set > View > Repair Text Encoding).  WGSN is working to add brief summaries of etymological information
+# to future editions of this table.
+#(1)              (2)               (3)          (4)   (5)   (6) (7)  (8)         (9)  (10) (11)   (12) (13)       (14)       (15)       (16)    
+#Name/ASCII       Name/Diacritics   Designation  ID    ID    Con #    WDS_J       mag  bnd  HIP     HD  RA(J2000)  Dec(J2000) Date       Notes
+Achernar          Achernar          HR 472       alf   α     Eri A    _           0.45  V   7588  10144  24.428523 -57.236753 2016-06-30 
+Acrux             Acrux             HR 4730      alf   α     Cru Aa   12266-6306  1.33  V  60718 108248 186.649563 -63.099093 2016-07-20 
+Adhara            Adhara            HR 2618      eps   ε     CMa A    06586-2858  1.50  V  33579  52089 104.656453 -28.972086 2016-08-21 
+Aldebaran         Aldebaran         HR 1457      alf   α     Tau _    04359+1631  0.87  V  21421  29139  68.980163  16.509302 2016-06-30 
+Alderamin         Alderamin         HR 8162      alf   α     Cep _    21186+6235  2.45  V 105199 203280 319.644885  62.585574 2016-07-20 
+Algol             Algol             HR 936       bet   β     Per Aa1  03082+4057  2.09  V  14576  19356  47.042215  40.955648 2016-06-30 
+Alhena            Alhena            HR 2421      gam   γ     Gem Aa   06377+1624  1.93  V  31681  47105  99.427960  16.399280 2016-07-20 
+Alioth            Alioth            HR 4905      eps   ε     UMa A    12540+5558  1.76  V  62956 112185 193.507290  55.959823 2016-06-30 
+Aljanah           Aljanah           HR 7949      eps   ε     Cyg Aa   20462+3358  2.48  V 102488 197989 311.552843  33.970257 2017-06-30 
+Alkaid            Alkaid            HR 5191      eta   η     UMa _    _           1.85  V  67301 120315 206.885157  49.313267 2016-06-30 
+Almach            Almach            HR 603       gam   γ     And A    02039+4220  2.10  V   9640  12533  30.974804  42.329725 2016-07-20 * 
+Alnair            Alnair            HR 8425      alf   α     Gru _    22082-4658  1.73  V 109268 209952 332.058270 -46.960974 2016-07-20 
+Alnilam           Alnilam           HR 1903      eps   ε     Ori _    05362-0112  1.69  V  26311  37128  84.053389  -1.201919 2016-07-20 
+Alnitak           Alnitak           HR 1948      zet   ζ     Ori Aa   05407-0157  1.74  V  26727  37742  85.189694  -1.942574 2016-07-20 
+Alphard           Alphard           HR 3748      alf   α     Hya _    09276-0840  1.99  V  46390  81797 141.896847  -8.658602 2016-07-20 
+Alphecca          Alphecca          HR 5793      alf   α     CrB _    _           2.22  V  76267 139006 233.671950  26.714693 2016-07-20 
+Alpheratz         Alpheratz         HR 15        alf   α     And Aa   00084+2905  2.07  V    677    358   2.096916  29.090431 2016-06-30 
+Alsephina         Alsephina         HR 3485      del   δ     Vel Aa   08447-5443  1.99  V  42913  74956 131.175944 -54.708819 2017-09-05 
+Altair            Altair            HR 7557      alf   α     Aql _    19508+0852  0.76  V  97649 187642 297.695827   8.868321 2016-06-30 
+Aludra            Aludra            HR 2827      eta   η     CMa _    07241-2918  2.45  V  35904  58350 111.023760 -29.303106 2016-07-20 
+Ankaa             Ankaa             HR 99        alf   α     Phe _    00263-4218  2.40  V   2081   2261   6.570939 -42.306084 2016-07-20 
+Antares           Antares           HR 6134      alf   α     Sco A    16294-2626  1.06  V  80763 148478 247.351915 -26.432003 2016-06-30 
+Arcturus          Arcturus          HR 5340      alf   α     Boo _    14157+1911 -0.05  V  69673 124897 213.915300  19.182409 2016-06-30 
+Aspidiske         Aspidiske         HR 3699      iot   ι     Car _    _           2.21  V  45556  80404 139.272529 -59.275232 2016-07-20 
+Atria             Atria             HR 6217      alf   α     TrA _    16487-6902  1.91  V  82273 150798 252.166229 -69.027712 2016-07-20 
+Avior             Avior             HR 3307      eps   ε     Car A    08225-5931  1.86  V  41037  71129 125.628480 -59.509484 2016-07-20 
+Bellatrix         Bellatrix         HR 1790      gam   γ     Ori _    05251+0621  1.64  V  25336  35468  81.282764   6.349703 2016-06-30 
+Betelgeuse        Betelgeuse        HR 2061      alf   α     Ori Aa   05552+0724  0.45  V  27989  39801  88.792939   7.407064 2016-06-30 
+Canopus           Canopus           HR 2326      alf   α     Car A    06240-5242 -0.62  V  30438  45348  95.987958 -52.695661 2016-06-30 
+Capella           Capella           HR 1708      alf   α     Aur Aa   05167+4600  0.08  V  24608  34029  79.172328  45.997991 2016-06-30 
+Caph              Caph              HR 21        bet   β     Cas A    00092+5909  2.28  V    746    432   2.294522  59.149781 2016-06-30 
+Castor            Castor            HR 2891      alf   α     Gem Aa   07346+3153  1.98  V  36850  60179 113.649428  31.888276 2016-06-30 
+Deneb             Deneb             HR 7924      alf   α     Cyg _    20414+4517  1.25  V 102098 197345 310.357980  45.280339 2016-06-30 
+Denebola          Denebola          HR 4534      bet   β     Leo _    11491+1434  2.14  V  57632 102647 177.264910  14.572058 2016-06-30 
+Diphda            Diphda            HR 188       bet   β     Cet _    _           2.04  V   3419   4128  10.897379 -17.986606 2016-08-21 
+Dschubba          Dschubba          HR 5953      del   δ     Sco A    16003-2237  2.29  V  78401 143275 240.083359 -22.621710 2016-08-21 
+Dubhe             Dubhe             HR 4301      alf   α     UMa A    11037+6145  1.81  V  54061  95689 165.931965  61.751035 2016-06-30 
+Elnath            Elnath            HR 1791      bet   β     Tau Aa   05263+2836  1.65  V  25428  35497  81.572971  28.607452 2016-07-20 
+Eltanin           Eltanin           HR 6705      gam   γ     Dra _    17566+5129  2.24  V  87833 164058 269.151541  51.488896 2016-08-21 
+Enif              Enif              HR 8308      eps   ε     Peg _    21442+0953  2.38  V 107315 206778 326.046484   9.875009 2016-07-20 
+Fomalhaut         Fomalhaut         HR 8728      alf   α     PsA A    22577-2937  1.17  V 113368 216956 344.412693 -29.622237 2015-12-15 
+Gacrux            Gacrux            HR 4763      gam   γ     Cru _    12312-5707  1.59  V  61084 108903 187.791498 -57.113213 2016-07-20 
+Hadar             Hadar             HR 5267      bet   β     Cen Aa   14038-6022  0.61  V  68702 122451 210.955856 -60.373035 2016-08-21 
+Hamal             Hamal             HR 617       alf   α     Ari _    _           2.01  V   9884  12929  31.793357  23.462418 2016-07-20 
+Kaus Australis    Kaus Australis    HR 6879      eps   ε     Sgr A    18242-3423  1.79  V  90185 169022 276.042993 -34.384616 2016-07-20 
+Kochab            Kochab            HR 5563      bet   β     UMi _    14507+7409  2.07  V  72607 131873 222.676357  74.155504 2016-07-20 
+Larawag           Larawag           HR 6241      eps   ε     Sco _    _           2.29  V  82396 151680 252.540878 -34.293232 2017-11-17 
+Markab            Markab            HR 8781      alf   α     Peg _    _           2.49  V 113963 218045 346.190223  15.205267 2016-06-30 
+Markeb            Markeb            HR 3734      kap   κ     Vel _    _           2.47  V  45941  81188 140.528407 -55.010667 2017-09-05 
+Menkalinan        Menkalinan        HR 2088      bet   β     Aur Aa   05595+4457  1.90  V  28360  40183  89.882179  44.947433 2016-07-20 
+Menkent           Menkent           HR 5288      tet   θ     Cen _    14067-3622  2.06  V  68933 123139 211.670617 -36.369958 2016-08-21 
+Merak             Merak             HR 4295      bet   β     UMa _    _           2.34  V  53910  95418 165.460319  56.382426 2016-06-30 
+Miaplacidus       Miaplacidus       HR 3685      bet   β     Car _    _           1.67  V  45238  80007 138.299906 -69.717208 2016-07-20 
+Mimosa            Mimosa            HR 4853      bet   β     Cru _    12477-5941  1.25  V  62434 111123 191.930263 -59.688764 2016-07-20 
+Mintaka           Mintaka           HR 1852      del   δ     Ori Aa   05320-0018  2.25  V  25930  36486  83.001667  -0.299095 2016-07-20 
+Mirach            Mirach            HR 337       bet   β     And _    01097+3537  2.07  V   5447   6860  17.433013  35.620557 2016-06-30 
+Mirfak            Mirfak            HR 1017      alf   α     Per _    03243+4952  1.79  V  15863  20902  51.080709  49.861179 2016-07-20 
+Mirzam            Mirzam            HR 2294      bet   β     CMa _    06227-1757  1.98  V  30324  44743  95.674939 -17.955919 2016-07-20 
+Mizar             Mizar             HR 5054      zet   ζ     UMa Aa   13239+5456  2.23  V  65378 116656 200.981429  54.925362 2016-06-30 
+Naos              Naos              HR 3165      zet   ζ     Pup _    _           2.21  V  39429  66811 120.896031 -40.003148 2016-08-21 
+Nunki             Nunki             HR 7121      sig   σ     Sgr Aa   18553-2618  2.05  V  92855 175191 283.816360 -26.296724 2016-08-21 
+Peacock           Peacock           HR 7790      alf   α     Pav Aa   20256-5644  1.94  V 100751 193924 306.411904 -56.735090 2016-07-20 
+Phecda            Phecda            HR 4554      gam   γ     UMa Aa   11538+5342  2.41  V  58001 103287 178.457679  53.694758 2016-07-20 
+Polaris           Polaris           HR 424       alf   α     UMi Aa   02318+8916  2.13  V  11767   8890  37.954561  89.264109 2016-06-30 
+Pollux            Pollux            HR 2990      bet   β     Gem _    07453+2802  1.16  V  37826  62509 116.328958  28.026199 2015-12-15 
+Procyon           Procyon           HR 2943      alf   α     CMi A    07393+0514  0.40  V  37279  61421 114.825493   5.224993 2016-06-30 
+Rasalhague        Rasalhague        HR 6556      alf   α     Oph A    17349+1234  2.08  V  86032 159561 263.733627  12.560035 2016-07-20 
+Regulus           Regulus           HR 3982      alf   α     Leo A    10084+1158  1.36  V  49669  87901 152.092962  11.967209 2016-06-30 
+Rigel             Rigel             HR 1713      bet   β     Ori A    05145-0812  0.18  V  24436  34085  78.634467  -8.201638 2016-06-30 
+Rigil Kentaurus   Rigil Kentaurus   HR 5459      alf   α     Cen A    14396-6050 -0.01  V  71683 128620 219.902066 -60.833975 2016-11-06 * 
+Sabik             Sabik             HR 6378      eta   η     Oph A    17104-1544  2.43  V  84012 155125 257.594529 -15.724907 2016-08-21 
+Sadr              Sadr              HR 7796      gam   γ     Cyg A    20222+4015  2.23  V 100453 194093 305.557091  40.256679 2016-08-21 
+Saiph             Saiph             HR 2004      kap   κ     Ori _    _           2.07  V  27366  38771  86.939120  -9.669605 2016-07-20 
+Sargas            Sargas            HR 6553      tet   θ     Sco A    17373-4300  1.86  V  86228 159532 264.329711 -42.997824 2016-08-21 
+Scheat            Scheat            HR 8775      bet   β     Peg _    23038+2805  2.44  V 113881 217906 345.943572  28.082785 2016-06-30 
+Schedar           Schedar           HR 168       alf   α     Cas _    00405+5632  2.24  V   3179   3712  10.126838  56.537331 2016-08-21 
+Shaula            Shaula            HR 6527      lam   λ     Sco Aa   17336-3706  2.08  V  85927 158926 263.402167 -37.103824 2016-07-20 
+Sirius            Sirius            HR 2491      alf   α     CMa A    06451-1643 -1.45  V  32349  48915 101.287155 -16.716116 2016-06-30 
+Spica             Spica             HR 5056      alf   α     Vir Aa   13252-1110  0.98  V  65474 116658 201.298247 -11.161319 2016-06-30 
+Suhail            Suhail            HR 3634      lam   λ     Vel _    09080-4326  2.23  V  44816  78647 136.998993 -43.432589 2016-08-21 
+Tiaki             Tiaki             HR 8636      bet   β     Gru _    _           2.12  V 112122 214952 340.666876 -46.884576 2017-09-05 
+Toliman           Toliman           HR 5460      alf   α     Cen B    14396-6050  1.35  V  71681 128621 219.896096 -60.837528 2018-08-10 * 
+Vega              Vega              HR 7001      alf   α     Lyr _    18369+3846  0.03  V  91262 172167 279.234735  38.783689 2016-06-30 
+Wezen             Wezen             HR 2693      del   δ     CMa Aa   07084-2624  1.83  V  34444  54605 107.097850 -26.393200 2016-07-20 

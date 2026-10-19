@@ -1,11 +1,13 @@
 import SwiftUI
 
 /// Слой неба в AR, который включается руками (шаг 29.8в.9б). Одна круглая кнопка «Слои» открывает список: по
-/// строке на каждый слой, который уже есть, у каждого свой значок и переключатель. Слой, которого ещё нет (звёзды,
-/// созвездия, планеты), строки не имеет: следующий шаг добавляет случай сюда и строку в `SunARModel`.
+/// строке на каждый слой, который уже есть, у каждого свой значок и переключатель. Слой, которого ещё нет (планеты),
+/// строки не имеет: следующий шаг добавляет случай сюда и строку в `SunARModel`.
 enum SunARSkyLayer: String, CaseIterable, Identifiable {
     case moon
     case milkyWay
+    case stars
+    case constellations
 
     var id: String { rawValue }
 
@@ -14,6 +16,8 @@ enum SunARSkyLayer: String, CaseIterable, Identifiable {
         switch self {
         case .moon: return "layer.moon"
         case .milkyWay: return "layer.mw"
+        case .stars: return "layer.stars"
+        case .constellations: return "layer.constellations"
         }
     }
 
@@ -22,6 +26,8 @@ enum SunARSkyLayer: String, CaseIterable, Identifiable {
         switch self {
         case .moon: return SunARInk.moonTint
         case .milkyWay: return SunARInk.milkyWayTone
+        case .stars: return SunARInk.starTone
+        case .constellations: return SunARInk.constellationTone
         }
     }
 
@@ -30,6 +36,8 @@ enum SunARSkyLayer: String, CaseIterable, Identifiable {
         switch self {
         case .moon: return "ar.layer.moon"
         case .milkyWay: return "ar.layer.mw"
+        case .stars: return "ar.layer.stars"
+        case .constellations: return "ar.layer.constellations"
         }
     }
 }
@@ -39,14 +47,18 @@ extension SunARModel {
         switch layer {
         case .moon: return moonOn
         case .milkyWay: return milkyWayOn
+        case .stars: return starsOn
+        case .constellations: return constellationsOn
         }
     }
 
-    /// Те же флаги устройства, что и раньше (`lightplan.native.sunar.moon` / `.milkyWay`), через `setMoon`/`setMilkyWay`.
+    /// Флаги устройства: `lightplan.native.sunar.moon` / `.milkyWay` / `.stars` / `.constellations`, через `setMoon` и далее.
     func set(_ layer: SunARSkyLayer, on: Bool) {
         switch layer {
         case .moon: setMoon(on)
         case .milkyWay: setMilkyWay(on)
+        case .stars: setStars(on)
+        case .constellations: setConstellations(on)
         }
     }
 
@@ -101,7 +113,7 @@ struct SunARLayersList: View {
     /// выбрал имитацию вида, и подпись об этом обязательна.
     private func notes(_ layer: SunARSkyLayer) -> [String] {
         switch layer {
-        case .moon: return []
+        case .moon, .stars, .constellations: return []
         case .milkyWay:
             return (model.milkyWayVisibility.isVisible ? [] : [lexicon.t("ar.mwHidden")]) + [lexicon.t("ar.mwFormula")]
         }
@@ -137,6 +149,10 @@ struct SunARLayersList: View {
             MoonToggleIcon(illuminated: m.fraction, waxing: m.cycle < 0.5)
         case .milkyWay:
             MilkyWayToggleIcon()
+        case .stars:
+            StarsToggleIcon()
+        case .constellations:
+            ConstellationsToggleIcon()
         }
     }
 }

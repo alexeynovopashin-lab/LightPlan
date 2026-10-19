@@ -7,13 +7,14 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: phone checkstep help parity blocks lang icons domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
+.PHONY: phone checkstep help parity blocks lang icons brightstars domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
 	@echo "make blocks   показать, что вырезается из беты (дешёвая проверка якорей)"
 	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
 	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
+	@echo "make brightstars яркие звёзды AR (V ≤ 2,5): JSON из снимков каталогов, Swift из JSON, проверка числами; без сети (снимки — node Tools/bright_stars/fetch.js)"
 	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
 	@echo "make mapstyle описание холста карты из beta/mapstyle.js (итерация 20а)"
 	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
@@ -77,6 +78,13 @@ icons:
 	@node Tools/icons2assets.js
 	@node Tools/icons_ref.js
 	@node Tools/icons2assets.js --check
+
+# Яркие звёзды для слоя звёзд AR. Сеть нужна только fetch.js (снимки в
+# Tools/bright_stars/sources/); здесь — сборка и проверка по снимкам.
+brightstars:
+	@node Tools/bright_stars/build.js
+	@node Tools/bright_stars/gen_swift.js
+	@node Tools/bright_stars/check.js
 
 # Итерация 11: домен. Таблицы и правила съёмки режутся из беты своим скриптом и
 # своим отпечатком — общий стенд неба не трогается. TZ=UTC по той же причине,
