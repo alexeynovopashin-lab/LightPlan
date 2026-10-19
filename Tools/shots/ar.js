@@ -57,6 +57,28 @@ const SCENARIOS = [
   // 29.8в.7: центр диска в окне видимости, верхний край под кнопками — стрелка всё равно нужна.
   { name: 'half_hidden', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,2.6,0', phone: TOMSK,
     moon: false, mw: false, camera: true, merged: true, halfHidden: true },
+  // 29.8в.13: звёзды и созвездия. Ночь (солнце ≈ −25°): точки, линии, названия; сумерки (−6…−12°): яркость растёт плавно;
+  // день: слои включены, звёзд нет, плашка «Звёзд днём не видно». Подписи не ложатся на метки, подписи и стрелки.
+  { name: 'night_stars', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '30,42,0', phone: TOMSK,
+    moon: false, mw: false, stars: true, cons: true, camera: true, starsNight: true },
+  { name: 'night_stars_sw', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '240,52,0', phone: TOMSK,
+    moon: false, mw: false, stars: true, cons: true, camera: true, starsNight: true },
+  // Те же кадры на ровном ночном фоне (`-LPSunARBackdrop night`): так звёзды выглядят на настоящем ночном небе, а не на
+  // подставном кадре с закатным градиентом.
+  { name: 'night_stars_dark', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '30,42,0', phone: TOMSK,
+    moon: false, mw: false, stars: true, cons: true, camera: true, backdrop: 'night', starsNight: true },
+  { name: 'night_stars_sw_dark', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '240,52,0', phone: TOMSK,
+    moon: false, mw: false, stars: true, cons: true, camera: true, backdrop: 'night', starsNight: true },
+  { name: 'night_stars_s_dark', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '200,30,0', phone: TOMSK,
+    moon: false, mw: false, stars: true, cons: false, camera: true, backdrop: 'night', starsNight: true },
+  { name: 'night_all', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: TOMSK,
+    moon: true, mw: true, stars: true, cons: true, camera: true, starsNight: true },
+  { name: 'dusk_stars', now: '2026-10-20T19:00:00+07:00', moment: '2026-10-20T12:00:00Z', pose: '60,38,0', phone: TOMSK,
+    moon: false, mw: false, stars: true, cons: true, camera: true, starsDusk: true },
+  { name: 'day_stars', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,24,0', phone: TOMSK,
+    moon: false, mw: false, stars: true, cons: true, camera: true, merged: true, starsDay: true },
+  { name: 'day_stars_moon', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,24,0', phone: TOMSK,
+    moon: true, mw: false, stars: true, cons: true, camera: true, merged: true, starsDay: true },
   { name: 'entry_far', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: MOSCOW,
     moon: false, mw: false, camera: false, entry: true },
   { name: 'entry_off', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: null,
@@ -64,6 +86,46 @@ const SCENARIOS = [
 ];
 
 const node = (nodes, k) => nodes[k];
+const gapOf = (a, b) => {
+  const dx = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w)), dy = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h));
+  return dx > 0 && dy > 0 ? Math.hypot(dx, dy) : Math.max(dx, dy);
+};
+/* 29.8в.13: звёзды и созвездия — яркость по солнцу, дневная плашка, подписи не на чужих подписях. */
+function starChecks(sc, nodes, bad) {
+  const st = nodes['ar.stars'];
+  if (!st) { bad.push('нет узла ar.stars'); return; }
+  const t = st.text || '';
+  const vis = +(/vis=([0-9.]+)/.exec(t) || [])[1], day = /day=1/.test(t);
+  const dots = +(/dots=(\d+)/.exec(t) || [])[1], lines = +(/lines=(\d+)/.exec(t) || [])[1];
+  if (sc.starsNight) {
+    if (vis !== 1 || day) bad.push('ночью яркость слоя не 1: ' + t);
+    if (sc.stars && !(dots > 0)) bad.push('точек нет: ' + t);
+    if (sc.cons && !(lines > 0)) bad.push('линий фигур нет: ' + t);
+    if (nodes['ar.starsDay']) bad.push('ночью плашка «днём не видно»');
+  }
+  if (sc.starsDusk) {
+    if (!(vis > 0 && vis < 1) || day) bad.push('в сумерках яркость не между 0 и 1: ' + t);
+    if (nodes['ar.starsDay']) bad.push('в сумерках плашка «днём не видно»');
+  }
+  if (sc.starsDay) {
+    if (vis !== 0 || !day) bad.push('днём яркость не 0: ' + t);
+    const n = nodes['ar.starsDay'];
+    if (!n) bad.push('днём нет плашки «Звёзд днём не видно»');
+    else if (!/Звёзд днём не видно/.test(n.text || '')) bad.push('плашка говорит не то: ' + n.text);
+    if (Object.keys(nodes).some(k => k.startsWith('ar.starLabel.'))) bad.push('днём стоят подписи звёзд');
+  }
+  // Ничего слоя не лежит на метках, подписи выбранного момента и стрелках (правила 29.8в.6, 29.8в.10); сами подписи слоя
+  // — друг на друге тоже нет.
+  const mine = Object.keys(nodes).filter(k => k.startsWith('ar.starLabel.') || k === 'ar.starsDay');
+  const other = Object.keys(nodes).filter(k => /^ar\.(mark\.|pointer|label\.|layers$|back$|follow$|calibrate$|heading$|panel$)/.test(k));
+  const scr = nodes['ar.background'];
+  for (const k of mine) {
+    const a = nodes[k];
+    if (scr && (a.x < -0.5 || a.y < -0.5 || a.x + a.w > scr.w + 0.5 || a.y + a.h > scr.h + 0.5)) bad.push(`${k} за краем экрана`);
+    for (const o of other) if (gapOf(a, nodes[o]) < 0) bad.push(`${k} лежит на ${o}`);
+  }
+  for (let i = 0; i < mine.length; i++) for (let j = i + 1; j < mine.length; j++) if (gapOf(nodes[mine[i]], nodes[mine[j]]) < 0) bad.push(`${mine[i]} лежит на ${mine[j]}`);
+}
 /* Проверки по рамкам узлов. Возвращают список нарушений. */
 function verdict(sc, nodes) {
   const bad = [];
@@ -81,16 +143,17 @@ function verdict(sc, nodes) {
   // Кнопка «Слои» показывает включённые слои (точки под значком); список — в отчёте текстом узла.
   if (nodes['ar.layers']) {
     const on = (nodes['ar.layers'].text || '').split(',').filter(Boolean).sort().join(',');
-    const want = [sc.moon ? 'moon' : '', sc.mw ? 'milkyWay' : ''].filter(Boolean).sort().join(',');
+    const want = [sc.moon ? 'moon' : '', sc.mw ? 'milkyWay' : '', sc.stars ? 'stars' : '', sc.cons ? 'constellations' : ''].filter(Boolean).sort().join(',');
     if (on !== want) bad.push(`«Слои» показывает «${on}», включено «${want}»`);
   }
   if (sc.layersOpen) {
-    for (const k of ['ar.layer.moon', 'ar.layer.mw']) { if (need(k)) touch(k); }
+    for (const k of ['ar.layer.moon', 'ar.layer.mw', 'ar.layer.stars', 'ar.layer.constellations']) { if (need(k)) touch(k); }
+    for (const k of ['ar.layer.stars', 'ar.layer.constellations']) if (nodes[k] && !/off$/.test(nodes[k].text || '')) bad.push(k + ' включена сама: ' + nodes[k].text);
     const a = nodes['ar.layer.moon'], b = nodes['ar.layer.mw'];
     if (a && b && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 0.5) bad.push('строки слоёв накладываются');
     if (a && !/on$/.test(a.text || '')) bad.push('луна включена, а строка говорит: ' + a.text);
     if (b && !/off$/.test(b.text || '')) bad.push('Млечный Путь выключен, а строка говорит: ' + b.text);
-  } else if (nodes['ar.layer.moon'] || nodes['ar.layer.mw']) bad.push('список слоёв открыт без нажатия');
+  } else if (nodes['ar.layer.moon'] || nodes['ar.layer.mw'] || nodes['ar.layer.stars'] || nodes['ar.layer.constellations']) bad.push('список слоёв открыт без нажатия');
   // Ряд кнопок: рамки не накладываются друг на друга.
   const row = ['ar.back', 'ar.follow', 'ar.calibrate', 'ar.heading', 'ar.layers'].filter(k => nodes[k]);
   for (let i = 0; i < row.length; i++) for (let j = i + 1; j < row.length; j++) {
@@ -139,6 +202,8 @@ function verdict(sc, nodes) {
     else if (mark.y + mark.h / 2 < bottom + 8) bad.push(`центр диска ещё под кнопками (y ${(mark.y + mark.h / 2).toFixed(0)}): сценарий не про край`);
     else if (!nodes['ar.pointer.sun']) bad.push('диск виден не целиком (край под кнопками), а стрелки к солнцу нет');
   }
+  if (sc.stars || sc.cons) starChecks(sc, nodes, bad);
+  else if (nodes['ar.stars']) bad.push('слой звёзд нарисован при выключенных переключателях');
   const marks = Object.keys(nodes).filter(k => k.startsWith('ar.mark.'));
   const sun = marks.filter(k => /sun/.test(k)), moon = marks.filter(k => /moon/.test(k));
   for (const k of sun) if (![48, 34].includes(Math.round(nodes[k].w))) bad.push(`${k}: диаметр ${nodes[k].w} не 48/34`);
@@ -198,8 +263,10 @@ function verdict(sc, nodes) {
       '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'), '-LPShotAir', path.join(FX, 'air_barnaul.json'),
       '-LPShotName', path.join(FX, 'place_barnaul.json'), '-LPShotScreen', 'map', '-LPShotReportDelay', '5',
       ...flag('calibrationSeen', true), ...flag('moon', sc.moon), ...flag('milkyWay', sc.mw),
+      ...flag('stars', sc.stars), ...flag('constellations', sc.cons),
       '-LPSunAR', '1', '-LPSunARMoment', sc.moment, '-LPSunARPose', sc.pose,
       ...(sc.phone ? ['-LPSunARPhone', sc.phone] : []), ...(sc.camera ? ['-LPSunARFakeCamera', '1'] : []),
+      ...(sc.backdrop ? ['-LPSunARBackdrop', sc.backdrop] : []),
       ...(sc.entry ? ['-LPSunAREntry', '1'] : []), ...(sc.layersOpen ? ['-LPSunARLayersOpen', '1'] : []),
       '-LPShotReport', report]);
     for (let i = 0; i < 240 && !fs.existsSync(report); i++) await sleep(250);
@@ -208,7 +275,7 @@ function verdict(sc, nodes) {
     run('xcrun', ['simctl', 'io', udid, 'screenshot', '--type=png', path.join(dir, 'native.png')], { stdio: 'ignore' });
     const nodes = JSON.parse(fs.readFileSync(report, 'utf8')).nodes || {};
     const bad = verdict(sc, nodes);
-    const marks = Object.fromEntries(Object.keys(nodes).filter(k => /^ar\.(mark|pointer|milkyWay|layers?|entry|overlay|back)/.test(k))
+    const marks = Object.fromEntries(Object.keys(nodes).filter(k => /^ar\.(mark|pointer|milkyWay|stars|starLabel|starsDay|layers?|entry|overlay|back)/.test(k))
       .map(k => [k, { x: +nodes[k].x.toFixed(1), y: +nodes[k].y.toFixed(1), w: +nodes[k].w.toFixed(1), h: +nodes[k].h.toFixed(1), text: nodes[k].text }]));
     rows.push({ scenario: sc.name, bad, nodes: marks });
   }
