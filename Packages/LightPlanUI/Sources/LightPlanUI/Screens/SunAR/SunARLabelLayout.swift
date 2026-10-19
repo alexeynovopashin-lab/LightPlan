@@ -112,17 +112,20 @@ enum SunARLabelLayout {
     static func eventSpot(at original: CGPoint, size: CGSize, obstacles: [CGRect], taken: [CGRect], bounds: CGRect) -> CGPoint {
         let w = size.width + 2 * padX, h = size.height + 2 * padY
         func rect(_ c: CGPoint) -> CGRect { CGRect(x: c.x - w / 2, y: c.y - h / 2, width: w, height: h) }
-        func clear(_ c: CGPoint) -> Bool {
+        // `bounds` — кадр с запасом 40 pt за края (так же ставят остальные подписи); перенесённая подпись должна лежать
+        // на экране целиком (ревью GPT к 94f0f37: проверялся один центр, плашка могла быть видна наполовину).
+        let screen = bounds.insetBy(dx: 40, dy: 40)
+        func clear(_ c: CGPoint, moved: Bool) -> Bool {
             let r = rect(c).insetBy(dx: -gap, dy: -gap)
-            return bounds.contains(c) && !obstacles.contains { r.intersects($0) } && !taken.contains { r.intersects($0) }
+            return bounds.contains(c) && (!moved || screen.contains(rect(c))) && !obstacles.contains { r.intersects($0) } && !taken.contains { r.intersects($0) }
         }
-        if clear(original) { return original }
+        if clear(original, moved: false) { return original }
         let near = obstacles.filter { rect(original).insetBy(dx: -40, dy: -40).intersects($0) }
         guard let first = near.first else { return original }
         let cluster = near.dropFirst().reduce(first) { $0.union($1) }
         let options = [CGPoint(x: original.x, y: cluster.minY - gap - h / 2), CGPoint(x: original.x, y: cluster.maxY + gap + h / 2),
                        CGPoint(x: cluster.minX - gap - w / 2, y: original.y), CGPoint(x: cluster.maxX + gap + w / 2, y: original.y)]
-        return options.filter(clear).min { hypot($0.x - original.x, $0.y - original.y) < hypot($1.x - original.x, $1.y - original.y) }
+        return options.filter { clear($0, moved: true) }.min { hypot($0.x - original.x, $0.y - original.y) < hypot($1.x - original.x, $1.y - original.y) }
             ?? original
     }
 

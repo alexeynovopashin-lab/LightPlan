@@ -241,6 +241,25 @@ struct SunARLayoutTests {
         }
     }
 
+    @Test("перенесённая подпись события лежит на экране целиком: у левого края вариант, уходящий за кадр, не берётся (ревью GPT к 94f0f37)")
+    func movedEventLabelStaysOnScreen() {
+        let screen = CGRect(x: 0, y: 0, width: 375, height: 667)
+        let bounds = screen.insetBy(dx: -40, dy: -40)
+        let size = SunARLabelLayout.textSize("закат 18:15", size: 11, weight: .semibold)
+        let w = size.width + 2 * SunARLabelLayout.padX, h = size.height + 2 * SunARLabelLayout.padY
+        // Подпись у левого края, на ней лежит высокое скопление: «левее», «выше» и «ниже» вылезли бы за экран (центр ещё в запасе 40 pt), свободно «правее».
+        let original = CGPoint(x: w / 2 + 2, y: 300)
+        let plate = CGRect(x: 20, y: -100, width: 60, height: 900)   // высокое скопление у края: выше и ниже — за экраном
+        let at = SunARLabelLayout.eventSpot(at: original, size: size, obstacles: [plate], taken: [], bounds: bounds)
+        let r = CGRect(x: at.x - w / 2, y: at.y - h / 2, width: w, height: h)
+        #expect(at != original, "подпись осталась на плашке")
+        #expect(screen.contains(r), "перенесённая подпись вышла за экран: \(r)")
+        #expect(r.insetBy(dx: -SunARLabelLayout.gap, dy: -SunARLabelLayout.gap).intersects(plate) == false, "лежит на плашке")
+        // Скопление закрывает весь экран: все четыре варианта за экраном — подпись остаётся там, где стояла.
+        let wall = CGRect(x: -50, y: -50, width: 500, height: 800)
+        #expect(SunARLabelLayout.eventSpot(at: original, size: size, obstacles: [wall], taken: [], bounds: bounds) == original)
+    }
+
     @Test("подпись события, которой ничто не мешает, остаётся на прежнем месте над точкой")
     func freeEventLabelStays() throws {
         let phone = bigPhones[1]
