@@ -93,7 +93,8 @@ public struct LightScreenView: View {
                         .foregroundStyle(pal.ink)
                         .shotNode("header.name", text: h.locationName)
                         .frame(height: 18)
-                    PlacePin(pal: pal)
+                    PlaceFollowArrow(pal: pal, following: model.placeFollowing)
+                        .shotNode("header.follow", text: model.placeFollowing ? "on" : "off")
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
                 }
                 if !model.locationSub.isEmpty {

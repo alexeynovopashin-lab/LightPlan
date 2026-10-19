@@ -5,10 +5,12 @@ import LightPlanData
 import CoreLocation
 
 /// Лист «Где снимаем» (`#locSheet` веба, итерация 21в): кнопка места в шапке
-/// «Света» и «Карты». Развилка из двух путей — «Место» (поиск, «Мои места»)
-/// и «Геопозиция» (моё место, широта и долгота); со второго экрана «‹ Где
-/// снимаем» возвращает на развилку, не закрывая лист. «Готово» переносит
-/// место приложения: свет, погода, имя шапки и камера карты едут за ним.
+/// «Света», «Карты» и AR. Сверху (29.8в.12, слово Алексея 18.10) — «Я здесь»
+/// одним касанием и «Следовать за мной»; ниже два пути — «Место» (поиск,
+/// «Мои места») и «Координаты» (широта и долгота там, где адресов нет); со
+/// второго экрана «‹ Где снимаем» возвращает на развилку, не закрывая лист.
+/// «Готово» переносит место приложения: свет, погода, имя шапки и камера
+/// карты едут за ним, слежение за телефоном выключается само.
 ///
 /// Вид — прототипа веба (числа — справка 21в и пара `make shots`), лист —
 /// системный: в iOS 26 он лежит на встроенном стекле (§ 5.4 плана). Поля,
@@ -106,11 +108,11 @@ struct PlaceSheet: View {
             studioEdit = PlaceStudioWay.newCard
         }
         .task {
-            // Первый раз: разрешение ещё не спрашивали — лист встаёт на путь
-            // координат и спрашивает сам (веб, `openLocSheet`).
+            // Первый раз: разрешение ещё не спрашивали — лист спрашивает сам (веб, `openLocSheet`), но
+            // остаётся открытым: человек мог прийти выбрать место, а не искать себя.
+            app.refreshLocationAccess()
             if form.way == .fork, stop == nil, app.locationNeedsPermission {
-                form.open(.geo)
-                await locate()
+                await locate(close: false)
             }
         }
     }
@@ -170,13 +172,103 @@ struct PlaceSheet: View {
     /// «Фотостудии» с шапки нет — месту приложения студия не нужна.
     private func ways(_ t: Lexicon, _ pal: Palette) -> some View {
         VStack(spacing: 0) {
-            wayRow(.addr, icon: "city", title: t.t("loc.wayAddr"), sub: t.t("loc.wayAddrSub"), pal)
+            // Место приложения — сперва «где я»; у точки маршрута формы этого вопроса нет.
+            if stop == nil { hereBlock(t, pal) }
+            wayRow(.addr, icon: "city", title: t.t("loc.wayAddr"), sub: t.t("loc.wayPlaceSub"), pal)
             if stop != nil {
                 wayRow(.studio, icon: "studio", title: t.t("loc.wayStudio"), sub: t.t("loc.wayStudioSub"), pal)
             }
-            wayRow(.geo, icon: "route", title: t.t("loc.wayGeo"), sub: t.t("loc.wayGeoSub"), pal)
+            wayRow(.geo, icon: "route", title: t.t("loc.wayCoords"), sub: t.t("loc.wayCoordsSub"), pal)
         }
         .padding(.top, 16)
+    }
+
+    // MARK: - «Я здесь» и «Следовать за мной» (29.8в.12)
+
+    /// Крупная кнопка «Я здесь» (одно касание: место телефона, лист закрывается), под ней — откуда и когда
+    /// пришла последняя точка; ниже переключатель слежения со своей подписью.
+    private func hereBlock(_ t: Lexicon, _ pal: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { Task { await locate() } } label: {
+                HStack(spacing: 9) {
+                    PlaceGlyphView(glyph: .arrow, size: 18, line: 1.8)
+                    Text(t.t(detecting ? "loc.detecting" : "loc.iAmHere")).font(webFont(16, 650))
+                }
+                .foregroundStyle(pal.brass)
+                .frame(maxWidth: .infinity).frame(height: 52)
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.pressWarm))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressFade())
+            .disabled(detecting)
+            .shotNode("loc.here", text: t.t("loc.iAmHere"))
+            TimelineView(.periodic(from: .now, by: 30)) { _ in
+                let line = fixLine(t)
+                Text(line)
+                    .font(.system(size: 12)).foregroundStyle(pal.ink5)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .shotNode("loc.fix", text: line)
+            }
+            .padding(.top, 8)
+            followRow(t, pal).padding(.top, 14)
+        }
+        .padding(.bottom, 6)
+    }
+
+    /// «Томск, Томская область · обновлено 3 мин назад»; точки ещё не было — так и сказано.
+    private func fixLine(_ t: Lexicon) -> String {
+        guard let fix = app.phoneFix else { return t.t("loc.fixNone") }
+        let ago = PlaceFollow.ago(fix.at, now: app.now())
+        let when = t.t(ago.key, ["n": String(ago.n)])
+        return (fix.name ?? fix.coordinate.text) + " · " + when
+    }
+
+    private func followRow(_ t: Lexicon, _ pal: Palette) -> some View {
+        let shown = app.followShown
+        let note: String = switch shown {
+        case .on: t.t("loc.followOn")
+        case .off: t.t("loc.followOff")
+        case .offByChoice: t.t("loc.followByHand")
+        case .needsAccess: t.t("loc.followAsk")
+        case .denied: t.t("loc.followDenied")
+        }
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(t.t("loc.follow")).font(.system(size: 16)).foregroundStyle(pal.ink)
+                    Text(note)
+                        .font(.system(size: 12)).foregroundStyle(shown == .denied ? pal.terra : pal.ink5)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .shotNode("loc.followNote", text: note)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Toggle("", isOn: Binding(get: { app.followShown == .on }, set: { on in
+                    // Нет доступа — переключатель не врёт «включено», а ведёт туда, где доступ дают.
+                    if on, app.followShown == .denied { openSystemSettings(); return }
+                    Task { await app.setFollowing(on) }
+                }))
+                .labelsHidden().tint(pal.brass)
+                .shotNode("loc.follow", text: shown == .on ? "on" : "off")
+            }
+            if shown == .denied {
+                Button(t.t("loc.openSettings")) { openSystemSettings() }
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brass)
+                    .buttonStyle(.plain)
+                    .padding(.top, 6)
+                    .shotNode("loc.openSettings")
+            }
+        }
+        .padding(.vertical, 12).padding(.horizontal, 2)
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+    }
+
+    @Environment(\.openURL) private var openURL
+
+    private func openSystemSettings() {
+        #if os(iOS)
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+        #endif
     }
 
     private func wayRow(_ way: PlaceSheetForm.Way, icon: String, title: String, sub: String, _ pal: Palette) -> some View {
@@ -383,24 +475,8 @@ struct PlaceSheet: View {
 
     private func geoWay(_ t: Lexicon, _ pal: Palette) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Точке формы «моё место» не подставляется: определение двигает место
-            // приложения, а спрашивали о точке (хвост шага 2 итерации 24).
-            if stop == nil {
-            Button { Task { await locate() } } label: {
-                HStack(spacing: 9) {
-                    PlaceGlyphView(glyph: .detect, size: 18, line: 1.8)
-                    Text(t.t(detecting ? "loc.detecting" : "loc.here")).font(webFont(15, 600))
-                }
-                .foregroundStyle(pal.brass)
-                .frame(maxWidth: .infinity).frame(height: 46)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.pressWarm))
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PressFade())
-            .disabled(detecting)
-            .shotNode("loc.here")
-            .padding(.top, 14)
-            }
+            // «Подставить моё место» отсюда ушло на развилку кнопкой «Я здесь» (29.8в.12): этот путь — только
+            // широта и долгота.
             HStack(alignment: .top, spacing: 10) {
                 coordField(t.t("loc.lat"), "56.021", text: Binding(get: { form.lat }, set: { form.typeCoords(lat: $0) }),
                            field: .lat, label: "loc.latLabel", node: "loc.lat", pal)
@@ -447,14 +523,18 @@ struct PlaceSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// «Подставить моё место»: месту приложения это весь ответ — переезд и
-    /// лист закрывается; отказ или нет сигнала — строка ошибки.
-    private func locate() async {
+    /// «Я здесь»: месту приложения это весь ответ — переезд и лист закрывается; отказ — честная строка про
+    /// доступ, нет сигнала — «Место не определено».
+    private func locate(close closing: Bool = true) async {
         detecting = true
         form.errorKey = nil
         let r = await app.locateHere()
         detecting = false
-        if case .fix = r { close() } else { form.errorKey = "loc.errNotFound" }
+        switch r {
+        case .fix: if closing { close() }
+        case .denied, .restricted: form.errorKey = "loc.followDenied"
+        case .unavailable: form.errorKey = "loc.errNotFound"
+        }
     }
 
     // MARK: - Имя, ошибка, «Готово»

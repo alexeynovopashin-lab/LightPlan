@@ -95,7 +95,10 @@ struct PlaceSheetTests {
         var f = PlaceSheetForm(here: barnaul)
         #expect(f.titleKey == "loc.title" && f.subKey == "loc.sub")
         f.open(.geo)
-        #expect(f.titleKey == "loc.wayGeo" && f.subKey == "loc.wayGeoSub")
+        // 29.8в.12: «Геопозиция» листа — «Координаты».
+        #expect(f.titleKey == "loc.wayCoords" && f.subKey == "loc.wayCoordsSub")
+        f.open(.addr)
+        #expect(f.titleKey == "loc.wayAddr" && f.subKey == "loc.wayPlaceSub")
         f.errorKey = "loc.errLat"
         f.open(.fork)
         #expect(f.errorKey == nil)

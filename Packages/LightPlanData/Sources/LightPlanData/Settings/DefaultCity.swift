@@ -10,13 +10,18 @@ import Foundation
 /// пользователя берётся, только если доступ уже был.
 public enum DefaultCity {
 
-    public enum Source: Sendable, Equatable { case settings, device, capital }
+    /// `saved` — место, выбранное руками в прошлый раз (29.8в.12: помнится между запусками).
+    public enum Source: Sendable, Equatable { case settings, device, capital, saved }
 
     public struct Resolved: Sendable, Equatable {
         public let coordinate: GeoCoordinate
         /// Имя, если оно известно без геокодера (город настроек, столица).
         public let name: String?
         public let source: Source
+
+        public init(coordinate: GeoCoordinate, name: String?, source: Source) {
+            self.coordinate = coordinate; self.name = name; self.source = source
+        }
     }
 
     public struct Capital: Sendable, Equatable {

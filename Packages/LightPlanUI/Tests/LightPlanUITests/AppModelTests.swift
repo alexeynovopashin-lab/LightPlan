@@ -42,9 +42,9 @@ struct AppModelTests {
                                 coordinate: GeoCoordinate(latitude: 56.4846, longitude: 84.9476))
 
     private func model(_ snapshot: Snapshot = Snapshot(), store: Store? = nil,
-                       locator: Locator = Locator(authorized: false)) -> AppModel {
+                       locator: Locator = Locator(authorized: false), memory: PlaceMemory? = nil) -> AppModel {
         AppModel(snapshot: snapshot, store: store, language: "ru", zone: barnaul, locator: locator,
-                 geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather())
+                 geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather(), placeMemory: memory)
     }
 
     // MARK: - «Готово, когда»: смена доезжает до «Света» без перезапуска
@@ -119,13 +119,17 @@ struct AppModelTests {
         #expect(app.place.coordinate == phone)
     }
 
-    @Test func settingsCityWinsOverDevice() {
+    /// Город настроек сильнее телефона, только пока слежение выключено (29.8в.12: слежение включено по
+    /// умолчанию, и тогда место — телефон, `PlaceFollowTests.phoneBeatsHomeCityWhileFollowing`).
+    @Test func settingsCityWinsOverDeviceWhenNotFollowing() {
         var snap = Snapshot()
         var s = AppSettings(snapshot: snap)
         s.takeCity(tomsk)
         s.apply(to: &snap)
         let locator = Locator(authorized: true, fix: .fix(phone))
-        let app = model(snap, locator: locator)
+        var rec = PlaceMemoryRecord()
+        rec.following = false
+        let app = model(snap, locator: locator, memory: InMemoryPlaceMemory(rec))
         #expect(app.citySource == .settings)
         #expect(app.light.locationName == "Томск")
         #expect(app.place.coordinate == tomsk.coordinate)

@@ -12,6 +12,8 @@ enum PlaceGlyph {
     case cross
     /// Прицел «Подставить моё место» (`.loc-detect`): круг r 4 и четыре риски.
     case detect
+    /// Стрелка места (29.8в.12, как у Sun Surveyor): навигационный треугольник остриём вверх-вправо.
+    case arrow
 
     func path(in rect: CGRect) -> Path {
         let k = min(rect.width, rect.height) / 24
@@ -36,6 +38,9 @@ enum PlaceGlyph {
             for (a, b) in [(p(12, 2), p(12, 5)), (p(12, 19), p(12, 22)), (p(2, 12), p(5, 12)), (p(19, 12), p(22, 12))] {
                 path.move(to: a); path.addLine(to: b)
             }
+        case .arrow:
+            path.move(to: p(3, 11)); path.addLine(to: p(21, 3)); path.addLine(to: p(13, 21))
+            path.addLine(to: p(11, 13)); path.closeSubpath()
         }
         return path
     }
@@ -59,14 +64,30 @@ struct PlaceGlyphView: View {
     }
 }
 
-/// Булавка у имени места в шапке «Света» и «Карты» (`.loc-pin`): 13, линия
-/// 1,6, `--ink-6`; пока палец на кнопке — латунь (`.loc:active .loc-pin`).
-struct PlacePin: View {
+/// Стрелка у имени места в шапке «Света», «Карты» и на AR (29.8в.12) — на месте булавки `.loc-pin`, того же
+/// размера 13 и цвета: сплошная — место следует за телефоном, контурная — выбрано руками. Палец на кнопке —
+/// латунь, как у булавки.
+struct PlaceFollowArrow: View {
     let pal: Palette
+    let following: Bool
+    var size: CGFloat = 13
+    var ink: Color?
     @Environment(\.placePressed) private var pressed
 
     var body: some View {
-        Icon("pin", size: 13, line: 1.6).foregroundStyle(pressed ? pal.brass : pal.ink6)
+        let color = pressed ? pal.brass : (ink ?? pal.ink6)
+        ZStack {
+            if following { Shape(glyph: .arrow).fill(color) }
+            Shape(glyph: .arrow)
+                .stroke(color, style: StrokeStyle(lineWidth: 1.6 * size / 24, lineCap: .round, lineJoin: .round))
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+
+    private struct Shape: SwiftUI.Shape {
+        let glyph: PlaceGlyph
+        func path(in rect: CGRect) -> Path { glyph.path(in: rect) }
     }
 }
 

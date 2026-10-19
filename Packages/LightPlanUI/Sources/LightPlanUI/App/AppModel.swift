@@ -22,7 +22,7 @@ public final class AppModel {
     public let place: CurrentPlace
     public let light: LightScreenModel
     /// Откуда взят город, по которому живёт «Свет» после запуска.
-    public private(set) var citySource: DefaultCity.Source
+    public internal(set) var citySource: DefaultCity.Source
     /// Лист «Откуда вы работаете» — первый запуск, пока знакомство не пройдено.
     public var showStartSheet: Bool
     /// Открытая вкладка. Живое приложение встаёт на «Свет»; снимок пары
@@ -385,12 +385,25 @@ public final class AppModel {
     @ObservationIgnored var pinTask: Task<Void, Never>?
     let locator: any DeviceLocating
 
+    // MARK: Слежение за местом (29.8в.12)
+
+    @ObservationIgnored let placeMemory: any PlaceMemory
+    /// Копия памяти места; запись уходит в память устройства сразу.
+    var placeMemoryRecord: PlaceMemoryRecord { didSet { placeMemory.record = placeMemoryRecord } }
+    /// «Следовать за мной» включено (даже если доступа к геопозиции нет — тогда вид честно говорит об этом).
+    var following: Bool { didSet { light.placeFollowing = followingLive } }
+    /// Слежение выключилось само: место выбрали руками.
+    var followOffByChoice: Bool { didSet { light.placeFollowing = followingLive } }
+    /// Доступ к геопозиции, сверенный последним (на старте и при возврате на экран).
+    var locationAccess: LocationAccess { didSet { light.placeFollowing = followingLive } }
+
     init(snapshot: Snapshot, store: Store?, language: String, zone: TimeZone = .current,
          locator: any DeviceLocating, geocoder: any ReverseGeocoding, cityLookup: any CityLookup,
          placeSearch: any PlaceSearch = ApplePlaceSearch(),
          weatherSource: any WeatherSource, glowSource: any GlowTileSource = NoGlowSource(),
          headingSource: (any HeadingSource)? = nil,
          weatherReachability: (any NetworkReachability)? = nil,
+         placeMemory: (any PlaceMemory)? = nil,
          now: @escaping @Sendable () -> Date = { Date() }) {
         self.snapshot = snapshot
         self.store = store
@@ -413,10 +426,29 @@ public final class AppModel {
         }
         self.netMode = Self.netMode(of: snapshot)
 
-        // Город по умолчанию. Место, выбранное руками в прошлый раз
-        // (`loc` веба), на старте не читается: выбор руками живёт до
-        // перезагрузки (решение 19 сентября).
-        let resolved = DefaultCity.resolve(home: settings.home, device: nil, language: language, zone: zone)
+        // Место на старте (29.8в.12). Решение 19 сентября «выбор руками живёт до перезагрузки» отменено словом
+        // Алексея 18.10 (выбрал Томск, перезапустил — Москва): место приложения помнится между запусками.
+        // Слежение включено и доступ дан — последняя точка телефона (свежая придёт следом); иначе последнее
+        // место приложения; памяти нет — «Мой город», затем место телефона, если доступ был, затем столица.
+        let memory = placeMemory ?? InMemoryPlaceMemory()
+        self.placeMemory = memory
+        let rec = memory.record
+        self.placeMemoryRecord = rec
+        self.following = rec.following
+        self.followOffByChoice = rec.offByChoice
+        let access = locator.access
+        self.locationAccess = access
+        let live = rec.following && access == .granted
+        // Следим: место приложения и есть место телефона; запомненное место берётся с именем и поясом, если
+        // оно в 500 м от последней точки телефона, иначе — голая точка (имя даст геокодер).
+        let saved: PlaceMemoryRecord.Saved? = if live, let ph = rec.phone {
+            rec.place.flatMap { PlaceFollow.shouldMove(from: $0.coordinate, to: ph.coordinate) ? nil : $0 }
+                ?? .init(latitude: ph.latitude, longitude: ph.longitude, name: nil, sub: nil, zone: nil)
+        } else { rec.place }
+        let fromMemory: DefaultCity.Resolved? = saved.map {
+            DefaultCity.Resolved(coordinate: $0.coordinate, name: $0.name, source: live ? .device : .saved)
+        }
+        let resolved = fromMemory ?? DefaultCity.resolve(home: settings.home, device: nil, language: language, zone: zone)
         // Зоны, которые веб уже узнал (`zones` снимка): без них первая минута
         // «Света» считается по оценке пояса из долготы — Барнаул (+7) по
         // долготе +6, и экран открывался часом раньше «сейчас» (замер 19б).
@@ -425,8 +457,9 @@ public final class AppModel {
             let cap = DefaultCity.capital(language: Lexicon.base(language), zone: zone)
             if let z = ZoneID(cap.zone) { zones.remember(z, at: cap.coordinate) }
         }
+        if let saved, let raw = saved.zone, let z = ZoneID(raw) { zones.remember(z, at: saved.coordinate) }
         let place = CurrentPlace(initial: resolved.coordinate,
-                                 name: resolved.name.map { PlaceName(city: $0, sub: "") },
+                                 name: resolved.name.map { PlaceName(city: $0, sub: fromMemory == nil ? "" : saved?.sub ?? "") },
                                  zones: zones, namer: PlaceNamer(geocoder: geocoder), locator: locator)
         self.place = place
         self.citySource = resolved.source
@@ -447,16 +480,24 @@ public final class AppModel {
                                       clockPreference: Self.clock(settings.clock))
         light.proMode = settings.pro
         light.fahrenheit = settings.tempUnit == .f
+        light.placeFollowing = live
 
         watchPlace()
-        // Нет своего города, но доступ к геолокации уже дан — берём место
-        // телефона. Новых запросов разрешения здесь нет: если доступа нет,
-        // остаётся столица.
-        if resolved.source == .capital, locator.isAlreadyAuthorized {
+        // Следим и доступ уже дан — свежая точка телефона (без системного окна); слежение за смещением — с ней.
+        // Не следим, но памяти нет и доступ есть — место телефона вместо столицы, как было. Новых запросов
+        // разрешения на старте нет.
+        if live {
+            Task { await self.followFreshFix() }
+            startWatchingIfFollowing()
+        } else if resolved.source == .capital, access == .granted {
             Task { await self.useDeviceLocationIfNoCity() }
-        } else {
-            // Имя и настоящая зона для города настроек — от геокодера.
-            if resolved.source == .settings { place.move(to: resolved.coordinate, knownName: PlaceName(city: resolved.name ?? "", sub: "")) }
+        } else if resolved.source == .settings || resolved.source == .saved {
+            // Имя и настоящая зона для города настроек и запомненного места — от геокодера.
+            if let n = resolved.name {
+                place.move(to: resolved.coordinate, knownName: PlaceName(city: n, sub: saved?.sub ?? ""))
+            } else {
+                place.move(to: resolved.coordinate)
+            }
         }
     }
 
@@ -539,7 +580,8 @@ public final class AppModel {
         light.fahrenheit = settings.tempUnit == .f
         if settings.clock != before.clock { light.clockPreference = Self.clock(settings.clock) }
         if settings.ribbonMode != before.ribbonMode { light.timebar.setRibbonMode(Self.ribbon(settings.ribbonMode)) }
-        if settings.home != before.home, let c = settings.home.coordinate {
+        // Пока место следует за телефоном, «Мой город» — запасной: свет стоит там, где телефон (29.8в.12).
+        if settings.home != before.home, let c = settings.home.coordinate, !followingLive {
             place.move(to: c, knownName: PlaceName(city: settings.home.name, sub: ""))
             citySource = .settings
         }
@@ -547,22 +589,38 @@ public final class AppModel {
 
     /// Карту сдвинули пальцем — место приложения едет за точкой под
     /// головкой (`moveend` веба): свет, погода и прибор пересчитываются там.
+    /// Сдвиг пальцем — выбор руками: слежение выключается само (29.8в.12).
     public func moveFromMap(latitude: Double, longitude: Double) {
+        choseByHand()
         place.move(to: GeoCoordinate(latitude: latitude, longitude: longitude))
+        citySource = .saved
+        remember()
     }
 
     /// Лист «Где снимаем» ответил точкой (`gotoLocation` веба): место
-    /// приложения, свет, погода, имя шапки и камера карты едут за ней. Как и
-    /// сдвиг карты, выбор руками живёт до перезапуска (решение 19 сентября).
+    /// приложения, свет, погода, имя шапки и камера карты едут за ней. Выбор
+    /// руками выключает слежение и помнится после перезапуска (29.8в.12;
+    /// решение 19 сентября «живёт до перезапуска» отменено словом Алексея 18.10).
     public func movePlace(to c: GeoCoordinate) {
+        choseByHand()
         place.move(to: c)
+        citySource = .saved
+        remember()
     }
 
-    /// «Подставить моё место» листа: разрешение спрашивается здесь.
+    /// «Я здесь» листа и «Моё место» карты: разрешение спрашивается здесь. Место встаёт на точку телефона
+    /// сразу, без порога; слежение не трогается — это разовый ответ «где я».
     @discardableResult
     public func locateHere() async -> DeviceFix {
         await place.useDeviceLocation()
-        return place.lastDeviceResult ?? .unavailable
+        refreshLocationAccess()
+        let r = place.lastDeviceResult ?? .unavailable
+        if case .fix(let c) = r {
+            citySource = .device
+            phoneArrived(c, force: true)
+            startWatchingIfFollowing()
+        }
+        return r
     }
 
     /// Разрешение на геоданные ещё не спрашивали — лист встаёт на путь
@@ -700,6 +758,8 @@ public final class AppModel {
             light.locationName = place.name?.city ?? place.coordinate.text
             light.locationSub = place.name?.sub ?? ""
         }
+        light.placeFollowing = followingLive
+        remember()
     }
 
     // MARK: - Перевод настроек в типы экранов

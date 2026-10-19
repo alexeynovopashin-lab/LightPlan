@@ -93,12 +93,19 @@ extension AppModel {
         let start = Date(), fixed = s.now
         let name = (try? Data(contentsOf: s.name ?? URL(fileURLWithPath: "/dev/null")))
             .flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
+        // Слежение за местом (29.8в.12): `-LPShotFollow on` — доступ дан, телефон в месте засева; `hand` — место
+        // выбрано руками, слежение выключилось само; без аргумента — доступа нет, как у снимков пар.
+        let follow = UserDefaults.standard.string(forKey: "LPShotFollow")
+        var memory = PlaceMemoryRecord()
+        if follow == "hand" { memory.following = false; memory.offByChoice = true }
+        let phone = follow == "on" ? AppSettings(snapshot: snapshot).home.coordinate : nil
         let app = AppModel(snapshot: snapshot, store: nil, language: AppLanguage.current, zone: s.zone,
-                           locator: ShotLocator(),
+                           locator: ShotLocator(phone: phone),
                            geocoder: ShotGeocoder(city: name?["city"], sub: name?["sub"], zone: s.zone.identifier),
                            cityLookup: ShotCityLookup(), placeSearch: ShotPlaceSearch(),
                            weatherSource: FileWeatherSource(forecast: s.forecast, air: s.air),
                            headingSource: s.heading.map { ScriptedHeading(angles: $0, hold: .seconds(s.headingHold)) },
+                           placeMemory: InMemoryPlaceMemory(memory),
                            now: { fixed.addingTimeInterval(Date().timeIntervalSince(start)) })
         app.tab = switch s.screen {
         case .settings: .settings
@@ -256,8 +263,10 @@ extension AppModel {
 }
 
 private struct ShotLocator: DeviceLocating {
-    func currentFix() async -> DeviceFix { .denied }
-    var isAlreadyAuthorized: Bool { false }
+    /// Где стоит телефон; `nil` — доступа нет.
+    let phone: GeoCoordinate?
+    func currentFix() async -> DeviceFix { phone.map { .fix($0) } ?? .denied }
+    var isAlreadyAuthorized: Bool { phone != nil }
 }
 
 private struct ShotGeocoder: ReverseGeocoding {

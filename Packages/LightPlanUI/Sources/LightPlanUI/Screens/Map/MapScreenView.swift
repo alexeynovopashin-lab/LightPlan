@@ -477,7 +477,8 @@ struct MapScreenView: View {
                     .foregroundStyle(pal.ink)
                     .shotNode("header.name", text: light.locationName)
                     .frame(height: 18)
-                PlacePin(pal: pal)
+                PlaceFollowArrow(pal: pal, following: light.placeFollowing)
+                    .shotNode("header.follow", text: light.placeFollowing ? "on" : "off")
                     .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
             }
             if !light.locationSub.isEmpty {
@@ -956,16 +957,12 @@ struct MapScreenView: View {
         }
     }
 
-    /// «AR» (шаги 29.8в, 29.8в.2): дуга солнца на выбранный день поверх камеры. Место и момент — те, что стоят на
-    /// карте: день и время таймбара (экран AR двигает выбранный момент дальше сам, «сейчас» у него отдельная метка).
+    /// «AR» (шаги 29.8в, 29.8в.2): дуга солнца поверх камеры. Место — то, что стоит на карте; момент на входе
+    /// всегда «сейчас» (29.8в.12: выбранное на карте время чужого пояса панель AR показывала бы как своё).
     private func arButton(_ pal: Palette, darkCanvas: Bool) -> some View {
         MapRoundButton(pal: pal, darkCanvas: darkCanvas, on: false, label: app.lexicon.t("ar.open"),
                        node: "map.arBtn", action: {
-            let tb = app.light.timebar
-            let picked = SunTrack.moment(day: tb.machine.selectedDate, minutes: tb.machine.viewMinute, in: tb.place)
-            withAnimation(PlanMotion.pick(PlanMotion.overlay)) {
-                app.beginSunAR(chosen: tb.place, name: app.light.locationName, moment: picked)
-            }
+            withAnimation(PlanMotion.pick(PlanMotion.overlay)) { app.enterSunAR() }
         }) {
             Text("AR").font(.system(size: 11, weight: .bold)).tracking(0.2)
         }

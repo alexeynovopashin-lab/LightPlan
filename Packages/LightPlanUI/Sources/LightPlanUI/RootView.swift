@@ -45,6 +45,8 @@ public struct RootView: View {
             if phase == .active, let app { app.light.weather.resume(); app.sweepMbBins() }
             // И расписание студийного часа сверяется с данными и с разрешением (его могли дать в настройках iPhone).
             if phase == .active, let app { app.syncStudioAlerts(force: true) }
+            // Доступ к геопозиции могли дать или отнять в настройках iPhone; слежение берёт свежую точку (29.8в.12).
+            if phase == .active, let app { app.placeBecameActive() }
         }
     }
 }
@@ -150,6 +152,8 @@ private struct Shell: View {
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
                 .animation(.easeOut(duration: 0.3), value: app.placeSheetOpen)
+                // Лист открывается и со стрелки AR (29.8в.12): затемнение — над ним.
+                .zIndex(BackZ.sunAR + 0.01)
             // «Вернуть» после удаления (22) — над любой вкладкой, 14 над панелью.
             UndoBar(app: app)
                 .zIndex(2)

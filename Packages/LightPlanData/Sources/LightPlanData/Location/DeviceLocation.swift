@@ -12,6 +12,15 @@ public enum DeviceFix: Sendable, Equatable {
     case unavailable
 }
 
+/// Доступ к месту телефона — для переключателя «Следовать за мной» (29.8в.12).
+public enum LocationAccess: Sendable, Equatable {
+    /// Ещё не спрашивали: первое касание покажет системное окно.
+    case notAsked
+    case granted
+    /// Отказано, ограничено или службы выключены: разрешить можно только в настройках телефона.
+    case denied
+}
+
 @MainActor
 public protocol DeviceLocating {
     /// Одна точка «сейчас». Разрешение спрашивается при первом вызове и только
@@ -25,14 +34,23 @@ public protocol DeviceLocating {
     /// путь координат и спрашивает (веб, `openLocSheet`: `permissions` →
     /// `prompt`): кнопка живёт там, и просить, не показав кто, нечестно.
     var needsPermission: Bool { get }
+    /// Слежение за значимым смещением телефона (сотни метров, без постоянного GPS): каждая новая точка — в
+    /// `onFix`. Разрешения не спрашивает; без доступа молчит. Второй вызов заменяет получателя.
+    func startWatching(_ onFix: @escaping @MainActor (GeoCoordinate) -> Void)
+    func stopWatching()
 }
 
 public extension DeviceLocating {
     var isAlreadyAuthorized: Bool { false }
     var needsPermission: Bool { false }
+    func startWatching(_ onFix: @escaping @MainActor (GeoCoordinate) -> Void) {}
+    func stopWatching() {}
+    var access: LocationAccess { isAlreadyAuthorized ? .granted : needsPermission ? .notAsked : .denied }
 }
 
-/// `CoreLocation` по запросу. Ничего не слушает постоянно: одна точка и тишина.
+/// `CoreLocation` по запросу: одна точка и тишина. Слежение (29.8в.12) — служба значимых смещений системы
+/// (`startMonitoringSignificantLocationChanges`: сотовые вышки и Wi-Fi, точка примерно раз в 500 м пути), не
+/// постоянный GPS.
 ///
 /// Точность — сотни метров: место нужно, чтобы назвать населённый пункт и
 /// посчитать свет, а не проложить маршрут. Ждём не дольше `timeout` — без него
@@ -44,6 +62,7 @@ public final class CoreLocationProvider: NSObject, DeviceLocating {
     private var pending: CheckedContinuation<DeviceFix, Never>?
     private var awaitingAuthorization = false
     private var timeoutTask: Task<Void, Never>?
+    private var watcher: (@MainActor (GeoCoordinate) -> Void)?
 
     public init(timeout: Duration = .seconds(15)) {
         self.timeout = timeout
@@ -63,6 +82,20 @@ public final class CoreLocationProvider: NSObject, DeviceLocating {
     }
 
     public var needsPermission: Bool { manager.authorizationStatus == .notDetermined }
+
+    public func startWatching(_ onFix: @escaping @MainActor (GeoCoordinate) -> Void) {
+        watcher = onFix
+        guard isAlreadyAuthorized else { return }
+        if CLLocationManager.significantLocationChangeMonitoringAvailable() {
+            manager.startMonitoringSignificantLocationChanges()
+        }
+    }
+
+    public func stopWatching() {
+        guard watcher != nil else { return }
+        watcher = nil
+        manager.stopMonitoringSignificantLocationChanges()
+    }
 
     public func currentFix() async -> DeviceFix {
         // Второй вопрос при живом первом не плодим: тому, кто спросил вторым, отвечаем «нет».
@@ -101,6 +134,10 @@ public final class CoreLocationProvider: NSObject, DeviceLocating {
 
 extension CoreLocationProvider: @preconcurrency CLLocationManagerDelegate {
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        // Доступ дали в настройках, пока слежение ждало, — оно начинает работать.
+        if watcher != nil, isAlreadyAuthorized, CLLocationManager.significantLocationChangeMonitoringAvailable() {
+            manager.startMonitoringSignificantLocationChanges()
+        }
         // Вызывается и при создании менеджера, когда никто ничего не спрашивал.
         guard pending != nil, awaitingAuthorization else { return }
         if manager.authorizationStatus != .notDetermined {
@@ -111,7 +148,10 @@ extension CoreLocationProvider: @preconcurrency CLLocationManagerDelegate {
 
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let last = locations.last else { return finish(.unavailable) }
-        finish(.fix(GeoCoordinate(latitude: last.coordinate.latitude, longitude: last.coordinate.longitude)))
+        let c = GeoCoordinate(latitude: last.coordinate.latitude, longitude: last.coordinate.longitude)
+        // Одна и та же служба отвечает и на «где я», и слежению: ответ получают оба.
+        finish(.fix(c))
+        watcher?(c)
     }
 
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

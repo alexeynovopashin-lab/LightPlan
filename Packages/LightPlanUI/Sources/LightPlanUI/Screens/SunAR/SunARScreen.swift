@@ -281,6 +281,7 @@ struct SunARScreen: View {
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .center, spacing: 8) {
                             backButton
+                            placeButton
                             Spacer(minLength: 8)
                             if model.hasSensor { calibrateButton }
                             headingChip(aim)
@@ -289,6 +290,7 @@ struct SunARScreen: View {
                         VStack(alignment: .trailing, spacing: 8) {
                             HStack(alignment: .center, spacing: 8) {
                                 backButton
+                                placeButton
                                 Spacer(minLength: 8)
                                 if model.hasSensor { calibrateButton }
                                 headingChip(aim)
@@ -401,6 +403,21 @@ struct SunARScreen: View {
         .buttonStyle(.plain)
         .glassEffect(SunARInk.buttonGlass.interactive(), in: Capsule())
         .shotNode("ar.back", text: t.t("nav.back"))
+    }
+
+    /// Стрелка места (29.8в.12, как у Sun Surveyor): сплошная — место приложения следует за телефоном, контурная —
+    /// выбрано руками. Касание открывает «Где снимаем» поверх AR. Экран AR считает небо там, где телефон, — смена
+    /// места в листе его не двигает; метка «Место: …» ниже говорит, когда выбранное далеко.
+    private var placeButton: some View {
+        Button { app.placeSheetOpen = true } label: {
+            PlaceFollowArrow(pal: Palette(.dark), following: app.followingLive, size: 17, ink: SunARInk.light)
+                .frame(width: SunARInk.touch, height: SunARInk.touch)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassEffect(SunARInk.buttonGlass.interactive(), in: Circle())
+        .accessibilityLabel(t.t("loc.title"))
+        .shotNode("ar.follow", text: app.followingLive ? "on" : "off")
     }
 
     /// «Калибровка» — рядом с компасом: повторить восьмёрку, когда курс уплывает.

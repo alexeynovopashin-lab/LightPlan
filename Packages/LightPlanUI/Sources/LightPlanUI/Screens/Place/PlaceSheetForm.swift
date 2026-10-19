@@ -86,9 +86,11 @@ struct PlaceSheetForm: Equatable {
 
     /// Заголовок и подпись: на развилке — вопрос листа, в пути — его слова.
     var titleKey: String {
-        switch way { case .fork: "loc.title"; case .addr: "loc.wayAddr"; case .geo: "loc.wayGeo"; case .studio: "loc.wayStudio" }
+        switch way { case .fork: "loc.title"; case .addr: "loc.wayAddr"; case .geo: "loc.wayCoords"; case .studio: "loc.wayStudio" }
     }
+    /// 29.8в.12: «Геопозиция» листа — «Координаты» (слово Алексея 18.10: «Геопозиция там, где нет адресов» —
+    /// это широта и долгота, а «где я» — кнопка «Я здесь» на развилке).
     var subKey: String {
-        switch way { case .fork: "loc.sub"; case .addr: "loc.wayAddrSub"; case .geo: "loc.wayGeoSub"; case .studio: "loc.wayStudioSub" }
+        switch way { case .fork: "loc.sub"; case .addr: "loc.wayPlaceSub"; case .geo: "loc.wayCoordsSub"; case .studio: "loc.wayStudioSub" }
     }
 }
