@@ -94,13 +94,21 @@ enum SunARPlanetLabels {
                 CGPoint(x: a.x, y: a.y - dy), CGPoint(x: a.x, y: a.y + dy)]
     }
 
+    /// Пятно точки планеты для раскладки: радиус точки и запас 3 pt. Подпись одной планеты не ложится на точку другой.
+    static func dotRect(_ c: Candidate) -> CGRect {
+        let h = c.radius + 3
+        return CGRect(x: c.anchor.x - h, y: c.anchor.y - h, width: 2 * h, height: 2 * h)
+    }
+
     static func place(_ candidates: [Candidate], taken: [CGRect], window: CGRect) -> [Placed] {
         var busy = taken
         var out: [Placed] = []
         for c in candidates {
+            // Точки других планет заняты сразу, ещё до того, как их подписи поставлены; своя точка не мешает — подпись и так за её краем.
+            let dots = candidates.filter { $0.planet != c.planet }.map(dotRect)
             for center in options(c) {
                 let r = textRect(c.text, center: center)
-                guard window.contains(r), SunARStarLabels.free(r, taken: busy) else { continue }
+                guard window.contains(r), SunARStarLabels.free(r, taken: busy + dots) else { continue }
                 out.append(Placed(planet: c.planet, text: c.text, center: center, rect: r))
                 busy.append(r)
                 break

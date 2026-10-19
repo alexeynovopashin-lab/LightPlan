@@ -20,10 +20,12 @@ struct PlanetEphemerisTests {
         let dense: Dense
     }
 
-    static let reference: Reference = {
-        let url = ParityFixtures.directory.appendingPathComponent("planets_horizons.json")
-        return try! JSONDecoder().decode(Reference.self, from: Data(contentsOf: url))
-    }()
+    /// Эталон или причина, по которой его нет (`ParityFixtures.Failure` называет файл и команду сборки).
+    static let loaded: Result<Reference, Error> = Result { try ParityFixtures.load("planets_horizons.json", as: Reference.self) }
+
+    static var reference: Reference {
+        get throws { try loaded.get() }
+    }
 
     static func tolerance(_ p: Planet) -> Double { p == .mercury ? 1.0 : 0.5 }
 
@@ -42,8 +44,8 @@ struct PlanetEphemerisTests {
         let elongation: Double
     }
 
-    static func measure() -> [Sample] {
-        let ref = reference
+    static func measure() throws -> [Sample] {
+        let ref = try reference
         var out: [Sample] = []
         for planet in Planet.allCases {
             let rows = ref.planets[planet.rawValue]!
@@ -63,8 +65,8 @@ struct PlanetEphemerisTests {
     }
 
     @Test("эталон: 5 планет × 8 моментов, разные годы 2024–2030")
-    func referenceShape() {
-        let r = Self.reference
+    func referenceShape() throws {
+        let r = try Self.reference
         #expect(r.moments.count == 8)
         #expect(Set(r.moments.map { $0.utc.prefix(4) }).count >= 6)
         #expect(Set(r.planets.keys) == Set(Planet.allCases.map(\.rawValue)))
@@ -72,8 +74,8 @@ struct PlanetEphemerisTests {
     }
 
     @Test("положение на небе: до 0,5° у Венеры, Марса, Юпитера и Сатурна и до 1° у Меркурия — и по восхождению/склонению, и после перевода в азимут и высоту")
-    func positionsMatchHorizons() {
-        let s = Self.measure()
+    func positionsMatchHorizons() throws {
+        let s = try Self.measure()
         for x in s {
             let tol = Self.tolerance(x.planet)
             #expect(x.equatorial <= tol, "\(x.planet) \(x.utc): RA/Dec \(x.equatorial)°")
@@ -86,8 +88,8 @@ struct PlanetEphemerisTests {
     }
 
     @Test("видимая величина: в пределах 0,3 от Horizons; удаление от Солнца — в пределах 0,5°")
-    func magnitudeAndElongation() {
-        let s = Self.measure()
+    func magnitudeAndElongation() throws {
+        let s = try Self.measure()
         for x in s {
             #expect(x.magnitude <= 0.3, "\(x.planet) \(x.utc): величина \(x.magnitude)")
             #expect(x.elongation <= 0.5, "\(x.planet) \(x.utc): удаление от Солнца \(x.elongation)°")
@@ -100,8 +102,8 @@ struct PlanetEphemerisTests {
     }
 
     @Test("густая сетка: 60 моментов через 42 суток (2024–2030), 300 строк — положение до 0,1° и блеск до 0,3, пока планета дальше 15° от Солнца")
-    func denseGrid() {
-        let dense = Self.reference.dense
+    func denseGrid() throws {
+        let dense = try Self.reference.dense
         var worstPosition = 0.0, worstMagnitude = 0.0, tested = 0
         var worstByPlanet: [Planet: Double] = [:]
         for planet in Planet.allCases {

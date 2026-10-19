@@ -124,6 +124,24 @@ struct SunARPlanetsTests {
         #expect(SunARPlanetLabels.place([edge], taken: [CGRect(x: 0, y: busy.midY - 40, width: 40, height: 80)], window: busy).allSatisfy { busy.contains($0.rect) })
     }
 
+    @Test("подпись одной планеты не ложится на точку другой, даже если подпись той ещё не поставлена (Марс и Юпитер рядом)")
+    func labelNeverLandsOnAnotherPlanetsDot() {
+        let mars = SunARPlanetLabels.Candidate(planet: .mars, text: "Марс", anchor: CGPoint(x: 200, y: 400), radius: 2)
+        let jupiter = SunARPlanetLabels.Candidate(planet: .jupiter, text: "Юпитер", anchor: CGPoint(x: 214, y: 400), radius: 3.6)
+        // Марс ставится первым: его первое место справа — ровно на точке Юпитера.
+        let placed = SunARPlanetLabels.place([mars, jupiter], taken: [], window: busy)
+        #expect(placed.count == 2)
+        for p in placed {
+            for c in [mars, jupiter] where c.planet != p.planet {
+                #expect(!p.rect.intersects(SunARPlanetLabels.dotRect(c)), "подпись \(p.planet) на точке \(c.planet)")
+            }
+        }
+        for (i, a) in placed.enumerated() { for b in placed[(i + 1)...] { #expect(!a.rect.intersects(b.rect), "\(a.planet) на \(b.planet)") } }
+        // Без точек соседей та же подпись встала бы справа — на точку Юпитера (проверка, что тест про то).
+        let alone = SunARPlanetLabels.place([mars], taken: [], window: busy)
+        #expect(alone.first?.rect.intersects(SunARPlanetLabels.dotRect(jupiter)) == true)
+    }
+
     @Test("подписи звёзд обходят подписи и точки планет: планета, чья подпись стоит на месте звёздной, оттесняет звёздную")
     func starLabelsAvoidPlanets() {
         // Венера и Сириус в одной точке: звезда выбирает первое место справа, планета — тоже справа.
