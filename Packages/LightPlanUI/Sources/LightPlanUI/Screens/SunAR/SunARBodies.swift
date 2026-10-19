@@ -281,12 +281,16 @@ struct SunARMilkyWayCanvas: View {
     let scene: NightSkyARScene
     var origin: CGPoint = .zero
     var holes: [SunARHole] = []
+    /// Какие части рисовать; `nil` — по умолчанию (все; в отладке — `-LPSunARMWParts`). Юнит-тест выбирает сам.
+    var parts: MilkyWaySkyShader.Parts? = nil
 
+    /// Рисуется, когда слой включён и видимость больше нуля. От многоугольников `scene.band` не зависит: в них
+    /// только точки, у которых оба края ложатся на экран, а свет по пикселю шейдер считает сам (ревью к 25efebf).
     var body: some View {
-        if let pic = scene.milkyWayPicture, pic.visibility.isVisible, !scene.band.isEmpty {
+        if let pic = scene.milkyWayPicture, pic.visibility.isVisible {
             GeometryReader { g in
                 Rectangle()
-                    .fill(MilkyWaySkyShader.shader(pic, origin: origin, parts: .current))
+                    .fill(MilkyWaySkyShader.shader(pic, origin: origin, parts: parts ?? .current))
                     .clipShape(holes.isEmpty ? Path(CGRect(origin: .zero, size: g.size))
                                : SunARHole.clipArea(CGRect(origin: origin, size: g.size), holes: holes)
                                    .offsetBy(dx: -origin.x, dy: -origin.y),

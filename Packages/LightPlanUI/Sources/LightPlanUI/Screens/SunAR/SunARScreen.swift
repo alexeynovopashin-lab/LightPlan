@@ -123,9 +123,12 @@ struct SunARScreen: View {
             // `-LPSunARGlow 12` (отладка): подставная засветка — кадры «ночь с городом» без сети.
             if let v = UserDefaults.standard.string(forKey: "LPSunARGlow"), let r = Double(v) { model.glow = r; return }
             #endif
-            let store = GlowStore(place: model.place, source: app.glowSource, debounce: .zero)
-            await store.settled()
-            model.glow = store.ratio
+            let source = app.glowSource
+            await model.loadGlow { place in
+                let store = GlowStore(place: place, source: source, debounce: .zero)
+                await store.settled()
+                return store.ratio
+            }
         }
         .task {
             // «Сейчас» едет, север мог стать истинным (включили геолокацию, пока экран открыт).

@@ -22,7 +22,8 @@ using namespace metal;
 //  9…17  оси галактики x, y, z в осях «восток, север, вверх»;
 //  18,19 сдвиг холста в окне (копия под линзой рисует тот же кадр в маленьком холсте);
 //  20    видимость 0…1;  21 части (1 гладкая, 2 текстура, 4 пыль);  22 непрозрачность при яркости 1;
-//  23    фокус в точках (размер звезды — не меньше доли точки).
+//  23    фокус в точках (размер звезды — не меньше доли точки);
+//  24…144 ширина профиля σ из ядра (`MilkyWayLook.sigma`) при l = 0°, 3°, …, 360° — своей формулы ширины здесь нет.
 
 constant float PI_F = 3.14159265358979;
 
@@ -84,14 +85,15 @@ static float fbm(float2 p, int period, uint seed, int octaves) {
 // Угол от ядра по долготе, 0…180.
 static float fromCore(float l) { return abs(fmod(l + 180.0, 360.0) - 180.0); }
 
-// `MilkyWay.halfWidth` и `MilkyWayLook.smooth` — одна формула со Swift.
-static float halfWidth(float l) {
-    float k = cos(fromCore(l) * PI_F / 360.0);
-    return 3.0 + 8.5 * k * k;
+// σ из таблицы ядра, прямой между узлами через 3°.
+static float sigmaAt(device const float *m, float l) {
+    float x = clamp(l, 0.0, 359.999) / 3.0;
+    int i = int(floor(x));
+    return mix(m[24 + i], m[25 + i], x - float(i));
 }
 
-static float smoothPart(float l, float b) {
-    float s = halfWidth(l) / sqrt(2.0 * log(2.0));
+// Гладкая часть — `MilkyWayLook.smooth`; ширина приходит из ядра.
+static float smoothPart(float l, float b, float s) {
     float dl = fromCore(l);
     float band = (0.35 + 0.65 * cos(dl * PI_F / 360.0)) * exp(-b * b / (2.0 * s * s));
     float bulge = 0.75 * exp(-dl * dl / (2.0 * 49.0) - b * b / (2.0 * 25.0));
@@ -115,7 +117,7 @@ static float grain(float l, float b, float cell, float density, float radius, ui
 }
 
 [[ stitchable ]] half4 milkyWaySky(float2 position, device const float *m, int count) {
-    if (count < 24) return half4(0);
+    if (count < 145) return half4(0);
     float2 p = position + float2(m[18], m[19]);
     float3 e = float3(m[0] * p.x + m[1] * p.y + m[2],
                       m[3] * p.x + m[4] * p.y + m[5],
@@ -136,7 +138,8 @@ static float grain(float l, float b, float cell, float density, float radius, ui
     if (abs(b) > 40.0) return half4(0);
 
     int parts = int(m[21]);
-    float s = smoothPart(l, b);
+    float sigma = sigmaAt(m, l);
+    float s = smoothPart(l, b, sigma);
     // Вне полосы света меньше 1/255 при любой видимости: зерно и пыль от неё же — считать нечего.
     if (s < 0.003) return half4(0);
     float intensity = (parts & 1) ? s : 0.0;
@@ -155,7 +158,7 @@ static float grain(float l, float b, float cell, float density, float radius, ui
 
     // Пыль — только там, где ей есть что гасить (у середины полосы и ближе к ядру): шум дорогой.
     float dlDust = fromCore(l);
-    float sdDust = 0.6 * halfWidth(l) / sqrt(2.0 * log(2.0));
+    float sdDust = 0.6 * sigma;
     float laneDust = (1.0 - 0.7 * smoothstep(60.0, 90.0, dlDust)) * exp(-b * b / (2.0 * sdDust * sdDust));
     if ((parts & 4) && laneDust > 0.01) {
         // Пыль: шум, вытянутый вдоль полосы вчетверо (10° по долготе на 2,5° по широте), с изгибом — прожилки

@@ -192,8 +192,18 @@ final class SunARModel {
     @ObservationIgnored private var bandCache: (day: CivilDate, place: Place, minutes: Minutes,
                                                  band: [(left: HorizontalPoint, right: HorizontalPoint)])?
 
-    /// Засветка места AR по атласу (`GlowStore` экрана); `nil` — атлас молчит или ещё не ответил.
+    /// Засветка места AR по атласу (`GlowStore` экрана); `nil` — атлас молчит или ещё не ответил. Смена места её
+    /// сбрасывает (`apply(choice:)`): до ответа атласа про новое место полоса не берёт засветку старого.
     var glow: Double?
+
+    /// Спросить засветку для нынешнего места. Ответ пишется, только если задача не отменена и место то же, что
+    /// спрашивали: ответ про старое место после смены места пропадает (ревью к 25efebf).
+    func loadGlow(_ lookup: @MainActor (Place) async -> Double?) async {
+        let asked = place
+        let ratio = await lookup(asked)
+        guard !Task.isCancelled, place == asked else { return }
+        glow = ratio
+    }
 
     /// Млечный Путь на выбранный момент: полоса, ядро, поворот к галактике (29.8в.14) и то, от чего зависит,
     /// виден ли он: солнце, луна (правило окна Млечного Пути), засветка.
@@ -445,6 +455,7 @@ final class SunARModel {
         let old = place
         choice = new
         guard new.place != old else { return }
+        glow = nil
         timebar.setPlace(new.place)
         let wall = SunTrack.wallClock(of: instant, in: new.place)
         timebar.show(day: wall.day, minute: wall.minutes)
