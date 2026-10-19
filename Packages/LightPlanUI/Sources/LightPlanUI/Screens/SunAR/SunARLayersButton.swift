@@ -158,13 +158,13 @@ struct SunARLayersList: View {
             let m = model.moonPicked.phase
             MoonToggleIcon(illuminated: m.fraction, waxing: m.cycle < 0.5)
         case .milkyWay:
-            MilkyWayToggleIcon()
+            GalaxyGlyph()
         case .stars:
             StarsToggleIcon()
         case .constellations:
-            ConstellationsToggleIcon()
+            DipperGlyph()
         case .planets:
-            PlanetsToggleIcon()
+            SolarSystemGlyph()
         }
     }
 }

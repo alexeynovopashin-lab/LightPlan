@@ -77,16 +77,53 @@ enum SunARLabelLayout {
         return dayCaption.map { "\($0) · \(time)" } ?? time
     }
 
-    /// Плашка подписи метки момента — те же числа и то же правило стороны, что у `SunARMarkLabels` (12 pt, поля 8 · 3;
-    /// метка выше «сейчас» — плашка над диском, иначе под ним, на радиус + `SunARInk.markerLabelGap`). Плашку рисует
-    /// вид; раскладка занимает её место, чтобы часы и стороны света не легли под неё, а тест меряет зазор до неё.
-    static func pickedPill(text: String, scene: SunARScene) -> CGRect? {
-        guard let m = scene.marker else { return nil }
-        let above = scene.nowMarker.map { m.y < $0.y } ?? false
+    /// Плашка подписи метки момента — одно место на экране, из которого берут и вид (`SunARMarkLabels`), и раскладка,
+    /// и занятое для звёзд (`SunARSkyStack.starTaken`): 12 pt, поля 8 · 3; метка выше «сейчас» — плашка над диском, иначе
+    /// под ним, на радиус + `SunARInk.markerLabelGap`. `screenWidth` — ширина экрана: у края кадра вид сдвигает плашку
+    /// внутрь на 8 pt от края, и занятое должно лечь туда же (замер 29.8в.16: метка в 15 pt от края — плашка занятого
+    /// стояла на 18 pt левее той, что рисует вид). `nil` — без сдвига (тесты прежних шагов).
+    static func pickedPlate(text: String, marker m: CGPoint, now: CGPoint?, screenWidth: CGFloat?) -> CGRect {
+        let above = now.map { m.y < $0.y } ?? false
         let s = textSize(text, size: 12, weight: .medium)
-        let radius = SunARInk.pickedLensDiameter / 2
-        let c = CGPoint(x: m.x, y: m.y + (above ? -1 : 1) * (radius + SunARInk.markerLabelGap))
-        return CGRect(x: c.x - s.width / 2 - 8, y: c.y - s.height / 2 - 3, width: s.width + 16, height: s.height + 6)
+        let w = s.width + 16, h = s.height + 6
+        var cx = m.x
+        if let width = screenWidth { cx = min(max(cx, w / 2 + 8), width - w / 2 - 8) }
+        let cy = m.y + (above ? -1 : 1) * (SunARInk.pickedLensDiameter / 2 + SunARInk.markerLabelGap)
+        return CGRect(x: cx - w / 2, y: cy - h / 2, width: w, height: h)
+    }
+
+    static func pickedPill(text: String, scene: SunARScene, screenWidth: CGFloat? = nil) -> CGRect? {
+        guard let m = scene.marker else { return nil }
+        return pickedPlate(text: text, marker: CGPoint(x: m.x, y: m.y),
+                           now: scene.nowMarker.map { CGPoint(x: $0.x, y: $0.y) }, screenWidth: screenWidth)
+    }
+
+    /// Диски линз выбранного момента и «сейчас»: подпись события их обходит.
+    static func lensDiscs(scene: SunARScene) -> [CGRect] {
+        [(scene.marker, SunARInk.pickedLensDiameter), (scene.nowMarker, SunARInk.nowLensDiameter)].compactMap { m, d in
+            m.map { CGRect(x: $0.x - d / 2, y: $0.y - d / 2, width: d, height: d) }
+        }
+    }
+
+    /// Куда встанет подпись события, если на её месте лежат плашка выбранного момента или диски линз (29.8в.16; замер на
+    /// 15 Pro Max: минус 8…плюс 8 минут мимо заката плашка и диск налезали на «закат 18:15» на 0,8…18,8 pt). Ближайшее к
+    /// прежнему месту свободное из четырёх: над скоплением, под ним, левее, правее (скопление — плашка и диски, что
+    /// лежат рядом с подписью). Не нашлось — прежнее место: подпись события важнее, чем зазор.
+    static func eventSpot(at original: CGPoint, size: CGSize, obstacles: [CGRect], taken: [CGRect], bounds: CGRect) -> CGPoint {
+        let w = size.width + 2 * padX, h = size.height + 2 * padY
+        func rect(_ c: CGPoint) -> CGRect { CGRect(x: c.x - w / 2, y: c.y - h / 2, width: w, height: h) }
+        func clear(_ c: CGPoint) -> Bool {
+            let r = rect(c).insetBy(dx: -gap, dy: -gap)
+            return bounds.contains(c) && !obstacles.contains { r.intersects($0) } && !taken.contains { r.intersects($0) }
+        }
+        if clear(original) { return original }
+        let near = obstacles.filter { rect(original).insetBy(dx: -40, dy: -40).intersects($0) }
+        guard let first = near.first else { return original }
+        let cluster = near.dropFirst().reduce(first) { $0.union($1) }
+        let options = [CGPoint(x: original.x, y: cluster.minY - gap - h / 2), CGPoint(x: original.x, y: cluster.maxY + gap + h / 2),
+                       CGPoint(x: cluster.minX - gap - w / 2, y: original.y), CGPoint(x: cluster.maxX + gap + w / 2, y: original.y)]
+        return options.filter(clear).min { hypot($0.x - original.x, $0.y - original.y) < hypot($1.x - original.x, $1.y - original.y) }
+            ?? original
     }
 
     /// Все подписи кадра. `avoidOverlaps == false` — прежнее размещение (каждая на своём месте, без проверок): им
@@ -106,7 +143,9 @@ enum SunARLabelLayout {
             guard bounds.contains(c) else { continue }
             eventDots.append(CGRect(x: c.x - dotGlyph / 2, y: c.y - dotGlyph / 2, width: dotGlyph, height: dotGlyph))
         }
-        if let text = pickedText, let plate = pickedPill(text: text, scene: scene) { taken.append(plate) }
+        // Плашка метки момента — там, где её рисует вид (у края кадра сдвинута внутрь).
+        let plate = pickedText.flatMap { pickedPill(text: $0, scene: scene, screenWidth: bounds.width - 2 * 40) }
+        if let plate { taken.append(plate) }
         var hourDots: [CGRect] = []
         for h in scene.hours {
             let c = CGPoint(x: h.point.x, y: h.point.y)
@@ -126,7 +165,13 @@ enum SunARLabelLayout {
             let c = CGPoint(x: pt.x, y: pt.y)
             guard bounds.contains(c), e.kind != merged else { continue }
             let text = eventText(e)
-            let at = CGPoint(x: c.x, y: c.y - 20)
+            var at = CGPoint(x: c.x, y: c.y - 20)
+            if avoidOverlaps {
+                // Плашка метки момента и диски линз (29.8в.16): подпись события не ложится на них.
+                at = eventSpot(at: at, size: textSize(text, size: 11, weight: .semibold),
+                               obstacles: lensDiscs(scene: scene) + [plate].compactMap { $0 },
+                               taken: out.map(\.pill), bounds: bounds)
+            }
             let r = pill(center: at, text: text, size: 11, weight: .semibold)
             out.append(Placed(kind: .event, text: text, center: at, pill: r, fontSize: 11, weight: .semibold, opacity: 1))
             taken.append(r)
