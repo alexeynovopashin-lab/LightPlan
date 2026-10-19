@@ -22,10 +22,12 @@ struct StarSkyARTests {
 
     // MARK: - Каталог
 
-    @Test("каталог слоя: 163 звезды фигур — 161 уникальная (Альферац и Эльнат стоят в двух созвездиях), линии ссылаются на номера")
+    @Test("каталог слоя: 163 звезды фигур — 161 уникальная (Альферац и Эльнат стоят в двух созвездиях) и 31 яркая вне фигур, линии ссылаются на номера")
     func catalogShape() {
         let cat = StarCatalogAR.current
-        #expect(cat.stars.count == 161)
+        #expect(StarCatalogAR(constellations: ConstellationCatalog.all).stars.count == 161)
+        #expect(BrightStarCatalog.all.count == 31)
+        #expect(cat.stars.count == 161 + 31)
         #expect(cat.figures.count == 24)
         for f in cat.figures {
             #expect(f.lines.allSatisfy { $0.count == 2 && $0.allSatisfy { cat.stars.indices.contains($0) } })
@@ -35,16 +37,64 @@ struct StarSkyARTests {
         #expect(!Set(and.stars).isDisjoint(with: Set(peg.stars)))
     }
 
-    @Test("пятнадцать имён: у каждого в каталоге ровно одна звезда, и это пятнадцать самых ярких звёзд каталога")
+    @Test("22 имени: у каждого в каталоге ровно одна звезда, и это все звёзды слоя до величины 1,5 (Канопус, Акрукс, Бекрукс — тоже)")
     func namesMatchOnce() {
         let cat = StarCatalogAR.current
         for n in StarName.brightest {
             let hits = cat.stars.filter { abs($0.ra - n.ra) < 1e-9 && abs($0.dec - n.dec) < 1e-9 && $0.nameKey == n.key }
             #expect(hits.count == 1, "\(n.key)")
         }
-        #expect(cat.stars.filter { $0.nameKey != nil }.count == 15)
-        let brightest = cat.stars.sorted { $0.magnitude < $1.magnitude }.prefix(15)
-        #expect(brightest.allSatisfy { $0.nameKey != nil })
+        let named = cat.stars.filter { $0.nameKey != nil }
+        #expect(named.count == 22 && Set(named.map(\.nameKey)).count == 22)
+        #expect(Set(named.map(\.nameKey)) == Set(cat.stars.filter { $0.magnitude <= StarName.limit }.map(\.nameKey)))
+        // Следующая по блеску — уже слабее предела: подпись не обрывается посреди одинаково ярких звёзд.
+        #expect(cat.stars.filter { $0.nameKey == nil }.map(\.magnitude).min()! > StarName.limit)
+    }
+
+    @Test("одна звезда — одна точка: в каталоге слоя нет двух звёзд ближе 0,05°; звезда, которая уже взята, второй раз не добавляется")
+    func noDuplicates() {
+        let cat = StarCatalogAR.current
+        func dir(_ s: SkyStar) -> (Double, Double, Double) {
+            let a = s.ra * Double.pi / 12, d = s.dec * Double.pi / 180
+            return (cos(d) * cos(a), cos(d) * sin(a), sin(d))
+        }
+        let v = cat.stars.map(dir)
+        var closest = 180.0
+        for i in v.indices { for j in v.indices where j > i {
+            let c = v[i].0 * v[j].0 + v[i].1 * v[j].1 + v[i].2 * v[j].2
+            closest = min(closest, acos(min(1, max(-1, c))) * 180 / Double.pi)
+        } }
+        #expect(closest >= StarCatalogAR.sameStar, "ближайшая пара \(closest)°")
+        // Яркие звёзды поданы дважды: точек столько же, у Канопуса одно имя.
+        let doubled = StarCatalogAR(constellations: ConstellationCatalog.all, bright: BrightStarCatalog.all + BrightStarCatalog.all)
+        #expect(doubled.stars.count == cat.stars.count)
+        #expect(doubled.stars.filter { $0.nameKey == "star.canopus" }.count == 1)
+    }
+
+    static let sydney = Place(latitude: -33.8688, longitude: 151.2093, zone: ZoneID("Australia/Sydney")!)
+
+    @Test("южная ночь (Сидней, 15.06.2026 22:00): Канопус и три звезды Южного Креста — в сцене, каждая одной точкой и с одним именем")
+    func southernNight() throws {
+        let day = CivilDate(year: 2026, month: 6, day: 15)
+        let cat = StarCatalogAR.current
+        let pos = StarSkyAR.horizontals(day: day, minutes: 1320, in: Self.sydney)
+        func index(ra: Double) throws -> Int { try #require(cat.stars.firstIndex { abs($0.ra - ra) < 1e-9 }, "нет звезды RA \(ra)") }
+        let canopus = try index(ra: 6.39919), acrux = try index(ra: 12.44331), mimosa = try index(ra: 12.79533)
+        let gacrux = try index(ra: 12.51942)
+        // Канопус низко на юге (≈ 3,8°), Крест высоко (≈ 50°).
+        #expect(pos[canopus].altitude > 2 && pos[canopus].altitude < 6, "\(pos[canopus])")
+        for i in [acrux, mimosa, gacrux] { #expect(pos[i].altitude > 40, "\(pos[i])") }
+        for (aim, want) in [(pos[canopus], [canopus]), (pos[mimosa], [acrux, mimosa, gacrux])] {
+            let s = scene(positions: pos, catalog: cat, aim: aim, figures: false)
+            for i in want { #expect(s.dots.filter { $0.index == i }.count == 1, "звезда \(i) не одна или её нет") }
+            let keys = s.dots.compactMap(\.nameKey)
+            #expect(keys.count == Set(keys).count, "имя дважды: \(keys)")
+        }
+        let cross = scene(positions: pos, catalog: cat, aim: pos[mimosa], figures: false).dots
+        #expect(cross.contains { $0.nameKey == "star.acrux" } && cross.contains { $0.nameKey == "star.mimosa" })
+        #expect(scene(positions: pos, catalog: cat, aim: pos[canopus], figures: false).dots.contains { $0.nameKey == "star.canopus" })
+        // Цвет — по спектральному классу: Гакрукс (M3.5III) теплее Акрукса (B0.5IV).
+        #expect(cat.stars[gacrux].spectralClass == "M" && cat.stars[acrux].spectralClass == "B")
     }
 
     // MARK: - Положение
@@ -53,10 +103,13 @@ struct StarSkyARTests {
     func polarisAtLatitude() {
         let cat = StarCatalogAR.current
         let i = cat.stars.firstIndex { abs($0.dec - 89.26) < 0.01 }!
-        for (m, d) in [(0, 1), (3, 5), (6, 9), (9, 14), (12, 20)] {
+        let days = [CivilDate(year: 2026, month: 1, day: 1), CivilDate(year: 2026, month: 4, day: 5),
+                    CivilDate(year: 2026, month: 7, day: 9), CivilDate(year: 2026, month: 10, day: 14),
+                    CivilDate(year: 2027, month: 1, day: 20)]
+        for day in days {
             for minutes in stride(from: 0.0, to: 1440, by: 180) {
-                let p = StarSkyAR.horizontals(day: CivilDate(year: 2026, month: m + 1, day: d), minutes: minutes, in: Self.tomsk)[i]
-                #expect(abs(p.altitude - 56.4977) < 1, "\(m + 1).\(d) \(minutes): \(p.altitude)")
+                let p = StarSkyAR.horizontals(day: day, minutes: minutes, in: Self.tomsk)[i]
+                #expect(abs(p.altitude - 56.4977) < 1, "\(day.day).\(day.month).\(day.year) \(minutes): \(p.altitude)")
             }
         }
     }

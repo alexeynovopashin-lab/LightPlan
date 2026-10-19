@@ -28,6 +28,9 @@ const run = (cmd, argv, opts = {}) => execFileSync(cmd, argv, { encoding: 'utf8'
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const BUNDLE = 'Novopashin.LightPlan';
 const TOMSK = '56.4977,84.9744,Asia/Tomsk', MOSCOW = '55.7558,37.6173,Europe/Moscow';
+// Южная широта начинается с минуса: такое значение аргумента система читает как новый ключ, поэтому оно уходит в
+// приложение строкой plist в кавычках (см. запуск ниже).
+const SYDNEY = '-33.8688,151.2093,Australia/Sydney';
 
 /* Сценарии: now — «сейчас» приложения, moment — выбранный момент, pose — азимут,высота,крен. */
 const SCENARIOS = [
@@ -71,6 +74,14 @@ const SCENARIOS = [
     moon: false, mw: false, stars: true, cons: true, camera: true, backdrop: 'night', starsNight: true },
   { name: 'night_stars_s_dark', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '200,30,0', phone: TOMSK,
     moon: false, mw: false, stars: true, cons: false, camera: true, backdrop: 'night', starsNight: true },
+  // 29.8в.13б: яркие звёзды вне фигур в слое — южная ночь в Сиднее. Южный Крест (≈ 50°, юго-запад) и Канопус (≈ 4°) в один
+  // кадр не входят: Крест уходит под кнопки, Канопус — под панель. Два кадра, в каждом звезда подписана.
+  { name: 'night_stars_cross_dark', now: '2026-06-15T22:00:00+10:00', moment: '2026-06-15T12:00:00Z', pose: '214,42,0', phone: SYDNEY,
+    moon: false, mw: false, stars: true, cons: false, camera: true, backdrop: 'night', starsNight: true,
+    starLabels: ['star.acrux', 'star.mimosa'] },
+  { name: 'night_stars_canopus_dark', now: '2026-06-15T22:00:00+10:00', moment: '2026-06-15T12:00:00Z', pose: '204,0,0', phone: SYDNEY,
+    moon: false, mw: false, stars: true, cons: false, camera: true, backdrop: 'night', starsNight: true,
+    starLabels: ['star.canopus'] },
   { name: 'night_all', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: TOMSK,
     moon: true, mw: true, stars: true, cons: true, camera: true, starsNight: true },
   { name: 'dusk_stars', now: '2026-10-20T19:00:00+07:00', moment: '2026-10-20T12:00:00Z', pose: '60,38,0', phone: TOMSK,
@@ -102,6 +113,7 @@ function starChecks(sc, nodes, bad) {
     if (sc.stars && !(dots > 0)) bad.push('точек нет: ' + t);
     if (sc.cons && !(lines > 0)) bad.push('линий фигур нет: ' + t);
     if (nodes['ar.starsDay']) bad.push('ночью плашка «днём не видно»');
+    for (const k of sc.starLabels || []) if (!nodes['ar.starLabel.' + k]) bad.push('нет подписи ' + k);
   }
   if (sc.starsDusk) {
     if (!(vis > 0 && vis < 1) || day) bad.push('в сумерках яркость не между 0 и 1: ' + t);
@@ -265,7 +277,7 @@ function verdict(sc, nodes) {
       ...flag('calibrationSeen', true), ...flag('moon', sc.moon), ...flag('milkyWay', sc.mw),
       ...flag('stars', sc.stars), ...flag('constellations', sc.cons),
       '-LPSunAR', '1', '-LPSunARMoment', sc.moment, '-LPSunARPose', sc.pose,
-      ...(sc.phone ? ['-LPSunARPhone', sc.phone] : []), ...(sc.camera ? ['-LPSunARFakeCamera', '1'] : []),
+      ...(sc.phone ? ['-LPSunARPhone', sc.phone.startsWith('-') ? `"${sc.phone}"` : sc.phone] : []), ...(sc.camera ? ['-LPSunARFakeCamera', '1'] : []),
       ...(sc.backdrop ? ['-LPSunARBackdrop', sc.backdrop] : []),
       ...(sc.entry ? ['-LPSunAREntry', '1'] : []), ...(sc.layersOpen ? ['-LPSunARLayersOpen', '1'] : []),
       '-LPShotReport', report]);

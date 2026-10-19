@@ -205,6 +205,8 @@ iPhone 17 Pro 402 × 874 (`LP <ветка> pro`). Числа: порядок б�
 градиент, звёзды на нём не видны так, как на настоящем небе). Числа из узла `ar.stars` (`dots lines figures labels vis day`): ночью яркость 1, в сумерках
 между 0 и 1, днём 0 и плашка «Звёзд днём не видно» (`ar.starsDay`); подписи слоя (`ar.starLabel.*`, `ar.starsDay`) целиком на экране и не лежат на метках,
 подписи выбранного момента, стрелках, кнопках и друг на друге. `python3 Tools/ar_lens_bench.py --stars` — кадры/с и процессор ночью со слоями и без них.
+Южная ночь (29.8в.13б, Сидней 15.06.2026 22:00): `night_stars_cross_dark` — Южный Крест, подписи Акрукса и Бекрукса; `night_stars_canopus_dark` —
+Канопус у горизонта. Южная широта уходит в `-LPSunARPhone` строкой в кавычках: значение с минусом впереди система читает как новый ключ.
 Калибровка компаса (29.8в.8): `node Tools/shots/ar_cal.js [--devices max,15,se] [--langs ru,en,es,ja,zh] [--only a,b]` — экран
 калибровки на подставном потоке датчиков (`-LPSunARCalibScript still|shake|eight[:масштаб]`, `-LPSunARCalibAcc вход,итог[,через_сек]`,
 `-LPSunARReduceMotion 1`; та же формула `CalibrationScript`, что гоняют юнит-тесты). Сценарии `start`, `mid`, `hint`, `notbetter`,

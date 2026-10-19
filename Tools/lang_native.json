@@ -308,7 +308,14 @@
     "star.pollux": "Поллукс",
     "star.deneb": "Денеб",
     "star.regulus": "Регул",
-    "star.adhara": "Адара"
+    "star.adhara": "Адара",
+    "star.canopus": "Канопус",
+    "star.rigil": "Альфа Центавра",
+    "star.achernar": "Ахернар",
+    "star.hadar": "Хадар",
+    "star.acrux": "Акрукс",
+    "star.fomalhaut": "Фомальгаут",
+    "star.mimosa": "Бекрукс"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -618,7 +625,14 @@
     "star.pollux": "Pollux",
     "star.deneb": "Deneb",
     "star.regulus": "Regulus",
-    "star.adhara": "Adhara"
+    "star.adhara": "Adhara",
+    "star.canopus": "Canopus",
+    "star.rigil": "Alpha Centauri",
+    "star.achernar": "Achernar",
+    "star.hadar": "Hadar",
+    "star.acrux": "Acrux",
+    "star.fomalhaut": "Fomalhaut",
+    "star.mimosa": "Mimosa"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -928,7 +942,14 @@
     "star.pollux": "Pólux",
     "star.deneb": "Deneb",
     "star.regulus": "Régulo",
-    "star.adhara": "Adhara"
+    "star.adhara": "Adhara",
+    "star.canopus": "Canopus",
+    "star.rigil": "Alfa Centauri",
+    "star.achernar": "Achernar",
+    "star.hadar": "Hadar",
+    "star.acrux": "Ácrux",
+    "star.fomalhaut": "Fomalhaut",
+    "star.mimosa": "Mimosa"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1237,7 +1258,14 @@
     "star.pollux": "ポルックス",
     "star.deneb": "デネブ",
     "star.regulus": "レグルス",
-    "star.adhara": "アダーラ"
+    "star.adhara": "アダーラ",
+    "star.canopus": "カノープス",
+    "star.rigil": "ケンタウルス座α星",
+    "star.achernar": "アケルナル",
+    "star.hadar": "ハダル",
+    "star.acrux": "アクルックス",
+    "star.fomalhaut": "フォーマルハウト",
+    "star.mimosa": "ミモザ"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -1546,6 +1574,13 @@
     "star.pollux": "北河三",
     "star.deneb": "天津四",
     "star.regulus": "轩辕十四",
-    "star.adhara": "弧矢七"
+    "star.adhara": "弧矢七",
+    "star.canopus": "老人星",
+    "star.rigil": "南门二",
+    "star.achernar": "水委一",
+    "star.hadar": "马腹一",
+    "star.acrux": "十字架二",
+    "star.fomalhaut": "北落师门",
+    "star.mimosa": "十字架三"
   }
 }
