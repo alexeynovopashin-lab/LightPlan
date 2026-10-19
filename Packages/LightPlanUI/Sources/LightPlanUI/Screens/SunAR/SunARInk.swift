@@ -66,9 +66,11 @@ enum SunARInk {
     static let coreGlyphRadius: CGFloat = 13
     /// Стрелка у края: диаметр стеклянного кружка, pt.
     static let pointerDiameter: CGFloat = 44
-    /// Стекло кнопок: стандартное `.glassEffect`, но с тёмным оттенком. Над белым небом чистое стекло светлое и
-    /// белый текст на нём исчезал (измерено 1,02 : 1); с оттенком — `Tools/ar_contrast.py`.
-    static let buttonGlass = Glass.regular.tint(Color.black.opacity(0.7))
+    /// Вид кнопок AR: стекло и тень значка (`SunARButtonLook`; выбран замером `Tools/ar_contrast.py`).
+    static let look = SunARButtonLook.current
+    static var buttonGlass: Glass { look.glass }
+    /// Чернила значков и подписей кнопок AR.
+    static var buttonInk: Color { look.inkColor }
     /// Высота касания кнопок (HIG), pt.
     static let touch: CGFloat = 44
 

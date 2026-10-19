@@ -1184,7 +1184,7 @@ final class MapDayCache {
 
 /// Знак слоёв — свой SVG в разметке веба (`M12 3l9 5-9 5-9-5 9-5z M3 13l9 5 9-5`),
 /// не из `icons.js`.
-private struct LayersGlyph: Shape {
+struct LayersGlyph: Shape {
     func path(in rect: CGRect) -> Path {
         let k = min(rect.width, rect.height) / 24
         var p = Path()

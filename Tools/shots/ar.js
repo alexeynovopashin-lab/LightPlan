@@ -41,6 +41,9 @@ const SCENARIOS = [
     moon: true, mw: false, camera: true },
   { name: 'toggles', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,24,0', phone: TOMSK,
     moon: true, mw: true, camera: true, merged: true },
+  // 29.8в.9б: список «Слоёв» открыт (`-LPSunARLayersOpen 1`, отладка): строки луны и Млечного Пути на стекле.
+  { name: 'layers_open', now: '2026-10-14T12:00:00+07:00', moment: '2026-10-14T05:00:00Z', pose: '162,24,0', phone: TOMSK,
+    moon: true, mw: false, camera: true, merged: true, layersOpen: true },
   { name: 'night_moon', now: '2026-10-20T21:00:00+07:00', moment: '2026-10-20T14:00:00Z', pose: '183,18,0', phone: TOMSK,
     moon: true, mw: false, camera: true },
   { name: 'night_mw', now: '2026-08-20T22:00:00+07:00', moment: '2026-08-20T15:00:00Z', pose: '198,14,0', phone: TOMSK,
@@ -72,15 +75,32 @@ function verdict(sc, nodes) {
     if (nodes['ar.entry.useMine'] && !/моё местоположение/.test(nodes['ar.entry.useMine'].text || '')) bad.push('нет «Использовать моё местоположение»');
     return bad;
   }
-  touch('ar.back'); touch('ar.moonToggle'); touch('ar.mwToggle');
-  if (nodes['ar.moonToggle'] && nodes['ar.moonToggle'].w < 43.9) bad.push('включатель луны уже 44');
+  touch('ar.back'); touch('ar.layers');
+  if (nodes['ar.layers'] && (nodes['ar.layers'].w < 43.9 || Math.abs(nodes['ar.layers'].w - nodes['ar.layers'].h) > 0.5)) bad.push('кнопка «Слои» не круг 44 pt: ' + nodes['ar.layers'].w + ' × ' + nodes['ar.layers'].h);
+  if (nodes['ar.moonToggle'] || nodes['ar.mwToggle']) bad.push('остались круглые включатели луны / Млечного Пути: слои — одной кнопкой');
+  // Кнопка «Слои» показывает включённые слои (точки под значком); список — в отчёте текстом узла.
+  if (nodes['ar.layers']) {
+    const on = (nodes['ar.layers'].text || '').split(',').filter(Boolean).sort().join(',');
+    const want = [sc.moon ? 'moon' : '', sc.mw ? 'milkyWay' : ''].filter(Boolean).sort().join(',');
+    if (on !== want) bad.push(`«Слои» показывает «${on}», включено «${want}»`);
+  }
+  if (sc.layersOpen) {
+    for (const k of ['ar.layer.moon', 'ar.layer.mw']) { if (need(k)) touch(k); }
+    const a = nodes['ar.layer.moon'], b = nodes['ar.layer.mw'];
+    if (a && b && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 0.5) bad.push('строки слоёв накладываются');
+    if (a && !/on$/.test(a.text || '')) bad.push('луна включена, а строка говорит: ' + a.text);
+    if (b && !/off$/.test(b.text || '')) bad.push('Млечный Путь выключен, а строка говорит: ' + b.text);
+  } else if (nodes['ar.layer.moon'] || nodes['ar.layer.mw']) bad.push('список слоёв открыт без нажатия');
   // Ряд кнопок: рамки не накладываются друг на друга.
-  const row = ['ar.back', 'ar.calibrate', 'ar.heading', 'ar.moonToggle', 'ar.mwToggle'].filter(k => nodes[k]);
+  const row = ['ar.back', 'ar.follow', 'ar.calibrate', 'ar.heading', 'ar.layers'].filter(k => nodes[k]);
   for (let i = 0; i < row.length; i++) for (let j = i + 1; j < row.length; j++) {
     const a = nodes[row[i]], b = nodes[row[j]];
     const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
     if (ox > 0.5 && oy > 0.5) bad.push(`${row[i]} и ${row[j]} накладываются на ${ox.toFixed(1)} × ${oy.toFixed(1)} pt`);
   }
+  // Кнопки ряда целиком на экране (узкий экран: ряд не вылезает за край и не уходит под соседа).
+  const scr = nodes['ar.background'];
+  if (scr) for (const k of row) if (nodes[k].x < -0.5 || nodes[k].x + nodes[k].w > scr.w + 0.5) bad.push(`${k} за краем экрана: x ${nodes[k].x}, w ${nodes[k].w}, экран ${scr.w}`);
   // Время «сейчас» на метке не пишется: подпись — только у выбранного момента, и это время, а не слово.
   const lab = nodes['ar.label.picked'];
   if (lab && /сейчас/i.test(lab.text || '')) bad.push('на метке написано «сейчас»: ' + lab.text);
@@ -103,7 +123,7 @@ function verdict(sc, nodes) {
   }
   if (sc.underButtons) {
     // Низ кнопок — самой нижней из них (на узком экране включатели стоят второй строкой).
-    const bottom = Math.max(...['ar.back', 'ar.moonToggle', 'ar.mwToggle'].filter(k => nodes[k]).map(k => nodes[k].y + nodes[k].h));
+    const bottom = Math.max(...['ar.back', 'ar.follow', 'ar.calibrate', 'ar.heading', 'ar.layers'].filter(k => nodes[k]).map(k => nodes[k].y + nodes[k].h));
     const mark = nodes['ar.mark.sun.now'];
     if (!mark) bad.push('диска солнца нет в кадре');
     // Диск скрыт целиком (вся рамка выше низа кнопок), а не только центр (29.8в.7).
@@ -112,7 +132,7 @@ function verdict(sc, nodes) {
   }
   if (sc.halfHidden) {
     // Центр диска уже в окне видимости, верхний край ещё под кнопками: стрелка нужна, пока диск виден не целиком.
-    const bottom = Math.max(...['ar.back', 'ar.moonToggle', 'ar.mwToggle'].filter(k => nodes[k]).map(k => nodes[k].y + nodes[k].h));
+    const bottom = Math.max(...['ar.back', 'ar.follow', 'ar.calibrate', 'ar.heading', 'ar.layers'].filter(k => nodes[k]).map(k => nodes[k].y + nodes[k].h));
     const mark = nodes['ar.mark.sun.now'];
     if (!mark) bad.push('диска солнца нет в кадре');
     else if (mark.y >= bottom + 8) bad.push(`диск не залез под кнопки: верх y ${mark.y.toFixed(0)}, низ кнопок ${bottom.toFixed(0)}`);
@@ -180,14 +200,15 @@ function verdict(sc, nodes) {
       ...flag('calibrationSeen', true), ...flag('moon', sc.moon), ...flag('milkyWay', sc.mw),
       '-LPSunAR', '1', '-LPSunARMoment', sc.moment, '-LPSunARPose', sc.pose,
       ...(sc.phone ? ['-LPSunARPhone', sc.phone] : []), ...(sc.camera ? ['-LPSunARFakeCamera', '1'] : []),
-      ...(sc.entry ? ['-LPSunAREntry', '1'] : []), '-LPShotReport', report]);
+      ...(sc.entry ? ['-LPSunAREntry', '1'] : []), ...(sc.layersOpen ? ['-LPSunARLayersOpen', '1'] : []),
+      '-LPShotReport', report]);
     for (let i = 0; i < 240 && !fs.existsSync(report); i++) await sleep(250);
     if (!fs.existsSync(report)) throw new Error('нет рамок: ' + sc.name);
     await sleep(1500);
     run('xcrun', ['simctl', 'io', udid, 'screenshot', '--type=png', path.join(dir, 'native.png')], { stdio: 'ignore' });
     const nodes = JSON.parse(fs.readFileSync(report, 'utf8')).nodes || {};
     const bad = verdict(sc, nodes);
-    const marks = Object.fromEntries(Object.keys(nodes).filter(k => /^ar\.(mark|pointer|milkyWay|moonToggle|mwToggle|entry|overlay|back)/.test(k))
+    const marks = Object.fromEntries(Object.keys(nodes).filter(k => /^ar\.(mark|pointer|milkyWay|layers?|entry|overlay|back)/.test(k))
       .map(k => [k, { x: +nodes[k].x.toFixed(1), y: +nodes[k].y.toFixed(1), w: +nodes[k].w.toFixed(1), h: +nodes[k].h.toFixed(1), text: nodes[k].text }]));
     rows.push({ scenario: sc.name, bad, nodes: marks });
   }

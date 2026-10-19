@@ -385,18 +385,20 @@ struct SunARPointerView: View {
         let d = SunARInk.pointerDiameter
         let p = CGPoint(x: item.pointer.point.x, y: item.pointer.point.y)
         let dir = CGPoint(x: cos(item.pointer.angle), y: sin(item.pointer.angle))
+        // Значок и стрелка — внутри вида со стеклом (а не рядом с ним): только тогда системные чернила
+        // (`SunARInk.buttonInk`) темнеют вместе со стеклом на белом небе (замер 29.8в.9б). Стекло ровное, кружок
+        // 44 pt: поворачивается лишь стрелка внутри, рамка вида от поворота не меняется.
         ZStack {
-            Color.clear
-                .frame(width: d, height: d)
-                .glassEffect(SunARInk.buttonGlass, in: Circle())
             mini
                 .offset(x: -dir.x * 4, y: -dir.y * 4)
             Icon("chevron", size: 14, line: 2.6)
-                .foregroundStyle(SunARInk.light)
+                .foregroundStyle(SunARInk.buttonInk)
+                .arInkShadow()
                 .rotationEffect(.radians(item.pointer.angle))
                 .offset(x: dir.x * (d / 2 - 9), y: dir.y * (d / 2 - 9))
         }
         .frame(width: d, height: d)
+        .glassEffect(SunARInk.buttonGlass, in: Circle())
         .opacity(item.fade)
         // Узел — до `position`: рамка значка, а не всего экрана (по ней сверяется зазор между стрелками, 29.8в.6).
         .shotNode("ar.pointer." + item.id, text: item.text)

@@ -40,11 +40,21 @@ struct SunARScreen: View {
 
     private var t: Lexicon { app.lexicon }
 
+    private static var layersOpenAtStart: Bool {
+        #if DEBUG
+        return UserDefaults.standard.bool(forKey: "LPSunARLayersOpen")
+        #else
+        return false
+        #endif
+    }
+
     @State private var panelHeight: CGFloat = 200
     /// Стекло дисков: своё или системное (шаг 29.8в.9а; в отладке — переключатель на экране).
     @State private var glass = SunARGlassStyle.current()
     /// Низ нижней строки кнопок в окне экрана; `nil` — ещё не измерен (`SunARZones.visibleWindow`).
     @State private var buttonsBottom: CGFloat?
+    /// Список «Слои» открыт. В отладке `-LPSunARLayersOpen 1` открывает его сразу (кадры).
+    @State private var layersOpen = SunARScreen.layersOpenAtStart
 
     var body: some View {
         let pal = Palette(scheme)
@@ -220,10 +230,19 @@ struct SunARScreen: View {
     @ViewBuilder
     private func background(size: CGSize, sun: SunSample, pal: Palette, marks: [SunARMark]) -> some View {
         #if DEBUG
-        // Замер контраста (`-LPSunARBackdrop white|gray|black`): сплошной фон вместо кадра, чтобы по снимку
-        // посчитать контраст дуги и подписей на самых тяжёлых фонах.
+        // Замер контраста (`-LPSunARBackdrop white|gray|black|sky|asphalt|night`): сплошной фон вместо кадра, чтобы
+        // по снимку посчитать контраст дуги, подписей и кнопок на самых тяжёлых фонах. Белое и голубое небо, асфальт
+        // и ночное небо — четыре подложки кнопок (29.8в.9б), серый и чёрный — прежние (29.8в.4).
         if let b = UserDefaults.standard.string(forKey: "LPSunARBackdrop") {
-            Color(white: b == "white" ? 1 : b == "gray" ? 0.5 : 0)
+            switch b {
+            case "white": Color(white: 1)
+            case "gray": Color(white: 0.5)
+            case "sky": Color(.sRGB, red: 0.45, green: 0.68, blue: 0.93)
+            case "asphalt": Color(white: 0.36)
+            case "night": Color(.sRGB, red: 0.02, green: 0.04, blue: 0.10)
+            case let g where g.hasPrefix("g"): Color(white: (Double(g.dropFirst()) ?? 0) / 100)
+            default: Color(white: 0)
+            }
         } else { realBackground(size: size, sun: sun, pal: pal, marks: marks) }
         #else
         realBackground(size: size, sun: sun, pal: pal, marks: marks)
@@ -275,8 +294,10 @@ struct SunARScreen: View {
         let aim = model.aim.aim
         return ZStack(alignment: .top) {
             VStack(spacing: 8) {
-                // Ряд: «Назад» слева; курс, «Калибровка» и два включателя справа. Не уместился в одну строку —
-                // включатели уходят второй строкой под курс.
+                // Ряд: «Назад» и «Место» слева; «Калибровка», курс и «Слои» справа. Подписи не переносятся
+                // (`fixedSize`), поэтому не уместившийся ряд выбирает следующий вариант, а не ломает слова:
+                // две строки («Слои» под курсом) или, на самых узких экранах (SE), «Калибровка» второй строкой
+                // под курсом и «Слоями» — справа, под кнопками левого края ничего не лежит.
                 GlassEffectContainer(spacing: 8) {
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .center, spacing: 8) {
@@ -285,7 +306,7 @@ struct SunARScreen: View {
                             Spacer(minLength: 8)
                             if model.hasSensor { calibrateButton }
                             headingChip(aim)
-                            bodyToggles
+                            layersButton
                         }
                         VStack(alignment: .trailing, spacing: 8) {
                             HStack(alignment: .center, spacing: 8) {
@@ -295,7 +316,17 @@ struct SunARScreen: View {
                                 if model.hasSensor { calibrateButton }
                                 headingChip(aim)
                             }
-                            bodyToggles
+                            layersButton
+                        }
+                        VStack(alignment: .trailing, spacing: 8) {
+                            HStack(alignment: .center, spacing: 8) {
+                                backButton
+                                placeButton
+                                Spacer(minLength: 8)
+                                headingChip(aim)
+                                layersButton
+                            }
+                            if model.hasSensor { calibrateButton }
                         }
                     }
                 }
@@ -393,9 +424,10 @@ struct SunARScreen: View {
         } label: {
             HStack(spacing: 6) {
                 Icon("chevron", size: 16, line: 2.4).rotationEffect(.degrees(180))
-                Text(t.t("nav.back")).font(webFont(15))
+                Text(t.t("nav.back")).font(webFont(15)).lineLimit(1).fixedSize()
             }
-            .foregroundStyle(SunARInk.light)
+            .foregroundStyle(SunARInk.buttonInk)
+            .arInkShadow()
             .padding(.horizontal, 14)
             .frame(minHeight: SunARInk.touch)
             .contentShape(Capsule())
@@ -410,7 +442,8 @@ struct SunARScreen: View {
     /// места в листе его не двигает; метка «Место: …» ниже говорит, когда выбранное далеко.
     private var placeButton: some View {
         Button { app.placeSheetOpen = true } label: {
-            PlaceFollowArrow(pal: Palette(.dark), following: app.followingLive, size: 17, ink: SunARInk.light)
+            PlaceFollowArrow(pal: Palette(.dark), following: app.followingLive, size: 17, ink: SunARInk.buttonInk)
+                .arInkShadow()
                 .frame(width: SunARInk.touch, height: SunARInk.touch)
                 .contentShape(Circle())
         }
@@ -423,8 +456,9 @@ struct SunARScreen: View {
     /// «Калибровка» — рядом с компасом: повторить восьмёрку, когда курс уплывает.
     private var calibrateButton: some View {
         Button { model.beginCalibration() } label: {
-            Text(t.t("ar.calibrate")).font(.system(size: 14, weight: .medium))
-                .foregroundStyle(SunARInk.light)
+            Text(t.t("ar.calibrate")).font(.system(size: 14, weight: .medium)).lineLimit(1).fixedSize()
+                .foregroundStyle(SunARInk.buttonInk)
+                .arInkShadow()
                 .padding(.horizontal, 14)
                 .frame(minHeight: SunARInk.touch)
                 .contentShape(Capsule())
@@ -437,50 +471,37 @@ struct SunARScreen: View {
     private func headingChip(_ aim: HorizontalPoint) -> some View {
         HStack(spacing: 6) {
             HeadingGlyph()
-                .stroke(SunARInk.light, style: StrokeStyle(lineWidth: 1.8 * 15 / 24, lineCap: .round, lineJoin: .round))
+                .stroke(SunARInk.buttonInk, style: StrokeStyle(lineWidth: 1.8 * 15 / 24, lineCap: .round, lineJoin: .round))
                 .frame(width: 15, height: 15)
             Text(String(format: "%.0f°", aim.azimuth.rounded() == 360 ? 0 : aim.azimuth.rounded()))
                 .font(.system(size: 14, weight: .medium).monospacedDigit())
         }
-        .foregroundStyle(SunARInk.light)
+        .foregroundStyle(SunARInk.buttonInk)
+        .arInkShadow()
         .padding(.horizontal, 14)
         .frame(minHeight: SunARInk.touch)
         .glassEffect(SunARInk.buttonGlass, in: Capsule())
         .shotNode("ar.heading", text: String(format: "%.0f", aim.azimuth))
     }
 
-    /// Включатели «Луна» и «Млечный Путь» (в одном ряду с курсом). Состояние помнится между входами. Включённый
-    /// стоит с тоном своего светила: луна серебристым, Млечный Путь холодным.
-    private var bodyToggles: some View {
-        HStack(spacing: 8) {
-            bodyToggle(on: model.moonOn, label: t.t("layer.moon"), tint: SunARInk.moonTint, node: "ar.moonToggle") {
-                model.setMoon(!model.moonOn)
-            } icon: {
-                let m = model.moonPicked.phase
-                MoonToggleIcon(illuminated: m.fraction, waxing: m.cycle < 0.5)
-            }
-            bodyToggle(on: model.milkyWayOn, label: t.t("layer.mw"), tint: SunARInk.milkyWayTone, node: "ar.mwToggle") {
-                model.setMilkyWay(!model.milkyWayOn)
-            } icon: {
-                MilkyWayToggleIcon()
-            }
-        }
-    }
-
-    private func bodyToggle<Glyph: View>(on: Bool, label: String, tint: Color, node: String, action: @escaping () -> Void,
-                                         @ViewBuilder icon: () -> Glyph) -> some View {
-        Button(action: action) {
-            icon()
-                .frame(width: SunARInk.touch, height: SunARInk.touch)
-                .contentShape(Capsule())
+    /// Одна круглая кнопка «Слои» вместо двух включателей (29.8в.9б, слово Алексея 18.10): нажатие открывает список
+    /// слоёв неба на системном стекле, у каждого свой переключатель. Состояние — те же флаги устройства, что и
+    /// раньше (`SunARModel.setMoon` / `setMilkyWay`). Какие слои включены, видно по точкам под значком.
+    private var layersButton: some View {
+        let on = model.layersOn
+        let names = on.map { t.t($0.labelKey) }.joined(separator: ", ")
+        return Button { layersOpen.toggle() } label: {
+            SunARLayersButtonLabel(on: on)
         }
         .buttonStyle(.plain)
-        .glassEffect(SunARInk.buttonGlass.interactive(), in: Capsule())
-        // Включён — кромка тоном светила (рисованный контур, не блик): тёмное стекло одно и то же, значок читается.
-        .overlay(Capsule().stroke(tint.opacity(on ? 0.95 : 0), lineWidth: 1.5).allowsHitTesting(false))
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
-        .shotNode(node, text: label + (on ? " on" : " off"))
+        .glassEffect(SunARInk.buttonGlass.interactive(), in: Circle())
+        .popover(isPresented: $layersOpen, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
+            SunARLayersList(model: model, lexicon: t)
+                .presentationCompactAdaptation(.popover)
+        }
+        .accessibilityLabel(t.t("ar.layers"))
+        .accessibilityValue(names)
+        .shotNode("ar.layers", text: on.map(\.rawValue).joined(separator: ","))
     }
 
     #if DEBUG
@@ -495,7 +516,7 @@ struct SunARScreen: View {
             } label: {
                 Text(verbatim: glass == .own ? "Стекло: своё" : "Стекло: системное")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(SunARInk.light)
+                    .foregroundStyle(SunARInk.buttonInk)
                     .padding(.horizontal, 12).padding(.vertical, 7)
                     .contentShape(Capsule())
             }
