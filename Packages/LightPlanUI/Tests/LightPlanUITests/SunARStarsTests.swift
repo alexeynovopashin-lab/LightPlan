@@ -48,12 +48,12 @@ struct SunARStarsTests {
         #expect(Set(SunARSkyLayer.allCases.map(\.node)).count == 4)
     }
 
-    @Test("слова слоёв, дневной подписи, 24 созвездий и 15 звёзд есть на всех пяти языках")
+    @Test("слова слоёв, дневной подписи, 24 созвездий и 22 звёзд есть на всех пяти языках")
     func wordsInFiveLanguages() {
         var keys = ["layer.stars", "layer.constellations", "ar.starsDay"]
         keys += ConstellationCatalog.all.map { "con." + $0.code }
         keys += StarName.brightest.map(\.key)
-        #expect(keys.count == 3 + 24 + 15)
+        #expect(keys.count == 3 + 24 + 22)
         for code in ["ru", "en", "es", "ja", "zh"] {
             let lexicon = Lexicon(code)
             for k in keys { #expect(lexicon.t(k) != k && !lexicon.t(k).isEmpty, "\(code): нет слова \(k)") }

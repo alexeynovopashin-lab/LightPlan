@@ -4,7 +4,8 @@ import Foundation
 /// `Sky.horizontal` по месту и моменту, потом та же проекция на экран (`SkyProjection`) и та же добавка рефракции
 /// (`SunTrack.apparent`). Своих формул неба здесь нет.
 ///
-/// Каталог — звёзды фигур созвездий беты (`ConstellationCatalog`, J2000). Поправка на прецессию не вводится:
+/// Каталог — звёзды фигур созвездий беты (`ConstellationCatalog`, J2000) и яркие звёзды вне фигур (`BrightStarCatalog`:
+/// Канопус, Альфа Центавра, Южный Крест и другие, 31 шт.). Поправка на прецессию не вводится:
 /// за 26 лет с 2000 года она сдвигает точку на ≈ 0,37° — меньше допуска сверки AR (1°) и меньше погрешности компаса.
 /// Первую поправку она потребует, если AR понадобится точность в доли градуса.
 
@@ -17,10 +18,10 @@ public struct SkyStar: Sendable, Equatable {
     /// Склонение, градусы.
     public let dec: Double
     public let magnitude: Double
-    /// Буква спектрального класса (O B A F G K M). В каталоге созвездий беты её нет; поле заводится под каталог ярких
-    /// звёзд, который придёт отдельной веткой, — тогда цвет точки берётся по нему (`StarLook.tint`).
+    /// Буква спектрального класса (O B A F G K M). В каталоге созвездий беты её нет — точка белая; у ярких звёзд вне фигур
+    /// она есть, и цвет точки берётся по ней (`StarLook.tint`).
     public let spectralClass: Character?
-    /// Ключ имени звезды в словаре (`star.sirius`); у безымянных `nil`. Имена есть у 15 самых ярких звёзд каталога.
+    /// Ключ имени звезды в словаре (`star.sirius`); у безымянных `nil`. Имена есть у всех звёзд слоя до величины 1,5.
     public let nameKey: String?
 
     public init(ra: Double, dec: Double, magnitude: Double, spectralClass: Character? = nil, nameKey: String? = nil) {
@@ -42,15 +43,19 @@ public struct StarFigure: Sendable, Equatable {
     }
 }
 
-/// Имя звезды по её координатам в каталоге созвездий. Совпадение — по тем же числам, что в каталоге; тест проверяет,
+/// Имя звезды по её координатам в каталоге слоя. Совпадение — по тем же числам, что в каталоге; тест проверяет,
 /// что у каждого имени нашлась ровно одна звезда.
 public struct StarName: Sendable, Equatable {
     public let key: String
     public let ra: Double
     public let dec: Double
 
-    /// Пятнадцать самых ярких звёзд каталога созвездий (по величине): Сириус … Адара. Канопуса и других южных ярких
-    /// звёзд в каталоге нет — для них нужна отдельная ветка с каталогом ярких звёзд.
+    /// Подписываются звёзды не слабее этой величины: 15 из каталога созвездий (Сириус … Адара) и 7 ярких вне фигур.
+    /// Следующая по блеску — Кастор (1,58).
+    public static let limit = 1.5
+
+    /// Все звёзды слоя до величины 1,5 — 22 имени. Сначала звёзды фигур созвездий (по величине), затем яркие вне фигур
+    /// (координаты — как в `BrightStarCatalog`).
     public static let brightest: [StarName] = [
         StarName(key: "star.sirius", ra: 6.752, dec: -16.72),
         StarName(key: "star.arcturus", ra: 14.261, dec: 19.18),
@@ -67,10 +72,18 @@ public struct StarName: Sendable, Equatable {
         StarName(key: "star.deneb", ra: 20.69, dec: 45.28),
         StarName(key: "star.regulus", ra: 10.139, dec: 11.97),
         StarName(key: "star.adhara", ra: 6.977, dec: -28.97),
+        StarName(key: "star.canopus", ra: 6.39919, dec: -52.6958),
+        StarName(key: "star.rigil", ra: 14.65997, dec: -60.8353),
+        StarName(key: "star.achernar", ra: 1.62858, dec: -57.2367),
+        StarName(key: "star.hadar", ra: 14.06372, dec: -60.3731),
+        StarName(key: "star.acrux", ra: 12.44331, dec: -63.0992),
+        StarName(key: "star.fomalhaut", ra: 22.96086, dec: -29.6222),
+        StarName(key: "star.mimosa", ra: 12.79533, dec: -59.6886),
     ]
 }
 
-/// Каталог слоя «Звёзды» и «Созвездия»: уникальные звёзды и фигуры, ссылающиеся на них.
+/// Каталог слоя «Звёзды» и «Созвездия»: уникальные звёзды и фигуры, ссылающиеся на них. Одна звезда — одна точка
+/// и одна подпись, в скольких бы источниках она ни стояла.
 public struct StarCatalogAR: Sendable, Equatable {
     public let stars: [SkyStar]
     public let figures: [StarFigure]
@@ -80,8 +93,12 @@ public struct StarCatalogAR: Sendable, Equatable {
         self.figures = figures
     }
 
-    /// Из каталога созвездий: одинаковые координаты — одна звезда; имя — по `StarName`.
-    public init(constellations: [Constellation], names: [StarName] = StarName.brightest) {
+    /// Звёзды ближе этого на небе — одна звезда. Тот же допуск, с которым собран `BrightStarCatalog` (0,05°).
+    public static let sameStar: Degrees = 0.05
+
+    /// Из каталога созвездий и ярких звёзд вне фигур: одинаковые координаты — одна звезда; яркая звезда ближе
+    /// `sameStar` к уже взятой не добавляется; имя — по `StarName`.
+    public init(constellations: [Constellation], bright: [BrightStar] = [], names: [StarName] = StarName.brightest) {
         func key(_ ra: Double, _ dec: Double) -> String { "\(Int((ra * 1000).rounded())),\(Int((dec * 100).rounded()))" }
         let named = Dictionary(names.map { (key($0.ra, $0.dec), $0.key) }, uniquingKeysWith: { a, _ in a })
         var stars: [SkyStar] = []
@@ -98,11 +115,24 @@ public struct StarCatalogAR: Sendable, Equatable {
             }
             figures.append(StarFigure(code: con.code, stars: own, lines: con.lines.map { $0.map { own[$0] } }))
         }
+        func direction(_ ra: Double, _ dec: Double) -> (Double, Double, Double) {
+            let a = ra * Double.pi / 12, d = dec * Double.pi / 180
+            return (cos(d) * cos(a), cos(d) * sin(a), sin(d))
+        }
+        let near = cos(Self.sameStar * Double.pi / 180)
+        var seen = stars.map { direction($0.ra, $0.dec) }
+        for b in bright {
+            let v = direction(b.ra, b.dec)
+            guard !seen.contains(where: { $0.0 * v.0 + $0.1 * v.1 + $0.2 * v.2 >= near }) else { continue }
+            seen.append(v)
+            stars.append(SkyStar(ra: b.ra, dec: b.dec, magnitude: b.magnitude, spectralClass: b.spectralClass.first,
+                                 nameKey: named[key(b.ra, b.dec)]))
+        }
         self.init(stars: stars, figures: figures)
     }
 
-    /// Каталог, по которому рисует экран.
-    public static let current = StarCatalogAR(constellations: ConstellationCatalog.all)
+    /// Каталог, по которому рисует экран: звёзды фигур и яркие звёзды вне фигур.
+    public static let current = StarCatalogAR(constellations: ConstellationCatalog.all, bright: BrightStarCatalog.all)
 }
 
 // MARK: - Вид точки
