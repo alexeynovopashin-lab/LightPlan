@@ -22,6 +22,7 @@ struct SunARLayoutTests {
         var milkyWay = false
         var stars = false
         var constellations = false
+        var planets = false
     }
     private final class MemoryFlag: ARCalibrationFlag { var seen = true }
 

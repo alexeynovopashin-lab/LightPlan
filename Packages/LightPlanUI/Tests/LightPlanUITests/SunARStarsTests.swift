@@ -15,7 +15,7 @@ struct SunARStarsTests {
     private let size = CGSize(width: 393, height: 852)
     private final class MemoryFlag: ARCalibrationFlag { var seen = true }
     private final class MemoryBodies: ARBodiesSettings {
-        var moon = false, milkyWay = false, stars = false, constellations = false
+        var moon = false, milkyWay = false, stars = false, constellations = false, planets = false
     }
     private func moment(_ iso: String) -> Moment { Moment(ISO8601DateFormatter().date(from: iso)!) }
     private func model(_ iso: String, now: String? = nil, bodies: ARBodiesSettings = MemoryBodies()) -> SunARModel {
@@ -29,7 +29,7 @@ struct SunARStarsTests {
 
     @Test("«Звёзды» и «Созвездия» — отдельные строки списка со своими флагами устройства; по умолчанию выключены; помнятся")
     func rowsAndFlags() {
-        #expect(SunARSkyLayer.allCases.map(\.rawValue) == ["moon", "milkyWay", "stars", "constellations"])
+        #expect(SunARSkyLayer.allCases.map(\.rawValue) == ["moon", "milkyWay", "stars", "constellations", "planets"])
         let defaults = UserDefaults(suiteName: "sunar-stars-\(UUID().uuidString)")!
         let first = model("2026-10-20T14:00:00Z", bodies: DeviceBodiesSettings(defaults: defaults))
         #expect(first.layersOn.isEmpty && !first.starsOn && !first.constellationsOn)
@@ -45,7 +45,7 @@ struct SunARStarsTests {
         // У слоёв свои значки и точки на кнопке: тона различаются, строки — свои узлы.
         let tints = SunARSkyLayer.allCases.map { "\($0.tint)" }
         #expect(Set(tints).count == tints.count)
-        #expect(Set(SunARSkyLayer.allCases.map(\.node)).count == 4)
+        #expect(Set(SunARSkyLayer.allCases.map(\.node)).count == 5)
     }
 
     @Test("слова слоёв, дневной подписи, 24 созвездий и 22 звёзд есть на всех пяти языках")

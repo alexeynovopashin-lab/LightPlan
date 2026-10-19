@@ -13,6 +13,9 @@
 `--stars` (29.8в.13): вместо дневных строк — ночные: слои «Звёзды» и «Созвездия» включены и выключены в одном и том же кадре
 (ночь 20 октября, Томск, камера на Лиру), и числа «со слоем» против «без слоя».
 
+`--planets` (29.8в.15): ночь 5 ноября, Томск, камера на Марс и Юпитер (обе планеты и их подписи в кадре): слой «Планеты»
+выключен и включён, две пробы подряд — цена слоя планет.
+
 `--extra` — аргументы запуска сверх своих: так сравниваются своё и системное стекло дисков (29.8в.9а).
 `--milkyway` (29.8в.14) — ночь над Сочи 15.08 22:30, камера на ядро (полоса во весь экран): по три прогона с
 Млечным Путём и без него, по очереди; печатает средние и разброс — цена слоя полосы.
@@ -60,7 +63,7 @@ SWEEP = ';'.join(f'{206.2 + 12 * math.sin(i / 25):.2f},{20.6 + 6 * math.sin(i / 
                  for i in range(400))
 
 
-def run(sim, label, pose, seconds, log, when=DAY, moon='YES', stars='NO', mw=None):
+def run(sim, label, pose, seconds, log, when=DAY, moon='YES', stars='NO', mw=None, planets='NO'):
     if os.path.exists(log):
         os.remove(log)
     subprocess.run(['xcrun', 'simctl', 'terminate', sim, BUNDLE], capture_output=True)
@@ -71,6 +74,7 @@ def run(sim, label, pose, seconds, log, when=DAY, moon='YES', stars='NO', mw=Non
              '-lightplan.native.sunar.calibrationSeen', 'YES', '-lightplan.native.sunar.moon', moon,
              '-lightplan.native.sunar.milkyWay', 'YES' if mw else 'NO',
              '-lightplan.native.sunar.stars', stars, '-lightplan.native.sunar.constellations', stars,
+             '-lightplan.native.sunar.planets', planets,
              '-LPSunAR', '1', '-LPSunARMoment', when[0], '-LPSunARPose', pose,
              '-LPSunARPhone', SOCHI if mw is not None else TOMSK, '-LPSunARFakeCamera', '1', '-LPSunARLensLog', log,
              *(['-LPSunARGlow', '0', '-LPSunARPoseHold', '50'] if mw is not None else []), *EXTRA)
@@ -107,7 +111,16 @@ def main():
         if '--out' in sys.argv:
             open(sys.argv[sys.argv.index('--out') + 1], 'w').write(json.dumps(rows, ensure_ascii=False, indent=1))
         return
-    if '--stars' in sys.argv:
+    if '--planets' in sys.argv:
+        night = ('2026-11-04T20:00:00Z', '2026-11-04T03:00:00+07:00')
+        rows = []
+        for i in range(3):
+            for on in ('NO', 'YES'):
+                label = 'ночь, «Планеты» ' + ('включены (Марс и Юпитер в кадре)' if on == 'YES' else 'выключены') + f', проба {i + 1}'
+                rows.append(run(sim, label, '93,20,0', seconds, log, night, moon='NO', planets=on))
+                rows[-1]['planets'] = on == 'YES'
+                time.sleep(2)
+    elif '--stars' in sys.argv:
         rows = [run(sim, 'ночь, слои звёзд выключены', '240,52,0', seconds, log, NIGHT, moon='NO', stars='NO'),
                 run(sim, 'ночь, «Звёзды» и «Созвездия» включены', '240,52,0', seconds, log, NIGHT, moon='NO', stars='YES'),
                 run(sim, 'ночь, слои выключены (вторая проба)', '240,52,0', seconds, log, NIGHT, moon='NO', stars='NO'),
@@ -117,6 +130,12 @@ def main():
                 run(sim, 'дисков нет (смотрим на север и вверх)', '0,70,0', seconds, log)]
     for r in rows:
         print(json.dumps(r, ensure_ascii=False))
+    if '--planets' in sys.argv:
+        for on in (False, True):
+            rs = [r for r in rows if r['planets'] == on and r['frames_in'] > 0]
+            for k in ('cpu_percent', 'fps', 'renderer_cpu_ms_per_frame'):
+                v = [r[k] for r in rs]
+                print(('с планетами' if on else 'без планет'), k, 'проб', len(v), 'среднее', round(sum(v) / len(v), 2), 'разброс', round(max(v) - min(v), 2))
     if '--out' in sys.argv:
         open(sys.argv[sys.argv.index('--out') + 1], 'w').write(json.dumps(rows, ensure_ascii=False, indent=1))
 

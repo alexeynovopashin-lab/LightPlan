@@ -12,6 +12,8 @@ enum SunARLayers: String, CaseIterable {
     case milkyWay
     /// Звёзды, линии и названия созвездий (29.8в.13).
     case stars
+    /// Планеты (29.8в.15).
+    case planets
     /// Горизонт, дуга солнца и луны, подписи часов, стороны света, восход и закат — одним холстом.
     case arc
     /// Линза: гнутая копия того, что под диском (небо без камеры, дуга, полоса).
@@ -22,7 +24,7 @@ enum SunARLayers: String, CaseIterable {
     case labels
 
     /// Порядок снизу вверх.
-    static let order: [SunARLayers] = [.camera, .milkyWay, .stars, .arc, .lens, .paint, .labels]
+    static let order: [SunARLayers] = [.camera, .milkyWay, .stars, .planets, .arc, .lens, .paint, .labels]
 
     /// Слой нарисован. В выпуске — всегда; в отладке — если не задан список `-LPSunARLayers`.
     static func shown(_ layer: SunARLayers) -> Bool {

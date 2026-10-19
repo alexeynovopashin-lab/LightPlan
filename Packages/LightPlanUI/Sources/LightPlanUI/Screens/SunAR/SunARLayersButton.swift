@@ -1,13 +1,13 @@
 import SwiftUI
 
 /// Слой неба в AR, который включается руками (шаг 29.8в.9б). Одна круглая кнопка «Слои» открывает список: по
-/// строке на каждый слой, который уже есть, у каждого свой значок и переключатель. Слой, которого ещё нет (планеты),
-/// строки не имеет: следующий шаг добавляет случай сюда и строку в `SunARModel`.
+/// строке на каждый слой, который уже есть, у каждого свой значок и переключатель. Новый слой добавляет случай сюда и строку в `SunARModel`.
 enum SunARSkyLayer: String, CaseIterable, Identifiable {
     case moon
     case milkyWay
     case stars
     case constellations
+    case planets
 
     var id: String { rawValue }
 
@@ -18,6 +18,7 @@ enum SunARSkyLayer: String, CaseIterable, Identifiable {
         case .milkyWay: return "layer.mw"
         case .stars: return "layer.stars"
         case .constellations: return "layer.constellations"
+        case .planets: return "layer.planets"
         }
     }
 
@@ -28,6 +29,7 @@ enum SunARSkyLayer: String, CaseIterable, Identifiable {
         case .milkyWay: return SunARInk.milkyWayTone
         case .stars: return SunARInk.starTone
         case .constellations: return SunARInk.constellationTone
+        case .planets: return SunARInk.planetTone
         }
     }
 
@@ -38,6 +40,7 @@ enum SunARSkyLayer: String, CaseIterable, Identifiable {
         case .milkyWay: return "ar.layer.mw"
         case .stars: return "ar.layer.stars"
         case .constellations: return "ar.layer.constellations"
+        case .planets: return "ar.layer.planets"
         }
     }
 }
@@ -49,6 +52,7 @@ extension SunARModel {
         case .milkyWay: return milkyWayOn
         case .stars: return starsOn
         case .constellations: return constellationsOn
+        case .planets: return planetsOn
         }
     }
 
@@ -59,6 +63,7 @@ extension SunARModel {
         case .milkyWay: setMilkyWay(on)
         case .stars: setStars(on)
         case .constellations: setConstellations(on)
+        case .planets: setPlanets(on)
         }
     }
 
@@ -114,6 +119,11 @@ struct SunARLayersList: View {
     private func notes(_ layer: SunARSkyLayer) -> [String] {
         switch layer {
         case .moon, .stars, .constellations: return []
+        case .planets:
+            // Планеты (29.8в.15): днём их нет; ночью каждая, что ближе 15° к Солнцу, подписана честно.
+            let status = model.planetStatus
+            if status.daylight { return [lexicon.t("ar.planetsDay")] }
+            return status.nearSun.map { lexicon.t("ar.planetNearSun", ["name": lexicon.t($0.nameKey)]) }
         case .milkyWay:
             return (model.milkyWayVisibility.isVisible ? [] : [lexicon.t("ar.mwHidden")]) + [lexicon.t("ar.mwFormula")]
         }
@@ -153,6 +163,8 @@ struct SunARLayersList: View {
             StarsToggleIcon()
         case .constellations:
             ConstellationsToggleIcon()
+        case .planets:
+            PlanetsToggleIcon()
         }
     }
 }

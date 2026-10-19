@@ -36,6 +36,8 @@ struct SunARSkyStack: View {
     var starName: (String) -> String = { $0 }
     /// «Звёзд днём не видно».
     var starsDayText: String = ""
+    /// Планеты (29.8в.15); `nil` — слой выключен. Названия берутся тем же `starName`.
+    var planets: PlanetSkyARScene? = nil
     /// Окно, в котором живут подписи слоя: между кнопками сверху и панелью снизу.
     var starWindow: CGRect? = nil
     /// Занятое стрелками за краем (кружок и подпись каждой): подписи слоя их обходят.
@@ -90,15 +92,22 @@ struct SunARSkyStack: View {
     }
 
     /// Подписи слоя звёзд и дневная плашка. Днём подписывать нечего — звёзд нет, остаётся плашка.
-    private func starLabels(_ stars: StarSkyARScene) -> (labels: [SunARStarLabels.Placed], note: SunARStarLabels.Placed?) {
+    func starLabels(_ stars: StarSkyARScene, extraTaken: [CGRect] = []) -> (labels: [SunARStarLabels.Placed], note: SunARStarLabels.Placed?) {
         let window = starWindow ?? CGRect(origin: .zero, size: size)
-        let taken = starTaken
+        let taken = starTaken + extraTaken
         if stars.daylight {
             return ([], SunARStarLabels.dayNote(text: starsDayText, taken: taken, window: window))
         }
         guard stars.visibility > 0 else { return ([], nil) }
         let cands = SunARStarLabels.candidates(scene: stars, window: window, name: starName)
         return (SunARStarLabels.place(cands, taken: taken, window: window), nil)
+    }
+
+    /// Подписи планет: ставятся первыми, звёзды и созвездия обходят их (29.8в.15). Тот же список занятого, что у звёзд.
+    func planetLabels(_ planets: PlanetSkyARScene) -> [SunARPlanetLabels.Placed] {
+        let window = starWindow ?? CGRect(origin: .zero, size: size)
+        let cands = SunARPlanetLabels.candidates(scene: planets, window: window, name: starName)
+        return SunARPlanetLabels.place(cands, taken: starTaken, window: window)
     }
 
     var body: some View {
@@ -112,13 +121,23 @@ struct SunARSkyStack: View {
                                                           night.core.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
                                                           night.skyGhost ? 1 : 0) + Self.pictureText(night))
             }
+            let planetPlaced: [SunARPlanetLabels.Placed] = shown(.planets) ? (planets.map(planetLabels) ?? []) : []
             if shown(.stars), let stars, stars.isOn {
-                let placed = starLabels(stars)
+                let placed = starLabels(stars, extraTaken: planets.map { SunARPlanetLabels.occupied(scene: $0, labels: planetPlaced) } ?? [])
                 SunARStarLayer(scene: stars, labels: placed.labels, dayNote: placed.note, holes: holes)
                     .frame(width: size.width, height: size.height)
                     .shotNode("ar.stars", text: String(format: "dots=%d lines=%d figures=%d labels=%d vis=%.2f day=%d",
                                                         stars.dots.count, stars.segments.count, stars.figures.count,
                                                         placed.labels.count, stars.visibility, stars.daylight ? 1 : 0))
+            }
+            if shown(.planets), let planets {
+                SunARPlanetLayer(scene: planets, labels: planetPlaced, holes: holes)
+                    .frame(width: size.width, height: size.height)
+                    .shotNode("ar.planets", text: String(format: "dots=%d labels=%d vis=%.2f day=%d near=%@ names=%@",
+                                                           planets.dots.count, planetPlaced.count, planets.visibility,
+                                                           planets.daylight ? 1 : 0,
+                                                           planets.nearSun.map(\.rawValue).joined(separator: ","),
+                                                           planets.dots.map(\.planet.rawValue).joined(separator: ",")))
             }
             if shown(.arc) {
                 SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
@@ -169,6 +188,10 @@ struct SunARSkyStack: View {
             }
             if shown(.stars), let stars, stars.isOn {
                 SunARStarCanvas(scene: stars, origin: o)
+                    .frame(width: side.width, height: side.height)
+            }
+            if shown(.planets), let planets {
+                SunARPlanetCanvas(scene: planets, origin: o)
                     .frame(width: side.width, height: side.height)
             }
             if shown(.arc) {

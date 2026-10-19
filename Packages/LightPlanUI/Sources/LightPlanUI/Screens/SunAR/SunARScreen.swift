@@ -75,6 +75,7 @@ struct SunARScreen: View {
             let marks = SunARMarks.debugPlaced(SunARMarks.make(sun: scene, night: night, screen: size))
             // Звёзды и созвездия (29.8в.13): момент и место — те же, что у луны и солнца, «Сейчас» возвращает на текущий.
             let stars = model.starScene(basis: model.aim, optics: model.optics, viewport: viewport)
+            let planets = model.planetScene(basis: model.aim, optics: model.optics, viewport: viewport)
             let pointers = pointerItems(sun: sun, night: night, size: size, safe: safe, viewport: viewport)
             let panelTop = size.height - panelHeight - max(safe.bottom, 12) - 4
             let flipY = size.height - panelHeight - 40
@@ -96,7 +97,7 @@ struct SunARScreen: View {
                               sky: model.camera.isLive ? nil
                                   : AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: [])),
                               markText: markText, glass: glass,
-                              stars: stars, starName: { t.t($0) }, starsDayText: t.t("ar.starsDay"),
+                              stars: stars, starName: { t.t($0) }, starsDayText: t.t("ar.starsDay"), planets: planets,
                               starWindow: SunARZones.visibleWindow(size: size, safeTop: safe.top,
                                                                    buttonsBottom: buttonsBottom.map { max($0, notesBottom ?? 0) },
                                                                    panelTop: panelTop),

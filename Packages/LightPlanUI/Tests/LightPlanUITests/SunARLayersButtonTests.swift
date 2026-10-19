@@ -56,7 +56,7 @@ struct SunARLayersButtonTests {
             #expect(m.isOn(layer), "слой \(layer) не включился")
             #expect(lexicon.t(layer.labelKey) != layer.labelKey, "нет слова слоя \(layer)")
         }
-        #expect(SunARSkyLayer.allCases.map(\.rawValue) == ["moon", "milkyWay", "stars", "constellations"])
+        #expect(SunARSkyLayer.allCases.map(\.rawValue) == ["moon", "milkyWay", "stars", "constellations", "planets"])
         #expect(lexicon.t("ar.layers") == "Слои")
     }
 

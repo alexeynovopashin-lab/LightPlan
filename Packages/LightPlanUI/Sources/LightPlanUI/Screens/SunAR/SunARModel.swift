@@ -57,6 +57,7 @@ protocol ARBodiesSettings: AnyObject {
     var milkyWay: Bool { get set }
     var stars: Bool { get set }
     var constellations: Bool { get set }
+    var planets: Bool { get set }
 }
 
 @MainActor
@@ -65,6 +66,7 @@ final class DeviceBodiesSettings: ARBodiesSettings {
     static let milkyWayKey = "lightplan.native.sunar.milkyWay"
     static let starsKey = "lightplan.native.sunar.stars"
     static let constellationsKey = "lightplan.native.sunar.constellations"
+    static let planetsKey = "lightplan.native.sunar.planets"
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
@@ -84,6 +86,10 @@ final class DeviceBodiesSettings: ARBodiesSettings {
     var constellations: Bool {
         get { defaults.bool(forKey: Self.constellationsKey) }
         set { defaults.set(newValue, forKey: Self.constellationsKey) }
+    }
+    var planets: Bool {
+        get { defaults.bool(forKey: Self.planetsKey) }
+        set { defaults.set(newValue, forKey: Self.planetsKey) }
     }
 }
 
@@ -170,10 +176,16 @@ final class SunARModel {
     private(set) var milkyWayOn: Bool
     private(set) var starsOn: Bool
     private(set) var constellationsOn: Bool
+    private(set) var planetsOn: Bool
 
     func setStars(_ on: Bool) {
         starsOn = on
         bodies.stars = on
+    }
+
+    func setPlanets(_ on: Bool) {
+        planetsOn = on
+        bodies.planets = on
     }
 
     func setConstellations(_ on: Bool) {
@@ -289,6 +301,30 @@ final class SunARModel {
                               viewport: viewport, stars: starsOn, constellations: constellationsOn)
     }
 
+    /// Положения пяти планет на выбранный момент: держатся, пока не сдвинулась минута или не сменилось место.
+    private var planetSamples: [PlanetSample] {
+        let d = day, p = place, m = minutes
+        if let c = planetCache, c.day == d, c.place == p, c.minutes == m { return c.samples }
+        let s = PlanetSkyAR.samples(day: d, minutes: m, in: p)
+        planetCache = (d, p, m, s)
+        return s
+    }
+    @ObservationIgnored private var planetCache: (day: CivilDate, place: Place, minutes: Minutes, samples: [PlanetSample])?
+
+    /// Планеты на экране камеры (29.8в.15); `nil` — слой выключен. Момент — выбранный, «Сейчас» возвращает на текущий.
+    /// Без включённого слоя планеты не считаются; список «Слоёв» спрашивает `planetStatus` отдельно.
+    func planetScene(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport) -> PlanetSkyARScene? {
+        guard planetsOn else { return nil }
+        return PlanetSkyAR.make(samples: planetSamples, sunAltitude: sun.altitude, basis: basis, optics: optics,
+                                viewport: viewport)
+    }
+
+    /// Что сказать о планетах в списке «Слоёв»: день или планеты рядом с Солнцем на выбранный момент.
+    var planetStatus: (daylight: Bool, nearSun: [Planet]) {
+        (PlanetVisibility.isDaylight(sunAltitude: sun.altitude),
+         planetSamples.filter { PlanetVisibility.isNearSun(elongation: $0.elongation) }.map(\.planet))
+    }
+
     init(target: SunARTarget, source: (any AttitudeSource)?, camera: (any ARCameraDriving)? = nil,
          clock: @escaping @MainActor () -> Moment = { Moment(Date()) },
          calibrationFlag: (any ARCalibrationFlag)? = nil, forceCalibration: Bool = false,
@@ -327,6 +363,7 @@ final class SunARModel {
         milkyWayOn = b.milkyWay
         starsOn = b.stars
         constellationsOn = b.constellations
+        planetsOn = b.planets
         self.forceCalibration = forceCalibration
         // Взгляд без датчика — на солнце в полдень, чуть над горизонтом: дуга видна с первой секунды.
         let noon = SolarDay(date: wall.day, place: target.place)

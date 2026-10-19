@@ -315,7 +315,15 @@
     "star.hadar": "Хадар",
     "star.acrux": "Акрукс",
     "star.fomalhaut": "Фомальгаут",
-    "star.mimosa": "Бекрукс"
+    "star.mimosa": "Бекрукс",
+    "layer.planets": "Планеты",
+    "ar.planetsDay": "Днём планет не видно",
+    "ar.planetNearSun": "{name}: рядом с Солнцем",
+    "planet.mercury": "Меркурий",
+    "planet.venus": "Венера",
+    "planet.mars": "Марс",
+    "planet.jupiter": "Юпитер",
+    "planet.saturn": "Сатурн"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -632,7 +640,15 @@
     "star.hadar": "Hadar",
     "star.acrux": "Acrux",
     "star.fomalhaut": "Fomalhaut",
-    "star.mimosa": "Mimosa"
+    "star.mimosa": "Mimosa",
+    "layer.planets": "Planets",
+    "ar.planetsDay": "No planets in daylight",
+    "ar.planetNearSun": "{name}: near the Sun",
+    "planet.mercury": "Mercury",
+    "planet.venus": "Venus",
+    "planet.mars": "Mars",
+    "planet.jupiter": "Jupiter",
+    "planet.saturn": "Saturn"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -949,7 +965,15 @@
     "star.hadar": "Hadar",
     "star.acrux": "Ácrux",
     "star.fomalhaut": "Fomalhaut",
-    "star.mimosa": "Mimosa"
+    "star.mimosa": "Mimosa",
+    "layer.planets": "Planetas",
+    "ar.planetsDay": "De día no se ven los planetas",
+    "ar.planetNearSun": "{name}: cerca del Sol",
+    "planet.mercury": "Mercurio",
+    "planet.venus": "Venus",
+    "planet.mars": "Marte",
+    "planet.jupiter": "Júpiter",
+    "planet.saturn": "Saturno"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1265,7 +1289,15 @@
     "star.hadar": "ハダル",
     "star.acrux": "アクルックス",
     "star.fomalhaut": "フォーマルハウト",
-    "star.mimosa": "ミモザ"
+    "star.mimosa": "ミモザ",
+    "layer.planets": "惑星",
+    "ar.planetsDay": "昼間は惑星が見えません",
+    "ar.planetNearSun": "{name}：太陽の近く",
+    "planet.mercury": "水星",
+    "planet.venus": "金星",
+    "planet.mars": "火星",
+    "planet.jupiter": "木星",
+    "planet.saturn": "土星"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -1581,6 +1613,14 @@
     "star.hadar": "马腹一",
     "star.acrux": "十字架二",
     "star.fomalhaut": "北落师门",
-    "star.mimosa": "十字架三"
+    "star.mimosa": "十字架三",
+    "layer.planets": "行星",
+    "ar.planetsDay": "白天看不到行星",
+    "ar.planetNearSun": "{name}：靠近太阳",
+    "planet.mercury": "水星",
+    "planet.venus": "金星",
+    "planet.mars": "火星",
+    "planet.jupiter": "木星",
+    "planet.saturn": "土星"
   }
 }
