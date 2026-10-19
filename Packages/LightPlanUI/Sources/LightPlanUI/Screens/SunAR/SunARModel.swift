@@ -192,6 +192,36 @@ final class SunARModel {
     @ObservationIgnored private var bandCache: (day: CivilDate, place: Place, minutes: Minutes,
                                                  band: [(left: HorizontalPoint, right: HorizontalPoint)])?
 
+    /// Засветка места AR по атласу (`GlowStore` экрана); `nil` — атлас молчит или ещё не ответил.
+    var glow: Double?
+
+    /// Млечный Путь на выбранный момент: полоса, ядро, поворот к галактике (29.8в.14) и то, от чего зависит,
+    /// виден ли он: солнце, луна (правило окна Млечного Пути), засветка.
+    private func milkyWayInput(sunAltitude: Degrees) -> NightSkyARScene.MilkyWayInput {
+        let d = day, p = place, m = minutes
+        let moon = moonPicked
+        let center: [HorizontalPoint]
+        let frame: MilkyWayLook.Frame
+        if let c = lookCache, c.day == d, c.place == p, c.minutes == m { (center, frame) = (c.center, c.frame) }
+        else {
+            center = MilkyWayAR.center(day: d, minutes: m, in: p)
+            frame = MilkyWayLook.frame(day: d, minutes: m, in: p)
+            lookCache = (d, p, m, center, frame)
+        }
+        return .init(band: band, core: MilkyWayAR.core(day: d, minutes: m, in: p), sunAltitude: sunAltitude,
+                     frame: frame, moonAltitude: moon.altitude, moonFraction: moon.phase.fraction, glow: glow,
+                     center: center)
+    }
+    @ObservationIgnored private var lookCache: (day: CivilDate, place: Place, minutes: Minutes,
+                                                 center: [HorizontalPoint], frame: MilkyWayLook.Frame)?
+
+    /// Видимость Млечного Пути в выбранный момент (строка «Слоёв»): та же функция, что у картины.
+    var milkyWayVisibility: MilkyWayLook.Visibility {
+        let moon = moonPicked
+        return MilkyWayLook.visibility(sunAltitude: sun.altitude, moonAltitude: moon.altitude,
+                                       moonFraction: moon.phase.fraction, glow: glow)
+    }
+
     /// Луна и Млечный Путь на экране камеры — только то, что включено. Расчёт — ядра (`MoonSample`, `MoonPhase`,
     /// `MilkyWay`), здесь он только собирается в сцену.
     func nightScene(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport) -> NightSkyARScene {
@@ -202,9 +232,7 @@ final class SunARModel {
             ? .init(arc: moonArc, picked: moonPicked, now: pickedIsNow ? nil : moonNow, sunAtPicked: sunPicked,
                     sunAtNow: HorizontalPoint(altitude: n.apparentAltitude, azimuth: n.azimuth))
             : nil
-        let mw: NightSkyARScene.MilkyWayInput? = milkyWayOn
-            ? .init(band: band, core: MilkyWayAR.core(day: day, minutes: minutes, in: place), sunAltitude: s.altitude)
-            : nil
+        let mw: NightSkyARScene.MilkyWayInput? = milkyWayOn ? milkyWayInput(sunAltitude: s.altitude) : nil
         return NightSkyARScene.make(basis: basis, optics: optics, viewport: viewport, moon: moon, milkyWay: mw)
     }
 

@@ -199,10 +199,11 @@ extension AppModel {
     }
 
     #if DEBUG
-    /// `-LPSunARPhone lat,lon,Zone/Id` — подставное место телефона (в симуляторе его нет).
+    /// `-LPSunARPhone lat,lon,Zone/Id` — подставное место телефона (в симуляторе его нет). Южная широта — с пробелом
+    /// впереди (`" -33.87,151.21,Australia/Sydney"`): значение с минуса аргументы запуска читают как новый ключ.
     static var debugPhoneSpot: Place? {
         guard let s = UserDefaults.standard.string(forKey: "LPSunARPhone") else { return nil }
-        let p = s.split(separator: ",").map(String.init)
+        let p = s.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         guard p.count == 3, let la = Double(p[0]), let lo = Double(p[1]), let z = ZoneID(p[2]) else { return nil }
         return Place(latitude: la, longitude: lo, zone: z)
     }

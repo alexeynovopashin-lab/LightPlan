@@ -108,6 +108,8 @@ public final class AppModel {
     public var spotCount: Int { snapshot.spots.count }
     /// Засветка места по атласу Лоренца — строка «Засветка» сводки карты.
     public let glow: GlowStore
+    /// Откуда берутся плитки атласа: AR спрашивает засветку своего места (оно бывает местом телефона).
+    let glowSource: any GlowTileSource
     /// Прогноз по точкам съёмки для карточки (веб `ptFetch`): свой, отдельный
     /// от прогноза места «Света».
     public let pointWeather: PointWeather
@@ -470,6 +472,7 @@ public final class AppModel {
         let weather = WeatherStore(place: place.place, source: weatherSource, reachability: weatherReachability)
         self.pointWeather = PointWeather(source: weatherSource)
         self.glow = GlowStore(place: place.place, source: glowSource)
+        self.glowSource = glowSource
         let timebar = TimebarState(place: place.place, date: Self.today(in: place.place, now: now()), weather: weather,
                                    language: language, ribbonMode: Self.ribbon(settings.ribbonMode),
                                    clockPreference: Self.clock(settings.clock), now: now)

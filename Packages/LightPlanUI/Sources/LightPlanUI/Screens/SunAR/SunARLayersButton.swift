@@ -96,19 +96,38 @@ struct SunARLayersList: View {
         .preferredColorScheme(.dark)
     }
 
+    /// Мелкие строки под словом слоя. Млечный Путь (29.8в.14): «сейчас не видно», когда видимость нулевая
+    /// (светло, луна, засветка — та же функция, что у картины), и всегда — «рисуется по формуле, условно»: Алексей
+    /// выбрал имитацию вида, и подпись об этом обязательна.
+    private func notes(_ layer: SunARSkyLayer) -> [String] {
+        switch layer {
+        case .moon: return []
+        case .milkyWay:
+            return (model.milkyWayVisibility.isVisible ? [] : [lexicon.t("ar.mwHidden")]) + [lexicon.t("ar.mwFormula")]
+        }
+    }
+
     private func row(_ layer: SunARSkyLayer) -> some View {
         let label = lexicon.t(layer.labelKey)
         let on = model.isOn(layer)
+        let small = notes(layer)
         return HStack(spacing: 12) {
             icon(layer).frame(width: 28, height: 28)
-            Text(label).font(.system(size: 16)).lineLimit(1).minimumScaleFactor(0.8)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(label).font(.system(size: 16)).lineLimit(1).minimumScaleFactor(0.8)
+                ForEach(small, id: \.self) { note in
+                    Text(note).font(.system(size: 12)).foregroundStyle(.secondary)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+            }
             Spacer(minLength: 8)
             Toggle(label, isOn: Binding(get: { on }, set: { model.set(layer, on: $0) }))
                 .labelsHidden()
                 .tint(layer.tint)
         }
         .frame(minHeight: SunARInk.touch)
-        .shotNode(layer.node, text: label + (on ? " on" : " off"))
+        .padding(.vertical, small.isEmpty ? 0 : 4)
+        .shotNode(layer.node, text: ([label] + small).joined(separator: " | ") + (on ? " on" : " off"))
     }
 
     @ViewBuilder private func icon(_ layer: SunARSkyLayer) -> some View {

@@ -131,6 +131,12 @@ public enum MilkyWayAR {
         }
     }
 
+    /// Середина полосы над головой: точки `MilkyWay.band` (b = 0) через `Sky.horizontal`.
+    public static func center(day: CivilDate, minutes: Minutes, in place: Place) -> [HorizontalPoint] {
+        let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: place.zone.utcOffsetHours(on: day))
+        return MilkyWay.band.map { Sky.horizontal($0.center, days: d, latitude: place.latitude, longitude: place.longitude) }
+    }
+
     /// Ядро — `MilkyWay.corePosition`, второй расчёт не заводится.
     public static func core(day: CivilDate, minutes: Minutes, in place: Place) -> HorizontalPoint {
         MilkyWay.corePosition(date: day, minutes: minutes, place: place)
@@ -236,15 +242,37 @@ public struct NightSkyARScene: Sendable, Equatable {
         }
     }
 
-    /// Млечный Путь: края полосы и ядро в этот момент, высота солнца — для призрака днём.
+    /// Млечный Путь: края полосы и ядро в этот момент, высота солнца — для призрака днём. Для картины полосы
+    /// (29.8в.14): поворот «горизонт → галактика» (`MilkyWayLook.frame`), луна и засветка — для видимости.
     public struct MilkyWayInput {
         public let band: [(left: HorizontalPoint, right: HorizontalPoint)]
         public let core: HorizontalPoint
         public let sunAltitude: Degrees
+        public let frame: MilkyWayLook.Frame?
+        public let moonAltitude: Degrees
+        public let moonFraction: Double
+        public let glow: Double?
+        /// Середина полосы (`MilkyWayAR.center`) — для проверки картины.
+        public let center: [HorizontalPoint]
 
-        public init(band: [(left: HorizontalPoint, right: HorizontalPoint)], core: HorizontalPoint, sunAltitude: Degrees) {
+        public init(band: [(left: HorizontalPoint, right: HorizontalPoint)], core: HorizontalPoint, sunAltitude: Degrees,
+                    frame: MilkyWayLook.Frame? = nil, moonAltitude: Degrees = -90, moonFraction: Double = 0,
+                    glow: Double? = nil, center: [HorizontalPoint] = []) {
             self.band = band; self.core = core; self.sunAltitude = sunAltitude
+            self.frame = frame; self.moonAltitude = moonAltitude; self.moonFraction = moonFraction; self.glow = glow
+            self.center = center
         }
+    }
+
+    /// Картина полосы для шейдера: два поворота и видимость. Точка окна (x, y) → луч `pixelToSky · (x, y, 1)` в осях
+    /// «восток, север, вверх» → галактика `frame`. `centerLine` — середина полосы (`MilkyWay.band`), спроецированная
+    /// `SkyProjection` отдельно от шейдера: по ней проверяется, что картина стоит там, где считает ядро.
+    public struct MilkyWayPicture: Sendable, Equatable {
+        public let pixelToSky: [Double]
+        public let frame: MilkyWayLook.Frame
+        public let visibility: MilkyWayLook.Visibility
+        public let centerLine: [ScreenPoint]
+        public let focal: Double
     }
 
     /// Луна в выбранный момент; `nil` — луна выключена.
@@ -263,6 +291,8 @@ public struct NightSkyARScene: Sendable, Equatable {
     public let milkyWayOn: Bool
     /// Небо светлое: полоса и ядро идут призраком.
     public let skyGhost: Bool
+    /// Картина полосы; `nil` — Млечный Путь выключен или поворот не подан.
+    public let milkyWayPicture: MilkyWayPicture?
 
     /// Луна ниже −18° (как дуга солнца) не рисуется.
     public static let arcFrom: Degrees = -18
@@ -301,6 +331,7 @@ public struct NightSkyARScene: Sendable, Equatable {
         // Полоса: подряд идущие точки, у которых оба края ложатся на экран; разрыв — новый многоугольник.
         var polys: [[ScreenPoint]] = []
         var coreOnScreen: ScreenPoint?
+        var picture: MilkyWayPicture?
         if let milkyWay {
             var left: [ScreenPoint] = [], right: [ScreenPoint] = []
             func flush() {
@@ -314,10 +345,21 @@ public struct NightSkyARScene: Sendable, Equatable {
             }
             flush()
             coreOnScreen = proj(milkyWay.core.azimuth, milkyWay.core.altitude)
+            if let frame = milkyWay.frame {
+                picture = MilkyWayPicture(
+                    pixelToSky: MilkyWayLook.pixelToSky(basis: basis, optics: optics, viewport: viewport),
+                    frame: frame,
+                    visibility: MilkyWayLook.visibility(sunAltitude: milkyWay.sunAltitude,
+                                                        moonAltitude: milkyWay.moonAltitude,
+                                                        moonFraction: milkyWay.moonFraction, glow: milkyWay.glow),
+                    centerLine: milkyWay.center.compactMap { proj($0.azimuth, $0.altitude) },
+                    focal: SkyProjection.focalLength(optics: optics, viewport: viewport))
+            }
         }
         return NightSkyARScene(picked: pickedMark, now: nowMark, arc: segments, band: polys, core: coreOnScreen,
                                coreAzimuth: milkyWay?.core.azimuth ?? 0, coreAltitude: milkyWay?.core.altitude ?? 0,
                                milkyWayOn: milkyWay != nil,
-                               skyGhost: milkyWay.map { MilkyWayAR.isGhost(sunAltitude: $0.sunAltitude) } ?? false)
+                               skyGhost: milkyWay.map { MilkyWayAR.isGhost(sunAltitude: $0.sunAltitude) } ?? false,
+                               milkyWayPicture: picture)
     }
 }

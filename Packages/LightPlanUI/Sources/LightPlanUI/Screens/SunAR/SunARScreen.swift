@@ -117,6 +117,16 @@ struct SunARScreen: View {
         .onChange(of: model.timebar.touches) { _, _ in glide?.cancel() }
         .onChange(of: target.choice) { _, new in model.apply(choice: new) }
         .task { await model.start() }
+        // Засветка места AR — атлас Лоренца, та же плитка, что у строки «Засветка» карты (29.8в.14).
+        .task(id: model.place) {
+            #if DEBUG
+            // `-LPSunARGlow 12` (отладка): подставная засветка — кадры «ночь с городом» без сети.
+            if let v = UserDefaults.standard.string(forKey: "LPSunARGlow"), let r = Double(v) { model.glow = r; return }
+            #endif
+            let store = GlowStore(place: model.place, source: app.glowSource, debounce: .zero)
+            await store.settled()
+            model.glow = store.ratio
+        }
         .task {
             // «Сейчас» едет, север мог стать истинным (включили геолокацию, пока экран открыт).
             while !Task.isCancelled {
@@ -831,7 +841,11 @@ enum SunARSources {
         }
         if let list = d.string(forKey: "LPSunARPose"), let script = ScriptedAttitude.script(list) {
             let north: AttitudeNorth = d.string(forKey: "LPSunARNorth") == "magnetic" ? .magneticNorth : .trueNorth
-            return ScriptedAttitude(poses: script.poses, accuracies: script.accuracies, north: north)
+            // `-LPSunARPoseHold 50` — сколько миллисекунд держать каждую позу (по умолчанию 3 с): частый список поз —
+            // телефон «водят», и экран перерисовывается на каждом отсчёте (замер цены слоя, `ar_lens_bench.py`).
+            let hold = d.integer(forKey: "LPSunARPoseHold")
+            return ScriptedAttitude(poses: script.poses, hold: hold > 0 ? .milliseconds(hold) : .seconds(3),
+                                    accuracies: script.accuracies, north: north)
         }
         #endif
         #if os(iOS)

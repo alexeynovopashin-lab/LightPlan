@@ -241,7 +241,7 @@ struct SunARMilkyWayLayer: View {
         let k = scene.skyGhost ? MilkyWayAR.ghostOpacity : 1.0
         ZStack {
             SunARMilkyWayCanvas(scene: scene, holes: holes)
-            if let c = scene.core {
+            if let c = scene.core, MilkyWaySkyShader.labelShown {
                 Text(coreLabel)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(SunARInk.light)
@@ -274,54 +274,27 @@ struct SunARHole: Equatable {
     }
 }
 
-/// Полоса и ядро одним холстом. `origin` — левый верхний угол холста в окне экрана: копия под линзой рисует
-/// тот же кадр в маленьком холсте.
+/// Полоса и ядро одной картиной (шаг 29.8в.14): шейдер `milkyWaySky` на весь холст. `origin` — левый верхний угол
+/// холста в окне экрана: копия под линзой рисует тот же кадр в маленьком холсте. Свет полосы складывается с тем,
+/// что под ней (`.plusLighter`): ночью на тёмном кадре она светится, а не закрашивает его.
 struct SunARMilkyWayCanvas: View {
     let scene: NightSkyARScene
     var origin: CGPoint = .zero
     var holes: [SunARHole] = []
 
     var body: some View {
-        let k = scene.skyGhost ? MilkyWayAR.ghostOpacity : 1.0
-        Canvas { ctxIn, size in
-            var ctx = ctxIn
-            ctx.translateBy(x: -origin.x, y: -origin.y)
-            if !holes.isEmpty {
-                ctx.clip(to: SunARHole.clipArea(CGRect(origin: origin, size: size), holes: holes), style: FillStyle(eoFill: true))
+        if let pic = scene.milkyWayPicture, pic.visibility.isVisible, !scene.band.isEmpty {
+            GeometryReader { g in
+                Rectangle()
+                    .fill(MilkyWaySkyShader.shader(pic, origin: origin, parts: .current))
+                    .clipShape(holes.isEmpty ? Path(CGRect(origin: .zero, size: g.size))
+                               : SunARHole.clipArea(CGRect(origin: origin, size: g.size), holes: holes)
+                                   .offsetBy(dx: -origin.x, dy: -origin.y),
+                               style: FillStyle(eoFill: true))
+                    .blendMode(.plusLighter)
             }
-            for poly in scene.band where poly.count >= 4 {
-                let n = poly.count / 2
-                // Три слоя: полный, 65 % и 30 % ширины полосы — середина набирает яркость.
-                for (share, alpha) in [(1.0, 0.07), (0.65, 0.07), (0.3, 0.09)] {
-                    var p = Path()
-                    func edge(_ i: Int) -> CGPoint {
-                        let l = poly[i], r = poly[poly.count - 1 - i]
-                        let mx = (l.x + r.x) / 2, my = (l.y + r.y) / 2
-                        return CGPoint(x: mx + (l.x - mx) * share, y: my + (l.y - my) * share)
-                    }
-                    func back(_ i: Int) -> CGPoint {
-                        let l = poly[i], r = poly[poly.count - 1 - i]
-                        let mx = (l.x + r.x) / 2, my = (l.y + r.y) / 2
-                        return CGPoint(x: mx + (r.x - mx) * share, y: my + (r.y - my) * share)
-                    }
-                    p.move(to: edge(0))
-                    for i in 1..<n { p.addLine(to: edge(i)) }
-                    for i in stride(from: n - 1, through: 0, by: -1) { p.addLine(to: back(i)) }
-                    p.closeSubpath()
-                    ctx.fill(p, with: .color(SunARInk.milkyWayTone.opacity(alpha * k)))
-                }
-            }
-            if let c = scene.core {
-                let r: CGFloat = 40
-                let rect = CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)
-                ctx.fill(Path(ellipseIn: rect),
-                         with: .radialGradient(Gradient(colors: [SunARInk.coreTone.opacity(0.85 * k),
-                                                                 SunARInk.coreTone.opacity(0.25 * k),
-                                                                 SunARInk.coreTone.opacity(0)]),
-                                               center: CGPoint(x: c.x, y: c.y), startRadius: 0, endRadius: r))
-            }
+            .allowsHitTesting(false)
         }
-        .allowsHitTesting(false)
     }
 }
 

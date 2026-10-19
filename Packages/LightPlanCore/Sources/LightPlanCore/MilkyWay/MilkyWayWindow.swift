@@ -45,6 +45,11 @@ public struct MilkyWayWindow: Sendable, Equatable {
     /// Луна хоть раз закрыла минуту, в остальном годную.
     public let moonBlocks: Bool
 
+    /// Луна мешает, если над горизонтом и освещена больше чем на 40 %. Одно правило на окно и на полосу в AR.
+    public static func moonBlocks(altitude: Degrees, fraction: Double) -> Bool {
+        altitude > 0 && fraction > 0.4
+    }
+
     // MARK: - Входы
 
     public init(date: CivilDate, latitude: Double, longitude: Double, utcOffsetHours: Double) {
@@ -73,8 +78,7 @@ public struct MilkyWayWindow: Sendable, Equatable {
                     date: date, minutes: x,
                     latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours
                 )
-                // Луна мешает, если над горизонтом и освещена больше чем на 40 %.
-                if moon.altitude > 0 && moon.phase.fraction > 0.4 { moonBlocks = true; ok = false }
+                if Self.moonBlocks(altitude: moon.altitude, fraction: moon.phase.fraction) { moonBlocks = true; ok = false }
             }
             if ok {
                 if from == nil { from = x }

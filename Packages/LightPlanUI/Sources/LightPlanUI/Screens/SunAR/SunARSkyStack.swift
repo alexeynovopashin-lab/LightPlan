@@ -43,6 +43,23 @@ struct SunARSkyStack: View {
         #endif
     }
 
+    /// Числа картины для замера по кадру (`Tools/ar_milkyway.py`): видимость и причина, лучи окна, оси галактики,
+    /// фокус, высота и азимут ядра, середина полосы на экране (`MilkyWay.band` через `SkyProjection`).
+    private static let reporting = UserDefaults.standard.string(forKey: "LPShotReport") != nil
+
+    private static func pictureText(_ night: NightSkyARScene) -> String {
+        // Сотня чисел строкой на каждый кадр — только когда снимается отчёт.
+        guard reporting else { return "" }
+        guard let p = night.milkyWayPicture else { return " vis=—" }
+        let f = p.frame
+        let nums = (p.pixelToSky + [f.x, f.y, f.z].flatMap { [$0.east, $0.north, $0.up] }).map { String(format: "%.9g", $0) }
+        let line = p.centerLine.filter { $0.x > -2000 && $0.x < 4000 && $0.y > -2000 && $0.y < 6000 }
+            .map { String(format: "%.2f,%.2f", $0.x, $0.y) }
+        return String(format: " vis=%.4f hidden=%@ focal=%.4f coreAlt=%.3f coreAz=%.3f", p.visibility.factor,
+                      p.visibility.hidden?.rawValue ?? "none", p.focal, night.coreAltitude, night.coreAzimuth)
+            + " m=" + nums.joined(separator: ",") + " line=" + line.joined(separator: ";")
+    }
+
     private func shown(_ l: SunARLayers) -> Bool { layers?.contains(l) ?? SunARLayers.shown(l) }
 
     var body: some View {
@@ -54,7 +71,7 @@ struct SunARSkyStack: View {
                     .frame(width: size.width, height: size.height)
                     .shotNode("ar.milkyWay", text: String(format: "polys=%d core=%@ ghost=%d", night.band.count,
                                                           night.core.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
-                                                          night.skyGhost ? 1 : 0))
+                                                          night.skyGhost ? 1 : 0) + Self.pictureText(night))
             }
             if shown(.arc) {
                 SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
