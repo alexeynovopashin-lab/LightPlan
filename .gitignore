@@ -6,3 +6,6 @@ build/
 xcuserdata/
 *.xcuserstate
 *.log
+__pycache__/
+# карта NASA SVS для сверки Млечного Пути — только судья, в репозиторий не кладём
+Tools/milkyway_model/ref/

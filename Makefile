@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: phone checkstep help parity blocks lang icons brightstars domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
+.PHONY: phone checkstep help milkywaymodel parity blocks lang icons brightstars domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -28,6 +28,7 @@ help:
 	@echo "make phone    сборка на iPhone Алексея: ARGS=\"install\" | \"uninstall\" | \"list\"; ветка ставит «LP <ветка>» в один из четырёх слотов slotA…D (26т, пул 12.10)"
 	@echo "make checkstep ветка шага против базы: пять строк да/нет, любое «нет» — код 1; ARGS=\"wt/26 [main] --type код [--tests] [--full]\" (26т)"
 	@echo "make draftday  форма при черновике другого дня: окно вопроса, плашка, порядок блоков, числа (28о)"
+	@echo "make milkywaymodel карта Млечного Пути из модели Галактики (свечение + пыль для AR), сверка с картой NASA и повтор прогона, без сети (~3 мин)"
 	@echo "make shots    пары снимков веб / натив «Света», «Карты», «Съёмок» и «Настроек» и сверка числами (19б, 20а, 21)"
 
 # Файлы, которые пишет сам generate.js. Другие цели (lang, domain, локация)
@@ -179,3 +180,12 @@ phone:
 # Итерация 26т: проверка шага — четыре строки да/нет.
 checkstep:
 	@Tools/check_step.sh $(ARGS)
+
+# Млечный Путь из модели Галактики: карта свечения и пыли по небу для AR (Tools/milkyway_model/README.md).
+# Сети не нужно; сверка с картой NASA — если она лежит в Tools/milkyway_model/ref/ (как скачать — README).
+# Второй прогон без картинок во временную папку доказывает, что значения повторяются.
+milkywaymodel:
+	@python3 Tools/milkyway_model/build_map.py
+	@tmp=$$(mktemp -d); \
+	python3 Tools/milkyway_model/build_map.py --no-previews --out $$tmp > /dev/null; \
+	python3 Tools/milkyway_model/validate.py --repeat $$tmp; s=$$?; rm -rf $$tmp; exit $$s
