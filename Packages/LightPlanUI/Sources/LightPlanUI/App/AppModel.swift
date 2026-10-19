@@ -394,6 +394,8 @@ public final class AppModel {
     var following: Bool { didSet { light.placeFollowing = followingLive } }
     /// Слежение выключилось само: место выбрали руками.
     var followOffByChoice: Bool { didSet { light.placeFollowing = followingLive } }
+    /// Сколько раз место выбирали руками: ответ «где я», запрошенный до выбора, его не перебивает (ревью GPT к 1fd6b27).
+    @ObservationIgnored var handPicks = 0
     /// Доступ к геопозиции, сверенный последним (на старте и при возврате на экран).
     var locationAccess: LocationAccess { didSet { light.placeFollowing = followingLive } }
 
@@ -481,6 +483,8 @@ public final class AppModel {
         light.proMode = settings.pro
         light.fahrenheit = settings.tempUnit == .f
         light.placeFollowing = live
+        // Строка под именем запомненного места — сразу: тот же ответ геокодера наблюдателя не будит (равное значение).
+        light.locationSub = place.name?.sub ?? ""
 
         watchPlace()
         // Следим и доступ уже дан — свежая точка телефона (без системного окна); слежение за смещением — с ней.
@@ -544,7 +548,9 @@ public final class AppModel {
                         cityLookup: AppleCityLookup(locale: locale), placeSearch: ApplePlaceSearch(locale: locale),
                         weatherSource: RoutedWeatherSource.live(config: WeatherProxyConfig.load(), hub: hub),
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading(),
-                        weatherReachability: SystemReachability())
+                        weatherReachability: SystemReachability(),
+                        // Место и слежение — в памяти телефона (29.8в.12); тесты и снимки пар живут в памяти запуска.
+                        placeMemory: DevicePlaceMemory())
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
         model.pinterest = PinterestClient.live(config: PinterestConfig.load())
@@ -610,14 +616,23 @@ public final class AppModel {
 
     /// «Я здесь» листа и «Моё место» карты: разрешение спрашивается здесь. Место встаёт на точку телефона
     /// сразу, без порога; слежение не трогается — это разовый ответ «где я».
+    /// Пока телефон отвечал, место выбрали руками (лист сам спрашивает при первом открытии) — ответ запоминается,
+    /// но место не двигает (ревью GPT к 1fd6b27).
     @discardableResult
     public func locateHere() async -> DeviceFix {
-        await place.useDeviceLocation()
+        let picks = handPicks
+        let r = await locator.currentFix()
+        place.noteDeviceResult(r)
         refreshLocationAccess()
-        let r = place.lastDeviceResult ?? .unavailable
+        if case .fix(let c) = r, picks != handPicks {
+            phoneArrived(c)          // следить уже не за чем: выбор руками выключил слежение
+            return r
+        }
         if case .fix(let c) = r {
+            // «Я здесь» ставит место на телефон всегда, следим или нет; точка запоминается для строки под кнопкой.
             citySource = .device
-            phoneArrived(c, force: true)
+            place.move(to: c)
+            phoneArrived(c)
             startWatchingIfFollowing()
         }
         return r

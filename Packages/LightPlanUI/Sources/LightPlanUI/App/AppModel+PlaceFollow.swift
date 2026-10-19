@@ -192,6 +192,7 @@ extension AppModel {
 
     /// Место выбрали руками (лист, «Мои места», карта пальцем): слежение выключается само.
     func choseByHand() {
+        handPicks += 1
         guard following else { return }
         following = false
         followOffByChoice = true

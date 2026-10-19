@@ -93,6 +93,10 @@ public final class CurrentPlace {
         if case .fix(let c) = result { move(to: c) }
     }
 
+    /// Ответ «где я», полученный в обход `useDeviceLocation`: запоминается, место не двигает — двигать решает
+    /// тот, кто спрашивал (29.8в.12: ответ, пришедший после выбора руками, место не перебивает).
+    public func noteDeviceResult(_ result: DeviceFix) { lastDeviceResult = result }
+
     /// Дождаться, пока имя для текущего места придёт (для тестов и для экранов,
     /// которым нужно закрыть спиннер).
     public func settled() async { await lookupTask?.value }

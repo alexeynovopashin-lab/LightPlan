@@ -32,6 +32,10 @@ struct PlaceFollowTests {
         var fix: GeoCoordinate
         let grantOnAsk: Bool
         private(set) var asked = 0
+        /// Держать ответ, пока тест не отпустит (`release`): телефон думает, человек тем временем что-то делает.
+        var hold = false
+        private var held: CheckedContinuation<Void, Never>?
+        func release() { held?.resume(); held = nil }
         private(set) var stops = 0
         private(set) var watcher: (@MainActor (GeoCoordinate) -> Void)?
 
@@ -42,6 +46,7 @@ struct PlaceFollowTests {
         var needsPermission: Bool { state == .notAsked }
         func currentFix() async -> DeviceFix {
             asked += 1
+            if hold { await withCheckedContinuation { held = $0 } }
             if state == .notAsked { state = grantOnAsk ? .granted : .denied }
             return state == .granted ? .fix(fix) : .denied
         }
@@ -128,6 +133,34 @@ struct PlaceFollowTests {
         #expect(phone.watcher != nil)
     }
 
+    /// «Я здесь» ставит место на телефон и при выключенном слежении; переключатель не трогает.
+    @Test func iAmHereMovesEvenWhenNotFollowing() async {
+        var rec = PlaceMemoryRecord()
+        rec.following = false
+        rec.place = .init(latitude: moscow.latitude, longitude: moscow.longitude, name: "Москва", sub: nil, zone: "Europe/Moscow")
+        let app = model(Phone(.granted, at: tomsk), memory: InMemoryPlaceMemory(rec))
+        #expect(app.place.coordinate == moscow)
+        #expect(await app.locateHere() == .fix(tomsk))
+        #expect(app.place.coordinate == tomsk)
+        #expect(!app.following)
+        #expect(app.phoneFix?.coordinate == tomsk)
+    }
+
+    /// Лист сам спросил «где я» при первом открытии, человек тем временем выбрал место руками — запоздавший ответ
+    /// телефона выбор не перебивает (ревью GPT к 1fd6b27).
+    @Test func lateFixDoesNotOverrideHandPick() async throws {
+        let phone = Phone(.notAsked, at: tomsk)
+        phone.hold = true
+        let app = model(phone)
+        let ask = Task { await app.locateHere() }
+        for _ in 0..<200 where phone.asked == 0 { try await Task.sleep(for: .milliseconds(5)) }
+        app.movePlace(to: lagerny)
+        phone.release()
+        #expect(await ask.value == .fix(tomsk))
+        #expect(app.place.coordinate == lagerny)
+        #expect(app.phoneFix?.coordinate == tomsk)          // точка телефона всё равно запомнена
+    }
+
     // MARK: - Перезапуск помнит место и переключатель
 
     @Test func restartKeepsHandPickedPlaceAndSwitch() async throws {
@@ -148,6 +181,8 @@ struct PlaceFollowTests {
         let second = model(Phone(.denied, at: tomsk), memory: memory, snapshot: try await store.load(), store: store)
         #expect(second.place.coordinate == tomsk)
         #expect(second.light.locationName == "Томск")
+        await settle(second) { !second.light.locationSub.isEmpty }
+        #expect(second.light.locationSub == "Томская область")             // строка под именем — сразу, без геокодера
         #expect(second.light.timebar.place.zone.identifier == "Asia/Tomsk")   // пояс помнится, не оценка +6
         #expect(second.citySource == .saved)
         #expect(!second.following)
