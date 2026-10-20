@@ -1,0 +1,22 @@
+[
+ {"backdrop": "white", "scene": "night_sydney", "stations": 4, "min": 1.82, "median": 2.32, "core": 2.32},
+ {"backdrop": "white", "scene": "day_sun20", "stations": 10, "min": 1.81, "median": 1.94, "core": null},
+ {"backdrop": "white", "scene": "city12", "stations": 1, "min": 1.87, "median": 1.87, "core": 1.87},
+ {"backdrop": "white", "scene": "city27", "stations": 1, "min": 1.91, "median": 1.91, "core": 1.91},
+ {"backdrop": "white", "scene": "moon62", "stations": 1, "min": 1.92, "median": 1.92, "core": 1.92},
+ {"backdrop": "sky", "scene": "night_sydney", "stations": 4, "min": 1.39, "median": 1.79, "core": 1.79},
+ {"backdrop": "sky", "scene": "day_sun20", "stations": 10, "min": 1.55, "median": 1.59, "core": null},
+ {"backdrop": "sky", "scene": "city12", "stations": 1, "min": 1.54, "median": 1.54, "core": 1.54},
+ {"backdrop": "sky", "scene": "city27", "stations": 1, "min": 1.61, "median": 1.61, "core": 1.61},
+ {"backdrop": "sky", "scene": "moon62", "stations": 1, "min": 1.61, "median": 1.61, "core": 1.61},
+ {"backdrop": "asphalt", "scene": "night_sydney", "stations": 4, "min": 3.25, "median": 5.08, "core": 5.08},
+ {"backdrop": "asphalt", "scene": "day_sun20", "stations": 10, "min": 1.46, "median": 1.86, "core": null},
+ {"backdrop": "asphalt", "scene": "city12", "stations": 1, "min": 1.81, "median": 1.81, "core": 1.81},
+ {"backdrop": "asphalt", "scene": "city27", "stations": 1, "min": 1.79, "median": 1.79, "core": 1.79},
+ {"backdrop": "asphalt", "scene": "moon62", "stations": 1, "min": 1.85, "median": 1.85, "core": 1.85},
+ {"backdrop": "night", "scene": "night_sydney", "stations": 4, "min": 7.65, "median": 15.01, "core": 15.01},
+ {"backdrop": "night", "scene": "day_sun20", "stations": 10, "min": 2.12, "median": 3.05, "core": null},
+ {"backdrop": "night", "scene": "city12", "stations": 1, "min": 3.34, "median": 3.34, "core": 3.34},
+ {"backdrop": "night", "scene": "city27", "stations": 1, "min": 3.34, "median": 3.34, "core": 3.34},
+ {"backdrop": "night", "scene": "moon62", "stations": 1, "min": 3.41, "median": 3.41, "core": 3.41}
+]
