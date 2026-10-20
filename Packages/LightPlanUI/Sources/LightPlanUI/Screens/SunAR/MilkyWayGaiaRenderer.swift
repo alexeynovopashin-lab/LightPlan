@@ -24,9 +24,18 @@ struct MilkyWayGaiaLook: Equatable, Sendable {
     /// Пол планирования: ниже него яркость реалистичной части не падает (день, город, Луна) — слово Алексея 20.10
     /// «положение светил показывается всегда». Подобран замером `Tools/ar_milkyway.py --contrast` (контраст полосы
     /// к фону ≥ 1,5:1 на белом, голубом небе, асфальте и ночном небе).
-    static let planFloor = 0.4
+    /// В отладке подбирается аргументом `-LPSunARMWFloor <число>`.
+    static let planFloor = tuned("LPSunARMWFloor", 0.5)
     /// Тёмный подклад под полосой при светлом небе: множитель кадра 0,75 там, где видимость глазом нуль.
-    static let underlay = 0.25
+    /// В отладке — `-LPSunARMWUnder <число>`.
+    static let underlay = tuned("LPSunARMWUnder", 0.25)
+
+    private static func tuned(_ key: String, _ value: Double) -> Double {
+        #if DEBUG
+        if let s = UserDefaults.standard.string(forKey: key), let v = Double(s) { return v }
+        #endif
+        return value
+    }
     /// Тонирование «скромно»: `I_out = k · I^γ` по яркости Y, оттенок сохраняется; ядро ≈ 0,6.
     static let toneK = 1.234
     static let toneGamma = 0.7
@@ -56,24 +65,50 @@ struct MilkyWayGaiaLook: Equatable, Sendable {
         return simd_double3x3(rows: [SIMD3(m[0], m[1], m[2]), SIMD3(m[3], m[4], m[5]), SIMD3(m[6], m[7], m[8])])
     }
 
-    /// Галактика → (x·s, y·s, s) в точках окна: обратное к `P`, умноженное на оси.
+    /// Галактика → (x·s, y·s, s) в точках окна: обратное к `P`, умноженное на оси (без рефракции — для бюджета).
     var galacticToScreen: simd_double3x3 { p.inverse * simd_double3x3(columns: (axes[0], axes[1], axes[2])) }
+
+    /// Направление (l, b) в осях «восток, север, вверх», геометрическое.
+    func horizon(l: Double, b: Double) -> SIMD3<Double> {
+        let v = Self.unit(l: l, b: b)
+        return axes[0] * v.x + axes[1] * v.y + axes[2] * v.z
+    }
+
+    /// То же направление на видимой высоте: добавка рефракции `SunTrack.apparent`, как у звёзд слоя «Звёзды», луны
+    /// и ядра — иначе у горизонта звезда Gaia легла бы на полградуса ниже той же звезды каталога.
+    static func apparent(_ e: SIMD3<Double>) -> SIMD3<Double> {
+        let alt = asin(min(max(e.z, -1), 1)) * 180 / .pi
+        return withAltitude(e, SunTrack.apparent(altitude: alt))
+    }
+
+    /// Обратное: луч окна (видимая высота) → геометрическое направление. Три шага подстановки сходятся до 1e-6°.
+    static func geometric(_ e: SIMD3<Double>) -> SIMD3<Double> {
+        let a = asin(min(max(e.z, -1), 1)) * 180 / .pi
+        var h = a
+        for _ in 0..<3 { h = a - (SunTrack.apparent(altitude: h) - h) }
+        return withAltitude(e, h)
+    }
+
+    static func withAltitude(_ e: SIMD3<Double>, _ alt: Double) -> SIMD3<Double> {
+        let n = (e.x * e.x + e.y * e.y).squareRoot()
+        guard n > 1e-12 else { return e }
+        let c = cos(alt * .pi / 180), s = sin(alt * .pi / 180)
+        return SIMD3(e.x / n * c, e.y / n * c, s)
+    }
 
     /// Фокус в точках на радиан (из луча окна: столбец при x — `right / f`).
     var focal: Double { 1 / simd_length(SIMD3(pixelToSky[0], pixelToSky[3], pixelToSky[6])) }
 
-    /// Точка окна, куда ложится звезда (l, b); `nil` — за спиной.
+    /// Точка окна, куда ложится звезда (l, b), с рефракцией (как вершинный шейдер); `nil` — за спиной.
     func screen(l: Double, b: Double) -> CGPoint? {
-        let q = galacticToScreen * Self.unit(l: l, b: b)
+        let q = p.inverse * Self.apparent(horizon(l: l, b: b))
         guard q.z > 1e-6 else { return nil }
         return CGPoint(x: q.x / q.z, y: q.y / q.z)
     }
 
-    /// Высота над горизонтом направления (l, b), градусы.
+    /// Высота над горизонтом направления (l, b), градусы, геометрическая.
     func altitude(l: Double, b: Double) -> Double {
-        let v = Self.unit(l: l, b: b)
-        let up = axes[0].z * v.x + axes[1].z * v.y + axes[2].z * v.z
-        return asin(min(max(up, -1), 1)) * 180 / .pi
+        asin(min(max(horizon(l: l, b: b).z, -1), 1)) * 180 / .pi
     }
 
     static func unit(l: Double, b: Double) -> SIMD3<Double> {
@@ -137,6 +172,7 @@ final class MilkyWayGaiaGPU: @unchecked Sendable {
     struct Uniforms {
         var p0, p1, p2: SIMD4<Float>
         var gx, gy, gz: SIMD4<Float>
+        /// Строки P⁻¹: горизонт → (x·s, y·s, s) в точках окна.
         var q0, q1, q2: SIMD4<Float>
         /// Ширина и высота холста, pt; сдвиг холста в окне.
         var view: SIMD4<Float>
@@ -201,7 +237,7 @@ final class MilkyWayGaiaGPU: @unchecked Sendable {
     func uniforms(_ look: MilkyWayGaiaLook, size: CGSize, origin: CGPoint, scale: CGFloat) -> Uniforms {
         let m = look.pixelToSky.map(Float.init)
         func v3(_ v: SIMD3<Double>) -> SIMD4<Float> { SIMD4(Float(v.x), Float(v.y), Float(v.z), 0) }
-        let q = look.galacticToScreen.transpose   // столбцы транспонированной — строки исходной
+        let q = look.p.inverse.transpose   // столбцы транспонированной — строки исходной: горизонт → окно
         // Подклад — по светлому небу (видимость глазом), «тёмное место» его не снимает: небо кадра светлее от флага не стало.
         let under = MilkyWayGaiaLook.underlay * (1 - look.visibility)
         return Uniforms(p0: SIMD4(m[0], m[1], m[2], 0), p1: SIMD4(m[3], m[4], m[5], 0), p2: SIMD4(m[6], m[7], m[8], 0),
@@ -217,7 +253,7 @@ final class MilkyWayGaiaGPU: @unchecked Sendable {
     /// Возвращает, сколько записей нарисовано и оценку звёзд в кадре.
     @discardableResult
     func encode(_ look: MilkyWayGaiaLook, size: CGSize, origin: CGPoint, scale: CGFloat, target: MTLTexture,
-                buffer: MTLCommandBuffer, stars drawStars: Bool = true) -> (drawn: Int, visible: Int) {
+                buffer: MTLCommandBuffer, stars drawStars: Bool = true, glow drawGlow: Bool = true) -> (drawn: Int, visible: Int) {
         var u = uniforms(look, size: size, origin: origin, scale: scale)
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = target
@@ -225,11 +261,13 @@ final class MilkyWayGaiaGPU: @unchecked Sendable {
         pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
         pass.colorAttachments[0].storeAction = .store
         guard let enc = buffer.makeRenderCommandEncoder(descriptor: pass) else { return (0, 0) }
-        enc.setRenderPipelineState(glowPipeline)
-        enc.setFragmentBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
-        enc.setFragmentTexture(glow, index: 0)
-        enc.setFragmentSamplerState(sampler, index: 0)
-        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        if drawGlow {
+            enc.setRenderPipelineState(glowPipeline)
+            enc.setFragmentBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
+            enc.setFragmentTexture(glow, index: 0)
+            enc.setFragmentSamplerState(sampler, index: 0)
+            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
         var result = (drawn: 0, visible: 0)
         if drawStars {
             let range = data.drawRange(look, size: size, origin: origin)
@@ -249,13 +287,13 @@ final class MilkyWayGaiaGPU: @unchecked Sendable {
 
     /// Кадр в память (тесты и замеры): `pixels` — ширина × высота × 4 байта BGRA, свет без подложки (подклад в альфе).
     func render(_ look: MilkyWayGaiaLook, size: CGSize, scale: CGFloat, origin: CGPoint = .zero,
-                stars drawStars: Bool = true) -> (pixels: [UInt8], width: Int, height: Int, drawn: Int, visible: Int)? {
+                stars drawStars: Bool = true, glow drawGlow: Bool = true) -> (pixels: [UInt8], width: Int, height: Int, drawn: Int, visible: Int)? {
         let w = Int((size.width * scale).rounded()), h = Int((size.height * scale).rounded())
         let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
         td.usage = [.renderTarget, .shaderRead]
         td.storageMode = .shared
         guard let tex = device.makeTexture(descriptor: td), let cmd = queue.makeCommandBuffer() else { return nil }
-        let r = encode(look, size: size, origin: origin, scale: scale, target: tex, buffer: cmd, stars: drawStars)
+        let r = encode(look, size: size, origin: origin, scale: scale, target: tex, buffer: cmd, stars: drawStars, glow: drawGlow)
         cmd.commit()
         cmd.waitUntilCompleted()
         var out = [UInt8](repeating: 0, count: w * h * 4)
@@ -274,6 +312,18 @@ final class MilkyWayGaiaGPU: @unchecked Sendable {
     constant float3 LUMA = float3(0.2126, 0.7152, 0.0722);
 
     static float smooth01(float t) { t = clamp(t, 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
+
+    // Рефракция `SunTrack.apparent` (Сэмундссон): добавка к геометрической высоте, градусы; ниже −1° — как на −1°.
+    static float refraction(float h) {
+        float g = max(h, -1.0);
+        return 1.02 / tan((g + 10.3 / (g + 5.11)) / DEG) / 60.0;
+    }
+
+    static float3 withAltitude(float3 e, float alt) {
+        float n = length(e.xy);
+        if (n < 1e-7) return e;
+        return float3(e.xy / n * cos(alt / DEG), sin(alt / DEG));
+    }
 
     // Яркость реалистичной части: видимость с дымкой до 8° (`MilkyWayDust.haze`), не ниже пола; «тёмное место» — 1.
     static float realAt(constant U &u, float alt) {
@@ -295,9 +345,13 @@ final class MilkyWayGaiaGPU: @unchecked Sendable {
         float2 pt = in.position.xy / u.look.x + u.view.zw;
         float3 e = normalize(float3(dot(u.p0.xyz, float3(pt, 1.0)), dot(u.p1.xyz, float3(pt, 1.0)),
                                     dot(u.p2.xyz, float3(pt, 1.0))));
-        float alt = asin(clamp(e.z, -1.0, 1.0)) * DEG;
+        float alt = asin(clamp(e.z, -1.0, 1.0)) * DEG;   // видимая высота: так виден горизонт
         float edge = smooth01(alt / 1.0);
         if (edge <= 0.0) return float4(0.0);
+        // Луч окна — видимое направление; карта лежит в геометрических. Обратная рефракция подстановкой.
+        float h = alt;
+        for (int i = 0; i < 3; i++) { h = alt - refraction(h); }
+        e = withAltitude(e, h);
         float gx = dot(e, u.gx.xyz), gy = dot(e, u.gy.xyz), gz = dot(e, u.gz.xyz);
         float l = atan2(gy, gx) * DEG;
         float b = asin(clamp(gz, -1.0, 1.0)) * DEG;
@@ -334,12 +388,15 @@ final class MilkyWayGaiaGPU: @unchecked Sendable {
         float g = float(rec[k + 4]) / 10.0;
         int c = int(as_type<char>(rec[k + 5]));
         float3 v = float3(cos(b) * cos(l), cos(b) * sin(l), sin(b));
-        float3 q = float3(dot(u.q0.xyz, v), dot(u.q1.xyz, v), dot(u.q2.xyz, v));
+        // Галактика → горизонт (оси) → видимая высота (рефракция, как у слоя «Звёзды») → окно (P⁻¹).
+        float3 e = u.gx.xyz * v.x + u.gy.xyz * v.y + u.gz.xyz * v.z;
+        float h = asin(clamp(e.z, -1.0, 1.0)) * DEG;
+        float alt = h + refraction(h);
+        e = withAltitude(e, alt);
+        float3 q = float3(dot(u.q0.xyz, e), dot(u.q1.xyz, e), dot(u.q2.xyz, e));
         if (q.z <= 1e-4) return o;
         float x = q.x / q.z - u.view.z, y = q.y / q.z - u.view.w;
         if (x < -6.0 || y < -6.0 || x > u.view.x + 6.0 || y > u.view.y + 6.0) return o;
-        float up = u.gx.z * v.x + u.gy.z * v.y + u.gz.z * v.z;
-        float alt = asin(clamp(up, -1.0, 1.0)) * DEG;
         float edge = smooth01(alt / 1.0);
         if (edge <= 0.0) return o;
         // Поперечник от G: G 10 → 1 pt, ярче — до ~4 pt с мягким насыщением (радиус 0,5…2 pt: при радиусе 1…4 pt

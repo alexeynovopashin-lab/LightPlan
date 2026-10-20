@@ -422,12 +422,22 @@ def contrast_main(sim):
     """Шаг 29.8в.17б: контраст полосы против фона на четырёх подложках (`-LPSunARBackdrop`): белое небо, голубое небо,
     асфальт, ночное небо. Две сцены: ночь на юге (вся картина: гладкая часть, зерно, пыль, контур) и день с
     солнцем +20° (одна планировочная часть). Цель ≥ 1,5 : 1 в станции у ядра и в средней станции вдоль полосы."""
-    scenes = [('night_sydney', ('sydney', (-33.87, 151.21, 'Australia/Sydney'), '2026-06-15T12:00:00Z', (5, 0), -15)),
-              ('day_sun20', ('sochi', SOCHI, '2026-08-15T14:27:00Z', 'best', 0))]
+    # 29.8в.19: те же подложки для звёзд Gaia — город (засветка 12 и 27) и Луна 62 % (21.08 22:00 Сочи: возраст
+    # ≈ 8,5 суток от новолуния 12.08, Луна над горизонтом рядом с ядром) гасят реалистичную часть до пола.
+    scenes = [('night_sydney', ('sydney', (-33.87, 151.21, 'Australia/Sydney'), '2026-06-15T12:00:00Z', (5, 0), -15, {})),
+              ('day_sun20', ('sochi', SOCHI, '2026-08-15T14:27:00Z', 'best', 0, {})),
+              ('city12', ('sochi', SOCHI, '2026-08-15T19:30:00Z', (0, 0), 0, {'glow': 12})),
+              ('city27', ('sochi', SOCHI, '2026-08-15T19:30:00Z', (0, 0), 0, {'glow': 27})),
+              ('moon62', ('sochi', SOCHI, '2026-08-21T19:00:00Z', (0, 0), 0, {}))]
+    only = arg('--scenes', '').split(',') if arg('--scenes') else None
     rows, fails = [], []
     for backdrop in (arg('--backdrops', 'white,sky,asphalt,night').split(',')):
-        for label, (nm, place, moment, aim, roll) in scenes:
-            extra = {'backdrop': backdrop}
+        for label, (nm, place, moment, aim, roll, sx) in scenes:
+            if only and label not in only:
+                continue
+            extra = dict(sx, backdrop=backdrop)
+            if arg('--extra'):
+                extra['args'] = arg('--extra').split()
             nodes, png, _ = launch(sim, f'contrast_{backdrop}_{label}', place, moment, aim, roll, 'camera,milkyWay', None, extra)
             _, base, _ = launch(sim, f'contrast_{backdrop}_{label}', place, moment, aim, roll, 'camera,milkyWay', None, extra, mw=False)
             pic = parse(nodes)

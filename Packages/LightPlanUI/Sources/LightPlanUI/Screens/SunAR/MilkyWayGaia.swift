@@ -37,11 +37,12 @@ final class MilkyWayGaia: @unchecked Sendable {
     static let cellDeg = 5.0
     static let cellsL = 72, cellsB = 36
 
-    /// Сколько раз данные читались с диска за запуск (замер памяти: должен быть один раз).
+    /// Сколько раз данные приложения читались с диска за запуск (замер памяти: должен быть один раз).
     nonisolated(unsafe) private(set) static var loads = 0
 
     /// Данные приложения. `nil` — файлов нет или они испорчены: слой рисует запасной вариант.
     static let shared: MilkyWayGaia? = {
+        loads += 1
         guard let dir = Bundle.module.url(forResource: "MilkyWayData", withExtension: nil) else { return nil }
         return load(directory: dir)
     }()
@@ -50,7 +51,6 @@ final class MilkyWayGaia: @unchecked Sendable {
     static var bundled: Bool { Bundle.module.url(forResource: "MilkyWayData/stars_gaia", withExtension: "bin") != nil }
 
     static func load(directory: URL) -> MilkyWayGaia? {
-        loads += 1
         guard let stars = try? Data(contentsOf: directory.appendingPathComponent("stars_gaia.bin"), options: .mappedIfSafe),
               let specData = try? Data(contentsOf: directory.appendingPathComponent("spec.json")),
               let spec = try? JSONSerialization.jsonObject(with: specData) as? [String: Any],
