@@ -2667,31 +2667,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "панорама: материалы Алексея"
+            "value" : "ESO/S. Brunier — панорама изменена (обрезка, градиенты)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "panorama: Alexey's own material"
+            "value" : "ESO/S. Brunier — panorama modified (cropped, gradients)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "panorama: material de Alexey"
+            "value" : "ESO/S. Brunier — panorama modificada (recorte, degradados)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "パノラマ：Alexey の素材"
+            "value" : "ESO/S. Brunier — パノラマを改変（トリミング、グラデーション）"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "全景图：Alexey 提供的素材"
+            "value" : "ESO/S. Brunier — 全景图已修改（裁剪、渐变）"
           }
         }
       }

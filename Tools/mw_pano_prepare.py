@@ -6,8 +6,8 @@
 
 Исходник — эквидистантная проекция в галактических координатах (ядро l = 0 в центре, l растёт влево, b = 0 по
 вертикали посередине), RGBA: у прозрачных мест цвет белый, поэтому картинка сначала умножается на альфу (на чёрное).
-Результат — `Packages/LightPlanUI/Sources/LightPlanUI/MilkyWayData/pano_<name>.png`, RGB 8 бит. В репозиторий файлы
-не кладутся (`.gitignore`): права на исходник неизвестны, репозиторий публичный.
+Результат — `Packages/LightPlanUI/Sources/LightPlanUI/MilkyWayData/pano_<name>.jpg`, JPEG q92. В репозиторий кладутся только эти
+уменьшенные копии; исходники 6000 × 2425 (~25 МБ) — нет.
 """
 import sys
 from pathlib import Path
@@ -25,8 +25,8 @@ def main(src: str, name: str) -> None:
     black = Image.fromarray(np.clip(rgb + 0.5, 0, 255).astype(np.uint8))
     h = round(im.height * WIDTH / im.width)
     small = black.resize((WIDTH, h), Image.LANCZOS)
-    dest = OUT / f"pano_{name}.png"
-    small.save(dest, optimize=True)
+    dest = OUT / f"pano_{name}.jpg"
+    small.save(dest, quality=92, optimize=True, subsampling=0)
     print(f"{dest} {WIDTH}x{h} {dest.stat().st_size / 1e6:.1f} MB (исходник {im.width}x{im.height})")
 
 
