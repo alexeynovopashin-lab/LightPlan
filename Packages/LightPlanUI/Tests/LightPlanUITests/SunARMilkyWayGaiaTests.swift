@@ -173,7 +173,7 @@ struct SunARMilkyWayGaiaTests {
 
     // MARK: - (б) ядро
 
-    @Test("(б) свечение на месте: центр тяжести яркости кадра в круге 10° у ядра совпадает с центром тяжести самой карты (не дальше 0,2°); расстояние до corePosition печатается — у карты Gaia оно своё, пыль в плоскости")
+    @Test("(б) свечение на месте: центр тяжести яркости кадра в круге 3° у ядра не дальше 1° от corePosition (задание) и в кругах 3° и 10° — не дальше 0,2° от центра тяжести самой карты; в круге 10° до ядра ≈ 1,2°: облако Стрельца южнее плоскости")
     func coreCentroid() throws {
         let gpu = try gpu()
         let data = gpu.data
@@ -188,44 +188,47 @@ struct SunARMilkyWayGaiaTests {
         let r = try #require(gpu.render(lk, size: size, scale: scale, stars: false))
         let fw = SIMD3(basis.forward.east, basis.forward.north, basis.forward.up)
         let c0 = SIMD3(coreSeen.east, coreSeen.north, coreSeen.up)
-        var acc = SIMD3<Double>(0, 0, 0)
-        for y in 0..<r.height {
-            for x in 0..<r.width {
-                let s = MilkyWayLook.sky(at: ScreenPoint(x: (Double(x) + 0.5) / scale, y: (Double(y) + 0.5) / scale),
-                                         matrix: lk.pixelToSky)
-                let e = SIMD3(s.east, s.north, s.up)
-                guard simd_dot(e, c0) >= cos(10 * Double.pi / 180) else { continue }
-                let cosT = simd_dot(e, fw)
-                acc += Self.lum(r.pixels, (y * r.width + x) * 4) * cosT * cosT * cosT * e
+        for radius in [3.0, 10.0] {
+            let cutoff = cos(radius * Double.pi / 180)
+            var acc = SIMD3<Double>(0, 0, 0)
+            for y in 0..<r.height {
+                for x in 0..<r.width {
+                    let s = MilkyWayLook.sky(at: ScreenPoint(x: (Double(x) + 0.5) / scale, y: (Double(y) + 0.5) / scale),
+                                             matrix: lk.pixelToSky)
+                    let e = SIMD3(s.east, s.north, s.up)
+                    guard simd_dot(e, c0) >= cutoff else { continue }
+                    let cosT = simd_dot(e, fw)
+                    acc += Self.lum(r.pixels, (y * r.width + x) * 4) * cosT * cosT * cosT * e
+                }
             }
-        }
-        let frameC = simd_normalize(acc)
-        // Та же сумма по самой карте (тон k·Y^γ, площадь ячейки ∝ cos b): галактическое → горизонт → видимая высота.
-        var gal = SIMD3<Double>(0, 0, 0)
-        let w = data.glowWidth, h = data.glowHeight
-        let cutoff = cos(10 * Double.pi / 180)
-        for j in 0..<h {
-            let b = 90 - (Double(j) + 0.5) * 180 / Double(h)
-            guard abs(b) <= 11 else { continue }
-            for i in 0..<w {
-                var l = 180 - (Double(i) + 0.5) * 360 / Double(w)
-                if l < 0 { l += 360 }
-                let u = MilkyWayGaiaLook.unit(l: l, b: b)
-                guard u.x >= cutoff else { continue }
-                let o = (j * w + i) * 4
-                let y = (0.2126 * Double(data.glow[o]) + 0.7152 * Double(data.glow[o + 1]) + 0.0722 * Double(data.glow[o + 2])) / 65535
-                let t = min(MilkyWayGaiaLook.toneK * pow(max(y, 1e-12), MilkyWayGaiaLook.toneGamma), 1)
-                gal += t * cos(b * .pi / 180) * u
+            let frameC = simd_normalize(acc)
+            // Та же сумма по самой карте (тон k·Y^γ, площадь ячейки ∝ cos b): галактическое → горизонт → видимая высота.
+            var gal = SIMD3<Double>(0, 0, 0)
+            let w = data.glowWidth, h = data.glowHeight
+            for j in 0..<h {
+                let b = 90 - (Double(j) + 0.5) * 180 / Double(h)
+                guard abs(b) <= radius + 1 else { continue }
+                for i in 0..<w {
+                    var l = 180 - (Double(i) + 0.5) * 360 / Double(w)
+                    if l < 0 { l += 360 }
+                    let u = MilkyWayGaiaLook.unit(l: l, b: b)
+                    guard u.x >= cutoff else { continue }
+                    let o = (j * w + i) * 4
+                    let y = (0.2126 * Double(data.glow[o]) + 0.7152 * Double(data.glow[o + 1]) + 0.0722 * Double(data.glow[o + 2])) / 65535
+                    let t = min(MilkyWayGaiaLook.toneK * pow(max(y, 1e-12), MilkyWayGaiaLook.toneGamma), 1)
+                    gal += t * cos(b * .pi / 180) * u
+                }
             }
+            let g = simd_normalize(gal)
+            let mapC = MilkyWayGaiaLook.apparent(lk.axes[0] * g.x + lk.axes[1] * g.y + lk.axes[2] * g.z)
+            let toMap = acos(min(simd_dot(frameC, mapC), 1)) * 180 / .pi
+            let toCore = acos(min(simd_dot(frameC, c0), 1)) * 180 / .pi
+            let mapL = atan2(g.y, g.x) * 180 / .pi, mapB = asin(g.z) * 180 / .pi
+            print(String(format: "GAIA b.core radius=%.0f° frameToMap=%.3f° frameToCore=%.3f° mapCentroid l=%.2f° b=%.2f°", radius,
+                         toMap, toCore, mapL, mapB))
+            #expect(toMap <= 0.2, "круг \(radius)°: центр тяжести кадра в \(toMap)° от центра тяжести карты")
+            if radius <= 3 { #expect(toCore <= 1, "круг \(radius)°: до corePosition \(toCore)°") }
         }
-        let g = simd_normalize(gal)
-        let mapC = MilkyWayGaiaLook.apparent(lk.axes[0] * g.x + lk.axes[1] * g.y + lk.axes[2] * g.z)
-        let toMap = acos(min(simd_dot(frameC, mapC), 1)) * 180 / .pi
-        let toCore = acos(min(simd_dot(frameC, c0), 1)) * 180 / .pi
-        let mapL = atan2(g.y, g.x) * 180 / .pi, mapB = asin(g.z) * 180 / .pi
-        print(String(format: "GAIA b.core frameToMap=%.3f° frameToCore=%.3f° mapCentroid l=%.2f° b=%.2f°", toMap, toCore, mapL, mapB))
-        #expect(toMap <= 0.2, "центр тяжести кадра в \(toMap)° от центра тяжести карты")
-        #expect(toCore <= 2, "до corePosition \(toCore)° — дальше, чем даёт сама карта")
     }
 
     // MARK: - (в) сходство с образцами
