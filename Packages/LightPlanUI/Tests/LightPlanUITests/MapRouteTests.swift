@@ -366,9 +366,24 @@ struct MapRouteTests {
         let t0 = ContinuousClock.now
         await t.wait("s"); await t.wait("s"); await t.wait("s")
         #expect(ContinuousClock.now - t0 >= .milliseconds(1190))
-        let t1 = ContinuousClock.now
-        await t.wait("other")                      // другой сервер своя очередь
-        #expect(ContinuousClock.now - t1 < .milliseconds(500))
+    }
+
+    /// Другой сервер — своя очередь. Без часов: на «s» встаёт запрос, который ждёт 30 с, а «other» обязан пройти
+    /// мимо него. Раньше тут стояло «< 500 мс» — под нагрузкой (параллельные сборки) прогон растягивался до 0,635 с
+    /// на ветке, которая не спит вовсе (29.8в.22: один в покое 1,21–1,24 с на весь тест, упал при 43 с).
+    @Test func otherServerHasItsOwnQueue() async {
+        let t = RoadThrottle(gap: .seconds(30))
+        await t.wait("s")                          // первый — без ожидания
+        let queued = Task { await t.wait("s") }    // второй встаёт на 30 с
+        let passed = await withTaskGroup(of: Bool.self) { g in
+            g.addTask { await t.wait("other"); return true }
+            g.addTask { try? await Task.sleep(for: .seconds(15)); return false }
+            let first = await g.next() ?? false
+            g.cancelAll()
+            return first
+        }
+        queued.cancel()
+        #expect(passed)
     }
 
     /// Итог для полосы: отказ — «недоступен», а не недостающая сумма; линия
