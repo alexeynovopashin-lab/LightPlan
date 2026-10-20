@@ -203,6 +203,16 @@ final class SunARModel {
         bodies.milkyWay = on
     }
 
+    /// «Как в тёмном месте» (29.8в.19): Млечный Путь на полную яркость, как под тёмным небом, при любом солнце,
+    /// засветке и Луне. Флаг устройства, по умолчанию выключен.
+    static let milkyWayDarkKey = "lightplan.native.sunar.milkyWayDark"
+    private(set) var milkyWayDark = UserDefaults.standard.bool(forKey: SunARModel.milkyWayDarkKey)
+
+    func setMilkyWayDark(_ on: Bool) {
+        milkyWayDark = on
+        UserDefaults.standard.set(on, forKey: Self.milkyWayDarkKey)
+    }
+
     /// Луна в выбранный момент и «сейчас».
     var moonPicked: MoonARSample { MoonTrack.sample(day: day, minutes: minutes, in: place) }
     var moonNow: MoonARSample { MoonTrack.sample(at: nowMoment, in: place) }
@@ -256,7 +266,37 @@ final class SunARModel {
         }
         return .init(band: band, core: MilkyWayAR.core(day: d, minutes: m, in: p), sunAltitude: sunAltitude,
                      frame: frame, moonAltitude: moon.altitude, moonFraction: moon.phase.fraction, glow: glow,
-                     center: center)
+                     center: center, track: coreTrackInput)
+    }
+
+    /// Дуга ядра выбранной даты и его восходы-заходы (29.8в.17б): держатся, пока не сменились день и место.
+    private var coreTrackInput: NightSkyARScene.CoreTrackInput {
+        let d = day, p = place
+        if let c = coreTrackCache, c.day == d, c.place == p { return c.input }
+        let input = NightSkyARScene.CoreTrackInput(arc: MilkyWayCoreTrack.arc(day: d, in: p),
+                                                   passage: MilkyWayCoreTrack.passage(day: d, in: p))
+        coreTrackCache = (d, p, input)
+        return input
+    }
+    @ObservationIgnored private var coreTrackCache: (day: CivilDate, place: Place, input: NightSkyARScene.CoreTrackInput)?
+
+    /// Что сказать о Млечном Пути на выбранные сутки в списке «Слоёв»: проход ядра, темнота, окно съёмки. Держится,
+    /// пока не сменились день и место (окно — триста шагов расчёта).
+    var milkyWayPlan: MilkyWayPlan {
+        let d = day, p = place
+        if let c = planCache, c.day == d, c.place == p { return c.plan }
+        let plan = MilkyWayPlan(day: d, place: p)
+        planCache = (d, p, plan)
+        return plan
+    }
+    @ObservationIgnored private var planCache: (day: CivilDate, place: Place, plan: MilkyWayPlan)?
+
+    /// Справка о видимости глазом на выбранный момент (строка «Слоёв»): число и причины. Не условие рисования.
+    var milkyWayEyeNote: MilkyWayLook.EyeNote {
+        let moon = moonPicked
+        let core = MilkyWay.corePosition(date: day, minutes: minutes, place: place)
+        return MilkyWayLook.eyeNote(sunAltitude: sun.altitude, moonAltitude: moon.altitude,
+                                    moonFraction: moon.phase.fraction, glow: glow, coreAltitude: core.altitude)
     }
     @ObservationIgnored private var lookCache: (day: CivilDate, place: Place, minutes: Minutes,
                                                  center: [HorizontalPoint], frame: MilkyWayLook.Frame)?

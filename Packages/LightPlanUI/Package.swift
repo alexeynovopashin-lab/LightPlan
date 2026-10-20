@@ -27,7 +27,8 @@ let package = Package(
                 .product(name: "LightPlanData", package: "LightPlanData"),
                 "LightPlanMapCanvas",
             ],
-            resources: [.process("Resources")]
+            // MilkyWayData — файлы Gaia как есть (`.copy`: PNG не пережимается, 16 бит сохраняются; шаг 29.8в.19).
+            resources: [.process("Resources"), .copy("MilkyWayData")]
         ),
         // Поставщики холста за одним видом: выше этого модуля ни MapLibre, ни
         // MapKit не поднимаются (docs/17 § 10, держит Tools/check_boundaries.sh).

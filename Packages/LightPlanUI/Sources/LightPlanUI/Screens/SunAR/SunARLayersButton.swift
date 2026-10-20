@@ -100,22 +100,23 @@ struct SunARLayersButtonLabel: View {
 struct SunARLayersList: View {
     let model: SunARModel
     let lexicon: Lexicon
+    /// Часы места: время в строках Млечного Пути пишется так же, как на подписях дуги.
+    var clock = ClockText(language: "ru")
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach(SunARSkyLayer.allCases) { layer in
                 row(layer)
+                if layer == .milkyWay { darkRow; if MilkyWayPano.bundled { PanoPickRow(label: lexicon.t("ar.mwPanoPick")) } }
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
-        .frame(width: 284)
+        .frame(width: 320)
         .preferredColorScheme(.dark)
     }
 
-    /// Мелкие строки под словом слоя. Млечный Путь (29.8в.14): «сейчас не видно», когда видимость нулевая
-    /// (светло, луна, засветка — та же функция, что у картины), и всегда — «рисуется по формуле, условно»: Алексей
-    /// выбрал имитацию вида, и подпись об этом обязательна.
+    /// Мелкие строки под словом слоя.
     private func notes(_ layer: SunARSkyLayer) -> [String] {
         switch layer {
         case .moon, .stars, .constellations: return []
@@ -125,7 +126,10 @@ struct SunARLayersList: View {
             if status.daylight { return [lexicon.t("ar.planetsDay")] }
             return status.nearSun.map { lexicon.t("ar.planetNearSun", ["name": lexicon.t($0.nameKey)]) }
         case .milkyWay:
-            return (model.milkyWayVisibility.isVisible ? [] : [lexicon.t("ar.mwHidden")]) + [lexicon.t("ar.mwFormula")]
+            // Млечный Путь (29.8в.17б): ядро над горизонтом и темнота, справка о видимости глазом (не условие
+            // рисования), окно съёмки и подпись про формулу.
+            return SunARMilkyWayNotes.lines(plan: model.milkyWayPlan, eye: model.milkyWayEyeNote, clock: clock, lexicon: lexicon,
+                                            gaia: MilkyWayGaiaSource.useGaia, pano: MilkyWayPano.bundled)
         }
     }
 
@@ -135,11 +139,13 @@ struct SunARLayersList: View {
         let small = notes(layer)
         return HStack(spacing: 12) {
             icon(layer).frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: small.isEmpty ? 1 : 3) {
                 Text(label).font(.system(size: 16)).lineLimit(1).minimumScaleFactor(0.8)
                 ForEach(small, id: \.self) { note in
+                    // Без обрезки: строки Млечного Пути длинные («ядро над горизонтом 6:11 – 10:54 PM · dark from …»),
+                    // многоточие съедало самое нужное — время (29.8в.17б).
                     Text(note).font(.system(size: 12)).foregroundStyle(.secondary)
-                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             Spacer(minLength: 8)
@@ -150,6 +156,22 @@ struct SunARLayersList: View {
         .frame(minHeight: SunARInk.touch)
         .padding(.vertical, small.isEmpty ? 0 : 4)
         .shotNode(layer.node, text: ([label] + small).joined(separator: " | ") + (on ? " on" : " off"))
+    }
+
+    /// «Как в тёмном месте» под строкой «Млечный Путь» (29.8в.19): полоса и звёзды на полную яркость, как под тёмным
+    /// небом, при солнце, засветке и Луне — чтобы заранее увидеть, как ляжет Путь. Справка о видимости выше не меняется.
+    private var darkRow: some View {
+        let label = lexicon.t("ar.mwDark")
+        return HStack(spacing: 12) {
+            Color.clear.frame(width: 28, height: 1)
+            Text(label).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 8)
+            Toggle(label, isOn: Binding(get: { model.milkyWayDark }, set: { model.setMilkyWayDark($0) }))
+                .labelsHidden()
+                .tint(SunARSkyLayer.milkyWay.tint)
+        }
+        .frame(minHeight: SunARInk.touch)
+        .shotNode("ar.layer.mwDark", text: label + (model.milkyWayDark ? " on" : " off"))
     }
 
     @ViewBuilder private func icon(_ layer: SunARSkyLayer) -> some View {
@@ -166,5 +188,28 @@ struct SunARLayersList: View {
         case .planets:
             SolarSystemGlyph()
         }
+    }
+}
+
+/// Выбор панорамы Млечного Пути на устройстве (29.8в.20, временно — сравнить на телефоне): MW мягче, MW2 контрастнее
+/// и теплее у ядра. Выбор хранится на устройстве (`MilkyWayPano.key`), слой перерисовывается сразу.
+private struct PanoPickRow: View {
+    let label: String
+    @AppStorage(MilkyWayPano.key) private var choice = MilkyWayPano.defaultName
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Color.clear.frame(width: 28, height: 1)
+            Text(label).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 8)
+            Picker(label, selection: $choice) {
+                ForEach(MilkyWayPano.names.filter { MilkyWayPano.url($0) != nil }, id: \.self) { Text($0.uppercased()).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 130)
+        }
+        .frame(minHeight: SunARInk.touch)
+        .shotNode("ar.layer.mwPano", text: label + " " + choice)
     }
 }

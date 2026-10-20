@@ -222,26 +222,29 @@ struct SunARMarkLabels: View {
 
 // MARK: - Млечный Путь
 
-/// Полоса Млечного Пути и ядро поверх кадра под дугами. Ночью — тихая светлая полоса из трёх слоёв (кромка,
-/// середина, ось: края мягче, ось ярче); днём (солнце выше −6°) — призрак с непрозрачностью 0,25
-/// (`MilkyWayAR.ghostOpacity`). Расчёт — ядра (`MilkyWay`), здесь только рисование.
+/// Полоса Млечного Пути и ядро поверх кадра под дугами. Рисуется всегда, пока слой включён (29.8в.17б, слово Алексея
+/// 20.10: инструмент планирования, положение показывается всегда): день, город и Луна полосу и подпись «ядро» не
+/// гасят, яркость постоянна. Правила видимости гасят только зерно и пыль — внутри шейдера. Расчёт — ядра
+/// (`MilkyWay`), здесь только рисование.
 struct SunARMilkyWayLayer: View {
     let scene: NightSkyARScene
     let coreLabel: String
     /// Диски меток: под ними полоса не рисуется — то, что видно сквозь линзу, рисует её копия (`LensRefraction`).
     var holes: [SunARHole] = []
+    /// «Как в тёмном месте» (29.8в.19).
+    var dark = false
 
     var body: some View {
-        let k = scene.skyGhost ? MilkyWayAR.ghostOpacity : 1.0
         ZStack {
-            SunARMilkyWayCanvas(scene: scene, holes: holes)
+            SunARMilkyWayCanvas(scene: scene, holes: holes, dark: dark)
             if let c = scene.core, MilkyWaySkyShader.labelShown {
                 Text(coreLabel)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(SunARInk.light)
                     .padding(.horizontal, 7).padding(.vertical, 2)
                     .background(GlassPlate(shape: Capsule(), opacity: SunARInk.plateOpacity))
-                    .opacity(k)
+                    // Под горизонтом ядро идёт призраком, как остальные светила; над ним — ровно.
+                    .opacity(scene.coreAltitude < 0 ? SunARMarks.ghostFade + 0.2 : 1)
                     .position(x: c.x, y: c.y + 30)
             }
         }
@@ -278,18 +281,54 @@ struct SunARMilkyWayCanvas: View {
     /// Какие части рисовать; `nil` — по умолчанию (все; в отладке — `-LPSunARMWParts`). Юнит-тест выбирает сам.
     var parts: MilkyWaySkyShader.Parts? = nil
 
-    /// Рисуется, когда слой включён и видимость больше нуля. От многоугольников `scene.band` не зависит: в них
-    /// только точки, у которых оба края ложатся на экран, а свет по пикселю шейдер считает сам (ревью к 25efebf).
+    /// Рисуется, пока слой включён, при любой видимости (29.8в.17б): видимость глазом множит только зерно и пыль
+    /// внутри шейдера. От многоугольников `scene.band` не зависит: в них только точки, у которых оба края ложатся
+    /// на экран, а свет по пикселю шейдер считает сам (ревью к 25efebf). Два прохода: тёмный контур по краям
+    /// (обычное наложение, виден на светлом небе) и под ним — свет полосы, который складывается с кадром.
+    /// «Как в тёмном месте» (29.8в.19): реалистичная часть на полную яркость при любых правилах видимости.
+    var dark = false
+    /// Выбор панорамы на устройстве (строка в списке слоёв): смена перерисовывает слой.
+    @AppStorage(MilkyWayPano.key) private var panoChoice = MilkyWayPano.defaultName
+
     var body: some View {
-        if let pic = scene.milkyWayPicture, pic.visibility.isVisible {
+        #if os(iOS)
+        if let pic = scene.milkyWayPicture, parts == nil, let gpu = MilkyWayPanoGPU.shared(panoChoice.isEmpty ? MilkyWayPano.selected : panoChoice) {
+            // Панорама на всю сферу (29.8в.20): без горизонта, чёрное прозрачно; нет файла — запасная полоса ниже.
             GeometryReader { g in
-                Rectangle()
-                    .fill(MilkyWaySkyShader.shader(pic, origin: origin, parts: parts ?? .current))
-                    .clipShape(holes.isEmpty ? Path(CGRect(origin: .zero, size: g.size))
-                               : SunARHole.clipArea(CGRect(origin: origin, size: g.size), holes: holes)
-                                   .offsetBy(dx: -origin.x, dy: -origin.y),
-                               style: FillStyle(eoFill: true))
-                    .blendMode(.plusLighter)
+                let clip = holes.isEmpty ? Path(CGRect(origin: .zero, size: g.size))
+                    : SunARHole.clipArea(CGRect(origin: origin, size: g.size), holes: holes)
+                        .offsetBy(dx: -origin.x, dy: -origin.y)
+                SunARPanoSkyView(gpu: gpu, look: MilkyWayGaiaLook(pic, dark: dark), origin: origin)
+                    .clipShape(clip, style: FillStyle(eoFill: true))
+            }
+            .allowsHitTesting(false)
+        } else {
+            formula
+        }
+        #else
+        formula
+        #endif
+    }
+
+    /// Запасной вариант (нет панорамы): гладкая полоса шейдера `milkyWaySky`, как в 29.8в.17б.
+    @ViewBuilder private var formula: some View {
+        if let pic = scene.milkyWayPicture {
+            let parts = parts ?? .current
+            GeometryReader { g in
+                let clip = holes.isEmpty ? Path(CGRect(origin: .zero, size: g.size))
+                    : SunARHole.clipArea(CGRect(origin: origin, size: g.size), holes: holes)
+                        .offsetBy(dx: -origin.x, dy: -origin.y)
+                ZStack {
+                    if parts.contains(.edge) {
+                        Rectangle()
+                            .fill(MilkyWaySkyShader.shader(pic, origin: origin, parts: parts, pass: .edge))
+                            .clipShape(clip, style: FillStyle(eoFill: true))
+                    }
+                    Rectangle()
+                        .fill(MilkyWaySkyShader.shader(pic, origin: origin, parts: parts))
+                        .clipShape(clip, style: FillStyle(eoFill: true))
+                        .blendMode(.plusLighter)
+                }
             }
             .allowsHitTesting(false)
         }

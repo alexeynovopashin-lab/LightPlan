@@ -1,0 +1,8 @@
+night polys=2 core=220.0,583.4 ghost=0 vis=1.0000 hidden=none focal=750.3097 coreAlt=12.600 coreAz=206.208 src=gaia dark=0 drawn=481814 visible=41577 cpuMs=2.481 gpuMs=2.782 pose=206.2,12.6
+city polys=2 core=220.0,583.4 ghost=0 vis=0.0769 hidden=none focal=750.3097 coreAlt=12.600 coreAz=206.208 src=gaia dark=0 drawn=481814 visible=41577 cpuMs=1.217 gpuMs=8.172 pose=206.2,12.6
+dusk polys=2 core=220.0,583.4 ghost=0 vis=0.8332 hidden=none focal=750.3097 coreAlt=17.291 coreAz=185.212 src=gaia dark=0 drawn=481814 visible=44033 cpuMs=2.458 gpuMs=1.548 pose=185.2,17.3
+day polys=2 core=3074.5,636.0 ghost=1 vis=0.0000 hidden=daylight focal=750.3097 coreAlt=5.921 coreAz=140.377 src=gaia dark=0 drawn=481814 visible=48472 cpuMs=2.442 gpuMs=1.482 pose=64.2,27.3
+dark polys=2 core=3074.5,636.0 ghost=1 vis=0.0000 hidden=daylight focal=750.3097 coreAlt=5.921 coreAz=140.377 src=gaia dark=1 drawn=481814 visible=48472 cpuMs=2.584 gpuMs=2.197 pose=64.2,27.3
+core polys=2 core=220.0,583.4 ghost=0 vis=1.0000 hidden=none focal=750.3097 coreAlt=62.409 coreAz=88.496 src=gaia dark=0 drawn=481814 visible=49890 cpuMs=2.522 gpuMs=1.429 pose=88.5,62.4
+cygnus polys=1 core=6662.3,5015.4 ghost=0 vis=0.9607 hidden=none focal=750.3097 coreAlt=0.176 coreAz=208.213 src=gaia dark=0 drawn=481814 visible=51280 cpuMs=2.395 gpuMs=3.485 pose=153.7,72.9
+crux polys=2 core=-908.1,1258.8 ghost=0 vis=1.0000 hidden=none focal=750.3097 coreAlt=14.092 coreAz=115.614 src=gaia dark=0 drawn=481814 visible=54524 cpuMs=1.228 gpuMs=0.070 pose=163.7,58.7

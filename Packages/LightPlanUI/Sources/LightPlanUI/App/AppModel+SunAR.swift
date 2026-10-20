@@ -222,6 +222,49 @@ extension AppModel {
         } else {
             openSunAR(chosen: light.timebar.place, moment: moment)
         }
+        let cycles = d.integer(forKey: "LPSunARCycle")
+        if cycles > 0, let log = d.string(forKey: "LPSunARCycleLog") {
+            debugCycleSunAR(cycles, log: log) { [weak self] in
+                guard let self else { return }
+                self.openSunAR(chosen: self.light.timebar.place, moment: moment)
+            }
+        }
+    }
+
+    /// `-LPSunARCycle 10 -LPSunARCycleLog <файл>` — замер памяти (шаг 29.8в.19): экран AR закрывается и открывается
+    /// заново `n` раз (открыт 3 с, закрыт 2 с). В файл — строка на каждое состояние: память процесса (phys_footprint,
+    /// МБ), сколько раз читались данные Gaia и собиралась видеокарта слоя; последняя строка — `done`.
+    private func debugCycleSunAR(_ n: Int, log: String, reopen: @escaping () -> Void) {
+        func footprintMB() -> Double {
+            var info = task_vm_info_data_t()
+            var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+            let kr = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                    task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+                }
+            }
+            return kr == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : -1
+        }
+        func counters() -> String {
+            #if os(iOS)
+            return "loads=\(MilkyWayGaia.loads) builds=\(MilkyWayGaiaGPU.builds)"
+            #else
+            return "loads=\(MilkyWayGaia.loads)"
+            #endif
+        }
+        Task { @MainActor in
+            var lines: [String] = []
+            for i in 0...n {
+                try? await Task.sleep(for: .seconds(3))
+                lines.append(String(format: "%d open %.1f ", i, footprintMB()) + counters())
+                closeSunAR()
+                try? await Task.sleep(for: .seconds(2))
+                lines.append(String(format: "%d closed %.1f ", i, footprintMB()) + counters())
+                if i < n { reopen() }
+            }
+            lines.append("done")
+            try? lines.joined(separator: "\n").write(toFile: log, atomically: true, encoding: .utf8)
+        }
     }
     #endif
 }
