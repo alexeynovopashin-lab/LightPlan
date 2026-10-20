@@ -2,9 +2,12 @@ import Foundation
 
 /// Солнце для слоя AR (шаг 29.8в): где оно в данный момент и по какой дуге пройдёт за день.
 ///
-/// Считает тот же `SolarDay`, что «Свет» и «Карта»: тот же день места, то же смещение пояса. Поэтому дуга в AR
-/// и высоты на других экранах не расходятся ни на долю градуса, а стенд паритета держит `SolarDay` против беты.
-/// Новая здесь только рефракция — для камеры нужна видимая высота, а не геометрическая.
+/// Положение диска считает `SunMoonTheory.sun` (Меёс, гл. 25) через `SkyFrame` — то же звёздное время и тот же
+/// пересчёт в азимут и высоту, что у Луны, планет, звёзд и Млечного Пути (шаг 29.8в.21), поэтому в одном кадре они
+/// не разъезжаются. Против JPL Horizons диск лежит в пределах 0,01°; `SolarDay` (NOAA, склонение раз в сутки) на тех же
+/// моментах ошибался до 0,39°. Часы восхода, заката и порогов света на других экранах и метки горизонта по-прежнему
+/// берутся из `SolarDay`: на них держится паритет с вебом, и они могут отличаться от дуги на доли градуса (≤ 1,5 минуты).
+/// Рефракция — отдельно: камере нужна видимая высота, а не геометрическая.
 public struct SunSample: Sendable, Equatable {
     /// Минуты от полуночи по часам места, `0 … 1440`.
     public let minutes: Minutes
@@ -96,21 +99,23 @@ public enum SunTrack {
     }
 
     public static func sample(day: CivilDate, minutes: Minutes, in place: Place) -> SunSample {
-        sample(solar: SolarDay(date: day, place: place), minutes: minutes)
+        sample(day: day, minutes: minutes, place: place, utcOffsetHours: place.zone.utcOffsetHours(on: day))
     }
 
-    private static func sample(solar: SolarDay, minutes: Minutes) -> SunSample {
-        SunSample(minutes: minutes, azimuth: solar.azimuth(at: minutes), altitude: solar.elevation(at: minutes))
+    private static func sample(day: CivilDate, minutes: Minutes, place: Place, utcOffsetHours: Double) -> SunSample {
+        let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: utcOffsetHours)
+        let h = SkyFrame(days: d, latitude: place.latitude, longitude: place.longitude).horizontal(ofDate: SunMoonTheory.sun(days: d))
+        return SunSample(minutes: minutes, azimuth: h.azimuth, altitude: h.altitude)
     }
 
     /// Дуга суток: точки через `arcStep` минут от полуночи до полуночи по часам места, все, не только видимые —
     /// отбор по порогу делает рисующий (так же ломаная рвётся там, где солнце ушло за камеру).
     public static func arc(day: CivilDate, in place: Place, step: Minutes = arcStep) -> [SunSample] {
-        let solar = SolarDay(date: day, place: place)
+        let offset = place.zone.utcOffsetHours(on: day)
         var out: [SunSample] = []
         var t = 0.0
         while t <= 1440 + 1e-9 {
-            out.append(sample(solar: solar, minutes: t))
+            out.append(sample(day: day, minutes: t, place: place, utcOffsetHours: offset))
             t += step
         }
         return out

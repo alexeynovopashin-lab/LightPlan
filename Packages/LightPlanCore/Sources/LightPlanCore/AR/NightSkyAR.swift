@@ -31,7 +31,7 @@ public struct MoonARSample: Sendable, Equatable {
 
 public enum MoonTrack {
     public static func sample(day: CivilDate, minutes: Minutes, in place: Place) -> MoonARSample {
-        MoonARSample(minutes: minutes, moon: MoonSample(date: day, minutes: minutes, place: place))
+        MoonARSample(minutes: minutes, moon: MoonSample(date: day, minutes: minutes, place: place, time: .iau))
     }
 
     public static func sample(at moment: Moment, in place: Place) -> MoonARSample {
@@ -47,7 +47,7 @@ public enum MoonTrack {
         var t = 0.0
         while t <= 1440 + 1e-9 {
             let moon = MoonSample(date: day, minutes: t, latitude: place.latitude, longitude: place.longitude,
-                                  utcOffsetHours: offset)
+                                  utcOffsetHours: offset, time: .iau)
             out.append(MoonARSample(minutes: t, moon: moon))
             t += step
         }
@@ -125,21 +125,20 @@ public enum MilkyWayAR {
     /// Полоса над головой в этот момент: края по точкам `MilkyWay.band` (121 точка шагом 3°).
     public static func band(day: CivilDate, minutes: Minutes, in place: Place) -> [(left: HorizontalPoint, right: HorizontalPoint)] {
         let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: place.zone.utcOffsetHours(on: day))
-        return edges.map { e in
-            (Sky.horizontal(e.left, days: d, latitude: place.latitude, longitude: place.longitude),
-             Sky.horizontal(e.right, days: d, latitude: place.latitude, longitude: place.longitude))
-        }
+        let frame = SkyFrame(days: d, latitude: place.latitude, longitude: place.longitude)
+        return edges.map { e in (frame.horizontal(j2000: e.left), frame.horizontal(j2000: e.right)) }
     }
 
     /// Середина полосы над головой: точки `MilkyWay.band` (b = 0) через `Sky.horizontal`.
     public static func center(day: CivilDate, minutes: Minutes, in place: Place) -> [HorizontalPoint] {
         let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: place.zone.utcOffsetHours(on: day))
-        return MilkyWay.band.map { Sky.horizontal($0.center, days: d, latitude: place.latitude, longitude: place.longitude) }
+        let frame = SkyFrame(days: d, latitude: place.latitude, longitude: place.longitude)
+        return MilkyWay.band.map { frame.horizontal(j2000: $0.center) }
     }
 
     /// Ядро — `MilkyWay.corePosition`, второй расчёт не заводится.
     public static func core(day: CivilDate, minutes: Minutes, in place: Place) -> HorizontalPoint {
-        MilkyWay.corePosition(date: day, minutes: minutes, place: place)
+        MilkyWay.corePosition(date: day, minutes: minutes, place: place, time: .iau)
     }
 
     /// Небо не тёмное: солнце выше −6° (видимый порог дуги солнца). Днём полоса идёт призраком.

@@ -294,7 +294,7 @@ final class SunARModel {
     /// Справка о видимости глазом на выбранный момент (строка «Слоёв»): число и причины. Не условие рисования.
     var milkyWayEyeNote: MilkyWayLook.EyeNote {
         let moon = moonPicked
-        let core = MilkyWay.corePosition(date: day, minutes: minutes, place: place)
+        let core = MilkyWay.corePosition(date: day, minutes: minutes, place: place, time: .iau)
         return MilkyWayLook.eyeNote(sunAltitude: sun.altitude, moonAltitude: moon.altitude,
                                     moonFraction: moon.phase.fraction, glow: glow, coreAltitude: core.altitude)
     }

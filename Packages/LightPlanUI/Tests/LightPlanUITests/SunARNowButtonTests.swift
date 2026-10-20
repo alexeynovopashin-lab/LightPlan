@@ -71,7 +71,7 @@ struct SunARNowButtonTests {
         let current = try #require(after.picked)
         #expect(current.azimuth != pickedMoon.azimuth || current.altitude != pickedMoon.altitude)
         #expect(after.milkyWayOn)
-        let core = MilkyWay.corePosition(date: n.day, minutes: n.minutes, place: tomsk)
+        let core = MilkyWay.corePosition(date: n.day, minutes: n.minutes, place: tomsk, time: .iau)
         #expect(abs(after.coreAzimuth - core.azimuth) < 0.01 && abs(after.coreAltitude - core.altitude) < 0.01,
                 "ядро Млечного Пути не вернулось к текущему моменту")
         let scene = SunARScene.make(basis: basis, optics: .typical, viewport: viewport, arc: model.arc, sun: model.sun,

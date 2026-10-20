@@ -72,6 +72,12 @@
   `touch2_path` one call at a time (calls sent together overlap). Anything hit-testable drawn over the map canvas eats
   pan and pinch that start on it: taps on map things come from the canvas (`onTap`) and are hit-tested in code
   (`MapSpots.hit`, `MapInstrumentView.bodyAt`).
+- **One sky time for AR (29.8в.21).** Every AR layer (Sun `SunTrack`, Moon `MoonTrack`/`MoonSample(time: .iau)`, planets, stars,
+  constellations, Milky Way band/core/frame) goes through `SkyFrame` (`Sky/SiderealTime.swift`): IAU sidereal time, J2000 catalog
+  points precessed to the date (`horizontal(j2000:)`), Sun/Moon/planets already of date (`horizontal(ofDate:)`). Sun and Moon use
+  `Sky/SunMoonTheory.swift` (Meeus ch. 25 / 47), ≤ 0.02° vs Horizons. `Sky.horizontal`, `SolarDay`, and `MoonSample`/`MilkyWay.corePosition`
+  with the default `time: .web` keep the web's numbers for parity (Light, Map, dome, shoot window). A new AR layer must not call
+  `Sky.horizontal`. Reference: `python3 Tools/sky_time_ref.py` → `Fixtures/sky_time_horizons.json`, read by `SkyTimeTests`.
 - **Glass never takes a rotation (28п).** `.glassEffect` under `rotationEffect` (or `scaleEffect`) swells into the
   bounding rectangle of the whole layer at angles that are not multiples of 90° (measured: three spot plates → one
   ≈ 420 × 415 pt slab). On «Карта» the rotor is two halves with the same angle (canvas, veil, road / instrument)

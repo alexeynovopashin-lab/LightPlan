@@ -186,10 +186,8 @@ public enum StarSkyAR {
     public static func horizontals(catalog: StarCatalogAR = .current, day: CivilDate, minutes: Minutes,
                                    in place: Place) -> [HorizontalPoint] {
         let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: place.zone.utcOffsetHours(on: day))
-        return catalog.stars.map {
-            Sky.horizontal(ra: $0.ra * Double.pi / 12, dec: Sky.rad($0.dec), days: d,
-                           latitude: place.latitude, longitude: place.longitude)
-        }
+        let frame = SkyFrame(days: d, latitude: place.latitude, longitude: place.longitude)
+        return catalog.stars.map { frame.horizontal(j2000: EquatorialPoint(ra: $0.ra * Double.pi / 12, dec: Sky.rad($0.dec))) }
     }
 
     /// Фигура рисует подпись, только если над горизонтом не меньше этой доли её звёзд: полфигуры у горизонта читается

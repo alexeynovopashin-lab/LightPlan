@@ -28,23 +28,32 @@ public struct MoonSample: Sendable, Equatable {
     /// Ядро сверки: смещение пояса задано явно (дробное: Катманду 5.75).
     public init(
         date: CivilDate, minutes: Minutes,
-        latitude: Double, longitude: Double, utcOffsetHours: Double
+        latitude: Double, longitude: Double, utcOffsetHours: Double, time: SkyTime = .web
     ) {
         let d = Sky.days(date: date, minutes: minutes, utcOffsetHours: utcOffsetHours)
-        let m = Self.equatorial(days: d)
-        let p = Sky.horizontal(ra: m.ra, dec: m.dec, days: d, latitude: latitude, longitude: longitude)
+        let p: HorizontalPoint
+        switch time {
+        case .web:
+            let m = Self.equatorial(days: d)
+            p = Sky.horizontal(ra: m.ra, dec: m.dec, days: d, latitude: latitude, longitude: longitude)
+            self.distance = m.dist
+        case .iau:
+            // Слой AR: теория Меёса гл. 47 и звёздное время IAU (`SunMoonTheory`, `SkyFrame`).
+            let m = SunMoonTheory.moon(days: d)
+            p = SkyFrame(days: d, latitude: latitude, longitude: longitude).horizontal(ofDate: m.point)
+            self.distance = m.distance
+        }
         self.altitude = p.altitude
         self.azimuth = p.azimuth
-        self.distance = m.dist
         self.days = d
     }
 
     /// Смещение зоны места берётся на эту дату, как у `SolarDay(date:place:)`.
-    public init(date: CivilDate, minutes: Minutes, place: Place) {
+    public init(date: CivilDate, minutes: Minutes, place: Place, time: SkyTime = .web) {
         self.init(
             date: date, minutes: minutes,
             latitude: place.latitude, longitude: place.longitude,
-            utcOffsetHours: place.zone.utcOffsetHours(on: date)
+            utcOffsetHours: place.zone.utcOffsetHours(on: date), time: time
         )
     }
 

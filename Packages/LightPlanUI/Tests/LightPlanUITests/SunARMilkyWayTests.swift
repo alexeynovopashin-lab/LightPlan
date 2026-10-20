@@ -63,8 +63,7 @@ struct SunARMilkyWayTests {
     /// Где точка галактики над головой в эту ночь.
     private func sky(_ l: Degrees, _ b: Degrees, _ n: Night) -> HorizontalPoint {
         let d = Sky.days(date: n.day, minutes: n.minutes, utcOffsetHours: n.place.zone.utcOffsetHours(on: n.day))
-        return Sky.horizontal(MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: b), days: d,
-                              latitude: n.place.latitude, longitude: n.place.longitude)
+        return SkyFrame(days: d, latitude: n.place.latitude, longitude: n.place.longitude).horizontal(j2000: MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: b))
     }
 
     /// Сцена с Млечным Путём, камера на точку (l, 0); `band` можно подменить (пусто — многоугольников нет).
