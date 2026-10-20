@@ -58,6 +58,8 @@ enum SunARInk {
     /// Дуга луны — тоньше солнечной: обводка и жила, pt.
     static let moonArcOutlineWidth: CGFloat = 3.5
     static let moonArcWidth: CGFloat = 1.5
+    /// Дуга ядра Млечного Пути (29.8в.17б): жила 1,5 pt тоном ядра, обводка как у луны.
+    static let coreArcWidth: CGFloat = 1.5
     /// Просвет между краем метки и подписью, pt.
     static let markerLabelGap: CGFloat = 14
     /// Малая метка восхода и заката на горизонте, диаметр, pt.

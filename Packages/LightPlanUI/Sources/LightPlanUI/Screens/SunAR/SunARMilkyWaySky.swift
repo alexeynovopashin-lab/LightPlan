@@ -12,7 +12,9 @@ enum MilkyWaySkyShader {
         static let smooth = Parts(rawValue: 1)
         static let texture = Parts(rawValue: 2)
         static let dust = Parts(rawValue: 4)
-        static let all: Parts = [.smooth, .texture, .dust]
+        /// Тёмный контур по краям полосы (29.8в.17б): виден на светлом небе, где заливка складывается с белым.
+        static let edge = Parts(rawValue: 8)
+        static let all: Parts = [.smooth, .texture, .dust, .edge]
 
         /// В выпуске — все; в отладке `-LPSunARMWParts smooth,texture,dust` выбирает (замер профиля — только гладкая).
         static var current: Parts {
@@ -24,6 +26,7 @@ enum MilkyWaySkyShader {
                     case "smooth": p.insert(.smooth)
                     case "texture": p.insert(.texture)
                     case "dust": p.insert(.dust)
+                    case "edge": p.insert(.edge)
                     default: break
                     }
                 }
@@ -49,14 +52,18 @@ enum MilkyWaySkyShader {
     static let sigmaStep: Degrees = 3
     static let sigmaTable: [Float] = (0...120).map { Float(MilkyWayLook.sigma(Double($0) * sigmaStep)) }
 
-    static func numbers(_ pic: NightSkyARScene.MilkyWayPicture, origin: CGPoint, parts: Parts) -> [Float] {
+    /// Проход шейдера: свет полосы или тёмный контур по её краям.
+    enum Pass: Double { case light = 0, edge = 1 }
+
+    static func numbers(_ pic: NightSkyARScene.MilkyWayPicture, origin: CGPoint, parts: Parts, pass: Pass = .light) -> [Float] {
         let f = pic.frame
         let axes = [f.x, f.y, f.z].flatMap { [$0.east, $0.north, $0.up] }
         return (pic.pixelToSky + axes + [Double(origin.x), Double(origin.y), pic.visibility.factor, Double(parts.rawValue),
                                          MilkyWayLook.peakAlpha, pic.focal]).map { Float($0) } + sigmaTable
+            + [Float(pass.rawValue), Float(MilkyWayLook.edgeOpacity), Float(MilkyWayLook.edgeWidth)]
     }
 
-    static func shader(_ pic: NightSkyARScene.MilkyWayPicture, origin: CGPoint, parts: Parts) -> Shader {
-        library.milkyWaySky(.floatArray(numbers(pic, origin: origin, parts: parts)))
+    static func shader(_ pic: NightSkyARScene.MilkyWayPicture, origin: CGPoint, parts: Parts, pass: Pass = .light) -> Shader {
+        library.milkyWaySky(.floatArray(numbers(pic, origin: origin, parts: parts, pass: pass)))
     }
 }

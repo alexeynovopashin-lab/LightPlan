@@ -1401,6 +1401,76 @@
         }
       }
     },
+    "ar.coreRises" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро восходит {t} · {a}°"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "core rises {t} · {a}°"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el núcleo sale {t} · {a}°"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中心核が昇る {t} · {a}°"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心升起 {t} · {a}°"
+          }
+        }
+      }
+    },
+    "ar.coreSets" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "заходит {t} · {a}°"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sets {t} · {a}°"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "se pone {t} · {a}°"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沈む {t} · {a}°"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "落下 {t} · {a}°"
+          }
+        }
+      }
+    },
     "ar.drag" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1821,6 +1891,111 @@
         }
       }
     },
+    "ar.mwAbove" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро над горизонтом {range}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "core above the horizon {range}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "núcleo sobre el horizonte {range}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中心核が地平線の上 {range}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心在地平线上 {range}"
+          }
+        }
+      }
+    },
+    "ar.mwAboveFrom" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро над горизонтом с {t}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "core above the horizon from {t}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "núcleo sobre el horizonte desde {t}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中心核が地平線の上 {t}から"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心自 {t} 起在地平线上"
+          }
+        }
+      }
+    },
+    "ar.mwAboveTo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро над горизонтом до {t}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "core above the horizon until {t}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "núcleo sobre el horizonte hasta {t}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中心核が地平線の上 {t}まで"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心在地平线上，至 {t}"
+          }
+        }
+      }
+    },
     "ar.mwCore" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1856,6 +2031,426 @@
         }
       }
     },
+    "ar.mwDarkAll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "темно круглые сутки"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dark all day"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "oscuro todo el día"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一日中暗い"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全天黑暗"
+          }
+        }
+      }
+    },
+    "ar.mwDarkFrom" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "темно с {t}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dark from {t}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "oscuro desde {t}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{t}から暗い"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{t} 起天黑"
+          }
+        }
+      }
+    },
+    "ar.mwEye" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "видимость глазом {pct} %: {why}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "visible to the eye {pct}%: {why}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "visible a simple vista {pct} %: {why}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "肉眼での見え方 {pct}%：{why}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "肉眼可见度 {pct}%：{why}"
+          }
+        }
+      }
+    },
+    "ar.mwEyeBelow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро под горизонтом"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "core below the horizon"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "núcleo bajo el horizonte"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中心核は地平線の下"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心在地平线下"
+          }
+        }
+      }
+    },
+    "ar.mwEyeDay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "днём не видно: солнце {alt}°"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not visible by day: Sun {alt}°"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "de día no se ve: Sol {alt}°"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昼は見えません：太陽 {alt}°"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "白天看不见：太阳 {alt}°"
+          }
+        }
+      }
+    },
+    "ar.mwEyeGlowCity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "город, засветка {n}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "city, glow {n}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ciudad, contaminación {n}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "都市、光害 {n}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "城市，光污染 {n}"
+          }
+        }
+      }
+    },
+    "ar.mwEyeGlowDark" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "тёмное небо"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dark sky"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cielo oscuro"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暗い空"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暗夜天空"
+          }
+        }
+      }
+    },
+    "ar.mwEyeGlowFaint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "слабая засветка {n}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "slight glow {n}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "poca contaminación {n}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "弱い光害 {n}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轻微光污染 {n}"
+          }
+        }
+      }
+    },
+    "ar.mwEyeGlowNone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "засветка {n}: Путь тонет"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "glow {n}: the band drowns"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "contaminación {n}: la Vía se pierde"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "光害 {n}：天の川は埋もれます"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "光污染 {n}：银河被淹没"
+          }
+        }
+      }
+    },
+    "ar.mwEyeHaze" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "у горизонта дымка"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "haze near the horizon"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "calima en el horizonte"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地平線付近はもや"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地平线附近有霾"
+          }
+        }
+      }
+    },
+    "ar.mwEyeMoon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Луна {pct} % освещена над горизонтом"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moon {pct}% lit, above the horizon"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luna {pct} % iluminada sobre el horizonte"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月が地平線の上、満ち具合 {pct}%"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月亮在地平线上，被照亮 {pct}%"
+          }
+        }
+      }
+    },
+    "ar.mwEyeTwilight" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сумерки, солнце {alt}°"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "twilight, Sun {alt}°"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "crepúsculo, Sol {alt}°"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "薄明、太陽 {alt}°"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "曙暮光，太阳 {alt}°"
+          }
+        }
+      }
+    },
     "ar.mwFormula" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1868,7 +2463,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "drawn from a formula, approximate"
+            "value" : "drawn by formula, approximate"
           }
         },
         "es" : {
@@ -1891,37 +2486,142 @@
         }
       }
     },
-    "ar.mwHidden" : {
+    "ar.mwNeverRises" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Млечного Пути сейчас не видно"
+            "value" : "ядро не восходит на этой широте"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The Milky Way isn't visible now"
+            "value" : "the core never rises at this latitude"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La Vía Láctea no se ve ahora"
+            "value" : "el núcleo no sale a esta latitud"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "天の川は今は見えません"
+            "value" : "この緯度では中心核は昇りません"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "现在看不到银河"
+            "value" : "在此纬度银心不会升起"
+          }
+        }
+      }
+    },
+    "ar.mwNeverSets" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро не заходит: над горизонтом круглые сутки"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the core never sets: above the horizon all day"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el núcleo no se pone: sobre el horizonte todo el día"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中心核は沈みません：一日中地平線の上"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心不会落下：全天在地平线上"
+          }
+        }
+      }
+    },
+    "ar.mwWindow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "окно съёмки {range}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "shooting window {range}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ventana de rodaje {range}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撮影の時間帯 {range}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍摄时段 {range}"
+          }
+        }
+      }
+    },
+    "ar.mwWindowNone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "окна съёмки нет: {why}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no shooting window: {why}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sin ventana de rodaje: {why}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撮影の時間帯なし：{why}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有拍摄时段：{why}"
           }
         }
       }

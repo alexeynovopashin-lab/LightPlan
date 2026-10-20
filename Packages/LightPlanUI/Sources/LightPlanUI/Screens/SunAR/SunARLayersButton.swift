@@ -100,6 +100,8 @@ struct SunARLayersButtonLabel: View {
 struct SunARLayersList: View {
     let model: SunARModel
     let lexicon: Lexicon
+    /// Часы места: время в строках Млечного Пути пишется так же, как на подписях дуги.
+    var clock = ClockText(language: "ru")
 
     var body: some View {
         VStack(spacing: 0) {
@@ -109,13 +111,11 @@ struct SunARLayersList: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
-        .frame(width: 284)
+        .frame(width: 320)
         .preferredColorScheme(.dark)
     }
 
-    /// Мелкие строки под словом слоя. Млечный Путь (29.8в.14): «сейчас не видно», когда видимость нулевая
-    /// (светло, луна, засветка — та же функция, что у картины), и всегда — «рисуется по формуле, условно»: Алексей
-    /// выбрал имитацию вида, и подпись об этом обязательна.
+    /// Мелкие строки под словом слоя.
     private func notes(_ layer: SunARSkyLayer) -> [String] {
         switch layer {
         case .moon, .stars, .constellations: return []
@@ -125,7 +125,9 @@ struct SunARLayersList: View {
             if status.daylight { return [lexicon.t("ar.planetsDay")] }
             return status.nearSun.map { lexicon.t("ar.planetNearSun", ["name": lexicon.t($0.nameKey)]) }
         case .milkyWay:
-            return (model.milkyWayVisibility.isVisible ? [] : [lexicon.t("ar.mwHidden")]) + [lexicon.t("ar.mwFormula")]
+            // Млечный Путь (29.8в.17б): ядро над горизонтом и темнота, справка о видимости глазом (не условие
+            // рисования), окно съёмки и подпись про формулу.
+            return SunARMilkyWayNotes.lines(plan: model.milkyWayPlan, eye: model.milkyWayEyeNote, clock: clock, lexicon: lexicon)
         }
     }
 
@@ -135,11 +137,13 @@ struct SunARLayersList: View {
         let small = notes(layer)
         return HStack(spacing: 12) {
             icon(layer).frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: small.isEmpty ? 1 : 3) {
                 Text(label).font(.system(size: 16)).lineLimit(1).minimumScaleFactor(0.8)
                 ForEach(small, id: \.self) { note in
+                    // Без обрезки: строки Млечного Пути длинные («ядро над горизонтом 6:11 – 10:54 PM · dark from …»),
+                    // многоточие съедало самое нужное — время (29.8в.17б).
                     Text(note).font(.system(size: 12)).foregroundStyle(.secondary)
-                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             Spacer(minLength: 8)

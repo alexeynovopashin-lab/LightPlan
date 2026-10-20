@@ -254,14 +254,55 @@ public struct NightSkyARScene: Sendable, Equatable {
         public let glow: Double?
         /// Середина полосы (`MilkyWayAR.center`) — для проверки картины.
         public let center: [HorizontalPoint]
+        /// Суточная дуга ядра выбранной даты и его восходы и заходы (29.8в.17б); `nil` — траектория не рисуется.
+        public let track: CoreTrackInput?
 
         public init(band: [(left: HorizontalPoint, right: HorizontalPoint)], core: HorizontalPoint, sunAltitude: Degrees,
                     frame: MilkyWayLook.Frame? = nil, moonAltitude: Degrees = -90, moonFraction: Double = 0,
-                    glow: Double? = nil, center: [HorizontalPoint] = []) {
+                    glow: Double? = nil, center: [HorizontalPoint] = [], track: CoreTrackInput? = nil) {
             self.band = band; self.core = core; self.sunAltitude = sunAltitude
             self.frame = frame; self.moonAltitude = moonAltitude; self.moonFraction = moonFraction; self.glow = glow
-            self.center = center
+            self.center = center; self.track = track
         }
+    }
+
+    /// Сутки ядра: дуга точками (`MilkyWayCoreTrack.arc`) и события (`MilkyWayCoreTrack.passage`).
+    public struct CoreTrackInput: Sendable, Equatable {
+        public let arc: [MilkyWayCoreTrack.Sample]
+        public let passage: MilkyWayCoreTrack.Passage
+
+        public init(arc: [MilkyWayCoreTrack.Sample], passage: MilkyWayCoreTrack.Passage) {
+            self.arc = arc; self.passage = passage
+        }
+    }
+
+    /// Траектория ядра на экране (29.8в.17б): дуга суток, подписи часов и точки восхода и захода — как у дуги
+    /// солнца и луны. Часы — только там, где ядро не ниже −6° (как часы дуги солнца).
+    public struct CoreTrack: Sendable, Equatable {
+        public struct Point: Sendable, Equatable {
+            public let point: ScreenPoint
+            public let minutes: Minutes
+            /// Геометрическая высота.
+            public let altitude: Degrees
+            /// Видимая высота ниже линии горизонта: дуга здесь идёт пунктиром.
+            public let isBelowHorizon: Bool
+        }
+        public struct Hour: Sendable, Equatable {
+            public let hour: Int
+            public let point: ScreenPoint
+            public let altitude: Degrees
+        }
+        public struct Event: Sendable, Equatable {
+            public let kind: MilkyWayCoreTrack.Event.Kind
+            public let minutes: Minutes
+            public let azimuth: Degrees
+            /// Где точка на линии горизонта; `nil` — за камерой.
+            public let point: ScreenPoint?
+        }
+        /// Видимая часть дуги — от верха до −18°, отрезками, разорванными за камерой.
+        public let arc: [[Point]]
+        public let hours: [Hour]
+        public let events: [Event]
     }
 
     /// Картина полосы для шейдера: два поворота и видимость. Точка окна (x, y) → луч `pixelToSky · (x, y, 1)` в осях
@@ -293,6 +334,8 @@ public struct NightSkyARScene: Sendable, Equatable {
     public let skyGhost: Bool
     /// Картина полосы; `nil` — Млечный Путь выключен или поворот не подан.
     public let milkyWayPicture: MilkyWayPicture?
+    /// Траектория ядра выбранной даты; `nil` — Млечный Путь выключен или траектория не подана.
+    public let coreTrack: CoreTrack?
 
     /// Луна ниже −18° (как дуга солнца) не рисуется.
     public static let arcFrom: Degrees = -18
@@ -332,6 +375,7 @@ public struct NightSkyARScene: Sendable, Equatable {
         var polys: [[ScreenPoint]] = []
         var coreOnScreen: ScreenPoint?
         var picture: MilkyWayPicture?
+        var track: CoreTrack?
         if let milkyWay {
             var left: [ScreenPoint] = [], right: [ScreenPoint] = []
             func flush() {
@@ -345,6 +389,26 @@ public struct NightSkyARScene: Sendable, Equatable {
             }
             flush()
             coreOnScreen = proj(milkyWay.core.azimuth, milkyWay.core.altitude)
+            if let input = milkyWay.track {
+                var runs: [[CoreTrack.Point]] = [], run: [CoreTrack.Point] = []
+                var hours: [CoreTrack.Hour] = []
+                for s in input.arc {
+                    guard s.altitude >= MilkyWayCoreTrack.arcFrom, let p = proj(s.azimuth, s.apparentAltitude) else {
+                        if !run.isEmpty { runs.append(run); run = [] }
+                        continue
+                    }
+                    run.append(CoreTrack.Point(point: p, minutes: s.minutes, altitude: s.altitude,
+                                               isBelowHorizon: s.apparentAltitude < 0))
+                    if s.altitude >= SunTrack.visibleFrom, s.minutes.truncatingRemainder(dividingBy: 60) == 0, s.minutes < 1440 {
+                        hours.append(CoreTrack.Hour(hour: Int(s.minutes / 60), point: p, altitude: s.altitude))
+                    }
+                }
+                if !run.isEmpty { runs.append(run) }
+                let events = input.passage.events.map {
+                    CoreTrack.Event(kind: $0.kind, minutes: $0.minutes, azimuth: $0.azimuth, point: proj($0.azimuth, 0))
+                }
+                track = CoreTrack(arc: runs, hours: hours, events: events)
+            }
             if let frame = milkyWay.frame {
                 picture = MilkyWayPicture(
                     pixelToSky: MilkyWayLook.pixelToSky(basis: basis, optics: optics, viewport: viewport),
@@ -360,6 +424,6 @@ public struct NightSkyARScene: Sendable, Equatable {
                                coreAzimuth: milkyWay?.core.azimuth ?? 0, coreAltitude: milkyWay?.core.altitude ?? 0,
                                milkyWayOn: milkyWay != nil,
                                skyGhost: milkyWay.map { MilkyWayAR.isGhost(sunAltitude: $0.sunAltitude) } ?? false,
-                               milkyWayPicture: picture)
+                               milkyWayPicture: picture, coreTrack: track)
     }
 }
