@@ -67,20 +67,18 @@ public struct SkyFrame: Sendable {
         return HorizontalPoint(altitude: Sky.deg(alt), azimuth: (Sky.deg(az) + 180 + 360).truncatingRemainder(dividingBy: 360))
     }
 
-    /// Прецессия IAU 2006 (углы Фукушимы — Вильямс, Capitaine и др. 2003) без нутации: средний экватор даты.
-    /// Матрица `R1(−εA) · R3(−ψ̄) · R1(φ̄) · R3(−γ̄)`.
+    /// Прецессия J2000 → средний экватор и равноденствие даты: углы ζ, z, θ (IAU 1976, Lieske), `t` — юлианские века
+    /// от J2000. Без массивов и замыканий: `SkyFrame` строится на каждую точку дуги, и на 2026 год углы расходятся с
+    /// IAU 2006 на сотые доли угловой секунды (`SkyTimeTests` сверяет Сириус с прецессией 2006).
     static func precession(centuries t: Double)
         -> (Double, Double, Double, Double, Double, Double, Double, Double, Double) {
-        func poly(_ c: [Double]) -> Double { c.enumerated().reduce(0) { $0 + $1.element * pow(t, Double($1.offset)) } * Double.pi / 648_000 }
-        let gam = poly([-0.052928, 10.556378, 0.4932044, -0.00031238, -0.000002788, 0.0000000260])
-        let phi = poly([84381.412819, -46.811016, 0.0511268, 0.00053289, -0.000000440, -0.0000000176])
-        let psi = poly([-0.041775, 5038.481484, 1.5584175, -0.00018522, -0.000026452, -0.0000000148])
-        let eps = poly([84381.406, -46.836769, -0.0001831, 0.00200340, -0.000000576, -0.0000000434])
-        typealias M = [[Double]]
-        func r1(_ a: Double) -> M { [[1, 0, 0], [0, cos(a), sin(a)], [0, -sin(a), cos(a)]] }
-        func r3(_ a: Double) -> M { [[cos(a), sin(a), 0], [-sin(a), cos(a), 0], [0, 0, 1]] }
-        func mul(_ a: M, _ b: M) -> M { (0..<3).map { i in (0..<3).map { j in (0..<3).reduce(0) { $0 + a[i][$1] * b[$1][j] } } } }
-        let m = mul(r1(-eps), mul(r3(-psi), mul(r1(phi), r3(-gam))))
-        return (m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2])
+        let as_ = Double.pi / 648_000
+        let zeta = (2306.2181 * t + 0.30188 * t * t + 0.017998 * t * t * t) * as_
+        let z = (2306.2181 * t + 1.09468 * t * t + 0.018203 * t * t * t) * as_
+        let theta = (2004.3109 * t - 0.42665 * t * t - 0.041833 * t * t * t) * as_
+        let cz = cos(zeta), sz = sin(zeta), cZ = cos(z), sZ = sin(z), ct = cos(theta), st = sin(theta)
+        return (cz * ct * cZ - sz * sZ, -sz * ct * cZ - cz * sZ, -st * cZ,
+                cz * ct * sZ + sz * cZ, -sz * ct * sZ + cz * cZ, -st * sZ,
+                cz * st, -sz * st, ct)
     }
 }
