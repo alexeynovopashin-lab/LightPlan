@@ -49,7 +49,7 @@ struct RibbonView: View {
                 // стекло…»): его кромка гнёт то, что под ней
                 // (`GlassOptics.slab`), середина не размывает.
                 ZStack(alignment: .leading) {
-                    if drum { RoundedRectangle(cornerRadius: 8).fill(look.face) }
+                    if drum { RoundedRectangle(cornerRadius: 8).fill(look.face).frame(width: w, height: Self.height) }
                     if preview {
                         HStack(spacing: 0) { ForEach(-1...1, id: \.self) { cell(offset: $0, look: look) } }
                             .frame(width: w)
@@ -58,7 +58,9 @@ struct RibbonView: View {
                             .offset(x: -state.machine.ribbonOffset(clipWidth: w) + state.ribbonShift + Self.shotNudge)
                             .opacity(state.ribbonOpacity)
                     }
-                    if drum { DrumShade(look: look).allowsHitTesting(false) }
+                    // Ширина тени — окно, а не дорожка: дорожка барабана шире окна, ZStack растёт до неё, и
+                    // градиент тени растягивался на всю дорожку — правая половина уходила за обрезку (29.8в.22).
+                    if drum { DrumShade(look: look).frame(width: w, height: Self.height).allowsHitTesting(false) }
                 }
                 .frame(width: w, height: Self.height, alignment: .leading)
                 .layerEffect(GlassOptics.slab(center: CGPoint(x: windowX, y: Self.height / 2),

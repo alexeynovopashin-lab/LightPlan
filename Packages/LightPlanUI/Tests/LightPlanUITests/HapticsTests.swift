@@ -30,6 +30,8 @@ struct HapticsTests {
         .rowReveal,
         // 29.6а: смена суток на барабане таймбара — `swoosh()` беты, затвор.
         .timebarDayFlip,
+        // 29.8в.22: строка барабана «Когда смотрим» — тик выбора.
+        .wheelRow,
     ]
 
     @Test func carriedTypesDoNotChange() {
@@ -49,7 +51,7 @@ struct HapticsTests {
 
     @Test func switchesTickWithSelection() {
         for e: HapticEvent in [.tab, .segment, .scopeButton, .scopeItem, .mapSave, .skySwap, .dayStripDate, .daySwipe, .laneDot,
-                               .rowReveal] {
+                               .rowReveal, .wheelRow] {
             #expect(e.kind == .selection, "\(e)")
         }
     }

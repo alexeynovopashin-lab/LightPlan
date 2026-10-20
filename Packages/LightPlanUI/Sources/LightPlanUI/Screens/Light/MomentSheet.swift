@@ -189,6 +189,9 @@ struct WheelColumn: View {
     /// `r · 34` (поле 68 сверху ставит её в середину окна 170).
     @State private var scroll: ScrollPosition
     @State private var offset: CGFloat
+    /// Тик за строку (29.8в.22): помнит значение под полосой, чтобы не тикать дважды на одной строке.
+    @State private var ticker: WheelTicker
+    @State private var phase: ScrollPhase = .idle
     private let reps: Int
 
     init(labels: [String], loops: Bool, index: Binding<Int>, alignment: Alignment, inset: EdgeInsets) {
@@ -205,6 +208,7 @@ struct WheelColumn: View {
         let y = CGFloat(Self.middle(reps: reps, n: n) + index.wrappedValue) * Self.row
         _scroll = State(initialValue: ScrollPosition(y: y))
         _offset = State(initialValue: y)
+        _ticker = State(initialValue: WheelTicker(value: index.wrappedValue))
     }
 
     private static func middle(reps: Int, n: Int) -> Int { (reps / 2) * n }
@@ -252,6 +256,7 @@ struct WheelColumn: View {
             offset = y
             guard n > 0 else { return }
             let v = ((rawRow % n) + n) % n
+            if ticker.moved(to: v, userDriven: phase.isUserDriven) { Haptics.play(.wheelRow) }
             if v != index { index = v }
         }
         .onChange(of: index) { _, v in
@@ -261,6 +266,7 @@ struct WheelColumn: View {
             withAnimation(.easeOut(duration: 0.3)) { scroll.scrollTo(y: CGFloat(raw - raw % n + v) * Self.row) }
         }
         .onScrollPhaseChange { _, phase in
+            self.phase = phase
             // Возврат в среднюю копию — после остановки, не по ходу: строка
             // под пальцем та же, подмены не видно.
             guard phase == .idle, reps > 1, n > 0 else { return }
@@ -276,4 +282,24 @@ struct WheelColumn: View {
             target.rect.origin.y = (target.rect.origin.y / WheelColumn.row).rounded() * WheelColumn.row
         }
     }
+}
+
+/// Когда барабан тикает (29.8в.22): строка под полосой сменила значение, а крутит её человек — палец или инерция.
+/// Не тикает: доезд к значению по фишке («Сегодня», «Завтра»: десятки строк подряд), возврат в среднюю копию
+/// закольцованного барабана (значение то же, сдвинулся лишь номер строки), начальная посадка.
+struct WheelTicker: Equatable {
+    private(set) var value: Int
+
+    init(value: Int) { self.value = value }
+
+    /// `true` — отдать тик. Значение запоминается всегда, чтобы доезд по фишке не отозвался тиком после остановки.
+    mutating func moved(to v: Int, userDriven: Bool) -> Bool {
+        defer { value = v }
+        return userDriven && v != value
+    }
+}
+
+extension ScrollPhase {
+    /// Палец на барабане или барабан катится по инерции; `animating` — это `scrollTo` кодом, `idle` — покой.
+    var isUserDriven: Bool { self == .tracking || self == .interacting || self == .decelerating }
 }

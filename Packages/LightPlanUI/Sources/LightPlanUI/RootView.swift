@@ -59,7 +59,8 @@ private struct Shell: View {
         // сохранялись прокрутка и глава при смене вкладки.
         ZStack {
             ZStack {
-                screen(.light) { LightScreenView(app.light, onPlace: { app.placeSheetOpen = true }) }
+                screen(.light) { LightScreenView(app.light, onPlace: { app.placeSheetOpen = true },
+                                                onPlan: { day, start in app.openForm(day: day, start: start, fromLight: true) }) }
                 screen(.map) { MapScreenView(app: app) }
                 screen(.planner) { PlannerScreenView(app: app) }
                 screen(.settings) { SettingsView(app: app) }

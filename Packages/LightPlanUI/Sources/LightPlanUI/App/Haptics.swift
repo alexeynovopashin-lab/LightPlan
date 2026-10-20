@@ -89,11 +89,15 @@ enum HapticEvent: String, CaseIterable, Sendable {
     /// Свайп влево по строке съёмки раскрыл кнопку «Удалить».
     case rowReveal
 
+    // Новое в 29.8в.22: у беты барабан «Когда смотрим» не тикает (в Safari отдачи нет) — тик по обычаю iOS.
+    /// Строка барабана листа «Когда смотрим» (день, час, минута) прошла под полосой выбора под пальцем или инерцией.
+    case wheelRow
+
     var kind: HapticKind {
         switch self {
         case .genreHold, .spotDrop, .sight: .medium
         case .deadlineStop, .dayNotch, .cardBlockLift, .routePointLift, .tab, .segment, .scopeButton, .scopeItem,
-             .mapSave, .skySwap, .dayStripDate, .daySwipe, .laneDot, .mbSortZone, .rowReveal: .selection
+             .mapSave, .skySwap, .dayStripDate, .daySwipe, .laneDot, .mbSortZone, .rowReveal, .wheelRow: .selection
         case .fan, .dayLift, .mbHold, .mbCover, .mbSortOn, .mbSortLift, .mbFrameLift, .timebarDayFlip: .light
         case .mbSortSaved, .mbFrameDrop: .medium
         }
