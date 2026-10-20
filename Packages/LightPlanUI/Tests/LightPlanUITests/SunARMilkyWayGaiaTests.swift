@@ -83,7 +83,7 @@ struct SunARMilkyWayGaiaTests {
                     let hp = positions[i]
                     guard hp.altitude > 1 else { continue }
                     let basis = CameraBasis(azimuth: hp.azimuth + 9, altitude: min(hp.altitude + 6, 80), roll: 15)
-                    let scene = StarSkyAR.make(catalog: catalog, positions: positions, sunAltitude: -30, basis: basis,
+                    let scene = StarSkyAR.make(catalog: catalog, positions: positions, basis: basis,
                                                optics: .typical, viewport: phone, stars: true, constellations: false)
                     guard let dot = scene.dots.first(where: { $0.index == i }) else { continue }
                     let lk = look(day: day, minutes: minutes, place: place, basis: basis)

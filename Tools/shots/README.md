@@ -202,9 +202,11 @@ iPhone 17 Pro 402 × 874 (`LP <ветка> pro`). Числа: порядок б�
 `LP_SIM="<имя>" node Tools/shots/ar.js --skip-build --only toggles`.
 Звёзды и созвездия (29.8в.13): сценарии `night_stars`, `night_stars_sw`, `night_all`, `dusk_stars`, `day_stars`, `day_stars_moon` на подставной
 камере и `night_stars_dark`, `night_stars_sw_dark`, `night_stars_s_dark` на ровном ночном фоне (`-LPSunARBackdrop night`; подставный кадр — закатный
-градиент, звёзды на нём не видны так, как на настоящем небе). Числа из узла `ar.stars` (`dots lines figures labels vis day`): ночью яркость 1, в сумерках
-между 0 и 1, днём 0 и плашка «Звёзд днём не видно» (`ar.starsDay`); подписи слоя (`ar.starLabel.*`, `ar.starsDay`) целиком на экране и не лежат на метках,
-подписи выбранного момента, стрелках, кнопках и друг на друге. `python3 Tools/ar_lens_bench.py --stars` — кадры/с и процессор ночью со слоями и без них.
+градиент, звёзды на нём не видны так, как на настоящем небе). Числа из узла `ar.stars` (`dots lines figures labels`): слой рисуется всегда, и днём, и в сумерках, и ночью (29.8в.18, плашки «Звёзд днём не видно» больше нет); подписи слоя
+(`ar.starLabel.*`) целиком на экране и не лежат на метках, подписи выбранного момента, стрелках, кнопках и друг на друге.
+Маска (29.8в.18): узел `ar.mask` (`opacity strength pickedSun nowSun`) есть, только когда «сейчас» светлое, выбрана ночь и включён слой неба; сценарии `day_stars_night`
+(0,70), `day_planets_night`, `day_stars_off` и `day_stars` / `night_stars` (узла нет). Замер потолка непрозрачности — `python3 Tools/ar_mask.py` (отладочный кадр
+`-LPSunARBackdrop city`, непрозрачность `-LPSunARMask <v>`). `python3 Tools/ar_lens_bench.py --stars` — кадры/с и процессор ночью со слоями и без них.
 Южная ночь (29.8в.13б, Сидней 15.06.2026 22:00): `night_stars_cross_dark` — Южный Крест, подписи Акрукса и Бекрукса; `night_stars_canopus_dark` —
 Канопус у горизонта. Южная широта уходит в `-LPSunARPhone` строкой в кавычках: значение с минусом впереди система читает как новый ключ.
 Калибровка компаса (29.8в.8): `node Tools/shots/ar_cal.js [--devices max,15,se] [--langs ru,en,es,ja,zh] [--only a,b]` — экран

@@ -119,12 +119,15 @@ struct SunARLayersList: View {
     /// Мелкие строки под словом слоя.
     private func notes(_ layer: SunARSkyLayer) -> [String] {
         switch layer {
-        case .moon, .stars, .constellations: return []
+        case .moon: return []
+        case .stars, .constellations:
+            // Звёзды рисуются всегда (29.8в.18); справка о видимости глазом — число и причина, а не условие рисования.
+            return SunARSkyNotes.eyeLine(model.skyEyeCauses, lexicon).map { [$0] } ?? []
         case .planets:
-            // Планеты (29.8в.15): днём их нет; ночью каждая, что ближе 15° к Солнцу, подписана честно.
-            let status = model.planetStatus
-            if status.daylight { return [lexicon.t("ar.planetsDay")] }
-            return status.nearSun.map { lexicon.t("ar.planetNearSun", ["name": lexicon.t($0.nameKey)]) }
+            // Планеты (29.8в.15, 29.8в.18): рисуются всегда; справка о видимости глазом, и каждая, что ближе 15° к Солнцу
+            // (такая не рисуется), подписана честно.
+            let near = model.planetsNearSun.map { lexicon.t("ar.planetNearSun", ["name": lexicon.t($0.nameKey)]) }
+            return (SunARSkyNotes.eyeLine(model.skyEyeCauses, lexicon).map { [$0] } ?? []) + near
         case .milkyWay:
             // Млечный Путь (29.8в.17б): ядро над горизонтом и темнота, справка о видимости глазом (не условие
             // рисования), окно съёмки и подпись про формулу.

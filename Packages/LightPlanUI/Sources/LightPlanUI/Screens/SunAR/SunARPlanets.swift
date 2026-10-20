@@ -2,8 +2,7 @@ import SwiftUI
 import LightPlanCore
 
 /// Слой «Планеты» на экране AR (шаг 29.8в.15). Расчёт — ядра (`PlanetSkyAR`), здесь рисование и раскладка подписей.
-/// Слой лежит над звёздами и под дугой. Днём (солнце выше −6°) планет нет и ничего не рисуется — об этом написано в
-/// списке «Слоёв» (отдельной плашки на экране нет: у звёзд она уже есть, две подряд закрыли бы небо).
+/// Слой лежит над звёздами и под дугой и рисуется всегда, днём тоже (29.8в.18); видимость глазом — справка в списке «Слоёв».
 
 // MARK: - Холст
 
@@ -15,9 +14,7 @@ struct SunARPlanetCanvas: View {
     var holes: [SunARHole] = []
 
     var body: some View {
-        let k = scene.visibility
         Canvas { ctxIn, size in
-            guard k > 0 else { return }
             var ctx = ctxIn
             ctx.translateBy(x: -origin.x, y: -origin.y)
             let view = CGRect(origin: origin, size: size)
@@ -30,7 +27,7 @@ struct SunARPlanetCanvas: View {
                 guard near.contains(c) else { continue }
                 let t = PlanetLook.tint(d.planet)
                 let color = Color(red: t.red, green: t.green, blue: t.blue)
-                let r = CGFloat(d.radius), a = d.brightness * k
+                let r = CGFloat(d.radius), a = d.brightness
                 if d.magnitude < PlanetLook.haloMagnitude {
                     let h = r * 3.2
                     ctx.fill(Path(ellipseIn: CGRect(x: c.x - h, y: c.y - h, width: 2 * h, height: 2 * h)),
@@ -78,8 +75,7 @@ enum SunARPlanetLabels {
 
     /// Кандидаты: планеты, чья точка в окне, от ярких к слабым.
     static func candidates(scene: PlanetSkyARScene, window: CGRect, name: (String) -> String) -> [Candidate] {
-        guard scene.visibility > 0 else { return [] }
-        return scene.dots.sorted { $0.magnitude < $1.magnitude }.compactMap { d in
+        scene.dots.sorted { $0.magnitude < $1.magnitude }.compactMap { d in
             let p = CGPoint(x: d.point.x, y: d.point.y)
             guard window.contains(p) else { return nil }
             return Candidate(planet: d.planet, text: name(d.planet.nameKey), anchor: p, radius: CGFloat(d.radius))
@@ -119,8 +115,7 @@ enum SunARPlanetLabels {
 
     /// Занятое планетами для подписей звёзд: рамки подписей и пятна точек с ореолом.
     static func occupied(scene: PlanetSkyARScene, labels: [Placed]) -> [CGRect] {
-        guard scene.visibility > 0 else { return [] }
-        return labels.map(\.rect) + scene.dots.map {
+        labels.map(\.rect) + scene.dots.map {
             let h = CGFloat($0.radius) * ($0.magnitude < PlanetLook.haloMagnitude ? 1.6 : 1) + 2
             return CGRect(x: $0.point.x - h, y: $0.point.y - h, width: 2 * h, height: 2 * h)
         }
@@ -135,20 +130,17 @@ struct SunARPlanetLayer: View {
     var holes: [SunARHole] = []
 
     var body: some View {
-        let k = scene.visibility
         ZStack(alignment: .topLeading) {
             SunARPlanetCanvas(scene: scene, holes: holes)
-            if k > 0 {
-                ForEach(labels) { l in
-                    Text(l.text)
-                        .font(.system(size: SunARPlanetLabels.fontSize, weight: SunARPlanetLabels.weight))
-                        .foregroundStyle(SunARInk.light)
-                        .opacity(SunARInk.planetNameOpacity * k)
-                        .shadow(color: .black.opacity(0.7), radius: 1.5, x: 0, y: 0.5)
-                        .fixedSize()
-                        .shotNode("ar.planetLabel." + l.planet.rawValue, text: l.text)
-                        .position(x: l.center.x, y: l.center.y)
-                }
+            ForEach(labels) { l in
+                Text(l.text)
+                    .font(.system(size: SunARPlanetLabels.fontSize, weight: SunARPlanetLabels.weight))
+                    .foregroundStyle(SunARInk.light)
+                    .opacity(SunARInk.planetNameOpacity)
+                    .shadow(color: .black.opacity(0.7), radius: 1.5, x: 0, y: 0.5)
+                    .fixedSize()
+                    .shotNode("ar.planetLabel." + l.planet.rawValue, text: l.text)
+                    .position(x: l.center.x, y: l.center.y)
             }
         }
         .allowsHitTesting(false)

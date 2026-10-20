@@ -2,7 +2,7 @@ import Testing
 import Foundation
 import LightPlanCore
 
-/// Слой планет в AR (шаг 29.8в.15): видимость по высоте солнца, «рядом с Солнцем», горизонт, вид точки.
+/// Слой планет в AR (шаг 29.8в.15): «рядом с Солнцем», горизонт, вид точки.
 struct PlanetSkyARTests {
 
     static let tomsk = Place(latitude: 56.4977, longitude: 84.9744, zone: ZoneID("Asia/Tomsk")!)
@@ -13,46 +13,25 @@ struct PlanetSkyARTests {
         PlanetSample(planet: p, horizontal: HorizontalPoint(altitude: alt, azimuth: az), magnitude: mag, elongation: elong)
     }
 
-    private func scene(_ samples: [PlanetSample], sun: Double, aimAz: Double = 150, aimAlt: Double = 30) -> PlanetSkyARScene {
-        PlanetSkyAR.make(samples: samples, sunAltitude: sun, basis: CameraBasis(azimuth: aimAz, altitude: aimAlt),
+    private func scene(_ samples: [PlanetSample], aimAz: Double = 150, aimAlt: Double = 30) -> PlanetSkyARScene {
+        PlanetSkyAR.make(samples: samples, basis: CameraBasis(azimuth: aimAz, altitude: aimAlt),
                          optics: .typical, viewport: Self.viewport)
-    }
-
-    @Test("яркость слоя по солнцу: выше −6° планет нет, на −9° ровно половина, ниже −12° полная; днём слой «дневной»")
-    func visibilityBySunAltitude() {
-        #expect(PlanetVisibility.opacity(sunAltitude: 20) == 0)
-        #expect(PlanetVisibility.opacity(sunAltitude: -6) == 0)
-        #expect(abs(PlanetVisibility.opacity(sunAltitude: -9) - 0.5) < 1e-12)
-        #expect(PlanetVisibility.opacity(sunAltitude: -12) == 1)
-        #expect(PlanetVisibility.opacity(sunAltitude: -30) == 1)
-        var last = 0.0
-        for h in stride(from: -6.0, through: -12.0, by: -0.5) {
-            let k = PlanetVisibility.opacity(sunAltitude: h)
-            #expect(k >= last, "яркость упала на \(h)°"); last = k
-        }
-        #expect(PlanetVisibility.isDaylight(sunAltitude: -5.9) && PlanetVisibility.isDaylight(sunAltitude: -6))
-        #expect(!PlanetVisibility.isDaylight(sunAltitude: -6.1))
-        let day = scene([sample(.venus, alt: 30)], sun: 25)
-        #expect(day.visibility == 0 && day.daylight)
-        let dusk = scene([sample(.venus, alt: 30)], sun: -8)
-        #expect(dusk.visibility > 0 && dusk.visibility < 1 && !dusk.daylight)
-        #expect(scene([sample(.venus, alt: 30)], sun: -20).visibility == 1)
     }
 
     @Test("планета ближе 15° к Солнцу не рисуется и попадает в «рядом с Солнцем»; ровно 15° и дальше — рисуется")
     func nearTheSun() {
         let s = scene([sample(.venus, alt: 30, elong: 14.9), sample(.mercury, alt: 30, az: 160, elong: 15.0),
-                       sample(.mars, alt: 30, az: 140, elong: 90)], sun: -20)
+                       sample(.mars, alt: 30, az: 140, elong: 90)])
         #expect(s.dots.map(\.planet).contains(.mercury) && s.dots.map(\.planet).contains(.mars))
         #expect(!s.dots.map(\.planet).contains(.venus))
         #expect(s.nearSun == [.venus])
         // Подпись «рядом с Солнцем» не зависит от горизонта: под горизонтом планета тоже в лучах.
-        #expect(scene([sample(.venus, alt: -20, elong: 5)], sun: -20).nearSun == [.venus])
+        #expect(scene([sample(.venus, alt: -20, elong: 5)]).nearSun == [.venus])
     }
 
     @Test("под горизонтом планета не рисуется; на горизонте и выше — рисуется (видимая высота, с рефракцией, как у звёзд)")
     func horizon() {
-        let s = scene([sample(.jupiter, alt: -5), sample(.saturn, alt: 10, az: 155), sample(.mars, alt: -0.2, az: 145)], sun: -20, aimAlt: 5)
+        let s = scene([sample(.jupiter, alt: -5), sample(.saturn, alt: 10, az: 155), sample(.mars, alt: -0.2, az: 145)], aimAlt: 5)
         #expect(!s.dots.map(\.planet).contains(.jupiter))
         #expect(s.dots.map(\.planet).contains(.saturn))
         // −0,2° геометрических — над горизонтом после рефракции (≈ +0,5° у горизонта).
@@ -67,7 +46,7 @@ struct PlanetSkyARTests {
         let venus = s.first { $0.planet == .venus }!, saturn = s.first { $0.planet == .saturn }!
         #expect(venus.elongation < PlanetVisibility.nearSun)
         #expect(saturn.elongation > 150)
-        let sc = PlanetSkyAR.make(samples: s, sunAltitude: -30, basis: CameraBasis(azimuth: saturn.horizontal.azimuth, altitude: max(5, saturn.horizontal.altitude)),
+        let sc = PlanetSkyAR.make(samples: s, basis: CameraBasis(azimuth: saturn.horizontal.azimuth, altitude: max(5, saturn.horizontal.altitude)),
                                   optics: .typical, viewport: Self.viewport)
         #expect(sc.nearSun.contains(.venus) && !sc.dots.map(\.planet).contains(.venus))
         #expect(saturn.horizontal.altitude > 0 ? sc.dots.map(\.planet).contains(.saturn) : true)

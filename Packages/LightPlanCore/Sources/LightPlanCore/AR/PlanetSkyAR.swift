@@ -1,8 +1,8 @@
 import Foundation
 
 /// Планеты в слое AR (шаг 29.8в.15). Положение — `PlanetEphemeris` (формулы Schlyter, без каталога), проекция на экран и
-/// добавка рефракции те же, что у звёзд и луны (`SkyProjection`, `SunTrack.apparent`). Видимость по солнцу — та же
-/// ступень, что у звёзд (`StarVisibility`); сверх неё планета ближе 15° к Солнцу не рисуется вовсе.
+/// добавка рефракции те же, что у звёзд и луны (`SkyProjection`, `SunTrack.apparent`). Слой рисуется всегда, день и
+/// ночь (29.8в.18, `SkyEyeNote` — справка о видимости); одно исключение: планета ближе 15° к Солнцу не рисуется вовсе.
 
 // MARK: - Вид точки
 
@@ -34,12 +34,6 @@ public enum PlanetLook {
 public enum PlanetVisibility {
     /// Ближе этого к Солнцу планета «в лучах»: не видна, не рисуется, в списке «Слоёв» подписана.
     public static let nearSun: Degrees = 15
-
-    /// Яркость слоя по высоте солнца — как у звёзд: нет выше −6°, полная ниже −12°, между — гладкая ступень.
-    public static func opacity(sunAltitude: Degrees) -> Double { StarVisibility.opacity(sunAltitude: sunAltitude) }
-
-    /// Небо дневное: планет нет (Венера и Юпитер днём видны глазом редко — не рисуем).
-    public static func isDaylight(sunAltitude: Degrees) -> Bool { StarVisibility.isDaylight(sunAltitude: sunAltitude) }
 
     public static func isNearSun(elongation: Degrees) -> Bool { elongation < nearSun }
 }
@@ -75,7 +69,7 @@ public enum PlanetSkyAR {
         }
     }
 
-    public static func make(samples: [PlanetSample], sunAltitude: Degrees, basis: CameraBasis, optics: CameraOptics,
+    public static func make(samples: [PlanetSample], basis: CameraBasis, optics: CameraOptics,
                             viewport: ScreenViewport) -> PlanetSkyARScene {
         var dots: [PlanetSkyARScene.Dot] = []
         for s in samples where !PlanetVisibility.isNearSun(elongation: s.elongation) {
@@ -90,9 +84,7 @@ public enum PlanetSkyAR {
                               azimuth: s.horizontal.azimuth, altitude: s.horizontal.altitude))
         }
         return PlanetSkyARScene(dots: dots,
-                                nearSun: samples.filter { PlanetVisibility.isNearSun(elongation: $0.elongation) }.map(\.planet),
-                                visibility: PlanetVisibility.opacity(sunAltitude: sunAltitude),
-                                daylight: PlanetVisibility.isDaylight(sunAltitude: sunAltitude))
+                                nearSun: samples.filter { PlanetVisibility.isNearSun(elongation: $0.elongation) }.map(\.planet))
     }
 }
 
@@ -103,7 +95,7 @@ public struct PlanetSkyARScene: Sendable, Equatable {
         public let point: ScreenPoint
         public let magnitude: Double
         public let radius: Double
-        /// Яркость по величине `0,4 … 1`; общая яркость слоя по солнцу — `visibility` сцены.
+        /// Яркость по величине `0,4 … 1`. От солнца не зависит: слой рисуется всегда (29.8в.18).
         public let brightness: Double
         public let azimuth: Degrees
         /// Геометрическая высота.
@@ -119,12 +111,8 @@ public struct PlanetSkyARScene: Sendable, Equatable {
     public let dots: [Dot]
     /// Планеты ближе 15° к Солнцу в этот момент (независимо от горизонта): список «Слоёв» подписывает каждую.
     public let nearSun: [Planet]
-    /// Общая яркость слоя по высоте солнца `0 … 1`.
-    public let visibility: Double
-    /// Небо дневное: точек нет.
-    public let daylight: Bool
 
-    public init(dots: [Dot], nearSun: [Planet], visibility: Double, daylight: Bool) {
-        self.dots = dots; self.nearSun = nearSun; self.visibility = visibility; self.daylight = daylight
+    public init(dots: [Dot], nearSun: [Planet]) {
+        self.dots = dots; self.nearSun = nearSun
     }
 }

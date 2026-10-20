@@ -6,7 +6,7 @@ import LightPlanCore
 import LightPlanData
 
 /// Слои «Звёзды» и «Созвездия» на экране AR (шаг 29.8в.13): строки в списке «Слоёв» и флаги, слова на пяти языках,
-/// момент и яркость по солнцу, подписи не лежат на чужом.
+/// момент, подписи не лежат на чужом. Слои рисуются всегда (29.8в.18, `SunARSkyAlwaysTests`).
 @MainActor
 struct SunARStarsTests {
 
@@ -48,17 +48,16 @@ struct SunARStarsTests {
         #expect(Set(SunARSkyLayer.allCases.map(\.node)).count == 5)
     }
 
-    @Test("слова слоёв, дневной подписи, 24 созвездий и 22 звёзд есть на всех пяти языках")
+    @Test("слова слоёв, 24 созвездий и 22 звёзд есть на всех пяти языках")
     func wordsInFiveLanguages() {
-        var keys = ["layer.stars", "layer.constellations", "ar.starsDay"]
+        var keys = ["layer.stars", "layer.constellations"]
         keys += ConstellationCatalog.all.map { "con." + $0.code }
         keys += StarName.brightest.map(\.key)
-        #expect(keys.count == 3 + 24 + 22)
+        #expect(keys.count == 2 + 24 + 22)
         for code in ["ru", "en", "es", "ja", "zh"] {
             let lexicon = Lexicon(code)
             for k in keys { #expect(lexicon.t(k) != k && !lexicon.t(k).isEmpty, "\(code): нет слова \(k)") }
         }
-        #expect(Lexicon("ru").t("ar.starsDay") == "Звёзд днём не видно")
         #expect(Lexicon("ru").t("con.UMa") == "Большая Медведица" && Lexicon("en").t("star.sirius") == "Sirius")
     }
 
@@ -73,7 +72,7 @@ struct SunARStarsTests {
         let picked = m.starScene(basis: basis, optics: .typical, viewport: viewport)!
         // Те же точки, что у ядра на ту же минуту и место: свой расчёт слой не заводит.
         let direct = StarSkyAR.horizontals(day: m.day, minutes: m.minutes, in: tomsk)
-        let expected = StarSkyAR.make(positions: direct, sunAltitude: m.sun.altitude, basis: basis, optics: .typical,
+        let expected = StarSkyAR.make(positions: direct, basis: basis, optics: .typical,
                                       viewport: viewport, stars: true, constellations: true)
         #expect(picked == expected)
         m.jumpToNow()
@@ -81,25 +80,11 @@ struct SunARStarsTests {
         #expect(now != picked, "после «Сейчас» небо не сдвинулось")
         let wall = SunTrack.wallClock(of: moment("2026-10-20T17:00:00Z"), in: tomsk)
         let atNow = StarSkyAR.make(positions: StarSkyAR.horizontals(day: wall.day, minutes: wall.minutes, in: tomsk),
-                                   sunAltitude: m.sun.altitude, basis: basis, optics: .typical, viewport: viewport,
+                                   basis: basis, optics: .typical, viewport: viewport,
                                    stars: true, constellations: true)
         #expect(now == atNow)
         // Звёзды не стоят на месте: за три часа небо повернулось на 45°.
         #expect(picked.dots.first!.point != now.dots.first { $0.index == picked.dots.first!.index }?.point)
-    }
-
-    @Test("яркость слоя по солнцу выбранного момента: полдень — 0 и «днём», сумерки −8° — между, глубокая ночь — 1")
-    func visibilityFollowsTheSun() {
-        let basis = CameraBasis(azimuth: 30, altitude: 40)
-        let day = model("2026-10-14T05:00:00Z"); lit(day)
-        let d = day.starScene(basis: basis, optics: .typical, viewport: viewport)!
-        #expect(d.visibility == 0 && d.daylight && d.isOn)
-        let dusk = model("2026-10-20T12:00:00Z"); lit(dusk)
-        let u = dusk.starScene(basis: basis, optics: .typical, viewport: viewport)!
-        #expect(u.visibility > 0 && u.visibility < 1 && !u.daylight, "\(u.visibility), солнце \(dusk.sun.altitude)")
-        let night = model("2026-10-20T14:00:00Z"); lit(night)
-        let n = night.starScene(basis: basis, optics: .typical, viewport: viewport)!
-        #expect(n.visibility == 1 && !n.daylight)
     }
 
     // MARK: Подписи
@@ -202,18 +187,6 @@ struct SunARStarsTests {
         for p in SunARStarLabels.place([cand], taken: taken, window: window) {
             #expect(!p.rect.intersects(drawn), "подпись звезды \(p.rect) лежит на плашке \(drawn)")
         }
-    }
-
-    @Test("плашка «Звёзд днём не видно» не лежит на диске солнца: свободное место из вариантов, а занято всё — нет плашки")
-    func dayNoteAvoidsTheSun() {
-        let window = CGRect(x: 0, y: 240, width: 393, height: 460)
-        let free = SunARStarLabels.dayNote(text: "Звёзд днём не видно", taken: [], window: window)
-        #expect(free != nil && window.contains(free!.rect))
-        // Диск солнца ровно там, где плашка встала бы первой.
-        let sun = free!.rect.insetBy(dx: -10, dy: -30)
-        let moved = SunARStarLabels.dayNote(text: "Звёзд днём не видно", taken: [sun], window: window)
-        #expect(moved != nil && !moved!.rect.insetBy(dx: -SunARStarLabels.gap, dy: -SunARStarLabels.gap).intersects(sun))
-        #expect(SunARStarLabels.dayNote(text: "Звёзд днём не видно", taken: [window], window: window) == nil)
     }
 
     @Test("кандидаты подписей: созвездия — у центра фигуры, звёзды — только из пятнадцати названных; за окном и без имени — нет")

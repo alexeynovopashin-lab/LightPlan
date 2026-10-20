@@ -334,10 +334,10 @@ final class SunARModel {
     @ObservationIgnored private var starCache: (day: CivilDate, place: Place, minutes: Minutes, positions: [HorizontalPoint])?
 
     /// Звёзды и созвездия на экране камеры; `nil` — оба слоя выключены (ни расчёта, ни рисования). Момент — выбранный
-    /// (кнопка «Сейчас» возвращает на текущий), яркость слоя — по высоте солнца в этот момент.
+    /// (кнопка «Сейчас» возвращает на текущий). Рисуются всегда, днём тоже (29.8в.18).
     func starScene(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport) -> StarSkyARScene? {
         guard starsOn || constellationsOn else { return nil }
-        return StarSkyAR.make(positions: starPositions, sunAltitude: sun.altitude, basis: basis, optics: optics,
+        return StarSkyAR.make(positions: starPositions, basis: basis, optics: optics,
                               viewport: viewport, stars: starsOn, constellations: constellationsOn)
     }
 
@@ -352,17 +352,35 @@ final class SunARModel {
     @ObservationIgnored private var planetCache: (day: CivilDate, place: Place, minutes: Minutes, samples: [PlanetSample])?
 
     /// Планеты на экране камеры (29.8в.15); `nil` — слой выключен. Момент — выбранный, «Сейчас» возвращает на текущий.
-    /// Без включённого слоя планеты не считаются; список «Слоёв» спрашивает `planetStatus` отдельно.
+    /// Без включённого слоя планеты не считаются; список «Слоёв» спрашивает `planetsNearSun` отдельно.
     func planetScene(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport) -> PlanetSkyARScene? {
         guard planetsOn else { return nil }
-        return PlanetSkyAR.make(samples: planetSamples, sunAltitude: sun.altitude, basis: basis, optics: optics,
+        return PlanetSkyAR.make(samples: planetSamples, basis: basis, optics: optics,
                                 viewport: viewport)
     }
 
-    /// Что сказать о планетах в списке «Слоёв»: день или планеты рядом с Солнцем на выбранный момент.
-    var planetStatus: (daylight: Bool, nearSun: [Planet]) {
-        (PlanetVisibility.isDaylight(sunAltitude: sun.altitude),
-         planetSamples.filter { PlanetVisibility.isNearSun(elongation: $0.elongation) }.map(\.planet))
+    /// Что сказать о планетах в списке «Слоёв»: планеты рядом с Солнцем на выбранный момент. Справка о видимости глазом —
+    /// `skyEyeCauses`.
+    var planetsNearSun: [Planet] {
+        planetSamples.filter { PlanetVisibility.isNearSun(elongation: $0.elongation) }.map(\.planet)
+    }
+
+    /// Справка о видимости звёзд, созвездий и планет глазом на выбранный момент и место (строка «Слоёв»): день, сумерки,
+    /// засветка. Справка, а не условие рисования (29.8в.18).
+    var skyEyeCauses: [SkyEyeNote.Cause] { SkyEyeNote.causes(sunAltitude: sun.altitude, glow: glow) }
+
+    /// Включён хотя бы один слой неба: Млечный Путь, звёзды, созвездия или планеты (Луна — не слой неба для маски).
+    var skyLayerOn: Bool { milkyWayOn || starsOn || constellationsOn || planetsOn }
+
+    /// Затемняющая маска над кадром камеры (29.8в.18): ночной выбранный момент при светлом настоящем небе. Настоящее небо —
+    /// солнце сейчас (часы и место телефона), а не экспозиция камеры. `0` — слоёв нет или настоящая ночь.
+    var maskOpacity: Double {
+        guard skyLayerOn else { return 0 }
+        #if DEBUG
+        // `-LPSunARMask 0.7` (отладка): непрозрачность маски задана, а не считается — замер потолка (`Tools/ar_mask.py`).
+        if let v = UserDefaults.standard.string(forKey: "LPSunARMask"), let o = Double(v) { return o }
+        #endif
+        return SkyMask.opacity(pickedSun: sun.altitude, nowSun: sunNow.altitude)
     }
 
     init(target: SunARTarget, source: (any AttitudeSource)?, camera: (any ARCameraDriving)? = nil,

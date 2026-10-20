@@ -16,6 +16,10 @@
 `--planets` (29.8в.15): ночь 5 ноября, Томск, камера на Марс и Юпитер (обе планеты и их подписи в кадре): слой «Планеты»
 выключен и включён, две пробы подряд — цена слоя планет.
 
+`--mask` (29.8в.18): «сейчас» день (Томск, 14 октября 12:00), камера на северо-восток, слои «Звёзды» и «Созвездия» включены и
+выключены; выбран день (слои рисуются днём, маски нет) и выбрана ночь (слои и маска 0,70 на весь кадр): цена дневной отрисовки
+слоёв и цена маски, три пробы подряд.
+
 `--extra` — аргументы запуска сверх своих: так сравниваются своё и системное стекло дисков (29.8в.9а).
 `--milkyway` (29.8в.14) — ночь над Сочи 15.08 22:30, камера на ядро (полоса во весь экран): по три прогона с
 Млечным Путём и без него, по очереди; печатает средние и разброс — цена слоя полосы.
@@ -120,6 +124,17 @@ def main():
                 rows.append(run(sim, label, '93,20,0', seconds, log, night, moon='NO', planets=on))
                 rows[-1]['planets'] = on == 'YES'
                 time.sleep(2)
+    elif '--mask' in sys.argv:
+        day_pick = ('2026-10-14T05:00:00Z', '2026-10-14T12:00:00+07:00')
+        night_pick = ('2026-10-14T14:00:00Z', '2026-10-14T12:00:00+07:00')
+        cases = [('день, слои выключены', day_pick, 'NO'), ('день, слои включены, выбран день (маски нет)', day_pick, 'YES'),
+                 ('день, слои включены, выбрана ночь (маска 0,70)', night_pick, 'YES')]
+        rows = []
+        for i in range(3):
+            for label, when, on in cases:
+                rows.append(run(sim, f'{label}, проба {i + 1}', '30,42,0', seconds, log, when, moon='NO', stars=on))
+                rows[-1]['case'] = label
+                time.sleep(2)
     elif '--stars' in sys.argv:
         rows = [run(sim, 'ночь, слои звёзд выключены', '240,52,0', seconds, log, NIGHT, moon='NO', stars='NO'),
                 run(sim, 'ночь, «Звёзды» и «Созвездия» включены', '240,52,0', seconds, log, NIGHT, moon='NO', stars='YES'),
@@ -136,6 +151,12 @@ def main():
             for k in ('cpu_percent', 'fps', 'renderer_cpu_ms_per_frame'):
                 v = [r[k] for r in rs]
                 print(('с планетами' if on else 'без планет'), k, 'проб', len(v), 'среднее', round(sum(v) / len(v), 2), 'разброс', round(max(v) - min(v), 2))
+    if '--mask' in sys.argv:
+        for label in dict.fromkeys(r['case'] for r in rows):
+            rs = [r for r in rows if r['case'] == label and r['frames_in'] > 0]
+            for k in ('cpu_percent', 'fps', 'renderer_cpu_ms_per_frame'):
+                v = [r[k] for r in rs]
+                print(label, k, 'проб', len(v), 'среднее', round(sum(v) / len(v), 2), 'разброс', round(max(v) - min(v), 2))
     if '--out' in sys.argv:
         open(sys.argv[sys.argv.index('--out') + 1], 'w').write(json.dumps(rows, ensure_ascii=False, indent=1))
 

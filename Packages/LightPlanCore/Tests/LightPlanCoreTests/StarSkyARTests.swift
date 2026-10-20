@@ -143,9 +143,9 @@ struct StarSkyARTests {
 
     // MARK: - Горизонт
 
-    private func scene(positions: [HorizontalPoint], catalog: StarCatalogAR, aim: HorizontalPoint, sun: Degrees = -30,
+    private func scene(positions: [HorizontalPoint], catalog: StarCatalogAR, aim: HorizontalPoint,
                        stars: Bool = true, figures: Bool = true) -> StarSkyARScene {
-        StarSkyAR.make(catalog: catalog, positions: positions, sunAltitude: sun,
+        StarSkyAR.make(catalog: catalog, positions: positions,
                        basis: CameraBasis(azimuth: aim.azimuth, altitude: aim.altitude), optics: .typical,
                        viewport: Self.viewport, stars: stars, constellations: figures)
     }
@@ -176,40 +176,6 @@ struct StarSkyARTests {
         let end = s.segments[0].to
         #expect(abs(end.x - 196.5) < 0.6 && abs(end.y - 426) < 0.6, "\(end)")
         #expect(s.segments[0].from.y < end.y)
-    }
-
-    // MARK: - Видимость по солнцу
-
-    @Test("яркость слоя по солнцу: −6° и выше — 0, −12° и ниже — 1, между — растёт плавно и без излома на краях")
-    func visibilityBySun() {
-        #expect(StarVisibility.opacity(sunAltitude: 40) == 0)
-        #expect(StarVisibility.opacity(sunAltitude: -5.9) == 0)
-        #expect(StarVisibility.opacity(sunAltitude: -6) == 0)
-        #expect(StarVisibility.opacity(sunAltitude: -12) == 1)
-        #expect(StarVisibility.opacity(sunAltitude: -40) == 1)
-        #expect(abs(StarVisibility.opacity(sunAltitude: -9) - 0.5) < 1e-12)
-        var previous = 0.0
-        for tenth in stride(from: -60, through: -120, by: -1) {
-            let v = StarVisibility.opacity(sunAltitude: Double(tenth) / 10)
-            #expect(v >= previous)
-            previous = v
-        }
-        // Нет излома: у краёв шаг на 0,1° меньше 0,01.
-        #expect(StarVisibility.opacity(sunAltitude: -6.1) < 0.01 && 1 - StarVisibility.opacity(sunAltitude: -11.9) < 0.01)
-        #expect(StarVisibility.isDaylight(sunAltitude: -5.99) && !StarVisibility.isDaylight(sunAltitude: -6.01))
-    }
-
-    @Test("днём слои включены, но яркость 0 и сцена знает, что день; ночью яркость 1; в сумерках между")
-    func sceneVisibility() {
-        let cat = StarCatalogAR.current
-        let pos = StarSkyAR.horizontals(day: CivilDate(year: 2026, month: 12, day: 22), minutes: 300, in: Self.tomsk)
-        let aim = HorizontalPoint(altitude: 30, azimuth: 150)
-        let day = scene(positions: pos, catalog: cat, aim: aim, sun: 25)
-        #expect(day.visibility == 0 && day.daylight && day.isOn)
-        let dusk = scene(positions: pos, catalog: cat, aim: aim, sun: -9)
-        #expect(dusk.visibility > 0 && dusk.visibility < 1 && !dusk.daylight)
-        let night = scene(positions: pos, catalog: cat, aim: aim, sun: -20)
-        #expect(night.visibility == 1 && !night.daylight)
     }
 
     // MARK: - Слои, вид точки

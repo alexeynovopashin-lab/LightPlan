@@ -298,7 +298,7 @@ struct SunARMilkyWayPlanningTests {
         if let r = s.coreNameRect { out.append(("подпись «ядро»", r)) }
         if let stars = s.stars {
             let placed = s.starLabels(stars)
-            for l in placed.labels { out.append(("звезда/созвездие «\(l.text)»", l.rect)) }
+            for l in placed { out.append(("звезда/созвездие «\(l.text)»", l.rect)) }
         }
         if let planets = s.planets {
             for l in s.planetLabels(planets) { out.append(("планета «\(l.text)»", l.rect)) }
