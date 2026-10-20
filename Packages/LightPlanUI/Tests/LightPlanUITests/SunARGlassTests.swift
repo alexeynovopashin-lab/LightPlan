@@ -166,13 +166,15 @@ struct SunARGlassTests {
         #expect(shift > 2.0, "линия у кромки внутри диска смещена на \(shift) pt (нужно > 2)")
         #expect(abs(measured - expected) < 0.6, "измерено \(measured), по формуле шейдера \(expected)")
 
-        // Линия одна: профиль яркости в колонке у кромки имеет один пик в окне.
+        // Линия одна: профиль яркости в колонке у кромки имеет один пик в окне. Пик — от 0,6: на 1 pt внутри кромки
+        // колонка ловит край неискажённой линии за границей диска (при Солнце, посчитанном по Меёсу — 0,51 на самой
+        // линии, шаг 29.8в.21); настоящая вторая линия дала бы ≈ 1,0, как основной пик.
         var peaks = 0
         var prev = 0.0, rising = false
         var y = edgeWindow.lowerBound
         while y <= edgeWindow.upperBound {
             let l = px.luma(edgeX, y)
-            if l > prev + 0.01 { rising = true } else if l < prev - 0.01, rising, prev > 0.3 { peaks += 1; rising = false }
+            if l > prev + 0.01 { rising = true } else if l < prev - 0.01, rising, prev > 0.6 { peaks += 1; rising = false }
             prev = l
             y += 0.25
         }
