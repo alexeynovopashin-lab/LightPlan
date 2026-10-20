@@ -8,12 +8,13 @@ import LightPlanCore
 /// Справка о видимости — справка, а не условие рисования: полоса рисуется всегда (слово Алексея 20.10).
 enum SunARMilkyWayNotes {
 
+    /// `pano` — панорама Алексея (29.8в.20): нейтральная подпись «панорама: материалы Алексея», пока источник не подтверждён.
     /// `gaia` — картина из каталога Gaia (29.8в.19): вместо «по формуле, условно» — «по звёздам каталога Gaia» и кредит
     /// данных строкой (лицензия CC BY-NC 3.0 IGO требует его рядом со слоем).
     static func lines(plan: MilkyWayPlan, eye: MilkyWayLook.EyeNote, clock: ClockText, lexicon t: Lexicon,
-                      gaia: Bool = false) -> [String] {
-        [above(plan: plan, clock: clock, t), eyeLine(eye, t), window(plan: plan, clock: clock, t)]
-            .compactMap { $0 } + (gaia ? [t.t("ar.mwGaia"), t.t("ar.mwCredit")] : [t.t("ar.mwFormula")])
+                      gaia: Bool = false, pano: Bool = false) -> [String] {
+        let tail = pano ? [t.t(MilkyWayPano.creditKey)] : gaia ? [t.t("ar.mwGaia"), t.t("ar.mwCredit")] : [t.t("ar.mwFormula")]
+        return [above(plan: plan, clock: clock, t), eyeLine(eye, t), window(plan: plan, clock: clock, t)].compactMap { $0 } + tail
     }
 
     /// «ядро над горизонтом 22:40–04:10 · темно с 20:30». Ядро не восходит или не заходит на этой широте — так и сказано.

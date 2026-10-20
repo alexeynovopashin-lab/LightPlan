@@ -76,13 +76,12 @@ struct SunARSkyStack: View {
             + " m=" + nums.joined(separator: ",") + " line=" + line.joined(separator: ";")
     }
 
-    /// Gaia (29.8в.19): источник картины, «тёмное место», звёзды прошлого кадра (записей, оценка в окне), мс CPU и GPU.
+    /// Панорама (29.8в.20): источник картины, её имя, «тёмное место», мс CPU и GPU прошлого кадра.
     private static func gaiaText(_ dark: Bool) -> String {
         #if os(iOS)
-        if MilkyWayGaiaSource.gpu != nil {
-            let s = GaiaSkyUIView.lastStats
-            return String(format: " src=gaia dark=%d drawn=%d visible=%d cpuMs=%.3f gpuMs=%.3f", dark ? 1 : 0, s.drawn, s.visible,
-                          s.cpuMs, s.gpuMs)
+        if MilkyWayPanoGPU.current != nil {
+            let s = PanoSkyUIView.lastStats
+            return String(format: " src=pano pano=%@ dark=%d cpuMs=%.3f gpuMs=%.3f", s.name, dark ? 1 : 0, s.cpuMs, s.gpuMs)
         }
         #endif
         return " src=formula dark=\(dark ? 1 : 0)"

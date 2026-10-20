@@ -107,7 +107,7 @@ struct SunARLayersList: View {
         VStack(spacing: 0) {
             ForEach(SunARSkyLayer.allCases) { layer in
                 row(layer)
-                if layer == .milkyWay { darkRow }
+                if layer == .milkyWay { darkRow; if MilkyWayPano.bundled { PanoPickRow(label: lexicon.t("ar.mwPanoPick")) } }
             }
         }
         .padding(.horizontal, 16)
@@ -129,7 +129,7 @@ struct SunARLayersList: View {
             // Млечный Путь (29.8в.17б): ядро над горизонтом и темнота, справка о видимости глазом (не условие
             // рисования), окно съёмки и подпись про формулу.
             return SunARMilkyWayNotes.lines(plan: model.milkyWayPlan, eye: model.milkyWayEyeNote, clock: clock, lexicon: lexicon,
-                                            gaia: MilkyWayGaiaSource.useGaia)
+                                            gaia: MilkyWayGaiaSource.useGaia, pano: MilkyWayPano.bundled)
         }
     }
 
@@ -188,5 +188,28 @@ struct SunARLayersList: View {
         case .planets:
             PlanetsToggleIcon()
         }
+    }
+}
+
+/// Выбор панорамы Млечного Пути на устройстве (29.8в.20, временно — сравнить на телефоне): MW мягче, MW2 контрастнее
+/// и теплее у ядра. Выбор хранится на устройстве (`MilkyWayPano.key`), слой перерисовывается сразу.
+private struct PanoPickRow: View {
+    let label: String
+    @AppStorage(MilkyWayPano.key) private var choice = MilkyWayPano.defaultName
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Color.clear.frame(width: 28, height: 1)
+            Text(label).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 8)
+            Picker(label, selection: $choice) {
+                ForEach(MilkyWayPano.names.filter { MilkyWayPano.url($0) != nil }, id: \.self) { Text($0.uppercased()).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 130)
+        }
+        .frame(minHeight: SunARInk.touch)
+        .shotNode("ar.layer.mwPano", text: label + " " + choice)
     }
 }

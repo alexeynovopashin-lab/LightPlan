@@ -490,17 +490,8 @@ final class GaiaSkyUIView: UIView {
 
 #endif
 
-/// Откуда слой берёт картину: Gaia, если данные прочитались, иначе формула. В отладке `-LPSunARMWSource formula`
-/// включает запасной вариант при живых данных (замер «без файла»).
+/// Данные Gaia слой Млечного Пути больше не рисует (29.8в.20: панорама Алексея, `MilkyWayPano`); код и файлы остаются
+/// для сравнения и тестов шага 29.8в.19. Запасной вариант без панорамы — гладкая полоса шейдера, не Gaia.
 enum MilkyWayGaiaSource {
-    static var useGaia: Bool {
-        #if DEBUG
-        if UserDefaults.standard.string(forKey: "LPSunARMWSource") == "formula" { return false }
-        #endif
-        return MilkyWayGaia.shared != nil
-    }
-
-    #if os(iOS)
-    static var gpu: MilkyWayGaiaGPU? { useGaia ? MilkyWayGaiaGPU.shared : nil }
-    #endif
+    static let useGaia = false
 }

@@ -293,16 +293,18 @@ struct SunARMilkyWayCanvas: View {
     /// (обычное наложение, виден на светлом небе) и под ним — свет полосы, который складывается с кадром.
     /// «Как в тёмном месте» (29.8в.19): реалистичная часть на полную яркость при любых правилах видимости.
     var dark = false
+    /// Выбор панорамы на устройстве (строка в списке слоёв): смена перерисовывает слой.
+    @AppStorage(MilkyWayPano.key) private var panoChoice = MilkyWayPano.defaultName
 
     var body: some View {
         #if os(iOS)
-        if let pic = scene.milkyWayPicture, parts == nil, let gpu = MilkyWayGaiaSource.gpu {
-            // Gaia (29.8в.19): свечение из карты и звёзды точками; без файлов — запасная полоса ниже.
+        if let pic = scene.milkyWayPicture, parts == nil, let gpu = MilkyWayPanoGPU.shared(panoChoice.isEmpty ? MilkyWayPano.selected : panoChoice) {
+            // Панорама на всю сферу (29.8в.20): без горизонта, чёрное прозрачно; нет файла — запасная полоса ниже.
             GeometryReader { g in
                 let clip = holes.isEmpty ? Path(CGRect(origin: .zero, size: g.size))
                     : SunARHole.clipArea(CGRect(origin: origin, size: g.size), holes: holes)
                         .offsetBy(dx: -origin.x, dy: -origin.y)
-                SunARGaiaSkyView(gpu: gpu, look: MilkyWayGaiaLook(pic, dark: dark), origin: origin)
+                SunARPanoSkyView(gpu: gpu, look: MilkyWayGaiaLook(pic, dark: dark), origin: origin)
                     .clipShape(clip, style: FillStyle(eoFill: true))
             }
             .allowsHitTesting(false)
@@ -314,7 +316,7 @@ struct SunARMilkyWayCanvas: View {
         #endif
     }
 
-    /// Запасной вариант (нет данных Gaia): гладкая полоса шейдера `milkyWaySky`, как в 29.8в.17б.
+    /// Запасной вариант (нет панорамы): гладкая полоса шейдера `milkyWaySky`, как в 29.8в.17б.
     @ViewBuilder private var formula: some View {
         if let pic = scene.milkyWayPicture {
             let parts = parts ?? .current
