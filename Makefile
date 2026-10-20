@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: phone checkstep help parity blocks lang icons brightstars domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
+.PHONY: phone checkstep help parity blocks lang icons brightstars milkywaygaia domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -15,6 +15,7 @@ help:
 	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
 	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
 	@echo "make brightstars яркие звёзды AR (V ≤ 2,5): JSON из снимков каталогов, Swift из JSON, проверка числами; без сети (снимки — node Tools/bright_stars/fetch.js)"
+	@echo "make milkywaygaia Млечный Путь из Gaia DR3: звёзды G ≤ 10 + карта свечения, картинки, проверка числами и повтор прогона; без сети, если есть сырой кэш (python3 Tools/milkyway_gaia/fetch.py, ~15 мин)"
 	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
 	@echo "make mapstyle описание холста карты из beta/mapstyle.js (итерация 20а)"
 	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
@@ -85,6 +86,16 @@ brightstars:
 	@node Tools/bright_stars/build.js
 	@node Tools/bright_stars/gen_swift.js
 	@node Tools/bright_stars/check.js
+
+# Млечный Путь из каталога Gaia DR3 (Tools/milkyway_gaia/README.md): звёзды G ≤ 10 и карта свечения G 10…21.
+# Сети не нужно, если сырой кэш лежит в Tools/milkyway_gaia/raw/ (его качает fetch.py; в .gitignore).
+# Второй прогон build.py во временную папку доказывает, что файлы повторяются побайтно.
+milkywaygaia:
+	@python3 Tools/milkyway_gaia/build.py
+	@python3 Tools/milkyway_gaia/preview.py
+	@tmp=$$(mktemp -d); \
+	python3 Tools/milkyway_gaia/build.py --out $$tmp > /dev/null; \
+	python3 Tools/milkyway_gaia/validate.py --repeat $$tmp; s=$$?; rm -rf $$tmp; exit $$s
 
 # Итерация 11: домен. Таблицы и правила съёмки режутся из беты своим скриптом и
 # своим отпечатком — общий стенд неба не трогается. TZ=UTC по той же причине,

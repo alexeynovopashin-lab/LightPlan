@@ -6,3 +6,6 @@ build/
 xcuserdata/
 *.xcuserstate
 *.log
+# Сырой кэш Gaia DR3 и карта-судья NASA (Tools/milkyway_gaia/README.md) — в репозиторий не кладутся.
+Tools/milkyway_gaia/raw/
+Tools/milkyway_gaia/__pycache__/

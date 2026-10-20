@@ -1,0 +1,89 @@
+{
+ "tone": {
+  "rule": "I_out = 1 − exp(−k·I) по яркости Y, оттенок сохраняется",
+  "k": 3.2440361408035803,
+  "core_Y": 0.2824539222448923,
+  "core_out": 0.6,
+  "core_def": "99,9-й перцентиль сглаженной (σ 1°) Y в |l|, |b| ≤ 10°"
+ },
+ "files": {
+  "sky_gaia.jpg": {
+   "size": [
+    1440,
+    720
+   ],
+   "bytes": 246909
+  },
+  "view_core_l0.jpg": {
+   "center_l": 0.0,
+   "center_b": 0.0,
+   "fov_deg": [
+    90.0,
+    60.0
+   ],
+   "size": [
+    1800,
+    1039
+   ],
+   "stars_drawn": 81221,
+   "bytes": 1090727
+  },
+  "view_cygnus_l80.jpg": {
+   "center_l": 80.0,
+   "center_b": 0.0,
+   "fov_deg": [
+    90.0,
+    60.0
+   ],
+   "size": [
+    1800,
+    1039
+   ],
+   "stars_drawn": 85667,
+   "bytes": 1144317
+  },
+  "view_crux_l303.jpg": {
+   "center_l": 303.0,
+   "center_b": 0.0,
+   "fov_deg": [
+    90.0,
+    60.0
+   ],
+   "size": [
+    1800,
+    1039
+   ],
+   "stars_drawn": 92993,
+   "bytes": 1160825
+  },
+  "zoom_core_20x13.jpg": {
+   "center_l": 0.0,
+   "center_b": 0.0,
+   "fov_deg": [
+    20.0,
+    13.0
+   ],
+   "size": [
+    1800,
+    1163
+   ],
+   "stars_drawn": 6402,
+   "bytes": 360208
+  },
+  "zoom_core_20x13_2880.jpg": {
+   "center_l": 0.0,
+   "center_b": 0.0,
+   "fov_deg": [
+    20.0,
+    13.0
+   ],
+   "size": [
+    1800,
+    1163
+   ],
+   "stars_drawn": 6402,
+   "glow": "полная сетка 2880×1440 из сырого кэша, та же шкала и k",
+   "bytes": 453819
+  }
+ }
+}
