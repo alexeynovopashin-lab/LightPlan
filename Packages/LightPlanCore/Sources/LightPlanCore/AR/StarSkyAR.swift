@@ -159,25 +159,6 @@ public enum StarLook {
     }
 }
 
-// MARK: - Видимость по солнцу
-
-public enum StarVisibility {
-    /// Солнце не ниже этого — звёзд на небе нет (дневное небо). Тот же порог, что у дуги солнца и Млечного Пути.
-    public static let dayAbove: Degrees = SunTrack.visibleFrom
-    /// Солнце ниже этого — звёзды видны полностью. Между порогами яркость растёт плавно.
-    public static let nightBelow: Degrees = -12
-
-    /// Яркость слоя `0 … 1` по высоте солнца: `0` при −6° и выше, `1` при −12° и ниже, между ними — гладкая
-    /// ступень (`3x² − 2x³`, без излома на краях).
-    public static func opacity(sunAltitude: Degrees) -> Double {
-        let x = min(1, max(0, (dayAbove - sunAltitude) / (dayAbove - nightBelow)))
-        return x * x * (3 - 2 * x)
-    }
-
-    /// Небо дневное: слои включены, но звёзд нет — экран пишет об этом словами.
-    public static func isDaylight(sunAltitude: Degrees) -> Bool { sunAltitude >= dayAbove }
-}
-
 // MARK: - Расчёт и сцена
 
 public enum StarSkyAR {
@@ -196,7 +177,7 @@ public enum StarSkyAR {
     /// как другая фигура.
     public static let figureLabelShare = 0.6
 
-    public static func make(catalog: StarCatalogAR = .current, positions: [HorizontalPoint], sunAltitude: Degrees,
+    public static func make(catalog: StarCatalogAR = .current, positions: [HorizontalPoint],
                             basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport,
                             stars showStars: Bool, constellations showFigures: Bool) -> StarSkyARScene {
         func proj(_ p: HorizontalPoint) -> ScreenPoint? {
@@ -256,8 +237,6 @@ public enum StarSkyAR {
             }
         }
         return StarSkyARScene(dots: dots, segments: segments, figures: marks,
-                              visibility: StarVisibility.opacity(sunAltitude: sunAltitude),
-                              daylight: StarVisibility.isDaylight(sunAltitude: sunAltitude),
                               starsOn: showStars, constellationsOn: showFigures)
     }
 }
@@ -271,7 +250,7 @@ public struct StarSkyARScene: Sendable, Equatable {
         public let point: ScreenPoint
         public let magnitude: Double
         public let radius: Double
-        /// Яркость по величине `0,4 … 1`; общая яркость слоя по солнцу — `visibility` сцены.
+        /// Яркость по величине `0,4 … 1`. От солнца и засветки не зависит: слой рисуется всегда (29.8в.18).
         public let brightness: Double
         public let spectralClass: Character?
         public let nameKey: String?
@@ -296,10 +275,6 @@ public struct StarSkyARScene: Sendable, Equatable {
     public let dots: [Dot]
     public let segments: [Segment]
     public let figures: [FigureMark]
-    /// Общая яркость слоя по высоте солнца `0 … 1` (`StarVisibility`).
-    public let visibility: Double
-    /// Днём: слои включены, но рисуются с нулевой яркостью, экран подписывает это словами.
-    public let daylight: Bool
     public let starsOn: Bool
     public let constellationsOn: Bool
 

@@ -41,9 +41,9 @@ struct SunARPlanetsTests {
         #expect(!SunARSkyLayer.allCases.filter { $0 != .planets }.map { "\($0.tint)" }.contains("\(SunARSkyLayer.planets.tint)"))
     }
 
-    @Test("слова слоя, дневной подписи, «рядом с Солнцем» и пяти планет есть на всех пяти языках; подпись подставляет имя")
+    @Test("слова слоя, «рядом с Солнцем» и пяти планет есть на всех пяти языках; подпись подставляет имя")
     func wordsInFiveLanguages() {
-        let keys = ["layer.planets", "ar.planetsDay", "ar.planetNearSun"] + Planet.allCases.map(\.nameKey)
+        let keys = ["layer.planets", "ar.planetNearSun"] + Planet.allCases.map(\.nameKey)
         for code in ["ru", "en", "es", "ja", "zh"] {
             let lexicon = Lexicon(code)
             for k in keys { #expect(lexicon.t(k) != k && !lexicon.t(k).isEmpty, "\(code): нет слова \(k)") }
@@ -63,36 +63,21 @@ struct SunARPlanetsTests {
         let basis = CameraBasis(azimuth: 180, altitude: 30)
         let picked = m.planetScene(basis: basis, optics: .typical, viewport: viewport)!
         let samples = PlanetSkyAR.samples(day: m.day, minutes: m.minutes, in: tomsk)
-        #expect(picked == PlanetSkyAR.make(samples: samples, sunAltitude: m.sun.altitude, basis: basis, optics: .typical, viewport: viewport))
+        #expect(picked == PlanetSkyAR.make(samples: samples, basis: basis, optics: .typical, viewport: viewport))
         m.jumpToNow()
         let now = m.planetScene(basis: basis, optics: .typical, viewport: viewport)!
         #expect(now != picked, "после «Сейчас» небо не сдвинулось")
         let wall = SunTrack.wallClock(of: moment("2026-10-20T17:00:00Z"), in: tomsk)
         #expect(now == PlanetSkyAR.make(samples: PlanetSkyAR.samples(day: wall.day, minutes: wall.minutes, in: tomsk),
-                                        sunAltitude: m.sun.altitude, basis: basis, optics: .typical, viewport: viewport))
+                                        basis: basis, optics: .typical, viewport: viewport))
     }
 
-    @Test("яркость по солнцу выбранного момента: полдень — нет и «дневной»; сумерки −8° — между; ночь — полная")
-    func visibilityFollowsTheSun() {
-        let basis = CameraBasis(azimuth: 180, altitude: 30)
-        let day = model("2026-10-14T05:00:00Z"); day.setPlanets(true)
-        let d = day.planetScene(basis: basis, optics: .typical, viewport: viewport)!
-        #expect(d.visibility == 0 && d.daylight)
-        let dusk = model("2026-10-20T12:00:00Z"); dusk.setPlanets(true)
-        let u = dusk.planetScene(basis: basis, optics: .typical, viewport: viewport)!
-        #expect(u.visibility > 0 && u.visibility < 1 && !u.daylight)
-        let night = model("2026-10-20T14:00:00Z"); night.setPlanets(true)
-        #expect(night.planetScene(basis: basis, optics: .typical, viewport: viewport)!.visibility == 1)
-    }
-
-    @Test("список «Слоёв»: днём — «Днём планет не видно»; ночью планета в 15° от Солнца подписана «Венера: рядом с Солнцем», остальные — нет")
+    @Test("список «Слоёв»: планета в 15° от Солнца подписана «Венера: рядом с Солнцем», остальные — нет")
     func statusLines() {
-        let day = model("2026-10-14T05:00:00Z")
-        #expect(day.planetStatus.daylight)
         // Ночь 19.10.2026: Венера в 10° от Солнца (замер против Horizons), Сатурн в противостоянии.
         let night = model("2026-10-19T16:00:00Z")
-        let status = night.planetStatus
-        #expect(!status.daylight && status.nearSun == [.venus], "рядом с Солнцем: \(status.nearSun)")
+        let status = night.planetsNearSun
+        #expect(status == [.venus], "рядом с Солнцем: \(status)")
         // Те же числа, что видит сцена: Венера не нарисована.
         night.setPlanets(true)
         let scene = night.planetScene(basis: CameraBasis(azimuth: 180, altitude: 30), optics: .typical, viewport: viewport)!
@@ -147,7 +132,7 @@ struct SunARPlanetsTests {
         // Венера и Сириус в одной точке: звезда выбирает первое место справа, планета — тоже справа.
         let dot = PlanetSkyARScene.Dot(planet: .venus, point: ScreenPoint(x: 200, y: 400), magnitude: -4.4, radius: 4.6,
                                        brightness: 1, azimuth: 150, altitude: 30)
-        let scene = PlanetSkyARScene(dots: [dot], nearSun: [], visibility: 1, daylight: false)
+        let scene = PlanetSkyARScene(dots: [dot], nearSun: [])
         let cands = SunARPlanetLabels.candidates(scene: scene, window: busy, name: { _ in "Венера" })
         let planetLabels = SunARPlanetLabels.place(cands, taken: [], window: busy)
         #expect(planetLabels.count == 1)
@@ -162,9 +147,6 @@ struct SunARPlanetsTests {
         let without = SunARStarLabels.place([star], taken: [], window: busy)
         #expect(without.count == 1 && without[0].rect.intersects(planetLabels[0].rect.insetBy(dx: -SunARStarLabels.gap, dy: -SunARStarLabels.gap)))
         #expect(withPlanet.first?.center != without.first?.center)
-        // Днём (яркость 0) планеты ничего не занимают.
-        #expect(SunARPlanetLabels.occupied(scene: PlanetSkyARScene(dots: [dot], nearSun: [], visibility: 0, daylight: true), labels: planetLabels).isEmpty)
-        #expect(SunARPlanetLabels.candidates(scene: PlanetSkyARScene(dots: [dot], nearSun: [], visibility: 0, daylight: true), window: busy, name: { $0 }).isEmpty)
     }
 
     /// Стек так, как его собирает экран, со звёздами и планетами.
@@ -195,7 +177,7 @@ struct SunARPlanetsTests {
         let planetLabels = st.planetLabels(planets)
         #expect(planetLabels.contains { $0.planet == .saturn }, "подпись Сатурна не поставлена")
         let stars = try #require(m.starScene(basis: aim, optics: .typical, viewport: viewport))
-        let starLabels = st.starLabels(stars, extraTaken: SunARPlanetLabels.occupied(scene: planets, labels: planetLabels)).labels
+        let starLabels = st.starLabels(stars, extraTaken: SunARPlanetLabels.occupied(scene: planets, labels: planetLabels))
         let taken = st.starTaken
         for p in planetLabels {
             for t in taken { #expect(!p.rect.intersects(t), "планета \(p.planet) на занятом") }
@@ -214,7 +196,7 @@ struct SunARPlanetsTests {
         let m = model("2026-11-04T20:00:00Z"); m.setPlanets(true)
         let dot = PlanetSkyARScene.Dot(planet: .jupiter, point: ScreenPoint(x: 200, y: 400), magnitude: -2, radius: 3.6,
                                        brightness: 1, azimuth: 92, altitude: 18)
-        let scene = PlanetSkyARScene(dots: [dot], nearSun: [], visibility: 1, daylight: false)
+        let scene = PlanetSkyARScene(dots: [dot], nearSun: [])
         let free = stack(m, aim: CameraBasis(azimuth: 93, altitude: 20), planets: scene)
         let first = try #require(free.planetLabels(scene).first)
         // Стрелка ровно там, где подпись встала сама: теперь она должна уйти.

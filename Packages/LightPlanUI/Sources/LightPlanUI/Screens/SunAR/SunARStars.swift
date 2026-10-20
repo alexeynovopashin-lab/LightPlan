@@ -2,8 +2,8 @@ import SwiftUI
 import LightPlanCore
 
 /// Слои «Звёзды» и «Созвездия» на экране AR (шаг 29.8в.13). Расчёт — ядра (`StarSkyAR`), здесь рисование и раскладка
-/// подписей. Слой лежит между полосой Млечного Пути и дугой; днём (солнце выше −6°) он включён, но звёзд на небе нет —
-/// яркость нулевая, а вместо пустого экрана плашка «Звёзд днём не видно».
+/// подписей. Слой лежит между полосой Млечного Пути и дугой и рисуется всегда, днём тоже (29.8в.18): это инструмент
+/// планирования съёмки, а не копия глаза. Видимость глазом — справка в списке «Слоёв» (`SkyEyeNote`).
 
 // MARK: - Холст
 
@@ -15,9 +15,7 @@ struct SunARStarCanvas: View {
     var holes: [SunARHole] = []
 
     var body: some View {
-        let k = scene.visibility
         Canvas { ctxIn, size in
-            guard k > 0 else { return }
             var ctx = ctxIn
             ctx.translateBy(x: -origin.x, y: -origin.y)
             let view = CGRect(origin: origin, size: size)
@@ -34,7 +32,7 @@ struct SunARStarCanvas: View {
                                                                                        width: abs(a.x - b.x), height: abs(a.y - b.y))) else { continue }
                     lines.move(to: a); lines.addLine(to: b)
                 }
-                ctx.stroke(lines, with: .color(.white.opacity(SunARInk.figureLineOpacity * k)),
+                ctx.stroke(lines, with: .color(.white.opacity(SunARInk.figureLineOpacity)),
                            style: StrokeStyle(lineWidth: SunARInk.figureLineWidth, lineCap: .round))
             }
             for d in scene.dots {
@@ -42,7 +40,7 @@ struct SunARStarCanvas: View {
                 guard near.contains(c) else { continue }
                 let t = StarLook.tint(spectralClass: d.spectralClass)
                 let color = Color(red: t.red, green: t.green, blue: t.blue)
-                let r = CGFloat(d.radius), a = d.brightness * k
+                let r = CGFloat(d.radius), a = d.brightness
                 if d.magnitude < 1.5 {
                     // Яркие звёзды — с мягким ореолом: глаз читает блеск по размеру пятна, а не только по точке.
                     let h = r * 3.2
@@ -60,8 +58,7 @@ struct SunARStarCanvas: View {
 
 // MARK: - Подписи
 
-/// Раскладка подписей слоя: названия созвездий у центра фигуры, имена ярких звёзд рядом с точкой, плашка дневной
-/// подсказки. Чистая геометрия, как `SunARLabelLayout`: экран рисует то, что она вернула, тест меряет зазоры.
+/// Раскладка подписей слоя: названия созвездий у центра фигуры, имена ярких звёзд рядом с точкой. Чистая геометрия, как `SunARLabelLayout`: экран рисует то, что она вернула, тест меряет зазоры.
 ///
 /// Правило 29.8в.6 и 29.8в.10: подписи слоя не ложатся на подписи солнца и луны, часов дуги и сторон света, на диски
 /// меток и на стрелки за краем. Занятое приходит списком `taken`; подпись, которой не нашлось свободного места
@@ -157,59 +154,29 @@ enum SunARStarLabels {
         }
         return out
     }
-
-    /// Плашка «Звёзд днём не видно» — посреди окна, а занято там — выше или ниже. Размер — как у плашек экрана
-    /// (12 pt, поля 8 · 3). `nil` — места нет.
-    static func dayNote(text: String, taken: [CGRect], window: CGRect) -> Placed? {
-        let s = SunARLabelLayout.textSize(text, size: 12, weight: .medium)
-        let w = s.width + 16, h = s.height + 6
-        for share in [0.4, 0.3, 0.5, 0.2, 0.6, 0.7] as [CGFloat] {
-            let c = CGPoint(x: window.midX, y: window.minY + window.height * share)
-            let r = CGRect(x: c.x - w / 2, y: c.y - h / 2, width: w, height: h)
-            if window.contains(r), free(r, taken: taken) {
-                return Placed(id: "day", kind: .figure, text: text, center: c, rect: r)
-            }
-        }
-        return nil
-    }
 }
 
 // MARK: - Слой
 
-/// Холст, подписи и дневная плашка слоя. Подписи тихие: название созвездия тише названия звезды, обе под яркость слоя
-/// по солнцу — в сумерках проявляются вместе со звёздами.
+/// Холст и подписи слоя. Подписи тихие: название созвездия тише названия звезды.
 struct SunARStarLayer: View {
     let scene: StarSkyARScene
     let labels: [SunARStarLabels.Placed]
-    let dayNote: SunARStarLabels.Placed?
     var holes: [SunARHole] = []
 
     var body: some View {
-        let k = scene.visibility
         ZStack(alignment: .topLeading) {
             SunARStarCanvas(scene: scene, holes: holes)
-            if k > 0 {
-                ForEach(labels) { l in
-                    let f = SunARStarLabels.font(l.kind)
-                    Text(l.text)
-                        .font(.system(size: f.size, weight: f.weight))
-                        .foregroundStyle(SunARInk.light)
-                        .opacity((l.kind == .figure ? SunARInk.figureNameOpacity : SunARInk.starNameOpacity) * k)
-                        .shadow(color: .black.opacity(0.7), radius: 1.5, x: 0, y: 0.5)
-                        .fixedSize()
-                        .shotNode("ar.starLabel." + l.id, text: l.text)
-                        .position(x: l.center.x, y: l.center.y)
-                }
-            }
-            if let note = dayNote {
-                Text(note.text)
-                    .font(.system(size: 12, weight: .medium))
+            ForEach(labels) { l in
+                let f = SunARStarLabels.font(l.kind)
+                Text(l.text)
+                    .font(.system(size: f.size, weight: f.weight))
                     .foregroundStyle(SunARInk.light)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(GlassPlate(shape: Capsule(), opacity: SunARInk.plateOpacity))
+                    .opacity(l.kind == .figure ? SunARInk.figureNameOpacity : SunARInk.starNameOpacity)
+                    .shadow(color: .black.opacity(0.7), radius: 1.5, x: 0, y: 0.5)
                     .fixedSize()
-                    .shotNode("ar.starsDay", text: note.text)
-                    .position(x: note.center.x, y: note.center.y)
+                    .shotNode("ar.starLabel." + l.id, text: l.text)
+                    .position(x: l.center.x, y: l.center.y)
             }
         }
         .allowsHitTesting(false)

@@ -98,7 +98,7 @@ struct SunARScreen: View {
                               sky: model.camera.isLive ? nil
                                   : AnyView(backdropStack(size: size, sun: sun, pal: pal, ground: scene.ground, marks: [])),
                               markText: markText, glass: glass,
-                              stars: stars, starName: { t.t($0) }, starsDayText: t.t("ar.starsDay"), planets: planets,
+                              stars: stars, starName: { t.t($0) }, planets: planets,
                               starWindow: SunARZones.visibleWindow(size: size, safeTop: safe.top,
                                                                    buttonsBottom: buttonsBottom.map { max($0, notesBottom ?? 0) },
                                                                    panelTop: panelTop),
@@ -236,6 +236,9 @@ struct SunARScreen: View {
                                marks: [SunARMark]) -> some View {
         ZStack {
             background(size: size, sun: sun, pal: pal, marks: marks)
+            // Затемняющая маска (29.8в.18): над кадром камеры, под слоями неба. Без камеры фон — небо выбранного момента, оно
+            // уже тёмное, затемнять нечего.
+            if model.camera.isLive { skyMask(size: size) }
             if !model.camera.isLive, let ground {
                 Path { p in
                     p.move(to: CGPoint(ground[0]))
@@ -246,6 +249,20 @@ struct SunARScreen: View {
             }
         }
         .frame(width: size.width, height: size.height)
+    }
+
+    /// Чёрная маска на весь кадр: выбран ночной момент, а настоящее небо светлое — слои неба читаются (`SkyMask`). Не до
+    /// чёрного: остаётся `1 − SkyMask.maxOpacity` яркости, контуры зданий угадываются.
+    @ViewBuilder
+    private func skyMask(size: CGSize) -> some View {
+        let a = model.maskOpacity
+        if a > 0 {
+            Color.black.opacity(a)
+                .frame(width: size.width, height: size.height)
+                .allowsHitTesting(false)
+                .shotNode("ar.mask", text: String(format: "opacity=%.4f strength=%.4f pickedSun=%.2f nowSun=%.2f", a,
+                                                   a / SkyMask.maxOpacity, model.sun.altitude, model.sunNow.altitude))
+        }
     }
 
     /// Восемь румбов из словаря «Света» (`dirs` — шестнадцать через запятую): С, СВ, В, ЮВ, Ю, ЮЗ, З, СЗ.
@@ -279,6 +296,7 @@ struct SunARScreen: View {
             case "sky": Color(.sRGB, red: 0.45, green: 0.68, blue: 0.93)
             case "asphalt": Color(white: 0.36)
             case "night": Color(.sRGB, red: 0.02, green: 0.04, blue: 0.10)
+            case "city": SunARCityBackdrop()
             case let g where g.hasPrefix("g"): Color(white: (Double(g.dropFirst()) ?? 0) / 100)
             default: Color(white: 0)
             }
