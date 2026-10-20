@@ -10,7 +10,7 @@ import SwiftUI
 
 /// Как рисовать Млечный Путь из Gaia в этом кадре (шаг 29.8в.19): лучи окна, оси галактики и яркость. Чистые числа —
 /// их считает CPU раз на кадр теми же функциями, что у полосы, ядра и луны (`MilkyWayLook.pixelToSky`,
-/// `MilkyWayLook.frame` через `Sky.horizontal`), видеокарта только множит.
+/// `MilkyWayLook.frame` через `SkyFrame`), видеокарта только множит.
 struct MilkyWayGaiaLook: Equatable, Sendable {
     /// Луч из точки окна (pt) в осях «восток, север, вверх»: `P · (x, y, 1)`, девять чисел по строкам.
     var pixelToSky: [Double]

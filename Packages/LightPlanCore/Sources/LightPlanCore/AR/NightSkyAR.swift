@@ -129,7 +129,7 @@ public enum MilkyWayAR {
         return edges.map { e in (frame.horizontal(j2000: e.left), frame.horizontal(j2000: e.right)) }
     }
 
-    /// Середина полосы над головой: точки `MilkyWay.band` (b = 0) через `Sky.horizontal`.
+    /// Середина полосы над головой: точки `MilkyWay.band` (b = 0) через `SkyFrame`.
     public static func center(day: CivilDate, minutes: Minutes, in place: Place) -> [HorizontalPoint] {
         let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: place.zone.utcOffsetHours(on: day))
         let frame = SkyFrame(days: d, latitude: place.latitude, longitude: place.longitude)
