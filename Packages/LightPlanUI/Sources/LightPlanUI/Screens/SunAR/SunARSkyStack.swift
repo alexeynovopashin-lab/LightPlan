@@ -44,6 +44,8 @@ struct SunARSkyStack: View {
     var starWindow: CGRect? = nil
     /// Занятое стрелками за краем (кружок и подпись каждой): подписи слоя их обходят.
     var pointerRects: [CGRect] = []
+    /// «Как в тёмном месте» для Млечного Пути (29.8в.19, `lightplan.native.sunar.milkyWayDark`).
+    var milkyWayDark = false
 
     /// Наименьший зазор между плашками подписей горизонта и часов, pt (для снимков; 99 — подпись одна).
     private var labelGap: CGFloat {
@@ -72,6 +74,18 @@ struct SunARSkyStack: View {
         return String(format: " vis=%.4f hidden=%@ focal=%.4f coreAlt=%.3f coreAz=%.3f", p.visibility.factor,
                       p.visibility.hidden?.rawValue ?? "none", p.focal, night.coreAltitude, night.coreAzimuth)
             + " m=" + nums.joined(separator: ",") + " line=" + line.joined(separator: ";")
+    }
+
+    /// Gaia (29.8в.19): источник картины, «тёмное место», звёзды прошлого кадра (записей, оценка в окне), мс CPU и GPU.
+    private static func gaiaText(_ dark: Bool) -> String {
+        #if os(iOS)
+        if MilkyWayGaiaSource.gpu != nil {
+            let s = GaiaSkyUIView.lastStats
+            return String(format: " src=gaia dark=%d drawn=%d visible=%d cpuMs=%.3f gpuMs=%.3f", dark ? 1 : 0, s.drawn, s.visible,
+                          s.cpuMs, s.gpuMs)
+        }
+        #endif
+        return " src=formula dark=\(dark ? 1 : 0)"
     }
 
     private func shown(_ l: SunARLayers) -> Bool { layers?.contains(l) ?? SunARLayers.shown(l) }
@@ -141,11 +155,11 @@ struct SunARSkyStack: View {
         let moonDiscs = marks.filter { !$0.isSun }.map { ($0.center, $0.radius) }
         ZStack(alignment: .topLeading) {
             if shown(.milkyWay), let night, night.milkyWayOn {
-                SunARMilkyWayLayer(scene: night, coreLabel: coreLabel, holes: holes)
+                SunARMilkyWayLayer(scene: night, coreLabel: coreLabel, holes: holes, dark: milkyWayDark)
                     .frame(width: size.width, height: size.height)
                     .shotNode("ar.milkyWay", text: String(format: "polys=%d core=%@ ghost=%d", night.band.count,
                                                           night.core.map { String(format: "%.1f,%.1f", $0.x, $0.y) } ?? "—",
-                                                          night.skyGhost ? 1 : 0) + Self.pictureText(night))
+                                                          night.skyGhost ? 1 : 0) + Self.pictureText(night) + Self.gaiaText(milkyWayDark))
             }
             let planetPlaced: [SunARPlanetLabels.Placed] = shown(.planets) ? (planets.map(planetLabels) ?? []) : []
             if shown(.stars), let stars, stars.isOn {
@@ -210,7 +224,7 @@ struct SunARSkyStack: View {
                 sky.offset(x: -o.x, y: -o.y)
             }
             if shown(.milkyWay), let night, night.milkyWayOn {
-                SunARMilkyWayCanvas(scene: night, origin: o)
+                SunARMilkyWayCanvas(scene: night, origin: o, dark: milkyWayDark)
                     .frame(width: side.width, height: side.height)
             }
             if shown(.stars), let stars, stars.isOn {

@@ -237,10 +237,12 @@ struct SunARMilkyWayLayer: View {
     let coreLabel: String
     /// Диски меток: под ними полоса не рисуется — то, что видно сквозь линзу, рисует её копия (`LensRefraction`).
     var holes: [SunARHole] = []
+    /// «Как в тёмном месте» (29.8в.19).
+    var dark = false
 
     var body: some View {
         ZStack {
-            SunARMilkyWayCanvas(scene: scene, holes: holes)
+            SunARMilkyWayCanvas(scene: scene, holes: holes, dark: dark)
             if let c = scene.core, MilkyWaySkyShader.labelShown {
                 Text(coreLabel)
                     .font(.system(size: 11, weight: .medium))
@@ -289,7 +291,31 @@ struct SunARMilkyWayCanvas: View {
     /// внутри шейдера. От многоугольников `scene.band` не зависит: в них только точки, у которых оба края ложатся
     /// на экран, а свет по пикселю шейдер считает сам (ревью к 25efebf). Два прохода: тёмный контур по краям
     /// (обычное наложение, виден на светлом небе) и под ним — свет полосы, который складывается с кадром.
+    /// «Как в тёмном месте» (29.8в.19): реалистичная часть на полную яркость при любых правилах видимости.
+    var dark = false
+
     var body: some View {
+        #if os(iOS)
+        if let pic = scene.milkyWayPicture, parts == nil, let gpu = MilkyWayGaiaSource.gpu {
+            // Gaia (29.8в.19): свечение из карты и звёзды точками; без файлов — запасная полоса ниже.
+            GeometryReader { g in
+                let clip = holes.isEmpty ? Path(CGRect(origin: .zero, size: g.size))
+                    : SunARHole.clipArea(CGRect(origin: origin, size: g.size), holes: holes)
+                        .offsetBy(dx: -origin.x, dy: -origin.y)
+                SunARGaiaSkyView(gpu: gpu, look: MilkyWayGaiaLook(pic, dark: dark), origin: origin)
+                    .clipShape(clip, style: FillStyle(eoFill: true))
+            }
+            .allowsHitTesting(false)
+        } else {
+            formula
+        }
+        #else
+        formula
+        #endif
+    }
+
+    /// Запасной вариант (нет данных Gaia): гладкая полоса шейдера `milkyWaySky`, как в 29.8в.17б.
+    @ViewBuilder private var formula: some View {
         if let pic = scene.milkyWayPicture {
             let parts = parts ?? .current
             GeometryReader { g in

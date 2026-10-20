@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: phone checkstep help parity blocks lang icons brightstars milkywaygaia domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
+.PHONY: phone checkstep help parity blocks lang icons brightstars milkywaygaia mwdata domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -16,6 +16,7 @@ help:
 	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
 	@echo "make brightstars яркие звёзды AR (V ≤ 2,5): JSON из снимков каталогов, Swift из JSON, проверка числами; без сети (снимки — node Tools/bright_stars/fetch.js)"
 	@echo "make milkywaygaia Млечный Путь из Gaia DR3: звёзды G ≤ 10 + карта свечения, картинки, проверка числами и повтор прогона; без сети, если есть сырой кэш (python3 Tools/milkyway_gaia/fetch.py, ~15 мин)"
+	@echo "make mwdata   данные Gaia (звёзды, карта свечения, spec.json) в ресурсы приложения без правки, сверка побайтно (29.8в.19)"
 	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
 	@echo "make mapstyle описание холста карты из beta/mapstyle.js (итерация 20а)"
 	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
@@ -96,6 +97,16 @@ milkywaygaia:
 	@tmp=$$(mktemp -d); \
 	python3 Tools/milkyway_gaia/build.py --out $$tmp > /dev/null; \
 	python3 Tools/milkyway_gaia/validate.py --repeat $$tmp; s=$$?; rm -rf $$tmp; exit $$s
+
+
+# Шаг 29.8в.19: данные Gaia в приложение — три файла из Tools/milkyway_gaia/ без правки в ресурсы пакета UI
+# (`MilkyWayData/`, копируются как есть, без обработки PNG). Сверка побайтно. Лицензия CC BY-NC 3.0 IGO —
+# Packages/LightPlanUI/Sources/LightPlanUI/MilkyWayData/README.md.
+mwdata:
+	@d=Packages/LightPlanUI/Sources/LightPlanUI/MilkyWayData; \
+	for f in stars_gaia.bin milkyway_glow_gaia.png spec.json; do \
+	  cp Tools/milkyway_gaia/$$f $$d/$$f && cmp -s Tools/milkyway_gaia/$$f $$d/$$f || { echo "mwdata: $$f не совпал"; exit 1; }; \
+	done; echo "mwdata: 3 файла в $$d, побайтно как в Tools/milkyway_gaia"
 
 # Итерация 11: домен. Таблицы и правила съёмки режутся из беты своим скриптом и
 # своим отпечатком — общий стенд неба не трогается. TZ=UTC по той же причине,

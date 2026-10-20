@@ -294,6 +294,8 @@ struct SettingsChapterView: View {
         FeedbackSection(app: app)
         foreign("set.legal")
         SetNote(text: t.t("set.privacy"))
+        // Данные Gaia в приложении (29.8в.19): лицензия CC BY-NC 3.0 IGO требует кредит «ESA, Gaia DPAC».
+        if MilkyWayGaia.bundled { SetNote(text: t.t("set.creditGaia")) }
         SetNote(text: t.t("set.tagline") + "\n" + t.t("set.build", ["stamp": SettingsText.buildStamp(app.language, clock: AppModel.clock(s.clock))]))
             .monospacedDigit()
     }

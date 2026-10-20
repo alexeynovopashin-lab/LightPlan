@@ -203,6 +203,16 @@ final class SunARModel {
         bodies.milkyWay = on
     }
 
+    /// «Как в тёмном месте» (29.8в.19): Млечный Путь на полную яркость, как под тёмным небом, при любом солнце,
+    /// засветке и Луне. Флаг устройства, по умолчанию выключен.
+    static let milkyWayDarkKey = "lightplan.native.sunar.milkyWayDark"
+    private(set) var milkyWayDark = UserDefaults.standard.bool(forKey: SunARModel.milkyWayDarkKey)
+
+    func setMilkyWayDark(_ on: Bool) {
+        milkyWayDark = on
+        UserDefaults.standard.set(on, forKey: Self.milkyWayDarkKey)
+    }
+
     /// Луна в выбранный момент и «сейчас».
     var moonPicked: MoonARSample { MoonTrack.sample(day: day, minutes: minutes, in: place) }
     var moonNow: MoonARSample { MoonTrack.sample(at: nowMoment, in: place) }

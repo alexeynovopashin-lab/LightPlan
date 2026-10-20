@@ -107,6 +107,7 @@ struct SunARLayersList: View {
         VStack(spacing: 0) {
             ForEach(SunARSkyLayer.allCases) { layer in
                 row(layer)
+                if layer == .milkyWay { darkRow }
             }
         }
         .padding(.horizontal, 16)
@@ -127,7 +128,8 @@ struct SunARLayersList: View {
         case .milkyWay:
             // Млечный Путь (29.8в.17б): ядро над горизонтом и темнота, справка о видимости глазом (не условие
             // рисования), окно съёмки и подпись про формулу.
-            return SunARMilkyWayNotes.lines(plan: model.milkyWayPlan, eye: model.milkyWayEyeNote, clock: clock, lexicon: lexicon)
+            return SunARMilkyWayNotes.lines(plan: model.milkyWayPlan, eye: model.milkyWayEyeNote, clock: clock, lexicon: lexicon,
+                                            gaia: MilkyWayGaiaSource.useGaia)
         }
     }
 
@@ -154,6 +156,22 @@ struct SunARLayersList: View {
         .frame(minHeight: SunARInk.touch)
         .padding(.vertical, small.isEmpty ? 0 : 4)
         .shotNode(layer.node, text: ([label] + small).joined(separator: " | ") + (on ? " on" : " off"))
+    }
+
+    /// «Как в тёмном месте» под строкой «Млечный Путь» (29.8в.19): полоса и звёзды на полную яркость, как под тёмным
+    /// небом, при солнце, засветке и Луне — чтобы заранее увидеть, как ляжет Путь. Справка о видимости выше не меняется.
+    private var darkRow: some View {
+        let label = lexicon.t("ar.mwDark")
+        return HStack(spacing: 12) {
+            Color.clear.frame(width: 28, height: 1)
+            Text(label).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 8)
+            Toggle(label, isOn: Binding(get: { model.milkyWayDark }, set: { model.setMilkyWayDark($0) }))
+                .labelsHidden()
+                .tint(SunARSkyLayer.milkyWay.tint)
+        }
+        .frame(minHeight: SunARInk.touch)
+        .shotNode("ar.layer.mwDark", text: label + (model.milkyWayDark ? " on" : " off"))
     }
 
     @ViewBuilder private func icon(_ layer: SunARSkyLayer) -> some View {

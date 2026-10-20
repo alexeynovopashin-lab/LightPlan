@@ -105,7 +105,8 @@ struct SunARScreen: View {
                               pointerRects: pointers.flatMap {
                                   SunARPointerLayout.occupied(center: CGPoint(x: $0.pointer.point.x, y: $0.pointer.point.y),
                                                               text: $0.text, screen: size, flipY: flipY)
-                              })
+                              },
+                              milkyWayDark: model.milkyWayDark)
                 if SunARLayers.shown(.labels) {
                     SunARMarkLabels(pickedLabel: pickedLabel(clock: clock, scene: scene), marks: marks, screen: size)
                         .frame(width: size.width, height: size.height)

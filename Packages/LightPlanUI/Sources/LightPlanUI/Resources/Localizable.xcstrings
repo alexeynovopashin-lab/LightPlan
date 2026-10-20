@@ -2031,6 +2031,76 @@
         }
       }
     },
+    "ar.mwCredit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaia DR3 · Credit: ESA, Gaia DPAC · CC BY-NC 3.0 IGO · данные изменены"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaia DR3 · Credit: ESA, Gaia DPAC · CC BY-NC 3.0 IGO · data modified"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaia DR3 · Credit: ESA, Gaia DPAC · CC BY-NC 3.0 IGO · datos modificados"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaia DR3 · Credit: ESA, Gaia DPAC · CC BY-NC 3.0 IGO · データは加工済み"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaia DR3 · Credit: ESA, Gaia DPAC · CC BY-NC 3.0 IGO · 数据已修改"
+          }
+        }
+      }
+    },
+    "ar.mwDark" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как в тёмном месте"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As at a dark site"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como en un lugar oscuro"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暗い場所の見え方"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按暗夜地点显示"
+          }
+        }
+      }
+    },
     "ar.mwDarkAll" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2482,6 +2552,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按公式绘制，仅供参考"
+          }
+        }
+      }
+    },
+    "ar.mwGaia" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "рисуется по звёздам каталога Gaia"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "drawn from Gaia catalogue stars"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dibujada con estrellas del catálogo Gaia"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaiaカタログの星から描画"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "依据 Gaia 星表的恒星绘制"
           }
         }
       }
@@ -48536,6 +48641,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拍摄和机构中的所有号码汇成一个列表。在两张卡片里都出现的号码就是关联：原来是新娘父亲的客户，只有这样才能看出来。"
+          }
+        }
+      }
+    },
+    "set.creditGaia" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звёзды Млечного Пути: Gaia DR3, Credit: ESA, Gaia DPAC, лицензия CC BY-NC 3.0 IGO (creativecommons.org/licenses/by-nc/3.0/igo); данные выбраны и пересчитаны для приложения."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Milky Way stars: Gaia DR3, Credit: ESA, Gaia DPAC, licence CC BY-NC 3.0 IGO (creativecommons.org/licenses/by-nc/3.0/igo); data selected and recomputed for the app."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estrellas de la Vía Láctea: Gaia DR3, Credit: ESA, Gaia DPAC, licencia CC BY-NC 3.0 IGO (creativecommons.org/licenses/by-nc/3.0/igo); datos seleccionados y recalculados para la app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天の川の星：Gaia DR3、Credit: ESA, Gaia DPAC、ライセンス CC BY-NC 3.0 IGO（creativecommons.org/licenses/by-nc/3.0/igo）。アプリ用にデータを選択・再計算しています。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银河恒星：Gaia DR3，Credit: ESA, Gaia DPAC，许可 CC BY-NC 3.0 IGO（creativecommons.org/licenses/by-nc/3.0/igo）；数据为本应用选取并重新计算。"
           }
         }
       }
