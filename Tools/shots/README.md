@@ -244,3 +244,12 @@ iPhone 17 Pro 402 × 874 (`LP <ветка> pro`). Числа: порядок б�
 (`dots= labels= vis= day= near= names=`) и `ar.planetLabel.<планета>`. Ничего слоя не лежит на метках, стрелках, подписях
 звёзд и друг на друге. Положения планет эталонные: `Fixtures/planets_horizons.json` ← `python3 Tools/planets_ref.py`
 (JPL Horizons, 8 моментов + сетка из 60); цена слоя — `python3 Tools/ar_lens_bench.py --planets`.
+
+## Знаки слоёв и подписи у метки (29.8в.16)
+
+`node Tools/shots/ar.js --only layers_open,planets_near --lang ru|en --appearance dark|light` — список «Слоёв» на языке и теме (по умолчанию
+ru, тёмная; `LP_SIM="<имя>"` — другой симулятор, SE 3 создаётся руками: `xcrun simctl create "LP <ветка> SE" com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation <runtime>`).
+Знаки «Созвездий», «Планет» и «Млечного Пути» — `SunARLayerGlyphs.swift` (ковш, солнечная система, галактика; в библиотеке `icons.js` таких нет, веб заморожен).
+Лист знаков крупно (×8 и в натуральную величину, тёмное и светлое стекло): `TEST_RUNNER_LP_GLYPH_SHEET=/tmp/layer_glyphs.png xcodebuild test … -only-testing:LightPlanUITests/SunARLayerGlyphTests`
+(тест `sheet`); образец — `Tools/shots/29-8v16/layer_glyphs.png`. Те же тесты меряют рамку каждого знака (17…21,5 pt в холсте 24 × 24).
+Подпись события («закат 18:15») против плашки метки и дисков линз: `SunARLayoutTests/eventLabelClearsPickedPlate` — минуты −8…+8 на SE, 15 и 17 Pro Max, зазор ≥ 4 pt.

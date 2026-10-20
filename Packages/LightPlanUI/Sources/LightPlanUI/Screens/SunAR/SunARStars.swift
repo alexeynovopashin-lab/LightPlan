@@ -227,22 +227,3 @@ struct StarsToggleIcon: View {
     }
 }
 
-/// Значок «Созвездия»: ломаная из пяти точек — фигура, какой её рисует слой.
-struct ConstellationsToggleIcon: View {
-    var body: some View {
-        Canvas { ctx, size in
-            let pts = [CGPoint(x: 3, y: 16.5), CGPoint(x: 8.5, y: 12), CGPoint(x: 13.5, y: 14),
-                       CGPoint(x: 19, y: 8), CGPoint(x: 23, y: 4.5)]
-            var path = Path()
-            path.move(to: pts[0])
-            for p in pts.dropFirst() { path.addLine(to: p) }
-            ctx.stroke(path, with: .color(SunARInk.constellationTone.opacity(0.9)),
-                       style: StrokeStyle(lineWidth: 1.1, lineCap: .round, lineJoin: .round))
-            for (i, p) in pts.enumerated() {
-                let r: CGFloat = i == 3 ? 2.4 : 1.7
-                ctx.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: 2 * r, height: 2 * r)), with: .color(.white))
-            }
-        }
-        .frame(width: 26, height: 22)
-    }
-}

@@ -197,14 +197,12 @@ struct SunARMarkLabels: View {
 
     var body: some View {
         let nowMark = marks.first { $0.id == "sun.now" }
-        let pickedMark = marks.first { $0.id == "sun.picked" }
-        // Выбранная метка выше «сейчас» — подпись над ней, иначе под ней.
-        let below = !(pickedMark != nil && nowMark != nil && pickedMark!.center.y < nowMark!.center.y)
         ZStack(alignment: .topLeading) {
-            if let m = pickedMark, let text = pickedLabel {
-                plate(text, weight: .medium,
-                      at: CGPoint(x: m.center.x, y: m.center.y + (below ? 1 : -1) * (m.radius + SunARInk.markerLabelGap)),
-                      fade: m.fade)
+            if let m = marks.first(where: { $0.id == "sun.picked" }), let text = pickedLabel {
+                // Место плашки считает раскладка (`SunARLabelLayout.pickedPlate`): оттуда же его берут подписи у горизонта
+                // и подписи звёзд — три места не расходятся, и плашка у края кадра занята там, где нарисована.
+                let r = SunARLabelLayout.pickedPlate(text: text, marker: m.center, now: nowMark?.center, screenWidth: screen.width)
+                plate(text, weight: .medium, at: CGPoint(x: r.midX, y: r.midY), fade: m.fade)
             }
         }
         .allowsHitTesting(false)
@@ -218,12 +216,8 @@ struct SunARMarkLabels: View {
             .background(GlassPlate(shape: Capsule(), opacity: SunARInk.plateOpacity))
             .opacity(fade)
             .shotNode("ar.label.picked", text: text)
-            .position(x: min(max(c.x, halfWidth(text) + 8), screen.width - halfWidth(text) - 8), y: c.y)
+            .position(x: c.x, y: c.y)
     }
-
-    /// Половина ширины плашки по числу знаков (цифры одной ширины, 12 pt ≈ 7 pt на знак + поля) — чтобы плашка
-    /// у края кадра не уезжала за экран.
-    private func halfWidth(_ text: String) -> CGFloat { (CGFloat(text.count) * 7 + 16) / 2 }
 }
 
 // MARK: - Млечный Путь
@@ -312,23 +306,6 @@ struct MoonToggleIcon: View {
     var body: some View {
         MoonPhaseGlyph(illuminated: illuminated, waxing: waxing, limb: nil)
             .frame(width: 22, height: 22)
-    }
-}
-
-/// Значок «Млечный Путь»: наклонная полоса с яркой точкой — ядром.
-struct MilkyWayToggleIcon: View {
-    var body: some View {
-        Canvas { ctx, size in
-            let c = CGPoint(x: size.width / 2, y: size.height / 2)
-            var band = Path(roundedRect: CGRect(x: -13, y: -4.5, width: 26, height: 9), cornerRadius: 4.5)
-            band = band.applying(CGAffineTransform(rotationAngle: -.pi / 5).concatenating(CGAffineTransform(translationX: c.x, y: c.y)))
-            ctx.fill(band, with: .color(.white.opacity(0.55)))
-            ctx.stroke(band, with: .color(.white.opacity(0.9)), lineWidth: 0.8)
-            let core = CGPoint(x: c.x + 5.5, y: c.y - 4)
-            ctx.fill(Path(ellipseIn: CGRect(x: core.x - 3.2, y: core.y - 3.2, width: 6.4, height: 6.4)),
-                     with: .color(SunARInk.coreTone))
-        }
-        .frame(width: 26, height: 22)
     }
 }
 

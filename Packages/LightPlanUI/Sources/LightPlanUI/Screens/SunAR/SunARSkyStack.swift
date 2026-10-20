@@ -80,7 +80,7 @@ struct SunARSkyStack: View {
         let bounds = CGRect(origin: .zero, size: size).insetBy(dx: -40, dy: -40)
         var taken = SunARLabelLayout.make(scene: scene, cardinals: cardinals, eventText: eventText, clock: clock,
                                           bounds: bounds, merged: mergedEvent, pickedText: pickedText).map(\.pill)
-        if let text = pickedText, let plate = SunARLabelLayout.pickedPill(text: text, scene: scene) { taken.append(plate) }
+        if let text = pickedText, let plate = SunARLabelLayout.pickedPill(text: text, scene: scene, screenWidth: size.width) { taken.append(plate) }
         taken += marks.map { CGRect(x: $0.center.x - $0.radius, y: $0.center.y - $0.radius,
                                     width: $0.diameter, height: $0.diameter).insetBy(dx: -2, dy: -2) }
         if let c = night?.core, night?.milkyWayOn == true {

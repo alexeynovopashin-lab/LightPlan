@@ -120,9 +120,11 @@ struct SunARLayoutTests {
                 _ = try #require(s.scene.marker, "\(phone.name): метка момента за кадром")
                 let bounds = CGRect(origin: .zero, size: phone.size).insetBy(dx: -40, dy: -40)
                 let cards = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"]
-                func layout(merged: SunARScene.HorizonEvent.Kind?, picked: String) -> [SunARLabelLayout.Placed] {
+                // «До» — прежняя раскладка без переноса подписи события (`avoidOverlaps: false`): с переносом 29.8в.16 подпись
+                // обошла бы плашку и без слияния, а снимок Алексея 18.10 — это когда она лежит на ней.
+                func layout(merged: SunARScene.HorizonEvent.Kind?, picked: String, avoid: Bool = true) -> [SunARLabelLayout.Placed] {
                     SunARLabelLayout.make(scene: s.scene, cardinals: cards, eventText: eventWord, clock: ru, bounds: bounds,
-                                          merged: merged, pickedText: picked)
+                                          avoidOverlaps: avoid, merged: merged, pickedText: picked)
                 }
                 let mergedKind = SunARLabelLayout.mergedEvent(in: s.scene, pickedIsNow: false, pickedMinutes: s.minutes, clock: ru)?.kind
                 let text = try #require(SunARLabelLayout.pickedText(scene: s.scene, pickedIsNow: false, pickedMinutes: s.minutes,
@@ -131,7 +133,7 @@ struct SunARLayoutTests {
                 let plate = try #require(SunARLabelLayout.pickedPill(text: text, scene: s.scene))
                 let plateOld = try #require(SunARLabelLayout.pickedPill(text: ru.fmt(s.minutes), scene: s.scene))
                 #expect(plate.maxY <= (s.scene.marker?.y ?? 0), "\(phone.name): подпись метки не над диском — сцена не воспроизводит снимок")
-                let before = layout(merged: nil, picked: ru.fmt(s.minutes)), after = layout(merged: mergedKind, picked: text)
+                let before = layout(merged: nil, picked: ru.fmt(s.minutes), avoid: false), after = layout(merged: mergedKind, picked: text)
                 let gapBefore = gapToPicked(plateOld, before), gapAfter = gapToPicked(plate, after)
                 print(String(format: "ARLAY момент = %@ %@: плашка «%@» (до — «%@»), зазор до %.1f pt, после %.1f pt · подписей события до %d, после %d",
                              phone.name, kindsLabel(kind), text, ru.fmt(s.minutes), gapBefore, gapAfter,
@@ -176,6 +178,95 @@ struct SunARLayoutTests {
             rows.append(String(format: "%+.0f мин: %.1f pt", off, gapToPicked(plate, ls)))
         }
         print("ARLAY полоса наложения (подпись метки против подписи заката, 15 Pro Max): " + rows.joined(separator: " · "))
+    }
+
+    // MARK: Подпись события обходит плашку и диск выбранного момента (29.8в.16)
+
+    /// Зазор между двумя прямоугольниками, pt (отрицательный — наложение).
+    private func rectGap(_ a: CGRect, _ b: CGRect) -> CGFloat {
+        let dx = max(b.minX - a.maxX, a.minX - b.maxX), dy = max(b.minY - a.maxY, a.minY - b.maxY)
+        return (dx > 0 && dy > 0) ? (dx * dx + dy * dy).squareRoot() : max(dx, dy)
+    }
+
+    private let bigPhones: [(name: String, size: CGSize)] = [
+        ("iPhone SE 375", CGSize(width: 375, height: 667)),
+        ("iPhone 15 Pro Max 430", CGSize(width: 430, height: 932)),
+        ("iPhone 17 Pro Max 440", CGSize(width: 440, height: 956)),
+    ]
+
+    /// Подпись события в кадре у метки момента: слова, плашка метки, диски линз — как на экране.
+    private func eventAround(_ kind: SunARScene.HorizonEvent.Kind, offset: Double, size: CGSize, avoid: Bool)
+        -> (event: SunARLabelLayout.Placed?, others: [CGRect], all: [SunARLabelLayout.Placed])? {
+        guard let s = pickedScene(kind, offset: offset, size: size) else { return nil }
+        let merged = SunARLabelLayout.mergedEvent(in: s.scene, pickedIsNow: false, pickedMinutes: s.minutes, clock: ru)?.kind
+        guard let text = SunARLabelLayout.pickedText(scene: s.scene, pickedIsNow: false, pickedMinutes: s.minutes, clock: ru,
+                                                     dayCaption: nil, eventText: eventWord),
+              let plate = SunARLabelLayout.pickedPill(text: text, scene: s.scene, screenWidth: size.width) else { return nil }
+        let ls = SunARLabelLayout.make(scene: s.scene, cardinals: ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"], eventText: eventWord,
+                                       clock: ru, bounds: CGRect(origin: .zero, size: size).insetBy(dx: -40, dy: -40),
+                                       avoidOverlaps: avoid, merged: merged, pickedText: text)
+        return (ls.first { $0.kind == .event && $0.text == eventWord(s.event) }, [plate] + SunARLabelLayout.lensDiscs(scene: s.scene), ls)
+    }
+
+    @Test("минуты −8…+8 вокруг заката и восхода: подпись события не лежит на плашке метки и на дисках линз, зазор не меньше 4 pt, на SE, 15 и 17 Pro Max")
+    func eventLabelClearsPickedPlate() {
+        for phone in bigPhones {
+            var rows: [String] = []
+            var worstBefore: CGFloat = 99, worstAfter: CGFloat = 99, checked = 0, moved: CGFloat = 0
+            for kind in [SunARScene.HorizonEvent.Kind.sunset, .sunrise] {
+                for off in stride(from: -8.0, through: 8.0, by: 1.0) {
+                    guard let before = eventAround(kind, offset: off, size: phone.size, avoid: false),
+                          let after = eventAround(kind, offset: off, size: phone.size, avoid: true) else { continue }
+                    // Слитое событие (ровно та же минута) подписи у горизонта не имеет.
+                    guard let evB = before.event, let evA = after.event else {
+                        #expect(off == 0, "\(phone.name) \(kindsLabel(kind)) \(off): подписи события нет, хотя минута не совпала")
+                        continue
+                    }
+                    func clearance(_ e: SunARLabelLayout.Placed, _ others: [CGRect]) -> CGFloat { others.map { rectGap(e.pill, $0) }.min() ?? 99 }
+                    let b = clearance(evB, before.others), a = clearance(evA, after.others)
+                    worstBefore = min(worstBefore, b); worstAfter = min(worstAfter, a); checked += 1
+                    moved = max(moved, hypot(evA.center.x - evB.center.x, evA.center.y - evB.center.y))
+                    rows.append(String(format: "%@%+.0f: %.1f→%.1f", kind == .sunset ? "з" : "в", off, b, a))
+                    #expect(a >= SunARLabelLayout.gap, "\(phone.name) \(kindsLabel(kind)) \(off) мин: зазор \(a) pt")
+                    let bounds = CGRect(origin: .zero, size: phone.size).insetBy(dx: -40, dy: -40)
+                    #expect(bounds.contains(evA.center), "\(phone.name): подпись ушла за кадр \(evA.center)")
+                    // Подписи не налезают друг на друга и после переноса: события на стороны света и часы.
+                    #expect((SunARLabelLayout.minimumGap(after.all) ?? 99) >= 0, "\(phone.name) \(kindsLabel(kind)) \(off): подписи налезли друг на друга")
+                }
+            }
+            print(String(format: "ARLAY событие у метки %@: наихудший зазор до %.1f pt, после %.1f pt, подпись сдвинута не дальше чем на %.1f pt, замеров %d · ", phone.name, worstBefore, worstAfter, moved, checked)
+                  + rows.joined(separator: " "))
+            #expect(checked >= 24, "\(phone.name): замеров слишком мало (\(checked))")
+            #expect(worstBefore < 0, "\(phone.name): до правки налезания нет (\(worstBefore)) — сцена не воспроизводит замечание")
+        }
+    }
+
+    @Test("перенесённая подпись события лежит на экране целиком: у левого края вариант, уходящий за кадр, не берётся (ревью GPT к 94f0f37)")
+    func movedEventLabelStaysOnScreen() {
+        let screen = CGRect(x: 0, y: 0, width: 375, height: 667)
+        let bounds = screen.insetBy(dx: -40, dy: -40)
+        let size = SunARLabelLayout.textSize("закат 18:15", size: 11, weight: .semibold)
+        let w = size.width + 2 * SunARLabelLayout.padX, h = size.height + 2 * SunARLabelLayout.padY
+        // Подпись у левого края, на ней лежит высокое скопление: «левее», «выше» и «ниже» вылезли бы за экран (центр ещё в запасе 40 pt), свободно «правее».
+        let original = CGPoint(x: w / 2 + 2, y: 300)
+        let plate = CGRect(x: 20, y: -100, width: 60, height: 900)   // высокое скопление у края: выше и ниже — за экраном
+        let at = SunARLabelLayout.eventSpot(at: original, size: size, obstacles: [plate], taken: [], bounds: bounds)
+        let r = CGRect(x: at.x - w / 2, y: at.y - h / 2, width: w, height: h)
+        #expect(at != original, "подпись осталась на плашке")
+        #expect(screen.contains(r), "перенесённая подпись вышла за экран: \(r)")
+        #expect(r.insetBy(dx: -SunARLabelLayout.gap, dy: -SunARLabelLayout.gap).intersects(plate) == false, "лежит на плашке")
+        // Скопление закрывает весь экран: все четыре варианта за экраном — подпись остаётся там, где стояла.
+        let wall = CGRect(x: -50, y: -50, width: 500, height: 800)
+        #expect(SunARLabelLayout.eventSpot(at: original, size: size, obstacles: [wall], taken: [], bounds: bounds) == original)
+    }
+
+    @Test("подпись события, которой ничто не мешает, остаётся на прежнем месте над точкой")
+    func freeEventLabelStays() throws {
+        let phone = bigPhones[1]
+        let far = try #require(eventAround(.sunset, offset: 40, size: phone.size, avoid: true), "сцены нет")
+        let was = try #require(eventAround(.sunset, offset: 40, size: phone.size, avoid: false))
+        let e = try #require(far.event), w = try #require(was.event)
+        #expect(e.pill == w.pill, "подпись сдвинулась без причины: \(e.pill) против \(w.pill)")
     }
 
     // MARK: Зоны стрелок

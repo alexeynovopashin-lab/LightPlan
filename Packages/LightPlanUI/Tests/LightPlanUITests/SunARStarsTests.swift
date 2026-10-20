@@ -173,6 +173,37 @@ struct SunARStarsTests {
         #expect(SunARStarLabels.place([edge], taken: [], window: window).isEmpty)
     }
 
+    @Test("плашка выбранного момента у края кадра занята там, где её рисует вид (сдвинута внутрь на 8 pt), и подпись звезды на неё не садится")
+    func pickedPlateNearEdgeIsTakenWhereDrawn() throws {
+        let m = model("2026-10-14T05:00:00Z", now: "2026-10-14T04:00:00Z")
+        m.setMoon(true); lit(m)
+        // Камера, при которой метка выбранного момента стоит в 10…16 pt от левого края.
+        var found: (aim: CameraBasis, scene: SunARScene)?
+        for tenth in 0..<7200 {
+            let aim = CameraBasis(azimuth: Double(tenth) / 20, altitude: 24)
+            let sc = SunARScene.make(basis: aim, optics: .typical, viewport: viewport, arc: m.arc, sun: m.sun, now: m.sunNow,
+                                     pickedIsNow: m.pickedIsNow, solar: m.solar)
+            if let mk = sc.marker, mk.x >= 10, mk.x <= 16, mk.y > 250, mk.y < 600 { found = (aim, sc); break }
+        }
+        let f = try #require(found, "метка у левого края не найдена")
+        let (st, _, scene) = stack(m, aim: f.aim)
+        let text = try #require(st.pickedText, "подписи метки нет")
+        let drawn = try #require(SunARLabelLayout.pickedPill(text: text, scene: scene, screenWidth: size.width))
+        let unshifted = try #require(SunARLabelLayout.pickedPill(text: text, scene: scene))
+        print(String(format: "ARLAY плашка метки у края: метка x %.1f, нарисована с x %.1f, без сдвига стояла бы с x %.1f", scene.marker!.x, drawn.minX, unshifted.minX))
+        #expect(drawn.minX - unshifted.minX > 15, "контроль: без сдвига плашка стояла бы больше чем на 15 pt левее нарисованной — сцена не воспроизводит замечание")
+        #expect(drawn.minX >= 7.5, "плашка вида не сдвинута внутрь: \(drawn)")
+        let taken = st.starTaken
+        #expect(taken.contains(drawn), "плашка, как её рисует вид, не занята: \(drawn)")
+        // Подпись звезды, якорь которой стоит у правого края плашки, не ложится на неё.
+        let window = CGRect(origin: .zero, size: size)
+        let cand = SunARStarLabels.Candidate(id: "star.vega", kind: .star, text: "Вега",
+                                             anchor: CGPoint(x: drawn.maxX - 4, y: drawn.midY), radius: 2)
+        for p in SunARStarLabels.place([cand], taken: taken, window: window) {
+            #expect(!p.rect.intersects(drawn), "подпись звезды \(p.rect) лежит на плашке \(drawn)")
+        }
+    }
+
     @Test("плашка «Звёзд днём не видно» не лежит на диске солнца: свободное место из вариантов, а занято всё — нет плашки")
     func dayNoteAvoidsTheSun() {
         let window = CGRect(x: 0, y: 240, width: 393, height: 460)

@@ -27,6 +27,9 @@ const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => a.start
 const run = (cmd, argv, opts = {}) => execFileSync(cmd, argv, { encoding: 'utf8', ...opts });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const BUNDLE = 'Novopashin.LightPlan';
+// 29.8в.16: язык (`--lang ru|en`) и тема (`--appearance dark|light`) снимка; по умолчанию как раньше — русский, тёмная.
+const LANG = String(args.lang || 'ru'), APPEARANCE = String(args.appearance || 'dark');
+const LOCALE = { ru: 'ru_RU', en: 'en_US', es: 'es_ES', ja: 'ja_JP', zh: 'zh_CN' }[LANG] || LANG;
 const TOMSK = '56.4977,84.9744,Asia/Tomsk', MOSCOW = '55.7558,37.6173,Europe/Moscow';
 // Южная широта начинается с минуса: такое значение аргумента система читает как новый ключ, поэтому оно уходит в
 // приложение строкой plist в кавычках (см. запуск ниже).
@@ -146,9 +149,9 @@ function planetChecks(sc, nodes, bad) {
     if (names.includes(n)) bad.push(n + ' рядом с Солнцем, а точка нарисована');
     if (nodes['ar.planetLabel.' + n]) bad.push(n + ' рядом с Солнцем, а подпись стоит');
     const row = (nodes['ar.layer.planets'] || {}).text || '';
-    if (!/рядом с Солнцем/.test(row)) bad.push('строка «Планеты» не говорит «рядом с Солнцем»: ' + row);
+    if (!/рядом с Солнцем|near the Sun/.test(row)) bad.push('строка «Планеты» не говорит «рядом с Солнцем»: ' + row);
   }
-  if (sc.planetsDayList && !/Днём планет не видно/.test((nodes['ar.layer.planets'] || {}).text || '')) bad.push('в списке нет «Днём планет не видно»: ' + (nodes['ar.layer.planets'] || {}).text);
+  if (sc.planetsDayList && !/Днём планет не видно|No planets in daylight/.test((nodes['ar.layer.planets'] || {}).text || '')) bad.push('в списке нет «Днём планет не видно»: ' + (nodes['ar.layer.planets'] || {}).text);
   // Ничего слоя не лежит на метках, подписях, стрелках и подписях звёзд, подписи — друг на друге тоже нет.
   const other = Object.keys(nodes).filter(k => /^ar\.(mark\.|pointer|label\.|layers$|back$|follow$|calibrate$|heading$|panel$|starLabel\.|starsDay)/.test(k));
   const scr = nodes['ar.background'];
@@ -323,7 +326,7 @@ function verdict(sc, nodes) {
   const products = path.join(dd, 'Build', 'Products', 'Debug-iphonesimulator');
   const app = path.join(products, fs.readdirSync(products).find(f => f.endsWith('.app')));
   run('xcrun', ['simctl', 'install', udid, app]);
-  run('xcrun', ['simctl', 'ui', udid, 'appearance', 'dark']);
+  run('xcrun', ['simctl', 'ui', udid, 'appearance', APPEARANCE]);
   // Флаги устройства — аргументами запуска: `defaults write` через simctl пишет не в тот файл, что читает приложение.
   const flag = (k, v) => ['-lightplan.native.sunar.' + k, v ? 'YES' : 'NO'];
 
@@ -336,7 +339,7 @@ function verdict(sc, nodes) {
     const report = path.join(dir, 'native.json');
     fs.rmSync(report, { force: true });
     try { run('xcrun', ['simctl', 'terminate', udid, BUNDLE], { stdio: 'ignore', timeout: 10000 }); } catch (e) {}
-    run('xcrun', ['simctl', 'launch', udid, BUNDLE, '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
+    run('xcrun', ['simctl', 'launch', udid, BUNDLE, '-AppleLanguages', `(${LANG})`, '-AppleLocale', LOCALE,
       '-LPShotNow', sc.now, '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', path.join(FX, 'seed.json'),
       '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'), '-LPShotAir', path.join(FX, 'air_barnaul.json'),
       '-LPShotName', path.join(FX, 'place_barnaul.json'), '-LPShotScreen', 'map', '-LPShotReportDelay', '5',

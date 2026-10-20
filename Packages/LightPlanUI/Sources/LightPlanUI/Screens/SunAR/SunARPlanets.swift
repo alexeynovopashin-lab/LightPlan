@@ -155,23 +155,3 @@ struct SunARPlanetLayer: View {
     }
 }
 
-// MARK: - Значок переключателя
-
-/// Значок «Планеты»: шар с кольцом, как рисуют Сатурн. Цвет — тон слоя.
-struct PlanetsToggleIcon: View {
-    var body: some View {
-        Canvas { ctx, size in
-            let c = CGPoint(x: size.width / 2, y: size.height / 2)
-            let tone = SunARInk.planetTone
-            let ring = Path(ellipseIn: CGRect(x: c.x - 12.5, y: c.y - 3.6, width: 25, height: 7.2))
-                .applying(CGAffineTransform(translationX: -c.x, y: -c.y).rotated(by: -0.38).translatedBy(x: c.x, y: c.y))
-            // Задняя половина кольца — под шаром, передняя — над ним.
-            ctx.stroke(ring, with: .color(tone.opacity(0.55)), style: StrokeStyle(lineWidth: 1.2))
-            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 6, y: c.y - 6, width: 12, height: 12)), with: .color(tone))
-            var front = ctx
-            front.clip(to: Path(CGRect(x: 0, y: c.y + 0.5, width: size.width, height: size.height)))
-            front.stroke(ring, with: .color(.white.opacity(0.9)), style: StrokeStyle(lineWidth: 1.2))
-        }
-        .frame(width: 26, height: 22)
-    }
-}
