@@ -91,6 +91,7 @@ struct SunARScreen: View {
                 SunARSkyStack(scene: scene, night: night, marks: marks, size: size, clock: clock,
                               cardinals: cardinalNames(), coreLabel: t.t("ar.mwCore"),
                               eventText: { eventText($0, clock: clock) },
+                              coreEventText: { coreEventText($0, clock: clock) },
                               mergedEvent: mergedEvent(scene: scene, clock: clock)?.kind,
                               pickedText: pickedLabel(clock: clock, scene: scene),
                               // Без камеры небо рисует SwiftUI, и его гнёт сама линза; с камерой — слой Metal.
@@ -209,7 +210,7 @@ struct SunARScreen: View {
         }
         if let night, night.milkyWayOn,
            let i = item("core", .core, az: night.coreAzimuth, alt: night.coreAltitude,
-                        text: label(night.coreAzimuth, night.coreAltitude), fade: night.skyGhost ? 0.6 : 1,
+                        text: label(night.coreAzimuth, night.coreAltitude), fade: night.coreAltitude < 0 ? 0.6 : 1,
                         radius: SunARInk.coreGlyphRadius) {
             out.append(i)
         }
@@ -256,6 +257,12 @@ struct SunARScreen: View {
     /// «закат 18:21» / «восход 06:12» — время по часам места.
     private func eventText(_ e: SunARScene.HorizonEvent, clock: ClockText) -> String {
         t.t(e.kind == .sunset ? "ar.sunsetAt" : "ar.sunriseAt", ["t": clock.fmt(e.minutes)])
+    }
+
+    /// «ядро восходит 22:40 · 195°» / «заходит 04:10 · 262°» — время по часам места, азимут от севера.
+    private func coreEventText(_ e: NightSkyARScene.CoreTrack.Event, clock: ClockText) -> String {
+        let az = Int(e.azimuth.rounded()) % 360
+        return t.t(e.kind == .rise ? "ar.coreRises" : "ar.coreSets", ["t": clock.fmt(e.minutes), "a": String(az)])
     }
 
     @ViewBuilder
@@ -532,7 +539,8 @@ struct SunARScreen: View {
         .buttonStyle(.plain)
         .glassEffect(SunARInk.buttonGlass.interactive(), in: Circle())
         .popover(isPresented: $layersOpen, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
-            SunARLayersList(model: model, lexicon: t)
+            SunARLayersList(model: model, lexicon: t,
+                            clock: ClockText(language: app.language, preference: app.light.clockPreference))
                 .presentationCompactAdaptation(.popover)
         }
         .accessibilityLabel(t.t("ar.layers"))
@@ -689,6 +697,9 @@ struct SunAROverlay: View {
     let moonArc: [[NightSkyARScene.ArcPoint]]
     /// Диски луны: под ними дуга самой луны не рисуется — линия через рисунок фазы читалась бы мусором.
     var moonDiscs: [(center: CGPoint, radius: CGFloat)] = []
+    /// Траектория ядра Млечного Пути выбранной даты (29.8в.17б) и её подписи (`SunARCoreLabels`); `nil` — слой выключен.
+    var coreTrack: NightSkyARScene.CoreTrack? = nil
+    var coreLabels: [SunARLabelLayout.Placed] = []
     let clock: ClockText
     /// Восемь румбов от севера по часовой: С, СВ, В, ЮВ, Ю, ЮЗ, З, СЗ.
     let cardinals: [String]
@@ -733,6 +744,10 @@ struct SunAROverlay: View {
                     for run in moonArc where run.count > 1 { drawMoonArc(&layer, run) }
                 }
             }
+            // Дуга ядра Млечного Пути (29.8в.17б): тонкая, тёплого тона, под горизонтом пунктиром; под дугой солнца.
+            if let coreTrack {
+                for run in coreTrack.arc where run.count > 1 { drawCoreArc(&ctx, run) }
+            }
             // Дуга солнца: цвет света по точкам, под горизонтом пунктиром.
             for run in scene.arc where run.count > 1 { drawArc(&ctx, run, view: view) }
             // Точки часов, восхода и заката — значки; подписи ставит раскладка (`SunARLabelLayout`): восход и закат
@@ -755,9 +770,32 @@ struct SunAROverlay: View {
                 ctx.fill(Path(ellipseIn: dot), with: .color(tint))
                 ctx.stroke(Path(ellipseIn: dot), with: .color(SunARInk.light), lineWidth: 1.5)
             }
+            // Значки часов и восходов-заходов ядра.
+            if let coreTrack {
+                for h in coreTrack.hours {
+                    let c = CGPoint(h.point)
+                    guard bounds.contains(c), !SunARCoreLabels.isUnderSun(h, scene: scene) else { continue }
+                    let dot = CGRect(x: c.x - 3, y: c.y - 3, width: 6, height: 6)
+                    ctx.fill(Path(ellipseIn: dot.insetBy(dx: -1.5, dy: -1.5)), with: .color(.black.opacity(SunARInk.outlineOpacity)))
+                    ctx.fill(Path(ellipseIn: dot), with: .color(SunARInk.coreTone))
+                }
+                for e in coreTrack.events {
+                    guard let pt = e.point else { continue }
+                    let c = CGPoint(pt)
+                    guard bounds.contains(c) else { continue }
+                    let r = SunARInk.eventDot / 2
+                    let dot = CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)
+                    ctx.fill(Path(ellipseIn: dot.insetBy(dx: -1.5, dy: -1.5)), with: .color(.black.opacity(SunARInk.outlineOpacity)))
+                    ctx.fill(Path(ellipseIn: dot), with: .color(SunARInk.coreTone))
+                    ctx.stroke(Path(ellipseIn: dot), with: .color(SunARInk.light), lineWidth: 1.5)
+                }
+            }
             for l in SunARLabelLayout.make(scene: scene, cardinals: cardinals, eventText: eventText, clock: clock,
                                        bounds: CGRect(origin: .zero, size: screen ?? size).insetBy(dx: -40, dy: -40),
                                        merged: merged, pickedText: pickedText) {
+                label(&ctx, l.text, at: l.center, size: l.fontSize, weight: l.weight, opacity: l.opacity)
+            }
+            for l in coreLabels {
                 label(&ctx, l.text, at: l.center, size: l.fontSize, weight: l.weight, opacity: l.opacity)
             }
         }
@@ -828,6 +866,24 @@ struct SunAROverlay: View {
             }
             ctx.stroke(path, with: .color(.black.opacity(SunARInk.outlineOpacity)), style: style(SunARInk.moonArcOutlineWidth))
             ctx.stroke(path, with: .color(SunARInk.moonTint), style: style(SunARInk.moonArcWidth))
+            i = j
+        }
+    }
+
+    /// Дуга ядра: тёмная обводка и тонкая жила 1,5 pt цвета ядра; участки под горизонтом — пунктиром.
+    private func drawCoreArc(_ ctx: inout GraphicsContext, _ run: [NightSkyARScene.CoreTrack.Point]) {
+        var i = 0
+        while i < run.count - 1 {
+            let dashed = run[i].isBelowHorizon && run[i + 1].isBelowHorizon
+            var j = i + 1
+            while j < run.count - 1, (run[j].isBelowHorizon && run[j + 1].isBelowHorizon) == dashed { j += 1 }
+            let path = polyline(run[i...j].map(\.point))
+            let cap: CGLineCap = dashed ? .butt : .round
+            func style(_ w: CGFloat) -> StrokeStyle {
+                StrokeStyle(lineWidth: w, lineCap: cap, lineJoin: .round, dash: dashed ? SunARInk.arcDash : [])
+            }
+            ctx.stroke(path, with: .color(.black.opacity(SunARInk.outlineOpacity)), style: style(SunARInk.moonArcOutlineWidth))
+            ctx.stroke(path, with: .color(SunARInk.coreTone), style: style(SunARInk.coreArcWidth))
             i = j
         }
     }

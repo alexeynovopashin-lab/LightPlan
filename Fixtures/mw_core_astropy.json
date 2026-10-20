@@ -1,0 +1,1099 @@
+{
+ "meta": {
+  "source": "astropy 6.0.1",
+  "horizon": "geometric altitude -0.5667 deg (34 arcmin refraction)",
+  "tolerance": "2 min, 0.5 deg"
+ },
+ "cases": [
+  {
+   "place": "tomsk",
+   "lat": 56.4977,
+   "lon": 84.9744,
+   "zone": "Asia/Tomsk",
+   "date": "2026-01-15",
+   "utcOffset": 7.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 547.546,
+     "azimuth": 149.536
+    },
+    {
+     "kind": "set",
+     "minutes": 830.01,
+     "azimuth": 210.464
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 13.748,
+     "altitude": -61.963
+    },
+    {
+     "minutes": 360,
+     "azimuth": 112.731,
+     "altitude": -19.869
+    },
+    {
+     "minutes": 720,
+     "azimuth": 186.863,
+     "altitude": 4.297
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 259.238,
+     "altitude": -28.127
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 321.681,
+     "altitude": -58.449
+    }
+   ]
+  },
+  {
+   "place": "tomsk",
+   "lat": 56.4977,
+   "lon": 84.9744,
+   "zone": "Asia/Tomsk",
+   "date": "2026-04-10",
+   "utcOffset": 7.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 213.391,
+     "azimuth": 149.537
+    },
+    {
+     "kind": "set",
+     "minutes": 495.851,
+     "azimuth": 210.463
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 107.817,
+     "altitude": -23.222
+    },
+    {
+     "minutes": 360,
+     "azimuth": 181.184,
+     "altitude": 4.548
+    },
+    {
+     "minutes": 720,
+     "azimuth": 254.241,
+     "altitude": -24.647
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 3.482,
+     "altitude": -62.418
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 84.43,
+     "altitude": -39.073
+    }
+   ]
+  },
+  {
+   "place": "tomsk",
+   "lat": 56.4977,
+   "lon": 84.9744,
+   "zone": "Asia/Tomsk",
+   "date": "2026-06-21",
+   "utcOffset": 7.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "set",
+     "minutes": 212.783,
+     "azimuth": 210.462
+    },
+    {
+     "kind": "rise",
+     "minutes": 1366.402,
+     "azimuth": 149.538
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 164.339,
+     "altitude": 3.207
+    },
+    {
+     "minutes": 360,
+     "azimuth": 239.611,
+     "altitude": -14.881
+    },
+    {
+     "minutes": 720,
+     "azimuth": 328.551,
+     "altitude": -59.813
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 93.518,
+     "altitude": -33.122
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 140.049,
+     "altitude": -4.266
+    }
+   ]
+  },
+  {
+   "place": "tomsk",
+   "lat": 56.4977,
+   "lon": 84.9744,
+   "zone": "Asia/Tomsk",
+   "date": "2026-08-30",
+   "utcOffset": 7.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 1091.178,
+     "azimuth": 149.54
+    },
+    {
+     "kind": "set",
+     "minutes": 1373.609,
+     "azimuth": 210.46
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 223.16,
+     "altitude": -5.74
+    },
+    {
+     "minutes": 360,
+     "azimuth": 298.927,
+     "altitude": -51.314
+    },
+    {
+     "minutes": 720,
+     "azimuth": 74.771,
+     "altitude": -44.744
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 147.225,
+     "altitude": -1.378
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 199.122,
+     "altitude": 2.542
+    }
+   ]
+  },
+  {
+   "place": "tomsk",
+   "lat": 56.4977,
+   "lon": 84.9744,
+   "zone": "Asia/Tomsk",
+   "date": "2026-11-12",
+   "utcOffset": 7.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 800.199,
+     "azimuth": 149.538
+    },
+    {
+     "kind": "set",
+     "minutes": 1082.645,
+     "azimuth": 210.462
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 280.99,
+     "altitude": -42.353
+    },
+    {
+     "minutes": 360,
+     "azimuth": 55.693,
+     "altitude": -53.404
+    },
+    {
+     "minutes": 720,
+     "azimuth": 133.331,
+     "altitude": -7.473
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 209.911,
+     "altitude": -0.383
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 256.782,
+     "altitude": -26.416
+    }
+   ]
+  },
+  {
+   "place": "sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "zone": "Australia/Sydney",
+   "date": "2026-01-15",
+   "utcOffset": 11.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 215.256,
+     "azimuth": 126.127
+    },
+    {
+     "kind": "set",
+     "minutes": 1113.867,
+     "azimuth": 233.873
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 166.965,
+     "altitude": -25.917
+    },
+    {
+     "minutes": 360,
+     "azimuth": 108.636,
+     "altitude": 26.181
+    },
+    {
+     "minutes": 720,
+     "azimuth": 288.794,
+     "altitude": 77.173
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 238.449,
+     "altitude": 5.289
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 195.196,
+     "altitude": -25.453
+    }
+   ]
+  },
+  {
+   "place": "sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "zone": "Australia/Sydney",
+   "date": "2026-04-10",
+   "utcOffset": 10.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "set",
+     "minutes": 719.71,
+     "azimuth": 233.873
+    },
+    {
+     "kind": "rise",
+     "minutes": 1257.167,
+     "azimuth": 126.127
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 105.028,
+     "altitude": 32.985
+    },
+    {
+     "minutes": 360,
+     "azimuth": 278.306,
+     "altitude": 70.254
+    },
+    {
+     "minutes": 720,
+     "azimuth": 233.832,
+     "altitude": -0.615
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 158.147,
+     "altitude": -23.536
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 117.917,
+     "altitude": 10.525
+    }
+   ]
+  },
+  {
+   "place": "sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "zone": "Australia/Sydney",
+   "date": "2026-06-21",
+   "utcOffset": 10.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "set",
+     "minutes": 436.649,
+     "azimuth": 233.873
+    },
+    {
+     "kind": "rise",
+     "minutes": 974.103,
+     "azimuth": 126.127
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 330.336,
+     "altitude": 84.383
+    },
+    {
+     "minutes": 360,
+     "azimuth": 243.74,
+     "altitude": 13.085
+    },
+    {
+     "minutes": 720,
+     "azimuth": 176.397,
+     "altitude": -27.088
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 112.89,
+     "altitude": 18.621
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 84.517,
+     "altitude": 67.399
+    }
+   ]
+  },
+  {
+   "place": "sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "zone": "Australia/Sydney",
+   "date": "2026-08-30",
+   "utcOffset": 10.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "set",
+     "minutes": 161.419,
+     "azimuth": 233.872
+    },
+    {
+     "kind": "rise",
+     "minutes": 698.868,
+     "azimuth": 126.128
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 253.134,
+     "altitude": 29.486
+    },
+    {
+     "minutes": 360,
+     "azimuth": 196.961,
+     "altitude": -25.017
+    },
+    {
+     "minutes": 720,
+     "azimuth": 123.229,
+     "altitude": 3.051
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 75.974,
+     "altitude": 74.628
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 265.632,
+     "altitude": 53.177
+    }
+   ]
+  },
+  {
+   "place": "sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "zone": "Australia/Sydney",
+   "date": "2026-11-12",
+   "utcOffset": 11.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 467.898,
+     "azimuth": 126.128
+    },
+    {
+     "kind": "set",
+     "minutes": 1366.513,
+     "azimuth": 233.872
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 223.092,
+     "altitude": -11.419
+    },
+    {
+     "minutes": 360,
+     "azimuth": 143.804,
+     "altitude": -16.515
+    },
+    {
+     "minutes": 720,
+     "azimuth": 97.265,
+     "altitude": 47.921
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 266.721,
+     "altitude": 55.052
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 240.063,
+     "altitude": 7.551
+    }
+   ]
+  },
+  {
+   "place": "moscow",
+   "lat": 55.7558,
+   "lon": 37.6173,
+   "zone": "Europe/Moscow",
+   "date": "2026-01-15",
+   "utcOffset": 3.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 487.747,
+     "azimuth": 147.737
+    },
+    {
+     "kind": "set",
+     "minutes": 787.63,
+     "azimuth": 212.262
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 36.529,
+     "altitude": -59.587
+    },
+    {
+     "minutes": 360,
+     "azimuth": 122.589,
+     "altitude": -13.212
+    },
+    {
+     "minutes": 720,
+     "azimuth": 197.995,
+     "altitude": 3.482
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 268.982,
+     "altitude": -35.142
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 342.879,
+     "altitude": -62.438
+    }
+   ]
+  },
+  {
+   "place": "moscow",
+   "lat": 55.7558,
+   "lon": 37.6173,
+   "zone": "Europe/Moscow",
+   "date": "2026-04-10",
+   "utcOffset": 3.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 153.592,
+     "azimuth": 147.738
+    },
+    {
+     "kind": "set",
+     "minutes": 453.471,
+     "azimuth": 212.262
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 117.715,
+     "altitude": -16.363
+    },
+    {
+     "minutes": 360,
+     "azimuth": 192.395,
+     "altitude": 4.438
+    },
+    {
+     "minutes": 720,
+     "azimuth": 263.776,
+     "altitude": -31.505
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 27.368,
+     "altitude": -61.224
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 95.603,
+     "altitude": -31.944
+    }
+   ]
+  },
+  {
+   "place": "moscow",
+   "lat": 55.7558,
+   "lon": 37.6173,
+   "zone": "Europe/Moscow",
+   "date": "2026-06-21",
+   "utcOffset": 3.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "set",
+     "minutes": 170.404,
+     "azimuth": 212.261
+    },
+    {
+     "kind": "rise",
+     "minutes": 1306.602,
+     "azimuth": 147.739
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 175.493,
+     "altitude": 5.183
+    },
+    {
+     "minutes": 360,
+     "azimuth": 249.042,
+     "altitude": -20.988
+    },
+    {
+     "minutes": 720,
+     "azimuth": 351.037,
+     "altitude": -62.987
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 103.964,
+     "altitude": -25.964
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 150.513,
+     "altitude": 0.403
+    }
+   ]
+  },
+  {
+   "place": "moscow",
+   "lat": 55.7558,
+   "lon": 37.6173,
+   "zone": "Europe/Moscow",
+   "date": "2026-08-30",
+   "utcOffset": 3.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 1031.378,
+     "azimuth": 147.741
+    },
+    {
+     "kind": "set",
+     "minutes": 1331.231,
+     "azimuth": 212.259
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 233.046,
+     "altitude": -10.557
+    },
+    {
+     "minutes": 360,
+     "azimuth": 314.724,
+     "altitude": -57.47
+    },
+    {
+     "minutes": 720,
+     "azimuth": 87.049,
+     "altitude": -37.821
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 157.935,
+     "altitude": 2.563
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 209.935,
+     "altitude": 0.252
+    }
+   ]
+  },
+  {
+   "place": "moscow",
+   "lat": 55.7558,
+   "lon": 37.6173,
+   "zone": "Europe/Moscow",
+   "date": "2026-11-12",
+   "utcOffset": 3.0,
+   "state": "crossing",
+   "events": [
+    {
+     "kind": "rise",
+     "minutes": 740.399,
+     "azimuth": 147.739
+    },
+    {
+     "kind": "set",
+     "minutes": 1040.266,
+     "azimuth": 212.261
+    }
+   ],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 293.063,
+     "altitude": -49.385
+    },
+    {
+     "minutes": 360,
+     "azimuth": 71.006,
+     "altitude": -47.357
+    },
+    {
+     "minutes": 720,
+     "azimuth": 143.568,
+     "altitude": -2.19
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 220.326,
+     "altitude": -3.883
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 266.41,
+     "altitude": -33.36
+    }
+   ]
+  },
+  {
+   "place": "lat70",
+   "lat": 70.0,
+   "lon": 25.0,
+   "zone": "Europe/Oslo",
+   "date": "2026-01-15",
+   "utcOffset": 1.0,
+   "state": "neverRises",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 47.699,
+     "altitude": -43.782
+    },
+    {
+     "minutes": 360,
+     "azimuth": 134.123,
+     "altitude": -15.733
+    },
+    {
+     "minutes": 720,
+     "azimuth": 213.601,
+     "altitude": -12.667
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 296.663,
+     "altitude": -39.828
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 11.305,
+     "altitude": -48.66
+    }
+   ]
+  },
+  {
+   "place": "lat70",
+   "lat": 70.0,
+   "lon": 25.0,
+   "zone": "Europe/Oslo",
+   "date": "2026-04-10",
+   "utcOffset": 2.0,
+   "state": "neverRises",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 115.291,
+     "altitude": -21.755
+    },
+    {
+     "minutes": 360,
+     "azimuth": 194.672,
+     "altitude": -9.669
+    },
+    {
+     "minutes": 720,
+     "azimuth": 274.946,
+     "altitude": -32.782
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 22.49,
+     "altitude": -47.809
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 88.917,
+     "altitude": -31.395
+    }
+   ]
+  },
+  {
+   "place": "lat70",
+   "lat": 70.0,
+   "lon": 25.0,
+   "zone": "Europe/Oslo",
+   "date": "2026-06-21",
+   "utcOffset": 2.0,
+   "state": "neverRises",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 177.602,
+     "altitude": -8.967
+    },
+    {
+     "minutes": 360,
+     "azimuth": 257.061,
+     "altitude": -26.229
+    },
+    {
+     "minutes": 720,
+     "azimuth": 357.05,
+     "altitude": -48.928
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 98.922,
+     "altitude": -27.716
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 151.918,
+     "altitude": -11.564
+    }
+   ]
+  },
+  {
+   "place": "lat70",
+   "lat": 70.0,
+   "lon": 25.0,
+   "zone": "Europe/Oslo",
+   "date": "2026-08-30",
+   "utcOffset": 2.0,
+   "state": "neverRises",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 238.229,
+     "altitude": -19.541
+    },
+    {
+     "minutes": 360,
+     "azimuth": 329.382,
+     "altitude": -46.833
+    },
+    {
+     "minutes": 720,
+     "azimuth": 78.841,
+     "altitude": -34.947
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 159.687,
+     "altitude": -10.327
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 212.807,
+     "altitude": -12.498
+    }
+   ]
+  },
+  {
+   "place": "lat70",
+   "lat": 70.0,
+   "lon": 25.0,
+   "zone": "Europe/Oslo",
+   "date": "2026-11-12",
+   "utcOffset": 1.0,
+   "state": "neverRises",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 326.561,
+     "altitude": -46.422
+    },
+    {
+     "minutes": 360,
+     "azimuth": 76.598,
+     "altitude": -35.702
+    },
+    {
+     "minutes": 720,
+     "azimuth": 157.694,
+     "altitude": -10.608
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 237.11,
+     "altitude": -19.171
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 293.309,
+     "altitude": -38.846
+    }
+   ]
+  },
+  {
+   "place": "lat_m70",
+   "lat": -70.0,
+   "lon": -68.0,
+   "zone": "America/Argentina/Ushuaia",
+   "date": "2026-01-15",
+   "utcOffset": -3.0,
+   "state": "neverSets",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 175.775,
+     "altitude": 9.007
+    },
+    {
+     "minutes": 360,
+     "azimuth": 96.131,
+     "altitude": 28.749
+    },
+    {
+     "minutes": 720,
+     "azimuth": 352.995,
+     "altitude": 48.837
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 254.321,
+     "altitude": 25.219
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 201.506,
+     "altitude": 10.491
+    }
+   ]
+  },
+  {
+   "place": "lat_m70",
+   "lat": -70.0,
+   "lon": -68.0,
+   "zone": "America/Argentina/Ushuaia",
+   "date": "2026-04-10",
+   "utcOffset": -3.0,
+   "state": "neverSets",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 102.036,
+     "altitude": 26.563
+    },
+    {
+     "minutes": 360,
+     "azimuth": 1.619,
+     "altitude": 48.941
+    },
+    {
+     "minutes": 720,
+     "azimuth": 260.168,
+     "altitude": 27.379
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 180.64,
+     "altitude": 8.948
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 127.757,
+     "altitude": 17.616
+    }
+   ]
+  },
+  {
+   "place": "lat_m70",
+   "lat": -70.0,
+   "lon": -68.0,
+   "zone": "America/Argentina/Ushuaia",
+   "date": "2026-06-21",
+   "utcOffset": -3.0,
+   "state": "neverSets",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 26.879,
+     "altitude": 47.32
+    },
+    {
+     "minutes": 360,
+     "azimuth": 278.258,
+     "altitude": 33.948
+    },
+    {
+     "minutes": 720,
+     "azimuth": 197.7,
+     "altitude": 9.997
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 118.309,
+     "altitude": 20.709
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 61.129,
+     "altitude": 40.451
+    }
+   ]
+  },
+  {
+   "place": "lat_m70",
+   "lat": -70.0,
+   "lon": -68.0,
+   "zone": "America/Argentina/Ushuaia",
+   "date": "2026-08-30",
+   "utcOffset": -3.0,
+   "state": "neverSets",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 300.068,
+     "altitude": 40.78
+    },
+    {
+     "minutes": 360,
+     "azimuth": 216.367,
+     "altitude": 13.288
+    },
+    {
+     "minutes": 720,
+     "azimuth": 136.882,
+     "altitude": 14.976
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 51.333,
+     "altitude": 42.961
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 334.527,
+     "altitude": 47.487
+    }
+   ]
+  },
+  {
+   "place": "lat_m70",
+   "lat": -70.0,
+   "lon": -68.0,
+   "zone": "America/Argentina/Ushuaia",
+   "date": "2026-11-12",
+   "utcOffset": -3.0,
+   "state": "neverSets",
+   "events": [],
+   "samples": [
+    {
+     "minutes": 0,
+     "azimuth": 231.476,
+     "altitude": 17.381
+    },
+    {
+     "minutes": 360,
+     "azimuth": 152.025,
+     "altitude": 11.544
+    },
+    {
+     "minutes": 720,
+     "azimuth": 70.066,
+     "altitude": 37.814
+    },
+    {
+     "minutes": 1080,
+     "azimuth": 318.702,
+     "altitude": 45.084
+    },
+    {
+     "minutes": 1320,
+     "azimuth": 257.171,
+     "altitude": 26.27
+    }
+   ]
+  }
+ ]
+}

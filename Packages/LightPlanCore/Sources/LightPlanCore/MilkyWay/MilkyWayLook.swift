@@ -159,4 +159,62 @@ public enum MilkyWayLook {
         let t = altitude / MilkyWayDust.haze
         return t * t * (3 - 2 * t)
     }
+
+    // MARK: - Полоса для планирования (29.8в.17б)
+
+    /// Полоса и подпись «ядро» рисуются всегда, пока слой включён: день, город, Луна — всё равно. Слово Алексея
+    /// 20.10: «Я должен выехать на точку, днем, поставить телефон на штатив, заранее замерить положение». Правила
+    /// видимости (солнце, засветка, Луна, дымка) гасят только реалистичную часть — зерно звёзд и пыль, — а не саму
+    /// полосу: яркость гладкой полосы постоянна (`peakAlpha`), она не умножается на `Visibility.factor`.
+    ///
+    /// Светлая заливка добавляется к кадру (`plusLighter`) и на белом небе незаметна, поэтому по краям полосы,
+    /// на `|b| = MilkyWay.halfWidth`, идёт тёмный контур — как чёрная обводка у дуги солнца: на светлом фоне читается он,
+    /// на тёмном — заливка. Это временное решение до отрисовки картой реальных звёзд (шаг 29.8в.18).
+    public static let edgeOpacity = 0.6
+    /// Толщина контура по краям полосы, pt экрана.
+    public static let edgeWidth = 1.5
+
+    /// Справка о видимости глазом: число и причины словами (строка списка «Слоёв»). Те же правила, что у картины:
+    /// солнце (`twilight`), луна (`MilkyWayWindow.moonBlocks`), засветка атласа (`glowFactor`), дымка у горизонта
+    /// (`horizonFade` на высоте ядра). Справка, а не условие рисования.
+    public struct EyeNote: Sendable, Equatable {
+        public enum Cause: Sendable, Equatable {
+            /// Солнце выше −6°: небо светлое.
+            case daylight(sun: Degrees)
+            /// Сумерки: солнце между −6° и −18°.
+            case twilight(sun: Degrees)
+            /// Луна над горизонтом, освещена больше чем на 40 %.
+            case moon(percent: Int)
+            /// Засветка атласа: ступень и число (`ratio`); ступень `none` — «дальше пусто», ноль.
+            case glow(Glow.Level, value: Double)
+            /// Ядро ниже 8°: дымка у горизонта.
+            case haze
+            /// Ядро под горизонтом.
+            case belowHorizon
+        }
+        /// Видимость глазом, `0…100`.
+        public let percent: Int
+        public let causes: [Cause]
+    }
+
+    public static func eyeNote(sunAltitude: Degrees, moonAltitude: Degrees, moonFraction: Double, glow: Double?,
+                               coreAltitude: Degrees) -> EyeNote {
+        if twilight(sunAltitude: sunAltitude) <= 0 {
+            return EyeNote(percent: 0, causes: [.daylight(sun: sunAltitude)])
+        }
+        if MilkyWayWindow.moonBlocks(altitude: moonAltitude, fraction: moonFraction) {
+            return EyeNote(percent: 0, causes: [.moon(percent: Int((moonFraction * 100).rounded()))])
+        }
+        var causes: [EyeNote.Cause] = []
+        let tw = twilight(sunAltitude: sunAltitude)
+        if tw < 1 { causes.append(.twilight(sun: sunAltitude)) }
+        if let glow, let level = Glow.level(glow) {
+            if level == Glow.Level.none { return EyeNote(percent: 0, causes: [.glow(level, value: glow)]) }
+            causes.append(.glow(level, value: glow))
+        }
+        let horizon = horizonFade(altitude: coreAltitude)
+        if coreAltitude <= 0 { causes.append(.belowHorizon) } else if horizon < 1 { causes.append(.haze) }
+        let factor = tw * glowFactor(glow) * horizon
+        return EyeNote(percent: Int((factor * 100).rounded()), causes: causes)
+    }
 }

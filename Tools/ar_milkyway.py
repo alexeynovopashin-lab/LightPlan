@@ -11,12 +11,16 @@
   2. профиль яркости поперёк полосы совпадает с формулой `MilkyWayLook.smooth` (своя копия формулы ниже — судья
      из описания шага, а не код приложения): один общий множитель k на все кадры, остаток ≤ 4 % от вершины;
   3. ядро — центр тяжести самой яркой части (≥ 97 % максимума) — в пределах 0,5° от `MilkyWay.corePosition`;
-  4. солнце выше −6° — слой пуст (ни одной точки ярче 2/255), сумерки и засветка — та же формула с видимостью.
+  4. планирование (29.8в.17б, слово Алексея 20.10: положение показывается всегда): гладкая полоса рисуется при ЛЮБОЙ
+     видимости — днём при Солнце +20°, в сумерках, в городе и при засветке 40 (выше 27: ступень «дальше пусто») —
+     яркостью, которая от видимости не зависит (общий множитель k на все кадры ≈ 1, как ночью); яркость в колонке
+     поперёк полосы выше фона не меньше чем на 12/255.
 
 Пять моментов: разные широты (−34°…+64°), часы, курсы и крен кадра. Плюс кадры для глаза (`--frames`): ночь без
 засветки, ночь с городом (`-LPSunARGlow 12`), сумерки, день — все слои, без камеры.
 
     python3 Tools/ar_milkyway.py --app <LightPlan.app> [--out DIR] [--only a,b] [--frames]
+    python3 Tools/ar_milkyway.py --app <LightPlan.app> --contrast [--goal 1.5]   # контраст на белом, голубом, асфальте, ночи
 Любое нарушение — код 1.
 """
 import json, math, os, re, subprocess, sys, time
@@ -101,10 +105,13 @@ MOMENTS = [
 ]
 # Видимость: те же кадры, другое небо. `hidden` — чего ждём; `glow` — подставная засветка.
 EXTRA = [
-    # Засветка 3 (ступень «слабая»): контраст 1/4 — свет ещё различим по 8 битам; кадр для глаза — с 12.
-    ('sochi_city', SOCHI, '2026-08-15T19:30:00Z', (0, 0), 0, {'glow': 3}),
+    # Планирование: ни засветка, ни сумерки, ни день полосу не гасят. Засветка 40 — «дальше пусто» атласа (> 27).
+    ('sochi_city', SOCHI, '2026-08-15T19:30:00Z', (0, 0), 0, {'glow': 12}),
+    ('sochi_glow40', SOCHI, '2026-08-15T19:30:00Z', (0, 0), 0, {'glow': 40}),
     ('sochi_twilight', SOCHI, '2026-08-15T17:55:00Z', (0, 0), 0, {}),
-    ('sochi_day', SOCHI, '2026-08-15T12:00:00Z', (0, 0), 0, {'empty': True}),
+    # Солнце +20° (астропи: 20,1°): целиком днём, aim 'best' — точка полосы, что выше всех в этот момент.
+    ('sochi_day_sun20', SOCHI, '2026-08-15T14:27:00Z', 'best', 0, {'day': True}),
+    ('sochi_day_sun45', SOCHI, '2026-08-15T12:00:00Z', 'best', 0, {'day': True}),
 ]
 
 
@@ -120,8 +127,17 @@ def udid():
     return m.group(1)
 
 
+def best_aim(place, moment):
+    """Точка середины полосы (b = 0), самая высокая над горизонтом в этот момент: куда навести кадр днём."""
+    lat, lon, _ = place
+    best = max(range(0, 360, 5), key=lambda l: horizontal(*gal_to_eq(l, 0), moment, lat, lon)[1])
+    return (best, 0)
+
+
 def launch(sim, name, place, moment, aim, roll, layers, parts, extra, mw=True):
     lat, lon, zone = place
+    if aim == 'best':
+        aim = best_aim(place, moment)
     ra, dec = gal_to_eq(*aim)
     az, alt = horizontal(ra, dec, moment, lat, lon)
     d = os.path.join(OUT, name)
@@ -130,7 +146,9 @@ def launch(sim, name, place, moment, aim, roll, layers, parts, extra, mw=True):
     if os.path.exists(report):
         os.remove(report)
     subprocess.run(['xcrun', 'simctl', 'terminate', sim, BUNDLE], capture_output=True)
-    argv = ['xcrun', 'simctl', 'launch', sim, BUNDLE, '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
+    lang = extra.get('lang', 'ru')
+    locale = {'ru': 'ru_RU', 'en': 'en_US', 'es': 'es_ES', 'ja': 'ja_JP', 'zh': 'zh_CN'}[lang]
+    argv = ['xcrun', 'simctl', 'launch', sim, BUNDLE, '-AppleLanguages', f'({lang})', '-AppleLocale', locale,
             '-LPShotNow', moment, '-LPShotZone', zone, '-LPShotSeed', FX + '/seed.json',
             '-LPShotForecast', FX + '/forecast_barnaul.json', '-LPShotAir', FX + '/air_barnaul.json',
             '-LPShotName', FX + '/place_barnaul.json', '-LPShotScreen', 'map', '-LPShotReportDelay', '5',
@@ -145,6 +163,10 @@ def launch(sim, name, place, moment, aim, roll, layers, parts, extra, mw=True):
         argv += ['-LPSunARMWParts', parts]
     if extra.get('layersOpen'):
         argv += ['-LPSunARLayersOpen', '1']
+    if extra.get('backdrop'):
+        argv += ['-LPSunARBackdrop', extra['backdrop']]
+    if extra.get('args'):
+        argv += extra['args']
     sh(*argv)
     for _ in range(240):
         if os.path.exists(report):
@@ -285,7 +307,8 @@ def measure(name, nodes, png, pic, base):
             if alt < 8.5:            # дымка у горизонта гасит одну сторону — центр тяжести поедет, станция не годится
                 ok = False
                 break
-            exp_ = 255 * green(gl) * min(1.0, smooth(gl, gb) * 0.55 * vis * fade(alt))
+            # Планирование: яркость от видимости не зависит (`vis` — справка о глазе), дымка гасит только текстуру.
+            exp_ = 255 * green(gl) * min(1.0, smooth(gl, gb) * 0.55)
             if covered(px, py):
                 hidden.append(exp_)
             else:
@@ -321,7 +344,9 @@ def measure(name, nodes, png, pic, base):
     if resid > PROFILE_LIMIT:
         bad.append(f'профиль поперёк полосы расходится с формулой: остаток {resid * 100:.1f} % вершины')
     out = {'stations': len(rows), 'maxOffsetDeg': worst['offsetDeg'], 'k': round(k, 4),
-           'profileResidual': round(resid, 4)}
+           'profileResidual': round(resid, 4),
+           # Подъём яркости (зелёный канал, из 255) над фоном в колонке поперёк полосы: самая слабая станция.
+           'lift': round(min(max(v for _, v, _ in smp) for smp in fits), 1)}
     # Ядро: центр самой яркой части рядом с проекцией ядра.
     if pic['core'] and inside(*pic['core']) and pic['coreAlt'] > 12:
         cx, cy = pic['core']
@@ -360,6 +385,131 @@ def empty(png, nodes, base):
     return mx
 
 
+def lum(c):
+    def ch(v):
+        v /= 255
+        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2])
+
+
+def ratio(a, b):
+    hi, lo = max(a, b), min(a, b)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def contrast_station(fr_band, fr_base, m, f, x, y, nx, ny, inside, covered):
+    """Наибольший контраст WCAG (L1 + 0,05) / (L2 + 0,05) между кадром с полосой и тем же кадром без неё в колонке
+    поперёк полосы (±1,6σ). Яркость точки — по её пикселю, фон — пиксель той же точки в кадре без полосы."""
+    l, _ = galactic(m, ray(m, x, y))
+    T = 1.6 * half_width(l) / math.sqrt(2 * math.log(2)) * math.pi / 180 * f
+    best, n, t = 0.0, 0, -T
+    while t <= T:
+        px, py = x + nx * t, y + ny * t
+        t += 1.0 / fr_band.s
+        if not inside(px, py):
+            return None       # колонка вылезла за окно: край полосы не виден, станция не меряется
+        if covered(px, py):
+            continue
+        i, j = int(px * fr_band.s), int(py * fr_band.s)
+        if i < 0 or j < 0 or i >= fr_band.img.width or j >= fr_band.img.height:
+            continue
+        best = max(best, ratio(lum(fr_band.px[i, j]), lum(fr_base.px[i, j])))
+        n += 1
+    return best if n > 20 else None
+
+
+def contrast_main(sim):
+    """Шаг 29.8в.17б: контраст полосы против фона на четырёх подложках (`-LPSunARBackdrop`): белое небо, голубое небо,
+    асфальт, ночное небо. Две сцены: ночь на юге (вся картина: гладкая часть, зерно, пыль, контур) и день с
+    солнцем +20° (одна планировочная часть). Цель ≥ 1,5 : 1 в станции у ядра и в средней станции вдоль полосы."""
+    scenes = [('night_sydney', ('sydney', (-33.87, 151.21, 'Australia/Sydney'), '2026-06-15T12:00:00Z', (5, 0), -15)),
+              ('day_sun20', ('sochi', SOCHI, '2026-08-15T14:27:00Z', 'best', 0))]
+    rows, fails = [], []
+    for backdrop in (arg('--backdrops', 'white,sky,asphalt,night').split(',')):
+        for label, (nm, place, moment, aim, roll) in scenes:
+            extra = {'backdrop': backdrop}
+            nodes, png, _ = launch(sim, f'contrast_{backdrop}_{label}', place, moment, aim, roll, 'camera,milkyWay', None, extra)
+            _, base, _ = launch(sim, f'contrast_{backdrop}_{label}', place, moment, aim, roll, 'camera,milkyWay', None, extra, mw=False)
+            pic = parse(nodes)
+            m, f = pic['m'], pic['focal']
+            x0, y0, x1, y1 = zone(nodes)
+            inside = lambda x, y: x0 <= x <= x1 and y0 <= y <= y1
+            covered = cover(nodes)
+            fb, fa = Frame(png, screen(nodes)[0]), Frame(base, screen(nodes)[0])
+            vals, core_val, detail = [], None, []
+            line = pic['line']
+            for (ax, ay), (bx, by) in zip(line, line[1:]):
+                seg = math.hypot(bx - ax, by - ay)
+                if seg < 1e-6 or seg > 2000:
+                    continue
+                for k in range(max(1, int(seg / 30))):
+                    t = k / max(1, int(seg / 30))
+                    x, y = ax + (bx - ax) * t, ay + (by - ay) * t
+                    if not inside(x, y):
+                        continue
+                    alt = math.degrees(math.asin(ray(m, x, y)[2]))
+                    if alt < 8.5:
+                        continue
+                    c = contrast_station(fb, fa, m, f, x, y, -(by - ay) / seg, (bx - ax) / seg, inside, covered)
+                    if c is None:
+                        continue
+                    vals.append(c)
+                    detail.append((round(x), round(y), round(alt, 1), round(c, 2)))
+                    if pic['core'] and math.hypot(x - pic['core'][0], y - pic['core'][1]) < 40:
+                        core_val = max(core_val or 0, c)
+            if not vals:
+                fails.append(f'{backdrop} {label}: нет станций')
+                continue
+            vals.sort()
+            row = {'backdrop': backdrop, 'scene': label, 'stations': len(vals), 'min': round(vals[0], 2),
+                   'median': round(vals[len(vals) // 2], 2), 'core': round(core_val, 2) if core_val else None}
+            rows.append(row)
+            print(json.dumps(row, ensure_ascii=False))
+            if '--detail' in ARGS:
+                print('   станции (x, y, высота°, контраст):', detail)
+            if row['median'] < CONTRAST_GOAL:
+                fails.append(f"{backdrop} {label}: медиана {row['median']} < {CONTRAST_GOAL}")
+            if core_val is not None and core_val < CONTRAST_GOAL:
+                fails.append(f"{backdrop} {label}: у ядра {row['core']} < {CONTRAST_GOAL}")
+    json.dump(rows, open(os.path.join(OUT, 'contrast.json'), 'w'), ensure_ascii=False, indent=1)
+    if fails:
+        print('НАРУШЕНИЯ:\n' + '\n'.join(fails))
+        sys.exit(1)
+
+
+CONTRAST_GOAL = float(arg('--goal', '1.5'))
+
+# Список «Слоёв» под разные места, даты и языки: строки Млечного Пути словами (кадры для глаза и узел `ar.layer.mw`).
+LISTS = [
+    ('list_tomsk_ru', (56.4977, 84.9744, 'Asia/Tomsk'), '2026-08-30T18:00:00Z', 'ru', 'ядро над горизонтом'),
+    ('list_tomsk_en', (56.4977, 84.9744, 'Asia/Tomsk'), '2026-08-30T18:00:00Z', 'en', 'core above the horizon'),
+    ('list_sydney_en', (-33.87, 151.21, 'Australia/Sydney'), '2026-06-15T12:00:00Z', 'en', 'core above the horizon'),
+    ('list_sydney_ru', (-33.87, 151.21, 'Australia/Sydney'), '2026-06-15T12:00:00Z', 'ru', 'ядро над горизонтом'),
+    ('list_lat70_ru', (70.0, 25.0, 'Europe/Oslo'), '2026-06-21T22:00:00Z', 'ru', 'ядро не восходит на этой широте'),
+    ('list_lat70_en', (70.0, 25.0, 'Europe/Oslo'), '2026-06-21T22:00:00Z', 'en', 'never rises at this latitude'),
+    ('list_south70_ru', (-70.0, -68.0, 'America/Argentina/Ushuaia'), '2026-06-21T03:00:00Z', 'ru', 'ядро не заходит'),
+    ('list_south70_es', (-70.0, -68.0, 'America/Argentina/Ushuaia'), '2026-06-21T03:00:00Z', 'es', 'no se pone'),
+    ('list_day_en', SOCHI, '2026-08-15T14:27:00Z', 'en', 'not visible by day'),
+    ('list_moon_ru', (56.4977, 84.9744, 'Asia/Tomsk'), '2026-10-27T17:00:00Z', 'ru', ''),
+]
+
+
+def lists_main(sim):
+    rows, fails = [], []
+    for name, place, moment, lang, need in LISTS:
+        nodes, png, _ = launch(sim, name, place, moment, (0, 0), 0, None, None, {'layersOpen': True, 'lang': lang})
+        t = nodes.get('ar.layer.mw', {}).get('text', '')
+        row = {'list': name, 'png': png, 'text': t}
+        print(json.dumps(row, ensure_ascii=False))
+        rows.append(row)
+        if need and need not in t:
+            fails.append(f'{name}: нет «{need}» в «{t}»')
+    json.dump(rows, open(os.path.join(OUT, 'lists.json'), 'w'), ensure_ascii=False, indent=1)
+    if fails:
+        print('НАРУШЕНИЯ:\n' + '\n'.join(fails))
+        sys.exit(1)
+
+
 def main():
     sim = udid()
     subprocess.run(['xcrun', 'simctl', 'boot', sim], capture_output=True)
@@ -368,6 +518,10 @@ def main():
         sh('xcrun', 'simctl', 'install', sim, app)
     sh('xcrun', 'simctl', 'ui', sim, 'appearance', 'dark')
     os.makedirs(OUT, exist_ok=True)
+    if '--contrast' in ARGS:
+        return contrast_main(sim)
+    if '--lists' in ARGS:
+        return lists_main(sim)
     only = arg('--only', '').split(',') if arg('--only') else None
     rows, fails = [], []
     for sc in MOMENTS + EXTRA:
@@ -381,21 +535,16 @@ def main():
         row = {'scenario': name, 'pose': [round(pose[0], 1), round(pose[1], 1), roll], 'vis': pic['vis'],
                'hidden': pic['hidden'], 'coreAlt': pic['coreAlt']}
         bad = []
-        if extra.get('empty'):
-            mx = empty(png, nodes, base)
-            row['maxPixel'] = mx
-            if pic['vis'] != 0:
-                bad.append(f"днём видимость {pic['vis']}, не 0")
-            if mx > 2:
-                bad.append(f'днём слой не пуст: ярчайшая точка {mx}/255')
-        elif not pic['m'] or not pic['vis']:
+        if not pic['m']:
             bad.append(f"нет картины: vis={pic['vis']} hidden={pic['hidden']}")
         else:
             b2, out = measure(name, nodes, png, pic, base)
             bad += b2
             row.update(out)
             if abs(out.get('k', 0) - 1) > 0.05:
-                bad.append(f"яркость кадра не та, что у формулы с видимостью {pic['vis']}: k = {out.get('k')}")
+                bad.append(f"яркость полосы зависит от видимости {pic['vis']}: k = {out.get('k')} (ждём 1)")
+            if out.get('lift') is not None and out['lift'] < 12:
+                bad.append(f"полоса не выше фона: подъём {out['lift']}/255 (порог 12)")
         row['bad'] = bad
         rows.append(row)
         fails += [f'{name}: {b}' for b in bad]
@@ -404,7 +553,8 @@ def main():
         for name, place, moment, extra in [('frame_night', SOCHI, '2026-08-15T19:30:00Z', {}),
                                            ('frame_city', SOCHI, '2026-08-15T19:30:00Z', {'glow': 12}),
                                            ('frame_twilight', SOCHI, '2026-08-15T17:35:00Z', {}),
-                                           ('frame_day', SOCHI, '2026-08-15T12:00:00Z', {'layersOpen': True}),
+                                           ('frame_day', SOCHI, '2026-08-15T14:27:00Z', {'layersOpen': True}),
+                                           ('frame_day_closed', SOCHI, '2026-08-15T14:27:00Z', {}),
                                            ('frame_night_list', SOCHI, '2026-08-15T19:30:00Z', {'layersOpen': True})]:
             nodes, png, _ = launch(sim, name, place, moment, (0, 0), 0, None, None, extra)
             pic = parse(nodes)
@@ -412,10 +562,12 @@ def main():
                    'layerRow': nodes.get('ar.layer.mw', {}).get('text')}
             if extra.get('layersOpen'):
                 t = row['layerRow'] or ''
-                if 'рисуется по формуле, условно' not in t:
-                    fails.append(f'{name}: в строке слоя нет «рисуется по формуле, условно»: {t}')
-                if (pic['vis'] == 0) != ('сейчас не видно' in t):
-                    fails.append(f"{name}: строка слоя «{t}» при видимости {pic['vis']}")
+                for need in ('ядро над горизонтом', 'видимость глазом' if name != 'frame_day' else 'днём не видно',
+                             'окно съёмки', 'рисуется по формуле, условно'):
+                    if need not in t:
+                        fails.append(f'{name}: в строке слоя нет «{need}»: {t}')
+                if 'сейчас не видно' in t:
+                    fails.append(f"{name}: осталась старая строка «сейчас не видно»: {t}")
             print(json.dumps(row, ensure_ascii=False))
             rows.append(row)
     json.dump(rows, open(os.path.join(OUT, 'report.json'), 'w'), ensure_ascii=False, indent=1)

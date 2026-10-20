@@ -17,6 +17,8 @@ struct SunARSkyStack: View {
     let cardinals: [String]
     let coreLabel: String
     let eventText: (SunARScene.HorizonEvent) -> String
+    /// «ядро восходит 22:40 · 195°» / «заходит 04:10 · 262°» — подписи траектории ядра (29.8в.17б).
+    var coreEventText: (NightSkyARScene.CoreTrack.Event) -> String = { _ in "" }
     /// Событие, совпавшее с выбранным моментом: его подпись у горизонта не ставится, время написано на метке.
     var mergedEvent: SunARScene.HorizonEvent.Kind? = nil
     /// Подпись метки выбранного момента (её плашку рисует `SunARMarkLabels`): раскладка оставляет ей место.
@@ -83,12 +85,36 @@ struct SunARSkyStack: View {
         if let text = pickedText, let plate = SunARLabelLayout.pickedPill(text: text, scene: scene) { taken.append(plate) }
         taken += marks.map { CGRect(x: $0.center.x - $0.radius, y: $0.center.y - $0.radius,
                                     width: $0.diameter, height: $0.diameter).insetBy(dx: -2, dy: -2) }
-        if let c = night?.core, night?.milkyWayOn == true {
-            // Подпись ядра: 11 pt по числу знаков, плашка 7 · 2, лежит на 30 pt ниже ядра (`SunARMilkyWayLayer`).
-            let w = CGFloat(coreLabel.count) * 6.5 + 14
-            taken.append(CGRect(x: c.x - w / 2, y: c.y + 30 - 10, width: w, height: 20))
+        if let r = coreNameRect { taken.append(r) }
+        // Траектория ядра (29.8в.17б): плашки её подписей и значки точек — звёзды и планеты обходят и их.
+        taken += coreLabels.map(\.pill)
+        if let track = night?.coreTrack, night?.milkyWayOn == true, shown(.arc) {
+            taken += SunARCoreLabels.dots(track: track, scene: scene, screen: CGRect(origin: .zero, size: size))
         }
         return taken + pointerRects
+    }
+
+    /// Подпись ядра: 11 pt по числу знаков, плашка 7 · 2, лежит на 30 pt ниже ядра (`SunARMilkyWayLayer`).
+    var coreNameRect: CGRect? {
+        guard let c = night?.core, night?.milkyWayOn == true else { return nil }
+        let w = CGFloat(coreLabel.count) * 6.5 + 14
+        return CGRect(x: c.x - w / 2, y: c.y + 30 - 10, width: w, height: 20)
+    }
+
+    /// Подписи траектории ядра выбранной даты (29.8в.17б): ставятся после подписей солнца и обходят их, плашку выбранного
+    /// момента, диски меток, подпись «ядро» и стрелки за краем. Пусто, когда слой «Млечный Путь» или дуги выключены.
+    var coreLabels: [SunARLabelLayout.Placed] {
+        guard shown(.arc), night?.milkyWayOn == true, let track = night?.coreTrack else { return [] }
+        let screen = CGRect(origin: .zero, size: size)
+        let sunLabels = SunARLabelLayout.make(scene: scene, cardinals: cardinals, eventText: eventText, clock: clock,
+                                              bounds: screen.insetBy(dx: -40, dy: -40), merged: mergedEvent,
+                                              pickedText: pickedText)
+        var avoid = marks.map { CGRect(x: $0.center.x - $0.radius, y: $0.center.y - $0.radius,
+                                       width: $0.diameter, height: $0.diameter).insetBy(dx: -2, dy: -2) }
+        if let text = pickedText, let plate = SunARLabelLayout.pickedPill(text: text, scene: scene) { avoid.append(plate) }
+        if let r = coreNameRect { avoid.append(r) }
+        return SunARCoreLabels.place(track: track, scene: scene, sunLabels: sunLabels, avoid: avoid + pointerRects,
+                                     clock: clock, eventText: coreEventText, screen: screen)
     }
 
     /// Подписи слоя звёзд и дневная плашка. Днём подписывать нечего — звёзд нет, остаётся плашка.
@@ -140,7 +166,8 @@ struct SunARSkyStack: View {
                                                            planets.dots.map(\.planet.rawValue).joined(separator: ",")))
             }
             if shown(.arc) {
-                SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
+                SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs,
+                             coreTrack: night?.milkyWayOn == true ? night?.coreTrack : nil, coreLabels: coreLabels, clock: clock,
                              cardinals: cardinals, eventText: eventText, merged: mergedEvent, pickedText: pickedText, holes: holes, screen: size)
                     .frame(width: size.width, height: size.height)
                     .allowsHitTesting(false)
@@ -195,7 +222,8 @@ struct SunARSkyStack: View {
                     .frame(width: side.width, height: side.height)
             }
             if shown(.arc) {
-                SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs, clock: clock,
+                SunAROverlay(scene: scene, moonArc: night?.arc ?? [], moonDiscs: moonDiscs,
+                             coreTrack: night?.milkyWayOn == true ? night?.coreTrack : nil, coreLabels: coreLabels, clock: clock,
                              cardinals: cardinals, eventText: eventText, merged: mergedEvent, pickedText: pickedText, origin: o, screen: size)
                     .frame(width: side.width, height: side.height)
             }
