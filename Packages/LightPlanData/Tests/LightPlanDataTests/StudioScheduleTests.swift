@@ -100,11 +100,20 @@ import UserNotifications
         }
     }
 
+    /// День через трое суток от настоящих часов: `nextTriggerDate()` считает от них,
+    /// поэтому зашитая дата рано или поздно оказывается в прошлом и тест краснеет.
+    static var soonDay: CivilDate {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = .gmt
+        let c = utc.dateComponents([.year, .month, .day], from: Date().addingTimeInterval(3 * 86_400))
+        return CivilDate(year: c.year!, month: c.month!, day: c.day!)
+    }
+
     @Test func triggerStaysAbsoluteWhenThePhoneChangesZone() throws {
         // Момент 12:50 по Москве. Триггер строится с поясом места — и срабатывает в тот же
         // абсолютный момент, в каком бы поясе ни был телефон. Без пояса в полях (контроль)
         // он поплыл бы вместе с часами телефона: так проверка видит порчу.
-        let fire = Self.at(770, offset: 3)
+        let fire = Self.at(770, offset: 3, day: Self.soonDay)
         let saved = NSTimeZone.default
         defer { NSTimeZone.default = saved }
         for id in ["Europe/Moscow", "Asia/Tokyo", "America/New_York"] {
@@ -121,7 +130,7 @@ import UserNotifications
     }
 
     @Test func halfHourZoneKeepsTheMinute() throws {
-        let fire = Self.at(770, offset: 5.5)
+        let fire = Self.at(770, offset: 5.5, day: Self.soonDay)
         let trigger = SystemNotificationCenter.trigger(fire: fire.date, offsetHours: 5.5)
         #expect(trigger.nextTriggerDate() == fire.date)
         #expect(trigger.dateComponents.hour == 12 && trigger.dateComponents.minute == 50)
