@@ -53,17 +53,17 @@ function listProblems(list, g0, head, sp) {
   return why;
 }
 /* Адаптация «Астро» под измеренную высоту (29.8в.27, слова Алексея 21.10). Вход — режим (`astro`), вид, узлы отчёта `n`.
-   «Просто» (спойлера нет): «Тени», «Небо», «Ветер» на месте, шапка и полоса прежние.
-   «Астро». Запас = верх `timebar` − низ `spoiler` − высота `action` − 8: сколько pt остаётся над естественным зазором кнопки съёмки
-   (кнопка прижимается к панели, поэтому её собственный зазор при запасе всегда ровно 8 — запас виден только через «Подробно»).
+   «Просто» (спойлера нет): «Тени», «Небо», «Ветер» на месте, шапка в четыре строки (`header.sub`) и полоса прежние.
+   «Астро». Шапка сжата всегда (нет `header.sub`: «Астро» просит больше сведений). Запас = верх `timebar` − низ `spoiler` − высота `action` − 8:
+   сколько pt остаётся над естественным зазором кнопки съёмки (кнопка прижимается к панели, поэтому её собственный зазор при запасе всегда
+   ровно 8 — запас виден только через «Подробно»).
      — стоят первые из «Теней», «Неба», «Ветра» по порядку на экране (нет «Ветра» без «Неба»);
-     — запас ≥ 0, если есть что жертвовать; иначе красный. Исключение — всё сжато до предела (шапка, полоса 12): тогда это нехватка, не сбой;
+     — запас ≥ 0, если есть что жертвовать; иначе красный. Исключение — полоса поднята до предела (12): тогда это нехватка, не сбой;
      — спрятанная следующая строка (35 pt) не уместилась бы: запас < 35;
-     — шапка сжата (нет `header.sub`) и полоса поднята только когда без этого нет запаса: запас после возврата шапки (14) и полосы ≥ 0 — зря;
-     — полоса поднята только при сжатой шапке, и ровно настолько, насколько нужно (запас ≈ 0, пока не упёрлись в 12);
+     — полоса поднята (сверх 22) только когда строк нет и ровно настолько, насколько нужно (запас ≈ 0, пока не упёрлись в 12);
      — в раскрытом виде `spoiler.wind` есть и с текстом (там «Ветер» живёт всегда). */
 const OPT_ROWS = ['tele.shadow', 'tele.sky', 'tele.wind'], OPT_NAMES = { 'tele.shadow': '«Тени»', 'tele.sky': '«Небо»', 'tele.wind': '«Ветер»' };
-const HEADER_GAIN = 14, MAX_EXTRA_TUCK = 12;
+const MAX_EXTRA_TUCK = 12;
 /* Полоса при подъёме 22 (база): холст вписан в рамку купола как `meet` (масштаб k = min(ширина/390, 1)), горизонт — 196 из 240; на узком экране
    база не 24, а (240 − 240k)/2 + 44k + 2 − 22 (SE: 26,9). Подъём сверх базы = база − измеренная полоса. */
 function stripBase(n) { const d = n.dome, k = Math.min(d.w / 390, d.h / 240); return (d.h - 240 * k) / 2 + 44 * k + 2 - 22; }
@@ -82,16 +82,15 @@ function windProblems(astro, view, n) {
     return why;
   }
   const st = astroState(n);
+  if (!st.compact) why.push('шапка «Астро» не сжата');
   for (let i = 1; i < st.on.length; i++) if (st.on[i] && !st.on[i - 1]) why.push(`${OPT_NAMES[OPT_ROWS[i]]} стоит без ${OPT_NAMES[OPT_ROWS[i - 1]]}`);
   if (st.spare !== null) {
-    const exhausted = st.compact && st.extra >= MAX_EXTRA_TUCK - 0.5;
+    const exhausted = st.extra >= MAX_EXTRA_TUCK - 0.5;
     if (st.spare < -0.5 && !exhausted) why.push(`кнопка съёмки под панелью (запас ${st.spare.toFixed(1)}), а уступки не исчерпаны`);
     if (st.shown < OPT_ROWS.length && st.spare >= 35 - 0.5 && (n['spoiler.wind'] || st.shown > 0 || view === 'closed')) why.push(`спрятанная строка уместилась бы (запас ${st.spare.toFixed(1)} ≥ 35)`);
-    if (st.compact && st.spare >= HEADER_GAIN + st.extra - 0.5) why.push(`шапка сжата зря (запас ${st.spare.toFixed(1)} ≥ ${HEADER_GAIN + st.extra})`);
-    if (st.compact && st.shown > 0) why.push('сжатая шапка при стоящих строках');
+    if (st.extra > 0.5 && st.shown > 0) why.push('полоса поднята при стоящих строках');
     if (st.extra > 0.5 && st.extra < MAX_EXTRA_TUCK - 0.5 && st.spare > 1) why.push(`полоса поднята больше нужного (запас ${st.spare.toFixed(1)})`);
   }
-  if (st.extra > 0.5 && !st.compact) why.push('полоса поднята при несжатой шапке');
   if (view === 'open') {
     const wL = n['spoiler.wind'];
     if (!wL) why.push('нет spoiler.wind в раскрытом списке');
@@ -130,26 +129,27 @@ if (args.selftest) {
     ['зазор 5, порог 8', gapWhy(5, 8), true],
   );
   const wa = { text: '2 м/с · слабый' }, fr = { x: 0, y: 0, w: 1, h: 1 };
-  const base = (spare, extra = {}) => ({ timebar: { y: 700, h: 100 }, spoiler: { y: 700 - 38 - 8 - spare - 43, h: 43 }, action: { y: 0, h: 38 }, 'header.sub': fr, ...extra });
+  const base = (spare, extra = {}) => ({ timebar: { y: 700, h: 100 }, spoiler: { y: 700 - 38 - 8 - spare - 43, h: 43 }, action: { y: 0, h: 38 }, ...extra });
   const rows = (...k) => Object.fromEntries(k.map(x => [x, fr]));
   const dome = (extraTuck) => ({ dome: { x: 0, y: 0, w: 390, h: 240 }, 'next.label': { x: 0, y: 196 + 46 - 22 - extraTuck, w: 1, h: 1 } });
+  const full = { 'header.sub': fr };
   cases.push(
-    ['Просто: три строки на месте', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky', 'tele.wind'), 'header.sub': fr }), false],
-    ['Просто: ветер пропал', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky'), 'header.sub': fr }), true],
+    ['Просто: три строки на месте', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky', 'tele.wind'), ...full }), false],
+    ['Просто: ветер пропал', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky'), ...full }), true],
     ['Просто: шапка сжата', windProblems(false, 'closed', rows('tele.shadow', 'tele.sky', 'tele.wind')), true],
-    ['Астро, запас 11: шапка полная, строк нет', windProblems(true, 'closed', base(11)), false],
+    ['Астро: шапка не сжата', windProblems(true, 'closed', { ...base(11), ...full }), true],
+    ['Астро, запас 11: строк нет', windProblems(true, 'closed', base(11)), false],
     ['Астро, запас 30: строк нет', windProblems(true, 'closed', base(30)), false],
-    ['Астро, запас 21 после двух строк', windProblems(true, 'closed', base(21, rows('tele.shadow', 'tele.sky'))), false],
-    ['Астро, запас 7 после трёх строк', windProblems(true, 'closed', base(7, rows('tele.shadow', 'tele.sky', 'tele.wind'))), false],
+    /* Запас в отчёте уже за вычетом стоящих строк: исходный 79 − 70 = 9; 106 − 105 = 1. */
+    ['Астро, исходный запас 79: «Тени»+«Небо»', windProblems(true, 'closed', base(79 - 70, rows('tele.shadow', 'tele.sky'))), false],
+    ['Астро, исходный запас 106: три строки', windProblems(true, 'closed', base(106 - 105, rows('tele.shadow', 'tele.sky', 'tele.wind'))), false],
     ['Астро, запас 91, строк нет: зря спрятаны', windProblems(true, 'closed', base(91)), true],
     ['Астро: строка выталкивает кнопку', windProblems(true, 'closed', base(-10, rows('tele.shadow'))), true],
     ['Астро: «Ветер» без «Неба»', windProblems(true, 'closed', base(40, rows('tele.shadow', 'tele.wind'))), true],
-    ['Астро: шапка сжата, запас 0,5 (нужно было)', windProblems(true, 'closed', { ...base(0.5), 'header.sub': undefined }), false],
-    ['Астро: шапка сжата зря (запас 20)', windProblems(true, 'closed', { ...base(20), 'header.sub': undefined }), true],
-    ['Астро: сжата + полоса 6, запас 0', windProblems(true, 'closed', { ...base(0), 'header.sub': undefined, ...dome(6) }), false],
-    ['Астро: полоса 6 при полной шапке', windProblems(true, 'closed', { ...base(0), ...dome(6) }), true],
-    ['Астро: полоса 6, запас 10 — больше нужного', windProblems(true, 'closed', { ...base(10), 'header.sub': undefined, ...dome(6) }), true],
-    ['Астро: всё сжато, запас −8 — нехватка, не сбой', windProblems(true, 'closed', { ...base(-8), 'header.sub': undefined, ...dome(12) }), false],
+    ['Астро: полоса 2, запас 0, строк нет', windProblems(true, 'closed', { ...base(0), ...dome(2) }), false],
+    ['Астро: полоса 6, запас 10 — больше нужного', windProblems(true, 'closed', { ...base(10), ...dome(6) }), true],
+    ['Астро: полоса 6 при стоящей строке', windProblems(true, 'closed', { ...base(0, rows('tele.shadow')), ...dome(6) }), true],
+    ['Астро: полоса 12, запас −8 — нехватка, не сбой', windProblems(true, 'closed', { ...base(-8), ...dome(12) }), false],
     ['Астро, раскрытый: есть spoiler.wind', windProblems(true, 'open', base(11, { 'spoiler.wind': wa })), false],
     ['Астро, раскрытый: нет spoiler.wind', windProblems(true, 'open', base(11)), true],
     ['Астро, раскрытый: пустой текст', windProblems(true, 'open', base(11, { 'spoiler.wind': { text: '' } })), true],
