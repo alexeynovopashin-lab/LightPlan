@@ -13,8 +13,6 @@ struct LightSpoilerView: View {
     /// `today.details` — подпись свёрнутого; `today.hide` — раскрытого (в бете подпись меняется в тот же клик, что и список).
     let title: String
     let openTitle: String
-    /// 29.8в.27: низ кнопки в координатах `LightWindPlacement.contentSpace` — по нему экран решает, где стоит «Ветер».
-    var onButtonBottom: (CGFloat) -> Void = { _ in }
     /// Подпись строки «Ветер» (`pro.wind`): её значение получает узел `spoiler.wind` — прибор `make lightfit` проверяет, что
     /// перенесённый из закрытой части «Ветер» лежит в раскрытом списке с тем же текстом.
     var windLabel: String? = nil
@@ -74,7 +72,6 @@ struct LightSpoilerView: View {
                 }
                 .buttonStyle(.plain)
                 .shotNode("spoiler")
-                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(LightWindPlacement.contentSpace)).maxY } action: { onButtonBottom($0) }
                 .padding(.top, 6)
 
                 if mounted {

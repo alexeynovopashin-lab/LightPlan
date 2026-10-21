@@ -11,9 +11,10 @@
               накрывает, у него высота > 0, первый ряд есть, лежит в рамке списка и начинается у её верха
               (`--selftest` — проверка самой проверки: нормальный список и испорченные, без симулятора);
      кнопка стоит на месте: её y в закрытом и раскрытом виде одинаков;
-     «Ветер» (29.8в.27): колонка «ветер» — где строка стоит (`закр.` — в закрытом списке, `Подр.` — перенесена в раскрытый). Красный:
-              в раскрытом виде нет `spoiler.wind`; текст в закрытой части и в списке разный; решение закрытого и раскрытого
-              вида разное (`windProblems`). Решает приложение по измеренной высоте (`LightWindPlacement`), прибор лишь сверяет;
+     «Ветер» (29.8в.27): колонка «ветер» (`закр.` — в закрытом списке, `Подр.` — только в раскрытом). «Астро»: в закрытом списке «Ветера» нет
+              всегда, в раскрытом он есть с тем же текстом; «Просто» (спойлера нет): «Ветер» обязан остаться в закрытой части (`windProblems`);
+     «действие» (29.8в.27): верх узла `timebar` − низ узла `action` («Запланировать съёмку»): сколько pt между кнопкой съёмки и нижней панелью
+              (в «Просто» на Pro Max стоит ровно 8: зазор `safeAreaInset`). Это тоже ИЗМЕРЕНИЕ; `--min-gap` красит и его;
      «воздух» (`tele.air`): низ строки против верха панели — для сведения (строка достижима прокруткой).
    Красный (выход 1) — только структура: нет узла, список вне места, кнопка уехала.
 
@@ -51,16 +52,16 @@ function listProblems(list, g0, head, sp) {
   if (list.y < head - 0.5) why.push('список накрывает шапку');
   return why;
 }
-/* «Ветер» (29.8в.27). Вход — узлы `tele.wind` (закрытая часть) и `spoiler.wind` (строка в раскрытом списке), вид и то, был ли
-   «Ветер» в закрытой части в закрытом виде того же случая (`closedHad`, null — закрытого вида в прогоне нет).
-   Выход — список причин. В раскрытом списке строка должна быть всегда (группа «Погода»), с тем же текстом, что в закрытой части. */
-function windProblems(view, wTele, wList, closedHad) {
+/* «Ветер» (29.8в.27). Вход — режим (`astro`), вид, узлы `tele.wind` (закрытая часть) и `spoiler.wind` (строка в раскрытом списке).
+   Выход — список причин. «Астро»: в закрытой части «Ветра» нет, в раскрытом списке он есть, текст не пуст. «Просто»: «Ветер» на месте. */
+function windProblems(astro, view, wTele, wList) {
   const why = [];
+  if (!astro) { if (!wTele) why.push('«Ветер» пропал из закрытой части в «Просто»'); return why; }
+  if (wTele) why.push('«Ветер» остался в закрытой части в «Астро»');
   if (view === 'open') {
     if (!wList) why.push('нет spoiler.wind в раскрытом списке');
-    else if (wTele && wTele.text !== wList.text) why.push(`текст «Ветра» разный: «${wTele.text}» / «${wList.text}»`);
+    else if (!wList.text) why.push('у spoiler.wind нет текста');
   }
-  if (closedHad !== null && closedHad !== undefined && !!wTele !== closedHad) why.push('«Ветер» в закрытом и раскрытом виде стоит по-разному');
   return why;
 }
 /* Порог зазора: `--min-gap <pt>` красит зазор меньше порога; зазор ≤ 0 (кнопка под панелью) красный, когда порог
@@ -93,14 +94,15 @@ if (args.selftest) {
     ['зазор 0, порога нет', gapWhy(0, null), false],
     ['зазор 5, порог 8', gapWhy(5, 8), true],
   );
-  const wa = { text: '2 м/с · слабый' }, wb = { text: '16 м/с · сильный' };
+  const wa = { text: '2 м/с · слабый' };
   cases.push(
-    ['ветер на месте, в списке тоже', windProblems('open', wa, wa, true), false],
-    ['ветер перенесён, есть в списке', windProblems('open', undefined, wa, false), false],
-    ['ветра нет нигде', windProblems('open', undefined, undefined, false), true],
-    ['текст разный', windProblems('open', wa, wb, true), true],
-    ['закрытый вид: ветер перенесён', windProblems('closed', undefined, undefined, null), false],
-    ['решение разное в двух видах', windProblems('open', undefined, wa, true), true],
+    ['Астро: ветер только в списке', windProblems(true, 'open', undefined, wa), false],
+    ['Астро, закрытый вид: ветра нет', windProblems(true, 'closed', undefined, undefined), false],
+    ['Астро: ветер остался в закрытой части', windProblems(true, 'closed', wa, undefined), true],
+    ['Астро: ветра нет в списке', windProblems(true, 'open', undefined, undefined), true],
+    ['Астро: в списке пустой текст', windProblems(true, 'open', undefined, { text: '' }), true],
+    ['Просто: ветер на месте', windProblems(false, 'closed', wa, undefined), false],
+    ['Просто: ветер пропал', windProblems(false, 'closed', undefined, undefined), true],
   );
   let bad = 0;
   for (const [name, why, wantRed] of cases) {
@@ -206,24 +208,26 @@ function strip(n) {
 let red = 0, under = 0, runs = 0;
 const f1 = v => v.toFixed(1).padStart(7);
 console.log('модель'.padEnd(26), 'тема'.padEnd(6), 'текст'.padEnd(6), 'вид'.padEnd(7), 'окно'.padEnd(10),
-  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель', ' полоса', ' ветер');
+  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель', ' полоса', ' ветер', ' действие');
 for (const model of MODELS) {
   const { udid, created } = device(model);
   run('xcrun', ['simctl', 'install', udid, APP]);
   for (const theme of ['dark', 'light']) for (const c of CASES) {
-    let closedY = null, closedWind = null;
+    let closedY = null;
     for (const view of VIEWS) {
       const j = shoot(udid, theme, c, view, path.join(OUT, model, theme + '-' + c.name + '-' + view)), n = j.nodes;
       const sp = n.spoiler, tb = n.timebar, list = n['spoiler.list'], g0 = n['spoiler.g0'], air = n['tele.air'];
-      const head = Math.max(...['header.note', 'wx.lo', 'wx.hi', 'wx.none'].filter(k => n[k]).map(k => bottomOf(n[k])));
+      const head = Math.max(...['header.date', 'header.note', 'wx.lo', 'wx.hi', 'wx.none'].filter(k => n[k]).map(k => bottomOf(n[k])));
       const win = `${Math.round(j.size[0])}×${Math.round(j.size[1] + j.safe[0] + j.safe[1])}`.padEnd(10);
       runs++;
       if (args.mode === 'simple' && tb && !sp) {
         /* «Просто»: спойлера нет, «Ветер» некуда переносить — он обязан остаться в закрытой части. */
-        const wS = n['tele.wind'];
-        if (!wS) red++;
+        const wS = n['tele.wind'], ws = windProblems(false, view, wS, undefined), act = n.action;
+        const aG = act ? tb.y - bottomOf(act) : null;
+        const sWhy = [...ws, ...(aG !== null ? gapWhy(aG, MIN_GAP).map(w => 'действие: ' + w) : [])];
+        if (sWhy.length) red++;
         console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, '«Просто»: кнопки нет, панель сверху', f1(tb.y).trim(),
-          '· ветер', wS ? 'закр.' : 'ПРОПАЛ ← красный'); continue;
+          '· ветер', wS ? 'закр.' : 'ПРОПАЛ', '· действие', aG !== null ? f1(aG).trim() : '—', sWhy.length ? '← красный: ' + sWhy.join('; ') : ''); continue;
       }
       if (!sp || !tb) { console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, 'нет узла spoiler/timebar'); red++; continue; }
       const gap = tb.y - bottomOf(sp);
@@ -234,14 +238,15 @@ for (const model of MODELS) {
       else if (Math.abs(sp.y - closedY) > 0.5) why.push(`кнопка уехала на ${(sp.y - closedY).toFixed(1)}`);
       if (view === 'open') why.push(...listProblems(list, g0, head, sp));
       const wT = n['tele.wind'], wL = n['spoiler.wind'];
-      why.push(...windProblems(view, wT, wL, view === 'open' ? closedWind : null));
-      if (view === 'closed') closedWind = !!wT;
+      why.push(...windProblems(true, view, wT, wL));
+      const act = n.action, actGap = act ? tb.y - bottomOf(act) : null;
+      if (actGap !== null) { if (actGap <= 0) note.push('съёмка под панелью'); why.push(...gapWhy(actGap, MIN_GAP).map(w => 'действие: ' + w)); }
       if (why.length) red++;
       console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, f1(head).padStart(9),
         (f1(sp.y) + '/' + f1(bottomOf(sp)).trim()).padStart(16), f1(tb.y).padStart(12), f1(gap),
         (list ? f1(list.y) + '/' + f1(bottomOf(list)).trim() : '—').padStart(16), (g0 ? f1(g0.y) : '—').padStart(8),
         (air ? f1(bottomOf(air) - tb.y) : '—').padStart(13), f1(strip(n)).padStart(7),
-        (wT ? 'закр.' : 'Подр.').padStart(7),
+        (wT ? 'закр.' : 'Подр.').padStart(7), (actGap !== null ? f1(actGap) : '—').padStart(9),
         why.length ? ' ← красный: ' + why.join('; ') : note.length ? ' · ' + note.join('; ') : '');
     }
   }

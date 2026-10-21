@@ -21,11 +21,6 @@ public struct LightScreenView: View {
     /// Рамка купола и показаний в ней — светило пальцем (19в).
     @State private var domeSize = CGSize(width: 0, height: DomeView.height)
     @State private var readoutFrame = CGRect.null
-    /// 29.8в.27: «Ветер» живёт в раскрытом списке, а не в закрытом (см. `LightWindPlacement`). Решает измерение, не модель телефона.
-    @State private var windMoved = false
-    @State private var windRowHeight = LightWindPlacement.defaultRowHeight
-    /// Низ кнопки «Подробно» в координатах содержимого прокрутки (не зависит от того, прокручен ли экран).
-    @State private var spoilerBottom: CGFloat = 0
 
     public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {},
                 onPlan: @escaping (CivilDate, Int) -> Void = { _, _ in }) {
@@ -63,7 +58,6 @@ public struct LightScreenView: View {
 
                     LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
                                      openTitle: model.lexiconWord("today.hide"),
-                                     onButtonBottom: { spoilerBottom = $0; refreshWindPlacement() },
                                      windLabel: model.lexiconWord("pro.wind"))
                         .padding(.horizontal, 24)
 
@@ -78,14 +72,9 @@ public struct LightScreenView: View {
                 .tabRise()
             }
             .frame(minHeight: visibleHeight, alignment: .top)
-            .coordinateSpace(.named(LightWindPlacement.contentSpace))
         }
         .scrollBounceBehavior(.basedOnSize)
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0; refreshWindPlacement() }
-        .onChange(of: model.proMode) { _, pro in
-            // В «Просто» спойлера нет — «Ветер» остаётся в закрытой части; в «Астро» решит новое измерение кнопки.
-            if !pro { windMoved = false; spoilerBottom = 0 }
-        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0 }
         .safeAreaInset(edge: .bottom, spacing: 8) {
             TimebarView(model.timebar, showRibbon: model.proMode)
                 .shotNode("timebar")
@@ -114,6 +103,18 @@ public struct LightScreenView: View {
                         .shotNode("header.follow", text: model.placeFollowing ? "on" : "off")
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
                 }
+                if model.proMode {
+                    // 29.8в.27, «Астро»: две строки вместо четырёх (слово Алексея 21.10) — «область» уходит с экрана (данные модели целы),
+                    // дата и «сегодня» стоят в одной строке. Адаптация натива, веб не менялся; в «Просто» шапка прежняя.
+                    (Text(h.dateLabel).tracking(0.6).foregroundStyle(pal.ink4)
+                        + Text(" · ").tracking(0.6).foregroundStyle(pal.ink4)
+                        + Text(h.note).tracking(0.4).foregroundStyle(pal.ink6))
+                        .font(.system(size: 11, weight: .medium)).textCase(.uppercase)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .shotNode("header.date", text: h.dateLabel + " · " + h.note)
+                        .frame(height: 13)
+                        .padding(.top, 3)
+                } else {
                 if !model.locationSub.isEmpty {
                     Text(model.locationSub)
                         .font(.system(size: 11)).tracking(0.1)
@@ -134,6 +135,7 @@ public struct LightScreenView: View {
                     .shotNode("header.note", text: h.note)
                     .frame(height: 13)
                     .padding(.top, 4)
+                }
             }
             .contentShape(Rectangle())
             }
@@ -156,6 +158,23 @@ public struct LightScreenView: View {
                             .foregroundStyle(pal.ink)
                             .shotNode("wx.temp", text: w.temperature)
                     }
+                    if model.proMode {
+                        // «Астро» (29.8в.27): состояние и ↓↑ в одной строке — две строки погоды вместо трёх.
+                        HStack(spacing: 8) {
+                            Text(w.condition)
+                                .font(.system(size: 14))
+                                .foregroundStyle(pal.ink2)
+                                .lineLimit(1)
+                                .shotNode("wx.cond", text: w.condition)
+                            HStack(spacing: 6) {
+                                Text(w.low).shotNode("wx.lo", text: w.low)
+                                Text(w.high).shotNode("wx.hi", text: w.high)
+                            }
+                            .font(.system(size: 13).monospacedDigit())
+                            .foregroundStyle(pal.ink4)
+                        }
+                        .fixedSize()
+                    } else {
                     Text(w.condition)
                         .font(.system(size: 14))
                         .foregroundStyle(pal.ink2)
@@ -166,6 +185,7 @@ public struct LightScreenView: View {
                     }
                     .font(.system(size: 13).monospacedDigit())
                     .foregroundStyle(pal.ink4)
+                    }
                 }
                 .contentShape(Rectangle())
                 }
@@ -219,14 +239,6 @@ public struct LightScreenView: View {
     }
 
     private static let domeSpace = "dome"
-
-    /// 29.8в.27: пересчёт места «Ветра» по свежим измерениям (кнопка, высота строки, высота прокрутки).
-    private func refreshWindPlacement() {
-        guard model.proMode, spoilerBottom > 0, visibleHeight > 0, model.telemetry.wind != nil else { return }
-        let moved = LightWindPlacement.shouldMove(buttonBottom: spoilerBottom, windRowHeight: windRowHeight,
-                                                  windMoved: windMoved, viewport: visibleHeight)
-        if moved != windMoved { windMoved = moved }
-    }
 
     /// 29.8в.26: от горизонта дуги (196 из 240 в `viewBox`) до подписи «до золотого часа» у веба 44 + 2 pt — пустая
     /// полоса, из-за которой на 15 Pro Max «Подробно» уходило под нижнюю панель (замер: −16,5 pt). Рамка купола
@@ -342,9 +354,8 @@ public struct LightScreenView: View {
             plainRow(labelKey: "tele.shadow", value: t.shadow)
             // Небо и ветер — из прогноза: нет прогноза — нет строк (надпись уже в «Закате» и в шапке).
             if let sky = t.sky { rowWithIcon(labelKey: "tele.sky", iconName: sky.iconName, value: sky.text) }
-            if let wind = t.wind, !windMoved {
+            if let wind = t.wind, LightWindPlacement.inCollapsedList(astro: model.proMode) {
                 plainRow(labelKey: "tele.wind", value: wind)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windRowHeight = $0; refreshWindPlacement() }
             }
             if let air = t.air {
                 plainRow(labelKey: "tele.air", value: air)
@@ -494,30 +505,11 @@ private struct DomeDragModifier: ViewModifier {
     }
 }
 
-/// 29.8в.27 — адаптация натива, веба тут нет: в вебе «Ветер» всегда в закрытой части (`#tWind`), а длинный экран
-/// прокручивается. На iPhone, где закрытый список ставит «Подробно» под нижнюю панель (зазор кнопка/панель ≤ 0 по
-/// `make lightfit`), строка «Ветер» показывается только внутри раскрытого списка (группа «Погода», `pro.wind`, тот же
-/// текст `windLine`). Решает измеренная высота, а не модель телефона; на экранах, где кнопка видна (15 Pro Max, 17 Pro Max),
-/// ничего не меняется. В «Просто» спойлера нет — там строка остаётся на месте.
+/// 29.8в.27 — адаптация натива, веба тут нет. В вебе «Ветер» всегда в закрытой части (`#tWind`), а длинный экран
+/// прокручивается. Слово Алексея 21.10: в «Астро» «Ветер» живёт только в раскрытом списке (группа «Погода», `pro.wind`,
+/// тот же текст `windLine`), чтобы «Подробно» и «Запланировать съёмку» поднялись над нижней панелью. В «Просто» спойлера
+/// нет — там строка остаётся на месте. Первая версия шага решала по измеренному зазору (коммит cb97d85); от неё отказались:
+/// «Астро» просит больше сведений, и строка уходит всегда, а не только на тесных экранах.
 enum LightWindPlacement {
-    static let contentSpace = "lightContent"
-    /// Строка телеметрии 35 pt (`TelemetryRow`), пока настоящая высота не измерена.
-    static let defaultRowHeight: CGFloat = 35
-    /// `safeAreaInset(edge: .bottom, spacing: 8)` под прокруткой: кадр прокрутки (`visibleHeight`) кончается на 8 pt выше панели.
-    /// Сверено с `make lightfit`: 15 Pro Max `visibleHeight 647`, низ кнопки 649,3 → 647 + 8 − 649,3 = +5,7 при измеренных +5,5;
-    /// 15: 567 + 8 − 649,3 = −74,3 при измеренных −74,5.
-    static let panelSpacing: CGFloat = 8
-    /// Зазор кнопка → верх панели, при котором кнопка ещё «под панелью» (как в `light_fit.js`: `gap <= 0`).
-    static let minGap: CGFloat = 0
-
-    /// Зазор кнопка/панель, каким он был бы при «Ветре» в закрытом списке.
-    static func gapWithWind(buttonBottom: CGFloat, windRowHeight: CGFloat, windMoved: Bool, viewport: CGFloat) -> CGFloat {
-        let bottom = windMoved ? buttonBottom + windRowHeight : buttonBottom
-        return viewport + panelSpacing - bottom
-    }
-
-    /// Уводить ли «Ветер» в раскрытый список. Считается от положения «с ветром», поэтому после переноса решение не мигает.
-    static func shouldMove(buttonBottom: CGFloat, windRowHeight: CGFloat, windMoved: Bool, viewport: CGFloat) -> Bool {
-        gapWithWind(buttonBottom: buttonBottom, windRowHeight: windRowHeight, windMoved: windMoved, viewport: viewport) <= minGap
-    }
+    static func inCollapsedList(astro: Bool) -> Bool { !astro }
 }
