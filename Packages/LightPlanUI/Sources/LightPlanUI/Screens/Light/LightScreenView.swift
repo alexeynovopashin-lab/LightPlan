@@ -12,6 +12,8 @@ public struct LightScreenView: View {
     @Bindable var model: LightScreenModel
     /// Кнопка места в шапке (`#todayLoc`): открывает лист «Где снимаем».
     var onPlace: () -> Void
+    /// Кнопка «Запланировать съёмку»: день и минута начала из `model.planShoot`.
+    var onPlan: (CivilDate, Int) -> Void
     @Environment(\.colorScheme) private var colorScheme
     /// Видимая высота прокрутки — чтобы кнопка съёмки легла к низу, как
     /// `.screen-action { margin-top: auto }` веба.
@@ -20,9 +22,11 @@ public struct LightScreenView: View {
     @State private var domeSize = CGSize(width: 0, height: DomeView.height)
     @State private var readoutFrame = CGRect.null
 
-    public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {}) {
+    public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {},
+                onPlan: @escaping (CivilDate, Int) -> Void = { _, _ in }) {
         self.model = model
         self.onPlace = onPlace
+        self.onPlan = onPlan
     }
 
     /// Вёрстка — числа `#s-today` беты (вычисленные стили, снимок пары 19б):
@@ -341,9 +345,10 @@ public struct LightScreenView: View {
 
     /// `.action`: волосок `--hair-4` сверху, поля 13 · 0 · 2; знак 22
     /// латунью, подпись 16/600, справа окно 13 (`--ink-4`, цифры одной
-    /// ширины). Кнопка ещё без перехода — планировщика нет (инвариант 13).
+    /// ширины). Тап — форма новой съёмки на выбранный день с началом по свету
+    /// (`planShoot`, веб `#planToday`).
     private func actionButton(subtitle: String, _ pal: Palette) -> some View {
-        Button(action: {}) {
+        Button(action: { let r = model.planShoot; onPlan(r.day, r.start) }) {
             HStack(spacing: 13) {
                 PlanShootGlyph()
                     .stroke(pal.brass, style: StrokeStyle(lineWidth: 1.6 * 22 / 24, lineCap: .round, lineJoin: .round))

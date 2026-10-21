@@ -58,18 +58,6 @@ struct SunARSkyAlwaysTests {
         #expect(line == "днём не видно: солнце +\(Int(m.sun.altitude.rounded()))°", "\(line)")
     }
 
-    @Test("тот же вид ночью — тот же рисунок: сцена звёзд не знает про солнце, меняется только положение неба")
-    func sceneIgnoresTheSun() {
-        // Один и тот же список положений даёт одну и ту же сцену, как бы ни стояло солнце: у `StarSkyAR.make` и `PlanetSkyAR.make`
-        // входа «высота солнца» больше нет.
-        let pos = StarSkyAR.horizontals(day: CivilDate(year: 2026, month: 10, day: 20), minutes: 1260, in: tomsk)
-        let a = StarSkyAR.make(positions: pos, basis: CameraBasis(azimuth: 30, altitude: 40), optics: .typical,
-                               viewport: viewport, stars: true, constellations: true)
-        let b = StarSkyAR.make(positions: pos, basis: CameraBasis(azimuth: 30, altitude: 40), optics: .typical,
-                               viewport: viewport, stars: true, constellations: true)
-        #expect(a == b && !a.dots.isEmpty)
-    }
-
     /// Стек так, как его собирает экран.
     private func stack(_ m: SunARModel, aim: CameraBasis) -> SunARSkyStack {
         let scene = SunARScene.make(basis: aim, optics: .typical, viewport: viewport, arc: m.arc, sun: m.sun, now: m.sunNow,

@@ -51,9 +51,15 @@ struct WarnGlowRestMeterTests {
     }
 
     @Test func glowRecalculatesTenTimesASecondNotEveryFrame() async throws {
-        let moving = await measure(glow: true, seconds: 3)
+        // Прогон под нагрузкой (параллельные сборки, два полных набора подряд) голодает: дисплейная ссылка отдаёт
+        // единицы кадров вместо 180, и счёт «пересчётов на кадр» теряет смысл (29.8в.22: красный при hits=1, 34 с
+        // вместо 6; в покое три прогона — frames=180 hits=30, 7,3 с). Замер, в котором кадров меньше двух третей
+        // нормы, не считается: повторяем до четырёх раз и судим по последнему.
+        var moving = await measure(glow: true, seconds: 3)
+        var attempts = 1
+        while moving.frames < 120, attempts < 4 { moving = await measure(glow: true, seconds: 3); attempts += 1 }
         let still = await measure(glow: false, seconds: 3)
-        let line = "moving frames=\(moving.frames) hits=\(moving.hits) cpu=\(String(format: "%.1f", moving.cpuMs))ms"
+        let line = "attempts=\(attempts) moving frames=\(moving.frames) hits=\(moving.hits) cpu=\(String(format: "%.1f", moving.cpuMs))ms"
             + " per-frame=\(String(format: "%.2f", moving.cpuMs / Double(max(1, moving.frames))))ms"
             + " | static frames=\(still.frames) cpu=\(String(format: "%.1f", still.cpuMs))ms"
             + " per-frame=\(String(format: "%.2f", still.cpuMs / Double(max(1, still.frames))))ms\n"
