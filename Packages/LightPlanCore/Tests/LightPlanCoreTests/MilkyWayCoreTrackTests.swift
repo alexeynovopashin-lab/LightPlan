@@ -97,13 +97,13 @@ struct MilkyWayCoreTrackTests {
 
     // MARK: - Дуга
 
-    @Test("дуга ядра: 145 точек через 10 минут, точка в полдень — то же, что corePosition")
+    @Test("дуга ядра: 145 точек через 10 минут, точка в полдень — то же, что corePosition (звёздное время IAU)")
     func arcIsCorePosition() {
         let place = Place(latitude: 56.4977, longitude: 84.9744, zone: ZoneID("Asia/Tomsk")!)
         let day = CivilDate(year: 2026, month: 8, day: 30)
         let arc = MilkyWayCoreTrack.arc(day: day, in: place)
         #expect(arc.count == 145 && arc.first?.minutes == 0 && arc.last?.minutes == 1440)
-        let p = MilkyWay.corePosition(date: day, minutes: 720, place: place)
+        let p = MilkyWay.corePosition(date: day, minutes: 720, place: place, time: .iau)
         #expect(arc[72].azimuth == p.azimuth && arc[72].altitude == p.altitude)
     }
 

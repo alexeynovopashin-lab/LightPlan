@@ -148,19 +148,12 @@ public enum PlanetEphemeris {
         }
     }
 
-    /// Азимут и высота планеты для места: та же сферическая формула, что у `Sky.horizontal`, но со звёздным временем по
-    /// IAU (GMST = 280,46061837° + 360,98564736629° · d). Причина — `Sky.horizontal` держит константу веба 280,16 и
-    /// скорость 360,9856235: звёздное время у неё отстаёт на 0,30° в J2000 и ещё на 2,4·10⁻⁵ градуса в сутки (к 2026
-    /// году 0,53°, к 2030-му 0,57° — измерено против Horizons). Для звёзд J2000 без прецессии этот недолёт частично
-    /// гасит ошибку прецессии (≈ 0,34°), для планет, чьи координаты уже на равноденствие даты, — нет, и допуск шага
-    /// 0,5° он бы выбрал один. Звёздные слои не тронуты.
+    /// Азимут и высота планеты для места: звёздное время IAU через `SkyFrame`, как у всех слоёв AR (шаг 29.8в.21).
+    /// `Sky.horizontal` держит константу веба 280,16 и скорость 360,9856235: звёздное время у неё отстаёт на 0,30° в
+    /// J2000 и ещё на 2,4·10⁻⁵ градуса в сутки (к 2026 году 0,53°, к 2030-му 0,57° — измерено против Horizons).
+    /// Координаты планет уже на равноденствие даты, поэтому прецессия не нужна.
     public static func horizontal(_ p: PlanetPosition, days: Double, latitude: Double, longitude: Double) -> HorizontalPoint {
-        let phi = Sky.rad(latitude)
-        let h = Sky.rad(280.46061837 + 360.98564736629 * days + longitude) - p.point.ra
-        let dec = p.point.dec
-        let alt = asin(sin(phi) * sin(dec) + cos(phi) * cos(dec) * cos(h))
-        let az = atan2(sin(h), cos(h) * sin(phi) - tan(dec) * cos(phi))
-        return HorizontalPoint(altitude: Sky.deg(alt), azimuth: (Sky.deg(az) + 180 + 360).truncatingRemainder(dividingBy: 360))
+        SkyFrame(days: days, latitude: latitude, longitude: longitude).horizontal(ofDate: p.point)
     }
 
     /// Планета на момент `days` (дни от J2000).

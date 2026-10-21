@@ -180,7 +180,7 @@ struct SunARMilkyWayGaiaTests {
         let scale: CGFloat = 2
         // Сидней, 15.06, 22:00: ядро почти в зените — дымка у горизонта ни при чём.
         let minutes = 1320.0
-        let core = MilkyWay.corePosition(date: jun15, minutes: minutes, place: sydney)
+        let core = MilkyWay.corePosition(date: jun15, minutes: minutes, place: sydney, time: .iau)
         let coreSeen = SkyVector(azimuth: core.azimuth, altitude: SunTrack.apparent(altitude: core.altitude))
         let basis = CameraBasis(azimuth: core.azimuth, altitude: SunTrack.apparent(altitude: core.altitude))
         let lk = look(day: jun15, minutes: minutes, place: sydney, basis: basis)
@@ -332,7 +332,7 @@ struct SunARMilkyWayGaiaTests {
     func darkSiteFullBrightness() throws {
         let gpu = try gpu()
         let minutes = 1320.0
-        let core = MilkyWay.corePosition(date: jun15, minutes: minutes, place: sydney)
+        let core = MilkyWay.corePosition(date: jun15, minutes: minutes, place: sydney, time: .iau)
         let basis = CameraBasis(azimuth: core.azimuth, altitude: core.altitude)
         let size = CGSize(width: phone.width, height: phone.height)
         func coreSum(visibility: Double, dark: Bool) throws -> Double {
@@ -416,7 +416,7 @@ struct SunARMilkyWayGaiaTests {
                 let n = exact(lk, size, end: range.end)
                 worst = max(worst, n); worstEstimate = max(worstEstimate, range.visible)
             }
-            let core = MilkyWay.corePosition(date: jun15, minutes: 1320, place: sydney)
+            let core = MilkyWay.corePosition(date: jun15, minutes: 1320, place: sydney, time: .iau)
             let lk = look(day: jun15, minutes: 1320, place: sydney, basis: CameraBasis(azimuth: core.azimuth, altitude: core.altitude),
                           viewport: vp)
             let size = CGSize(width: vp.width, height: vp.height)

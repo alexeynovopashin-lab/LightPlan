@@ -11,7 +11,7 @@ import Foundation
 /// Значение-тип без глобалов. Пояс — явный параметр, как у `SolarDay`.
 public struct MoonSample: Sendable, Equatable {
 
-    /// Высота над горизонтом, градусы. Ноль — математический горизонт: край
+    /// Высота над горизонтом, градусы (при `time: .iau` — топоцентрическая, с параллаксом). Ноль — математический горизонт: край
     /// диска (`MOON_H0` веба) поднимается только в поиске восхода.
     public let altitude: Degrees
     /// Азимут от севера по часовой, градусы, `0 ..< 360`.
@@ -28,23 +28,34 @@ public struct MoonSample: Sendable, Equatable {
     /// Ядро сверки: смещение пояса задано явно (дробное: Катманду 5.75).
     public init(
         date: CivilDate, minutes: Minutes,
-        latitude: Double, longitude: Double, utcOffsetHours: Double
+        latitude: Double, longitude: Double, utcOffsetHours: Double, time: SkyTime = .web
     ) {
         let d = Sky.days(date: date, minutes: minutes, utcOffsetHours: utcOffsetHours)
-        let m = Self.equatorial(days: d)
-        let p = Sky.horizontal(ra: m.ra, dec: m.dec, days: d, latitude: latitude, longitude: longitude)
+        let p: HorizontalPoint
+        switch time {
+        case .web:
+            let m = Self.equatorial(days: d)
+            p = Sky.horizontal(ra: m.ra, dec: m.dec, days: d, latitude: latitude, longitude: longitude)
+            self.distance = m.dist
+        case .iau:
+            // Слой AR: теория Меёса гл. 47, звёздное время IAU и суточный параллакс (гл. 40): луна стоит там, где её видно
+            // из места съёмки, а не из центра Земли (разница 0,8–0,98° у горизонта — два лунных диаметра).
+            let m = SunMoonTheory.moon(days: d)
+            p = SkyFrame(days: d, latitude: latitude, longitude: longitude)
+                .horizontal(ofDate: m.point, distanceKm: m.distance)
+            self.distance = m.distance
+        }
         self.altitude = p.altitude
         self.azimuth = p.azimuth
-        self.distance = m.dist
         self.days = d
     }
 
     /// Смещение зоны места берётся на эту дату, как у `SolarDay(date:place:)`.
-    public init(date: CivilDate, minutes: Minutes, place: Place) {
+    public init(date: CivilDate, minutes: Minutes, place: Place, time: SkyTime = .web) {
         self.init(
             date: date, minutes: minutes,
             latitude: place.latitude, longitude: place.longitude,
-            utcOffsetHours: place.zone.utcOffsetHours(on: date)
+            utcOffsetHours: place.zone.utcOffsetHours(on: date), time: time
         )
     }
 

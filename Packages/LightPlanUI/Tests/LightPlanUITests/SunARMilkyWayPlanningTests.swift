@@ -54,8 +54,7 @@ struct SunARMilkyWayPlanningTests {
                        moonFraction: Double = 0, glow: Double? = 0,
                        optics: CameraOptics = CameraOptics(longSideFOV: 10, aspect: 4.0 / 3.0)) -> NightSkyARScene {
         let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: sochi.zone.utcOffsetHours(on: day))
-        let aim = Sky.horizontal(MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: 0), days: d,
-                                 latitude: sochi.latitude, longitude: sochi.longitude)
+        let aim = SkyFrame(days: d, latitude: sochi.latitude, longitude: sochi.longitude).horizontal(j2000: MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: 0))
         let input = NightSkyARScene.MilkyWayInput(
             band: [], core: MilkyWayAR.core(day: day, minutes: minutes, in: sochi), sunAltitude: sun,
             frame: MilkyWayLook.frame(day: day, minutes: minutes, in: sochi), moonAltitude: moonAltitude,
@@ -110,10 +109,8 @@ struct SunARMilkyWayPlanningTests {
         let s = scene(aim: l, sun: 30, optics: wide)
         let d = Sky.days(date: day, minutes: 1350, utcOffsetHours: sochi.zone.utcOffsetHours(on: day))
         func point(_ b: Degrees) -> ScreenPoint? {
-            let h = Sky.horizontal(MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: b), days: d,
-                                   latitude: sochi.latitude, longitude: sochi.longitude)
-            let aim = Sky.horizontal(MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: 0), days: d,
-                                     latitude: sochi.latitude, longitude: sochi.longitude)
+            let h = SkyFrame(days: d, latitude: sochi.latitude, longitude: sochi.longitude).horizontal(j2000: MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: b))
+            let aim = SkyFrame(days: d, latitude: sochi.latitude, longitude: sochi.longitude).horizontal(j2000: MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: 0))
             return SkyProjection.project(azimuth: h.azimuth, altitude: h.altitude,
                                          basis: CameraBasis(azimuth: aim.azimuth, altitude: max(aim.altitude, 15)),
                                          optics: wide, viewport: ScreenViewport(width: size.width, height: size.height))

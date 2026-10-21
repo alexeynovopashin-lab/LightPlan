@@ -58,17 +58,20 @@ public enum MilkyWay {
     /// Где ядро над головой в этот момент (`milkyWayAt`).
     public static func corePosition(
         date: CivilDate, minutes: Minutes,
-        latitude: Double, longitude: Double, utcOffsetHours: Double
+        latitude: Double, longitude: Double, utcOffsetHours: Double, time: SkyTime = .web
     ) -> HorizontalPoint {
         let d = Sky.days(date: date, minutes: minutes, utcOffsetHours: utcOffsetHours)
-        return Sky.horizontal(core, days: d, latitude: latitude, longitude: longitude)
+        switch time {
+        case .web: return Sky.horizontal(core, days: d, latitude: latitude, longitude: longitude)
+        case .iau: return SkyFrame(days: d, latitude: latitude, longitude: longitude).horizontal(j2000: core)
+        }
     }
 
-    public static func corePosition(date: CivilDate, minutes: Minutes, place: Place) -> HorizontalPoint {
+    public static func corePosition(date: CivilDate, minutes: Minutes, place: Place, time: SkyTime = .web) -> HorizontalPoint {
         corePosition(
             date: date, minutes: minutes,
             latitude: place.latitude, longitude: place.longitude,
-            utcOffsetHours: place.zone.utcOffsetHours(on: date)
+            utcOffsetHours: place.zone.utcOffsetHours(on: date), time: time
         )
     }
 }

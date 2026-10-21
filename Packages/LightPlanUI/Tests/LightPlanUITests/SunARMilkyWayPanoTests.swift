@@ -260,7 +260,7 @@ struct SunARMilkyWayPanoTests {
         guard let p = Self.pixels(name) else { return }
         let g = try gpu(name)
         let minutes = 1320.0
-        let core = MilkyWay.corePosition(date: jun15, minutes: minutes, place: sydney)
+        let core = MilkyWay.corePosition(date: jun15, minutes: minutes, place: sydney, time: .iau)
         let basis = CameraBasis(azimuth: core.azimuth + 15, altitude: SunTrack.apparent(altitude: core.altitude) - 10, roll: 20)
         let lk = look(day: jun15, minutes: minutes, place: sydney, basis: basis)
         let size = CGSize(width: phone.width, height: phone.height)
@@ -282,7 +282,7 @@ struct SunARMilkyWayPanoTests {
         guard MilkyWayPano.url(name) != nil else { return }
         let g = try gpu(name)
         // Сочи, 15.08: ядро ниже горизонта около полудня; ищем минуту, где оно на −30° … −35°.
-        let low = stride(from: 0.0, to: 1440, by: 10).map { ($0, MilkyWay.corePosition(date: aug15, minutes: $0, place: sochi)) }
+        let low = stride(from: 0.0, to: 1440, by: 10).map { ($0, MilkyWay.corePosition(date: aug15, minutes: $0, place: sochi, time: .iau)) }
             .first { $0.1.altitude < -30 && $0.1.altitude > -40 }
         let (m, core) = try #require(low)
         let basis = CameraBasis(azimuth: core.azimuth, altitude: SunTrack.apparent(altitude: core.altitude))

@@ -115,7 +115,7 @@ struct SunARBodiesTests {
     func milkyWayGhostAndCore() throws {
         let night = model(at: "2026-08-20T15:00:00Z")   // 22:00 в Томске, солнце −9°
         night.setMilkyWay(true)
-        let core = MilkyWay.corePosition(date: night.day, minutes: night.minutes, place: tomsk)
+        let core = MilkyWay.corePosition(date: night.day, minutes: night.minutes, place: tomsk, time: .iau)
         let basis = CameraBasis(azimuth: core.azimuth, altitude: max(core.altitude, 5))
         let scene = night.nightScene(basis: basis, optics: .typical, viewport: viewport)
         #expect(scene.coreAzimuth == core.azimuth && scene.coreAltitude == core.altitude)

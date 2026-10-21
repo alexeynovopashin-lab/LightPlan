@@ -61,7 +61,7 @@ public enum MilkyWayCoreTrack {
     private static func sample(day: CivilDate, minutes: Minutes, latitude: Double, longitude: Double,
                                utcOffsetHours: Double) -> Sample {
         let p = MilkyWay.corePosition(date: day, minutes: minutes, latitude: latitude, longitude: longitude,
-                                      utcOffsetHours: utcOffsetHours)
+                                      utcOffsetHours: utcOffsetHours, time: .iau)
         return Sample(minutes: minutes, azimuth: p.azimuth, altitude: p.altitude)
     }
 

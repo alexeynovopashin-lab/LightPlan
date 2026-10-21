@@ -42,12 +42,15 @@ struct SunTrackTests {
         #expect(abs(top.minutes - solar.solarNoon) <= 5 + 1e-9)
     }
 
-    @Test("высота и азимут в точке дуги — те же числа, что у SolarDay «Света» на ту же минуту")
-    func sameNumbersAsSolarDay() {
+    @Test("точка дуги — солнце по Меёсу и звёздному времени IAU (шаг 29.8в.21); от SolarDay «Света» не дальше 0,6°")
+    func closeToSolarDay() {
+        // До 29.8в.21 дуга брала числа у SolarDay бит в бит. Теперь диск считается точнее (SkyTimeTests: ≤ 0,02° против
+        // Horizons); NOAA-модель «Света» ошибается до 0,4°, так что расхождение между ними — её ошибка, не дуги.
         let solar = SolarDay(date: Self.day, place: Self.moscow)
-        for s in SunTrack.arc(day: Self.day, in: Self.moscow) {
-            #expect(s.altitude == solar.elevation(at: s.minutes))
-            #expect(s.azimuth == solar.azimuth(at: s.minutes))
+        for s in SunTrack.arc(day: Self.day, in: Self.moscow) where s.altitude > -3 {
+            #expect(abs(s.altitude - solar.elevation(at: s.minutes)) < 0.6)
+            let dz = abs((s.azimuth - solar.azimuth(at: s.minutes) + 540).truncatingRemainder(dividingBy: 360) - 180)
+            #expect(dz < 0.6 / max(0.2, cos(s.altitude * Double.pi / 180)))
         }
     }
 

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Звёзды и созвездия в слое AR (шаг 29.8в.13). Положение — тот же расчёт, что у луны и ядра Млечного Пути:
-/// `Sky.horizontal` по месту и моменту, потом та же проекция на экран (`SkyProjection`) и та же добавка рефракции
+/// `SkyFrame.horizontal(j2000:)` по месту и моменту, потом та же проекция на экран (`SkyProjection`) и та же добавка рефракции
 /// (`SunTrack.apparent`). Своих формул неба здесь нет.
 ///
 /// Каталог — звёзды фигур созвездий беты (`ConstellationCatalog`, J2000) и яркие звёзды вне фигур (`BrightStarCatalog`:
@@ -167,10 +167,8 @@ public enum StarSkyAR {
     public static func horizontals(catalog: StarCatalogAR = .current, day: CivilDate, minutes: Minutes,
                                    in place: Place) -> [HorizontalPoint] {
         let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: place.zone.utcOffsetHours(on: day))
-        return catalog.stars.map {
-            Sky.horizontal(ra: $0.ra * Double.pi / 12, dec: Sky.rad($0.dec), days: d,
-                           latitude: place.latitude, longitude: place.longitude)
-        }
+        let frame = SkyFrame(days: d, latitude: place.latitude, longitude: place.longitude)
+        return catalog.stars.map { frame.horizontal(j2000: EquatorialPoint(ra: $0.ra * Double.pi / 12, dec: Sky.rad($0.dec))) }
     }
 
     /// Фигура рисует подпись, только если над горизонтом не меньше этой доли её звёзд: полфигуры у горизонта читается

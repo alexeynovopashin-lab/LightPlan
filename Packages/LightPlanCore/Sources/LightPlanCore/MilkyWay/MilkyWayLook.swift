@@ -17,7 +17,7 @@ public enum MilkyWayLook {
 
     /// Оси галактики в осях «восток, север, вверх» в этот момент: `x` — на ядро (l = 0, b = 0), `y` — на l = 90°,
     /// `z` — на северный галактический полюс. Каждая ось — точка неба, переведённая `MilkyWay.equatorial` и
-    /// `Sky.horizontal`, как полоса и ядро: второго расчёта неба не заводится. Поворот ортонормирован, поэтому
+    /// `SkyFrame`, как полоса и ядро: второго расчёта неба не заводится. Поворот ортонормирован, поэтому
     /// галактические координаты направления `e` — это три скалярных произведения.
     public struct Frame: Sendable, Equatable {
         public let x: SkyVector
@@ -35,9 +35,9 @@ public enum MilkyWayLook {
 
     public static func frame(day: CivilDate, minutes: Minutes, in place: Place) -> Frame {
         let d = Sky.days(date: day, minutes: minutes, utcOffsetHours: place.zone.utcOffsetHours(on: day))
+        let sky = SkyFrame(days: d, latitude: place.latitude, longitude: place.longitude)
         func axis(_ l: Degrees, _ b: Degrees) -> SkyVector {
-            let h = Sky.horizontal(MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: b), days: d,
-                                   latitude: place.latitude, longitude: place.longitude)
+            let h = sky.horizontal(j2000: MilkyWay.equatorial(galacticLongitude: l, galacticLatitude: b))
             return SkyVector(azimuth: h.azimuth, altitude: h.altitude)
         }
         return Frame(x: axis(0, 0), y: axis(90, 0), z: axis(0, 90))

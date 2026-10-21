@@ -11,13 +11,13 @@ struct NightSkyARTests {
 
     // MARK: - Луна: дуга
 
-    @Test("дуга луны: 145 точек через 10 минут; точка в полдень — то же число, что у MoonSample на ту же минуту")
+    @Test("дуга луны: 145 точек через 10 минут; точка в полдень — то же число, что у MoonSample(time: .iau) на ту же минуту")
     func moonArcMatchesCore() {
         let day = CivilDate(year: 2026, month: 10, day: 14)
         let arc = MoonTrack.arc(day: day, in: Self.tomsk)
         #expect(arc.count == 145)
         #expect(arc.first?.minutes == 0 && arc.last?.minutes == 1440)
-        let noon = MoonSample(date: day, minutes: 720, place: Self.tomsk)
+        let noon = MoonSample(date: day, minutes: 720, place: Self.tomsk, time: .iau)
         #expect(arc[72].azimuth == noon.azimuth && arc[72].altitude == noon.altitude)
         // Выборка в одну минуту — тот же путь, что точка дуги.
         let one = MoonTrack.sample(day: day, minutes: 720, in: Self.tomsk)
@@ -124,7 +124,7 @@ struct NightSkyARTests {
     func coreIsCores() {
         let day = CivilDate(year: 2026, month: 7, day: 20)
         let a = MilkyWayAR.core(day: day, minutes: 23 * 60, in: Self.tomsk)
-        let b = MilkyWay.corePosition(date: day, minutes: 23 * 60, place: Self.tomsk)
+        let b = MilkyWay.corePosition(date: day, minutes: 23 * 60, place: Self.tomsk, time: .iau)
         #expect(a == b)
         let band = MilkyWayAR.band(day: day, minutes: 23 * 60, in: Self.tomsk)
         #expect(band.count == MilkyWay.band.count && band.count == 121)

@@ -57,7 +57,8 @@ def horizontal(ra, dec, iso, lat, lon):
     t = datetime.fromisoformat(iso.replace('Z', '+00:00')).timestamp()
     d = t / 86400 + 2440587.5 - 2451545
     phi = math.radians(lat)
-    h = math.radians(280.16 + 360.9856235 * d) + math.radians(lon) - ra
+    # Звёздное время IAU, как у слоёв AR (29.8в.21); прецессии нет: наведение грубое (до 0,4°), вердикт её не использует.
+    h = math.radians(280.46061837 + 360.98564736629 * d) + math.radians(lon) - ra
     alt = math.asin(math.sin(phi) * math.sin(dec) + math.cos(phi) * math.cos(dec) * math.cos(h))
     az = math.atan2(math.sin(h), math.cos(h) * math.sin(phi) - math.tan(dec) * math.cos(phi))
     return (math.degrees(az) + 180) % 360, math.degrees(alt)
