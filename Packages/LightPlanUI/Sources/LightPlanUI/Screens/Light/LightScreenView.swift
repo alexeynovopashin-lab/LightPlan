@@ -23,12 +23,18 @@ public struct LightScreenView: View {
     @State private var readoutFrame = CGRect.null
     /// 29.8в.27: сколько необязательных строк («Тени», «Небо», «Ветер») поместилось в закрытый список «Астро» (`LightCollapsedList`).
     @State private var fitRows = 0
+    /// Шапка «Астро» сжата до двух строк слева (только если без этого не помещается важный набор) и на сколько pt (0…12) поднята полоса
+    /// под дугой сверх 22. Всё это выбирает `LightCollapsedList.plan` по измеренной высоте; «Просто» не затрагивается.
+    @State private var headerCompact = false
+    @State private var extraTuck: CGFloat = 0
     @State private var rowHeights: [LightCollapsedList.Row: CGFloat] = [:]
     /// Низ кнопки «Подробно» в координатах содержимого прокрутки и высота кнопки съёмки — по ним считается запас высоты.
     @State private var spoilerBottom: CGFloat = 0
     /// Сколько необязательных строк стояло в закрытом списке, когда измерен `spoilerBottom` (из той же отрисовки): по нему из
     /// низа кнопки вычитается высота стоявших строк — иначе измерение и число строк расходились на проход раскладки.
     @State private var spoilerRows = 0
+    @State private var spoilerCompact = false
+    @State private var spoilerExtraTuck: CGFloat = 0
     @State private var actionHeight: CGFloat = 0
 
     public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {},
@@ -46,8 +52,10 @@ public struct LightScreenView: View {
     public var body: some View {
         let telemetry = model.telemetry
         let pal = Palette(colorScheme)
-        let rowsNow = LightCollapsedList.shown(astro: model.proMode, fit: fitRows,
-                                               hasForecast: telemetry.sky != nil || telemetry.wind != nil).count
+        let tuckNow = model.proMode ? extraTuck : 0
+        let layoutNow = LightCollapsedList.Layout(
+            rows: LightCollapsedList.shown(astro: model.proMode, fit: fitRows, hasForecast: telemetry.sky != nil || telemetry.wind != nil).count,
+            compact: model.proMode && headerCompact, extraTuck: tuckNow)
 
         ScrollView {
             VStack(spacing: 0) {
@@ -57,7 +65,7 @@ public struct LightScreenView: View {
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
                     dome(telemetry, pal)
-                        .padding(.bottom, -Self.domeTuck(astro: model.proMode))
+                        .padding(.bottom, -Self.domeTuck(extra: tuckNow))
 
                     nextLight(telemetry, pal)
                         .padding(.horizontal, 24)
@@ -69,7 +77,7 @@ public struct LightScreenView: View {
 
                     LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
                                      openTitle: model.lexiconWord("today.hide"),
-                                     onButtonBottom: { spoilerBottom = $0; spoilerRows = rowsNow; refreshCollapsedRows() },
+                                     measureTag: layoutNow, onMeasure: { measureSpoiler($0) },
                                      windLabel: model.lexiconWord("pro.wind"))
                         .padding(.horizontal, 24)
 
@@ -91,10 +99,13 @@ public struct LightScreenView: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0; refreshCollapsedRows() }
         .onChange(of: model.proMode) { _, pro in
             // В «Просто» спойлера нет и ничего не прячется; в «Астро» число строк решит новое измерение.
-            if !pro { fitRows = 0; spoilerBottom = 0 }
+            if !pro { fitRows = 0; headerCompact = false; extraTuck = 0; spoilerBottom = 0 }
         }
         // Прогноз приходит позже первой раскладки: у «Неба» и «Ветра» появляется строка, а кнопка «Подробно» не сдвинулась — пересчитать.
         .onChange(of: model.telemetry.sky != nil || model.telemetry.wind != nil) { _, _ in refreshCollapsedRows() }
+        // Место и погода тоже приходят позже: от них зависит, сколько pt даёт сжатая шапка (`headerGain`).
+        .onChange(of: model.locationSub.isEmpty) { _, _ in refreshCollapsedRows() }
+        .onChange(of: model.telemetry.header.weather != nil) { _, _ in refreshCollapsedRows() }
         .safeAreaInset(edge: .bottom, spacing: 8) {
             TimebarView(model.timebar, showRibbon: model.proMode)
                 .shotNode("timebar")
@@ -125,7 +136,7 @@ public struct LightScreenView: View {
                 }
                 // 29.8в.27, «Астро»: строки «область» нет (слово Алексея 21.10; данные модели целы), дата и «сегодня» — как были,
                 // каждая в своей строке. Адаптация натива, веб не менялся; в «Просто» шапка прежняя.
-                if !model.locationSub.isEmpty && !model.proMode {
+                if !model.locationSub.isEmpty && !(model.proMode && headerCompact) {
                     Text(model.locationSub)
                         .font(.system(size: 11)).tracking(0.1)
                         .foregroundStyle(pal.ink4)
@@ -167,8 +178,8 @@ public struct LightScreenView: View {
                             .foregroundStyle(pal.ink)
                             .shotNode("wx.temp", text: w.temperature)
                     }
-                    if model.proMode {
-                        // «Астро» (29.8в.27): состояние и ↓↑ в одной строке — две строки погоды вместо трёх.
+                    if model.proMode && headerCompact {
+                        // «Астро», только когда без этого не помещается важный набор (29.8в.27): состояние и ↓↑ в одной строке — две строки погоды вместо трёх.
                         HStack(spacing: 8) {
                             // Сжимается только слово состояния; ↓↑ не теряются (замечание ревью GPT к 017a9ba).
                             Text(w.condition)
@@ -251,24 +262,42 @@ public struct LightScreenView: View {
 
     private static let domeSpace = "dome"
 
+    /// Низ кнопки измерен вместе с тем, что стояло на экране в этой раскладке.
+    private func measureSpoiler(_ m: LightCollapsedList.Measurement) {
+        spoilerBottom = m.bottom
+        spoilerRows = m.layout.rows
+        spoilerCompact = m.layout.compact
+        spoilerExtraTuck = m.layout.extraTuck
+        refreshCollapsedRows()
+    }
+
     /// 29.8в.27: пересчёт числа строк закрытого списка «Астро» по свежим измерениям.
+
     private func refreshCollapsedRows() {
         guard model.proMode, spoilerBottom > 0, visibleHeight > 0, actionHeight > 0 else { return }
         let hasForecast = model.telemetry.sky != nil || model.telemetry.wind != nil
         let present = LightCollapsedList.present(hasForecast: hasForecast)
         let heights = present.map { rowHeights[$0] ?? LightCollapsedList.defaultRowHeight }
-        let measuredRows = heights.prefix(spoilerRows).reduce(CGFloat(0), +)
-        let fit = LightCollapsedList.fitCount(visibleHeight: visibleHeight, spoilerBottom: spoilerBottom, shownRowsHeight: measuredRows,
-                                              actionHeight: actionHeight, rowHeights: heights)
-        if fit != fitRows { fitRows = fit }
+        let gain = LightCollapsedList.headerGain(hasPlaceSub: !model.locationSub.isEmpty, hasWeather: model.telemetry.header.weather != nil)
+        // Низ «Подробно» приводится к базе: без необязательных строк, шапка в четыре строки, полоса 22 — как была бы раскладка,
+        // не зная, какая из них сейчас на экране (иначе решение мигало бы).
+        let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +)
+            + (spoilerCompact ? gain : 0) + spoilerExtraTuck
+        let plan = LightCollapsedList.plan(visibleHeight: visibleHeight, baselineBottom: baseline, actionHeight: actionHeight,
+                                           rowHeights: heights, headerGain: gain)
+        if plan.rows != fitRows { fitRows = plan.rows }
+        if plan.compactHeader != headerCompact { headerCompact = plan.compactHeader }
+        if plan.extraTuck != extraTuck { extraTuck = plan.extraTuck }
     }
 
     /// 29.8в.26: от горизонта дуги (196 из 240 в `viewBox`) до подписи «до золотого часа» у веба 44 + 2 pt — пустая
     /// полоса, из-за которой на 15 Pro Max «Подробно» уходило под нижнюю панель (замер: −16,5 pt). Рамка купола
     /// остаётся 240 (дуга, показание, перетаскивание светила и призрак под строками стоят как были), весь список
-    /// ниже поднят на столько. 22 — слово Алексея 21.10, «Просто» остаётся на нём; в «Астро» 29.8в.27 (вариант F, тот же день)
-    /// поднимает до 34, подпись остаётся в 12 pt от горизонта (46 − 34). Веб тут не менялся — пара «Свет» расходится на это число.
-    static func domeTuck(astro: Bool) -> CGFloat { astro ? 34 : 22 }
+    /// ниже поднят на столько: 22 — слово Алексея 21.10 (база, «Просто» остаётся на ней). В «Астро» 29.8в.27 добавляет `extra`
+    /// (0…12) только когда без этого не помещается важный набор; подпись остаётся не ближе 12 pt к горизонту (46 − 34).
+    /// Веб тут не менялся — пара «Свет» расходится на это число.
+    static let domeTuckBase: CGFloat = 22
+    static func domeTuck(extra: CGFloat) -> CGFloat { domeTuckBase + extra }
 
     /// Касание купола — наше, если оно над горизонтом и мимо показаний и
     /// тумблера светила (`closest("#readout")`, `closest("#skySwap")` веба).
@@ -539,12 +568,13 @@ private struct DomeDragModifier: ViewModifier {
 }
 
 /// 29.8в.27 — адаптация натива, веба тут нет. В вебе в закрытой части «Тени», «Небо» и «Ветер» всегда стоят (`#tShadow`, `#tSky`,
-/// `#tWind`), а длинный экран прокручивается. Слово Алексея 21.10 (вариант F, затем «оптимизируем под новые iPhone, а не под старые»):
-/// в «Астро» эти три необязательные строки стоят в закрытом списке, пока кнопка «Запланировать съёмку» остаётся над нижней панелью
-/// с зазором 8 pt; сначала возвращаются «Тени», потом «Небо», потом «Ветер» (их порядок на экране). Решает измеренный запас высоты,
-/// не модель телефона (в коде моделей нет). Остальное лежит в раскрытом списке: «Ветер» и «Небо» — «Погода» (`pro.wind` с тем же
-/// текстом `windLine`, `pro.sky`, облачность); у теней там только длина («Солнце сейчас»). Осадки и так в погодном виджете шапки.
-/// В «Просто» спойлера нет — три строки всегда на месте.
+/// `#tWind`), а длинный экран прокручивается. Слова Алексея 21.10: экраны подстраиваются под измеренную высоту, не под модель
+/// телефона (в коде моделей нет), и оптимизированы под новые iPhone. В «Астро» важный набор («Условия», «Закат», «Золотой час», «Свет»)
+/// стоит всегда; «Тени», «Небо», «Ветер» — пока кнопка «Запланировать съёмку» помещается над нижней панелью с зазором 8 pt. Не хватает —
+/// уходят «Ветер», потом «Небо», потом «Тени», потом сжимается шапка (две строки слева), потом полоса под дугой поднимается до 12 pt
+/// к горизонту (`plan`). Ушедшее лежит в раскрытом списке: «Ветер» и «Небо» — «Погода» (`pro.wind` с тем же текстом `windLine`,
+/// `pro.sky`, облачность); у теней там только длина («Солнце сейчас»). Осадки и так в погодном виджете шапки. В «Просто» спойлера нет,
+/// прятать некуда — три строки, шапка и полоса (22) прежние.
 enum LightCollapsedList {
     enum Row: CaseIterable { case shadow, sky, wind }
     static let contentSpace = "lightContent"
@@ -560,18 +590,53 @@ enum LightCollapsedList {
         return Set(astro ? Array(all.prefix(max(0, fit))) : all)
     }
 
-    /// Сколько первых строк помещается. Запас = высота прокрутки − (низ «Подробно» без необязательных строк + кнопка съёмки): пока он
-    /// ≥ 0, кнопка съёмки стоит над панелью с её естественным зазором 8 pt (`safeAreaInset`), поэтому 8 в формулу не входит.
-    /// Считается от положения «без строк», поэтому после показа строки решение не мигает.
-    static func fitCount(visibleHeight: CGFloat, spoilerBottom: CGFloat, shownRowsHeight: CGFloat, actionHeight: CGFloat,
-                         rowHeights: [CGFloat]) -> Int {
-        var spare = visibleHeight - (spoilerBottom - shownRowsHeight + actionHeight)
+    /// Шапка «Астро» в две строки слева и две справа вместо четырёх и трёх: 66 → 52 pt (замер 29.8в.27: `make lightfit`, 124,5 → 110,5).
+    /// Выигрыш есть, пока есть что убирать: строка «область» слева (66 → 52) или третья строка погоды справа (65,5 → 47,5, при
+    /// трёх строках слева 51,5 высоту держит правая). Нет ни места, ни погоды — шапка и так в три строки, выигрыша нет.
+    static func headerGain(hasPlaceSub: Bool, hasWeather: Bool) -> CGFloat { hasPlaceSub || hasWeather ? 14 : 0 }
+    /// Полоса под дугой: сверх 22 pt можно поднять не больше чем на 12 (подпись остаётся в 12 pt от горизонта).
+    static let maxExtraTuck: CGFloat = 12
+    /// Запас на округление: у `make lightfit` кнопка съёмки на 393 pt вышла на 1 pt под панель при расчёте «нужно 14» (замер 29.8в.27) —
+    /// измеренные в содержимом рамки и раскладка расходятся на доли точки. Плана хватает на 1 pt больше.
+    static let slack: CGFloat = 1
+
+    /// Что стояло на экране в раскладке, где измерен низ «Подробно»: число необязательных строк, сжатая ли шапка, подъём полосы.
+    struct Layout: Equatable {
+        var rows = 0
+        var compact = false
+        var extraTuck: CGFloat = 0
+    }
+
+    /// Низ «Подробно» (в координатах содержимого) вместе с раскладкой, при которой он измерен.
+    struct Measurement: Equatable {
+        var bottom: CGFloat
+        var layout: Layout
+    }
+
+    struct Plan: Equatable {
+        var rows: Int
+        var compactHeader: Bool
+        var extraTuck: CGFloat
+    }
+
+    /// Что жертвовать, чтобы кнопка «Запланировать съёмку» стояла над панелью с зазором 8 pt (слова Алексея 21.10). `baselineBottom` —
+    /// низ «Подробно» в базе: без необязательных строк, шапка в четыре строки, полоса 22; запас = высота прокрутки − (база + кнопка).
+    /// Порядок: запас ≥ 0 — важный набор («Условия», «Закат», «Золотой час», «Свет») помещается как есть, остаток отдаётся строкам по
+    /// очереди «Тени» → «Небо» → «Ветер» (первым уходит «Ветер»); иначе сначала сжимается шапка, потом поднимается полоса под дугой до
+    /// 12 pt к горизонту. Пока нехватка не покрыта, строк нет вовсе. Считается от базы, поэтому решение не зависит от того, что на экране.
+    static func plan(visibleHeight: CGFloat, baselineBottom: CGFloat, actionHeight: CGFloat, rowHeights: [CGFloat], headerGain: CGFloat = 14) -> Plan {
+        var spare = visibleHeight - (baselineBottom + actionHeight) - slack
+        if spare < 0 {
+            let need = -spare
+            if need <= headerGain { return Plan(rows: 0, compactHeader: true, extraTuck: 0) }
+            return Plan(rows: 0, compactHeader: headerGain > 0, extraTuck: min(maxExtraTuck, need - headerGain))
+        }
         var count = 0
         for h in rowHeights {
             guard spare >= h else { break }
             spare -= h
             count += 1
         }
-        return count
+        return Plan(rows: count, compactHeader: false, extraTuck: 0)
     }
 }

@@ -13,8 +13,11 @@ struct LightSpoilerView: View {
     /// `today.details` — подпись свёрнутого; `today.hide` — раскрытого (в бете подпись меняется в тот же клик, что и список).
     let title: String
     let openTitle: String
-    /// 29.8в.27: низ кнопки в координатах `LightCollapsedList.contentSpace` — по нему экран считает запас высоты для необязательных строк.
-    var onButtonBottom: (CGFloat) -> Void = { _ in }
+    /// 29.8в.27: что стояло на экране в этой раскладке (строки, шапка, полоса) — вместе с низом кнопки уходит в `onMeasure` одним значением,
+    /// чтобы измерение и состояние, при котором оно снято, не разошлись (замыкание `action` бывает от другой отрисовки).
+    var measureTag = LightCollapsedList.Layout()
+    /// Низ кнопки в координатах `LightCollapsedList.contentSpace` вместе с `measureTag` — по ним экран считает запас высоты.
+    var onMeasure: (LightCollapsedList.Measurement) -> Void = { _ in }
     /// Подпись строки «Ветер» (`pro.wind`): её значение получает узел `spoiler.wind` — прибор `make lightfit` проверяет, что
     /// перенесённый из закрытой части «Ветер» лежит в раскрытом списке с тем же текстом.
     var windLabel: String? = nil
@@ -74,7 +77,9 @@ struct LightSpoilerView: View {
                 }
                 .buttonStyle(.plain)
                 .shotNode("spoiler")
-                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY } action: { onButtonBottom($0) }
+                .onGeometryChange(for: LightCollapsedList.Measurement.self) { [measureTag] in
+                    LightCollapsedList.Measurement(bottom: $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY, layout: measureTag)
+                } action: { onMeasure($0) }
                 .padding(.top, 6)
 
                 if mounted {
