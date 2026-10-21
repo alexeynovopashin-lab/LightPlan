@@ -46,7 +46,7 @@ public struct LightScreenView: View {
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
                     dome(telemetry, pal)
-                        .padding(.bottom, -Self.domeTuck)
+                        .padding(.bottom, -Self.domeTuck(astro: model.proMode))
 
                     nextLight(telemetry, pal)
                         .padding(.horizontal, 24)
@@ -234,8 +234,9 @@ public struct LightScreenView: View {
     /// 29.8в.26: от горизонта дуги (196 из 240 в `viewBox`) до подписи «до золотого часа» у веба 44 + 2 pt — пустая
     /// полоса, из-за которой на 15 Pro Max «Подробно» уходило под нижнюю панель (замер: −16,5 pt). Рамка купола
     /// остаётся 240 (дуга, показание, перетаскивание светила и призрак под строками стоят как были), весь список
-    /// ниже поднят на столько (слово Алексея 21.10: 22). Веб тут не менялся — пара «Свет» расходится на это число.
-    static let domeTuck: CGFloat = 22
+    /// ниже поднят на столько. 22 — слово Алексея 21.10, «Просто» остаётся на нём; в «Астро» 29.8в.27 (вариант F, тот же день)
+    /// поднимает до 34, подпись остаётся в 12 pt от горизонта (46 − 34). Веб тут не менялся — пара «Свет» расходится на это число.
+    static func domeTuck(astro: Bool) -> CGFloat { astro ? 34 : 22 }
 
     /// Касание купола — наше, если оно над горизонтом и мимо показаний и
     /// тумблера светила (`closest("#readout")`, `closest("#skySwap")` веба).
@@ -342,10 +343,12 @@ public struct LightScreenView: View {
             plainRow(labelKey: "tele.sunset", value: t.sunset.text, color: LightScreenTheme.sunsetColor(t.sunset.tone, scheme: colorScheme))
             plainRow(labelKey: "tele.golden", value: t.golden)
             plainRow(labelKey: "tele.light", value: t.light)
-            plainRow(labelKey: "tele.shadow", value: t.shadow)
+            if LightCollapsedList.shows(.shadow, astro: model.proMode) { plainRow(labelKey: "tele.shadow", value: t.shadow) }
             // Небо и ветер — из прогноза: нет прогноза — нет строк (надпись уже в «Закате» и в шапке).
-            if let sky = t.sky { rowWithIcon(labelKey: "tele.sky", iconName: sky.iconName, value: sky.text) }
-            if let wind = t.wind, LightWindPlacement.inCollapsedList(astro: model.proMode) {
+            if let sky = t.sky, LightCollapsedList.shows(.sky, astro: model.proMode) {
+                rowWithIcon(labelKey: "tele.sky", iconName: sky.iconName, value: sky.text)
+            }
+            if let wind = t.wind, LightCollapsedList.shows(.wind, astro: model.proMode) {
                 plainRow(labelKey: "tele.wind", value: wind)
             }
             if let air = t.air {
@@ -496,11 +499,14 @@ private struct DomeDragModifier: ViewModifier {
     }
 }
 
-/// 29.8в.27 — адаптация натива, веба тут нет. В вебе «Ветер» всегда в закрытой части (`#tWind`), а длинный экран
-/// прокручивается. Слово Алексея 21.10: в «Астро» «Ветер» живёт только в раскрытом списке (группа «Погода», `pro.wind`,
-/// тот же текст `windLine`), чтобы «Подробно» и «Запланировать съёмку» поднялись над нижней панелью. В «Просто» спойлера
-/// нет — там строка остаётся на месте. Первая версия шага решала по измеренному зазору (коммит cb97d85); от неё отказались:
-/// «Астро» просит больше сведений, и строка уходит всегда, а не только на тесных экранах.
-enum LightWindPlacement {
-    static func inCollapsedList(astro: Bool) -> Bool { !astro }
+/// 29.8в.27 — адаптация натива, веба тут нет. В вебе в закрытой части «Тени», «Небо» и «Ветер» всегда стоят (`#tShadow`, `#tSky`,
+/// `#tWind`), а длинный экран прокручивается. Слово Алексея 21.10 (вариант F): в «Астро» этих трёх строк в закрытой части нет,
+/// чтобы «Подробно» и «Запланировать съёмку» поднялись над нижней панелью на iPhone 393×852 и 402×874 pt. «Ветер» и «Небо» лежат
+/// в раскрытом списке («Погода»: `pro.wind` с тем же текстом `windLine`, `pro.sky`, облачность); у теней там только длина
+/// («Солнце сейчас»), слова «Короткие» нет; осадки и так в погодном виджете шапки. В «Просто» спойлера нет — три строки на месте.
+/// Первая версия шага решала про «Ветер» по измеренному зазору (коммит cb97d85); от неё отказались: «Астро» просит больше
+/// сведений в раскрытом списке, а не прыгающую по размерам строку.
+enum LightCollapsedList {
+    enum Row { case wind, sky, shadow }
+    static func shows(_ row: Row, astro: Bool) -> Bool { !astro }
 }
