@@ -19,7 +19,7 @@ public struct MoonARSample: Sendable, Equatable {
     }
 
     public var azimuth: Degrees { moon.azimuth }
-    /// Геометрическая высота.
+    /// Геометрическая высота, топоцентрическая: Луна с параллаксом, как её видно из места съёмки (шаг 29.8в.23).
     public var altitude: Degrees { moon.altitude }
     /// Видимая высота: добавка рефракции та же, что у солнца (`SunTrack.apparent`).
     public var apparentAltitude: Degrees { SunTrack.apparent(altitude: moon.altitude) }

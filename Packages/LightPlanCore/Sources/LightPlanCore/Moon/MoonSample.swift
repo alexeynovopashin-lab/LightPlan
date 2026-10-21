@@ -11,7 +11,7 @@ import Foundation
 /// Значение-тип без глобалов. Пояс — явный параметр, как у `SolarDay`.
 public struct MoonSample: Sendable, Equatable {
 
-    /// Высота над горизонтом, градусы. Ноль — математический горизонт: край
+    /// Высота над горизонтом, градусы (при `time: .iau` — топоцентрическая, с параллаксом). Ноль — математический горизонт: край
     /// диска (`MOON_H0` веба) поднимается только в поиске восхода.
     public let altitude: Degrees
     /// Азимут от севера по часовой, градусы, `0 ..< 360`.
@@ -38,9 +38,11 @@ public struct MoonSample: Sendable, Equatable {
             p = Sky.horizontal(ra: m.ra, dec: m.dec, days: d, latitude: latitude, longitude: longitude)
             self.distance = m.dist
         case .iau:
-            // Слой AR: теория Меёса гл. 47 и звёздное время IAU (`SunMoonTheory`, `SkyFrame`).
+            // Слой AR: теория Меёса гл. 47, звёздное время IAU и суточный параллакс (гл. 40): луна стоит там, где её видно
+            // из места съёмки, а не из центра Земли (разница 0,8–0,98° у горизонта — два лунных диаметра).
             let m = SunMoonTheory.moon(days: d)
-            p = SkyFrame(days: d, latitude: latitude, longitude: longitude).horizontal(ofDate: m.point)
+            p = SkyFrame(days: d, latitude: latitude, longitude: longitude)
+                .horizontal(ofDate: m.point, distanceKm: m.distance)
             self.distance = m.distance
         }
         self.altitude = p.altitude

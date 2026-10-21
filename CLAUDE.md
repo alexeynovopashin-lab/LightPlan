@@ -75,7 +75,7 @@
 - **One sky time for AR (29.8в.21).** Every AR layer (Sun `SunTrack`, Moon `MoonTrack`/`MoonSample(time: .iau)`, planets, stars,
   constellations, Milky Way band/core/frame) goes through `SkyFrame` (`Sky/SiderealTime.swift`): IAU sidereal time, J2000 catalog
   points precessed to the date (`horizontal(j2000:)`), Sun/Moon/planets already of date (`horizontal(ofDate:)`). Sun and Moon use
-  `Sky/SunMoonTheory.swift` (Meeus ch. 25 / 47), ≤ 0.02° vs Horizons. `Sky.horizontal`, `SolarDay`, and `MoonSample`/`MilkyWay.corePosition`
+  `Sky/SunMoonTheory.swift` (Meeus ch. 25 / 47), ≤ 0.02° vs Horizons. The AR Moon is topocentric (29.8в.23: `horizontal(ofDate:distanceKm:)`, Meeus ch. 40 parallax up to 0.95°, ≤ 0.013° vs Horizons topocentric); Sun and planets take no parallax (< 9″). `Sky.horizontal`, `SolarDay`, and `MoonSample`/`MilkyWay.corePosition`
   with the default `time: .web` keep the web's numbers for parity (Light, Map, dome, shoot window). A new AR layer must not call
   `Sky.horizontal`. Reference: `python3 Tools/sky_time_ref.py` → `Fixtures/sky_time_horizons.json`, read by `SkyTimeTests`.
 - **Glass never takes a rotation (28п).** `.glassEffect` under `rotationEffect` (or `scaleEffect`) swells into the

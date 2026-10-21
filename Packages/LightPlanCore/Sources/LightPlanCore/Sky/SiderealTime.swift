@@ -31,6 +31,7 @@ public enum SiderealTime {
 
 /// Небо одного момента и одного места: звёздное время и прецессия считаются один раз, потом сколько угодно точек.
 public struct SkyFrame: Sendable {
+    private let lat: Double
     private let sinLat: Double
     private let cosLat: Double
     /// Местное звёздное время, радианы.
@@ -39,6 +40,7 @@ public struct SkyFrame: Sendable {
     private let p: (Double, Double, Double, Double, Double, Double, Double, Double, Double)
 
     public init(days: Double, latitude: Double, longitude: Double) {
+        lat = Sky.rad(latitude)
         sinLat = sin(Sky.rad(latitude))
         cosLat = cos(Sky.rad(latitude))
         lst = Sky.rad(SiderealTime.localMean(days: days, longitude: longitude))
@@ -58,6 +60,29 @@ public struct SkyFrame: Sendable {
         let v = p.3 * x + p.4 * y + p.5 * z
         let w = p.6 * x + p.7 * y + p.8 * z
         return horizontal(ra: atan2(v, u), dec: asin(max(-1, min(1, w))))
+    }
+
+    /// Точка в координатах даты, **как её видит наблюдатель на поверхности Земли**, а не из центра: суточный параллакс
+    /// (Меё, гл. 40). `distanceKm` — расстояние до тела от центра Земли. Годится для Луны (до 0,95° у горизонта, ноль в
+    /// зените); для Солнца и планет сдвиг меньше 9″ и не нужен. Высота наблюдателя над уровнем моря — `heightMeters`
+    /// (`Place` её не хранит, AR считает от уровня моря: 1 км высоты сдвигают Луну на 0,00015°).
+    public func horizontal(ofDate point: EquatorialPoint, distanceKm: Double, heightMeters: Double = 0) -> HorizontalPoint {
+        let (rhoSin, rhoCos) = Self.observer(latitude: lat, heightMeters: heightMeters)
+        let sinPi = Self.earthEquatorialRadiusKm / distanceKm
+        let h = lst - point.ra
+        // Меё 40.2 – 40.3: сдвиг прямого восхождения и новое склонение.
+        let dRa = atan2(-rhoCos * sinPi * sin(h), cos(point.dec) - rhoCos * sinPi * cos(h))
+        let dec = atan2((sin(point.dec) - rhoSin * sinPi) * cos(dRa), cos(point.dec) - rhoCos * sinPi * cos(h))
+        return horizontal(ra: point.ra + dRa, dec: dec)
+    }
+
+    /// Экваториальный радиус Земли (WGS-84 / IAU), км: единица, в которой Меё меряет параллакс.
+    static let earthEquatorialRadiusKm = 6_378.14
+
+    /// ρ·sin φ′ и ρ·cos φ′ (Меё гл. 11): геоцентрическая широта наблюдателя на эллипсоиде, ρ — в экваториальных радиусах.
+    static func observer(latitude lat: Double, heightMeters h: Double) -> (sin: Double, cos: Double) {
+        let u = atan(0.99664719 * tan(lat))
+        return (0.99664719 * sin(u) + h / 6_378_140 * sin(lat), cos(u) + h / 6_378_140 * cos(lat))
     }
 
     private func horizontal(ra: Double, dec: Double) -> HorizontalPoint {

@@ -9,7 +9,12 @@ import Foundation
 struct SkyTimeTests {
 
     struct Reference: Decodable {
-        struct Body: Decodable { let ra, dec, az, el: Double }
+        struct Body: Decodable {
+            let ra, dec, az, el: Double
+            /// Горизонт места по Horizons (не из центра Земли), без рефракции; у звезды нет.
+            let azTopo, elTopo: Double?
+            enum CodingKeys: String, CodingKey { case ra, dec, az, el, azTopo = "az_topo", elTopo = "el_topo" }
+        }
         struct Case: Decodable {
             let place: String
             let latitude, longitude: Double
@@ -30,7 +35,17 @@ struct SkyTimeTests {
         return acos(min(1, max(-1, u.dot(v)))) * 180 / Double.pi
     }
 
-    static func truth(_ b: Reference.Body) -> HorizontalPoint { HorizontalPoint(altitude: b.el, azimuth: b.az) }
+    /// Эталон: где тело видно с поверхности Земли (топоцентрически); у Сириуса — своя математика, параллакса нет.
+    static func truth(_ b: Reference.Body) -> HorizontalPoint {
+        HorizontalPoint(altitude: b.elTopo ?? b.el, azimuth: b.azTopo ?? b.az)
+    }
+
+    /// Луна из центра Земли: то, что слой AR показывал до шага 29.8в.23.
+    static func geocentricMoon(_ c: Reference.Case) -> HorizontalPoint {
+        let days = c.jd - 2_451_545.0
+        return SkyFrame(days: days, latitude: c.latitude, longitude: c.longitude)
+            .horizontal(ofDate: SunMoonTheory.moon(days: days).point)
+    }
 
     static let utc = ZoneID(fixedOffsetHours: 0)
 
@@ -67,8 +82,8 @@ struct SkyTimeTests {
         return Layers(after: after, before: before)
     }
 
-    /// Допуск шага против Horizons, градусы (Луна — геоцентрическая, без параллакса, как в приложении).
-    static let tolerance: [String: Double] = ["sun": 0.05, "moon": 0.1, "jupiter": 0.05, "sirius": 0.05]
+    /// Допуск шага против Horizons, градусы; Луна — топоцентрическая (шаг 29.8в.23: было 0,1 против центра Земли).
+    static let tolerance: [String: Double] = ["sun": 0.05, "moon": 0.05, "jupiter": 0.05, "sirius": 0.05]
 
     // MARK: - Звёздное время
 
@@ -94,7 +109,7 @@ struct SkyTimeTests {
 
     // MARK: - Против Horizons
 
-    @Test("Солнце ≤ 0,05°, Юпитер ≤ 0,05°, Сириус ≤ 0,05°, Луна ≤ 0,1° — на десяти моментах, через входы слоёв AR")
+    @Test("Солнце, Луна (с параллаксом), Юпитер, Сириус ≤ 0,05° против Horizons — на десяти моментах, через входы слоёв AR")
     func againstHorizons() throws {
         for c in try Self.reference.cases {
             let l = Self.layers(c)
@@ -103,6 +118,23 @@ struct SkyTimeTests {
                 #expect(err <= tol, "\(body) \(c.place) \(c.utc): \(err)° > \(tol)°")
             }
         }
+    }
+
+    @Test("Луна: ошибка против Horizons топоцентрической до (из центра Земли) и после параллакса — таблица на десяти моментах")
+    func moonParallaxTable() throws {
+        var worstBefore = 0.0, worstAfter = 0.0
+        var table = "\nместо / момент UTC         до°     после°   параллакс°  высота°\n"
+        for c in try Self.reference.cases {
+            let truth = Self.truth(c.bodies["moon"]!)
+            let before = Self.separation(Self.geocentricMoon(c), truth)
+            let after = Self.separation(Self.layers(c).after["moon"]!, truth)
+            let shift = Self.separation(Self.geocentricMoon(c), Self.layers(c).after["moon"]!)
+            worstBefore = max(worstBefore, before); worstAfter = max(worstAfter, after)
+            table += String(format: "%@ %@  %.3f   %.3f   %.3f   %.1f\n", c.place, "\(c.utc)", before, after, shift, truth.altitude)
+        }
+        print(table)
+        #expect(worstAfter <= 0.05, "после: \(worstAfter)°")
+        #expect(worstBefore > 0.5, "до параллакса Луна стояла на ~1° мимо: \(worstBefore)° — иначе проверка ничего не доказывает")
     }
 
     @Test("в одном кадре Солнце, Луна, Юпитер и Сириус стоят друг от друга как на самом деле: расхождение пар ≤ 0,05°")
@@ -153,10 +185,11 @@ struct SkyTimeTests {
         #expect(arc[90].altitude == SunTrack.sample(day: Self.day, minutes: 900, in: Self.tomsk).altitude)
     }
 
-    @Test("Луна AR — MoonSample(time: .iau): теория Меёса и SkyFrame; без параметра остаётся веб")
+    @Test("Луна AR — MoonSample(time: .iau): теория Меёса, SkyFrame и параллакс; без параметра остаётся веб")
     func moonRouting() {
         let m = 21 * 60.0
-        let want = Self.frame(minutes: m).horizontal(ofDate: SunMoonTheory.moon(days: Self.days(m)).point)
+        let theory = SunMoonTheory.moon(days: Self.days(m))
+        let want = Self.frame(minutes: m).horizontal(ofDate: theory.point, distanceKm: theory.distance)
         let got = MoonTrack.sample(day: Self.day, minutes: m, in: Self.tomsk)
         #expect(got.altitude == want.altitude && got.azimuth == want.azimuth)
         let web = MoonSample(date: Self.day, minutes: m, place: Self.tomsk)
@@ -205,5 +238,77 @@ struct SkyTimeTests {
         #expect(web == Sky.horizontal(MilkyWay.core, days: d, latitude: Self.tomsk.latitude, longitude: Self.tomsk.longitude))
         #expect(Self.separation(web, MilkyWay.corePosition(date: Self.day, minutes: m, place: Self.tomsk, time: .iau)) > 0.02,
                 "прецессия гасит часть отставания веб-времени: у ядра разница мала, но не нулевая")
+    }
+}
+
+/// Суточный параллакс Луны (шаг 29.8в.23): сдвиг вниз на `asin(R / расстояние) · cos(высота)`, в зените нуля.
+struct MoonParallaxTests {
+
+    static let day = CivilDate(year: 2026, month: 10, day: 19)
+
+    /// Луна в заданной высоте и азимуте (геоцентрически) → её же с поверхности Земли.
+    static func shift(altitude: Double, azimuth: Double = 150, latitude: Double = 56.5, distance: Double = 384_400)
+        -> (geo: HorizontalPoint, topo: HorizontalPoint, sep: Double) {
+        let frame = SkyFrame(days: 9_788.3, latitude: latitude, longitude: 85)
+        // Точка неба → экваториальные координаты даты через обратный перевод (поиск по сетке не нужен: сфера в векторах).
+        let phi = Sky.rad(latitude), a = Sky.rad(azimuth), h = Sky.rad(altitude)
+        let dec = asin(sin(phi) * sin(h) + cos(phi) * cos(h) * cos(a))
+        let hourAngle = atan2(-sin(a) * cos(h), sin(h) * cos(phi) - cos(h) * cos(a) * sin(phi))
+        let lst = Sky.rad(SiderealTime.localMean(days: 9_788.3, longitude: 85))
+        let point = EquatorialPoint(ra: lst - hourAngle, dec: dec)
+        let geo = frame.horizontal(ofDate: point)
+        let topo = frame.horizontal(ofDate: point, distanceKm: distance)
+        return (geo, topo, SkyTimeTests.separation(geo, topo))
+    }
+
+    @Test("в зените параллакса нет, на горизонте ≈ 0,95°, между ними — cos высоты")
+    func zenithAndHorizon() {
+        let pi = Sky.deg(asin(SkyFrame.earthEquatorialRadiusKm / 384_400))   // горизонтальный параллакс, ≈ 0,951°
+        #expect(abs(pi - 0.951) < 0.002)
+        #expect(Self.shift(altitude: 89.99).sep < 0.01)
+        let horizon = Self.shift(altitude: 0.0).sep
+        #expect(abs(horizon - pi) < 0.01, "\(horizon)")
+        for alt in [15.0, 30, 45, 60] {
+            let s = Self.shift(altitude: alt, latitude: 0).sep
+            #expect(abs(s - pi * cos(Sky.rad(alt))) < 0.01, "\(alt)°: \(s)")
+        }
+    }
+
+    @Test("Луна уходит вниз к горизонту, азимут почти не меняется; на полюсе Земли — только вниз по высоте")
+    func direction() {
+        let s = Self.shift(altitude: 20)
+        #expect(s.topo.altitude < s.geo.altitude)
+        #expect(abs(s.topo.azimuth - s.geo.azimuth) < 0.1)
+        let pole = Self.shift(altitude: 30, latitude: 89.9)
+        #expect(pole.topo.altitude < pole.geo.altitude - 0.7)
+    }
+
+    @Test("расстояние всерьёз: в перигее сдвиг больше, в апогее меньше")
+    func distanceMatters() {
+        let near = Self.shift(altitude: 5, distance: 356_500).sep, far = Self.shift(altitude: 5, distance: 406_700).sep
+        #expect(near > far + 0.1)
+    }
+
+    @Test("высота наблюдателя 3 км меняет Луну не больше чем на 0,005°")
+    func height() {
+        let frame = SkyFrame(days: 9_788.3, latitude: 30, longitude: 85)
+        let p = EquatorialPoint(ra: 1.0, dec: 0.2)
+        let a = frame.horizontal(ofDate: p, distanceKm: 384_400), b = frame.horizontal(ofDate: p, distanceKm: 384_400, heightMeters: 3000)
+        #expect(SkyTimeTests.separation(a, b) < 0.005)
+    }
+
+    @Test("AR-Луна — топоцентрическая, Луна «Света» (веб) осталась геоцентрической; Солнце, планеты, звёзды прежние")
+    func onlyMoonMoved() {
+        let place = SkyTimeTests.tomsk, m = 21 * 60.0, d = SkyTimeTests.days(m)
+        let ar = MoonTrack.sample(day: SkyTimeTests.day, minutes: m, in: place)
+        let geo = SkyTimeTests.frame(minutes: m).horizontal(ofDate: SunMoonTheory.moon(days: d).point)
+        #expect(ar.altitude < geo.altitude, "AR-Луна опустилась на параллакс")
+        let web = MoonSample(date: SkyTimeTests.day, minutes: m, place: place)
+        #expect(web == MoonSample(date: SkyTimeTests.day, minutes: m, place: place, time: .web))
+        let f = SkyTimeTests.frame(minutes: m)
+        // Вход без расстояния (Солнце, планеты, каталожные точки) параллакса не получает.
+        let sun = SunMoonTheory.sun(days: d)
+        let got = SunTrack.sample(day: SkyTimeTests.day, minutes: m, in: place)
+        #expect(got.azimuth == f.horizontal(ofDate: sun).azimuth && got.altitude == f.horizontal(ofDate: sun).altitude)
     }
 }
