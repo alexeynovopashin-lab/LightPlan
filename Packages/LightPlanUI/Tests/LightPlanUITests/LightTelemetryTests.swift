@@ -107,6 +107,21 @@ struct LightTelemetryTests {
         #expect(withGust.wind!.contains(Self.lexicon.t("wind.gust", ["n": "8"])))
     }
 
+    /// 29.8в.27: на узком экране «Ветер» уходит из закрытого списка в раскрытый — строка там уже есть (группа «Погода»),
+    /// с той же подписью и тем же текстом, что в закрытой части: сильный ветер с порывами, штиль, и без прогноза строки нет нигде.
+    @Test func windRowInTheExpandedListHasTheSameLabelAndText() {
+        let sun = Self.barnaul(CivilDate(year: 2026, month: 6, day: 21))
+        for w in [Self.day(quality: .good, wind: 16, windDirection: 225, gust: 28), Self.day(quality: .good, wind: 1, windDirection: 90, gust: 1)] {
+            let t = Self.build(sun: sun, t: sun.solarNoon, weather: w)
+            let row = t.proGroups.first { $0.title == Self.lexicon.t("pro.weather") }?.rows.first { $0.label == Self.lexicon.t("pro.wind") }
+            #expect(row?.value == t.wind)
+            #expect(Self.lexicon.t("pro.wind") == Self.lexicon.t("tele.wind"))
+        }
+        let none = Self.build(sun: sun, t: sun.solarNoon, weather: nil)
+        #expect(none.wind == nil)
+        #expect(none.proGroups.first { $0.title == Self.lexicon.t("pro.weather") }?.rows.contains { $0.label == Self.lexicon.t("pro.wind") } == false)
+    }
+
     // MARK: - Румб по азимуту (16 делений)
 
     @Test func compassDirectionsAtCardinalPoints() {

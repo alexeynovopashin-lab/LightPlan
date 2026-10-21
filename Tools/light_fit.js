@@ -11,6 +11,9 @@
               накрывает, у него высота > 0, первый ряд есть, лежит в рамке списка и начинается у её верха
               (`--selftest` — проверка самой проверки: нормальный список и испорченные, без симулятора);
      кнопка стоит на месте: её y в закрытом и раскрытом виде одинаков;
+     «Ветер» (29.8в.27): колонка «ветер» — где строка стоит (`закр.` — в закрытом списке, `Подр.` — перенесена в раскрытый). Красный:
+              в раскрытом виде нет `spoiler.wind`; текст в закрытой части и в списке разный; решение закрытого и раскрытого
+              вида разное (`windProblems`). Решает приложение по измеренной высоте (`LightWindPlacement`), прибор лишь сверяет;
      «воздух» (`tele.air`): низ строки против верха панели — для сведения (строка достижима прокруткой).
    Красный (выход 1) — только структура: нет узла, список вне места, кнопка уехала.
 
@@ -48,6 +51,18 @@ function listProblems(list, g0, head, sp) {
   if (list.y < head - 0.5) why.push('список накрывает шапку');
   return why;
 }
+/* «Ветер» (29.8в.27). Вход — узлы `tele.wind` (закрытая часть) и `spoiler.wind` (строка в раскрытом списке), вид и то, был ли
+   «Ветер» в закрытой части в закрытом виде того же случая (`closedHad`, null — закрытого вида в прогоне нет).
+   Выход — список причин. В раскрытом списке строка должна быть всегда (группа «Погода»), с тем же текстом, что в закрытой части. */
+function windProblems(view, wTele, wList, closedHad) {
+  const why = [];
+  if (view === 'open') {
+    if (!wList) why.push('нет spoiler.wind в раскрытом списке');
+    else if (wTele && wTele.text !== wList.text) why.push(`текст «Ветра» разный: «${wTele.text}» / «${wList.text}»`);
+  }
+  if (closedHad !== null && closedHad !== undefined && !!wTele !== closedHad) why.push('«Ветер» в закрытом и раскрытом виде стоит по-разному');
+  return why;
+}
 /* Порог зазора: `--min-gap <pt>` красит зазор меньше порога; зазор ≤ 0 (кнопка под панелью) красный, когда порог
    задан — иначе `--min-gap 0` пропускал зазор ровно 0 (ревью GPT к 6bc2131). Без порога — только пометка. */
 function gapWhy(gap, min) {
@@ -77,6 +92,15 @@ if (args.selftest) {
     ['зазор 0,1, порог 0', gapWhy(0.1, 0), false],
     ['зазор 0, порога нет', gapWhy(0, null), false],
     ['зазор 5, порог 8', gapWhy(5, 8), true],
+  );
+  const wa = { text: '2 м/с · слабый' }, wb = { text: '16 м/с · сильный' };
+  cases.push(
+    ['ветер на месте, в списке тоже', windProblems('open', wa, wa, true), false],
+    ['ветер перенесён, есть в списке', windProblems('open', undefined, wa, false), false],
+    ['ветра нет нигде', windProblems('open', undefined, undefined, false), true],
+    ['текст разный', windProblems('open', wa, wb, true), true],
+    ['закрытый вид: ветер перенесён', windProblems('closed', undefined, undefined, null), false],
+    ['решение разное в двух видах', windProblems('open', undefined, wa, true), true],
   );
   let bad = 0;
   for (const [name, why, wantRed] of cases) {
@@ -182,12 +206,12 @@ function strip(n) {
 let red = 0, under = 0, runs = 0;
 const f1 = v => v.toFixed(1).padStart(7);
 console.log('модель'.padEnd(26), 'тема'.padEnd(6), 'текст'.padEnd(6), 'вид'.padEnd(7), 'окно'.padEnd(10),
-  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель', ' полоса');
+  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель', ' полоса', ' ветер');
 for (const model of MODELS) {
   const { udid, created } = device(model);
   run('xcrun', ['simctl', 'install', udid, APP]);
   for (const theme of ['dark', 'light']) for (const c of CASES) {
-    let closedY = null;
+    let closedY = null, closedWind = null;
     for (const view of VIEWS) {
       const j = shoot(udid, theme, c, view, path.join(OUT, model, theme + '-' + c.name + '-' + view)), n = j.nodes;
       const sp = n.spoiler, tb = n.timebar, list = n['spoiler.list'], g0 = n['spoiler.g0'], air = n['tele.air'];
@@ -195,7 +219,11 @@ for (const model of MODELS) {
       const win = `${Math.round(j.size[0])}×${Math.round(j.size[1] + j.safe[0] + j.safe[1])}`.padEnd(10);
       runs++;
       if (args.mode === 'simple' && tb && !sp) {
-        console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, '«Просто»: кнопки нет, панель сверху', f1(tb.y).trim()); continue;
+        /* «Просто»: спойлера нет, «Ветер» некуда переносить — он обязан остаться в закрытой части. */
+        const wS = n['tele.wind'];
+        if (!wS) red++;
+        console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, '«Просто»: кнопки нет, панель сверху', f1(tb.y).trim(),
+          '· ветер', wS ? 'закр.' : 'ПРОПАЛ ← красный'); continue;
       }
       if (!sp || !tb) { console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, 'нет узла spoiler/timebar'); red++; continue; }
       const gap = tb.y - bottomOf(sp);
@@ -205,11 +233,15 @@ for (const model of MODELS) {
       if (closedY === null) closedY = sp.y;
       else if (Math.abs(sp.y - closedY) > 0.5) why.push(`кнопка уехала на ${(sp.y - closedY).toFixed(1)}`);
       if (view === 'open') why.push(...listProblems(list, g0, head, sp));
+      const wT = n['tele.wind'], wL = n['spoiler.wind'];
+      why.push(...windProblems(view, wT, wL, view === 'open' ? closedWind : null));
+      if (view === 'closed') closedWind = !!wT;
       if (why.length) red++;
       console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, f1(head).padStart(9),
         (f1(sp.y) + '/' + f1(bottomOf(sp)).trim()).padStart(16), f1(tb.y).padStart(12), f1(gap),
         (list ? f1(list.y) + '/' + f1(bottomOf(list)).trim() : '—').padStart(16), (g0 ? f1(g0.y) : '—').padStart(8),
         (air ? f1(bottomOf(air) - tb.y) : '—').padStart(13), f1(strip(n)).padStart(7),
+        (wT ? 'закр.' : 'Подр.').padStart(7),
         why.length ? ' ← красный: ' + why.join('; ') : note.length ? ' · ' + note.join('; ') : '');
     }
   }

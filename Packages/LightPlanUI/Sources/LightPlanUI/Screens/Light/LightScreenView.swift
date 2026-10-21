@@ -21,6 +21,11 @@ public struct LightScreenView: View {
     /// Рамка купола и показаний в ней — светило пальцем (19в).
     @State private var domeSize = CGSize(width: 0, height: DomeView.height)
     @State private var readoutFrame = CGRect.null
+    /// 29.8в.27: «Ветер» живёт в раскрытом списке, а не в закрытом (см. `LightWindPlacement`). Решает измерение, не модель телефона.
+    @State private var windMoved = false
+    @State private var windRowHeight = LightWindPlacement.defaultRowHeight
+    /// Низ кнопки «Подробно» в координатах содержимого прокрутки (не зависит от того, прокручен ли экран).
+    @State private var spoilerBottom: CGFloat = 0
 
     public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {},
                 onPlan: @escaping (CivilDate, Int) -> Void = { _, _ in }) {
@@ -57,7 +62,9 @@ public struct LightScreenView: View {
                         .padding(.horizontal, 24)
 
                     LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
-                                     openTitle: model.lexiconWord("today.hide"))
+                                     openTitle: model.lexiconWord("today.hide"),
+                                     onButtonBottom: { spoilerBottom = $0; refreshWindPlacement() },
+                                     windLabel: model.lexiconWord("pro.wind"))
                         .padding(.horizontal, 24)
 
                     // `.screen-action { margin-top: auto }`: в «Просто» кнопка
@@ -71,9 +78,14 @@ public struct LightScreenView: View {
                 .tabRise()
             }
             .frame(minHeight: visibleHeight, alignment: .top)
+            .coordinateSpace(.named(LightWindPlacement.contentSpace))
         }
         .scrollBounceBehavior(.basedOnSize)
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0 }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0; refreshWindPlacement() }
+        .onChange(of: model.proMode) { _, pro in
+            // В «Просто» спойлера нет — «Ветер» остаётся в закрытой части; в «Астро» решит новое измерение кнопки.
+            if !pro { windMoved = false; spoilerBottom = 0 }
+        }
         .safeAreaInset(edge: .bottom, spacing: 8) {
             TimebarView(model.timebar, showRibbon: model.proMode)
                 .shotNode("timebar")
@@ -207,6 +219,15 @@ public struct LightScreenView: View {
     }
 
     private static let domeSpace = "dome"
+
+    /// 29.8в.27: пересчёт места «Ветра» по свежим измерениям (кнопка, высота строки, высота прокрутки).
+    private func refreshWindPlacement() {
+        guard model.proMode, spoilerBottom > 0, visibleHeight > 0, model.telemetry.wind != nil else { return }
+        let moved = LightWindPlacement.shouldMove(buttonBottom: spoilerBottom, windRowHeight: windRowHeight,
+                                                  windMoved: windMoved, viewport: visibleHeight)
+        if moved != windMoved { windMoved = moved }
+    }
+
     /// 29.8в.26: от горизонта дуги (196 из 240 в `viewBox`) до подписи «до золотого часа» у веба 44 + 2 pt — пустая
     /// полоса, из-за которой на 15 Pro Max «Подробно» уходило под нижнюю панель (замер: −16,5 pt). Рамка купола
     /// остаётся 240 (дуга, показание, перетаскивание светила и призрак под строками стоят как были), весь список
@@ -321,7 +342,10 @@ public struct LightScreenView: View {
             plainRow(labelKey: "tele.shadow", value: t.shadow)
             // Небо и ветер — из прогноза: нет прогноза — нет строк (надпись уже в «Закате» и в шапке).
             if let sky = t.sky { rowWithIcon(labelKey: "tele.sky", iconName: sky.iconName, value: sky.text) }
-            if let wind = t.wind { plainRow(labelKey: "tele.wind", value: wind) }
+            if let wind = t.wind, !windMoved {
+                plainRow(labelKey: "tele.wind", value: wind)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windRowHeight = $0; refreshWindPlacement() }
+            }
             if let air = t.air {
                 plainRow(labelKey: "tele.air", value: air)
             }
@@ -467,5 +491,33 @@ private struct DomeDragModifier: ViewModifier {
         #else
         content.gesture(gesture.gesture(axis: $axis))
         #endif
+    }
+}
+
+/// 29.8в.27 — адаптация натива, веба тут нет: в вебе «Ветер» всегда в закрытой части (`#tWind`), а длинный экран
+/// прокручивается. На iPhone, где закрытый список ставит «Подробно» под нижнюю панель (зазор кнопка/панель ≤ 0 по
+/// `make lightfit`), строка «Ветер» показывается только внутри раскрытого списка (группа «Погода», `pro.wind`, тот же
+/// текст `windLine`). Решает измеренная высота, а не модель телефона; на экранах, где кнопка видна (15 Pro Max, 17 Pro Max),
+/// ничего не меняется. В «Просто» спойлера нет — там строка остаётся на месте.
+enum LightWindPlacement {
+    static let contentSpace = "lightContent"
+    /// Строка телеметрии 35 pt (`TelemetryRow`), пока настоящая высота не измерена.
+    static let defaultRowHeight: CGFloat = 35
+    /// `safeAreaInset(edge: .bottom, spacing: 8)` под прокруткой: кадр прокрутки (`visibleHeight`) кончается на 8 pt выше панели.
+    /// Сверено с `make lightfit`: 15 Pro Max `visibleHeight 647`, низ кнопки 649,3 → 647 + 8 − 649,3 = +5,7 при измеренных +5,5;
+    /// 15: 567 + 8 − 649,3 = −74,3 при измеренных −74,5.
+    static let panelSpacing: CGFloat = 8
+    /// Зазор кнопка → верх панели, при котором кнопка ещё «под панелью» (как в `light_fit.js`: `gap <= 0`).
+    static let minGap: CGFloat = 0
+
+    /// Зазор кнопка/панель, каким он был бы при «Ветре» в закрытом списке.
+    static func gapWithWind(buttonBottom: CGFloat, windRowHeight: CGFloat, windMoved: Bool, viewport: CGFloat) -> CGFloat {
+        let bottom = windMoved ? buttonBottom + windRowHeight : buttonBottom
+        return viewport + panelSpacing - bottom
+    }
+
+    /// Уводить ли «Ветер» в раскрытый список. Считается от положения «с ветром», поэтому после переноса решение не мигает.
+    static func shouldMove(buttonBottom: CGFloat, windRowHeight: CGFloat, windMoved: Bool, viewport: CGFloat) -> Bool {
+        gapWithWind(buttonBottom: buttonBottom, windRowHeight: windRowHeight, windMoved: windMoved, viewport: viewport) <= minGap
     }
 }
