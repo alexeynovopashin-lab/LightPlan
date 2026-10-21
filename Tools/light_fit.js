@@ -173,10 +173,16 @@ function shoot(udid, theme, c, view, dir) {
 }
 
 const bottomOf = n => n.y + n.h;
+/* Полоса (29.8в.26): от линии горизонта дуги до верха подписи «до золотого часа». Холст вписан в рамку купола как `meet`
+   (масштаб min(ширина/390, 1), по центру), горизонт — 196 из 240 в его `viewBox` (`DomeGeometry.cy`). */
+function strip(n) {
+  const d = n.dome, k = Math.min(d.w / 390, d.h / 240);
+  return n['next.label'].y - (d.y + (d.h - 240 * k) / 2 + 196 * k);
+}
 let red = 0, under = 0, runs = 0;
 const f1 = v => v.toFixed(1).padStart(7);
 console.log('модель'.padEnd(26), 'тема'.padEnd(6), 'текст'.padEnd(6), 'вид'.padEnd(7), 'окно'.padEnd(10),
-  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель');
+  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель', ' полоса');
 for (const model of MODELS) {
   const { udid, created } = device(model);
   run('xcrun', ['simctl', 'install', udid, APP]);
@@ -203,7 +209,7 @@ for (const model of MODELS) {
       console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, f1(head).padStart(9),
         (f1(sp.y) + '/' + f1(bottomOf(sp)).trim()).padStart(16), f1(tb.y).padStart(12), f1(gap),
         (list ? f1(list.y) + '/' + f1(bottomOf(list)).trim() : '—').padStart(16), (g0 ? f1(g0.y) : '—').padStart(8),
-        (air ? f1(bottomOf(air) - tb.y) : '—').padStart(13),
+        (air ? f1(bottomOf(air) - tb.y) : '—').padStart(13), f1(strip(n)).padStart(7),
         why.length ? ' ← красный: ' + why.join('; ') : note.length ? ' · ' + note.join('; ') : '');
     }
   }
