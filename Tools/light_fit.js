@@ -224,7 +224,7 @@ for (const model of MODELS) {
         /* «Просто»: спойлера нет, «Ветер» некуда переносить — он обязан остаться в закрытой части. */
         const wS = n['tele.wind'], ws = windProblems(false, view, wS, undefined), act = n.action;
         const aG = act ? tb.y - bottomOf(act) : null;
-        const sWhy = [...ws, ...(aG !== null ? gapWhy(aG, MIN_GAP).map(w => 'действие: ' + w) : [])];
+        const sWhy = [...ws, ...(aG !== null ? gapWhy(aG, MIN_GAP).map(w => 'действие: ' + w) : ['нет узла action («Запланировать съёмку»)'])];
         if (sWhy.length) red++;
         console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, '«Просто»: кнопки нет, панель сверху', f1(tb.y).trim(),
           '· ветер', wS ? 'закр.' : 'ПРОПАЛ', '· действие', aG !== null ? f1(aG).trim() : '—', sWhy.length ? '← красный: ' + sWhy.join('; ') : ''); continue;
@@ -240,7 +240,8 @@ for (const model of MODELS) {
       const wT = n['tele.wind'], wL = n['spoiler.wind'];
       why.push(...windProblems(true, view, wT, wL));
       const act = n.action, actGap = act ? tb.y - bottomOf(act) : null;
-      if (actGap !== null) { if (actGap <= 0) note.push('съёмка под панелью'); why.push(...gapWhy(actGap, MIN_GAP).map(w => 'действие: ' + w)); }
+      if (actGap === null) why.push('нет узла action («Запланировать съёмку»)');
+      else { if (actGap <= 0) note.push('съёмка под панелью'); why.push(...gapWhy(actGap, MIN_GAP).map(w => 'действие: ' + w)); }
       if (why.length) red++;
       console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, f1(head).padStart(9),
         (f1(sp.y) + '/' + f1(bottomOf(sp)).trim()).padStart(16), f1(tb.y).padStart(12), f1(gap),

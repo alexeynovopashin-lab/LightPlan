@@ -103,19 +103,9 @@ public struct LightScreenView: View {
                         .shotNode("header.follow", text: model.placeFollowing ? "on" : "off")
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
                 }
-                if model.proMode {
-                    // 29.8в.27, «Астро»: две строки вместо четырёх (слово Алексея 21.10) — «область» уходит с экрана (данные модели целы),
-                    // дата и «сегодня» стоят в одной строке. Адаптация натива, веб не менялся; в «Просто» шапка прежняя.
-                    (Text(h.dateLabel).tracking(0.6).foregroundStyle(pal.ink4)
-                        + Text(" · ").tracking(0.6).foregroundStyle(pal.ink4)
-                        + Text(h.note).tracking(0.4).foregroundStyle(pal.ink6))
-                        .font(.system(size: 11, weight: .medium)).textCase(.uppercase)
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                        .shotNode("header.date", text: h.dateLabel + " · " + h.note)
-                        .frame(height: 13)
-                        .padding(.top, 3)
-                } else {
-                if !model.locationSub.isEmpty {
+                // 29.8в.27, «Астро»: строки «область» нет (слово Алексея 21.10; данные модели целы), дата и «сегодня» — как были,
+                // каждая в своей строке. Адаптация натива, веб не менялся; в «Просто» шапка прежняя.
+                if !model.locationSub.isEmpty && !model.proMode {
                     Text(model.locationSub)
                         .font(.system(size: 11)).tracking(0.1)
                         .foregroundStyle(pal.ink4)
@@ -135,7 +125,6 @@ public struct LightScreenView: View {
                     .shotNode("header.note", text: h.note)
                     .frame(height: 13)
                     .padding(.top, 4)
-                }
             }
             .contentShape(Rectangle())
             }
@@ -161,10 +150,11 @@ public struct LightScreenView: View {
                     if model.proMode {
                         // «Астро» (29.8в.27): состояние и ↓↑ в одной строке — две строки погоды вместо трёх.
                         HStack(spacing: 8) {
+                            // Сжимается только слово состояния; ↓↑ не теряются (замечание ревью GPT к 017a9ba).
                             Text(w.condition)
                                 .font(.system(size: 14))
                                 .foregroundStyle(pal.ink2)
-                                .lineLimit(1)
+                                .lineLimit(1).minimumScaleFactor(0.7)
                                 .shotNode("wx.cond", text: w.condition)
                             HStack(spacing: 6) {
                                 Text(w.low).shotNode("wx.lo", text: w.low)
@@ -172,8 +162,8 @@ public struct LightScreenView: View {
                             }
                             .font(.system(size: 13).monospacedDigit())
                             .foregroundStyle(pal.ink4)
+                            .fixedSize()
                         }
-                        .fixedSize()
                     } else {
                     Text(w.condition)
                         .font(.system(size: 14))
@@ -190,6 +180,7 @@ public struct LightScreenView: View {
                 .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .layoutPriority(1)
             } else if let forecastNote {
                 // Прогноза нет — честная надпись на месте погоды; выдуманное не рисуем (28ж).
                 // Тап по ней — принудительная загрузка прогноза (28ж.3в).
