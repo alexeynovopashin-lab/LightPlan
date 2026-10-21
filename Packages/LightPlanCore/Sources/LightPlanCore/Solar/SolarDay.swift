@@ -19,6 +19,14 @@ public typealias Degrees = Double
 /// последнем бите. Единственное отступление — то, что чистые функции
 /// (`sin(rad(lat))`, `cos(decl)`) посчитаны один раз, а не при каждом вызове:
 /// результат тот же бит в бит, зато купол по пальцу не тратит их заново.
+///
+/// **Две модели Солнца (шаг 29.8в.25).** `.web` — порт веба, как выше: склонение и уравнение времени NOAA один раз
+/// на сутки, ошибка против JPL Horizons до 0,55° и до 5 минут у событий (до 23 у Тромсё). На ней держится стенд
+/// паритета: допуски `1e-6` минуты и `1e-9` градуса, и точнее веба она быть не может. `.iau` — то же Солнце, что на
+/// экране AR (`SunMoonTheory.sun` → звёздное время IAU, как у `SkyFrame`): против Horizons ≤ 0,01° и ≤ 0,12 минуты у
+/// событий (до 0,55 у Тромсё). Экраны приложения идут по `.iau` — через `init(date:place:)`; ядро сверки
+/// `init(date:latitude:longitude:utcOffsetHours:)` по умолчанию остаётся `.web`, чтобы паритет не двигался сам.
+/// Пороги высоты (−0,833°, +6°, −4°, −6°, −12°, −18°) у обеих моделей одни и те же — меняется только положение Солнца.
 public struct SolarDay: Sendable, Equatable {
 
     /// Полярность суток: `.day` — солнце не заходит, `.night` — не восходит.
@@ -58,7 +66,10 @@ public struct SolarDay: Sendable, Equatable {
     public let arcA: Minutes
     public let arcB: Minutes
 
-    private let frame: Frame
+    /// Какая модель Солнца под этими сутками.
+    public let model: SkyTime
+
+    private let core: Core
 
     // MARK: - Входы
 
@@ -66,18 +77,29 @@ public struct SolarDay: Sendable, Equatable {
     ///
     /// Дробное на самом деле: Катманду 5.75, Чатем 12.75 — с `Int` эти места
     /// молча сдвигаются на четверть часа. Это то, что проверяет стенд.
-    public init(date: CivilDate, latitude: Double, longitude: Double, utcOffsetHours: Double) {
-        let doy = Double(date.ordinal)
-        let g = 2 * Double.pi / 365 * (doy - 1 + 0.5)
-        let decl = 0.006918 - 0.399912 * cos(g) + 0.070257 * sin(g)
-            - 0.006758 * cos(2 * g) + 0.000907 * sin(2 * g)
-            - 0.002697 * cos(3 * g) + 0.00148 * sin(3 * g)
-        let eq = 229.18 * (0.000075 + 0.001868 * cos(g) - 0.032077 * sin(g)
-            - 0.014615 * cos(2 * g) - 0.040849 * sin(2 * g))
-        let noon = 720 - 4 * longitude - eq + utcOffsetHours * 60
-
-        let frame = Frame(latitude: latitude, declination: decl, solarNoon: noon)
-        self.frame = frame
+    public init(date: CivilDate, latitude: Double, longitude: Double, utcOffsetHours: Double, time: SkyTime = .web) {
+        let core: Core
+        let decl: Double
+        let noon: Minutes
+        switch time {
+        case .web:
+            let doy = Double(date.ordinal)
+            let g = 2 * Double.pi / 365 * (doy - 1 + 0.5)
+            decl = 0.006918 - 0.399912 * cos(g) + 0.070257 * sin(g)
+                - 0.006758 * cos(2 * g) + 0.000907 * sin(2 * g)
+                - 0.002697 * cos(3 * g) + 0.00148 * sin(3 * g)
+            let eq = 229.18 * (0.000075 + 0.001868 * cos(g) - 0.032077 * sin(g)
+                - 0.014615 * cos(2 * g) - 0.040849 * sin(2 * g))
+            noon = 720 - 4 * longitude - eq + utcOffsetHours * 60
+            core = .web(Frame(latitude: latitude, declination: decl, solarNoon: noon))
+        case .iau:
+            let exact = ExactSun(date: date, latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours)
+            noon = exact.noon
+            decl = exact.declination(at: noon)
+            core = .exact(exact)
+        }
+        self.core = core
+        self.model = time
         self.declination = decl
         self.solarNoon = noon
         /* Сутки всегда идут от полуночи до полуночи (веб: забраковано сдвигать
@@ -85,22 +107,22 @@ public struct SolarDay: Sendable, Equatable {
         self.mint = noon - 720
         self.maxt = (noon - 720) + 1440
 
-        let rise = frame.time(atElevation: -0.833, rising: true)
-        let set = frame.time(atElevation: -0.833, rising: false)
+        let rise = core.time(atElevation: -0.833, rising: true)
+        let set = core.time(atElevation: -0.833, rising: false)
         self.rise = rise
         self.set = set
-        self.goldenA = frame.time(atElevation: 6, rising: true)
-        self.goldenB = frame.time(atElevation: 6, rising: false)
-        self.blueA = frame.time(atElevation: -4, rising: true)
-        self.blueB = frame.time(atElevation: -4, rising: false)
-        self.civilA = frame.time(atElevation: -6, rising: true)
-        self.civilB = frame.time(atElevation: -6, rising: false)
-        self.nauticalA = frame.time(atElevation: -12, rising: true)
-        self.nauticalB = frame.time(atElevation: -12, rising: false)
-        self.astroA = frame.time(atElevation: -18, rising: true)
-        self.astroB = frame.time(atElevation: -18, rising: false)
+        self.goldenA = core.time(atElevation: 6, rising: true)
+        self.goldenB = core.time(atElevation: 6, rising: false)
+        self.blueA = core.time(atElevation: -4, rising: true)
+        self.blueB = core.time(atElevation: -4, rising: false)
+        self.civilA = core.time(atElevation: -6, rising: true)
+        self.civilB = core.time(atElevation: -6, rising: false)
+        self.nauticalA = core.time(atElevation: -12, rising: true)
+        self.nauticalB = core.time(atElevation: -12, rising: false)
+        self.astroA = core.time(atElevation: -18, rising: true)
+        self.astroB = core.time(atElevation: -18, rising: false)
 
-        let maxElev = frame.elevation(at: noon)
+        let maxElev = core.elevation(at: noon)
         self.maxElevation = maxElev
         /* Полярные сутки: солнце не пересекает горизонт — восхода и заката нет. */
         if rise == nil && set == nil {
@@ -118,27 +140,31 @@ public struct SolarDay: Sendable, Equatable {
     /// зоны места (`ZoneID.utcOffsetHours(on:)`). Веб зовёт
     /// `tzAt(lat, lon, day)` с тем же `Date`, что и `computeSun(day)`.
     /// Подробности — DECISIONS.
-    public init(date: CivilDate, place: Place) {
+    ///
+    /// Это вход приложения: по умолчанию `.iau`, то же Солнце, что на экране AR. Паритет с вебом (стенд) идёт с
+    /// `time: .web`.
+    public init(date: CivilDate, place: Place, time: SkyTime = .iau) {
         self.init(
             date: date,
             latitude: place.latitude,
             longitude: place.longitude,
-            utcOffsetHours: place.zone.utcOffsetHours(on: date)
+            utcOffsetHours: place.zone.utcOffsetHours(on: date),
+            time: time
         )
     }
 
     // MARK: - Положение солнца
 
     /// Высота над горизонтом, градусы.
-    public func elevation(at t: Minutes) -> Degrees { frame.elevation(at: t) }
+    public func elevation(at t: Minutes) -> Degrees { core.elevation(at: t) }
 
     /// Азимут, градусы от севера по часовой стрелке, в `[0, 360)`.
-    public func azimuth(at t: Minutes) -> Degrees { frame.azimuth(at: t) }
+    public func azimuth(at t: Minutes) -> Degrees { core.azimuth(at: t) }
 
     /// Длина тени в ростах предмета. `nil`, если солнце ниже 0.5° или тень
     /// длиннее сорока ростов.
     public func shadowRatio(at t: Minutes) -> Double? {
-        let e = frame.elevation(at: t)
+        let e = core.elevation(at: t)
         if e <= 0.5 { return nil }
         let s = 1 / tan(rad(e))
         return s > 40 ? nil : s
@@ -161,6 +187,33 @@ private func clamp(_ v: Double, _ a: Double, _ b: Double) -> Double {
 
 /// Всё, что не зависит от минуты, посчитано один раз. Произведения связаны
 /// теми же скобками, что в JS: `sin(lat)·sin(decl)` и `(cos(lat)·cos(decl))·cos(ha)`.
+/// Модель под сутками: порт веба или точное Солнце.
+private enum Core: Sendable, Equatable {
+    case web(Frame)
+    case exact(ExactSun)
+
+    func elevation(at t: Double) -> Double {
+        switch self {
+        case .web(let f): return f.elevation(at: t)
+        case .exact(let e): return e.elevation(at: t)
+        }
+    }
+
+    func azimuth(at t: Double) -> Double {
+        switch self {
+        case .web(let f): return f.azimuth(at: t)
+        case .exact(let e): return e.azimuth(at: t)
+        }
+    }
+
+    func time(atElevation h: Double, rising: Bool) -> Double? {
+        switch self {
+        case .web(let f): return f.time(atElevation: h, rising: rising)
+        case .exact(let e): return e.time(atElevation: h, rising: rising)
+        }
+    }
+}
+
 private struct Frame: Sendable, Equatable {
     let sinLat: Double
     let cosLat: Double

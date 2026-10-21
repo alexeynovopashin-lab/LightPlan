@@ -45,7 +45,7 @@ public final class PointWeather {
         inFlight.append(Task { [weak self, fetcher] in
             do {
                 let h = try await fetcher.hourly(at: p)
-                let built = WeatherDay.buildDays(from: h, place: p)
+                let built = WeatherDay.buildDays(from: h, place: p, time: .iau)
                 self?.states[k] = built.days.isEmpty ? .empty : .ready(days: built.days, hourly: built.hourly)
             } catch {
                 self?.states[k] = nil

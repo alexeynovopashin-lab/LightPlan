@@ -52,8 +52,10 @@ public struct MilkyWayWindow: Sendable, Equatable {
 
     // MARK: - Входы
 
-    public init(date: CivilDate, latitude: Double, longitude: Double, utcOffsetHours: Double) {
-        let sun = SolarDay(date: date, latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours)
+    /// `time` — какое небо считать: `.web` — как веб (стенд паритета), `.iau` — то же Солнце, ядро и Луна, что на экране
+    /// AR (шаг 29.8в.25): граница «темно» и «ядро выше 10°» не расходится с дугой AR.
+    public init(date: CivilDate, latitude: Double, longitude: Double, utcOffsetHours: Double, time: SkyTime = .web) {
+        let sun = SolarDay(date: date, latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours, time: time)
 
         var bestAltitude = -99.0
         var bestMinute: Minutes?
@@ -67,7 +69,7 @@ public struct MilkyWayWindow: Sendable, Equatable {
         while x <= last {
             let core = MilkyWay.corePosition(
                 date: date, minutes: x,
-                latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours
+                latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours, time: time
             )
             if core.altitude > bestAltitude { bestAltitude = core.altitude; bestMinute = x }
             let dark = sun.elevation(at: x) <= -18
@@ -76,7 +78,7 @@ public struct MilkyWayWindow: Sendable, Equatable {
             if ok {
                 let moon = MoonSample(
                     date: date, minutes: x,
-                    latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours
+                    latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours, time: time
                 )
                 if Self.moonBlocks(altitude: moon.altitude, fraction: moon.phase.fraction) { moonBlocks = true; ok = false }
             }
@@ -101,11 +103,13 @@ public struct MilkyWayWindow: Sendable, Equatable {
         self.moonBlocks = moonBlocks
     }
 
-    public init(date: CivilDate, place: Place) {
+    /// Вход приложения: по умолчанию `.iau`, как `SolarDay(date:place:)`.
+    public init(date: CivilDate, place: Place, time: SkyTime = .iau) {
         self.init(
             date: date,
             latitude: place.latitude, longitude: place.longitude,
-            utcOffsetHours: place.zone.utcOffsetHours(on: date)
+            utcOffsetHours: place.zone.utcOffsetHours(on: date),
+            time: time
         )
     }
 }

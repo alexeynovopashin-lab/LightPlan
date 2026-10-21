@@ -54,7 +54,11 @@ struct MapSceneParityTests {
         let ymd = c.date.split(separator: "-").compactMap { Int($0) }
         let date = CivilDate(year: ymd[0], month: ymd[1], day: ymd[2])
         let place = Place(latitude: ref.place.lat, longitude: ref.place.lon, zone: ZoneID(ref.place.zone)!)
-        let solar = SolarDay(date: date, place: place)
+        /* Сверка с разметкой беты: Солнце — веб-модель (`.web`), как у веба. Приложение рисует прибор по точному Солнцу
+           (`SolarDay(date:place:)` = `.iau`, шаг 29.8в.25, до 0,5° и до 5 минут точнее веба), поэтому с `.iau` путь и
+           мишень светила разошлись бы с разметкой беты на пиксель по построению. Что отрисовка при том же Солнце
+           совпадает с вебом поэлементно — проверяется здесь; что точное Солнце лежит там, где Horizons, — `SolarDayExactTests`. */
+        let solar = SolarDay(date: date, place: place, time: .web)
         let clock = ClockText(language: "ru", preference: .h24)
         let input = MapInstrument.Input(
             date: date, minute: c.minute, solar: solar, place: place, layers: MapLayers(c.layers), pro: c.pro,

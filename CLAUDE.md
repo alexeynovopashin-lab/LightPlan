@@ -76,8 +76,15 @@
   constellations, Milky Way band/core/frame) goes through `SkyFrame` (`Sky/SiderealTime.swift`): IAU sidereal time, J2000 catalog
   points precessed to the date (`horizontal(j2000:)`), Sun/Moon/planets already of date (`horizontal(ofDate:)`). Sun and Moon use
   `Sky/SunMoonTheory.swift` (Meeus ch. 25 / 47), ≤ 0.02° vs Horizons. The AR Moon is topocentric (29.8в.23: `horizontal(ofDate:distanceKm:)`, Meeus ch. 40 parallax up to 0.95°, ≤ 0.013° vs Horizons topocentric); Sun and planets take no parallax (< 9″). `Sky.horizontal`, `SolarDay`, and `MoonSample`/`MilkyWay.corePosition`
-  with the default `time: .web` keep the web's numbers for parity (Light, Map, dome, shoot window). A new AR layer must not call
-  `Sky.horizontal`. Reference: `python3 Tools/sky_time_ref.py` → `Fixtures/sky_time_horizons.json`, read by `SkyTimeTests`.
+  with the default `time: .web` keep the web's numbers for parity (Map instrument sky, dome constellations, Moon on the Light screen).
+  A new AR layer must not call `Sky.horizontal`. Reference: `python3 Tools/sky_time_ref.py` → `Fixtures/sky_time_horizons.json`, read by `SkyTimeTests`.
+- **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
+  `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
+  parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init
+  `SolarDay(date:latitude:longitude:utcOffsetHours:)` stays `.web` (NOAA port, bit-for-bit; parity tolerances 1e-6 min / 1e-9°). **The screens now
+  show a Sun more exact than the web's — by design they no longer equal it** (web: up to 0.55° / 5 min / 23 min at Tromsø). Reference:
+  `python3 Tools/sun_horizons_ref.py` → `Fixtures/sun_horizons.json`, read by `SolarDayExactTests`; a web-parity test that feeds a screen
+  component passes `time: .web` (e.g. `MapSceneParityTests`). Not yet moved: Moon and planets on Light/Map/dome (`.web` sidereal time).
 - **Glass never takes a rotation (28п).** `.glassEffect` under `rotationEffect` (or `scaleEffect`) swells into the
   bounding rectangle of the whole layer at angles that are not multiples of 90° (measured: three spot plates → one
   ≈ 420 × 415 pt slab). On «Карта» the rotor is two halves with the same angle (canvas, veil, road / instrument)
