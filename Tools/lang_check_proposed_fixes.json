@@ -1,0 +1,16 @@
+{
+  "_meta": {
+    "about": "Proposed fixes from Tools/lang_check.py. Nothing here is applied: lang_native.json and Localizable.xcstrings are untouched. Shape: key -> language -> {value, confidence, origin, current, reason}.",
+    "origin": "'web' = the key comes from the web's beta/lang.js (Fixtures/lang.json); change it there and run `make lang`. 'native' = the key lives in Tools/lang_native.json.",
+    "left_out": "light.waitedSunset (en, es, ja, zh): can be fixed in Swift or in the texts, see the report"
+  },
+  "week.wx": {
+    "zh": {
+      "value": "云量{cloud}%·风速{wind}米/秒",
+      "confidence": "high",
+      "origin": "web",
+      "current": "{cond}·云量{cloud}%·风速{wind}米/秒",
+      "reason": "Swift passes only {cloud} and {wind} (PlannerWeekView.swift), so the zh row shows a literal {cond}; ru, en, es, ja have no {cond}"
+    }
+  }
+}
