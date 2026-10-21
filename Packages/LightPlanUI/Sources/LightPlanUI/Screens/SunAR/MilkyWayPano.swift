@@ -28,26 +28,16 @@ enum MilkyWayPano {
         return (u - u.rounded(.down), 0.5 - b / verticalSpan)
     }
 
-    /// Какие панорамы бывают: имя в файле и подпись в строке выбора.
-    static let names = ["mw", "mw2"]
-    static let key = "lightplan.native.sunar.milkyWayPano"
-    static let defaultName = "mw2"
-
-    /// Выбранная на устройстве (в отладке — `-LPSunARMWPano mw`).
-    static var selected: String {
-        #if DEBUG
-        if let s = UserDefaults.standard.string(forKey: "LPSunARMWPano"), names.contains(s) { return s }
-        #endif
-        let s = UserDefaults.standard.string(forKey: key) ?? defaultName
-        return names.contains(s) ? s : defaultName
-    }
+    /// Панорама одна (29.8в.24, Алексей выбрал MW2): имя в файле `pano_mw2.jpg`.
+    static let names = ["mw2"]
+    static let selected = "mw2"
 
     static func url(_ name: String) -> URL? {
         Bundle.module.url(forResource: "MilkyWayData/pano_\(name)", withExtension: "jpg")
     }
 
-    /// Хоть одна панорама лежит в приложении — для подписи слоя.
-    static var bundled: Bool { names.contains { url($0) != nil } }
+    /// Панорама лежит в приложении — для подписи слоя.
+    static var bundled: Bool { url(selected) != nil }
 
     /// Подпись в строке слоя, пока источник не подтверждён (слово задания: нейтрально, без ESA/Gaia).
     static let creditKey = "ar.mwPano"

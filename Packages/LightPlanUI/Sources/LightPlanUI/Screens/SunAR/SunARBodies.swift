@@ -287,12 +287,10 @@ struct SunARMilkyWayCanvas: View {
     /// (обычное наложение, виден на светлом небе) и под ним — свет полосы, который складывается с кадром.
     /// «Как в тёмном месте» (29.8в.19): реалистичная часть на полную яркость при любых правилах видимости.
     var dark = false
-    /// Выбор панорамы на устройстве (строка в списке слоёв): смена перерисовывает слой.
-    @AppStorage(MilkyWayPano.key) private var panoChoice = MilkyWayPano.defaultName
 
     var body: some View {
         #if os(iOS)
-        if let pic = scene.milkyWayPicture, parts == nil, let gpu = MilkyWayPanoGPU.shared(panoChoice.isEmpty ? MilkyWayPano.selected : panoChoice) {
+        if let pic = scene.milkyWayPicture, parts == nil, let gpu = MilkyWayPanoGPU.shared(MilkyWayPano.selected) {
             // Панорама на всю сферу (29.8в.20): без горизонта, чёрное прозрачно; нет файла — запасная полоса ниже.
             GeometryReader { g in
                 let clip = holes.isEmpty ? Path(CGRect(origin: .zero, size: g.size))
