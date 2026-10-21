@@ -80,7 +80,8 @@ struct SunARGlassTests {
 
     /// Сцена, где диск солнца низко над горизонтом: линия горизонта идёт под центром диска на 12…16 pt и пересекает
     /// кромку не по центру — смещение у кромки видно поперёк линии.
-    private func lowSunScene() throws -> (scene: SunARScene, marks: [SunARMark], dy: CGFloat, base: Moment) {
+    private func lowSunScene(accepting accept: (SunARScene, [SunARMark], CGFloat) -> Bool = { _, _, _ in true })
+        throws -> (scene: SunARScene, marks: [SunARMark], dy: CGFloat, base: Moment) {
         let base = moment("2026-10-14T00:30:00Z").date
         for k in 0..<90 {
             let when = Moment(base.addingTimeInterval(Double(k) * 60))
@@ -95,7 +96,7 @@ struct SunARGlassTests {
             let marks = SunARMarks.make(sun: scene, night: nil, screen: size)
             guard let marker = scene.marker, let horizon = scene.horizon.first?.first else { continue }
             let dy = CGFloat(horizon.y - marker.y)
-            if dy > 12, dy < 16 { return (scene, marks, dy, when) }
+            if dy > 12, dy < 16, accept(scene, marks, dy) { return (scene, marks, dy, when) }
         }
         throw TestFailure("нет момента с солнцем на 12…16 pt над горизонтом")
     }
@@ -128,9 +129,39 @@ struct SunARGlassTests {
         return y
     }
 
+    /// Расстояние по вертикали от линии горизонта до жилы дуги в колонке `x`: по ломаной дуги, а не по её опорным точкам —
+    /// точки идут через 10 минут, на пологом участке между ними десятки pt, и «нет точки рядом» не значит «дуга далеко»
+    /// (шаг 29.8в.25: на моменте, где Солнце стоит точнее прежнего, жила прошла через колонку между двумя точками).
+    private static func arcGap(_ scene: SunARScene, x: CGFloat, yLine: CGFloat) -> CGFloat {
+        var best: CGFloat = 100
+        for seg in scene.arc {
+            for (p, q) in zip(seg, seg.dropFirst()) {
+                let (x0, x1) = (CGFloat(p.point.x), CGFloat(q.point.x))
+                guard min(x0, x1) - 4 <= x, x <= max(x0, x1) + 4 else { continue }
+                let n = max(1, Int((hypot(x1 - x0, CGFloat(q.point.y - p.point.y)) / 1).rounded(.up)))
+                for i in 0...n {
+                    let t = CGFloat(i) / CGFloat(n)
+                    let px = x0 + (x1 - x0) * t, py = CGFloat(p.point.y) + CGFloat(q.point.y - p.point.y) * t
+                    if abs(px - x) < 4 { best = min(best, abs(py - yLine)) }
+                }
+            }
+        }
+        return best
+    }
+
+    /// Колонка у кромки диска, где мерится изгиб линии, и расстояние жилы дуги до линии в ней.
+    private static func edgeColumn(_ scene: SunARScene, _ marks: [SunARMark], dy: CGFloat) -> (x: CGFloat, gap: CGFloat)? {
+        guard let mark = marks.first(where: { $0.isSun }), let line = scene.horizon.first?.first else { return nil }
+        let yLine = CGFloat(line.y), half = sqrt(mark.radius * mark.radius - dy * dy)
+        let left = arcGap(scene, x: mark.center.x - half, yLine: yLine), right = arcGap(scene, x: mark.center.x + half, yLine: yLine)
+        let sign: CGFloat = left >= right ? -1 : 1
+        return (mark.center.x + sign * (half - 1), max(left, right))
+    }
+
     @Test("линия горизонта внутри диска солнца гнётся у кромки: смещена на ≈ 2,5 pt против линии снаружи, в середине — один к одному, линия одна")
     func lineIsBentByTheLens() throws {
-        let s = try lowSunScene()
+        // Берём первый момент, где жила дуги у кромки действительно далеко от линии (иначе на пикселях две «линии»).
+        let s = try lowSunScene { scene, marks, dy in (Self.edgeColumn(scene, marks, dy: dy)?.gap ?? 0) > 14 }
         let mark = try #require(s.marks.first { $0.isSun })
         let c = mark.center, r = mark.radius, rim = SunARInk.rim(for: mark.diameter)
         let yLine = CGFloat(try #require(s.scene.horizon.first?.first).y)
@@ -150,14 +181,9 @@ struct SunARGlassTests {
 
         // У кромки: колонка внутри диска на 1 pt от края по линии. Смещение по формуле шейдера и по пикселям.
         // Сторона — та, где жила самой дуги дальше от линии горизонта (на другой они ложатся друг на друга).
-        let half = sqrt(r * r - s.dy * s.dy)
-        func arcGap(_ x: CGFloat) -> CGFloat {
-            let ys = s.scene.arc.flatMap { $0 }.filter { abs(CGFloat($0.point.x) - x) < 4 }.map { CGFloat($0.point.y) }
-            return ys.map { abs($0 - yLine) }.min() ?? 100
-        }
-        let sign: CGFloat = arcGap(c.x - half) >= arcGap(c.x + half) ? -1 : 1
-        let edgeX = c.x + sign * (half - 1)
-        #expect(arcGap(edgeX) > 12, "жила дуги рядом с линией у кромки: \(arcGap(edgeX)) pt")
+        let edge = try #require(Self.edgeColumn(s.scene, s.marks, dy: s.dy))
+        let edgeX = edge.x
+        #expect(edge.gap > 12, "жила дуги рядом с линией у кромки: \(edge.gap) pt")
         let expected = Double(expectedDisplayedY(x: edgeX, yLine: yLine, center: c, radius: r, rim: rim))
         let measured = try #require(px.lineCentroid(x: edgeX, y0: edgeWindow.lowerBound, y1: edgeWindow.upperBound))
         let shift = Double(yLine) - measured

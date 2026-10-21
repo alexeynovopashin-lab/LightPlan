@@ -99,13 +99,15 @@ public enum WindowLight {
     ///   - windowsAzimuth: куда СМОТРЯТ окна, градусы от севера по часовой;
     ///     любое число, приводится к `0…360`.
     ///   - hasWindows: есть ли в зале окна.
+    ///   - time: модель Солнца: `.web` — как веб (стенд паритета), `.iau` — как на экранах приложения (шаг 29.8в.25).
     public static func at(
         _ moment: Date?,
         latitude: Double?,
         longitude: Double?,
         zone: String?,
         windowsAzimuth: Double?,
-        hasWindows: Bool?
+        hasWindows: Bool?,
+        time: SkyTime = .web
     ) -> WindowLightAnswer {
         /* Окон нет — ответ готов и без координат, момента и пояса */
         if hasWindows == false { return answer(.none) }
@@ -132,7 +134,7 @@ public enum WindowLight {
         let c = utc.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: dayNum * 86_400))
         let day = CivilDate(year: c.year!, month: c.month!, day: c.day!)
 
-        let sun = SolarDay(date: day, latitude: lat, longitude: lon, utcOffsetHours: offsetMs / 3_600_000)
+        let sun = SolarDay(date: day, latitude: lat, longitude: lon, utcOffsetHours: offsetMs / 3_600_000, time: time)
         let elevation = sun.elevation(at: t)
         let sunAzimuth = sun.azimuth(at: t)
 

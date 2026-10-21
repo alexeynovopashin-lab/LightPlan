@@ -295,7 +295,7 @@ public final class WeatherStore {
 
     private func rebuild() {
         guard let hourly = rawHourly else { return }
-        let built = WeatherDay.buildDays(from: hourly, place: place, air: air)
+        let built = WeatherDay.buildDays(from: hourly, place: place, air: air, time: .iau)
         real = built.days
         hourlyByDay = built.hourly
     }

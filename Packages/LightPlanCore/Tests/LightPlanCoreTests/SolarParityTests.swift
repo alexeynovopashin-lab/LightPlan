@@ -201,9 +201,14 @@ struct SolarParityTests {
         ]
         for (date, offset) in cases {
             #expect(berlin.utcOffsetHours(on: date) == offset, "\(date): смещение не \(offset)")
-            let thin = SolarDay(date: date, place: place)
+            /* Проверяется выбор смещения по дате, а не модель Солнца: тонкий вход берётся с `.web`, как ядро сверки
+               (по умолчанию он `.iau`, шаг 29.8в.25); точная модель — тем же способом ниже. */
+            let thin = SolarDay(date: date, place: place, time: .web)
             let core = SolarDay(date: date, latitude: 52.52, longitude: 13.405, utcOffsetHours: offset)
             #expect(thin == core, "\(date): тонкий вход разошёлся с ядром при смещении \(offset)")
+            let thinExact = SolarDay(date: date, place: place)
+            let coreExact = SolarDay(date: date, latitude: 52.52, longitude: 13.405, utcOffsetHours: offset, time: .iau)
+            #expect(thinExact == coreExact, "\(date): тонкий вход (.iau) разошёлся с ядром при смещении \(offset)")
         }
         // Смещение действительно меняет день: полдень 29 и 30 марта разделяет ~час.
         let before = SolarDay(date: cases[1].0, place: place).solarNoon
@@ -259,12 +264,21 @@ struct SolarParityTests {
             }
         }
 
+        // Точное Солнце (`.iau`, шаг 29.8в.25): то, чем строятся барабан дат, лента и планировщик.
+        let exact = clock.measure {
+            for i in 0..<n {
+                let s = SolarDay(date: dates(i), latitude: lat(i), longitude: Double(i % 360) - 180, utcOffsetHours: 3, time: .iau)
+                sink += s.solarNoon + (s.rise ?? 0)
+            }
+        }
         func ms(_ d: Duration) -> Double {
             Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15
         }
-        print("speed: 10000 SolarDay, ядро \(ms(core)) мс, с зоной места \(ms(thin)) мс (кадр 120 Гц: \(frame) мс), контрольная сумма \(sink)")
+        print("speed: 10000 SolarDay, ядро \(ms(core)) мс, с зоной места \(ms(thin)) мс, точное \(ms(exact)) мс (кадр 120 Гц: \(frame) мс), контрольная сумма \(sink)")
         #if !DEBUG
         #expect(ms(core) < frame, "ядро: \(ms(core)) мс, кадр \(frame) мс")
+        /* Точное строится дольше (12 событий делением пополам), но 10 000 суток — это год барабана 27 раз; порог — 20 кадров. */
+        #expect(ms(exact) < frame * 20, "точное: \(ms(exact)) мс")
         #endif
     }
 }

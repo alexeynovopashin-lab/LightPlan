@@ -132,7 +132,7 @@ extension WeatherDay {
     /// Возвращает и сами дни, и почасовые записи — вторые нужны погоде над
     /// окном Млечного Пути (`MilkyWaySky`), как `wxByHour` веба.
     public static func buildDays(
-        from hourly: HourlyWeather, place: Place, air: [CivilDate: [Int: AirSample]] = [:]
+        from hourly: HourlyWeather, place: Place, air: [CivilDate: [Int: AirSample]] = [:], time: SkyTime = .web
     ) -> (days: [CivilDate: WeatherDay], hourly: [CivilDate: [Int: HourRecord]]) {
         struct Bucket {
             var cloudSum = 0.0, cloudCount = 0
@@ -183,8 +183,7 @@ extension WeatherDay {
             let code = bucket.byHour[15]?.code ?? bucket.byHour[12]?.code ?? 0
 
             // Ярусы облаков в час заката — там и решается, каким будет закат.
-            let sun = SolarDay(date: date, latitude: place.latitude, longitude: place.longitude,
-                                utcOffsetHours: place.zone.utcOffsetHours(on: date))
+            let sun = SolarDay(date: date, place: place, time: time)
             var sunset: Int?
             var layers: HourRecord?
             var bareForQuality: Int?

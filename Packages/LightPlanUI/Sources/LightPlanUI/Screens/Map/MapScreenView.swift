@@ -635,7 +635,7 @@ struct MapScreenView: View {
             return MapSummary.MilkyWayInput(
                 window: w, moon: moon, sky: app.light.weather.milkyWaySky(for: date, window: w),
                 nextDark: { AstroNight.next(after: date, latitude: place.latitude,
-                                            utcOffsetHours: place.zone.utcOffsetHours(on: date)) })
+                                            utcOffsetHours: place.zone.utcOffsetHours(on: date), time: .iau) })
         }() : nil
         let zone = TimeZone(identifier: place.zone.identifier) ?? .current
         let dates = DateText(language: app.language, timeZone: zone)

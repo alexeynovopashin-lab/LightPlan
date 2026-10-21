@@ -36,8 +36,9 @@ public struct MoonVsStars: Sendable, Equatable {
 
     // MARK: - Входы
 
-    public init(date: CivilDate, latitude: Double, longitude: Double, utcOffsetHours: Double) {
-        let sun = SolarDay(date: date, latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours)
+    /// `time` — как у `MilkyWayWindow`: `.web` для стенда, `.iau` — Солнце и Луна как на экране AR (шаг 29.8в.25).
+    public init(date: CivilDate, latitude: Double, longitude: Double, utcOffsetHours: Double, time: SkyTime = .web) {
+        let sun = SolarDay(date: date, latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours, time: time)
         // Тёмная часть — от вечернего пересечения −18° до утреннего.
         guard let from = sun.astroB, let end = sun.astroA else {
             self.dark = false; self.lit = 0; self.share = 0; self.percent = nil; self.level = nil
@@ -55,7 +56,7 @@ public struct MoonVsStars: Sendable, Equatable {
         while x <= to {
             let moon = MoonSample(
                 date: date, minutes: x,
-                latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours
+                latitude: latitude, longitude: longitude, utcOffsetHours: utcOffsetHours, time: time
             )
             n += 1
             if moon.altitude > 0 {
@@ -79,11 +80,13 @@ public struct MoonVsStars: Sendable, Equatable {
         }
     }
 
-    public init(date: CivilDate, place: Place) {
+    /// Вход приложения: по умолчанию `.iau`.
+    public init(date: CivilDate, place: Place, time: SkyTime = .iau) {
         self.init(
             date: date,
             latitude: place.latitude, longitude: place.longitude,
-            utcOffsetHours: place.zone.utcOffsetHours(on: date)
+            utcOffsetHours: place.zone.utcOffsetHours(on: date),
+            time: time
         )
     }
 }
