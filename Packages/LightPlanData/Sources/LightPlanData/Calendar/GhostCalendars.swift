@@ -124,10 +124,10 @@ public struct Ghost: Sendable, Hashable, Identifiable {
         return day >= a && day <= b
     }
 
-    /// Из прочитанного события: заметки, участники и ссылка остаются за порогом.
-    static func make(_ e: StoredEvent, in calendar: StoredCalendar, using cal: Calendar) -> Ghost {
+    /// Из прочитанного события: другого в `GhostEvent` и нет — заметки, участники и ссылка остаются за порогом.
+    static func make(_ e: GhostEvent, in calendar: StoredCalendar, using cal: Calendar) -> Ghost {
         let title = e.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let place = e.locationTitle?
+        let place = e.location?
             .components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }.joined(separator: ", ")
         var first: CivilDate?, last: CivilDate?
@@ -196,14 +196,19 @@ public enum GhostDay {
 // MARK: - Наложение
 
 public enum GhostOverlap {
-    /// Призраки, с которыми пересекается отрезок `[start, end)`. `day` — день записи по её часам: к нему
-    /// прикладываются события «на весь день». Мягкое предупреждение формы, не запрет (решение Алексея 22.10,
+    /// Призраки, с которыми пересекается отрезок `[start, end)`. `day` — день записи по её часам, `lastDay` — последний
+    /// день, которого она касается (съёмка через полночь): к этим дням прикладываются события «на весь день». Мягкое предупреждение формы, не запрет (решение Алексея 22.10,
     /// «1А»). Порядок: сначала по часам, по началу; потом «на весь день».
-    public static func find(start: Date, end: Date, day: CivilDate, in ghosts: [Ghost]) -> [Ghost] {
+    public static func find(start: Date, end: Date, day: CivilDate, through lastDay: CivilDate? = nil, in ghosts: [Ghost]) -> [Ghost] {
         let end = max(end, start.addingTimeInterval(60))
         let timed = ghosts.filter { !$0.allDay && $0.start < end && start < max($0.end, $0.start.addingTimeInterval(1)) }
             .sorted { ($0.start, $0.end, $0.id) < ($1.start, $1.end, $1.id) }
-        let whole = ghosts.filter { $0.covers(day) }.sorted { ($0.calendarTitle, $0.id) < ($1.calendarTitle, $1.id) }
+        // Съёмка через полночь касается и следующих дней: событие «на весь день» любого из них — наложение (ревью GPT).
+        let last = max(lastDay ?? day, day)
+        let whole = ghosts.filter { g in
+            guard g.allDay, let a = g.firstDay, let b = g.lastDay else { return false }
+            return a <= last && b >= day
+        }.sorted { ($0.calendarTitle, $0.id) < ($1.calendarTitle, $1.id) }
         return timed + whole
     }
 }
@@ -280,6 +285,9 @@ public actor GhostCalendars {
     private let mode: GhostCalendarsDefault
     private let calendar: Calendar
     private var cache: [Key: [Ghost]] = [:]
+    /// Поколение кэша: растёт при каждом сбросе. Чтение, начатое до сброса, а законченное после, в кэш не пишется
+    /// (ревью GPT: иначе старый ответ вставал на место нового).
+    private var generation = 0
     /// Сколько раз ходили в календарную базу за событиями (проверка кэша).
     public private(set) var reads = 0
 
@@ -295,7 +303,7 @@ public actor GhostCalendars {
         var r = memory.record
         r.on = on
         memory.record = r
-        cache = [:]
+        drop()
     }
 
     /// Человек поставил или снял галочку у календаря; `nil` — вернуть решение режиму по умолчанию.
@@ -303,10 +311,12 @@ public actor GhostCalendars {
         var r = memory.record
         r.picks[calendarId] = shown
         memory.record = r
-        cache = [:]
+        drop()
     }
 
-    public func invalidate() { cache = [:] }
+    public func invalidate() { drop() }
+
+    private func drop() { cache = [:]; generation += 1 }
 
     /// Календари для списка: все, кроме «Light Plan». Права нет — пусто.
     public func choices() async -> [Choice] {
@@ -324,17 +334,19 @@ public actor GhostCalendars {
         guard memory.record.on, await store.authorization() == .allowed else { return [] }
         let key = Key(from: from, to: to)
         if let hit = cache[key] { return hit }
+        let started = generation
         var out: [Ghost] = []
         for ch in await choices() where ch.shown {
             reads += 1
-            for e in await store.events(calendarId: ch.calendar.id, from: from, to: to) {
+            for e in await store.ghostEvents(calendarId: ch.calendar.id, from: from, to: to) {
                 // Отменённое и наши собственные записи (ссылка lightplan://…, где бы они ни лежали) призраками не бывают.
-                if e.cancelled || CalendarPlan.isRecordLink(e.url) { continue }
+                if e.cancelled || e.ours { continue }
                 out.append(Ghost.make(e, in: ch.calendar, using: calendar))
             }
         }
         out.sort { ($0.start, $0.end, $0.id) < ($1.start, $1.end, $1.id) }
-        cache = [key: out]
+        // Пока читали, кэш сбросили (база изменилась, сменили галочку): ответ годится этому вызову, но не кэшу.
+        if started == generation { cache = [key: out] }
         return out
     }
 }

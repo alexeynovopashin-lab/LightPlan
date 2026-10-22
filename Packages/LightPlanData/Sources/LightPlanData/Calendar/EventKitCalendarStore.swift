@@ -132,22 +132,41 @@ public final class EventKitCalendarStore: CalendarStoring, @unchecked Sendable {
             cancelled: e.status == .canceled)
     }
 
+    /// Вхождения событий календаря за отрезок. Запрос EventKit не берёт больше четырёх лет сразу: длинный отрезок режем на
+    /// куски поменьше; событие на стыке кусков приходит дважды — оставляем одно.
+    private func occurrences(_ cal: EKCalendar, from: Date, to: Date) -> [EKEvent] {
+        let step: TimeInterval = 3 * 365 * 86_400
+        var out: [EKEvent] = []
+        var a = from
+        while a < to {
+            let b = min(a.addingTimeInterval(step), to)
+            out += store.events(matching: store.predicateForEvents(withStart: a, end: b, calendars: [cal]))
+            a = b
+        }
+        var seen = Set<String>()
+        return out.filter { seen.insert((($0.eventIdentifier ?? "") + "|\($0.startDate.timeIntervalSince1970)")).inserted }
+    }
+
     public func events(calendarId: String, from: Date, to: Date) async -> [StoredEvent] {
         await read([]) { [self] in
             guard let cal = store.calendar(withIdentifier: calendarId) else { return [] }
-            // Запрос EventKit не берёт больше четырёх лет сразу: длинный отрезок режем на куски поменьше.
-            let step: TimeInterval = 3 * 365 * 86_400
-            var out: [StoredEvent] = []
-            var a = from
-            while a < to {
-                let b = min(a.addingTimeInterval(step), to)
-                let p = store.predicateForEvents(withStart: a, end: b, calendars: [cal])
-                out += store.events(matching: p).compactMap(Self.stored)
-                a = b
+            return occurrences(cal, from: from, to: to).compactMap(Self.stored)
+        }
+    }
+
+    /// Для призраков читаются только название, время, место и признак «наша запись»: заметки, участники и ссылка в
+    /// объект приложения не попадают (ссылка проверяется на месте и не выходит наружу).
+    public func ghostEvents(calendarId: String, from: Date, to: Date) async -> [GhostEvent] {
+        await read([]) { [self] in
+            guard let cal = store.calendar(withIdentifier: calendarId) else { return [] }
+            return occurrences(cal, from: from, to: to).compactMap { e in
+                guard let id = e.eventIdentifier else { return nil }
+                // Место: структурное, а без него — обычная строка «Где» (ревью GPT: текстовое место терялось).
+                let place = e.structuredLocation?.title ?? e.location
+                return GhostEvent(id: id, calendarId: calendarId, title: e.title ?? "", start: e.startDate, end: e.endDate,
+                                  allDay: e.isAllDay, location: place, cancelled: e.status == .canceled,
+                                  ours: CalendarPlan.isRecordLink(e.url))
             }
-            // Событие на стыке кусков приходит дважды.
-            return Array(Dictionary(out.map { ($0.id + "|\($0.start.timeIntervalSince1970)", $0) },
-                                    uniquingKeysWith: { x, _ in x }).values)
         }
     }
 

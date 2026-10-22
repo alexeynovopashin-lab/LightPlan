@@ -223,6 +223,27 @@ public struct EventFacts: Codable, Hashable, Sendable {
     }
 }
 
+/// Чужое событие в том виде, в каком его читают призраки (шаг 30.5): только то, что показывается. Заметок, участников и
+/// ссылки здесь нет — для призрака их не читает уже сам слой календаря (ревью GPT к 3135988).
+public struct GhostEvent: Sendable, Hashable {
+    public let id: String
+    public let calendarId: String
+    public let title: String
+    public let start: Date
+    public let end: Date
+    public let allDay: Bool
+    public let location: String?
+    public let cancelled: Bool
+    /// Событие — наша запись (ссылка `lightplan://…`): решает слой календаря на месте, сама ссылка наружу не выходит.
+    public let ours: Bool
+
+    public init(id: String, calendarId: String, title: String, start: Date, end: Date, allDay: Bool,
+                location: String? = nil, cancelled: Bool = false, ours: Bool = false) {
+        self.id = id; self.calendarId = calendarId; self.title = title; self.start = start; self.end = end
+        self.allDay = allDay; self.location = location; self.cancelled = cancelled; self.ours = ours
+    }
+}
+
 public enum CalendarStoreError: Error, Equatable, Sendable {
     /// Система отказала: учётная запись не берёт календари, закончилось место, нет права.
     case refused(String)
@@ -250,6 +271,8 @@ public protocol CalendarStoring: Sendable {
     /// Вместе со всеми событиями в нём.
     func removeCalendar(id: String) async throws
     func events(calendarId: String, from: Date, to: Date) async -> [StoredEvent]
+    /// События чужого календаря для призраков (30.5): только название, время и место — без заметок, участников и ссылки.
+    func ghostEvents(calendarId: String, from: Date, to: Date) async -> [GhostEvent]
     /// По идентификатору события; `nil` — не найдено.
     func event(id: String) async -> StoredEvent?
     /// Завести событие (`replacing == nil`) или переписать наши поля у существующего. Возвращает идентификатор.

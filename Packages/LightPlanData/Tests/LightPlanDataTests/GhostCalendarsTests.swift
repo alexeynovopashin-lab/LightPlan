@@ -159,6 +159,42 @@ import LightPlanDomain
         // Заметки и ссылка чужого события в призрак не попадают совсем.
         let dump = String(reflecting: g)
         #expect(!dump.contains("пароль") && !dump.contains("secret.example") && !dump.contains("Пётр"))
+        // …и уже слой календаря отдаёт призраку не `StoredEvent`, а `GhostEvent`: в нём заметок и ссылки нет вовсе.
+        let raw = await r.store.ghostEvents(calendarId: r.son, from: Self.range(Self.day, days: 1).0, to: Self.range(Self.day, days: 2).1)
+        let rawDump = String(reflecting: raw)
+        #expect(raw.count == 1 && !rawDump.contains("пароль") && !rawDump.contains("secret.example") && !rawDump.contains("Пётр"))
+    }
+
+    @Test func anAnswerThatArrivesAfterAFlushNeverPutsStaleEventsBackInTheCache() async {
+        let r = Rig()
+        r.store.userAdd(title: "Старый", start: Self.at(Self.day, 600), end: Self.at(Self.day, 700), calendarId: r.work)
+        // Первым читается «Работа» (учётные записи по алфавиту: Exchange раньше iCloud). Чтение остановлено посреди ответа: снимок базы уже снят, отдать его ещё не успели.
+        let entered = AsyncStream<Void>.makeStream()
+        let release = AsyncStream<Void>.makeStream()
+        r.store.setReadGate {
+            entered.continuation.yield()
+            for await _ in release.stream { break }
+        }
+        let (a, b) = Self.range(Self.day.adding(days: -3), days: 14)
+        let first = Task { await r.ghosts.ghosts(from: a, to: b) }
+        for await _ in entered.stream { break }
+        // Пока оно ждёт: человек добавил событие, база сказала «изменилась», кэш сброшен.
+        r.store.setReadGate(nil)
+        r.store.userAdd(title: "Новый", start: Self.at(Self.day, 800), end: Self.at(Self.day, 900), calendarId: r.work)
+        await r.ghosts.invalidate()
+        release.continuation.yield()
+        _ = await first.value                                        // старый ответ вернулся — этому вызову он годится
+        #expect(r.titles(await r.ghosts.ghosts(from: a, to: b)) == ["Старый", "Новый"])      // а кэш его не запомнил
+    }
+
+    @Test func aShootThatRunsPastMidnightMeetsTheAllDayEventOfTheNextDay() {
+        let next = Self.day.adding(days: 1)
+        let g = Ghost(id: "2", calendarId: "c", calendarTitle: "Семья", title: "Отпуск", start: Self.at(next, 0),
+                      end: Self.at(next, 1439), allDay: true, firstDay: next, lastDay: next)
+        let a = Self.at(Self.day, 22 * 60), b = Self.at(next, 2 * 60)
+        #expect(GhostOverlap.find(start: a, end: b, day: Self.day, in: [g]).isEmpty)                     // только день начала — не видно
+        #expect(GhostOverlap.find(start: a, end: b, day: Self.day, through: next, in: [g]).map(\.title) == ["Отпуск"])
+        #expect(GhostOverlap.find(start: a, end: b, day: Self.day, through: Self.day, in: [g]).isEmpty)
     }
 
     @Test func anAllDayEventCoversItsDaysWhicheverWayTheEndIsWritten() async {

@@ -187,7 +187,7 @@ def check_reverse(by):
     return out
 
 
-SEEDED = ["Матч", "Планёрка", "Каникулы", "Кружок", "Ночная смена"]
+SEEDED = ["Матч", "Планёрка", "Каникулы", "Кружок", "Ночная смена", "Секция"]
 
 
 def check_ghosts(by):
@@ -206,6 +206,7 @@ def check_ghosts(by):
     m = (g(on, "Матч") or [{}])[0]
     ok("матч: 10:00–11:30 (полтора часа), место «Стадион», календарь «Сын»",
        m and secs(m["end"]) - secs(m["start"]) == 5400 and m["loc"] == "Стадион" and m["cal"] == "Сын" and not m["allDay"], str(m))
+    ok("место, записанное только текстом («Где»), не потерялось", (g(on, "Секция") or [{}])[0].get("loc") == "Бассейн", str(g(on, "Секция")))
     ok("каникулы — на весь день, кружок — три вхождения с разным началом (повторы раскрыты), ночная смена — восемь часов",
        (g(on, "Каникулы") or [{}])[0].get("allDay") is True and len({x["start"] for x in g(on, "Кружок")}) == 3
        and (g(on, "Ночная смена") or [{}])[0] and secs(g(on, "Ночная смена")[0]["end"]) - secs(g(on, "Ночная смена")[0]["start"]) == 8 * 3600,
@@ -316,7 +317,8 @@ def selftest():
               gh("Кружок", "Сын", "2026-10-28T14:00:00Z", "2026-10-28T15:00:00Z"),
               gh("Кружок", "Сын", "2026-10-29T14:00:00Z", "2026-10-29T15:00:00Z"),
               gh("Кружок", "Сын", "2026-10-30T14:00:00Z", "2026-10-30T15:00:00Z"),
-              gh("Ночная смена", "Работа", "2026-10-31T15:00:00Z", "2026-10-31T23:00:00Z")]
+              gh("Ночная смена", "Работа", "2026-10-31T15:00:00Z", "2026-10-31T23:00:00Z"),
+              gh("Секция", "Сын", "2026-10-28T12:00:00Z", "2026-10-28T13:00:00Z", loc="Бассейн")]
     choices = [{"title": "Сын", "shown": True, "personal": True}, {"title": "Работа", "shown": True, "personal": True},
                {"title": "Дни рождения", "shown": False, "personal": False}]
     env = [{"title": "Дни рождения", "type": 4, "source": "Другое"}, {"title": "Сын", "type": 0, "source": "На iPhone"}]
@@ -347,6 +349,7 @@ def selftest():
     gbreak = {
         "включено, но ничего не прочитано": gmake(**{"ghost-on": gs("ghost-on", [])}),
         "призраки до включения": gmake(**{"ghost-seed": gs("ghost-seed", base_g)}),
+        "место только текстом потеряно": gmake(**{"ghost-on": gs("ghost-on", [dict(x, loc="") if x["title"] == "Секция" else x for x in base_g])}),
         "наш календарь стал призраком": gmake(**{"ghost-on": gs("ghost-on", base_g + [gh("Свадьба · Ирина", "Light Plan", "2026-10-28T07:00:00Z", "2026-10-28T08:00:00Z")])}),
         "«Light Plan» попал в список галочек": gmake(**{"ghost-on": gs("ghost-on", base_g, choices=choices + [{"title": "Light Plan", "shown": True, "personal": True}])}),
         "дни рождения показаны по умолчанию": gmake(**{"ghost-on": gs("ghost-on", base_g, choices=[dict(c, shown=True) for c in choices])}),

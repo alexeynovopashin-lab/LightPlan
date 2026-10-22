@@ -375,6 +375,17 @@ struct GhostAppTests {
         #expect(r.app.formGhostWarning(form(r.app, start: 620))?.message.hasSuffix("И ещё 1.") == true)
     }
 
+    @Test func aNightShootWarnsAboutTheAllDayEventOfTheNextDay() async {
+        let r = await rig()
+        let next = Self.day.adding(days: 1)
+        r.store.userAdd(title: "Отпуск жены", start: Self.allDay(next).start, end: Self.allDay(next).end, calendarId: r.work, allDay: true)
+        await r.app.reloadGhosts()
+        // Съёмка с 22:00 на четыре часа заходит за полночь — в следующие сутки, где у жены отпуск.
+        #expect(r.app.formGhostWarning(form(r.app, start: 1320, duration: 240))?.message == "В этот день в календаре «Работа»: Отпуск жены.")
+        // Короткая вечерняя съёмка до полуночи следующего дня не касается.
+        #expect(r.app.formGhostWarning(form(r.app, start: 1200, duration: 60)) == nil)
+    }
+
     @Test func aRealShootClashStillWinsOverTheGhostNote() async {
         var snap = Snapshot()
         snap.sessions = [Session(id: "s1", kind: .shoot, day: Self.day, start: 600, end: 720, genre: .portrait)]

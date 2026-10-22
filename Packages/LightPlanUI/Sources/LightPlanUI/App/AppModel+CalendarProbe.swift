@@ -307,6 +307,8 @@ extension AppModel {
             e.addRecurrenceRule(EKRecurrenceRule(recurrenceWith: .daily, interval: 1, end: EKRecurrenceEnd(occurrenceCount: 3)))
         }
         add(work, "Ночная смена", at(7, 22), at(8, 6))
+        // Место только текстом («Где» без карты): раньше терялось.
+        add(son, "Секция", at(4, 19), at(4, 20)) { e in e.location = "Бассейн" }
     }
 
     /// Все календари телефона и их виды: проверка «подписки и дни рождения по умолчанию сняты» читает отсюда.

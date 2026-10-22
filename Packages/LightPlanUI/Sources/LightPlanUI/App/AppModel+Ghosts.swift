@@ -198,7 +198,11 @@ extension AppModel {
         let ctx = CalendarPlan.Context(studios: snapshot.studios, spots: snapshot.spots, zones: place.zones,
                                        homeZone: place.zone, title: { _ in "" }, blockTitle: { _ in "" })
         guard let span = CalendarPlan.span(of: probe, ctx) else { return nil }
-        let hits = GhostOverlap.find(start: span.start, end: span.end, day: f.day, in: ghostList)
+        // Съёмка через полночь касается и следующих дней: событие «на весь день» любого из них — наложение.
+        var endMinute = probe.endMinute
+        if endMinute <= probe.start { endMinute = probe.start + 90 }
+        let lastDay = f.day.adding(days: max(0, (endMinute - 1) / 1440))
+        let hits = GhostOverlap.find(start: span.start, end: span.end, day: f.day, through: lastDay, in: ghostList)
         guard let first = hits.first else { return nil }
         let facts = PlannerFacts(app: self, dark: false)
         let name = first.title.isEmpty ? lexicon.t("ghost.untitled") : first.title

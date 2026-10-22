@@ -20,6 +20,8 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         var repeats: [String: Repeat] = [:]
         /// Сколько раз спросили события календаря: тест кэша призраков.
         var eventReads = 0
+        /// Остановка чтения призраков посреди ответа: тест гонки «ответ пришёл после сброса кэша».
+        var readGate: (@Sendable () async -> Void)?
         var next = 1
         var saves = 0
         var removes = 0
@@ -147,6 +149,15 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         }
     }
 
+    public func ghostEvents(calendarId: String, from: Date, to: Date) async -> [GhostEvent] {
+        let list = await events(calendarId: calendarId, from: from, to: to)       // снимок базы на этот миг
+        if let gate = state.withLock({ $0.readGate }) { await gate() }
+        return list.map { e in
+            GhostEvent(id: e.id, calendarId: e.calendarId, title: e.title, start: e.start, end: e.end, allDay: e.allDay,
+                       location: e.locationTitle, cancelled: e.cancelled, ours: CalendarPlan.isRecordLink(e.url))
+        }
+    }
+
     public func event(id: String) async -> StoredEvent? { state.withLock { $0.auth == .allowed ? $0.events[id] : nil } }
 
     public func save(_ d: EventDraft, replacing id: String?, calendarId: String) async throws -> String {
@@ -184,6 +195,8 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
     public var allEvents: [StoredEvent] { state.withLock { $0.events.values.sorted { ($0.start, $0.id) < ($1.start, $1.id) } } }
     public var allCalendars: [StoredCalendar] { state.withLock { $0.calendars.values.sorted { $0.id < $1.id } } }
 
+    /// Тест ставит «ворота»: чтение призраков ждёт их, прежде чем вернуть ответ.
+    public func setReadGate(_ gate: (@Sendable () async -> Void)?) { state.withLock { $0.readGate = gate } }
     /// Сколько раз с начала жизни подставки спрашивали события календаря.
     public var eventReads: Int { state.withLock { $0.eventReads } }
 
