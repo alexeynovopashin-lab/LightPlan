@@ -83,6 +83,9 @@ def check(log):
     ok("выходной на два дня — одно событие на весь день", o.get("allDay") is True, str(o))
     ok("повторные проходы не плодят события", sorted(e["title"] for e in events(by["repeat"])) == titles and len(calendars(by["repeat"])) == 1,
        str(len(events(by["repeat"]))))
+    rr = by.get("repeat-report", {})
+    ok("неизменные данные — проход ничего не пишет в календарь (на месте 4, создано/переписано/убрано 0)",
+       rr.get("kept") == 4 and not (rr.get("created") or rr.get("updated") or rr.get("removed") or rr.get("failed")), str(rr))
     ok("удалили руками — события нет", "Свадьба · Ирина" not in [e["title"] for e in events(by["deleted-by-hand"])])
     ok("при возврате событие вернулось, дубля нет", sorted(e["title"] for e in events(by["reconciled"])) == titles)
     m = next((e for e in events(by["moved"]) if e["title"] == "Свадьба · Ирина"), {})

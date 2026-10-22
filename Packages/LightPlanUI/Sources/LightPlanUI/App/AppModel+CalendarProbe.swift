@@ -48,6 +48,11 @@ extension AppModel {
             // Ещё два прохода подряд: дублей быть не должно.
             syncCalendarMirror(force: true); syncCalendarMirror(force: true); await calendarChain?.value
             await dump("repeat")
+            // И что проход сделал бы теперь: на неизменных данных — ничего (ни одной записи в календарь).
+            if let mirror = calendarMirror, case .synced(let r) = await mirror.sync(calendarDrafts()) {
+                let text = "{\"stage\":\"repeat-report\",\"created\":\(r.created),\"updated\":\(r.updated),\"removed\":\(r.removed),\"kept\":\(r.kept),\"failed\":\(r.failed)}\n"
+                if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(text.utf8)); try? h.close() }
+            }
 
             // Человек удалил событие в Календаре (другой процесс — другой EKEventStore).
             Self.probeDeleteByHand(title: "Свадьба · Ирина")

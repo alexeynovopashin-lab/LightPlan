@@ -110,8 +110,16 @@ public struct StoredEvent: Sendable, Hashable {
     /// человек добавил сам, расхождением не считаются (`docs/14`: «мы это переживём»).
     public func matches(_ d: EventDraft) -> Bool {
         guard title == d.title, allDay == d.allDay, url == d.url else { return false }
-        guard abs(start.timeIntervalSince(d.start)) < 1, abs(end.timeIntervalSince(d.end)) < 1 else { return false }
-        if !allDay, offsetSeconds != d.timeZone.secondsFromGMT(for: d.start) { return false }
+        if allDay {
+            // «На весь день» система хранит по дням: конец последнего дня читается как 23:59:59 (замер на настоящем
+            // EventKit), а мы кладём его начало. Сравниваются дни, а не секунды, иначе событие переписывалось бы
+            // при каждом проходе.
+            let cal = Calendar.current
+            guard cal.isDate(start, inSameDayAs: d.start), cal.isDate(end, inSameDayAs: d.end) else { return false }
+        } else {
+            guard abs(start.timeIntervalSince(d.start)) < 1, abs(end.timeIntervalSince(d.end)) < 1 else { return false }
+            if offsetSeconds != d.timeZone.secondsFromGMT(for: d.start) { return false }
+        }
         guard (locationTitle ?? "") == (d.locationTitle ?? "") else { return false }
         return Self.close(latitude, d.latitude) && Self.close(longitude, d.longitude)
     }

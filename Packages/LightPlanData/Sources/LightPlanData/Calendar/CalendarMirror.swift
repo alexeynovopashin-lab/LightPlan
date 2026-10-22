@@ -231,7 +231,8 @@ public actor CalendarMirror {
         for (key, id) in rec.links where wanted[key] == nil { stale.insert(id) }
         for (key, events) in byKey where wanted[key] == nil { for e in events { stale.insert(e.id) } }
         for id in stale.sorted() {
-            if let e = await store.event(id: id), e.calendarId != cid { continue }
+            // Уже нет (убрали руками) или переехало в чужой календарь — не наше дело.
+            guard let e = await store.event(id: id), e.calendarId == cid else { continue }
             do { try await store.remove(eventId: id); report.removed += 1 } catch { report.failed += 1 }
         }
 

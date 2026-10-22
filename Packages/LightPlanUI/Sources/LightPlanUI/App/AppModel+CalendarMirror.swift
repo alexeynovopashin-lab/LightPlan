@@ -155,8 +155,10 @@ extension AppModel {
         if force { calendarForce = true }
         let gen = calendarGen
         enqueueCalendar { app in
+            // Позже пришёл другой запрос — он и выполнит работу, унаследовав «принудительно». Проверка до паузы:
+            // очередь стоит друг за другом, и пачка правок без неё ждала бы по трети секунды на каждую.
+            guard gen == app.calendarGen else { return }
             if !force { try? await Task.sleep(for: .milliseconds(300)) }
-            // Позже пришёл другой запрос — он и выполнит работу, унаследовав «принудительно».
             guard gen == app.calendarGen else { return }
             let force = app.calendarForce
             app.calendarForce = false

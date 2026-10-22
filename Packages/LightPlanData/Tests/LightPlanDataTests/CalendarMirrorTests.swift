@@ -211,6 +211,50 @@ import Testing
         #expect(r.store.allEvents.count == 1)
     }
 
+    @Test func anAllDayEventReadBackWithTheLastDayEndingAt235959IsNotRewrittenEveryTime() {
+        // Настоящий EventKit отдаёт конец «на весь день» как 23:59:59 последнего дня (замер, Tools/calendar_sim.py).
+        let cal = Calendar.current
+        let first = cal.startOfDay(for: Self.t0)
+        let last = cal.date(byAdding: .day, value: 2, to: first)!
+        let d = EventDraft(title: "Выходной", start: first, end: last, allDay: true, url: CalendarPlan.url(block: "b"))
+        let read = StoredEvent(id: "e", calendarId: "c", title: "Выходной", start: first,
+                               end: cal.date(byAdding: .second, value: 86_399, to: last)!, allDay: true, offsetSeconds: 0,
+                               locationTitle: nil, latitude: nil, longitude: nil, url: d.url)
+        #expect(read.matches(d))
+        let otherDay = EventDraft(title: "Выходной", start: first, end: cal.date(byAdding: .day, value: 3, to: first)!,
+                                  allDay: true, url: d.url)
+        #expect(!read.matches(otherDay))                                  // другой последний день — настоящее расхождение
+    }
+
+    @Test func aRepeatedPassOverAllDayBlocksWritesNothing() async {
+        let r = await Rig.on()
+        let cal = Calendar.current
+        let first = cal.startOfDay(for: Self.t0)
+        let d = EventDraft(title: "Отпуск", start: first, end: cal.date(byAdding: .day, value: 4, to: first)!, allDay: true,
+                           url: CalendarPlan.url(block: "off"))
+        _ = await r.report([d])
+        let writes = r.store.writeCounts
+        // Система округлила конец до 23:59:59, как настоящая.
+        let id = r.store.allEvents[0].id
+        r.store.userEdit(id) { e in
+            e = StoredEvent(id: e.id, calendarId: e.calendarId, title: e.title, start: e.start,
+                            end: e.end.addingTimeInterval(86_399), allDay: true, offsetSeconds: 0, locationTitle: nil,
+                            latitude: nil, longitude: nil, url: e.url)
+        }
+        let rep = await r.report([d])
+        #expect(rep.kept == 1 && rep.updated == 0)
+        #expect(r.store.writeCounts == writes)
+    }
+
+    @Test func aLinkWhoseEventIsAlreadyGoneIsForgottenWithoutCountingARemoval() async {
+        let r = await Rig.on()
+        _ = await r.report([Self.draft("a")])
+        r.store.userDeleteEvent(r.store.allEvents[0].id)
+        let rep = await r.report([])
+        #expect(rep.removed == 0 && rep.failed == 0)
+        #expect(await r.mirror.record.links.isEmpty)
+    }
+
     // MARK: - Сверка при открытии
 
     @Test func anEventDeletedByHandInTheCalendarComesBackOnTheNextPass() async {
