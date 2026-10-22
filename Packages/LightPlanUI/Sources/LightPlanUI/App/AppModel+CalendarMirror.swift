@@ -90,13 +90,15 @@ extension AppModel {
     public func setCalendarMirror(_ on: Bool) {
         guard let mirror = calendarMirror else { return }
         enqueueCalendar { app in
+            app.calendarOffFailed = false
             if on {
                 let out = await mirror.enable()
                 app.calendarFailed = false
                 if case .failed = out { app.calendarFailed = true }
                 if case .calendarGone = out { app.calendarGoneAsk = true }
             } else {
-                await mirror.disable()
+                // Не вышло убрать — зеркало остаётся включённым, строка под тумблером говорит почему.
+                if case .failed = await mirror.disable() { app.calendarOffFailed = true }
                 app.calendarFailed = false
                 app.calendarGoneAsk = false
             }
@@ -122,7 +124,7 @@ extension AppModel {
         guard let mirror = calendarMirror else { return }
         calendarGoneAsk = false
         enqueueCalendar { app in
-            if yes { _ = await mirror.recreateCalendar() } else { await mirror.disable() }
+            if yes { _ = await mirror.recreateCalendar() } else { _ = await mirror.disable() }
             app.calendarApplied = nil
             await app.runCalendarSync(force: true)
         }

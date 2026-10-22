@@ -83,28 +83,48 @@ public actor CalendarMirror {
             auth = await store.authorization()
         }
         guard auth == .allowed else { return .noAccess(auth) }
-        var r = memory.record
+        let before = memory.record
+        var r = before
         r.wanted = true
         if let sourceId { r.sourceId = sourceId }
         memory.record = r
-        return await ensureCalendar()
+        let out = await ensureCalendar().outcome
+        if case .failed = out {
+            // Календаря нет — включённым зеркало не считается: тумблер не должен обещать того, чего нет.
+            var back = memory.record
+            back.wanted = before.wanted
+            back.sourceId = before.sourceId
+            memory.record = back
+        }
+        return out
     }
 
-    /// Выключить: календарь с его событиями убирается из телефона, память забывается. Съёмки в Light Plan целы.
-    public func disable() async {
+    /// Выключить: наши события и (если в нём нет ничего чужого) весь календарь убираются из телефона, память
+    /// забывается. Съёмки в Light Plan целы. Не вышло убрать — `.failed`, память прежняя, зеркало остаётся включённым:
+    /// выключатель не должен говорить «выключено», оставив события в телефоне.
+    @discardableResult
+    public func disable() async -> Outcome {
         await exclusive { await disableLocked() }
     }
 
-    private func disableLocked() async {
-        let r = memory.record
-        if let id = r.calendarId, await store.authorization() == .allowed { try? await store.removeCalendar(id: id) }
+    private func disableLocked() async -> Outcome {
+        var r = memory.record
+        guard await store.authorization() == .allowed else {
+            // Право отняли: убрать нечем. Выключаем, но связь помним — вернут право и включат, всё сойдётся.
+            r.wanted = false
+            memory.record = r
+            return .synced(Report())
+        }
+        if let id = r.calendarId, !(await retire(id)) { return .failed("could not remove the calendar") }
         var n = CalendarMirrorRecord()
         n.sourceId = r.sourceId
         memory.record = n
+        return .synced(Report())
     }
 
-    /// Сменить учётную запись: календарь заводится в новой, старый уходит вместе с событиями, связи забываются.
-    /// Следующий `sync` кладёт все события в новый.
+    /// Сменить учётную запись: календарь заводится в новой, старый уходит, связи забываются. Следующий `sync` кладёт
+    /// все события в новый. Старый не убрался — откат: новый (если мы его завели) снимается, всё остаётся как было,
+    /// иначе события встали бы дублями в двух календарях.
     public func moveCalendar(to sourceId: String) async -> Outcome {
         await exclusive { await moveLocked(to: sourceId) }
     }
@@ -119,13 +139,17 @@ public actor CalendarMirror {
         r.links = [:]
         memory.record = r
         let made = await ensureCalendar()
-        if case .failed = made {
+        if case .failed = made.outcome {
             // Новая учётная запись не берёт календарь: остаёмся там, где были.
             memory.record = old
-            return made
+            return made.outcome
         }
-        if let id = old.calendarId { try? await store.removeCalendar(id: id) }
-        return made
+        if let oldId = old.calendarId, oldId != memory.record.calendarId, !(await retire(oldId)) {
+            if let fresh = made.created { _ = await retire(fresh) }
+            memory.record = old
+            return .failed("could not remove the old calendar")
+        }
+        return made.outcome
     }
 
     /// Человек сказал «да» на вопрос «календарь удалён, завести заново?».
@@ -138,25 +162,60 @@ public actor CalendarMirror {
         r.calendarId = nil
         r.links = [:]
         memory.record = r
-        return await ensureCalendar()
+        return await ensureCalendar().outcome
     }
 
-    private func ensureCalendar() async -> Outcome {
+    // MARK: - Свой календарь
+
+    /// Наши ли все события календаря: все — ссылки записей, чужих нет. Календарь, где человек держит своё, нашим не
+    /// считается: его нельзя ни принять за свой, ни убрать целиком.
+    private func isOurs(_ calendarId: String) async -> Bool {
+        await ownEvents(calendarId).allSatisfy { CalendarPlan.isRecordLink($0.url) }
+    }
+
+    /// Все события календаря за двадцать лет в обе стороны.
+    private func ownEvents(_ calendarId: String) async -> [StoredEvent] {
+        let year: TimeInterval = 366 * 86_400
+        return await store.events(calendarId: calendarId, from: Date().addingTimeInterval(-20 * year),
+                                  to: Date().addingTimeInterval(20 * year))
+    }
+
+    /// Убрать наш календарь из телефона. Целиком — если в нём только наше; иначе только наши события, а календарь
+    /// остаётся человеку. `false` — что-то убрать не удалось.
+    private func retire(_ calendarId: String) async -> Bool {
+        guard await store.calendar(id: calendarId) != nil else { return true }
+        let events = await ownEvents(calendarId)
+        if events.allSatisfy({ CalendarPlan.isRecordLink($0.url) }) {
+            if (try? await store.removeCalendar(id: calendarId)) != nil { return true }
+        }
+        var ok = true
+        for e in events where CalendarPlan.isRecordLink(e.url) {
+            do { try await store.remove(eventId: e.id) } catch { ok = false }
+        }
+        return ok
+    }
+
+    /// Календарь на месте или заведён заново. `created` — идентификатор, если завели именно мы сейчас.
+    private func ensureCalendar() async -> (outcome: Outcome, created: String?) {
         var r = memory.record
         if let id = r.calendarId {
-            return await store.calendar(id: id) == nil ? .calendarGone : .synced(Report())
+            return (await store.calendar(id: id) == nil ? .calendarGone : .synced(Report()), nil)
         }
         let sources = await store.sources()
         let preferred = [r.sourceId, await store.defaultSourceId()].compactMap { $0 }
             .first { id in sources.contains { $0.id == id } } ?? sources.first?.id
-        guard let source = preferred else { return .failed("no calendar account") }
+        guard let source = preferred else { return (.failed("no calendar account"), nil) }
         // Память потеряна, а календарь в телефоне остался (переустановка): принимаем его обратно, а не заводим второй.
-        if let own = await store.calendars(titled: Self.calendarTitle).first(where: { $0.sourceId == source }) {
-            r.calendarId = own.id
-            r.sourceId = own.sourceId
-            r.links = [:]
-            memory.record = r
-            return .synced(Report())
+        // Названия мало: берём календарь, где только наши события (или пусто), — чужой «Light Plan» с делами человека
+        // не трогаем.
+        for own in await store.calendars(titled: Self.calendarTitle) where own.sourceId == source {
+            if await isOurs(own.id) {
+                r.calendarId = own.id
+                r.sourceId = own.sourceId
+                r.links = [:]
+                memory.record = r
+                return (.synced(Report()), nil)
+            }
         }
         do {
             let c = try await store.createCalendar(title: Self.calendarTitle, sourceId: source)
@@ -164,9 +223,9 @@ public actor CalendarMirror {
             r.sourceId = c.sourceId
             r.links = [:]
             memory.record = r
-            return .synced(Report())
+            return (.synced(Report()), c.id)
         } catch {
-            return .failed("\(error)")
+            return (.failed("\(error)"), nil)
         }
     }
 
@@ -183,7 +242,7 @@ public actor CalendarMirror {
         let auth = await store.authorization()
         guard auth == .allowed else { return .noAccess(auth) }
         if memory.record.calendarId == nil {
-            let made = await ensureCalendar()
+            let made = await ensureCalendar().outcome
             guard case .synced = made else { return made }
         }
         var rec = memory.record
@@ -195,9 +254,9 @@ public actor CalendarMirror {
         let year: TimeInterval = 366 * 86_400
         let found = await store.events(calendarId: cid, from: edges.min()!.addingTimeInterval(-year),
                                        to: edges.max()!.addingTimeInterval(year))
-        // Своими считаем события со ссылкой нашей схемы; всё остальное в этом календаре — человека, не трогаем.
+        // Своими считаем события со ссылкой записи (`shoot`, `block`); всё остальное в этом календаре — человека, не трогаем.
         var byKey: [String: [StoredEvent]] = [:]
-        for e in found { if let u = e.url, u.scheme == "lightplan" { byKey[u.absoluteString, default: []].append(e) } }
+        for e in found { if let u = e.url, CalendarPlan.isRecordLink(u) { byKey[u.absoluteString, default: []].append(e) } }
 
         var report = Report()
         var links: [String: String] = [:]
@@ -226,15 +285,18 @@ public actor CalendarMirror {
             catch { report.failed += 1 }
         }
 
-        // Записи нет (удалили, ушла в корзину) — событие убираем, связь забываем.
-        var stale = Set<String>()
-        for (key, id) in rec.links where wanted[key] == nil { stale.insert(id) }
-        for (key, events) in byKey where wanted[key] == nil { for e in events { stale.insert(e.id) } }
-        for id in stale.sorted() {
+        // Записи нет (удалили, ушла в корзину) — событие убираем, связь забываем. Убрать не вышло — связь остаётся:
+        // событие может лежать вне окна поиска, и без связи следующий проход его уже не найдёт.
+        var stale: [String: String] = [:]                      // идентификатор события → ключ записи
+        for (key, id) in rec.links where wanted[key] == nil { stale[id] = key }
+        for (key, events) in byKey where wanted[key] == nil { for e in events { stale[e.id] = stale[e.id] ?? key } }
+        var retained: [String: String] = [:]
+        for (id, key) in stale.sorted(by: { $0.key < $1.key }) {
             // Уже нет (убрали руками) или переехало в чужой календарь — не наше дело.
             guard let e = await store.event(id: id), e.calendarId == cid else { continue }
-            do { try await store.remove(eventId: id); report.removed += 1 } catch { report.failed += 1 }
+            do { try await store.remove(eventId: id); report.removed += 1 } catch { report.failed += 1; retained[key] = id }
         }
+        links.merge(retained) { a, _ in a }
 
         // Не удалось записать — связь прежняя остаётся (следующий проход попробует снова).
         for (key, id) in rec.links where links[key] == nil && wanted[key] != nil { links[key] = id }

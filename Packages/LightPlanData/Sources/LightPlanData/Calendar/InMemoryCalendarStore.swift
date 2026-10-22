@@ -22,6 +22,10 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         var requests = 0
         /// Следующие записи событий отказывают: диск полон, учётная запись отвалилась.
         var failingWrites = false
+        /// Календарь не удаляется: учётная запись недоступна, нет сети.
+        var failingCalendarRemoval = false
+        /// То же, но только для этих календарей (старая учётная запись недоступна, новая — в порядке).
+        var failingRemovalIds: Set<String> = []
     }
 
     private let state: Mutex<State>
@@ -75,7 +79,8 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
     }
 
     public func removeCalendar(id: String) async throws {
-        state.withLock { s in
+        try state.withLock { s in
+            if s.failingCalendarRemoval || s.failingRemovalIds.contains(id) { throw CalendarStoreError.refused("calendar removal refused") }
             s.calendars[id] = nil
             s.events = s.events.filter { $0.value.calendarId != id }
         }
@@ -128,6 +133,8 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         state.withLock { if on { $0.refusing.insert(id) } else { $0.refusing.remove(id) } }
     }
     public func setFailingWrites(_ on: Bool) { state.withLock { $0.failingWrites = on } }
+    public func setFailingCalendarRemoval(_ on: Bool) { state.withLock { $0.failingCalendarRemoval = on } }
+    public func setFailingRemoval(of id: String, _ on: Bool) { state.withLock { if on { $0.failingRemovalIds.insert(id) } else { $0.failingRemovalIds.remove(id) } } }
 
     /// Человек удалил событие в Календаре.
     public func userDeleteEvent(_ id: String) { state.withLock { $0.events[id] = nil } }

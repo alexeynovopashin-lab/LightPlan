@@ -255,6 +255,106 @@ import Testing
         #expect(await r.mirror.record.links.isEmpty)
     }
 
+    // MARK: - Чужое не трогаем (ревью GPT к e34242c)
+
+    @Test func aCalendarCalledLightPlanWithSomeoneElsesEventsIsNotAdoptedAndNotDeleted() async {
+        let r = Rig()
+        // Человек сам завёл «Light Plan» и держит там свои дела.
+        let theirs = try! await r.store.createCalendar(title: "Light Plan", sourceId: "icloud")
+        let mine = r.store.userAdd(title: "Зубной", start: Self.t0, end: Self.t0.addingTimeInterval(3600), calendarId: theirs.id)
+        _ = await r.mirror.enable()
+        #expect(r.store.allCalendars.count == 2)                       // своего завели, чужой не приняли
+        #expect(await r.mirror.record.calendarId != theirs.id)
+        _ = await r.report([Self.draft("a")])
+        await r.mirror.disable()
+        #expect(r.store.allCalendars.map(\.id) == [theirs.id])        // чужой календарь цел
+        #expect(r.store.allEvents.map(\.id) == [mine])
+    }
+
+    @Test func turningOffKeepsACalendarThatHoldsSomethingElseAndRemovesOnlyOurEvents() async {
+        let r = await Rig.on()
+        _ = await r.report([Self.draft("a"), Self.draft("b", hours: 48)])
+        let cal = r.store.allCalendars[0].id
+        let mine = r.store.userAdd(title: "Своё", start: Self.t0, end: Self.t0.addingTimeInterval(3600), calendarId: cal)
+        #expect(await r.mirror.disable() == .synced(.init()))
+        #expect(r.store.allCalendars.map(\.id) == [cal])
+        #expect(r.store.allEvents.map(\.id) == [mine])
+        #expect(!(await r.mirror.record.wanted))
+    }
+
+    @Test func aLinkOfAnotherKindInsideOurCalendarIsNotOurEvent() async {
+        let r = await Rig.on()
+        _ = await r.report([Self.draft("a")])
+        let cal = r.store.allCalendars[0].id
+        let q = r.store.userAdd(title: "Опросник", start: Self.t0, end: Self.t0.addingTimeInterval(60), calendarId: cal,
+                                url: URL(string: "lightplan://quest?ans=abc")!)
+        let rep = await r.report([])                                   // записей нет — наши события уходят, чужая ссылка остаётся
+        #expect(rep.removed == 1)
+        #expect(r.store.allEvents.map(\.id) == [q])
+    }
+
+    @Test func ifTheCalendarCannotBeRemovedTheSwitchStaysOnAndSaysSo() async {
+        let r = await Rig.on()
+        _ = await r.report([Self.draft("a")])
+        r.store.setFailingCalendarRemoval(true)
+        r.store.setFailingWrites(true)
+        let out = await r.mirror.disable()
+        guard case .failed = out else { Issue.record("expected failure, got \(out)"); return }
+        let rec = await r.mirror.record
+        #expect(rec.wanted && rec.calendarId != nil && rec.links.count == 1)   // ничего не забыто
+        #expect(r.store.allEvents.count == 1)
+        r.store.setFailingCalendarRemoval(false)
+        r.store.setFailingWrites(false)
+        #expect(await r.mirror.disable() == .synced(.init()))                   // повтор доходит до конца
+        #expect(r.store.allCalendars.isEmpty)
+    }
+
+    @Test func removingEventsOneByOneIsTheFallbackWhenTheCalendarWillNotGo() async {
+        let r = await Rig.on()
+        _ = await r.report([Self.draft("a")])
+        r.store.setFailingCalendarRemoval(true)
+        #expect(await r.mirror.disable() == .synced(.init()))
+        #expect(r.store.allEvents.isEmpty)                                       // событий в телефоне не осталось
+    }
+
+    @Test func movingBackOutWhenTheOldCalendarWillNotGoLeavesNoTwins() async {
+        let r = await Rig.on()
+        _ = await r.report([Self.draft("a")])
+        let old = r.store.allCalendars[0].id
+        r.store.setFailingRemoval(of: old, true)                                  // старая учётная запись недоступна
+        r.store.setFailingWrites(true)
+        let out = await r.mirror.moveCalendar(to: "local")
+        guard case .failed = out else { Issue.record("expected failure, got \(out)"); return }
+        r.store.setFailingWrites(false)
+        #expect(r.store.allCalendars.map(\.id) == [old])                        // нового не осталось
+        let rec = await r.mirror.record
+        #expect(rec.calendarId == old && rec.sourceId == "icloud")
+        r.store.setFailingRemoval(of: old, false)
+        let rep = await r.report([Self.draft("a")])
+        #expect(rep.kept == 1 && r.store.allEvents.count == 1)
+    }
+
+    @Test func aLinkIsKeptWhileItsEventCouldNotBeRemoved() async {
+        let r = await Rig.on()
+        _ = await r.report([Self.draft("a")])
+        r.store.setFailingWrites(true)
+        let bad = await r.report([])
+        #expect(bad.failed == 1 && bad.removed == 0)
+        #expect(await r.mirror.record.links.count == 1)                          // не забыли: событие ещё в календаре
+        r.store.setFailingWrites(false)
+        let good = await r.report([])
+        #expect(good.removed == 1 && r.store.allEvents.isEmpty)
+    }
+
+    @Test func aFailedFirstEnableDoesNotLeaveTheSwitchOn() async {
+        let store = InMemoryCalendarStore(sources: [CalendarSource(id: "x", title: "Закрытый", kind: .exchange)], defaultSource: "x")
+        store.setSourceRefusing("x", true)
+        let mirror = CalendarMirror(store: store, memory: InMemoryCalendarMemory())
+        let out = await mirror.enable()
+        guard case .failed = out else { Issue.record("expected failure, got \(out)"); return }
+        #expect(!(await mirror.record.wanted))
+    }
+
     // MARK: - Сверка при открытии
 
     @Test func anEventDeletedByHandInTheCalendarComesBackOnTheNextPass() async {

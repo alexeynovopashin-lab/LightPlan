@@ -27,7 +27,7 @@ def sh(*argv, check=True):
 def device(name):
     if name and re.fullmatch(r"[0-9A-F-]{36}", name):
         return name
-    out = sh("node", os.path.join(ROOT, "Tools", "sim.js"), cwd=None) if not name else None
+    out = sh("node", os.path.join(ROOT, "Tools", "sim.js")) if not name else None
     if name:
         for line in sh("xcrun", "simctl", "list", "devices", "available").splitlines():
             if f"{name} (" in line:

@@ -193,6 +193,23 @@ struct CalendarMirrorAppTests {
         #expect(store.allCalendars.isEmpty)
     }
 
+    @Test func ifTheCalendarCannotBeRemovedTheSwitchStaysOnAndTheRowSaysSo() async {
+        let store = InMemoryCalendarStore()
+        let app = model(store: store)
+        app.setCalendarMirror(true)
+        await settle(app)
+        store.setFailingCalendarRemoval(true)
+        store.setFailingWrites(true)
+        app.setCalendarMirror(false)
+        await settle(app)
+        #expect(app.calendarOffFailed && app.calendarMirrorOn)   // не «выключено» поверх оставшихся событий
+        store.setFailingCalendarRemoval(false)
+        store.setFailingWrites(false)
+        app.setCalendarMirror(false)
+        await settle(app)
+        #expect(!app.calendarOffFailed && !app.calendarMirrorOn && store.allCalendars.isEmpty)
+    }
+
     // MARK: - Отказ в доступе
 
     @Test func refusalLeavesTheSwitchOffExplainsWhyAndBreaksNothing() async {

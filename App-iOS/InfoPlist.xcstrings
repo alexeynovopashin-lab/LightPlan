@@ -128,7 +128,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan muestra tus sesiones en su propio calendario llamado «Light Plan» y lo mantiene al día cuando cambias algo. Para ello necesita acceso al Calendario: lee y modifica solo su propio calendario, nunca toca otros eventos y no envía nada a ningún sitio."
+            "value": "Light Plan muestra tus sesiones en un calendario aparte llamado «Light Plan» y lo mantiene al día cuando cambias algo. Para ello necesita acceso al Calendario: lee y modifica solo ese calendario, nunca toca otros eventos y no envía nada a ningún sitio."
           }
         },
         "ja": {

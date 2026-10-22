@@ -50,6 +50,13 @@ public enum CalendarPlan {
         return c.url ?? URL(string: "lightplan://\(host)")!
     }
 
+    /// Наша ли ссылка: ровно `lightplan://shoot/<id>` или `lightplan://block/<id>`. Другие ссылки своей схемы
+    /// (`lightplan://quest?…`, чужая правка в поле «ссылка») событие нашим не делают: проход такое не трогает.
+    public static func isRecordLink(_ url: URL?) -> Bool {
+        guard let url, url.scheme == "lightplan", let host = url.host, host == "shoot" || host == "block" else { return false }
+        return url.path.count > 1
+    }
+
     /// Запись по ссылке из события: `lightplan://shoot/<id>`.
     public static func shootId(in url: URL) -> String? {
         guard url.scheme == "lightplan", url.host == "shoot" else { return nil }

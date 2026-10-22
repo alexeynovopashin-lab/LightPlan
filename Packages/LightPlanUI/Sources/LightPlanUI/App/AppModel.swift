@@ -403,6 +403,8 @@ public final class AppModel {
     public var calendarGoneAsk = false
     /// Последняя попытка завести календарь не удалась: учётная запись его не берёт.
     public internal(set) var calendarFailed = false
+    /// Выключить не вышло: календарь или события остались в телефоне, зеркало осталось включённым.
+    public internal(set) var calendarOffFailed = false
     @ObservationIgnored var reachTask: Task<Void, Never>?
     /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
     @ObservationIgnored var pinTask: Task<Void, Never>?

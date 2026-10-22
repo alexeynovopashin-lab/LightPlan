@@ -71,6 +71,7 @@ struct CalendarMirrorSection: View {
     /// Что сказать под тумблером: отказ в доступе и неудача важнее обычного пояснения.
     private func note(_ t: Lexicon) -> String {
         if app.calendarNeedsSettings { return t.t("calm.denied") }
+        if app.calendarOffFailed { return t.t("calm.offFailed") }
         if app.calendarFailed { return t.t("calm.failed", ["where": app.calendarSourceTitle ?? ""]) }
         return t.t("calm.note")
     }

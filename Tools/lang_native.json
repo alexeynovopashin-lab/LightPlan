@@ -356,7 +356,8 @@
     "calm.goneT": "Календарь «Light Plan» удалён",
     "calm.goneM": "Его убрали в Календаре iPhone. Завести заново и снова показывать в нём съёмки?",
     "calm.goneYes": "Завести заново",
-    "calm.goneNo": "Не нужно"
+    "calm.goneNo": "Не нужно",
+    "calm.offFailed": "Не получилось убрать календарь «Light Plan» из Календаря iPhone — он остался на месте. Попробуйте ещё раз или удалите его в самом Календаре."
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -714,7 +715,8 @@
     "calm.goneT": "The “Light Plan” calendar was deleted",
     "calm.goneM": "It was removed in the iPhone Calendar. Create it again and show your shoots there?",
     "calm.goneYes": "Create again",
-    "calm.goneNo": "Not needed"
+    "calm.goneNo": "Not needed",
+    "calm.offFailed": "Could not remove the “Light Plan” calendar from the iPhone Calendar — it is still there. Try again, or delete it in the Calendar itself."
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1064,7 +1066,7 @@
     "planet.jupiter": "Júpiter",
     "planet.saturn": "Saturno",
     "calm.title": "Sesiones en el Calendario del iPhone",
-    "calm.note": "Light Plan crea en el Calendario del iPhone su propio calendario «Light Plan» y muestra en él tus sesiones, reuniones y tiempo ocupado. Edítalas aquí, en Light Plan: el Calendario solo las muestra. Lo que muevas o borres allí volverá a quedar como en Light Plan la próxima vez que abras la app.",
+    "calm.note": "Light Plan crea en el Calendario del iPhone un calendario aparte, «Light Plan», y muestra en él tus sesiones, reuniones y tiempo ocupado. Edítalas aquí, en Light Plan: el Calendario solo las muestra. Lo que muevas o borres allí volverá a quedar como en Light Plan la próxima vez que abras la app.",
     "calm.denied": "El acceso al Calendario está desactivado en los Ajustes del iPhone. Actívalo allí y tus sesiones aparecerán en el Calendario. Mientras tanto, Light Plan funciona como siempre.",
     "calm.where": "Dónde guardarlo",
     "calm.whereNote": "Elige una cuenta, como en el Calendario del iPhone. En iCloud el calendario llega a todos tus dispositivos Apple; en una cuenta de Google, también a Android y al navegador; en el propio teléfono, solo a este teléfono.",
@@ -1072,7 +1074,8 @@
     "calm.goneT": "Se borró el calendario «Light Plan»",
     "calm.goneM": "Se eliminó en el Calendario del iPhone. ¿Crearlo de nuevo y mostrar allí tus sesiones?",
     "calm.goneYes": "Crear de nuevo",
-    "calm.goneNo": "No hace falta"
+    "calm.goneNo": "No hace falta",
+    "calm.offFailed": "No se pudo quitar el calendario «Light Plan» del Calendario del iPhone: sigue ahí. Inténtalo de nuevo o bórralo en el propio Calendario."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1429,7 +1432,8 @@
     "calm.goneT": "「Light Plan」カレンダーが削除されました",
     "calm.goneM": "iPhoneのカレンダーで削除されました。もう一度作成して、撮影を表示しますか？",
     "calm.goneYes": "作成し直す",
-    "calm.goneNo": "不要"
+    "calm.goneNo": "不要",
+    "calm.offFailed": "iPhoneのカレンダーから「Light Plan」カレンダーを削除できませんでした。まだ残っています。もう一度試すか、カレンダーアプリで直接削除してください。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -1786,6 +1790,7 @@
     "calm.goneT": "“Light Plan”日历已被删除",
     "calm.goneM": "它在 iPhone 日历中被移除了。要重新创建并在其中显示你的拍摄吗？",
     "calm.goneYes": "重新创建",
-    "calm.goneNo": "不需要"
+    "calm.goneNo": "不需要",
+    "calm.offFailed": "无法从 iPhone 日历中移除“Light Plan”日历，它仍然在那里。请重试，或直接在日历中删除它。"
   }
 }

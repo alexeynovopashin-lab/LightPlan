@@ -4359,7 +4359,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Light Plan crea en el Calendario del iPhone su propio calendario «Light Plan» y muestra en él tus sesiones, reuniones y tiempo ocupado. Edítalas aquí, en Light Plan: el Calendario solo las muestra. Lo que muevas o borres allí volverá a quedar como en Light Plan la próxima vez que abras la app."
+            "value" : "Light Plan crea en el Calendario del iPhone un calendario aparte, «Light Plan», y muestra en él tus sesiones, reuniones y tiempo ocupado. Edítalas aquí, en Light Plan: el Calendario solo las muestra. Lo que muevas o borres allí volverá a quedar como en Light Plan la próxima vez que abras la app."
           }
         },
         "ja" : {
@@ -4372,6 +4372,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Light Plan 会在 iPhone 日历中新建一个名为“Light Plan”的日历，在其中显示你的拍摄、会面和已占用的时间。请在 Light Plan 里编辑，日历只负责显示。在日历里移动或删除的内容，会在你下次打开应用时恢复成 Light Plan 里的样子。"
+          }
+        }
+      }
+    },
+    "calm.offFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не получилось убрать календарь «Light Plan» из Календаря iPhone — он остался на месте. Попробуйте ещё раз или удалите его в самом Календаре."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not remove the “Light Plan” calendar from the iPhone Calendar — it is still there. Try again, or delete it in the Calendar itself."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo quitar el calendario «Light Plan» del Calendario del iPhone: sigue ahí. Inténtalo de nuevo o bórralo en el propio Calendario."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhoneのカレンダーから「Light Plan」カレンダーを削除できませんでした。まだ残っています。もう一度試すか、カレンダーアプリで直接削除してください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法从 iPhone 日历中移除“Light Plan”日历，它仍然在那里。请重试，或直接在日历中删除它。"
           }
         }
       }
