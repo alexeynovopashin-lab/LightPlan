@@ -390,8 +390,8 @@ struct MapRouteTests {
         await t.wait("s")                                      // второй встаёт на 30 с
         await t.wait("other")                                  // чужая очередь: не спит
         #expect(clock.slept == [clock.t0.advanced(by: .seconds(30))])
-        await t.wait("other")
-        #expect(clock.slept.count == 2, "второй запрос к «other» встаёт в свою очередь")
+        await t.wait("other")                                  // и своя очередь у «other» отсчитывается от t₀, не от «s»
+        #expect(clock.slept == [clock.t0.advanced(by: .seconds(30)), clock.t0.advanced(by: .seconds(30))])
     }
 
     /// Итог для полосы: отказ — «недоступен», а не недостающая сумма; линия

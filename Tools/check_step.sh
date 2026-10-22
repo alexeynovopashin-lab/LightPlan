@@ -200,7 +200,17 @@ else
       # 600 с («Timed out after 600.0 seconds», замер 29.8в.28: прогон 68 с стал 667 с); имена упавших берутся из xcresult.
       local attempt=1 tries=3
       while :; do
-        xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1
+        # Ждём загрузку не дольше трёх минут: служба симулятора, которая завесилась, не должна вешать и проверку шага.
+        xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1 & local bpid=$!
+        ( sleep 180; kill "$bpid" 2>/dev/null ) > /dev/null 2>&1 & local wpid=$!
+        if ! wait "$bpid" 2>/dev/null; then
+          echo "    (строка 5, $lab: симулятор не поднялся за 3 минуты — выключаю и поднимаю заново)" >&2
+          xcrun simctl shutdown "$udid" > /dev/null 2>&1; sleep 5; xcrun simctl boot "$udid" > /dev/null 2>&1
+          xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1 & bpid=$!
+          ( sleep 180; kill "$bpid" 2>/dev/null ) > /dev/null 2>&1 &
+          wait "$bpid" 2>/dev/null
+        fi
+        kill "$wpid" 2>/dev/null; wait "$wpid" 2>/dev/null
         rm -rf "$bundle"
         ( cd "$dir" && xcodebuild test -project LightPlan.xcodeproj -scheme LightPlan-iOS \
             -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "/tmp/cc-checkstep-dd-$lab" \
