@@ -91,6 +91,14 @@
   and the spots layer (pins, name plates, route numbers) sits between them, **not rotated**: each mark is placed at
   `MapSpots.screenTip` and stays upright. A new glass element near the rotor goes outside both halves.
   `node Tools/rotor.js --spots --bare --angles 0,45,…,33 --motion 4` measures plate size and place per angle (red on a swell).
+- **Calendar mirror (30.1–3).** Shoots, meetings and blocks → the iPhone Calendar, one way (`LightPlanData/Calendar/`:
+  `CalendarPlan` records → events, `CalendarMirror` actor reconciles, `EventKitCalendarStore` is the only EventKit user,
+  `InMemoryCalendarStore` is the fake for tests/shots; UI side `AppModel+CalendarMirror`, Settings «Съёмки» →
+  `CalendarMirrorSection`). **Full Calendar access, not write-only** — measured on iOS 26.5 (`Tools/calendar_probe/README.md`):
+  write-only gives one virtual calendar, no `saveCalendar`, and a saved event cannot be found again to update or delete.
+  Link record↔event = `lightplan://shoot/<id>` inside the event (truth) + a device-local hint in `UserDefaults`
+  (`CalendarMirrorRecord`), never in the snapshot. Real EventKit check: `python3 Tools/calendar_sim.py --app <.app>`
+  (the app walks `-LPCalendarProbe <file>`; `--selftest` checks the checker).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

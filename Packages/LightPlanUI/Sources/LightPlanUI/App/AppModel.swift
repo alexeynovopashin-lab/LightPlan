@@ -382,6 +382,27 @@ public final class AppModel {
     /// Отпечатки того, что последний раз поставили в систему: без правки данных система не опрашивается.
     @ObservationIgnored var alertApplied: [String]?
     @ObservationIgnored let alertPresenter = NotificationPresenter()
+    /// Зеркало съёмок в Календарь iPhone (30.1–3). `nil` — в тестах без подставки, в снимках и на Mac: ничего не пишется.
+    @ObservationIgnored var calendarMirror: CalendarMirror?
+    @ObservationIgnored var calendarStore: (any CalendarStoring)?
+    @ObservationIgnored var calendarGen = 0
+    @ObservationIgnored var calendarForce = false
+    @ObservationIgnored var calendarChain: Task<Void, Never>?
+    /// Что последний раз привели в Календарь: без правки данных проход молчит (кроме возврата в приложение).
+    @ObservationIgnored var calendarApplied: [EventDraft]?
+    /// Что система сказала о праве на календарь: тумблер «Съёмки в Календаре» показывает его честно.
+    public internal(set) var calendarAuth: CalendarAuthorization = .notDetermined
+    /// Человек включил зеркало (память телефона, не снимок).
+    public internal(set) var calendarWanted = false
+    /// Где календарь лежит сейчас: учётная запись и её имя.
+    public internal(set) var calendarSourceId: String?
+    public internal(set) var calendarSourceTitle: String?
+    /// Учётные записи, где можно завести календарь.
+    public internal(set) var calendarSources: [CalendarSource] = []
+    /// Календарь удалили руками в Календаре iPhone: ждём ответа «завести заново?».
+    public var calendarGoneAsk = false
+    /// Последняя попытка завести календарь не удалась: учётная запись его не берёт.
+    public internal(set) var calendarFailed = false
     @ObservationIgnored var reachTask: Task<Void, Never>?
     /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
     @ObservationIgnored var pinTask: Task<Void, Never>?
@@ -561,6 +582,8 @@ public final class AppModel {
         model.imageLinks = ImageLinkReader(direct: DirectImageFetcher(), server: PinterestClient.live(config: PinterestConfig.load())) { await hub.policy() }
         model.attachNetwork(hub)
         model.attachAlerts()        // студийный час по расписанию, пока приложение закрыто (30а)
+        model.attachCalendar()      // съёмки в Календаре iPhone, если человек включил (30.1)
+        model.debugCalendarProbe()  // замер на настоящем календаре симулятора (`-LPCalendarProbe`, Debug)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)
@@ -732,6 +755,7 @@ public final class AppModel {
     /// из данных, — оборвись приложение раньше, в данных остался бы кадр без картинки (ревью GPT к a2549e7).
     func persist(then after: (@Sendable () -> Void)? = nil) {
         syncStudioAlerts()      // расписание студийного часа — функция данных (30а)
+        syncCalendarMirror()    // и событие в Календаре iPhone — тоже (30.2)
         guard let store else { after?(); return }
         let snap = snapshot, prev = saving
         saving = Task {

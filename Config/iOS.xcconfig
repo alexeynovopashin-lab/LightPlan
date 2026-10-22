@@ -22,3 +22,7 @@ INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Light Plan finds out where y
 // Камера — слой AR (шаг 29.8в): дуга солнца поверх живого кадра. Спрашивается при первом входе в AR и только если
 // камера есть. Кадры нигде не сохраняются и никуда не уходят (превью без выхода кадров и без записи).
 INFOPLIST_KEY_NSCameraUsageDescription = Light Plan uses the camera to show where the sun will be: it draws the sun’s arc over the live view. Frames are not saved and are not sent anywhere.
+// Календарь — зеркало съёмок в свой календарь «Light Plan» (шаг 30.1–3, docs/14). Спрашивается, когда человек включает
+// «Съёмки в Календаре». Полный доступ, не «только запись»: под записью нельзя завести календарь и нельзя найти своё
+// событие, чтобы сдвинуть или убрать (замер iOS 26.5, Tools/calendar_probe). Читаем и правим только свой календарь.
+INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = Light Plan shows your shoots in its own calendar called “Light Plan” and keeps it up to date when you change something. For that it needs access to Calendar: it reads and changes only its own calendar, never touches other events, and sends nothing anywhere.

@@ -45,6 +45,8 @@ public struct RootView: View {
             if phase == .active, let app { app.light.weather.resume(); app.sweepMbBins() }
             // И расписание студийного часа сверяется с данными и с разрешением (его могли дать в настройках iPhone).
             if phase == .active, let app { app.syncStudioAlerts(force: true) }
+            // И Календарь iPhone сверяется с данными: событие могли удалить руками, право — выдать или отнять (30.3).
+            if phase == .active, let app { app.syncCalendarMirror(force: true) }
             // Доступ к геопозиции могли дать или отнять в настройках iPhone; слежение берёт свежую точку (29.8в.12).
             if phase == .active, let app { app.placeBecameActive() }
         }
@@ -201,7 +203,16 @@ private struct Shell: View {
         .mbSheets(app)
         // Опросник клиенту (28, шаг 9): лист с QR и вставкой ответа; ответ по своей схеме `lightplan://…?ans=`.
         .questSheet(app)
-        .onOpenURL { app.openQuestLink($0) }
+        // Тап по событию в Календаре iPhone (30.2): ссылка `lightplan://shoot/<id>` открывает съёмку; остальные
+        // ссылки своей схемы — ответ клиента.
+        .onOpenURL { if !app.openShootLink($0) { app.openQuestLink($0) } }
+        // Календарь «Light Plan» удалили в Календаре iPhone (30.3): заново — только когда человек скажет «да».
+        .alert(app.lexicon.t("calm.goneT"), isPresented: $app.calendarGoneAsk) {
+            Button(app.lexicon.t("calm.goneYes")) { app.answerCalendarGone(yes: true) }
+            Button(app.lexicon.t("calm.goneNo"), role: .cancel) { app.answerCalendarGone(yes: false) }
+        } message: {
+            Text(app.lexicon.t("calm.goneM"))
+        }
         // Жест «назад» от левого края (28з): один распознаватель на окно, слои записываются `.edgeBack`.
         .background { EdgeBackHost(app: app) }
         #if os(iOS)

@@ -4131,6 +4131,356 @@
         }
       }
     },
+    "calm.denied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ к Календарю выключен в настройках iPhone. Включите его там — и съёмки появятся в Календаре. Пока доступа нет, Light Plan работает как обычно."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar access is off in iPhone Settings. Turn it on there and your shoots will appear in the Calendar. Until then Light Plan works as usual."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El acceso al Calendario está desactivado en los Ajustes del iPhone. Actívalo allí y tus sesiones aparecerán en el Calendario. Mientras tanto, Light Plan funciona como siempre."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhoneの設定でカレンダーへのアクセスがオフになっています。そこでオンにすると、撮影がカレンダーに表示されます。それまでもLight Planはいつもどおり使えます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 设置中已关闭日历访问权限。在那里打开后，你的拍摄就会出现在日历中。在此之前，Light Plan 照常使用。"
+          }
+        }
+      }
+    },
+    "calm.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не получилось завести календарь в «{where}»: эта учётная запись не принимает новые календари. Выберите другую."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not create the calendar in “{where}”: this account does not accept new calendars. Pick another one."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo crear el calendario en «{where}»: esta cuenta no admite calendarios nuevos. Elige otra."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「{where}」にカレンダーを作れませんでした。このアカウントは新しいカレンダーを受け付けません。別のアカウントを選んでください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法在“{where}”中创建日历：该账户不接受新日历。请选择其他账户。"
+          }
+        }
+      }
+    },
+    "calm.goneM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его убрали в Календаре iPhone. Завести заново и снова показывать в нём съёмки?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It was removed in the iPhone Calendar. Create it again and show your shoots there?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se eliminó en el Calendario del iPhone. ¿Crearlo de nuevo y mostrar allí tus sesiones?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhoneのカレンダーで削除されました。もう一度作成して、撮影を表示しますか？"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它在 iPhone 日历中被移除了。要重新创建并在其中显示你的拍摄吗？"
+          }
+        }
+      }
+    },
+    "calm.goneNo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не нужно"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not needed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hace falta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不要"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不需要"
+          }
+        }
+      }
+    },
+    "calm.goneT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календарь «Light Plan» удалён"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The “Light Plan” calendar was deleted"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se borró el calendario «Light Plan»"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「Light Plan」カレンダーが削除されました"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“Light Plan”日历已被删除"
+          }
+        }
+      }
+    },
+    "calm.goneYes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завести заново"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create again"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear de nuevo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "作成し直す"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新创建"
+          }
+        }
+      }
+    },
+    "calm.note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В Календаре iPhone появится отдельный календарь «Light Plan»: в нём съёмки, встречи и занятое время. Правьте их здесь, в Light Plan, — Календарь только показывает. Подвинутое или удалённое там вернётся таким, как у вас здесь, когда вы откроете приложение."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light Plan adds its own calendar named “Light Plan” to the iPhone Calendar and shows your shoots, meetings and busy time in it. Edit them here in Light Plan — the Calendar only displays them. Anything moved or deleted there comes back as it is in Light Plan the next time you open the app."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light Plan crea en el Calendario del iPhone su propio calendario «Light Plan» y muestra en él tus sesiones, reuniones y tiempo ocupado. Edítalas aquí, en Light Plan: el Calendario solo las muestra. Lo que muevas o borres allí volverá a quedar como en Light Plan la próxima vez que abras la app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light PlanはiPhoneのカレンダーに「Light Plan」という専用カレンダーを作り、撮影・打ち合わせ・予定ありの時間を表示します。編集はLight Planで行ってください。カレンダー側は表示のみです。カレンダーで動かしたり削除したりした内容は、次にアプリを開いたときにLight Planの内容に戻ります。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light Plan 会在 iPhone 日历中新建一个名为“Light Plan”的日历，在其中显示你的拍摄、会面和已占用的时间。请在 Light Plan 里编辑，日历只负责显示。在日历里移动或删除的内容，会在你下次打开应用时恢复成 Light Plan 里的样子。"
+          }
+        }
+      }
+    },
+    "calm.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Съёмки в Календаре iPhone"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shoots in iPhone Calendar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesiones en el Calendario del iPhone"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撮影をiPhoneのカレンダーに表示"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 iPhone 日历中显示拍摄"
+          }
+        }
+      }
+    },
+    "calm.where" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Куда класть"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where to put it"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dónde guardarlo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存先"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放在哪里"
+          }
+        }
+      }
+    },
+    "calm.whereNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите учётную запись, как в Календаре iPhone. В iCloud календарь будет на всех ваших устройствах Apple; в учётной записи Google — ещё и на Android и в браузере; на самом телефоне — только на нём."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick an account, as in the iPhone Calendar. In iCloud the calendar reaches all your Apple devices; in a Google account, Android and the browser too; on the phone itself, this phone only."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una cuenta, como en el Calendario del iPhone. En iCloud el calendario llega a todos tus dispositivos Apple; en una cuenta de Google, también a Android y al navegador; en el propio teléfono, solo a este teléfono."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhoneのカレンダーと同じようにアカウントを選びます。iCloudならすべてのAppleデバイスに、GoogleアカウントならさらにAndroidやブラウザにも表示され、iPhone本体ならこのiPhoneだけに表示されます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "像在 iPhone 日历里一样选择账户。放在 iCloud，所有 Apple 设备都能看到；放在 Google 账户，Android 和浏览器也能看到；放在手机本机，只有这部手机能看到。"
+          }
+        }
+      }
+    },
     "card.addShoot" : {
       "extractionState" : "manual",
       "localizations" : {

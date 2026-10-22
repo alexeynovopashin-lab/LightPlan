@@ -183,7 +183,7 @@ struct SettingsChapterView: View {
     // MARK: - Съёмки
 
     @ViewBuilder private var shoots: some View {
-        foreign("set.calendar")
+        CalendarMirrorSection(app: app)
         delivery
         segment("set.step", \.timeStep, AppSettings.steps.map { ($0, "set.step\($0)") },
                 note: s.timeStep == 30 ? t.t("set.stepNote30")
