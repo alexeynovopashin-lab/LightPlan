@@ -53,6 +53,30 @@ public final class PointWeather {
         })
     }
 
+    /// Спросить заново и дождаться (обход «прогноз переменился», 30.6): прогноз меняется, а `ask` спрашивает точку
+    /// один раз за запуск. Пока ответ летит, прежний прогноз остаётся — открытая карточка не мигает прочерками;
+    /// сеть оборвалась — остаётся он же. Ответ моложе часа берётся из кэша `WeatherFetcher`.
+    public func refresh(_ places: [Place]) async {
+        var seen = Set<String>()
+        var jobs: [Task<Void, Never>] = []
+        for p in places {
+            let k = Self.key(p)
+            guard seen.insert(k).inserted else { continue }
+            if states[k] == nil { states[k] = .flying }
+            jobs.append(Task { [weak self, fetcher] in
+                do {
+                    let h = try await fetcher.hourly(at: p)
+                    let built = WeatherDay.buildDays(from: h, place: p, time: .iau)
+                    self?.states[k] = built.days.isEmpty ? .empty : .ready(days: built.days, hourly: built.hourly)
+                } catch {
+                    if self?.states[k] == .flying { self?.states[k] = nil }
+                }
+            })
+        }
+        inFlight += jobs
+        for j in jobs { await j.value }
+    }
+
     /// Дождаться ответов, что уже в пути (для тестов и съёмки пар).
     public func settled() async {
         let now = inFlight

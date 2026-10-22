@@ -172,6 +172,33 @@ struct SettingsChapterView: View {
         .padding(.bottom, 16)
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
         SetNote(text: t.t(app.studioAlertsNeedSettings ? "set.studioAlertDenied" : "set.studioAlertNote"), node: "note.1")
+        weatherAlerts
+    }
+
+    /// «Предупреждения о смене погоды» (30.6, веб `#notifWxRow`): `notif.wx`. Тумблер — желание; баннер при открытии
+    /// работает без разрешения системы, уведомление при закрытом приложении — с ним. Пояснение говорит, чего не хватает.
+    @ViewBuilder private var weatherAlerts: some View {
+        let pal = Palette(colorScheme)
+        HStack(spacing: 12) {
+            Text(t.t("set.notifyWx")).font(.system(size: 15)).foregroundStyle(pal.ink)
+            Spacer(minLength: 0)
+            Toggle("", isOn: Binding(get: { app.weatherAlertsWanted }, set: { app.setWeatherAlerts($0) }))
+                .labelsHidden().tint(pal.brass)
+                .frame(height: 31)
+                .shotNode("wx.toggle", text: app.weatherAlertsWanted ? "on" : "off")
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 15)
+        .padding(.bottom, 16)
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+        let ask = app.weatherAlertsWanted && app.alertAuth == .notDetermined
+        let denied = app.weatherAlertsWanted && app.alertAuth == .denied
+        SetNote(text: t.t(ask ? "set.wxAlertAsk" : denied ? "set.wxAlertDenied" : "set.wxAlertNote"), node: "note.2")
+        if ask {
+            Button { app.allowWeatherAlerts() } label: { Text(t.t("set.wxAlertAllow")) }
+                .buttonStyle(DataButtonStyle())
+                .shotNode("wx.allow", text: t.t("set.wxAlertAllow"))
+        }
     }
 
     private func openSystemSettings() {

@@ -285,26 +285,11 @@ extension AppModel {
         return flag("all") && flag(kind)
     }
 
-    private func skyMemory(_ key: String) -> [String: JSONValue] {
-        if case .object(let o)? = snapshot.extra[key] { return o }
-        return [:]
-    }
-
-    private func decodeSky(_ v: JSONValue?) -> SkySnap? {
-        guard case .object(let o)? = v, case .string(let q)? = o["q"], let quality = DayQuality(rawValue: q) else { return nil }
-        if case .number(let n)? = o["sc"] { return SkySnap(quality: quality, sunset: Int(n)) }
-        return SkySnap(quality: quality, sunset: nil)
-    }
-
-    private func encodeSky(_ s: SkySnap) -> JSONValue {
-        .object(["q": .string(s.quality.rawValue), "sc": s.sunset.map { .number(Double($0)) } ?? .null])
-    }
-
     /// Строка о переменившемся прогнозе: держится на `wxSeen`, гаснет, когда
     /// карточку закрыли. Выключенные уведомления гасят и её; после съёмки молчит.
     func cardShift(_ s: Session, phase: EventPhase) -> CardShift? {
         guard phase != .after, notifOn("wx"), let now = cardSkySnap(s),
-              let was = decodeSky(skyMemory("wxSeen")[s.id]), WeatherShift.gap(was, now) > 0 else { return nil }
+              let was = WeatherMemory.read(WeatherMemory.seenKey, in: snapshot)[s.id], WeatherShift.gap(was, now) > 0 else { return nil }
         let title = WeatherShift.isUp(was, now) ? "wxs.upT" : WeatherShift.gap(was, now) == 3 ? "wxs.badT" : "wxs.downT"
         let text: String
         if WeatherShift.saysScore(was, now) {
@@ -320,14 +305,11 @@ extension AppModel {
     /// (веб `wxAck`). Ничего не менялось и не говорили — ничего не пишется.
     func acknowledgeForecast(_ s: Session) {
         guard let now = cardSkySnap(s) else { return }
-        let seen = skyMemory("wxSeen"), told = skyMemory("wxTold")
-        if told[s.id] == nil, let was = decodeSky(seen[s.id]), WeatherShift.gap(was, now) == 0 { return }
-        var newTold = told
-        newTold[s.id] = nil
-        var newSeen = seen
-        newSeen[s.id] = encodeSky(now)
-        snapshot.extra["wxTold"] = .object(newTold)
-        snapshot.extra["wxSeen"] = .object(newSeen)
+        let told = WeatherMemory.ids(WeatherMemory.toldKey, in: snapshot)
+        if !told.contains(s.id), let was = WeatherMemory.read(WeatherMemory.seenKey, in: snapshot)[s.id],
+           WeatherShift.gap(was, now) == 0 { return }
+        WeatherMemory.write(WeatherMemory.toldKey, [s.id: nil], in: &snapshot)
+        WeatherMemory.write(WeatherMemory.seenKey, [s.id: now], in: &snapshot)
         persist()
     }
 }

@@ -54280,6 +54280,146 @@
         }
       }
     },
+    "set.wxAlertAllow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить уведомления"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow notifications"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir notificaciones"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知を許可"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许通知"
+          }
+        }
+      }
+    },
+    "set.wxAlertAsk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При открытии приложения скажем всегда. Чтобы сказать и когда оно закрыто, нужно разрешение на уведомления."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We always tell you when you open the app. To tell you while it is closed too, the app needs permission to send notifications."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al abrir la app te lo diremos siempre. Para avisarte también con la app cerrada, hace falta permiso para enviar notificaciones."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリを開いたときは必ずお知らせします。閉じているときにもお知らせするには、通知の許可が必要です。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开应用时一定会告诉你。若要在应用关闭时也告诉你，需要允许通知。"
+          }
+        }
+      }
+    },
+    "set.wxAlertDenied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уведомления выключены в настройках iPhone: о смене прогноза скажем только при открытии приложения."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications are off in iPhone Settings: we will tell you about forecast changes only when you open the app."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las notificaciones están desactivadas en los Ajustes del iPhone: te avisaremos de los cambios de pronóstico solo al abrir la app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhoneの設定で通知がオフになっています。予報の変化はアプリを開いたときだけお知らせします。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 设置中已关闭通知：预报变化只会在打开应用时告诉你。"
+          }
+        }
+      }
+    },
+    "set.wxAlertNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогноз к съёмке переменился — скажем при открытии приложения. Когда оно закрыто — уведомлением, если iPhone даст ему проснуться: как часто, решает сам iPhone."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If the forecast for a shoot changes, we tell you when you open the app. When it is closed — with a notification, if iPhone lets the app wake up: how often is up to iPhone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si cambia el pronóstico de una sesión, te lo diremos al abrir la app. Con la app cerrada, con una notificación, si el iPhone la deja despertar: con qué frecuencia lo decide el iPhone."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撮影の天気予報が変わったら、アプリを開いたときにお知らせします。アプリを閉じているときは、iPhoneがアプリを起こしたときに通知でお知らせします。頻度はiPhoneが決めます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍摄的天气预报有变时，打开应用时会告诉你。应用关闭时，如果 iPhone 让应用醒来，会用通知告诉你：多久一次由 iPhone 决定。"
+          }
+        }
+      }
+    },
     "shadow.long" : {
       "extractionState" : "manual",
       "localizations" : {

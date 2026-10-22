@@ -31,8 +31,12 @@ public struct RootView: View {
                 return
             }
             #endif
-            app = await AppModel.live()
+            // Одна модель с фоновой задачей (30.6): iOS могла уже поднять её в фоне ради прогноза.
+            app = await AppModel.sharedLive()
             app?.sweepMbBins()          // самоочистка корзин мудбордов: при запуске (29б)
+            // «Прогноз переменился» (30.6): полторы секунды форы — первый экран рисуется раньше баннера (веб 1500 мс).
+            try? await Task.sleep(for: .milliseconds(1500))
+            app?.watchWeather(force: true)
         }
         .onChange(of: scenePhase) { _, phase in
             // Ушли в фон — отложенная запись дописывается сейчас: система
@@ -40,6 +44,8 @@ public struct RootView: View {
             // Открытая карточка организации сверяет номера и в фоне: закрытие может не наступить
             // (ошибка веба 29 — ушедший номер писался только при «Назад»).
             if phase == .background, let app { app.commitOrgTels(); Task { await app.flush() } }
+            // Ушли в фон — попросить iOS разбудить нас ради прогноза (30.6) или снять просьбу, если следить не за чем.
+            if phase == .background, let app { app.scheduleWeatherWake(); app.debugWeatherBackgroundRun() }
             // Вернулись на экран — если прогноза или воздуха всё ещё нет, спросить сразу (28ж): раньше один
             // сорвавшийся запрос оставлял приложение без прогноза до перезапуска.
             if phase == .active, let app { app.light.weather.resume(); app.sweepMbBins() }
@@ -49,6 +55,10 @@ public struct RootView: View {
             if phase == .active, let app { app.syncCalendarMirror(force: true); if app.ghostWanted { app.scheduleGhostReload() } }
             // Доступ к геопозиции могли дать или отнять в настройках iPhone; слежение берёт свежую точку (29.8в.12).
             if phase == .active, let app { app.placeBecameActive() }
+            // Прогноз к съёмкам переменился, пока нас не было (30.6): баннер; чаще получаса в сеть не ходим.
+            if phase == .active, let app {
+                Task { try? await Task.sleep(for: .milliseconds(900)); app.watchWeather(force: false) }
+            }
         }
     }
 }
@@ -181,6 +191,8 @@ private struct Shell: View {
         .overlay { BinTarget(flight: app.binFlight, host: .shell).ignoresSafeArea() }
         // Обложка, летящая в шапку папки мудборда (29.3в, `.mb-fly` z-index 9999): над всеми слоями, в координатах окна.
         .overlay { MbFlyLayer(fly: app.mbFly).ignoresSafeArea() }
+        // Баннер «прогноз переменился» (30.6, `#notif` z-index 95): над слоями оболочки, под формой и листами.
+        .overlay { NoticeBanner(app: app) }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
         .onGeometryChange(for: ShotWindow.self) { ShotWindow(safe: $0.safeAreaInsets, size: $0.size) } action: {
             ShotProbe.shared.window($0)

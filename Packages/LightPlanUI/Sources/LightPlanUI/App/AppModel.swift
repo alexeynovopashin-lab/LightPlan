@@ -381,7 +381,18 @@ public final class AppModel {
     @ObservationIgnored var alertChain: Task<Void, Never>?
     /// Отпечатки того, что последний раз поставили в систему: без правки данных система не опрашивается.
     @ObservationIgnored var alertApplied: [String]?
-    @ObservationIgnored let alertPresenter = NotificationPresenter()
+    @ObservationIgnored var alertPresenter = NotificationPresenter()
+    /// «Прогноз переменился» (30.6): кто говорит из фона — `nil` в тестах без подставки и в снимках.
+    @ObservationIgnored var wxPoster: (any InstantNotifying)?
+    /// Когда обход последний раз ходил в сеть: возврат в приложение чаще получаса не спрашивает (веб `WX_WATCH_GAP`).
+    @ObservationIgnored var wxWatchAt: Date?
+    /// Обход в пути: тесты ждут его.
+    @ObservationIgnored var wxWatchTask: Task<Void, Never>?
+    /// Баннеры внутри приложения (веб `#notif`): очередь с потолком два и «И ещё N».
+    public internal(set) var notices = NoticeQueue()
+    /// Баннер стоит на экране (въехал и ещё не уехал).
+    public internal(set) var noticeShown = false
+    @ObservationIgnored var noticeTask: Task<Void, Never>?
     /// Зеркало съёмок в Календарь iPhone (30.1–3). `nil` — в тестах без подставки, в снимках и на Mac: ничего не пишется.
     @ObservationIgnored var calendarMirror: CalendarMirror?
     @ObservationIgnored var calendarStore: (any CalendarStoring)?

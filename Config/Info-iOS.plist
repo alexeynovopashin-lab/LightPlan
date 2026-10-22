@@ -14,5 +14,14 @@
 			</array>
 		</dict>
 	</array>
+	<!-- «Прогноз переменился» при закрытом приложении (шаг 30.6): BGAppRefreshTask, когда будить — решает iOS. Режим fetch — ключ Info.plist, не возможность подписи: бесплатной команде доступен. Имя задачи — WeatherRefreshTask.identifier. -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>Novopashin.LightPlan.wx</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 </dict>
 </plist>

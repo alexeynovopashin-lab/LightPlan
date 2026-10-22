@@ -130,6 +130,14 @@
   ghosts**; a cluster with more columns than fit collapses into one «+N» block. Form: soft amber note between the clash and weather
   notes (`formGhostWarning`, compares moments, not wall clocks). Real EventKit check: `calendar_sim.py` stages `ghost-*`
   (second calendars «Сын»/«Работа», recurring, all-day, night, change notification, «Занять»).
+- **Forecast changed (30.6).** One rule, two channels, one memory: `WeatherWatch.pass` (Domain; web `wxAnnounce`) over the shoots
+  `AppModel.weatherWatched()` returns; banner on launch (1.5 s) and return (≥ 30 min between network passes) via `NoticeQueue` (cap 2,
+  «И ещё N») and `NoticeBanner`; local notification from `BGAppRefreshTask` (`WeatherRefreshTask`, id in `Config/Info-iOS.plist`, mode
+  `fetch` — no entitlement, signs on the free team), one per shoot, `wxTold` written only for what the system accepted (`WeatherMemory`).
+  The BG handler uses the same model as the screens (`AppModel.sharedLive`) — a second writer would overwrite `wxTold`. Simulator never
+  wakes the task (`submit` fails; lldb `_simulateLaunchForTaskWithIdentifier` runs but calls nothing): Debug `-LPWxBgRun 1` runs the handler
+  on going home instead; `-LPWxLog <file>` logs each pass, schedule result and delivered notifications. Seed a change by editing `wxSeen`
+  in the sim's `light-plan.json`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

@@ -94,6 +94,26 @@ public struct SystemNotificationCenter: NotificationCentering {
     }
 }
 
+extension SystemNotificationCenter: InstantNotifying {
+    /// Без триггера — система показывает сразу (шаг 30.6). Право уведомлять не спрашивается здесь никогда: нет его —
+    /// система отказывает, и это `false`.
+    public func deliver(_ alert: InstantAlert) async -> Bool {
+        guard await authorization() == .allowed else { return false }
+        let content = UNMutableNotificationContent()
+        content.title = alert.title
+        content.body = alert.body
+        content.sound = .default
+        content.threadIdentifier = "lp.wx"
+        content.userInfo = ["session": alert.sessionId]
+        do {
+            try await center.add(UNNotificationRequest(identifier: alert.id, content: content, trigger: nil))
+            return true
+        } catch {
+            return false
+        }
+    }
+}
+
 /// Приложение открыто, а сигнал пришёл (шаг 30а). Правило беты: открытой
 /// карточке баннер не нужен — там стоит кольцо с отсчётом, и оно честнее
 /// любого баннера; всё прочее, пока телефон в руке, говорится как обычно.
@@ -105,10 +125,38 @@ public final class NotificationPresenter: NSObject, UNUserNotificationCenterDele
 
     private let cardOpen = Mutex<CardCheck>({ _ in false })
 
+    /// Нажали на уведомление о погоде — открыть карточку этой записи (шаг 30.6). Вызывается на главном потоке.
+    public typealias OpenCard = @MainActor @Sendable (_ sessionId: String) -> Void
+    private let openCard = Mutex<OpenCard?>(nil)
+    /// Нажатие пришло раньше, чем приложение собрало себя (холодный запуск из уведомления): ждёт хозяина.
+    private let waiting = Mutex<String?>(nil)
+
     public override init() { super.init() }
+
+    /// Один на живое приложение: ставится делегатом на запуске, до того как система передаст нажатие, с которым
+    /// приложение открыли (иначе нажатие на уведомление при холодном запуске теряется).
+    public static let shared = NotificationPresenter()
 
     public func setCardCheck(_ check: @escaping CardCheck) {
         cardOpen.withLock { $0 = check }
+    }
+
+    /// Хозяин готов открывать карточки; нажатие, что ждало его, исполняется сразу.
+    public func setOpenCard(_ open: @escaping OpenCard) {
+        openCard.withLock { $0 = open }
+        if let sid = waiting.withLock({ w -> String? in defer { w = nil }; return w }) {
+            Task { @MainActor in open(sid) }
+        }
+    }
+
+    public func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                       didReceive response: UNNotificationResponse) async {
+        let r = response.notification.request
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+              r.identifier.hasPrefix(InstantAlert.weatherPrefix),
+              let sid = r.content.userInfo["session"] as? String else { return }
+        guard let open = openCard.withLock({ $0 }) else { waiting.withLock { $0 = sid }; return }
+        await MainActor.run { open(sid) }
     }
 
     /// Правило показа — отдельно от системы, чтобы читалось тестом.

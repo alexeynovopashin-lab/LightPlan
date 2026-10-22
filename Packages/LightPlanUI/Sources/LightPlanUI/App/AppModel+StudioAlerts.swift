@@ -75,7 +75,7 @@ extension AppModel {
         if yes { setStudioAlerts(true) }
     }
 
-    private func writeNotif(_ changes: [String: Bool]) {
+    func writeNotif(_ changes: [String: Bool]) {
         var o: [String: JSONValue] = [:]
         if case .object(let cur)? = snapshot.extra["notif"] { o = cur }
         for (k, v) in changes { o[k] = .bool(v) }
@@ -183,9 +183,14 @@ extension AppModel {
 
     /// Живое приложение: система уведомлений и правило показа при открытом приложении.
     func attachAlerts() {
-        alertCenter = SystemNotificationCenter()
+        let system = SystemNotificationCenter()
+        alertCenter = system
+        wxPoster = system
+        alertPresenter = .shared
         alertPresenter.setCardCheck { [weak self] sid in self?.cardId == sid }
         SystemNotificationCenter.install(delegate: alertPresenter)
+        // Нажали на уведомление «прогноз переменился» — его карточка (30.6).
+        alertPresenter.setOpenCard { [weak self] sid in self?.openFromNotice(sid) }
         #if DEBUG
         // Замеры (`-LPAlertToggle on|off`): то же, что нажатие на тумблер «Студийный час», без руки.
         if let v = UserDefaults.standard.string(forKey: "LPAlertToggle"), v == "on" || v == "off" {

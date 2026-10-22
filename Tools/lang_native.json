@@ -386,7 +386,11 @@
     "ghost.listTitle": "События из других календарей",
     "ghost.a11y": "Из календаря «{cal}»: {name}, {when}",
     "ghost.a11yDay": "Из календаря «{cal}»: {name}, весь день",
-    "ghost.a11yMany": "Событий из других календарей: {n}"
+    "ghost.a11yMany": "Событий из других календарей: {n}",
+    "set.wxAlertNote": "Прогноз к съёмке переменился — скажем при открытии приложения. Когда оно закрыто — уведомлением, если iPhone даст ему проснуться: как часто, решает сам iPhone.",
+    "set.wxAlertAsk": "При открытии приложения скажем всегда. Чтобы сказать и когда оно закрыто, нужно разрешение на уведомления.",
+    "set.wxAlertAllow": "Разрешить уведомления",
+    "set.wxAlertDenied": "Уведомления выключены в настройках iPhone: о смене прогноза скажем только при открытии приложения."
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -774,7 +778,11 @@
     "ghost.listTitle": "Events from other calendars",
     "ghost.a11y": "From the “{cal}” calendar: {name}, {when}",
     "ghost.a11yDay": "From the “{cal}” calendar: {name}, all day",
-    "ghost.a11yMany": "Events from other calendars: {n}"
+    "ghost.a11yMany": "Events from other calendars: {n}",
+    "set.wxAlertNote": "If the forecast for a shoot changes, we tell you when you open the app. When it is closed — with a notification, if iPhone lets the app wake up: how often is up to iPhone.",
+    "set.wxAlertAsk": "We always tell you when you open the app. To tell you while it is closed too, the app needs permission to send notifications.",
+    "set.wxAlertAllow": "Allow notifications",
+    "set.wxAlertDenied": "Notifications are off in iPhone Settings: we will tell you about forecast changes only when you open the app."
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1162,7 +1170,11 @@
     "ghost.listTitle": "Eventos de otros calendarios",
     "ghost.a11y": "Del calendario «{cal}»: {name}, {when}",
     "ghost.a11yDay": "Del calendario «{cal}»: {name}, todo el día",
-    "ghost.a11yMany": "Eventos de otros calendarios: {n}"
+    "ghost.a11yMany": "Eventos de otros calendarios: {n}",
+    "set.wxAlertNote": "Si cambia el pronóstico de una sesión, te lo diremos al abrir la app. Con la app cerrada, con una notificación, si el iPhone la deja despertar: con qué frecuencia lo decide el iPhone.",
+    "set.wxAlertAsk": "Al abrir la app te lo diremos siempre. Para avisarte también con la app cerrada, hace falta permiso para enviar notificaciones.",
+    "set.wxAlertAllow": "Permitir notificaciones",
+    "set.wxAlertDenied": "Las notificaciones están desactivadas en los Ajustes del iPhone: te avisaremos de los cambios de pronóstico solo al abrir la app."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1549,7 +1561,11 @@
     "ghost.listTitle": "ほかのカレンダーの予定",
     "ghost.a11y": "カレンダー「{cal}」：{name}、{when}",
     "ghost.a11yDay": "カレンダー「{cal}」：{name}、終日",
-    "ghost.a11yMany": "ほかのカレンダーの予定：{n}件"
+    "ghost.a11yMany": "ほかのカレンダーの予定：{n}件",
+    "set.wxAlertNote": "撮影の天気予報が変わったら、アプリを開いたときにお知らせします。アプリを閉じているときは、iPhoneがアプリを起こしたときに通知でお知らせします。頻度はiPhoneが決めます。",
+    "set.wxAlertAsk": "アプリを開いたときは必ずお知らせします。閉じているときにもお知らせするには、通知の許可が必要です。",
+    "set.wxAlertAllow": "通知を許可",
+    "set.wxAlertDenied": "iPhoneの設定で通知がオフになっています。予報の変化はアプリを開いたときだけお知らせします。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -1936,6 +1952,10 @@
     "ghost.listTitle": "其他日历中的事件",
     "ghost.a11y": "来自日历“{cal}”：{name}，{when}",
     "ghost.a11yDay": "来自日历“{cal}”：{name}，全天",
-    "ghost.a11yMany": "其他日历中的事件：{n}个"
+    "ghost.a11yMany": "其他日历中的事件：{n}个",
+    "set.wxAlertNote": "拍摄的天气预报有变时，打开应用时会告诉你。应用关闭时，如果 iPhone 让应用醒来，会用通知告诉你：多久一次由 iPhone 决定。",
+    "set.wxAlertAsk": "打开应用时一定会告诉你。若要在应用关闭时也告诉你，需要允许通知。",
+    "set.wxAlertAllow": "允许通知",
+    "set.wxAlertDenied": "iPhone 设置中已关闭通知：预报变化只会在打开应用时告诉你。"
   }
 }
