@@ -81,17 +81,28 @@ public enum RoadServers {
 /// Не чаще одного запроса в секунду на сервер: место в очереди резервируется
 /// сразу, поэтому два куска подряд встают друг за другом, а не оба «сейчас».
 public actor RoadThrottle {
+    /// Часы подменяются в тестах (29.8в.28): «сейчас» и «заснуть до». Настоящие — `ContinuousClock`.
+    public typealias Now = @Sendable () -> ContinuousClock.Instant
+    public typealias Sleep = @Sendable (ContinuousClock.Instant) async -> Void
+
     private let gap: Duration
-    private let clock = ContinuousClock()
+    private let now: Now
+    private let sleep: Sleep
     private var next: [String: ContinuousClock.Instant] = [:]
 
-    public init(gap: Duration = .seconds(1)) { self.gap = gap }
+    public init(gap: Duration = .seconds(1),
+                now: @escaping Now = { ContinuousClock.now },
+                sleep: @escaping Sleep = { try? await ContinuousClock().sleep(until: $0) }) {
+        self.gap = gap
+        self.now = now
+        self.sleep = sleep
+    }
 
     public func wait(_ id: String) async {
-        let now = clock.now
-        let at = max(now, next[id] ?? now)
+        let t = now()
+        let at = max(t, next[id] ?? t)
         next[id] = at.advanced(by: gap)
-        if at > now { try? await clock.sleep(until: at) }
+        if at > t { await sleep(at) }
     }
 }
 

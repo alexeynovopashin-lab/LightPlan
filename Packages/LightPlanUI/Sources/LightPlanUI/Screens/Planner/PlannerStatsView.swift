@@ -302,8 +302,12 @@ struct HalfGauge: View {
 /// пикселя на 3×, глазу ровно; яркость за шаг меняется на 1,4 % от своей величины.
 struct WarnGlow: ViewModifier {
     static let step: TimeInterval = 0.1
+    /// Расписание вынесено, чтобы тест считал его записи без экрана и часов (29.8в.28).
+    static let schedule = AnimationTimelineSchedule(minimumInterval: step)
     let rgb: (Double, Double, Double)
     let alpha: Double
+    /// Имя в счёте пересчётов (Debug); тест даёт своё, чтобы соседние экраны со свечением в том же процессе не считались.
+    var meterName = "WarnGlow"
     @Environment(\.accessibilityReduceMotion) private var still
 
     func body(content: Content) -> some View {
@@ -311,8 +315,8 @@ struct WarnGlow: ViewModifier {
         if still {
             content.shadow(color: c.opacity(alpha), radius: 8)
         } else {
-            TimelineView(.animation(minimumInterval: Self.step)) { tl in
-                let _ = EdgeBackCount.hit("WarnGlow")
+            TimelineView(Self.schedule) { tl in
+                let _ = EdgeBackCount.hit(meterName)
                 let ph = tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 14) / 14 * 2 * .pi
                 content.shadow(color: c.opacity(alpha * (1 + 0.15 * sin(2 * ph))), radius: 8,
                                x: 3 * cos(ph), y: 3 * sin(ph))

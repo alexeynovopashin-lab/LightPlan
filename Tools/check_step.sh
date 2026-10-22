@@ -192,10 +192,27 @@ else
       local dir="$1" lab="$2" bundle log xc
       bundle="$fulldir/$lab.xcresult"; log="$fulldir/$lab.log"
       rm -rf "/tmp/cc-checkstep-dd-$lab"
-      ( cd "$dir" && xcodebuild test -project LightPlan.xcodeproj -scheme LightPlan-iOS \
-          -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "/tmp/cc-checkstep-dd-$lab" \
-          -resultBundlePath "$bundle" ${LP_FULL_TESTING_ARGS:-} ) > "$log" 2>&1
-      xc=$?
+      # Прогон, не дошедший до итога (симулятор не поднялся за минуту под нагрузкой машины, служба симулятора зависла),
+      # повторяем: до трёх попыток, перед каждой — дождаться загрузки симулятора без предела (`bootstatus -b`), а при
+      # повторе — выключить и поднять его заново. Собранный проект остаётся в derived data, повтор дешёв. Итог
+      # (TEST SUCCEEDED / TEST FAILED / BUILD FAILED) повтором не лечится: красный тест остаётся красным (29.8в.28).
+      # `-collect-test-diagnostics never`: при красном тесте xcodebuild собирал диагностику симулятора и ждал ответа ровно
+      # 600 с («Timed out after 600.0 seconds», замер 29.8в.28: прогон 68 с стал 667 с); имена упавших берутся из xcresult.
+      local attempt=1 tries=3
+      while :; do
+        xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1
+        rm -rf "$bundle"
+        ( cd "$dir" && xcodebuild test -project LightPlan.xcodeproj -scheme LightPlan-iOS \
+            -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "/tmp/cc-checkstep-dd-$lab" \
+            -resultBundlePath "$bundle" -collect-test-diagnostics never ${LP_FULL_TESTING_ARGS:-} ) > "$log" 2>&1
+        xc=$?
+        if grep -qE '\*\* (TEST (SUCCEEDED|FAILED)|BUILD FAILED|TEST BUILD FAILED) \*\*' "$log" || [ "$attempt" -ge "$tries" ]; then break; fi
+        echo "    (строка 5, $lab: прогон прерван без итога, код $xc; попытка $attempt из $tries, симулятор перезапускаю)" >&2
+        cp "$log" "/tmp/cc-checkstep-full-$lab.attempt$attempt.log"
+        xcrun simctl shutdown "$udid" > /dev/null 2>&1; sleep 5
+        xcrun simctl boot "$udid" > /dev/null 2>&1
+        attempt=$((attempt + 1))
+      done
       cp "$log" "/tmp/cc-checkstep-full-$lab.log"
       # Итог по самому xcodebuild: частичный набор результатов прерванного прогона не считаем итогом.
       if grep -qE '\*\* (TEST )?BUILD FAILED \*\*' "$log"; then return 1; fi
