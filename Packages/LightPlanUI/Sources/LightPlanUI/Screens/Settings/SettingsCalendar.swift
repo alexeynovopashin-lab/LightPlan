@@ -43,7 +43,8 @@ struct CalendarMirrorSection: View {
             .task { app.refreshCalendarSources() }
             SetNote(text: note(t), node: "note.cal")
 
-            if app.calendarMirrorOn {
+            // Не завелось — список тоже виден: выбрать другую учётную запись и есть выход.
+            if app.calendarMirrorOn || app.calendarFailed {
                 SecLabel(text: t.t("calm.where"), node: "sec.where")
                 ForEach(app.calendarSources) { source in
                     Button { app.setCalendarSource(source.id) } label: {

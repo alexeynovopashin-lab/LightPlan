@@ -59,6 +59,24 @@ import Testing
         #expect(r.store.allCalendars.count == 1)
     }
 
+    @Test func ifThePhonesDefaultAccountWillNotTakeCalendarsTheNextOneIsTried() async {
+        // Телефон Алексея 22.10: календарь по умолчанию в учётной записи, которая новых календарей не берёт.
+        let r = Rig()
+        r.store.setSourceRefusing("icloud", true)
+        let out = await r.mirror.enable()
+        #expect(out == .synced(.init()))
+        #expect(r.store.allCalendars.map(\.sourceId) == ["local"])
+        #expect(await r.mirror.record.wanted)
+    }
+
+    @Test func aSourceTheUserNamedHimselfIsNeverQuietlySwappedForAnother() async {
+        let r = Rig()
+        r.store.setSourceRefusing("local", true)
+        let out = await r.mirror.enable(sourceId: "local")
+        guard case .failed = out else { Issue.record("expected failure, got \(out)"); return }
+        #expect(r.store.allCalendars.isEmpty)
+    }
+
     @Test func aReinstalledAppTakesItsOldCalendarBackInsteadOfCreatingASecond() async {
         // Бесплатная подпись: приложение переставляют раз в семь дней, память на устройстве стирается, а календарь
         // «Light Plan» со своими событиями в телефоне остаётся.

@@ -109,9 +109,11 @@ extension AppModel {
 
     /// «Куда класть»: календарь переезжает в другую учётную запись, события ложатся в него заново.
     public func setCalendarSource(_ id: String) {
-        guard let mirror = calendarMirror, id != calendarSourceId else { return }
+        guard let mirror = calendarMirror, id != calendarSourceId || !calendarMirrorOn else { return }
         enqueueCalendar { app in
-            let out = await mirror.moveCalendar(to: id)
+            // Календаря ещё нет (зеркало не завелось) — выбор учётной записи и есть включение.
+            let hasCalendar = await mirror.record.calendarId != nil
+            let out = hasCalendar ? await mirror.moveCalendar(to: id) : await mirror.enable(sourceId: id)
             app.calendarFailed = false
             if case .failed = out { app.calendarFailed = true }
             app.calendarApplied = nil
@@ -143,7 +145,10 @@ extension AppModel {
         calendarSources = await store.sources()
         let cal = await mirror.calendar()
         calendarSourceId = cal?.sourceId ?? calendarSources.first { $0.id == rec.sourceId }?.id
-        calendarSourceTitle = cal?.sourceTitle
+        // Календаря ещё нет — называем учётную запись, куда его пытались завести (по умолчанию телефона).
+        let defaultSource = await store.defaultSourceId()
+        let tried = rec.sourceId ?? defaultSource
+        calendarSourceTitle = cal?.sourceTitle ?? calendarSources.first { $0.id == tried }?.title
     }
 
     // MARK: - Проход

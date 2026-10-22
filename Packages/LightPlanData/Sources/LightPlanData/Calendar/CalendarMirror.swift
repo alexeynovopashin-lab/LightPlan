@@ -88,7 +88,7 @@ public actor CalendarMirror {
         r.wanted = true
         if let sourceId { r.sourceId = sourceId }
         memory.record = r
-        let out = await ensureCalendar().outcome
+        let out = await ensureCalendar(strict: sourceId != nil).outcome
         if case .failed = out {
             // Календаря нет — включённым зеркало не считается: тумблер не должен обещать того, чего нет.
             var back = memory.record
@@ -138,7 +138,7 @@ public actor CalendarMirror {
         r.calendarId = nil
         r.links = [:]
         memory.record = r
-        let made = await ensureCalendar()
+        let made = await ensureCalendar(strict: true)
         if case .failed = made.outcome {
             // Новая учётная запись не берёт календарь: остаёмся там, где были.
             memory.record = old
@@ -198,37 +198,48 @@ public actor CalendarMirror {
     }
 
     /// Календарь на месте или заведён заново. `created` — идентификатор, если завели именно мы сейчас.
-    private func ensureCalendar() async -> (outcome: Outcome, created: String?) {
+    /// `strict` — человек назвал учётную запись сам: не берёт календарь — это отказ, другую не подставляем. Иначе
+    /// идём по списку: запомненная, календарь по умолчанию телефона, потом остальные (iCloud раньше телефона): Google
+    /// и Exchange новых календарей через EventKit обычно не берут (замер на телефоне Алексея 22.10).
+    private func ensureCalendar(strict: Bool = false) async -> (outcome: Outcome, created: String?) {
         var r = memory.record
         if let id = r.calendarId {
             return (await store.calendar(id: id) == nil ? .calendarGone : .synced(Report()), nil)
         }
         let sources = await store.sources()
-        let preferred = [r.sourceId, await store.defaultSourceId()].compactMap { $0 }
-            .first { id in sources.contains { $0.id == id } } ?? sources.first?.id
-        guard let source = preferred else { return (.failed("no calendar account"), nil) }
-        // Память потеряна, а календарь в телефоне остался (переустановка): принимаем его обратно, а не заводим второй.
-        // Названия мало: берём календарь, где только наши события (или пусто), — чужой «Light Plan» с делами человека
-        // не трогаем.
-        for own in await store.calendars(titled: Self.calendarTitle) where own.sourceId == source {
-            if await isOurs(own.id) {
-                r.calendarId = own.id
-                r.sourceId = own.sourceId
+        var order: [String] = []
+        let first = [r.sourceId, strict ? nil : await store.defaultSourceId()].compactMap { $0 }
+        for id in first where sources.contains(where: { $0.id == id }) && !order.contains(id) { order.append(id) }
+        if !strict {
+            for s in sources where !order.contains(s.id) { order.append(s.id) }
+        }
+        guard !order.isEmpty else { return (.failed("no calendar account"), nil) }
+        var lastError = ""
+        for source in order {
+            // Память потеряна, а календарь в телефоне остался (переустановка): принимаем его обратно, а не заводим
+            // второй. Названия мало: берём календарь, где только наши события (или пусто), — чужой «Light Plan» с
+            // делами человека не трогаем.
+            for own in await store.calendars(titled: Self.calendarTitle) where own.sourceId == source {
+                if await isOurs(own.id) {
+                    r.calendarId = own.id
+                    r.sourceId = own.sourceId
+                    r.links = [:]
+                    memory.record = r
+                    return (.synced(Report()), nil)
+                }
+            }
+            do {
+                let c = try await store.createCalendar(title: Self.calendarTitle, sourceId: source)
+                r.calendarId = c.id
+                r.sourceId = c.sourceId
                 r.links = [:]
                 memory.record = r
-                return (.synced(Report()), nil)
+                return (.synced(Report()), c.id)
+            } catch {
+                lastError = "\(error)"
             }
         }
-        do {
-            let c = try await store.createCalendar(title: Self.calendarTitle, sourceId: source)
-            r.calendarId = c.id
-            r.sourceId = c.sourceId
-            r.links = [:]
-            memory.record = r
-            return (.synced(Report()), c.id)
-        } catch {
-            return (.failed("\(error)"), nil)
-        }
+        return (.failed(lastError), nil)
     }
 
     // MARK: - Проход
