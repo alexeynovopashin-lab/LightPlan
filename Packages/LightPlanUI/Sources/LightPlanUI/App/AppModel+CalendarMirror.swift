@@ -201,10 +201,12 @@ extension AppModel {
             app.calendarForce = false
             // Уведомления базы не гоняют по кругу: после трёх записывающих проходов подряд они ждут человека.
             let fromWatch = settle != nil
+            if fromWatch, Date().timeIntervalSince(app.calendarWatchLast) > app.calendarStreakWindow { app.calendarWatchStreak = 0 }
             if fromWatch, app.calendarWatchStreak >= 3 { return }
             app.calendarPassWrote = false
             await app.runCalendarSync(force: force)
             app.calendarWatchStreak = fromWatch && app.calendarPassWrote ? app.calendarWatchStreak + 1 : 0
+            if app.calendarPassWrote { app.calendarWatchLast = Date() }
         }
     }
 
@@ -264,6 +266,10 @@ extension AppModel {
         for item in incoming {
             switch item {
             case .moved(let key, let event):
+                // Место могло переехать в другой пояс: его часы нужны до пересчёта времени.
+                if let la = event.latitude, let lo = event.longitude {
+                    await learnCalendarZone(at: GeoCoordinate(latitude: la, longitude: lo))
+                }
                 guard let url = URL(string: key), let id = CalendarPlan.shootId(in: url),
                       let i = snapshot.sessions.firstIndex(where: { $0.id == id }),
                       var moved = CalendarPlan.applying(event, to: snapshot.sessions[i], calendarContext()) else {

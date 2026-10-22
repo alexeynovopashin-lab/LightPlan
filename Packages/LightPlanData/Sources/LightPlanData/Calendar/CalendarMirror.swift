@@ -377,7 +377,8 @@ public actor CalendarMirror {
             if keep.matches(draft) { report.kept += 1; facts[draft.key] = EventFacts(draft: draft); continue }
             // Разошлись: если дело во времени или месте съёмки и правил человек в Календаре, это правка для записи, а не
             // повод переписывать событие. Занятое время (`block`) обратно не едет: его событие всегда как у нас.
-            if CalendarPlan.shootId(in: draft.url) != nil, !keep.timeAndPlaceMatch(draft), !keep.allDay, !draft.allDay,
+            // Повторяющееся событие и событие длиннее суток в запись не возвращаются (как и в черновики): они остаются как у нас.
+            if CalendarPlan.shootId(in: draft.url) != nil, !keep.timeAndPlaceMatch(draft), Self.isDraftable(keep), !draft.allDay,
                winner(event: keep, draft: draft, seen: rec.facts[draft.key]) == .event {
                 report.incoming.append(.moved(key: draft.key, event: keep))
                 if let seen = rec.facts[draft.key] { facts[draft.key] = seen }

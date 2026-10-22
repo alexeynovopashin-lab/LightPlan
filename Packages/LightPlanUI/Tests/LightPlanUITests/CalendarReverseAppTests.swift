@@ -126,6 +126,21 @@ struct CalendarReverseAppTests {
         #expect(store.writeCounts == writes)                                         // сошлось, снова ничего не пишется
     }
 
+    @Test func aPlaceMovedToAnotherCityReadsTheTimeInTheZoneOfTheNewCity() async throws {
+        let store = InMemoryCalendarStore()
+        let app = model(store: store, geocoder: TomskGeocoder())
+        await on(app)
+        let e = try #require(event(store, "Свадьба · Анна"))
+        // Те же мгновения (10:00 по Москве), но точка теперь в Томске: на часах Томска это 14:00, а не 13:00 по оценке.
+        edit(store, e.id) { $0 = StoredEvent(id: $0.id, calendarId: $0.calendarId, title: $0.title, start: $0.start, end: $0.end,
+                                             allDay: false, offsetSeconds: $0.offsetSeconds, locationTitle: "Томск, набережная",
+                                             latitude: Self.tomsk.latitude, longitude: Self.tomsk.longitude, url: $0.url,
+                                             notes: $0.notes, modified: Date().addingTimeInterval(60)) }
+        app.syncCalendarMirror(force: true); await settle(app)
+        #expect(app.snapshot.sessions[0].start == 840)
+        #expect(event(store, "Свадьба · Анна")?.start == e.start)                  // событие не сдвинулось
+    }
+
     @Test func aMovedPlaceReturnsToo() async throws {
         let store = InMemoryCalendarStore()
         let app = model(store: store)
@@ -197,6 +212,17 @@ struct CalendarReverseAppTests {
         await settle(app)
         #expect(store.writeCounts.saves == after)         // остановилась
         #expect(after <= 8)                                // и не раскрутилась
+        // Прошло время, и человек действительно подвинул событие — уведомление не глохнет под старым счётчиком.
+        app.calendarStreakWindow = 0.2
+        try await Task.sleep(for: .milliseconds(400))
+        let ev = try #require(event(store, "Свадьба · Анна"))
+        store.userEdit(ev.id) { $0 = StoredEvent(id: $0.id, calendarId: $0.calendarId, title: $0.title,
+                                                 start: $0.start.addingTimeInterval(3600), end: $0.end.addingTimeInterval(3600),
+                                                 allDay: false, offsetSeconds: $0.offsetSeconds, locationTitle: $0.locationTitle,
+                                                 latitude: $0.latitude, longitude: $0.longitude, url: $0.url, notes: $0.notes,
+                                                 modified: Date().addingTimeInterval(60)) }
+        for _ in 0..<40 where app.snapshot.sessions[0].start != 660 { try await Task.sleep(for: .milliseconds(50)); await settle(app) }
+        #expect(app.snapshot.sessions[0].start == 660)
         // Вернулись в приложение — человек рядом, проход разрешён снова.
         app.syncCalendarMirror(force: true); await settle(app)
         #expect(store.writeCounts.saves >= after + 1)

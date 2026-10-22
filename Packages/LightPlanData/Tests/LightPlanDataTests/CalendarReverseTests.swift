@@ -134,6 +134,22 @@ import Testing
         #expect(b.store.allEvents[0].start == CalendarMirrorTests.draft("a").start)
     }
 
+    @Test func aMovedRecurringOrOverlongLinkedEventIsNotReturnedAndTheRecordWins() async {
+        let b = await Bench.on()
+        let d = CalendarMirrorTests.draft("a")
+        _ = await b.pass([d])
+        let id = b.store.allEvents[0].id
+        b.store.userEdit(id) { e in
+            e = StoredEvent(id: e.id, calendarId: e.calendarId, title: e.title, start: e.start.addingTimeInterval(7200),
+                            end: e.end.addingTimeInterval(7200), allDay: false, offsetSeconds: e.offsetSeconds,
+                            locationTitle: e.locationTitle, latitude: e.latitude, longitude: e.longitude, url: e.url,
+                            notes: e.notes, modified: Self.later(60), recurring: true)
+        }
+        let rep = await b.pass([d])
+        #expect(rep.incoming.isEmpty && rep.updated == 1)
+        #expect(b.store.allEvents[0].start == d.start)
+    }
+
     @Test func aRefusedMoveIsDismissedSoItIsNotOfferedForever() async {
         let b = await Bench.on()
         let d = CalendarMirrorTests.draft("a")

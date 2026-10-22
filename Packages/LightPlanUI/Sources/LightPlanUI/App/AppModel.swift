@@ -399,6 +399,10 @@ public final class AppModel {
     /// Тишина, после которой уведомление базы запускает проход (тест ставит короче).
     @ObservationIgnored var calendarSettle: Duration = .seconds(1)
     @ObservationIgnored var calendarWatchStreak = 0
+    /// Когда кончился последний проход, записавший что-то по уведомлению: серия считается только подряд идущей.
+    @ObservationIgnored var calendarWatchLast = Date.distantPast
+    /// Дольше этого перерыва серия обнуляется: настоящая новая правка в Календаре не должна упираться в старый счётчик.
+    @ObservationIgnored var calendarStreakWindow: TimeInterval = 10
     @ObservationIgnored var calendarPassWrote = false
     /// Что последний раз привели в Календарь: без правки данных проход молчит (кроме возврата в приложение).
     @ObservationIgnored var calendarApplied: [EventDraft]?
