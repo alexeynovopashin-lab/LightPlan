@@ -93,14 +93,16 @@ private struct WeekRow: View {
         // 22); живёт в строке света, слева.
         let binned = app.trashed.filter { $0.record.day == day }.count
         return VStack(alignment: .leading, spacing: 0) {
-            if shoots.isEmpty {
+            // «Свободно» — только у дня, где нет ни съёмок, ни событий чужих календарей (30.5в); призраки при этом
+            // занятостью нигде не считаются.
+            if GhostWeekRows.isFree(shoots: shoots.count, f, day) {
                 Text(f.t.t(open ? "week.freeOpen" : "week.free"))
                     .font(webFont(13.5)).foregroundStyle(pal.ink7)
                     .padding(.horizontal, 12).padding(.vertical, 9)
             } else {
                 ForEach(shoots, id: \.id) { s in card(s, pal) }
             }
-            // Чужие календари: призраки под съёмками дня, пунктирной точкой вместо знака жанра (30.5).
+            // Чужие календари: строки призраков под съёмками дня — время, пунктирная чёрточка, название (30.5в).
             GhostWeekRows(app: app, f: f, day: day)
             if sky.set != nil || sky.goldenB != nil || binned > 0 {
                 HStack(spacing: 6) {

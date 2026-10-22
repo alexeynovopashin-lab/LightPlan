@@ -5,7 +5,7 @@ import LightPlanDomain
 @testable import LightPlanData
 
 /// Чужие календари призраками (шаг 30.5): какие календари показываются, что читается, как призрак ложится в сутки,
-/// как находится наложение и во что превращается «Занять». Календарь телефона — `InMemoryCalendarStore`; настоящий
+/// как находится наложение. Календарь телефона — `InMemoryCalendarStore`; настоящий
 /// EventKit — `Tools/calendar_sim.py`.
 @Suite struct GhostCalendarsTests {
 
@@ -354,34 +354,6 @@ import LightPlanDomain
         let c = WallTime(day: Self.day, minutes: 600).moment(in: moscow).date
         let d = WallTime(day: Self.day, minutes: 660).moment(in: moscow).date
         #expect(GhostOverlap.find(start: c, end: d, day: Self.day, in: [g]).isEmpty)
-    }
-
-    // MARK: - «Занять»
-
-    @Test func busyBlockForATimedGhostIsAPlainBusyBlockWithTheTitleAsNote() {
-        let g = Ghost(id: "1", calendarId: "c", calendarTitle: "Сын", title: "Матч", start: Self.at(Self.day, 600), end: Self.at(Self.day, 705), allDay: false)
-        let b = g.busyBlock(id: "b1", zone: Self.zone, now: 5)
-        #expect(b.kind == .busy && b.note == "Матч" && !b.allDay)
-        #expect(b.from == Self.day && b.start == 600 && b.duration == 105 && b.modifiedAt == 5)
-    }
-
-    @Test func busyBlockForAnAllDayGhostCoversItsDaysAndIsCapped() {
-        let g = Ghost(id: "2", calendarId: "c", calendarTitle: "Семья", title: "Отпуск", start: Self.at(Self.day, 0),
-                      end: Self.at(Self.day.adding(days: 3), 0), allDay: true, firstDay: Self.day, lastDay: Self.day.adding(days: 2))
-        let b = g.busyBlock(id: "b2", zone: Self.zone, now: 0)
-        #expect(b.allDay && b.from == Self.day && b.days == 3 && b.start == nil && b.duration == nil)
-        let long = Ghost(id: "3", calendarId: "c", calendarTitle: "Семья", title: "Год", start: Self.at(Self.day, 0),
-                         end: Self.at(Self.day.adding(days: 400), 0), allDay: true, firstDay: Self.day, lastDay: Self.day.adding(days: 399))
-        #expect(long.busyBlock(id: "b3", zone: Self.zone, now: 0).days == 61)
-    }
-
-    @Test func busyBlockStretchesTinyEventsAndTurnsTheLongOnesIntoWholeDays() {
-        let tiny = Ghost(id: "4", calendarId: "c", calendarTitle: "Работа", title: "Звонок", start: Self.at(Self.day, 600), end: Self.at(Self.day, 605), allDay: false)
-        #expect(tiny.busyBlock(id: "b", zone: Self.zone, now: 0).duration == 15)
-        let trip = Ghost(id: "5", calendarId: "c", calendarTitle: "Работа", title: "Командировка", start: Self.at(Self.day, 600),
-                         end: Self.at(Self.day.adding(days: 4), 600), allDay: false)
-        let b = trip.busyBlock(id: "b", zone: Self.zone, now: 0)
-        #expect(b.allDay && b.from == Self.day && b.days == 5)
     }
 
     // MARK: - Память

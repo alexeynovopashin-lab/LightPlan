@@ -182,13 +182,6 @@ extension AppModel {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             await dumpGhost("ghost-changed", extra: ["waitedMs": Int(Date().timeIntervalSince(waitFrom) * 1000)])
-            // «Занять» на матче: ровно одно занятое время; зеркало кладёт его в «Light Plan», но призраком оно не становится.
-            if let match = ghostList.first(where: { $0.title == "Матч" }) {
-                _ = occupy(match); await calendarChain?.value; await ghostLoad?.value
-                syncCalendarMirror(force: true); await calendarChain?.value
-                await reloadGhosts()
-                await dumpGhost("ghost-occupied")
-            }
             setGhosts(false); await calendarChain?.value
             await dumpGhost("ghost-off")
             await dump("done")

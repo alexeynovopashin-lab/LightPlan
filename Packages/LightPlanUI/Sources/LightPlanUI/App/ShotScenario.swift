@@ -119,8 +119,8 @@ extension AppModel {
             _ = app.planner.consumeDayShift()
         }
         #if DEBUG
-        // Чужие календари призраками (30.5): `-LPShotGhosts few|many` — подставной календарь с событиями на выбранный день.
-        if let kind = UserDefaults.standard.string(forKey: "LPShotGhosts") { app.debugShotGhosts(many: kind == "many") }
+        // Чужие календари призраками (30.5): `-LPShotGhosts few|many|six` — подставной календарь с событиями на выбранный день.
+        if let kind = UserDefaults.standard.string(forKey: "LPShotGhosts") { app.debugShotGhosts(kind: kind) }
         #endif
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
         if let mode = UserDefaults.standard.string(forKey: "LPShotRoads") { app.roads.useShotRoads(RoadBook.shotRouter(mode)) }

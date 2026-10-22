@@ -23276,31 +23276,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Рабочий календарь, расписание детей, матч сына — события из других календарей iPhone появятся в ленте дня и в неделе серыми пунктирными блоками. Они только для чтения: Light Plan их не меняет, никуда не отправляет и хранит только на этом телефоне. Увидели наложение — время занимаете сами, кнопкой «Занять»."
+            "value" : "Рабочий календарь, расписание детей, матч сына — события из других календарей iPhone появятся в ленте дня и в неделе серыми пунктирными блоками. Они только для чтения: Light Plan их не меняет, никуда не отправляет и хранит только на этом телефоне. Увидели наложение — решаете сами."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your work calendar, the kids’ schedule, your son’s match — events from your other iPhone calendars show up on the day and week views as grey dashed blocks. They are read-only: Light Plan never changes them, never sends them anywhere and keeps them on this phone only. If you see an overlap, you block the time yourself with “Block out”."
+            "value" : "Your work calendar, the kids’ schedule, your son’s match — events from your other iPhone calendars show up on the day and week views as grey dashed blocks. They are read-only: Light Plan never changes them, never sends them anywhere and keeps them on this phone only. If you see an overlap, the decision is yours."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tu calendario de trabajo, el horario de los niños, el partido de tu hijo: los eventos de tus otros calendarios del iPhone aparecen en el día y en la semana como bloques grises con borde discontinuo. Son de solo lectura: Light Plan no los cambia, no los envía a ningún sitio y los guarda solo en este teléfono. Si ves un solapamiento, tú decides bloquear el tiempo con «Bloquear»."
+            "value" : "Tu calendario de trabajo, el horario de los niños, el partido de tu hijo: los eventos de tus otros calendarios del iPhone aparecen en el día y en la semana como bloques grises con borde discontinuo. Son de solo lectura: Light Plan no los cambia, no los envía a ningún sitio y los guarda solo en este teléfono. Si ves un solapamiento, la decisión es tuya."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "仕事のカレンダー、子どもの予定、息子さんの試合など、iPhoneのほかのカレンダーの予定が、日と週の表示にグレーの点線のブロックで表示されます。読み取り専用で、Light Planは変更せず、どこにも送らず、この iPhone にだけ保持します。重なりに気づいたら、「確保」で自分で時間を空けます。"
+            "value" : "仕事のカレンダー、子どもの予定、息子さんの試合など、iPhoneのほかのカレンダーの予定が、日と週の表示にグレーの点線のブロックで表示されます。読み取り専用で、Light Planは変更せず、どこにも送らず、この iPhone にだけ保持します。重なりに気づいたら、判断はあなたです。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "工作日历、孩子的日程、儿子的比赛——iPhone 上其他日历中的事件会以灰色虚线块显示在日视图和周视图中。它们只读：Light Plan 不会修改、不会发送到任何地方，只保存在这部手机上。发现冲突时，由你自己用“占用”来留出时间。"
+            "value" : "工作日历、孩子的日程、儿子的比赛——iPhone 上其他日历中的事件会以灰色虚线块显示在日视图和周视图中。它们只读：Light Plan 不会修改、不会发送到任何地方，只保存在这部手机上。发现冲突时，由你来决定。"
           }
         }
       }
@@ -23375,142 +23375,37 @@
         }
       }
     },
-    "ghost.occupied" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Время уже занято"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Time already blocked"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tiempo ya bloqueado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "すでに確保済み"
-          }
-        },
-        "zh" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "时间已占用"
-          }
-        }
-      }
-    },
-    "ghost.occupiedShort" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Занято"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Blocked"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bloqueado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "確保済み"
-          }
-        },
-        "zh" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已占用"
-          }
-        }
-      }
-    },
-    "ghost.occupy" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Занять"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Block out"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bloquear"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "確保"
-          }
-        },
-        "zh" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "占用"
-          }
-        }
-      }
-    },
     "ghost.readOnly" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Событие из другого календаря. Light Plan его не меняет — решаете вы."
+            "value" : "Событие из другого календаря. Light Plan его не меняет."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "An event from another calendar. Light Plan does not change it — the decision is yours."
+            "value" : "An event from another calendar. Light Plan does not change it."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un evento de otro calendario. Light Plan no lo cambia: la decisión es tuya."
+            "value" : "Un evento de otro calendario. Light Plan no lo cambia."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ほかのカレンダーの予定です。Light Planは変更しません。判断はあなたです。"
+            "value" : "ほかのカレンダーの予定です。Light Planは変更しません。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "来自其他日历的事件。Light Plan 不会修改它——由你决定。"
+            "value" : "来自其他日历的事件。Light Plan 不会修改它。"
           }
         }
       }
@@ -23585,37 +23480,72 @@
         }
       }
     },
+    "ghost.weekLess" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свернуть"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show less"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar menos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "閉じる"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起"
+          }
+        }
+      }
+    },
     "ghost.weekMore" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ещё {n} из других календарей"
+            "value" : "Ещё {n}"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "{n} more from other calendars"
+            "value" : "{n} more"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "{n} más de otros calendarios"
+            "value" : "{n} más"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ほかのカレンダーからさらに{n}件"
+            "value" : "ほか{n}件"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "其他日历中还有{n}个"
+            "value" : "还有{n}个"
           }
         }
       }

@@ -468,6 +468,8 @@ public final class AppModel {
     public var ghostAsk = false
     /// Лист призрака (или нескольких, если на ленте они схлопнулись в «+N»); `nil` — закрыт.
     public var ghostSheet: GhostSheetTarget?
+    /// Дни недели, где список призраков раскрыт («Ещё N ⌄»): по дням, только в памяти запуска.
+    public var ghostWeekOpen: Set<CivilDate> = []
     @ObservationIgnored var reachTask: Task<Void, Never>?
     /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
     @ObservationIgnored var pinTask: Task<Void, Never>?

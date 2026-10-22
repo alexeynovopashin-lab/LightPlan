@@ -63,7 +63,7 @@ def check(log):
 
     need = ["start", "on", "repeat", "deleted-by-hand", "reconciled", "moved", "trashed", "restored", "calendar-recreated", "reinstalled",
             "hand-moved", "hand-moved-returned", "hand-renamed", "hand-block-moved", "hand-added", "hand-added-repeat", "hand-added-reinstalled", "hand-draft-deleted",
-            "ghost-seed", "ghost-on", "ghost-unticked", "ghost-reticked", "ghost-changed", "ghost-occupied", "ghost-off", "done"]
+            "ghost-seed", "ghost-on", "ghost-unticked", "ghost-reticked", "ghost-changed", "ghost-off", "done"]
     ok("журнал полон", all(n in by for n in need), f"есть шаги: {[s['stage'] for s in log]}")
     if not all(n in by for n in need):
         return out
@@ -235,15 +235,6 @@ def check_ghosts(by):
     ch = by["ghost-changed"]
     ok("добавили событие в Календаре руками — призрак появился сам, без перезапуска", g(ch, "Новый матч"), f"ждали {ch.get('waitedMs')} мс; {titles(ch)}")
 
-    oc = by["ghost-occupied"]
-    before = by["ghost-changed"]["blocks"]
-    new = [b for b in oc["blocks"] if b["id"] not in {x["id"] for x in before}]
-    ok("«Занять» создало ровно одно занятое время с названием матча, 90 минут", len(new) == 1 and new[0]["note"] == "Матч"
-       and new[0]["kind"] == "busy" and new[0]["duration"] == 90 and not new[0]["allDay"], str(new))
-    ok("занятое время ушло в «Light Plan» обычным событием, а призраком не вернулось",
-       "Матч" in oc["lpEvents"] and not [x for x in oc["ghosts"] if x["cal"] == "Light Plan"] and len(g(oc, "Матч")) == 1,
-       f"в Light Plan: {oc['lpEvents']}; призраков «Матч»: {len(g(oc, 'Матч'))}")
-    ok("чужое событие осталось на месте и не изменилось (их по-прежнему одно в «Сын»)", len(g(oc, "Матч")) == 1 and g(oc, "Матч")[0]["cal"] == "Сын", "")
     off = by["ghost-off"]
     ok("выключили: призраков нет, тумблер выключен", not off["ghosts"] and not off["ghostsOn"], str(titles(off)))
     return out
@@ -323,7 +314,6 @@ def selftest():
                {"title": "Дни рождения", "shown": False, "personal": False}]
     env = [{"title": "Дни рождения", "type": 4, "source": "Другое"}, {"title": "Сын", "type": 0, "source": "На iPhone"}]
     own = {"id": "b1", "note": "", "kind": "off", "start": -1, "duration": -1, "allDay": True}
-    busy = {"id": "b2", "note": "Матч", "kind": "busy", "start": 600, "duration": 90, "allDay": False}
 
     def gs(name, ghosts, on_=True, blocks=(own,), lp=("Свадьба · Ирина",), **kw):
         d = {"stage": name, "ghostsOn": on_, "ghosts": ghosts, "choices": choices, "blocks": list(blocks), "lpEvents": list(lp),
@@ -338,8 +328,6 @@ def selftest():
             "ghost-unticked": gs("ghost-unticked", [x for x in base_g if x["cal"] != "Сын"]),
             "ghost-reticked": gs("ghost-reticked", base_g),
             "ghost-changed": gs("ghost-changed", base_g + [gh("Новый матч", "Сын", "2026-11-02T06:00:00Z", "2026-11-02T07:00:00Z")], waitedMs=1200),
-            "ghost-occupied": gs("ghost-occupied", base_g + [gh("Новый матч", "Сын", "2026-11-02T06:00:00Z", "2026-11-02T07:00:00Z")],
-                                 blocks=(own, busy), lp=("Свадьба · Ирина", "Матч")),
             "ghost-off": gs("ghost-off", [], False),
         }
         d.update(kw)
@@ -358,9 +346,6 @@ def selftest():
         "повтор не раскрыт": gmake(**{"ghost-on": gs("ghost-on", [x for x in base_g if x["title"] != "Кружок"] + base_g[3:4])}),
         "галочка не сняла календарь": gmake(**{"ghost-unticked": gs("ghost-unticked", base_g)}),
         "новое событие не появилось": gmake(**{"ghost-changed": gs("ghost-changed", base_g)}),
-        "«Занять» создало два блока": gmake(**{"ghost-occupied": gs("ghost-occupied", base_g, blocks=(own, busy, dict(busy, id="b3")), lp=("Матч",))}),
-        "«Занять» ничего не создало": gmake(**{"ghost-occupied": gs("ghost-occupied", base_g, blocks=(own,), lp=("Матч",))}),
-        "занятое время вернулось призраком из «Light Plan»": gmake(**{"ghost-occupied": gs("ghost-occupied", base_g + [gh("Матч", "Light Plan", "2026-10-28T07:00:00Z", "2026-10-28T08:30:00Z")], blocks=(own, busy), lp=("Матч",))}),
         "после выключения призраки остались": gmake(**{"ghost-off": gs("ghost-off", base_g, False)}),
     }
     for name, log in gbreak.items():

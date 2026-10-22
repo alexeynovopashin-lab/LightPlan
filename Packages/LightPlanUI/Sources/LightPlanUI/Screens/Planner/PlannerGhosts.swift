@@ -6,7 +6,7 @@ import LightPlanDomain
 // Чужие календари призраками на ленте дня и в неделе (шаг 30.5, `docs/14`).
 //
 // Призрак — пунктирная полупрозрачная рамка цвета чернил (не латунь: съёмки латунные). Его нельзя тянуть, нельзя
-// выделить, удержание на нём ничего не делает; тап открывает лист (`GhostSheet`), где одна кнопка — «Занять».
+// выделить, удержание на нём ничего не делает; тап на ленте дня открывает лист со сведениями (`GhostSheet`), в неделе строки раскрываются на месте.
 // В месяце призраков нет (решение Алексея 22.10, «2А»).
 
 // MARK: - Что читают виды
@@ -225,7 +225,9 @@ struct GhostAllDayBand: View {
 
 // MARK: - Неделя
 
-/// Призраки дня в строке недели: сначала «на весь день», потом по часам; не больше трёх строк, остальные — «Ещё N».
+/// Призраки дня в строке недели (30.5в, слово Алексея): слева время, потом пунктирная чёрточка и название; сначала
+/// «на весь день», потом по часам. Больше трёх строк — две и «Ещё N ⌄»: тап раскрывает остальные тут же, в карточке
+/// дня, «Свернуть ⌃» прячет обратно. Раскрытие — по дням, в памяти запуска. Листа из недели нет: строки не нажимаются.
 struct GhostWeekRows: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
@@ -241,47 +243,82 @@ struct GhostWeekRows: View {
         var id: String { ghost.id + time }
     }
 
+    /// Что внизу списка: «Ещё N» (свёрнуто) или «Свернуть» (развёрнуто); `nil` — всё влезло, переключателя нет.
+    enum Footer: Equatable { case more(Int), less }
+
     static func rows(_ f: PlannerFacts, _ day: CivilDate) -> [Row] {
         f.ghostAllDay(on: day).map { Row(ghost: $0, time: f.t.t("day.allDay")) }
             + f.ghostParts(on: day).map { Row(ghost: $0.ghost, time: f.ghostRange($0)) }
+    }
+
+    /// День без съёмок и без событий чужих календарей — только такой подписан «свободно». Призрак занятостью не считается
+    /// нигде, кроме этой подписи (слово Алексея 30.5в).
+    static func isFree(shoots: Int, _ f: PlannerFacts, _ day: CivilDate) -> Bool {
+        shoots == 0 && rows(f, day).isEmpty
+    }
+
+    /// Какие строки видны и какой переключатель под ними.
+    static func plan<T>(_ rows: [T], open: Bool) -> (shown: [T], toggle: Footer?) {
+        guard rows.count > rowCap else { return (rows, nil) }
+        if open { return (rows, .less) }
+        let shown = Array(rows.prefix(rowCap - 1))
+        return (shown, .more(rows.count - shown.count))
     }
 
     var body: some View {
         let rows = Self.rows(f, day)
         if !rows.isEmpty {
             let pal = Palette(scheme)
-            let shown = Array(rows.prefix(rows.count > Self.rowCap ? Self.rowCap - 1 : Self.rowCap))
-            let hidden = rows.count - shown.count
+            let open = app.ghostWeekOpen.contains(day)
+            let (shown, toggle) = Self.plan(rows, open: open)
+            // Ширина колонки времени — по самому широкому промежутку, чтобы названия стояли ровно.
+            let sample = f.range(Double(8 * 60 + 8), Double(20 * 60 + 20))
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(shown.enumerated()), id: \.element.id) { i, r in
-                    HStack(spacing: 9) {
-                        Circle().strokeBorder(pal.ink.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [2.5, 2]))
-                            .frame(width: 11, height: 11).frame(width: 17)
-                        (Text(f.ghostTitle(r.ghost)).foregroundStyle(pal.ink3) + Text(" · " + r.ghost.calendarTitle).foregroundStyle(pal.ink6))
-                            .font(webFont(13.5)).lineLimit(1)
-                        Spacer(minLength: 8)
-                        Text(r.time).font(webFont(12.5)).monospacedDigit().foregroundStyle(pal.ink5).lineLimit(1)
+                    HStack(spacing: 8) {
+                        ZStack(alignment: .leading) {
+                            Text(sample).hidden()
+                            Text(r.time)
+                        }
+                        .font(webFont(12.5)).monospacedDigit().foregroundStyle(pal.ink5).lineLimit(1).fixedSize()
+                        VLine().stroke(pal.ink.opacity(0.28), style: StrokeStyle(lineWidth: 1, dash: [2.5, 2]))
+                            .frame(width: 1, height: 15)
+                        Text(f.ghostTitle(r.ghost)).font(webFont(13.5)).foregroundStyle(pal.ink3).lineLimit(1)
+                        Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 12).padding(.vertical, 7)
-                    .contentShape(Rectangle())
-                    .onTapGesture { app.ghostSheet = GhostSheetTarget(ghosts: [r.ghost]) }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(f.t.t("ghost.a11y", ["cal": r.ghost.calendarTitle, "name": f.ghostTitle(r.ghost), "when": r.time]))
-                    .accessibilityAddTraits(.isButton)
                     .shotNode("wk.ghost.\(i)", text: r.ghost.title)
                 }
-                if hidden > 0 {
-                    Text(f.t.t("ghost.weekMore", ["n": "\(hidden)"])).font(webFont(12.5)).foregroundStyle(pal.ink5)
+                if let toggle {
+                    Button { app.toggleGhostWeek(day) } label: {
+                        HStack(spacing: 5) {
+                            Text(toggle == .less ? f.t.t("ghost.weekLess") : f.t.t("ghost.weekMore", ["n": "\(rows.count - shown.count)"]))
+                            Icon("chevron", size: 11, line: 1.8).rotationEffect(.degrees(toggle == .less ? -90 : 90))
+                            Spacer(minLength: 0)
+                        }
+                        .font(webFont(12.5)).foregroundStyle(pal.ink5)
                         .padding(.horizontal, 12).padding(.vertical, 7)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
-                        .onTapGesture { app.ghostSheet = GhostSheetTarget(ghosts: rows.map(\.ghost)) }
-                        .accessibilityAddTraits(.isButton)
-                        .shotNode("wk.ghost.more", text: "\(hidden)")
+                    }
+                    .buttonStyle(.plain)
+                    .shotNode("wk.ghost.more", text: toggle == .less ? "less" : "more")
                 }
             }
             .padding(.bottom, 2)
         }
+    }
+}
+
+/// Вертикаль по центру — для пунктирной чёрточки.
+private struct VLine: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.midX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
+        return p
     }
 }
 
@@ -312,7 +349,7 @@ struct GhostPresenters: ViewModifier {
 
 // MARK: - Лист призрака
 
-/// Что нажато на призраке: название, время, место, календарь и кнопка «Занять». Править событие нечем — оно чужое.
+/// Что нажато на призраке на ленте дня: название, время, место, календарь. Только сведения: править и занимать нечем — событие чужое.
 struct GhostSheet: View {
     @Bindable var app: AppModel
     let target: GhostSheetTarget
@@ -357,7 +394,6 @@ struct GhostSheet: View {
 
     private func one(_ g: Ghost, _ f: PlannerFacts, _ pal: Palette) -> some View {
         let t = f.t
-        let taken = app.ghostIsTaken(g)
         return VStack(alignment: .leading, spacing: 0) {
             Text(t.t("ghost.fromCal", ["cal": g.calendarTitle])).font(.system(size: 13)).foregroundStyle(pal.ink4)
                 .shotNode("ghost.cal", text: g.calendarTitle)
@@ -378,48 +414,17 @@ struct GhostSheet: View {
             Text(t.t("ghost.readOnly")).font(.system(size: 13)).foregroundStyle(pal.ink5)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 14)
-            occupyButton(g, taken: taken, t, pal)
-                .padding(.top, 20)
         }
-    }
-
-    private func occupyButton(_ g: Ghost, taken: Bool, _ t: Lexicon, _ pal: Palette) -> some View {
-        Button {
-            app.occupy(g)
-            app.ghostSheet = nil
-        } label: {
-            Text(t.t(taken ? "ghost.occupied" : "ghost.occupy")).font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(taken ? pal.ink5 : pal.onBrass)
-                .frame(maxWidth: .infinity).padding(16)
-                .background(taken ? AnyShapeStyle(pal.sheet) : AnyShapeStyle(pal.brass), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .disabled(taken)
-        .shotNode("ghost.occupy", text: taken ? "taken" : "free")
     }
 
     // MARK: Несколько событий
 
     private func row(_ g: Ghost, _ f: PlannerFacts, _ pal: Palette, index: Int) -> some View {
-        let t = f.t
-        let taken = app.ghostIsTaken(g)
         return HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(f.ghostTitle(g)).font(.system(size: 15, weight: .medium)).foregroundStyle(pal.ink).lineLimit(2)
                 Text(when(g, f) + " · " + g.calendarTitle).font(.system(size: 12)).monospacedDigit().foregroundStyle(pal.ink4).lineLimit(2)
             }
-            Spacer(minLength: 8)
-            Button {
-                app.occupy(g)
-            } label: {
-                Text(t.t(taken ? "ghost.occupiedShort" : "ghost.occupy")).font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(taken ? pal.ink5 : pal.brass)
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(taken ? Color.clear : pal.pressWarm, in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(taken)
-            .shotNode("ghost.occupy.\(index)", text: taken ? "taken" : "free")
         }
         .padding(.vertical, 11)
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }

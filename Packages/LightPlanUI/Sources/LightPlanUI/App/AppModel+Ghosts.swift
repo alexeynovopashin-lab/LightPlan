@@ -13,7 +13,7 @@ public struct GhostSheetTarget: Identifiable, Equatable, Sendable {
 ///
 /// Призрак видно, править нельзя; он не входит в данные приложения (`snapshot`), не пишется в Календарь и не уходит
 /// из телефона: список живёт только в памяти запуска и пересчитывается из EventKit. Решение остаётся за
-/// фотографом — «Занять» создаёт обычное занятое время, и только по нажатию.
+/// фотографом: призрак только напоминает, сам ничего не создаёт и не занимает.
 extension AppModel {
 
     // MARK: - Что видит экран
@@ -168,25 +168,12 @@ extension AppModel {
         }
     }
 
-    // MARK: - «Занять» и наложение
-
-    /// Занятое время такое же, как призрак, уже стоит (то же время и та же заметка): второй раз его не заводим.
-    public func ghostIsTaken(_ g: Ghost) -> Bool {
-        let want = g.busyBlock(id: "", zone: place.zone, now: 0)
-        return snapshot.blocks.contains {
-            $0.kind == want.kind && $0.note == want.note && $0.from == want.from && $0.allDay == want.allDay
-                && $0.days == want.days && $0.start == want.start && $0.duration == want.duration
-        }
+    /// «Ещё N ⌄» / «Свернуть ⌃» в карточке дня недели.
+    public func toggleGhostWeek(_ day: CivilDate) {
+        if ghostWeekOpen.contains(day) { ghostWeekOpen.remove(day) } else { ghostWeekOpen.insert(day) }
     }
 
-    /// Кнопка «Занять»: **одно** занятое время («Занят») на время призрака, с названием события в заметке. Призрак
-    /// остаётся призраком; других записей кнопка не трогает. `false` — такое занятое время уже есть.
-    @discardableResult
-    public func occupy(_ g: Ghost) -> Bool {
-        guard !ghostIsTaken(g) else { return false }
-        saveBlock(g.busyBlock(id: Self.newBlockId(nowMs), zone: place.zone, now: nowMs))
-        return true
-    }
+    // MARK: - Наложение
 
     /// Мягкая плашка формы (решение Алексея 22.10, «1А»): время съёмки пересекается с событием чужого календаря. Не
     /// запрет — сохранить можно. Сравниваются моменты, а не часы на стене: съёмка в Москве и матч в Томске пересекаются
@@ -223,7 +210,7 @@ extension AppModel {
 extension AppModel {
     /// Снимки экранов с призраками (`-LPShotGhosts`): подставной календарь телефона, призраки включены. Пары без этого
     /// аргумента идут без читателя вовсе — как прежде.
-    func debugShotGhosts(many: Bool) {
+    func debugShotGhosts(kind: String) {
         let store = InMemoryCalendarStore()
         let son = store.userAddCalendar(title: "Сын", type: .account)
         let work = store.userAddCalendar(title: "Работа", type: .exchange, source: "Exchange")
@@ -234,11 +221,18 @@ extension AppModel {
         store.userAdd(title: "Кружок", start: at(1020), end: at(1080), calendarId: son)
         let a = Calendar.current.date(from: DateComponents(year: day.year, month: day.month, day: day.day))!
         store.userAdd(title: "Каникулы", start: a, end: a.addingTimeInterval(86_399), calendarId: son, allDay: true)
-        if many {
+        if kind == "six" || kind == "sixopen" {
+            // День с шестью призраками: «на весь день» и пять по часам — для недели «Ещё N ⌄».
+            for (i, t) in ["Занятие 1", "Занятие 2"].enumerated() {
+                store.userAdd(title: t, start: at(1140 + i * 90), end: at(1140 + i * 90 + 60), calendarId: work)
+            }
+        }
+        if kind == "many" {
             for (i, t) in ["Созвон", "Ревью", "Демо", "Ретро"].enumerated() {
                 store.userAdd(title: t, start: at(840 + i * 10), end: at(930), calendarId: work)
             }
         }
+        if kind == "sixopen" { ghostWeekOpen.insert(day) }              // «Ещё N» уже раскрыто — для снимка
         attachCalendar(store: store, memory: InMemoryCalendarMemory(), ghosts: InMemoryGhostMemory(GhostRecord(on: true)))
     }
 }

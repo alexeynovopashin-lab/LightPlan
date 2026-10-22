@@ -213,36 +213,9 @@ public enum GhostOverlap {
     }
 }
 
-// MARK: - «Занять»
+// MARK: - Часы призрака
 
 extension Ghost {
-    /// Обычное занятое время («Занят») на время призрака, с названием события в заметке. Решение остаётся за
-    /// фотографом: вызывает только кнопка «Занять» — сам призрак ничего не создаёт.
-    ///
-    /// По часам — в часах пояса места приложения (как занятость, записанная руками); короче 15 минут и длиннее
-    /// двух суток лист «Занять время» не берёт: первое подтягивается до 15 минут, второе становится занятостью на
-    /// весь день по дням события.
-    public func busyBlock(id: String, zone: ZoneID, now: Int64, calendar cal: Calendar = .current) -> Block {
-        var b = Block(id: id, kind: .busy, from: firstDay ?? Self.wall(start, zone).day)
-        b.note = title
-        b.modifiedAt = now
-        let spanMinutes = Moment(end).minutes(since: Moment(start))
-        if allDay || spanMinutes > 2880 {
-            let first = firstDay ?? Self.wall(start, zone).day
-            let last = lastDay ?? Self.wall(max(end.addingTimeInterval(-1), start), zone).day
-            b.from = first
-            b.allDay = true
-            // Лист «Занять время» не берёт больше двух месяцев (`BlockSheet.maxSpan`).
-            b.days = min(max(1, last.days(since: first) + 1), 61)
-        } else {
-            let w = Self.wall(start, zone)
-            b.from = w.day
-            b.start = w.minutes
-            b.duration = min(max(spanMinutes, 15), 2880)
-        }
-        return b
-    }
-
     /// Начало и конец по часам пояса (для слов «в это время …»).
     public func wallRange(in zone: ZoneID) -> (start: WallTime, end: WallTime) {
         (Self.wall(start, zone), Self.wall(max(end, start), zone))

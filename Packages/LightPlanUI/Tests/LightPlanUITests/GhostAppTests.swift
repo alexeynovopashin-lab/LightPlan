@@ -6,7 +6,7 @@ import LightPlanDomain
 import LightPlanData
 
 /// Чужие календари призраками (шаг 30.5), со стороны приложения: тумблер и право, лента дня (полоса справа), неделя,
-/// плашка формы, лист «Занять». Календарь телефона — `InMemoryCalendarStore`; данные чтения — в `GhostCalendarsTests`.
+/// плашка формы, лист со сведениями. Календарь телефона — `InMemoryCalendarStore`; данные чтения — в `GhostCalendarsTests`.
 @MainActor
 struct GhostAppTests {
 
@@ -308,19 +308,66 @@ struct GhostAppTests {
 
     // MARK: - Неделя
 
-    @Test func theWeekListsAllDayFirstThenTimedAndCapsTheRows() async {
-        let r = await rig()
+    private func six(_ r: Rig) async {
         r.store.userAdd(title: "Отпуск", start: Self.allDay(Self.day).start, end: Self.allDay(Self.day).end, calendarId: r.work, allDay: true)
-        for i in 0..<4 {
+        for i in 0..<5 {
             r.store.userAdd(title: "С\(i)", start: Self.at(Self.day, 600 + i * 120), end: Self.at(Self.day, 660 + i * 120), calendarId: r.son)
         }
         await r.app.reloadGhosts()
+    }
+
+    @Test func theWeekRowsGoAllDayFirstThenByTimeWithTheRangeOnTheLeft() async {
+        let r = await rig()
+        await six(r)
         let f = PlannerFacts(app: r.app, dark: false)
         let rows = GhostWeekRows.rows(f, Self.day)
-        #expect(rows.map(\.ghost.title) == ["Отпуск", "С0", "С1", "С2", "С3"])
-        #expect(rows[0].time == "весь день" && rows[1].time == Self.span("10:00", "11:00"))
-        #expect(GhostWeekRows.rowCap == 3)
+        #expect(rows.map(\.ghost.title) == ["Отпуск", "С0", "С1", "С2", "С3", "С4"])
+        #expect(rows[0].time == "весь день" && rows[1].time == Self.span("10:00", "11:00") && rows[5].time == Self.span("18:00", "19:00"))
         #expect(GhostWeekRows.rows(f, Self.day.adding(days: 1)).isEmpty)
+    }
+
+    @Test func sixRowsCollapseToTwoAndMoreFourThenExpandToAllAndLess() async {
+        let r = await rig()
+        await six(r)
+        let rows = GhostWeekRows.rows(PlannerFacts(app: r.app, dark: false), Self.day)
+        let closed = GhostWeekRows.plan(rows, open: false)
+        #expect(closed.shown.map(\.ghost.title) == ["Отпуск", "С0"] && closed.toggle == .more(4))
+        let open = GhostWeekRows.plan(rows, open: true)
+        #expect(open.shown.count == 6 && open.toggle == .less)
+        #expect(open.shown.map(\.ghost.title) == rows.map(\.ghost.title))                 // порядок тот же
+    }
+
+    @Test func threeRowsAreShownWholeFourCollapseToTwoAndTwo() {
+        #expect(GhostWeekRows.plan([1, 2, 3], open: false).shown == [1, 2, 3] && GhostWeekRows.plan([1, 2, 3], open: false).toggle == nil)
+        #expect(GhostWeekRows.plan([1, 2, 3], open: true).toggle == nil)                          // нечего сворачивать
+        let four = GhostWeekRows.plan([1, 2, 3, 4], open: false)
+        #expect(four.shown == [1, 2] && four.toggle == .more(2))
+    }
+
+    @Test func expandingIsPerDayAndLivesOnlyInMemory() async {
+        let r = await rig()
+        let d2 = Self.day.adding(days: 1)
+        #expect(r.app.ghostWeekOpen.isEmpty)
+        r.app.toggleGhostWeek(Self.day)
+        #expect(r.app.ghostWeekOpen == [Self.day])                                  // соседний день не раскрылся
+        r.app.toggleGhostWeek(d2)
+        #expect(r.app.ghostWeekOpen == [Self.day, d2])
+        r.app.toggleGhostWeek(Self.day)
+        #expect(r.app.ghostWeekOpen == [d2])
+        let json = String(decoding: try! JSONEncoder().encode(r.app.snapshot), as: UTF8.self)
+        #expect(!json.contains("ghostWeek"))
+    }
+
+    @Test func aDayWithGhostsIsNotFreeButATrulyEmptyDayStillIs() async {
+        let r = await rig()
+        r.store.userAdd(title: "Матч", start: Self.at(Self.day, 600), end: Self.at(Self.day, 700), calendarId: r.son)
+        await r.app.reloadGhosts()
+        let f = PlannerFacts(app: r.app, dark: false)
+        #expect(!GhostWeekRows.isFree(shoots: 0, f, Self.day))                      // призрак есть — «свободно» не пишем
+        #expect(GhostWeekRows.isFree(shoots: 0, f, Self.day.adding(days: 1)))      // совсем пустой день — пишем
+        #expect(!GhostWeekRows.isFree(shoots: 1, f, Self.day.adding(days: 1)))      // со съёмкой — не пишем и без призраков
+        // Призрак занятостью нигде больше не считается: ни в элементах ленты, ни в данных.
+        #expect(f.items(on: Self.day).isEmpty && r.app.snapshot.blocks.isEmpty)
     }
 
     // MARK: - Форма
@@ -410,26 +457,7 @@ struct GhostAppTests {
         #expect(r.app.formWarning(f)?.message.contains("Матч") == false)
     }
 
-    // MARK: - «Занять»
-
-    @Test func occupyCreatesExactlyOneBusyBlockAndTheGhostStaysAGhost() async throws {
-        var snap = Snapshot()
-        snap.sessions = [Session(id: "s1", kind: .shoot, day: Self.day.adding(days: 3), start: 600, end: 700, genre: .portrait)]
-        let r = await rig(snapshot: snap)
-        r.store.userAdd(title: "Матч", start: Self.at(Self.day, 600), end: Self.at(Self.day, 705), calendarId: r.son)
-        await r.app.reloadGhosts()
-        let g = try #require(r.app.ghostList.first)
-        #expect(!r.app.ghostIsTaken(g))
-        #expect(r.app.occupy(g))
-        #expect(r.app.snapshot.blocks.count == 1 && r.app.snapshot.sessions.count == 1)
-        let b = r.app.snapshot.blocks[0]
-        #expect(b.kind == .busy && b.note == "Матч" && b.from == Self.day && b.start == 600 && b.duration == 105 && !b.allDay)
-        #expect(r.app.ghostIsTaken(g))
-        #expect(!r.app.occupy(g))                                          // второй раз — не дубль
-        #expect(r.app.snapshot.blocks.count == 1)
-        #expect(r.app.ghostList.count == 1)                                // сам призрак на месте
-        #expect(r.store.writeCounts.saves == 0)                            // в Календарь ничего не записано (зеркало выключено)
-    }
+    // MARK: - Лист
 
     @Test func tappingAGhostOnlyOpensTheSheetAndChangesNoData() async {
         let r = await rig()
@@ -450,16 +478,10 @@ struct GhostAppTests {
                         location: "СекретныйСтадион", notes: "СекретныеЗаметки")
         await r.app.reloadGhosts()
         #expect(r.app.ghostList.count == 1)
-        // «Занять» кладёт в данные название события — это воля человека; но не место, не заметки и не имя календаря.
-        _ = r.app.occupy(r.app.ghostList[0])
+        // Ни название, ни место, ни заметки, ни имя календаря в данных приложения и в памяти выбора не появляются.
         let json = String(decoding: try JSONEncoder().encode(r.app.snapshot), as: UTF8.self)
-        #expect(json.contains("СекретныйМатч"))
-        #expect(!json.contains("СекретныйСтадион") && !json.contains("СекретныеЗаметки") && !json.contains("Сын"))
-        // До «Занять» — ни слова.
-        let clean = await rig()
-        clean.store.userAdd(title: "СекретныйМатч", start: Self.at(Self.day, 600), end: Self.at(Self.day, 700), calendarId: clean.son)
-        await clean.app.reloadGhosts()
-        #expect(!String(decoding: try JSONEncoder().encode(clean.app.snapshot), as: UTF8.self).contains("СекретныйМатч"))
-        #expect(!String(decoding: (clean.memory.record.picks.description + "\(clean.memory.record.on)").utf8, as: UTF8.self).contains("СекретныйМатч"))
+        #expect(!json.contains("СекретныйМатч") && !json.contains("СекретныйСтадион") && !json.contains("СекретныеЗаметки") && !json.contains("Сын"))
+        let memory = r.memory.record.picks.description + "\(r.memory.record.on)"
+        #expect(!memory.contains("СекретныйМатч"))
     }
 }
