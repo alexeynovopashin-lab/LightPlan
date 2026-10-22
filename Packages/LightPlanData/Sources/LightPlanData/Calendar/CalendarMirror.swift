@@ -173,11 +173,13 @@ public actor CalendarMirror {
         await ownEvents(calendarId).allSatisfy { CalendarPlan.isRecordLink($0.url) }
     }
 
-    /// Все события календаря за двадцать лет в обе стороны.
+    /// Все события календаря за сто лет в обе стороны: по этому списку решается, наш ли календарь и можно ли убрать его
+    /// целиком, поэтому окно шире любой съёмки. Редкая операция (принять, выключить, переехать): хранилище режет окно
+    /// на куски, запросов около шестидесяти.
     private func ownEvents(_ calendarId: String) async -> [StoredEvent] {
         let year: TimeInterval = 366 * 86_400
-        return await store.events(calendarId: calendarId, from: Date().addingTimeInterval(-20 * year),
-                                  to: Date().addingTimeInterval(20 * year))
+        return await store.events(calendarId: calendarId, from: Date().addingTimeInterval(-100 * year),
+                                  to: Date().addingTimeInterval(100 * year))
     }
 
     /// Убрать наш календарь из телефона. Целиком — если в нём только наше; иначе только наши события, а календарь
