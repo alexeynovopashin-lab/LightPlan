@@ -171,13 +171,23 @@ public struct EventFacts: Codable, Hashable, Sendable {
     public var longitude: Double?
 
     public init(event e: StoredEvent) {
-        start = e.start.timeIntervalSince1970; end = e.end.timeIntervalSince1970; allDay = e.allDay
+        (start, end) = Self.span(e.start, e.end, allDay: e.allDay)
+        allDay = e.allDay
         location = e.locationTitle ?? ""; latitude = e.latitude; longitude = e.longitude
     }
 
     public init(draft d: EventDraft) {
-        start = d.start.timeIntervalSince1970; end = d.end.timeIntervalSince1970; allDay = d.allDay
+        (start, end) = Self.span(d.start, d.end, allDay: d.allDay)
+        allDay = d.allDay
         location = d.locationTitle ?? ""; latitude = d.latitude; longitude = d.longitude
+    }
+
+    /// «На весь день» система хранит по дням: конец последнего дня читается как 23:59:59, а мы кладём его начало
+    /// (`StoredEvent.matches`). Поэтому у таких событий сравниваются дни — началами суток по часам телефона.
+    private static func span(_ s: Date, _ e: Date, allDay: Bool) -> (Double, Double) {
+        guard allDay else { return (s.timeIntervalSince1970, e.timeIntervalSince1970) }
+        let cal = Calendar.current
+        return (cal.startOfDay(for: s).timeIntervalSince1970, cal.startOfDay(for: e).timeIntervalSince1970)
     }
 
     /// Те же допуски, что у `StoredEvent.matches`: секунда во времени и 1e-5 градуса в координатах.

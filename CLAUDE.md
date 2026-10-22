@@ -105,7 +105,11 @@
   `kind == .shoot`; planner shows «Черновик» via `PlannerWords`). Who moved, decided by `CalendarMirrorRecord.facts` (device-local fingerprint of time/place at the last
   meeting of both sides): event off the fingerprint, record on it → event wins; both moved → later `mt` / `lastModifiedDate` wins; no fingerprint → record wins. The mirror
   only *reports* (`Report.incoming`); `AppModel.takeCalendarIncoming` applies, stamps `mt`, flushes to disk, and only then `adopt`s the event (links it to the new record).
-  All-day, recurring and >24 h events are left alone. Blocks do not come back. Zones: `learnCalendarZones` asks the geocoder for unknown 0.5° cells before a pass
+  All-day-event drafts, recurring and >24 h events are left alone. **Busy-time blocks come back too** (`applying(_:to: Block)`; all-day compared by days). A move
+  accepted from the Calendar sets the same «Время сдвинуто в календаре: было → стало» mark as a finger drag (`DayDrag.commit(day:)`, now also keeps the old day in
+  `DayMoved.day`; card plate + ✕); blocks keep `Block.movedFrom` (key `mvd`), shown as the third line of the day row and a plate in the block sheet (`blockMovedText`).
+  **No «Фотосъёмка» genre code in data** (the web would show the raw code: `genreName` falls back to the code, no icon, not in pickers): a shoot with `genre == nil`
+  is *labelled* «Фотосъёмка» (`PlannerWords`, key `genre.photoshoot`), rules are the web's empty-genre ones (people group, 7 days); `EventForm.genreUnset` keeps nil on save. Zones: `learnCalendarZones` asks the geocoder for unknown 0.5° cells before a pass
   (≤ 6 per pass, once per launch each), so Tomsk is +7 not the longitude estimate +6 once online. `-LPCalendarProbe` drives the whole thing on real EventKit
   (`calendar_sim.py`: hand move / rename / hand-added draft / reinstall / draft event deleted).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it

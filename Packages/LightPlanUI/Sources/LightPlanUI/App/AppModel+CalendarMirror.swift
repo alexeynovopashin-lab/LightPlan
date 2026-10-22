@@ -270,16 +270,12 @@ extension AppModel {
                 if let la = event.latitude, let lo = event.longitude {
                     await learnCalendarZone(at: GeoCoordinate(latitude: la, longitude: lo))
                 }
-                guard let url = URL(string: key), let id = CalendarPlan.shootId(in: url),
-                      let i = snapshot.sessions.firstIndex(where: { $0.id == id }),
-                      var moved = CalendarPlan.applying(event, to: snapshot.sessions[i], calendarContext()) else {
-                    // Записи нет или принять нечего (студия не меняется строкой): событие вернётся к записи.
-                    if let url = URL(string: key), CalendarPlan.shootId(in: url) != nil { await mirror.dismiss(key: key, event: event) }
-                    continue
+                guard let url = URL(string: key) else { continue }
+                if let id = CalendarPlan.shootId(in: url) {
+                    if takeShootMove(id: id, event: event) { changed = true } else { await mirror.dismiss(key: key, event: event) }
+                } else if let id = CalendarPlan.blockId(in: url) {
+                    if takeBlockMove(id: id, event: event) { changed = true } else { await mirror.dismiss(key: key, event: event) }
                 }
-                moved.modifiedAt = nowMs
-                snapshot.sessions[i] = moved
-                changed = true
             case .created(let event):
                 // Пояс места нужен до того, как часы события станут часами съёмки: оценка по долготе ошибается на час.
                 if let la = event.latitude, let lo = event.longitude {
@@ -296,6 +292,43 @@ extension AppModel {
         persist()
         await flush()
         for a in adopt { await mirror.adopt(eventId: a.event, key: a.key) }
+        return true
+    }
+
+    /// Съёмку подвинули в Календаре: время и место ложатся в запись, и ставится та же отметка «Время сдвинуто в календаре:
+    /// было → стало» с крестиком, что и от пальца на ленте дня (`DayDrag.commit`): «было» остаётся исходным при повторных
+    /// сдвигах, вернули как было — отметка гаснет. Сдвиг самим приложением (форма) отметки не ставит.
+    /// `false` — принять нечего (записи нет, студия не меняется строкой, ничего не изменилось).
+    private func takeShootMove(id: String, event: StoredEvent) -> Bool {
+        guard let i = snapshot.sessions.firstIndex(where: { $0.id == id }),
+              let moved = CalendarPlan.applying(event, to: snapshot.sessions[i], calendarContext()) else { return false }
+        var s = snapshot.sessions[i]
+        s.place = moved.place; s.placeAddress = moved.placeAddress
+        s.latitude = moved.latitude; s.longitude = moved.longitude
+        let f = PlannerFacts(app: self, dark: false)
+        let when = f.dates.dMonShort(f.date(today)) + " " + f.fmt(Double(nowMinute))
+        let originDay = s.dayMoved?.day ?? s.day
+        func text(_ t: (Int, Int), day: CivilDate) -> String {
+            (day == originDay && moved.day == originDay ? "" : f.dates.dMonShort(f.date(day)) + " ") + f.range(Double(t.0), Double(t.1))
+        }
+        DayDrag.commit(&s, day: moved.day, start: moved.start, end: moved.endMinute) { was, now in
+            lexicon.t("day.movedNote", ["when": when, "from": text(was, day: originDay), "to": text(now, day: moved.day)])
+        }
+        s.modifiedAt = nowMs
+        snapshot.sessions[i] = s
+        return true
+    }
+
+    /// То же для занятого времени: у блока нет карточки и нет ленты для пальца, поэтому «каким был» лежит в самом блоке
+    /// (`Block.movedFrom`), а строка живёт в ленте дня и в листе блока (`blockMovedText`).
+    private func takeBlockMove(id: String, event: StoredEvent) -> Bool {
+        guard let i = snapshot.blocks.firstIndex(where: { $0.id == id }),
+              var moved = CalendarPlan.applying(event, to: snapshot.blocks[i], calendarContext()) else { return false }
+        let old = snapshot.blocks[i]
+        let was = old.movedFrom ?? BlockMoved(from: old.from, allDay: old.allDay, days: old.days, start: old.start, duration: old.duration)
+        moved.movedFrom = was.matches(moved) ? nil : was
+        moved.modifiedAt = nowMs
+        snapshot.blocks[i] = moved
         return true
     }
 

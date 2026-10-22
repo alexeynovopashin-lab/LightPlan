@@ -172,6 +172,60 @@ import LightPlanDomain
         #expect(CalendarPlan.applying(Self.event(start: 660, end: 780), to: P.shoot(kind: .event), P.context()) == nil)
     }
 
+    // MARK: - Подвинули занятое время
+
+    static func block(allDay: Bool = false, days: Int = 1, start: Int? = nil, duration: Int? = nil, zoneFrom: Double? = nil) -> Block {
+        var b = Block(id: "b1", kind: .off, from: day)
+        b.allDay = allDay; b.days = days; b.start = start; b.duration = duration; b.zoneFrom = zoneFrom
+        return b
+    }
+
+    /// Событие «на весь день» по дням телефона (часы Москвы, как у `P.context`): конец — как читает его EventKit, 23:59:59.
+    static func allDayEvent(from a: CivilDate, to z: CivilDate) -> StoredEvent {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "Europe/Moscow")!
+        let s = cal.date(from: DateComponents(year: a.year, month: a.month, day: a.day))!
+        let e = cal.date(from: DateComponents(year: z.year, month: z.month, day: z.day, hour: 23, minute: 59, second: 59))!
+        return StoredEvent(id: "ev", calendarId: "c", title: "Выходной", start: s, end: e, allDay: true, offsetSeconds: 0,
+                           locationTitle: nil, latitude: nil, longitude: nil, url: nil)
+    }
+
+    @Test func anAllDayBlockMovedInTheCalendarKeepsItsLengthInDaysFromTheEvent() {
+        let b = Self.block(allDay: true, days: 2)                                            // 20–21 октября
+        let out = CalendarPlan.applying(Self.allDayEvent(from: Self.day.adding(days: 3), to: Self.day.adding(days: 5)), to: b, P.context())!
+        #expect(out.from == Self.day.adding(days: 3) && out.days == 3 && out.allDay)          // растянули: 23–25
+        #expect(CalendarPlan.applying(Self.allDayEvent(from: Self.day, to: Self.day.adding(days: 1)), to: b, P.context()) == nil)   // как было
+    }
+
+    @Test func aTimedBlockMovedInTheCalendarMovesItsHoursInTheHomeZone() {
+        let b = Self.block(start: 600, duration: 120)                                        // 10:00–12:00 по Москве
+        let out = CalendarPlan.applying(Self.event(start: 900, end: 1050), to: b, P.context())!
+        #expect(out.from == Self.day && out.start == 900 && out.duration == 150)
+        let next = CalendarPlan.applying(Self.event(start: 540, end: 600, day: Self.day.adding(days: 1)), to: b, P.context())!
+        #expect(next.from == Self.day.adding(days: 1) && next.start == 540 && next.duration == 60)
+    }
+
+    @Test func aFlightKeepsTheDepartureZone() {
+        let b = Self.block(start: 540, duration: 240, zoneFrom: 7)                           // 09:00 по Томску
+        let e = Self.event(start: 15 * 60, end: 16 * 60, offset: 7)                          // подвинули на 15:00 по Томску
+        let out = CalendarPlan.applying(e, to: b, P.context())!
+        #expect(out.start == 900 && out.duration == 60 && out.zoneFrom == 7)
+    }
+
+    @Test func aBlockEventOfTheOtherKindIsNotTakenBack() {
+        // «На весь день» стало событием по часам — перепишется как у нас.
+        #expect(CalendarPlan.applying(Self.event(start: 600, end: 660), to: Self.block(allDay: true), P.context()) == nil)
+        #expect(CalendarPlan.applying(Self.allDayEvent(from: Self.day, to: Self.day), to: Self.block(start: 600, duration: 60), P.context()) == nil)
+        #expect(CalendarPlan.applying(Self.event(start: 660, end: 720, recurring: true), to: Self.block(start: 600, duration: 60), P.context()) == nil)
+    }
+
+    @Test func allDayFactsCompareByDaysSoAnEventThatEndsAt235959IsNotSeenAsMovedEveryPass() {
+        let ev = Self.allDayEvent(from: Self.day, to: Self.day.adding(days: 1))
+        let cal = Calendar.current
+        let draft = EventDraft(title: "Выходной", start: ev.start, end: cal.startOfDay(for: ev.end), allDay: true,
+                               url: CalendarPlan.url(block: "b1"))
+        #expect(EventFacts(event: ev).isClose(to: EventFacts(draft: draft)))
+    }
+
     // MARK: - Черновик
 
     @Test func aHandMadeEventBecomesADraftShoot() {

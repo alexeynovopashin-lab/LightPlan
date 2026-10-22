@@ -62,7 +62,7 @@ def check(log):
         out.append((name, bool(cond), detail))
 
     need = ["start", "on", "repeat", "deleted-by-hand", "reconciled", "moved", "trashed", "restored", "calendar-recreated", "reinstalled",
-            "hand-moved", "hand-moved-returned", "hand-renamed", "hand-added", "hand-added-repeat", "hand-added-reinstalled", "hand-draft-deleted", "done"]
+            "hand-moved", "hand-moved-returned", "hand-renamed", "hand-block-moved", "hand-added", "hand-added-repeat", "hand-added-reinstalled", "hand-draft-deleted", "done"]
     ok("журнал полон", all(n in by for n in need), f"есть шаги: {[s['stage'] for s in log]}")
     if not all(n in by for n in need):
         return out
@@ -143,8 +143,25 @@ def check_reverse(by):
     w2 = ev(by["hand-renamed"], "Свадьба · Ирина")
     ok("переименовали событие и переписали заметки: в съёмку это не вернулось",
        r1 and r2 and all(r1[k] == r2[k] for k in ("start", "end", "contact", "notes", "genre", "place")), f"{r1} / {r2}")
-    ok("…а событие вернулось к названию и заметкам, как у нас", w2.get("notes") == WEDDING_NOTES and not [e for e in events(by["hand-renamed"]) if e["title"] == "Чужое название"],
+    ok("…а событие вернулось к названию и заметкам, как у нас (к ним добавилась строка о сдвиге)", (w2.get("notes") or "").startswith(WEDDING_NOTES) and "время сдвинуто в календаре" in (w2.get("notes") or "") and not [e for e in events(by["hand-renamed"]) if e["title"] == "Чужое название"],
        f"{w2.get('notes')!r}")
+
+    ok("двигали событие: в съёмке отметка «время сдвинуто» — было прежнее время, а не промежуточное",
+       r1 and before and r1.get("moved") == [before["start"], before["end"]] and r1.get("movedDay") == "",
+       f"{r1 and r1.get('moved')} vs {before and (before['start'], before['end'])}")
+    ok("после переименования в Календаре отметка о сдвиге не пропала и не задвоилась", r2 and r2.get("moved") == r1.get("moved"), f"{r2 and r2.get('moved')}")
+
+    bb = by["hand-block-moved"]
+    off0 = next((b for b in by["hand-renamed"].get("blocks", []) if b["id"] == "probe-b"), None)
+    off1 = next((b for b in bb.get("blocks", []) if b["id"] == "probe-b"), None)
+    fl0 = next((b for b in by["hand-renamed"].get("blocks", []) if b["id"] == "probe-f"), None)
+    fl1 = next((b for b in bb.get("blocks", []) if b["id"] == "probe-f"), None)
+    ok("занятое время на весь день подвинули в Календаре: блок сдвинулся на сутки, число дней то же, отметка есть",
+       off0 and off1 and off1["moved"] and off1["days"] == off0["days"] and off1["movedFrom"] == off0["from"] and off1["from"] != off0["from"] and off1["text"].startswith("Время сдвинуто в календаре"),
+       f"{off0} → {off1}")
+    ok("перелёт подвинули на час: старт блока на час позже, длительность та же, отметка есть",
+       fl0 and fl1 and fl1["start"] == fl0["start"] + 60 and fl1["duration"] == fl0["duration"] and fl1["moved"], f"{fl0} → {fl1}")
+    ok("после сдвигов блоков событий столько же, дублей нет", len(events(bb)) == len(events(by["hand-renamed"])), f"{len(events(bb))}")
 
     added = by["hand-added"]
     drafts = [r for r in record(added) if r["draft"]]
@@ -178,17 +195,22 @@ def selftest():
     def ev_row(title, start, url, notes="", loc=""):
         return {"title": title, "start": start, "end": start, "allDay": False, "url": url, "notes": notes, "location": loc}
 
-    def st(name, events_, sessions):
+    def st(name, events_, sessions, blocks=()):
         return {"stage": name, "auth": "allowed", "on": True, "source": "iCloud",
-                "rows": [{"calendar": "Light Plan"}] + events_, "sessions": sessions}
+                "rows": [{"calendar": "Light Plan"}] + events_, "sessions": sessions, "blocks": list(blocks)}
 
     base_s = {"id": "probe-w", "day": "2026-10-25", "start": 660, "end": 900, "draft": False, "from": "", "genre": "wedding",
               "contact": "Ирина", "notes": "Приезжать за час", "place": "Парк", "mt": 10}
-    moved_s = dict(base_s, start=720, end=960, place="Набережная", mt=20)
+    moved_s = dict(base_s, start=720, end=960, place="Набережная", mt=20, moved=[660, 900], movedDay="")
+    off_b = {"id": "probe-b", "from": "2026-10-28", "days": 2, "start": -1, "duration": -1, "moved": False, "movedFrom": "", "text": ""}
+    off_m = dict(off_b, **{"from": "2026-10-29", "moved": True, "movedFrom": "2026-10-28", "text": "Время сдвинуто в календаре. Было 28 окт"})
+    fl_b = {"id": "probe-f", "from": "2026-10-31", "days": 1, "start": 540, "duration": 240, "moved": False, "movedFrom": "", "text": ""}
+    fl_m = dict(fl_b, start=600, moved=True, movedFrom="2026-10-31", text="Время сдвинуто в календаре.")
     draft_s = {"id": "n1", "day": "2026-11-01", "start": 900, "end": 960, "draft": True, "from": "Маша фотосессия", "genre": "", "contact": "",
                "notes": "Маша фотосессия\nв парке", "place": "Парк Горького", "mt": 30}
     w = lambda t: ev_row("Свадьба · Ирина", t, "lightplan://shoot/probe-w", WEDDING_NOTES, "Парк")
-    wm = lambda t: ev_row("Свадьба · Ирина", t, "lightplan://shoot/probe-w", WEDDING_NOTES, "Набережная")
+    wm = lambda t: ev_row("Свадьба · Ирина", t, "lightplan://shoot/probe-w",
+                          WEDDING_NOTES + "\n22 окт 12:41 · время сдвинуто в календаре: 11:00 – 15:00 → 12:00 – 16:00", "Набережная")
     other = ev_row("Выходной", "2026-10-28T00:00:00Z", "lightplan://block/probe-b")
     draft_e = ev_row("Маша фотосессия", "2026-11-01T12:00:00Z", "lightplan://shoot/n1", "Маша фотосессия\nв парке", "Парк Горького")
 
@@ -196,7 +218,8 @@ def selftest():
         d = {
             "reinstalled": st("reinstalled", [w("2026-10-25T08:00:00Z"), other], [base_s]),
             "hand-moved-returned": st("hand-moved-returned", [wm("2026-10-25T09:00:00Z"), other], [moved_s]),
-            "hand-renamed": st("hand-renamed", [wm("2026-10-25T09:00:00Z"), other], [moved_s]),
+            "hand-renamed": st("hand-renamed", [wm("2026-10-25T09:00:00Z"), other], [moved_s], [off_b, fl_b]),
+            "hand-block-moved": st("hand-block-moved", [wm("2026-10-25T09:00:00Z"), other], [moved_s], [off_m, fl_m]),
             "hand-added": st("hand-added", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s, draft_s]),
             "hand-added-repeat": st("hand-added-repeat", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s, draft_s]),
             "hand-added-reinstalled": st("hand-added-reinstalled", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s, draft_s]),
@@ -207,6 +230,8 @@ def selftest():
 
     assert all(c[1] for c in check_reverse(make())), [c for c in check_reverse(make()) if not c[1]]
     breakages = {
+        "блок не сдвинулся": make(**{"hand-block-moved": st("hand-block-moved", [wm("2026-10-25T09:00:00Z"), other], [moved_s], [off_b, fl_b])}),
+        "отметки о сдвиге нет": make(**{"hand-moved-returned": st("hand-moved-returned", [wm("2026-10-25T09:00:00Z"), other], [dict(moved_s, moved=[])])}),
         "съёмка не сдвинулась": make(**{"hand-moved-returned": st("hand-moved-returned", [wm("2026-10-25T09:00:00Z"), other], [base_s])}),
         "событие откатили к прежнему времени": make(**{"hand-moved-returned": st("hand-moved-returned", [w("2026-10-25T08:00:00Z"), other], [moved_s])}),
         "название съёмки переписали из Календаря": make(**{"hand-renamed": st("hand-renamed", [wm("2026-10-25T09:00:00Z"), other], [dict(moved_s, notes="другой текст")])}),

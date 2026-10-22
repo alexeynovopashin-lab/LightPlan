@@ -44,6 +44,22 @@ struct BlockSheet: View {
                     .shotNode("blk.title")
                 Text(t.t("blk.sub")).font(.system(size: 13)).foregroundStyle(pal.ink4)
                     .padding(.top, 5)
+                // Занятое время подвинули в Календаре iPhone: та же строка, что у карточки съёмки, с крестиком (30.4).
+                if editing, b.movedFrom != nil, let text = app.blockMovedText(b) {
+                    CardSayPlate(icon: "clock", tint: pal.brassDeep, text: Text(text).foregroundStyle(pal.ink),
+                                 glow: (226, 164, 76), pal: pal, node: "blk.moved")
+                        .overlay(alignment: .topTrailing) {
+                            Button { app.clearBlockMoved(id: b.id); b.movedFrom = nil } label: {
+                                Icon("close", size: 14, line: 1.6).foregroundStyle(pal.ink6)
+                                    .frame(width: 32, height: 32).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(t.t("card.movedX"))
+                            .shotNode("blk.movedX")
+                            .padding(.top, 4).padding(.trailing, 4)
+                        }
+                        .padding(.top, 12)
+                }
                 kinds(t, pal)
                 FormGroup(node: "blk.group") {
                     allDayRow(t, pal)

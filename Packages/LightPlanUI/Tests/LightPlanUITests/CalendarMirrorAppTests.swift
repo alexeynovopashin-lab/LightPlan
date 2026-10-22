@@ -65,9 +65,9 @@ struct CalendarMirrorAppTests {
         #expect(app.calendarTitle(of: app.snapshot.sessions[1]) == "Встреча · портрет · Олег")
         #expect(app.calendarTitle(of: app.snapshot.blocks[0]) == "Выходной")
         var noGenre = Session(id: "x", kind: .shoot, day: Self.day, start: 600)
-        #expect(app.calendarTitle(of: noGenre) == "Съёмка")
+        #expect(app.calendarTitle(of: noGenre) == "Фотосъёмка")                         // без жанра — «Фотосъёмка»
         noGenre.contact = "Анна"
-        #expect(app.calendarTitle(of: noGenre) == "Съёмка · Анна")
+        #expect(app.calendarTitle(of: noGenre) == "Фотосъёмка · Анна")
         var note = Block(id: "n", kind: .road, from: Self.day); note.note = "В Тверь"
         #expect(app.calendarTitle(of: note) == "В Тверь")
     }

@@ -39,11 +39,16 @@ extension AppModel {
                 let records: [[String: Any]] = snapshot.sessions.map { s in
                     ["id": s.id, "day": s.day.snapshotString, "start": s.start, "end": s.endMinute, "draft": s.isCalendarDraft,
                      "from": s.fromCalendar ?? "", "genre": s.genre?.rawValue ?? "", "contact": s.contact, "notes": s.notes,
-                     "place": s.place, "mt": s.modifiedAt ?? 0]
+                     "place": s.place, "mt": s.modifiedAt ?? 0,
+                     "moved": s.dayMoved.map { [$0.start, $0.end] } ?? [], "movedDay": s.dayMoved?.day?.snapshotString ?? ""]
+                }
+                let blocks: [[String: Any]] = snapshot.blocks.map { b in
+                    ["id": b.id, "from": b.from.snapshotString, "days": b.days, "start": b.start ?? -1, "duration": b.duration ?? -1,
+                     "moved": b.movedFrom != nil, "movedFrom": b.movedFrom?.from.snapshotString ?? "", "text": blockMovedText(b) ?? ""]
                 }
                 let line = (try? JSONSerialization.data(withJSONObject: ["stage": stage, "auth": "\(calendarAuth)", "on": calendarMirrorOn,
                                                                          "source": calendarSourceTitle ?? "", "rows": rows,
-                                                                         "sessions": records], options: [.sortedKeys])) ?? Data()
+                                                                         "sessions": records, "blocks": blocks], options: [.sortedKeys])) ?? Data()
                 let text = String(decoding: line, as: UTF8.self) + "\n"
                 if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(text.utf8)); try? h.close() }
                 else { try? text.write(toFile: path, atomically: true, encoding: .utf8) }
@@ -110,6 +115,16 @@ extension AppModel {
             Self.probeEditByHand(title: "Свадьба · Ирина") { e in e.title = "Чужое название"; e.notes = "другой текст" }
             syncCalendarMirror(force: true); await calendarChain?.value
             await dump("hand-renamed")
+
+            // Занятое время двигает так же: «Выходной» (на весь день) на сутки, «Перелёт» на час.
+            Self.probeEditByHand(title: "Выходной") { e in
+                e.startDate = e.startDate.addingTimeInterval(86_400); e.endDate = e.endDate.addingTimeInterval(86_400)
+            }
+            Self.probeEditByHand(title: "Перелёт") { e in
+                e.startDate = e.startDate.addingTimeInterval(3600); e.endDate = e.endDate.addingTimeInterval(3600)
+            }
+            syncCalendarMirror(force: true); await calendarChain?.value
+            await dump("hand-block-moved")
 
             // Завёл своё событие прямо в «Light Plan»: черновик, один раз, и после ещё двух проходов, и после «переустановки».
             Self.probeAddByHand(title: "Маша фотосессия", notes: "в парке", daysAhead: 9)

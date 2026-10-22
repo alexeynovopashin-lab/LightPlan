@@ -75,6 +75,42 @@ extension CalendarPlan {
         }
     }
 
+    // MARK: - Подвинули занятое время
+
+    /// Занятое время после правки его события в Календаре; `nil` — менять нечего или событие другого вида, чем мы положили
+    /// («на весь день» стало событием по часам и наоборот — такое перепишется как у нас).
+    ///
+    /// - «На весь день» (или блок без часов): первый день и число дней — по дням события.
+    /// - По часам: день, начало и длительность — в часах блока: у дороги из формы это пояс вылета, у остального — место
+    ///   приложения (как и туда).
+    public static func applying(_ e: StoredEvent, to b: Block, _ ctx: Context) -> Block? {
+        guard !e.recurring, e.end >= e.start else { return nil }
+        var out = b
+        if b.allDay || b.start == nil {
+            guard e.allDay else { return nil }
+            out.from = civil(e.start, ctx.calendar)
+            if b.allDay { out.days = max(1, civil(e.end, ctx.calendar).days(since: out.from) + 1) }
+        } else {
+            guard !e.allDay else { return nil }
+            let utcDay = CivilDate(daysSince1970: Int((e.start.timeIntervalSince1970 / 86_400).rounded(.down)))
+            let guess = b.zoneFrom ?? ctx.homeZone.utcOffsetHours(on: utcDay)
+            var wall = WallTime(moment: Moment(e.start), utcOffsetHours: guess)
+            if b.zoneFrom == nil {
+                let exact = ctx.homeZone.utcOffsetHours(on: wall.day)
+                if exact != guess { wall = WallTime(moment: Moment(e.start), utcOffsetHours: exact) }
+            }
+            out.from = wall.day
+            out.start = wall.minutes
+            out.duration = max(1, Moment(e.end).minutes(since: Moment(e.start)))
+        }
+        return out == b ? nil : out
+    }
+
+    private static func civil(_ d: Date, _ calendar: Calendar) -> CivilDate {
+        let c = calendar.dateComponents([.year, .month, .day], from: d)
+        return CivilDate(year: c.year ?? 1970, month: c.month ?? 1, day: c.day ?? 1)
+    }
+
     // MARK: - Завели событие
 
     /// Черновик съёмки из события, заведённого руками в нашем календаре; `nil` — событие не годится

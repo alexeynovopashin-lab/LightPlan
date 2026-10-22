@@ -119,7 +119,7 @@ struct CalendarReverseAppTests {
         let s = app.snapshot.sessions[0]
         #expect(s.start == 720 && s.end == 960 && s.day == Self.day)               // 10:00–14:00 → 12:00–16:00
         #expect(s.modifiedAt == app.nowMs && s.modifiedAt != 1_000)                  // метка правки для обмена устройств
-        #expect(s.genre == .wedding && s.contact == "Ирина" && s.notes == "Приезжать за час")
+        #expect(s.genre == .wedding && s.contact == "Ирина" && s.notes.hasPrefix("Приезжать за час"))   // ниже — строка о сдвиге
         #expect(event(store, "Свадьба · Анна")?.start == e.start.addingTimeInterval(2 * 3600))   // событие на новом месте
         let writes = store.writeCounts
         app.syncCalendarMirror(force: true); await settle(app)
@@ -139,6 +139,148 @@ struct CalendarReverseAppTests {
         app.syncCalendarMirror(force: true); await settle(app)
         #expect(app.snapshot.sessions[0].start == 840)
         #expect(event(store, "Свадьба · Анна")?.start == e.start)                  // событие не сдвинулось
+    }
+
+    private static let nb = "\u{00A0}"
+
+    /// Человек двинул событие на `hours` часов, а при `days` — ещё и на другой день.
+    private func shift(_ store: InMemoryCalendarStore, _ id: String, hours: Double, at: Double = 60) {
+        store.userEdit(id) { $0 = StoredEvent(id: $0.id, calendarId: $0.calendarId, title: $0.title,
+                                              start: $0.start.addingTimeInterval(hours * 3600), end: $0.end.addingTimeInterval(hours * 3600),
+                                              allDay: $0.allDay, offsetSeconds: $0.offsetSeconds, locationTitle: $0.locationTitle,
+                                              latitude: $0.latitude, longitude: $0.longitude, url: $0.url, notes: $0.notes,
+                                              modified: Date().addingTimeInterval(at)) }
+    }
+
+    // MARK: - Отметка «Время сдвинуто в календаре»
+
+    @Test func aShootMovedInTheCalendarGetsTheSameMarkAsAFingerDragWithTheOriginalTimeKept() async throws {
+        let store = InMemoryCalendarStore()
+        let app = model(store: store)
+        await on(app)
+        let nb = Self.nb
+        let e = try #require(event(store, "Свадьба · Анна"))
+        shift(store, e.id, hours: 2)
+        app.syncCalendarMirror(force: true); await settle(app)
+        var s = app.snapshot.sessions[0]
+        #expect(s.start == 720 && s.end == 960)
+        #expect(s.dayMoved?.start == 600 && s.dayMoved?.end == 840 && s.dayMoved?.day == nil)
+        let m = try #require(app.cardMoved(s))
+        #expect(m.from == "10:00\(nb)–\(nb)14:00" && m.to == "12:00\(nb)–\(nb)16:00")
+        #expect(s.notes.contains("время сдвинуто в календаре: 10:00\(nb)–\(nb)14:00 → 12:00\(nb)–\(nb)16:00"))
+        #expect(s.notes.hasPrefix("Приезжать за час"))
+        // Второй сдвиг: «было» остаётся исходным, а не промежуточным; строка в заметке — одна.
+        shift(store, e.id, hours: 1, at: 120)
+        app.syncCalendarMirror(force: true); await settle(app)
+        s = app.snapshot.sessions[0]
+        let again = try #require(app.cardMoved(s))
+        #expect(again.from == "10:00\(nb)–\(nb)14:00" && again.to == "13:00\(nb)–\(nb)17:00")
+        #expect(s.notes.components(separatedBy: "время сдвинуто в календаре").count == 2)
+        // Крестик стирает отметку, и только её.
+        app.clearDayMoved(id: "w1")
+        #expect(app.cardMoved(app.snapshot.sessions[0]) == nil && app.snapshot.sessions[0].start == 780)
+        // Вернули событие на исходное время — после крестика это новая серия, а не «возвращение».
+        let back = try #require(event(store, "Свадьба · Анна"))
+        shift(store, back.id, hours: -3, at: 180)
+        app.syncCalendarMirror(force: true); await settle(app)
+        #expect(app.snapshot.sessions[0].start == 600 && app.cardMoved(app.snapshot.sessions[0])?.from == "13:00\(nb)–\(nb)17:00")
+    }
+
+    @Test func movingItBackToTheOriginalTimeInTheCalendarClearsTheMark() async throws {
+        let store = InMemoryCalendarStore()
+        let app = model(store: store)
+        await on(app)
+        let e = try #require(event(store, "Свадьба · Анна"))
+        shift(store, e.id, hours: 2)
+        app.syncCalendarMirror(force: true); await settle(app)
+        #expect(app.cardMoved(app.snapshot.sessions[0]) != nil)
+        shift(store, e.id, hours: -2, at: 120)
+        app.syncCalendarMirror(force: true); await settle(app)
+        #expect(app.snapshot.sessions[0].dayMoved == nil && app.snapshot.sessions[0].notes == "Приезжать за час")
+    }
+
+    @Test func aShootMovedToAnotherDayShowsDatesInTheMark() async throws {
+        let store = InMemoryCalendarStore()
+        let app = model(store: store)
+        await on(app)
+        let e = try #require(event(store, "Свадьба · Анна"))
+        shift(store, e.id, hours: 48)
+        app.syncCalendarMirror(force: true); await settle(app)
+        let s = app.snapshot.sessions[0]
+        #expect(s.day == Self.day.adding(days: 2) && s.start == 600 && s.dayMoved?.day == Self.day)
+        let m = try #require(app.cardMoved(s))
+        #expect(m.from.hasPrefix("20") && m.to.hasPrefix("22") && m.from.hasSuffix("10:00\(Self.nb)–\(Self.nb)14:00"))
+    }
+
+    @Test func aChangeMadeInTheAppItselfSetsNoMark() async throws {
+        let store = InMemoryCalendarStore()
+        let app = model(store: store)
+        await on(app)
+        app.openForm(editing: "w1")
+        app.form?.start = 780
+        _ = try #require(app.saveForm())
+        await settle(app)
+        #expect(app.snapshot.sessions[0].dayMoved == nil && app.cardMoved(app.snapshot.sessions[0]) == nil)
+        // И время события после этого приложение само передвинуло, а не приняло за сдвиг из Календаря.
+        #expect(event(store, "Свадьба · Анна")?.start == WallTime(day: Self.day, minutes: 780).moment(utcOffsetHours: 3).date)
+        #expect(app.snapshot.sessions[0].start == 780)
+    }
+
+    @Test func aMovedBusyBlockComesBackWithItsOwnMarkAndACross() async throws {
+        var snap = Self.snapshot()
+        var b = Block(id: "b1", kind: .off, from: Self.day.adding(days: 3)); b.allDay = true; b.days = 2
+        var road = Block(id: "b2", kind: .road, from: Self.day); road.start = 600; road.duration = 120
+        snap.blocks = [b, road]
+        let store = InMemoryCalendarStore()
+        let app = model(snap, store: store)
+        await on(app)
+        // Выходной на два дня сдвинули на сутки позже.
+        let off = try #require(event(store, "Выходной"))
+        shift(store, off.id, hours: 24)
+        // Дорогу — на час.
+        let r = try #require(store.allEvents.first { $0.url == CalendarPlan.url(block: "b2") })
+        shift(store, r.id, hours: 1, at: 90)
+        app.syncCalendarMirror(force: true); await settle(app)
+        let moved = try #require(app.snapshot.blocks.first { $0.id == "b1" })
+        #expect(moved.from == Self.day.adding(days: 4) && moved.days == 2 && moved.movedFrom?.from == Self.day.adding(days: 3))
+        let text = try #require(app.blockMovedText(moved))
+        #expect(text.hasPrefix("Время сдвинуто в календаре. Было") && text.contains("23") && text.contains("24") && text.contains("25"))
+        let way = try #require(app.snapshot.blocks.first { $0.id == "b2" })
+        #expect(way.start == 660 && way.duration == 120)
+        #expect(app.blockMovedText(way)?.contains("10:00\(Self.nb)–\(Self.nb)12:00") == true)
+        // Повторный сдвиг — «было» то же; сдвиг назад гасит отметку; крестик стирает.
+        shift(store, off.id, hours: 24, at: 150)
+        app.syncCalendarMirror(force: true); await settle(app)
+        #expect(app.snapshot.blocks.first { $0.id == "b1" }?.movedFrom?.from == Self.day.adding(days: 3))
+        shift(store, off.id, hours: -48, at: 210)
+        app.syncCalendarMirror(force: true); await settle(app)
+        let home = try #require(app.snapshot.blocks.first { $0.id == "b1" })
+        #expect(home.from == Self.day.adding(days: 3) && home.movedFrom == nil && app.blockMovedText(home) == nil)
+        app.clearBlockMoved(id: "b2")
+        #expect(app.snapshot.blocks.first { $0.id == "b2" }?.movedFrom == nil)
+        #expect(app.snapshot.blocks.first { $0.id == "b2" }?.start == 660)
+    }
+
+    // MARK: - Без жанра
+
+    @Test func aShootWithoutAGenreIsCalledPhotoShootAndTheDraftKeepsItsMarkUntilFilled() async throws {
+        let store = InMemoryCalendarStore()
+        let app = model(store: store)
+        await on(app)
+        _ = handMade(store)
+        app.syncCalendarMirror(force: true); await settle(app)
+        var d = try #require(app.snapshot.sessions.first { $0.id != "w1" })
+        let w = PlannerWords(lexicon: app.lexicon, orgs: [])
+        #expect(w.typeName(d) == "Черновик")
+        // Заполнили клиента, жанр оставили пустым: уже не черновик, и называется «Фотосъёмка».
+        app.openForm(editing: d.id)
+        app.form?.contact = "Маша"
+        _ = try #require(app.saveForm())
+        await settle(app)
+        d = try #require(app.snapshot.sessions.first { $0.id == d.id })
+        #expect(d.genre == nil && d.contact == "Маша" && !d.isCalendarDraft)
+        #expect(w.typeName(d) == "Фотосъёмка")
+        #expect(store.allEvents.contains { $0.title == "Фотосъёмка · Маша" })
     }
 
     @Test func aMovedPlaceReturnsToo() async throws {

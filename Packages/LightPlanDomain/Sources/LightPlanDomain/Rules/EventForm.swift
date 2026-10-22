@@ -35,6 +35,9 @@ public struct EventForm: Equatable, Sendable {
     public var id: String
     public var mode: FormMode
     public var genre: Genre
+    /// У записи жанра нет (черновик из Календаря, шаг 30.4): форма показывает пресет по умолчанию, но жанр в запись не
+    /// пишет, пока его не выбрали. Подпись у такой записи — «Фотосъёмка», а правила — веба для пустого жанра.
+    public var genreUnset = false
     public var subGenre: SubGenre?
     public var day: CivilDate
     public var start: Int
@@ -171,6 +174,7 @@ public struct EventForm: Equatable, Sendable {
         f.loadMoney(s, home: home)
         f.loadRoute(s)
         f.base = s
+        f.genreUnset = s.genre == nil && s.kind != .meet
         f.fitPersons()
         return f
     }
@@ -235,6 +239,7 @@ public struct EventForm: Equatable, Sendable {
     public mutating func pick(_ g: Genre, sub: SubGenre? = nil, prefs: GenrePrefs? = nil, light: FormLightWindow? = nil,
                               genreRate: Decimal = 0) {
         let changed = g != genre
+        genreUnset = false
         genre = g
         subGenre = sub.flatMap { g.subGenres.contains($0) ? $0 : nil }
         if changed {
@@ -377,8 +382,8 @@ public struct EventForm: Equatable, Sendable {
         s.start = start
         s.duration = duration
         s.end = start + duration
-        s.genre = genre
-        s.subGenre = subGenre
+        s.genre = genreUnset ? nil : genre
+        s.subGenre = genreUnset ? nil : subGenre
         s.persons = filledPersons
         s.contact = contactLine(orgName: orgName, and: and)
         s.clientPhone = clientPhone.trimmingCharacters(in: .whitespaces)

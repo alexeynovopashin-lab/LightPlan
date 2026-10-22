@@ -41,7 +41,7 @@ extension Org: Codable {
 }
 
 extension Block: Codable {
-    enum CodingKeys: String, CodingKey { case id, k, note, from, allDay, days, min, dur, tzFrom, tzTo, mt }
+    enum CodingKeys: String, CodingKey { case id, k, note, from, allDay, days, min, dur, tzFrom, tzTo, mt, mvd }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -60,6 +60,7 @@ extension Block: Codable {
         zoneFrom = try c.decodeIfPresent(Double.self, forKey: .tzFrom)
         zoneTo = try c.decodeIfPresent(Double.self, forKey: .tzTo)
         modifiedAt = try c.decodeIfPresent(Int64.self, forKey: .mt)
+        movedFrom = try c.decodeIfPresent(BlockMoved.self, forKey: .mvd)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -75,6 +76,31 @@ extension Block: Codable {
         try c.encodeIfPresent(zoneFrom, forKey: .tzFrom)
         try c.encodeIfPresent(zoneTo, forKey: .tzTo)
         try c.encodeIfPresent(modifiedAt, forKey: .mt)
+        try c.encodeIfPresent(movedFrom, forKey: .mvd)
+    }
+}
+
+/// `from`, `allDay`, `days`, `min`, `dur` — те же ключи, что у блока.
+extension BlockMoved: Codable {
+    enum CodingKeys: String, CodingKey { case from, allDay, days, min, dur }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        guard let s = try c.decodeIfPresent(String.self, forKey: .from), let day = CivilDate(snapshotString: s) else {
+            throw DecodingError.dataCorruptedError(forKey: .from, in: c, debugDescription: "день сдвинутого блока не разобрался")
+        }
+        self.init(from: day, allDay: try c.decodeIfPresent(Bool.self, forKey: .allDay) ?? false,
+                  days: try c.decodeIfPresent(Int.self, forKey: .days) ?? 1,
+                  start: try c.decodeIfPresent(Int.self, forKey: .min), duration: try c.decodeIfPresent(Int.self, forKey: .dur))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(from.snapshotString, forKey: .from)
+        try c.encode(allDay, forKey: .allDay)
+        try c.encode(days, forKey: .days)
+        try c.encodeIfPresent(start, forKey: .min)
+        try c.encodeIfPresent(duration, forKey: .dur)
     }
 }
 

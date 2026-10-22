@@ -295,13 +295,14 @@ extension WishWarning: Codable {
 
 /// `a`, `b`, `line`.
 extension DayMoved: Codable {
-    enum CodingKeys: String, CodingKey { case a, b, line }
+    enum CodingKeys: String, CodingKey { case a, b, line, d }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(start: try c.decode(Int.self, forKey: .a),
                   end: try c.decode(Int.self, forKey: .b),
-                  line: try c.decodeIfPresent(String.self, forKey: .line))
+                  line: try c.decodeIfPresent(String.self, forKey: .line),
+                  day: try c.decodeIfPresent(String.self, forKey: .d).flatMap { CivilDate(snapshotString: $0) })
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -309,6 +310,7 @@ extension DayMoved: Codable {
         try c.encode(start, forKey: .a)
         try c.encode(end, forKey: .b)
         try c.encodeIfPresent(line, forKey: .line)
+        try c.encodeIfPresent(day?.snapshotString, forKey: .d)
     }
 }
 

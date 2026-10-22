@@ -60,6 +60,13 @@ public enum CalendarPlan {
         return url.path.count > 1
     }
 
+    /// Занятое время по ссылке из события: `lightplan://block/<id>`.
+    public static func blockId(in url: URL) -> String? {
+        guard url.scheme == "lightplan", url.host == "block" else { return nil }
+        let id = String(url.path.dropFirst())
+        return id.isEmpty ? nil : id
+    }
+
     /// Запись по ссылке из события: `lightplan://shoot/<id>`.
     public static func shootId(in url: URL) -> String? {
         guard url.scheme == "lightplan", url.host == "shoot" else { return nil }

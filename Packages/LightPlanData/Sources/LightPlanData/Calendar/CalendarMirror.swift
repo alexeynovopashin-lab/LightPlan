@@ -300,6 +300,14 @@ public actor CalendarMirror {
         !e.allDay && !e.recurring && e.end > e.start && e.end.timeIntervalSince(e.start) <= 86_400
     }
 
+    /// Возвращается ли сдвиг этого события в запись: съёмка — если событие годится для съёмки (`isDraftable`); занятое время —
+    /// любое, не повторяющееся и того же вида («на весь день» или по часам), что мы положили. Событие, которое человек
+    /// превратил из «на весь день» в событие по часам (или обратно), остаётся как есть: оно перепишется как у нас.
+    static func returnable(_ e: StoredEvent, _ d: EventDraft) -> Bool {
+        guard !e.recurring, e.allDay == d.allDay, e.end >= e.start else { return false }
+        return CalendarPlan.shootId(in: d.url) != nil ? isDraftable(e) : true
+    }
+
     /// Чья правка свежее, если время или место двигали с обеих сторон.
     private enum Winner { case event, record }
 
@@ -375,10 +383,10 @@ public actor CalendarMirror {
                 do { try await store.remove(eventId: extra.id); report.removed += 1 } catch { report.failed += 1 }
             }
             if keep.matches(draft) { report.kept += 1; facts[draft.key] = EventFacts(draft: draft); continue }
-            // Разошлись: если дело во времени или месте съёмки и правил человек в Календаре, это правка для записи, а не
-            // повод переписывать событие. Занятое время (`block`) обратно не едет: его событие всегда как у нас.
+            // Разошлись: если дело во времени или месте и правил человек в Календаре, это правка для записи, а не повод
+            // переписывать событие. Это верно и для съёмок, и для занятого времени (решение Алексея 22.10: равноправно).
             // Повторяющееся событие и событие длиннее суток в запись не возвращаются (как и в черновики): они остаются как у нас.
-            if CalendarPlan.shootId(in: draft.url) != nil, !keep.timeAndPlaceMatch(draft), Self.isDraftable(keep), !draft.allDay,
+            if !keep.timeAndPlaceMatch(draft), Self.returnable(keep, draft),
                winner(event: keep, draft: draft, seen: rec.facts[draft.key]) == .event {
                 report.incoming.append(.moved(key: draft.key, event: keep))
                 if let seen = rec.facts[draft.key] { facts[draft.key] = seen }

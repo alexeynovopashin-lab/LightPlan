@@ -150,6 +150,41 @@ import Testing
         #expect(b.store.allEvents[0].start == d.start)
     }
 
+    @Test func aMovedBusyBlockComesBackToo() async {
+        let b = await Bench.on()
+        let d = EventDraft(title: "Дорога", start: Self.t0.addingTimeInterval(3600), end: Self.t0.addingTimeInterval(7200),
+                           timeZoneId: "Europe/Moscow", offsetSeconds: 10_800, url: CalendarPlan.url(block: "b1"))
+        _ = await b.pass([d])
+        Self.move(b, b.store.allEvents[0].id, hours: 5, at: Self.later(60))
+        let rep = await b.pass([d])
+        guard case .moved(let key, _)? = rep.incoming.first else { Issue.record("no move"); return }
+        #expect(key == d.key && rep.updated == 0)
+    }
+
+    @Test func anAllDayBlockEventIsNotSeenAsMovedWhenNobodyMovedIt() async {
+        // EventKit читает конец «на весь день» как 23:59:59, мы кладём начало последнего дня: проходы не должны ничего писать
+        // и не должны принимать это за сдвиг.
+        let b = await Bench.on()
+        let start = Calendar.current.startOfDay(for: Self.t0.addingTimeInterval(3 * 86_400))
+        let d = EventDraft(title: "Выходной", start: start, end: start.addingTimeInterval(86_400), allDay: true, url: CalendarPlan.url(block: "b1"))
+        _ = await b.pass([d])
+        b.store.userEdit(b.store.allEvents[0].id) { e in
+            e = StoredEvent(id: e.id, calendarId: e.calendarId, title: e.title, start: e.start, end: e.end.addingTimeInterval(86_399),
+                            allDay: true, offsetSeconds: 0, locationTitle: nil, latitude: nil, longitude: nil, url: e.url,
+                            notes: nil, modified: Self.later(10))
+        }
+        let writes = b.store.writeCounts
+        let rep = await b.pass([d])
+        #expect(rep.incoming.isEmpty && rep.kept == 1 && b.store.writeCounts == writes)
+        // А настоящий сдвиг на два дня замечается.
+        b.store.userEdit(b.store.allEvents[0].id) { e in
+            e = StoredEvent(id: e.id, calendarId: e.calendarId, title: e.title, start: e.start.addingTimeInterval(2 * 86_400),
+                            end: e.end.addingTimeInterval(2 * 86_400), allDay: true, offsetSeconds: 0, locationTitle: nil,
+                            latitude: nil, longitude: nil, url: e.url, notes: nil, modified: Self.later(70))
+        }
+        #expect(await b.pass([d]).incoming.count == 1)
+    }
+
     @Test func aRefusedMoveIsDismissedSoItIsNotOfferedForever() async {
         let b = await Bench.on()
         let d = CalendarMirrorTests.draft("a")

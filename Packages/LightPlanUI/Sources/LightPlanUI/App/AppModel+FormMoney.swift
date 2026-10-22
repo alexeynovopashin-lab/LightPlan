@@ -137,7 +137,7 @@ extension AppModel {
     /// День, к которому сдать, у формы (веб `deadlineDate(probe)`); `nil` — срок не отслеживается.
     public func formDeadline(_ f: EventForm) -> CivilDate? {
         var s = f.probe
-        s.genre = f.genre
+        s.genre = f.genreUnset ? nil : f.genre
         s.deadline = f.deadline
         return Delivery.deadline(for: s, setting: snapshot.delivery, prefs: snapshot.genrePrefs)
     }

@@ -362,11 +362,15 @@ public struct DayMoved: Sendable, Hashable {
     public var start: Int
     public var end: Int
     public var line: String?
+    /// День до сдвига, если сдвиг перенёс запись на другой день (подвинули в Календаре iPhone, шаг 30.4); `nil` — день тот же.
+    /// Лента дня день не меняет, поэтому у неё это поле всегда пусто. Веб ключа `d` не знает и его не читает.
+    public var day: CivilDate?
 
-    public init(start: Int, end: Int, line: String? = nil) {
+    public init(start: Int, end: Int, line: String? = nil, day: CivilDate? = nil) {
         self.start = start
         self.end = end
         self.line = line
+        self.day = day
     }
 }
 

@@ -87,6 +87,9 @@ public struct Block: Sendable, Hashable, Identifiable {
     public var zoneTo: Double?
     /// `mt`.
     public var modifiedAt: Int64?
+    /// `mvd` — каким блок был до сдвига в Календаре iPhone (шаг 30.4): по нему строка дня и лист блока говорят «время
+    /// сдвинуто в календаре». Только у нас; пока блок не вернули как было и не нажали «убрать», отметка живёт.
+    public var movedFrom: BlockMoved?
 
     public init(id: String, kind: BlockKind, from: CivilDate) {
         self.id = id
@@ -105,6 +108,24 @@ public struct Block: Sendable, Hashable, Identifiable {
     public func covers(_ day: CivilDate) -> Bool {
         if !allDay { return from == day }
         return day >= from && day <= lastDay
+    }
+}
+
+/// Блок до сдвига в Календаре: первый день, часы, длительность и сколько дней (шаг 30.4).
+public struct BlockMoved: Sendable, Hashable {
+    public var from: CivilDate
+    public var allDay: Bool
+    public var days: Int
+    public var start: Int?
+    public var duration: Int?
+
+    public init(from: CivilDate, allDay: Bool, days: Int, start: Int?, duration: Int?) {
+        self.from = from; self.allDay = allDay; self.days = days; self.start = start; self.duration = duration
+    }
+
+    /// Блок сейчас такой же, каким был: сдвиг вернули руками — отметке нечего сказать.
+    public func matches(_ b: Block) -> Bool {
+        from == b.from && allDay == b.allDay && days == b.days && start == b.start && duration == b.duration
     }
 }
 

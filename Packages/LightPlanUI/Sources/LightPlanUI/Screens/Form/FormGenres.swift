@@ -40,7 +40,7 @@ struct GenreGrid: View {
     }
 
     private func tile(_ g: Genre, _ t: Lexicon) -> some View {
-        let on = g == form.genre
+        let on = !form.genreUnset && g == form.genre
         let sub = on ? form.subGenre : nil
         let hasSubs = !g.subGenres.isEmpty
         return GenreTile(genre: g, sub: sub, name: sub.map { t.t("sub." + $0.rawValue) } ?? t.t("genre." + g.rawValue),
@@ -59,7 +59,7 @@ struct GenreGrid: View {
                     ForEach(rows[r].indices, id: \.self) { i in
                         let x = rows[r][i]
                         GenreTile(genre: g, sub: x, name: x.map { t.t("sub." + $0.rawValue) } ?? t.t("genre." + g.rawValue),
-                                  on: g == form.genre && form.subGenre == x, marker: nil) { pick(g, x) }
+                                  on: !form.genreUnset && g == form.genre && form.subGenre == x, marker: nil) { pick(g, x) }
                     }
                     ForEach(0..<(Self.columns - rows[r].count), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
                 }

@@ -1,4 +1,5 @@
 import Foundation
+import LightPlanCore
 
 /// Время события рукой на ленте дня (веб `dlTrack`, `dlCommit`; DECISIONS
 /// «Время события рукой на ленте дня», 18 сентября 2026). Удержание поднимает
@@ -73,26 +74,33 @@ public enum DayDrag {
     ///
     /// `line` строит строку заметки из «было» и «стало» (минуты от полуночи
     /// первого дня) — слова и часы у интерфейса.
+    ///
+    /// `day` — новый день, если запись перенесли на другой (так двигает Календарь iPhone, шаг 30.4; лента дня день не
+    /// меняет). Исходный день остаётся в `DayMoved.day` и, как и исходное время, не меняется от следующих сдвигов серии.
     @discardableResult
-    public static func commit(_ s: inout Session, start a: Int, end b: Int,
+    public static func commit(_ s: inout Session, day newDay: CivilDate? = nil, start a: Int, end b: Int,
                               line: (_ was: (Int, Int), _ now: (Int, Int)) -> String) -> Bool {
         let a0 = s.start, b0 = s.endMinute
-        if a == a0 && b == b0 { return false }
-        let mv = s.dayMoved ?? DayMoved(start: a0, end: b0)
+        let dayChanged = newDay.map { $0 != s.day } ?? false
+        if a == a0 && b == b0 && !dayChanged { return false }
+        var mv = s.dayMoved ?? DayMoved(start: a0, end: b0)
+        if dayChanged, mv.day == nil { mv.day = s.day }
         var notes = s.notes
         if let old = mv.line, !old.isEmpty, notes.hasSuffix(old) {
             notes = String(notes.dropLast(old.count))
             while notes.hasSuffix("\n") { notes.removeLast() }
         }
+        if let newDay, dayChanged { s.day = newDay }
         s.start = a
         s.end = b
         s.duration = b - a
-        if a == mv.start && b == mv.end {
+        if mv.day == s.day { mv.day = nil }
+        if a == mv.start && b == mv.end && mv.day == nil {
             s.dayMoved = nil
         } else {
             let text = line((mv.start, mv.end), (a, b))
             notes = notes.isEmpty ? text : notes + "\n" + text
-            s.dayMoved = DayMoved(start: mv.start, end: mv.end, line: text)
+            s.dayMoved = DayMoved(start: mv.start, end: mv.end, line: text, day: mv.day)
         }
         s.notes = notes
         return true

@@ -31,14 +31,18 @@ struct PlannerWords {
     /// Имя съёмки (веб `typeName`). Черновик из Календаря (30.4) называется «Черновик» — жанра у него ещё нет, а метка
     /// нужна везде, где строка съёмки: в ленте, неделе, месяце и шапке карточки.
     func typeName(_ s: Session) -> String {
-        s.isCalendarDraft ? lexicon.t("calm.draft") : (sub(s).map(subName) ?? genreName(s.genre))
+        if s.isCalendarDraft { return lexicon.t("calm.draft") }
+        if let x = sub(s) { return subName(x) }
+        // Съёмка без жанра зовётся «Фотосъёмка»: жанра с таким кодом в данных нет (веб показал бы голый код), а правила
+        // у записи без жанра и так как у людей — срок 7 дней, клиент, ставка или сдельно.
+        return s.genre == nil && s.kind == .shoot ? lexicon.t("genre.photoshoot") : genreName(s.genre)
     }
 
     /// Короткое имя для узких мест (веб `shortType`): «Архитект.» в клетке.
     func shortType(_ s: Session) -> String {
         if s.isCalendarDraft { return lexicon.t("calm.draft") }
         if let x = sub(s) { return subName(x) }
-        guard let g = s.genre else { return "" }
+        guard let g = s.genre else { return s.kind == .shoot ? lexicon.t("genre.photoshoot") : "" }
         return soft("genreShort." + g.rawValue, genreName(g))
     }
 

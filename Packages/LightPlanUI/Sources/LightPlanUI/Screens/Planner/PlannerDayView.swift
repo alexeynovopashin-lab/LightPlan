@@ -366,7 +366,7 @@ struct PlannerDayBody: View {
                 VStack(alignment: .leading, spacing: 2) {
                     t
                     if cols <= 2 { s }
-                    if room, cols <= 1, let due { Text(due.0).font(webFont(12)).foregroundStyle(due.1) }
+                    if room, cols <= 1, let due { Text(due.0).font(webFont(12)).foregroundStyle(due.1).lineLimit(1) }
                 }
             }
             Spacer(minLength: 0)
@@ -619,7 +619,9 @@ struct PlannerDayBody: View {
     /// Имя, вторая строка и срок сдачи блока (веб `name`, `sub`, `.dl-due`).
     private func words(_ it: DayItem) -> (String, String, (String, Color)?) {
         if let b = it.block {
-            return (f.blockLabel(b), b.allDay ? f.t.t("day.allDay") : f.range(Double(it.start), Double(it.end)), nil)
+            // Подвинули в Календаре iPhone: третья строка — «Время сдвинуто в календаре. Было …» (30.4); крестик — в листе блока.
+            return (f.blockLabel(b), b.allDay ? f.t.t("day.allDay") : f.range(Double(it.start), Double(it.end)),
+                    app.blockMovedText(b).map { ($0, Palette(scheme).brassDeep) })
         }
         guard let s = it.session else { return ("", "", nil) }
         let who = f.words.clientName(s)

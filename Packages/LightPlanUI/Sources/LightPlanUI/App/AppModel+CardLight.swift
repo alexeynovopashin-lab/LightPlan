@@ -296,9 +296,40 @@ extension AppModel {
     /// «Было 18:00 – 19:30, стало 18:30 – 20:00.» — пока время на ленте не
     /// вернули как было и крестик не нажат. Все фазы.
     func cardMoved(_ s: Session) -> (from: String, to: String)? {
-        guard let m = s.dayMoved, !(m.start == s.start && m.end == s.endMinute) else { return nil }
+        guard let m = s.dayMoved, !(m.start == s.start && m.end == s.endMinute && (m.day ?? s.day) == s.day) else { return nil }
         let f = PlannerFacts(app: self, dark: false)
-        return (f.range(Double(m.start), Double(m.end)), f.range(Double(s.start), Double(s.endMinute)))
+        // Подвинули на другой день (Календарь iPhone, 30.4) — у «было» и «стало» стоит дата.
+        let moved = m.day != nil && m.day != s.day
+        func text(_ a: Int, _ b: Int, _ day: CivilDate) -> String {
+            (moved ? f.dates.dMonShort(f.date(day)) + " " : "") + f.range(Double(a), Double(b))
+        }
+        return (text(m.start, m.end, m.day ?? s.day), text(s.start, s.endMinute, s.day))
+    }
+
+    /// Строка «Время сдвинуто в календаре. Было …, стало …» у занятого времени, подвинутого в Календаре iPhone (30.4);
+    /// `nil` — не сдвигали или вернули как было.
+    func blockMovedText(_ b: Block) -> String? {
+        guard let m = b.movedFrom, !m.matches(b) else { return nil }
+        let f = PlannerFacts(app: self, dark: false)
+        func day(_ d: CivilDate) -> String { f.dates.dMonShort(f.date(d)) }
+        func text(from: CivilDate, allDay: Bool, days: Int, start: Int?, duration: Int?, other: CivilDate) -> String {
+            if allDay || start == nil {
+                return days > 1 ? day(from) + " – " + day(from.adding(days: days - 1)) : day(from)
+            }
+            let s = start ?? 0
+            return (from == other ? "" : day(from) + " ") + f.range(Double(s), Double(s + (duration ?? 120)))
+        }
+        let from = text(from: m.from, allDay: m.allDay, days: m.days, start: m.start, duration: m.duration, other: b.from)
+        let to = text(from: b.from, allDay: b.allDay, days: b.days, start: b.start, duration: b.duration, other: m.from)
+        return lexicon.t("card.movedT") + ". " + lexicon.t("card.movedM", ["from": from, "to": to])
+    }
+
+    /// Крестик у занятого времени: отметка стирается.
+    public func clearBlockMoved(id: String) {
+        guard let i = snapshot.blocks.firstIndex(where: { $0.id == id }), snapshot.blocks[i].movedFrom != nil else { return }
+        snapshot.blocks[i].movedFrom = nil
+        snapshot.blocks[i].modifiedAt = nowMs
+        persist()
     }
 
     /// Крестик строки сдвига: `dayMoved` стирается, строка гаснет.
