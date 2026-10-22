@@ -28,13 +28,16 @@ public enum CalendarPlan {
         public var title: @Sendable (Session) -> String
         /// «Дорога», «Перелёт · Москва»: название занятости.
         public var blockTitle: @Sendable (Block) -> String
+        /// Заметки события: телефоны клиента и заметки съёмки (`CalendarNotes`); `nil` — писать нечего.
+        public var notes: @Sendable (Session) -> String?
 
         public init(studios: [Studio], spots: [Spot], zones: ZoneCache, homeZone: ZoneID,
                     calendar: Calendar = .current,
                     title: @escaping @Sendable (Session) -> String,
-                    blockTitle: @escaping @Sendable (Block) -> String) {
+                    blockTitle: @escaping @Sendable (Block) -> String,
+                    notes: @escaping @Sendable (Session) -> String? = { _ in nil }) {
             self.studios = studios; self.spots = spots; self.zones = zones; self.homeZone = homeZone
-            self.calendar = calendar; self.title = title; self.blockTitle = blockTitle
+            self.calendar = calendar; self.title = title; self.blockTitle = blockTitle; self.notes = notes
         }
     }
 
@@ -76,10 +79,7 @@ public enum CalendarPlan {
     static func draft(of s: Session, _ ctx: Context) -> EventDraft? {
         guard s.kind == .shoot || s.kind == .meet else { return nil }
         let stops = Stops.all(of: s, spots: ctx.spots, studios: ctx.studios)
-        // Пояс — места съёмки, а не телефона: съёмка в Москве не едет, когда телефон в Томске (`docs/16`).
-        let zone = Stops.skyPoint(of: s, spots: ctx.spots, studios: ctx.studios)
-            .map { ctx.zones.zoneOrEstimate(at: GeoCoordinate(latitude: $0.latitude, longitude: $0.longitude)) }
-            ?? ctx.homeZone
+        let zone = zone(of: s, ctx)
         let offset = zone.utcOffsetHours(on: s.day)
         let start = WallTime(day: s.day, minutes: s.start).moment(utcOffsetHours: offset)
         var endMinute = s.endMinute
@@ -99,8 +99,16 @@ public enum CalendarPlan {
             title: ctx.title(s), start: start.date, end: end.date, allDay: false,
             timeZoneId: iana(zone), offsetSeconds: Int((offset * 3600).rounded()),
             locationTitle: location.isEmpty ? nil : location,
-            latitude: place?.point.latitude, longitude: place?.point.longitude,
-            url: url(shoot: s.id))
+            // Точка без названия в событие не попадает: место без заголовка календарь не хранит.
+            latitude: location.isEmpty ? nil : place?.point.latitude, longitude: location.isEmpty ? nil : place?.point.longitude,
+            url: url(shoot: s.id), notes: ctx.notes(s), recordModified: s.modifiedAt)
+    }
+
+    /// Пояс — места съёмки, а не телефона: съёмка в Москве не едет, когда телефон в Томске (`docs/16`).
+    static func zone(of s: Session, _ ctx: Context) -> ZoneID {
+        Stops.skyPoint(of: s, spots: ctx.spots, studios: ctx.studios)
+            .map { ctx.zones.zoneOrEstimate(at: GeoCoordinate(latitude: $0.latitude, longitude: $0.longitude)) }
+            ?? ctx.homeZone
     }
 
     // MARK: - Занятое время
@@ -111,7 +119,7 @@ public enum CalendarPlan {
         guard !b.allDay, let startMinute = b.start else {
             let first = dayStart(b.from, ctx.calendar)
             return EventDraft(title: ctx.blockTitle(b), start: first, end: dayStart(b.lastDay, ctx.calendar),
-                              allDay: true, url: link)
+                              allDay: true, url: link, recordModified: b.modifiedAt)
         }
         // Дорога из формы помнит пояс вылета: её минуты — часы билета (`docs/16`, «Перелёт»), длительность —
         // настоящее время в пути. Занятость, записанная руками, поясов не знает: её часы — часы места приложения.
@@ -120,7 +128,7 @@ public enum CalendarPlan {
         let end = start.adding(minutes: max(b.duration ?? 120, 1))
         return EventDraft(title: ctx.blockTitle(b), start: start.date, end: end.date, allDay: false,
                           timeZoneId: b.zoneFrom == nil ? iana(ctx.homeZone) : nil,
-                          offsetSeconds: Int((offset * 3600).rounded()), url: link)
+                          offsetSeconds: Int((offset * 3600).rounded()), url: link, recordModified: b.modifiedAt)
     }
 
     // MARK: - Мелочи

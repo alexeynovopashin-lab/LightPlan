@@ -219,7 +219,7 @@ enum YearMath {
         return sessions.enumerated()
             .filter { _, s in
                 guard s.isShown(eventsLayer: eventsLayer) else { return false }
-                let hay = (s.contact + " " + typeName(s) + " " + s.place + " " + s.placeTown).lowercased()
+                let hay = (s.contact + " " + typeName(s) + " " + s.place + " " + s.placeTown + " " + (s.fromCalendar ?? "")).lowercased()
                 return hay.contains(needle)
             }
             .sorted { $0.element.day != $1.element.day ? $0.element.day > $1.element.day : $0.offset < $1.offset }

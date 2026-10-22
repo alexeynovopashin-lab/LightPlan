@@ -1,10 +1,13 @@
 import Foundation
 
-/// Одностороннее зеркало записей в календарь телефона (шаг 30.1–3, `docs/14`).
+/// Зеркало записей в календаре телефона (шаг 30.1–4, `docs/14`).
 ///
-/// Правда живёт в Light Plan, Календарь её показывает. Один проход `sync` приводит календарь к списку событий
-/// (`CalendarPlan.drafts`) и ничего не оставляет «на потом»: создаёт недостающее, переписывает разошедшееся, убирает
-/// лишнее — молча. Запускается «там, где человек»: после сохранения записи и при возврате в приложение, по таймеру
+/// Правда живёт в Light Plan, Календарь её показывает; в обратную сторону едет только то, что человек сделал в
+/// Календаре руками: **время и место** (подвинул событие) и **новое событие** в нашем календаре (станет черновиком).
+/// Название и заметки событий остаются нашими: правка их в Календаре не возвращается, а откатывается.
+/// Один проход `sync` приводит календарь к списку событий (`CalendarPlan.drafts`): создаёт недостающее, переписывает
+/// разошедшееся, убирает лишнее — молча. Что должно вернуться в записи, проход не пишет в календарь, а отдаёт в
+/// `Report.incoming`: применить к данным и сохранить — дело приложения, потом следующий проход сойдётся. Запускается «там, где человек»: после сохранения записи и при возврате в приложение, по таймеру
 /// никогда.
 ///
 /// Как запись и событие узнают друг друга: на устройстве лежит связь «ключ записи → идентификатор события»
@@ -24,7 +27,17 @@ public actor CalendarMirror {
         public var kept = 0
         /// Запись не удалась — следующий проход попробует снова.
         public var failed = 0
+        /// Что человек сделал в Календаре и должно вернуться в записи (30.4). События из этого списка проход не писал.
+        public var incoming: [Incoming] = []
         public var changed: Bool { created + updated + removed > 0 }
+    }
+
+    /// Правка, пришедшая из Календаря.
+    public enum Incoming: Sendable, Equatable {
+        /// Человек подвинул событие записи или сменил его место: время и место возвращаются в запись.
+        case moved(key: String, event: StoredEvent)
+        /// Человек завёл событие прямо в нашем календаре: оно станет черновиком съёмки.
+        case created(StoredEvent)
     }
 
     public enum Outcome: Sendable, Equatable {
@@ -137,6 +150,7 @@ public actor CalendarMirror {
         r.sourceId = sourceId
         r.calendarId = nil
         r.links = [:]
+        r.facts = [:]
         memory.record = r
         let made = await ensureCalendar(strict: true)
         if case .failed = made.outcome {
@@ -161,16 +175,19 @@ public actor CalendarMirror {
         var r = memory.record
         r.calendarId = nil
         r.links = [:]
+        r.facts = [:]
         memory.record = r
         return await ensureCalendar().outcome
     }
 
     // MARK: - Свой календарь
 
-    /// Наши ли все события календаря: все — ссылки записей, чужих нет. Календарь, где человек держит своё, нашим не
-    /// считается: его нельзя ни принять за свой, ни убрать целиком.
+    /// Наш ли это календарь: пустой или с нашими событиями (хоть одно со ссылкой записи). Чужой «Light Plan» с делами
+    /// человека, где наших ссылок нет совсем, нашим не считается: его нельзя принять за свой. С 30.4 в нашем календаре
+    /// законно лежат и события, заведённые руками (они становятся черновиками), поэтому «все — наши» уже не условие.
     private func isOurs(_ calendarId: String) async -> Bool {
-        await ownEvents(calendarId).allSatisfy { CalendarPlan.isRecordLink($0.url) }
+        let events = await ownEvents(calendarId)
+        return events.isEmpty || events.contains { CalendarPlan.isRecordLink($0.url) }
     }
 
     /// Все события календаря за сто лет в обе стороны: по этому списку решается, наш ли календарь и можно ли убрать его
@@ -224,6 +241,7 @@ public actor CalendarMirror {
                     r.calendarId = own.id
                     r.sourceId = own.sourceId
                     r.links = [:]
+                    r.facts = [:]
                     memory.record = r
                     return (.synced(Report()), nil)
                 }
@@ -233,6 +251,7 @@ public actor CalendarMirror {
                 r.calendarId = c.id
                 r.sourceId = c.sourceId
                 r.links = [:]
+                r.facts = [:]
                 memory.record = r
                 return (.synced(Report()), c.id)
             } catch {
@@ -250,6 +269,60 @@ public actor CalendarMirror {
         await exclusive { await syncLocked(drafts, now: now) }
     }
 
+    /// Событие, заведённое руками, приложение превратило в черновик: связываем его с новой записью. Следующий
+    /// проход допишет в него ссылку и всё остальное. Вызывать надо после того, как запись сохранена на диск.
+    public func adopt(eventId: String, key: String) async {
+        await exclusive {
+            var r = memory.record
+            r.links[key] = eventId
+            memory.record = r
+        }
+    }
+
+    /// Приложение не смогло принять правку из Календаря (например, место в записи занято бронью студии): событие
+    /// считается увиденным в этом виде, и следующий проход перепишет его, как у нас, — а не будет отдавать одну и ту же
+    /// правку снова и снова.
+    public func dismiss(key: String, event: StoredEvent) async {
+        await exclusive {
+            var r = memory.record
+            r.facts[key] = EventFacts(event: event)
+            memory.record = r
+        }
+    }
+
+    /// Куда смотреть за событиями, заведёнными руками, вперёд: дальше запись не появится, пока съёмки не подойдут.
+    private static let lookAhead: TimeInterval = 3 * 366 * 86_400
+
+    /// Можно ли сделать из события черновик съёмки: обычное событие со временем и не длиннее суток. «На весь день» —
+    /// это скорее занятый день (не съёмка), повторяющееся делит один идентификатор между вхождениями, а событие
+    /// длиннее суток не помещается в сутки съёмки. Такие остаются в календаре как есть и не трогаются.
+    static func isDraftable(_ e: StoredEvent) -> Bool {
+        !e.allDay && !e.recurring && e.end > e.start && e.end.timeIntervalSince(e.start) <= 86_400
+    }
+
+    /// Чья правка свежее, если время или место двигали с обеих сторон.
+    private enum Winner { case event, record }
+
+    /// Кто двигал: событие в Календаре или запись у нас.
+    ///
+    /// Отпечаток `facts` — то, какими время и место были, когда обе стороны последний раз сошлись. Событие ушло от
+    /// отпечатка, а запись нет — правил человек в Календаре. Ушла только запись — обычная правка у нас. Ушли обе —
+    /// побеждает та, что правили позже (метки правок: `mt` записи и `lastModifiedDate` события). Отпечатка нет
+    /// (первый проход, переустановка) — побеждает запись: хуже всего тогда потерять один сдвиг в Календаре, а не
+    /// откатить съёмку устаревшим событием.
+    private func winner(event: StoredEvent, draft: EventDraft, seen: EventFacts?) -> Winner {
+        guard let seen else { return .record }
+        let eventMoved = !EventFacts(event: event).isClose(to: seen)
+        let recordMoved = !EventFacts(draft: draft).isClose(to: seen)
+        switch (eventMoved, recordMoved) {
+        case (false, _): return .record
+        case (true, false): return .event
+        case (true, true):
+            guard let mt = draft.recordModified, let em = event.modified else { return .record }
+            return em.timeIntervalSince1970 * 1000 > Double(mt) ? .event : .record
+        }
+    }
+
     private func syncLocked(_ drafts: [EventDraft], now: Date) async -> Outcome {
         guard memory.record.wanted else { return .synced(Report()) }
         let auth = await store.authorization()
@@ -261,18 +334,23 @@ public actor CalendarMirror {
         var rec = memory.record
         guard let cid = rec.calendarId, await store.calendar(id: cid) != nil else { return .calendarGone }
 
-        // Что стоит в нашем календаре сейчас. Окно — от самой ранней записи до самой поздней, с запасом в год. События
-        // исчезнувших записей вне окна находятся по связи (`stale` ниже), а не по запросу к календарю.
+        // Что стоит в нашем календаре сейчас. Окно — от самой ранней записи до самой поздней, с запасом в год назад и
+        // на три года вперёд: события, заведённые руками, ищутся и там. События исчезнувших записей вне окна
+        // находятся по связи (`stale` ниже), а не по запросу к календарю.
         let edges = drafts.flatMap { [$0.start, $0.end] } + [now]
         let year: TimeInterval = 366 * 86_400
         let found = await store.events(calendarId: cid, from: edges.min()!.addingTimeInterval(-year),
-                                       to: edges.max()!.addingTimeInterval(year))
-        // Своими считаем события со ссылкой записи (`shoot`, `block`); всё остальное в этом календаре — человека, не трогаем.
+                                       to: edges.max()!.addingTimeInterval(Self.lookAhead))
+        // Своими считаем события со ссылкой записи (`shoot`, `block`); остальные в этом календаре — человека: не
+        // перезаписываем, а те из них, что можно, предлагаем стать черновиками (`unlinked`).
         var byKey: [String: [StoredEvent]] = [:]
         for e in found { if let u = e.url, CalendarPlan.isRecordLink(u) { byKey[u.absoluteString, default: []].append(e) } }
+        let hinted = Set(rec.links.values)
+        let unlinked = found.filter { !CalendarPlan.isRecordLink($0.url) && !hinted.contains($0.id) && Self.isDraftable($0) }
 
         var report = Report()
         var links: [String: String] = [:]
+        var facts: [String: EventFacts] = [:]
         let wanted = Dictionary(drafts.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
 
         for draft in drafts where links[draft.key] == nil {
@@ -284,8 +362,11 @@ public actor CalendarMirror {
             candidates.sort { ($0.id == linkedId ? 0 : 1, $0.id) < ($1.id == linkedId ? 0 : 1, $1.id) }
 
             guard let keep = candidates.first else {
-                do { links[draft.key] = try await store.save(draft, replacing: nil, calendarId: cid); report.created += 1 }
-                catch { report.failed += 1 }
+                do {
+                    links[draft.key] = try await store.save(draft, replacing: nil, calendarId: cid)
+                    facts[draft.key] = EventFacts(draft: draft)
+                    report.created += 1
+                } catch { report.failed += 1 }
                 continue
             }
             links[draft.key] = keep.id
@@ -293,10 +374,28 @@ public actor CalendarMirror {
             for extra in candidates.dropFirst() {
                 do { try await store.remove(eventId: extra.id); report.removed += 1 } catch { report.failed += 1 }
             }
-            if keep.matches(draft) { report.kept += 1; continue }
-            do { _ = try await store.save(draft, replacing: keep.id, calendarId: cid); report.updated += 1 }
-            catch { report.failed += 1 }
+            if keep.matches(draft) { report.kept += 1; facts[draft.key] = EventFacts(draft: draft); continue }
+            // Разошлись: если дело во времени или месте съёмки и правил человек в Календаре, это правка для записи, а не
+            // повод переписывать событие. Занятое время (`block`) обратно не едет: его событие всегда как у нас.
+            if CalendarPlan.shootId(in: draft.url) != nil, !keep.timeAndPlaceMatch(draft), !keep.allDay, !draft.allDay,
+               winner(event: keep, draft: draft, seen: rec.facts[draft.key]) == .event {
+                report.incoming.append(.moved(key: draft.key, event: keep))
+                if let seen = rec.facts[draft.key] { facts[draft.key] = seen }
+                continue
+            }
+            do {
+                _ = try await store.save(draft, replacing: keep.id, calendarId: cid)
+                facts[draft.key] = EventFacts(draft: draft)
+                report.updated += 1
+            } catch {
+                report.failed += 1
+                if let seen = rec.facts[draft.key] { facts[draft.key] = seen }
+            }
         }
+
+        // События, заведённые руками, — черновикам. Какие из них уже отданы приложению и ждут, пока их свяжут, —
+        // не повторяем: связь пишется сразу после сохранения записи (`adopt`).
+        report.incoming += unlinked.sorted { ($0.start, $0.id) < ($1.start, $1.id) }.map { .created($0) }
 
         // Записи нет (удалили, ушла в корзину) — событие убираем, связь забываем. Убрать не вышло — связь остаётся:
         // событие может лежать вне окна поиска, и без связи следующий проход его уже не найдёт.
@@ -313,8 +412,10 @@ public actor CalendarMirror {
 
         // Не удалось записать — связь прежняя остаётся (следующий проход попробует снова).
         for (key, id) in rec.links where links[key] == nil && wanted[key] != nil { links[key] = id }
+        for (key, seen) in rec.facts where facts[key] == nil && wanted[key] != nil && links[key] != nil { facts[key] = seen }
         rec = memory.record
         rec.links = links
+        rec.facts = facts
         memory.record = rec
         return .synced(report)
     }

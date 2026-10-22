@@ -5,9 +5,12 @@ import LightPlanDomain
 
 /// Съёмки в Календаре iPhone (шаг 30.1–3, `docs/14`).
 ///
-/// Одно направление: правда в Light Plan, Календарь её показывает. Расписание — функция данных, как у студийного
-/// часа: после правки записи, при запуске и при возврате в приложение календарь приводится к списку событий
-/// (`CalendarPlan`). Отказ в праве ничего не ломает: зеркало молчит, остальное работает как раньше.
+/// Правда в Light Plan, Календарь её показывает. Расписание — функция данных, как у студийного часа: после правки
+/// записи, при запуске, при возврате в приложение и когда календарная база изменилась, календарь приводится к списку
+/// событий (`CalendarPlan`). Обратно едет только то, что человек сделал в Календаре руками (шаг 30.4):
+/// **время и место** подвинутого события возвращаются в съёмку, а событие, заведённое в календаре «Light Plan»,
+/// становится черновиком съёмки; название и заметки обратно не едут. Отказ в праве ничего не ломает: зеркало
+/// молчит, остальное работает как раньше.
 extension AppModel {
 
     // MARK: - Что видит экран
@@ -28,22 +31,40 @@ extension AppModel {
     /// песочницы, а шаг про iPhone): строки в настройках тоже.
     func attachCalendar() {
         #if os(iOS)
-        attachCalendar(store: EventKitCalendarStore(), memory: DeviceCalendarMemory())
+        attachCalendar(store: EventKitCalendarStore(), memory: DeviceCalendarMemory(), watch: true)
         #endif
     }
 
-    /// Подставки (тесты, снимки): календарь и память подаются снаружи.
-    func attachCalendar(store: any CalendarStoring, memory: any CalendarMirrorMemory) {
+    /// Подставки (тесты, снимки): календарь и память подаются снаружи. Слушать изменения базы (`watch`) — только живому
+    /// приложению и тесту, который проверяет именно это: сверка по уведомлению идёт сама и мешала бы остальным
+    /// ждать конца «своего» прохода.
+    func attachCalendar(store: any CalendarStoring, memory: any CalendarMirrorMemory, watch: Bool = false) {
         calendarStore = store
         calendarMirror = CalendarMirror(store: store, memory: memory)
         calendarWanted = memory.record.wanted
+        calendarWatch?.cancel()
+        calendarWatch = nil
+        if watch { watchCalendar(store) }
         syncCalendarMirror(force: true)
+    }
+
+    /// Календарная база изменилась (правка в Календаре, синхронизация, наша же запись): сверка через секунду тишины.
+    /// Наша запись будит и нас самих — проход тогда находит всё на месте и ничего не пишет, так что цепочка гаснет.
+    private func watchCalendar(_ store: any CalendarStoring) {
+        calendarWatch = Task { [weak self] in
+            for await _ in store.changes() {
+                guard let self else { return }
+                self.syncCalendarMirror(force: true, settle: self.calendarSettle)
+            }
+        }
     }
 
     // MARK: - Названия и события
 
     /// Название события: жанр и клиент, жанр первым — в недельной сетке видно первые слова («Свадьба · Ирина»).
     func calendarTitle(of s: Session) -> String {
+        // Черновик из Календаря зовётся так, как его назвал человек: переименовывать его событие нечем.
+        if s.isCalendarDraft { return s.fromCalendar ?? "" }
         let w = PlannerWords(lexicon: lexicon, orgs: snapshot.orgs)
         let who = w.clientName(s)
         let head: String
@@ -64,12 +85,20 @@ extension AppModel {
 
     /// Всё, что должно стоять в календаре. Пояс — места съёмки; без точки — место приложения (`alertOffsetHours`).
     func calendarDrafts() -> [EventDraft] {
+        CalendarPlan.drafts(sessions: snapshot.sessions, blocks: snapshot.blocks, context: calendarContext())
+    }
+
+    /// Названия, заметки и пояса, по которым записи становятся событиями и события — записями.
+    func calendarContext() -> CalendarPlan.Context {
         let titles = Dictionary(snapshot.sessions.map { ($0.id, calendarTitle(of: $0)) }, uniquingKeysWith: { a, _ in a })
         let blockTitles = Dictionary(snapshot.blocks.map { ($0.id, calendarTitle(of: $0)) }, uniquingKeysWith: { a, _ in a })
-        let ctx = CalendarPlan.Context(
+        let words = CalendarNotes.Words(client: lexicon.t("calm.noteClient"), contact: lexicon.t("calm.noteContact"),
+                                        phone: lexicon.t("calm.notePhone"))
+        let country = telCountry
+        return CalendarPlan.Context(
             studios: snapshot.studios, spots: snapshot.spots, zones: place.zones, homeZone: place.zone,
-            title: { titles[$0.id] ?? "" }, blockTitle: { blockTitles[$0.id] ?? "" })
-        return CalendarPlan.drafts(sessions: snapshot.sessions, blocks: snapshot.blocks, context: ctx)
+            title: { titles[$0.id] ?? "" }, blockTitle: { blockTitles[$0.id] ?? "" },
+            notes: { CalendarNotes.text(of: $0, country: country, words: words) })
     }
 
     // MARK: - Тумблер и выбор учётной записи
@@ -156,7 +185,7 @@ extension AppModel {
     /// Привести календарь к данным. Правки идут пачками — запрос откладывается на треть секунды и склеивается;
     /// `force` (запуск, возврат в приложение, смена тумблера) сверяет даже при тех же данных: событие могли удалить
     /// в Календаре, а право — выдать или отнять в настройках iPhone. По таймеру — никогда.
-    func syncCalendarMirror(force: Bool = false) {
+    func syncCalendarMirror(force: Bool = false, settle: Duration? = nil) {
         guard calendarMirror != nil else { return }
         calendarGen += 1
         if force { calendarForce = true }
@@ -165,11 +194,17 @@ extension AppModel {
             // Позже пришёл другой запрос — он и выполнит работу, унаследовав «принудительно». Проверка до паузы:
             // очередь стоит друг за другом, и пачка правок без неё ждала бы по трети секунды на каждую.
             guard gen == app.calendarGen else { return }
-            if !force { try? await Task.sleep(for: .milliseconds(300)) }
+            if let settle { try? await Task.sleep(for: settle) }
+            else if !force { try? await Task.sleep(for: .milliseconds(300)) }
             guard gen == app.calendarGen else { return }
             let force = app.calendarForce
             app.calendarForce = false
+            // Уведомления базы не гоняют по кругу: после трёх записывающих проходов подряд они ждут человека.
+            let fromWatch = settle != nil
+            if fromWatch, app.calendarWatchStreak >= 3 { return }
+            app.calendarPassWrote = false
             await app.runCalendarSync(force: force)
+            app.calendarWatchStreak = fromWatch && app.calendarPassWrote ? app.calendarWatchStreak + 1 : 0
         }
     }
 
@@ -183,22 +218,108 @@ extension AppModel {
             await refreshCalendarFacts()
             return
         }
-        let drafts = calendarDrafts()
+        await learnCalendarZones()
+        var drafts = calendarDrafts()
         if !force, calendarApplied == drafts { return }
-        switch await mirror.sync(drafts) {
-        case .synced(let report):
-            calendarApplied = report.failed == 0 ? drafts : nil
-            calendarFailed = false
-        case .noAccess:
-            calendarApplied = nil
-        case .calendarGone:
-            calendarApplied = nil
-            calendarGoneAsk = true
-        case .failed:
-            calendarApplied = nil
-            calendarFailed = true
+        // Правки из Календаря возвращаются в записи, и проход повторяется на новых данных; три круга — с запасом
+        // (первый принимает, второй дописывает ссылку и заметки, третий убеждается, что всё сошлось).
+        var round = 0
+        loop: while true {
+            switch await mirror.sync(drafts) {
+            case .synced(let report):
+                if !report.incoming.isEmpty, round < 3, await takeCalendarIncoming(report.incoming, mirror) {
+                    round += 1
+                    drafts = calendarDrafts()
+                    continue loop
+                }
+                // Пока в календаре есть то, что не принято, «всё привели» не говорим: следующий проход посмотрит снова.
+                calendarApplied = report.failed == 0 && report.incoming.isEmpty ? drafts : nil
+                calendarFailed = false
+                if report.changed || round > 0 { calendarPassWrote = true }
+            case .noAccess:
+                calendarApplied = nil
+            case .calendarGone:
+                calendarApplied = nil
+                calendarGoneAsk = true
+            case .failed:
+                calendarApplied = nil
+                calendarFailed = true
+            }
+            break loop
         }
         await refreshCalendarFacts()
+    }
+
+    // MARK: - Из Календаря в записи (30.4)
+
+    /// Принять то, что человек сделал в Календаре. `true` — данные изменились (и уже записаны на диск), проход надо
+    /// повторить.
+    ///
+    /// Время и место подвинутого события ложатся в съёмку с меткой правки (`mt`), как любая правка — так обмен
+    /// устройств увидит её. Новое событие становится черновиком съёмки; его связывают с записью только **после** записи
+    /// на диск: пока связи нет, событие никто не уберёт, а потеряйся запись — оно просто станет черновиком снова.
+    private func takeCalendarIncoming(_ incoming: [CalendarMirror.Incoming], _ mirror: CalendarMirror) async -> Bool {
+        var changed = false
+        var adopt: [(event: String, key: String)] = []
+        for item in incoming {
+            switch item {
+            case .moved(let key, let event):
+                guard let url = URL(string: key), let id = CalendarPlan.shootId(in: url),
+                      let i = snapshot.sessions.firstIndex(where: { $0.id == id }),
+                      var moved = CalendarPlan.applying(event, to: snapshot.sessions[i], calendarContext()) else {
+                    // Записи нет или принять нечего (студия не меняется строкой): событие вернётся к записи.
+                    if let url = URL(string: key), CalendarPlan.shootId(in: url) != nil { await mirror.dismiss(key: key, event: event) }
+                    continue
+                }
+                moved.modifiedAt = nowMs
+                snapshot.sessions[i] = moved
+                changed = true
+            case .created(let event):
+                // Пояс места нужен до того, как часы события станут часами съёмки: оценка по долготе ошибается на час.
+                if let la = event.latitude, let lo = event.longitude {
+                    await learnCalendarZone(at: GeoCoordinate(latitude: la, longitude: lo))
+                }
+                let id = Self.newRecordId(now())
+                guard let draft = CalendarPlan.newDraft(from: event, id: id, modifiedAt: nowMs, calendarContext()) else { continue }
+                snapshot.sessions.append(draft)
+                adopt.append((event.id, CalendarPlan.url(shoot: id).absoluteString))
+                changed = true
+            }
+        }
+        guard changed else { return false }
+        persist()
+        await flush()
+        for a in adopt { await mirror.adopt(eventId: a.event, key: a.key) }
+        return true
+    }
+
+    // MARK: - Пояса (30.4)
+
+    /// Пояс точки у геокодера, пока тот не известен: событие считается по часам места, а без настоящего пояса место
+    /// даёт оценку по долготе (Томск +6 вместо +7, событие на час раньше). Каждую клетку в полградуса спрашиваем один
+    /// раз за запуск и не больше шести за проход; нет сети — остаётся оценка, как и было.
+    private func learnCalendarZones() async {
+        var cells: [(day: CivilDate, key: String, point: GeoCoordinate)] = []
+        var seen = Set<String>()
+        let from = today.adding(days: -14)
+        for s in snapshot.sessions where (s.kind == .shoot || s.kind == .meet) && s.day >= from {
+            guard let p = Stops.skyPoint(of: s, spots: snapshot.spots, studios: snapshot.studios) else { continue }
+            let c = GeoCoordinate(latitude: p.latitude, longitude: p.longitude)
+            let key = ZoneEstimate.cacheKey(c)
+            guard place.zones.zone(at: c) == nil, !calendarZonesTried.contains(key), seen.insert(key).inserted else { continue }
+            cells.append((s.day, key, c))
+        }
+        for cell in cells.sorted(by: { ($0.day, $0.key) < ($1.day, $1.key) }).prefix(6) {
+            await learnCalendarZone(at: cell.point)
+        }
+    }
+
+    private func learnCalendarZone(at c: GeoCoordinate) async {
+        let key = ZoneEstimate.cacheKey(c)
+        guard place.zones.zone(at: c) == nil, calendarZonesTried.insert(key).inserted else { return }
+        guard await place.learnZone(at: c) else { return }
+        snapshot.extra["zones"] = .object(place.zones.entries.mapValues { .string($0) })
+        persist()
     }
 
     // MARK: - Ссылка из события

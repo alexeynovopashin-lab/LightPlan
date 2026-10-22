@@ -3,6 +3,7 @@ import LightPlanCore
 import LightPlanData
 import LightPlanDomain
 #if DEBUG && os(iOS)
+import CoreLocation
 import EventKit
 
 /// Замер на настоящем календаре симулятора (шаг 30.1–3): `-LPCalendarProbe <файл>` (Debug).
@@ -16,10 +17,13 @@ extension AppModel {
     func runCalendarProbe(log path: String) {
         Task { [weak self] in
             guard let self else { return }
+            calendarWatch?.cancel()          // сценарий идёт по шагам; уведомления базы вмешивались бы в его порядок
+            calendarWatch = nil
             // Свои записи вместо данных симулятора: сценарий должен читаться одинаково от запуска к запуску.
             let day = Self.today(in: place.place, now: now()).adding(days: 3)
             var wedding = Session(id: "probe-w", kind: .shoot, day: day, start: 600, end: 840, genre: .wedding)
-            wedding.contact = "Ирина"; wedding.place = "Парк"; wedding.placeAddress = "ул. Ленина 5"
+            wedding.contact = "Ирина"; wedding.clientPhone = "8 916 123-45-67"; wedding.notes = "Приезжать за час"
+            wedding.place = "Парк"; wedding.placeAddress = "ул. Ленина 5"
             wedding.latitude = 56.4977; wedding.longitude = 84.9744                      // Томск
             var meet = Session(id: "probe-m", kind: .meet, day: day.adding(days: 1), start: 900, end: 960, genre: .portrait)
             meet.contact = "Олег"
@@ -32,8 +36,14 @@ extension AppModel {
 
             @MainActor func dump(_ stage: String) async {
                 let rows = await Self.probeRows()
+                let records: [[String: Any]] = snapshot.sessions.map { s in
+                    ["id": s.id, "day": s.day.snapshotString, "start": s.start, "end": s.endMinute, "draft": s.isCalendarDraft,
+                     "from": s.fromCalendar ?? "", "genre": s.genre?.rawValue ?? "", "contact": s.contact, "notes": s.notes,
+                     "place": s.place, "mt": s.modifiedAt ?? 0]
+                }
                 let line = (try? JSONSerialization.data(withJSONObject: ["stage": stage, "auth": "\(calendarAuth)", "on": calendarMirrorOn,
-                                                                         "source": calendarSourceTitle ?? "", "rows": rows], options: [.sortedKeys])) ?? Data()
+                                                                         "source": calendarSourceTitle ?? "", "rows": rows,
+                                                                         "sessions": records], options: [.sortedKeys])) ?? Data()
                 let text = String(decoding: line, as: UTF8.self) + "\n"
                 if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(text.utf8)); try? h.close() }
                 else { try? text.write(toFile: path, atomically: true, encoding: .utf8) }
@@ -84,6 +94,39 @@ extension AppModel {
                 setCalendarMirror(true); await calendarChain?.value
                 await dump("reinstalled")
             }
+
+            // 30.4. Человек работает в Календаре: второй EKEventStore — как другой процесс (приложение Календарь).
+            // Подвинул событие свадьбы на час вперёд и сменил место.
+            Self.probeEditByHand(title: "Свадьба · Ирина") { e in
+                e.startDate = e.startDate.addingTimeInterval(3600); e.endDate = e.endDate.addingTimeInterval(3600)
+                let loc = EKStructuredLocation(title: "Набережная"); loc.geoLocation = CLLocation(latitude: 56.4, longitude: 84.9)
+                e.structuredLocation = loc
+            }
+            await dump("hand-moved")
+            syncCalendarMirror(force: true); await calendarChain?.value
+            await dump("hand-moved-returned")
+
+            // Переименовал событие и переписал заметки — в съёмку это не едет, событие возвращается как у нас.
+            Self.probeEditByHand(title: "Свадьба · Ирина") { e in e.title = "Чужое название"; e.notes = "другой текст" }
+            syncCalendarMirror(force: true); await calendarChain?.value
+            await dump("hand-renamed")
+
+            // Завёл своё событие прямо в «Light Plan»: черновик, один раз, и после ещё двух проходов, и после «переустановки».
+            Self.probeAddByHand(title: "Маша фотосессия", notes: "в парке", daysAhead: 9)
+            syncCalendarMirror(force: true); await calendarChain?.value
+            await dump("hand-added")
+            syncCalendarMirror(force: true); syncCalendarMirror(force: true); await calendarChain?.value
+            await dump("hand-added-repeat")
+            if let store = calendarStore {
+                attachCalendar(store: store, memory: InMemoryCalendarMemory())
+                setCalendarMirror(true); await calendarChain?.value
+                syncCalendarMirror(force: true); await calendarChain?.value
+                await dump("hand-added-reinstalled")
+            }
+            // Удалил событие черновика — черновик остаётся, событие возвращается.
+            Self.probeDeleteByHand(title: "Маша фотосессия")
+            syncCalendarMirror(force: true); await calendarChain?.value
+            await dump("hand-draft-deleted")
             await dump("done")
 
             // Объём: сколько стоит первое включение у фотографа с долгой историей (`-LPCalendarBulk N`).
@@ -137,6 +180,30 @@ extension AppModel {
             let p = store.predicateForEvents(withStart: Date().addingTimeInterval(-86_400 * 30), end: Date().addingTimeInterval(86_400 * 60), calendars: [c])
             for e in store.events(matching: p) where e.title == title { try? store.remove(e, span: .thisEvent, commit: true) }
         }
+    }
+
+    /// Правка события вторым хранилищем: как будто человек открыл Календарь и подвинул или переименовал его.
+    private static func probeEditByHand(title: String, _ change: (EKEvent) -> Void) {
+        let store = EKEventStore()
+        for c in store.calendars(for: .event) where c.title == CalendarMirror.calendarTitle {
+            let p = store.predicateForEvents(withStart: Date().addingTimeInterval(-86_400 * 30), end: Date().addingTimeInterval(86_400 * 60), calendars: [c])
+            for e in store.events(matching: p) where e.title == title { change(e); try? store.save(e, span: .thisEvent, commit: true) }
+        }
+    }
+
+    /// Событие, заведённое руками в нашем календаре: без ссылки, с названием, заметками и местом.
+    private static func probeAddByHand(title: String, notes: String, daysAhead: Int) {
+        let store = EKEventStore()
+        guard let c = store.calendars(for: .event).first(where: { $0.title == CalendarMirror.calendarTitle }) else { return }
+        let e = EKEvent(eventStore: store)
+        e.calendar = c
+        e.title = title
+        e.notes = notes
+        e.startDate = Date().addingTimeInterval(Double(daysAhead) * 86_400)
+        e.endDate = e.startDate.addingTimeInterval(3600)
+        let loc = EKStructuredLocation(title: "Парк Горького"); loc.geoLocation = CLLocation(latitude: 55.73, longitude: 37.6)
+        e.structuredLocation = loc
+        try? store.save(e, span: .thisEvent, commit: true)
     }
 
     private static func probeDeleteCalendarByHand() {

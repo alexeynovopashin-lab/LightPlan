@@ -26,17 +26,38 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         var failingCalendarRemoval = false
         /// То же, но только для этих календарей (старая учётная запись недоступна, новая — в порядке).
         var failingRemovalIds: Set<String> = []
+        /// Система «нормализует» заметки по-своему: записанное читается чуть иначе, и событие вечно кажется расхождением.
+        var normalizingNotes = false
+        /// Подписчики на «база изменилась» (`EKEventStoreChanged`).
+        var listeners: [Int: AsyncStream<Void>.Continuation] = [:]
+        var nextListener = 0
     }
 
     private let state: Mutex<State>
+    /// Часы подставки: `modified` событий ставится ими. Тест подаёт свои, чтобы развести «раньше» и «позже».
+    private let clock: @Sendable () -> Date
 
     public init(authorization: CalendarAuthorization = .allowed, willGrant: Bool = true,
                 sources: [CalendarSource] = [
                     CalendarSource(id: "icloud", title: "iCloud", kind: .account),
                     CalendarSource(id: "local", title: "На моём iPhone", kind: .local),
                 ],
-                defaultSource: String? = "icloud") {
+                defaultSource: String? = "icloud", clock: @escaping @Sendable () -> Date = { Date() }) {
         state = Mutex(State(auth: authorization, willGrant: willGrant, sources: sources, defaultSource: defaultSource))
+        self.clock = clock
+    }
+
+    /// Как EventKit: любая запись в базе — своя или чужая — будит подписчиков.
+    private func notify() {
+        let all = state.withLock { Array($0.listeners.values) }
+        for l in all { l.yield() }
+    }
+
+    public func changes() -> AsyncStream<Void> {
+        AsyncStream { cont in
+            let id = state.withLock { s -> Int in s.nextListener += 1; s.listeners[s.nextListener] = cont; return s.nextListener }
+            cont.onTermination = { [weak self] _ in self?.state.withLock { $0.listeners[id] = nil } }
+        }
     }
 
     // MARK: - Протокол
@@ -97,7 +118,9 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
     public func event(id: String) async -> StoredEvent? { state.withLock { $0.auth == .allowed ? $0.events[id] : nil } }
 
     public func save(_ d: EventDraft, replacing id: String?, calendarId: String) async throws -> String {
-        try state.withLock { s in
+        let now = clock()
+        defer { notify() }
+        return try state.withLock { s in
             guard s.auth == .allowed, !s.failingWrites else { throw CalendarStoreError.refused("write refused") }
             guard s.calendars[calendarId] != nil else { throw CalendarStoreError.refused("calendar is gone") }
             let eid: String
@@ -105,13 +128,15 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
             s.events[eid] = StoredEvent(
                 id: eid, calendarId: calendarId, title: d.title, start: d.start, end: d.end, allDay: d.allDay,
                 offsetSeconds: d.allDay ? 0 : d.timeZone.secondsFromGMT(for: d.start),
-                locationTitle: d.locationTitle, latitude: d.latitude, longitude: d.longitude, url: d.url)
+                locationTitle: d.locationTitle, latitude: d.latitude, longitude: d.longitude, url: d.url,
+                notes: s.normalizingNotes ? (d.notes ?? "") + " ·" : d.notes, modified: now)
             s.saves += 1
             return eid
         }
     }
 
     public func remove(eventId: String) async throws {
+        defer { notify() }
         try state.withLock { s in
             guard s.auth == .allowed, !s.failingWrites else { throw CalendarStoreError.refused("write refused") }
             if s.events.removeValue(forKey: eventId) != nil { s.removes += 1 }
@@ -132,31 +157,48 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
     public func setSourceRefusing(_ id: String, _ on: Bool) {
         state.withLock { if on { $0.refusing.insert(id) } else { $0.refusing.remove(id) } }
     }
+    public func setNormalizingNotes(_ on: Bool) { state.withLock { $0.normalizingNotes = on } }
     public func setFailingWrites(_ on: Bool) { state.withLock { $0.failingWrites = on } }
     public func setFailingCalendarRemoval(_ on: Bool) { state.withLock { $0.failingCalendarRemoval = on } }
     public func setFailingRemoval(of id: String, _ on: Bool) { state.withLock { if on { $0.failingRemovalIds.insert(id) } else { $0.failingRemovalIds.remove(id) } } }
 
     /// Человек удалил событие в Календаре.
-    public func userDeleteEvent(_ id: String) { state.withLock { $0.events[id] = nil } }
+    public func userDeleteEvent(_ id: String) { state.withLock { $0.events[id] = nil }; notify() }
     /// Человек удалил календарь целиком.
     public func userDeleteCalendar(_ id: String) {
         state.withLock { s in
             s.calendars[id] = nil
             s.events = s.events.filter { $0.value.calendarId != id }
         }
+        notify()
     }
-    /// Человек переименовал или подвинул событие: правится любое поле.
+    /// Человек переименовал или подвинул событие: правится любое поле. `modified` подставка ставит сама (часы
+    /// подставки); closure может задать своё.
     public func userEdit(_ id: String, _ change: (inout StoredEvent) -> Void) {
-        state.withLock { s in if var e = s.events[id] { change(&e); s.events[id] = e } }
+        let now = clock()
+        state.withLock { s in
+            if var e = s.events[id] {
+                e.modified = now
+                change(&e)
+                s.events[id] = e
+            }
+        }
+        notify()
     }
     /// Человек завёл своё событие прямо в нашем календаре (или в чужом).
     @discardableResult
-    public func userAdd(title: String, start: Date, end: Date, calendarId: String, url: URL? = nil) -> String {
-        state.withLock { s in
+    public func userAdd(title: String, start: Date, end: Date, calendarId: String, url: URL? = nil,
+                        allDay: Bool = false, offsetSeconds: Int = 0, location: String? = nil,
+                        latitude: Double? = nil, longitude: Double? = nil, notes: String? = nil,
+                        recurring: Bool = false) -> String {
+        let now = clock()
+        defer { notify() }
+        return state.withLock { s in
             let id = "ev-\(s.next)"; s.next += 1
             s.events[id] = StoredEvent(id: id, calendarId: calendarId, title: title, start: start, end: end,
-                                       allDay: false, offsetSeconds: 0, locationTitle: nil, latitude: nil,
-                                       longitude: nil, url: url)
+                                       allDay: allDay, offsetSeconds: offsetSeconds, locationTitle: location,
+                                       latitude: latitude, longitude: longitude, url: url, notes: notes,
+                                       modified: now, recurring: recurring)
             return id
         }
     }

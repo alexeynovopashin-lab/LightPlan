@@ -48,7 +48,8 @@ public struct StoredCalendar: Sendable, Hashable {
 }
 
 /// Событие, которое приложение хочет видеть в календаре: всё, что зеркалим, и ничего сверх (`docs/14`, «Поля события»).
-/// Напоминаний нет, заметок нет: телефон клиента, суммы и документы в календарь не едут.
+/// Напоминаний нет. Заметки есть с шага 30.4: телефоны клиента и заметки съёмки (календарь личный — решение
+/// Алексея 22.10.2026); суммы, предоплата и документы в календарь не едут.
 public struct EventDraft: Sendable, Hashable {
     public var title: String
     public var start: Date
@@ -65,14 +66,18 @@ public struct EventDraft: Sendable, Hashable {
     public var longitude: Double?
     /// Ссылка обратно в запись, `lightplan://shoot/<id>`: единственный ключ, который лежит в самом событии.
     public var url: URL
+    /// Заметки события: строки «Клиент: Ирина +7 …», потом заметки съёмки; `nil` — писать нечего.
+    public var notes: String?
+    /// Когда запись правили (`mt`, миллисекунды): спор «кто двигал позже — приложение или Календарь» решается им.
+    public var recordModified: Int64?
 
     public init(title: String, start: Date, end: Date, allDay: Bool = false, timeZoneId: String? = nil,
                 offsetSeconds: Int = 0, locationTitle: String? = nil, latitude: Double? = nil,
-                longitude: Double? = nil, url: URL) {
+                longitude: Double? = nil, url: URL, notes: String? = nil, recordModified: Int64? = nil) {
         self.title = title; self.start = start; self.end = end; self.allDay = allDay
         self.timeZoneId = timeZoneId; self.offsetSeconds = offsetSeconds
         self.locationTitle = locationTitle; self.latitude = latitude; self.longitude = longitude
-        self.url = url
+        self.url = url; self.notes = notes; self.recordModified = recordModified
     }
 
     /// Ключ записи — её ссылка целиком.
@@ -98,18 +103,38 @@ public struct StoredEvent: Sendable, Hashable {
     public let latitude: Double?
     public let longitude: Double?
     public let url: URL?
+    /// Заметки события, как их видит Календарь.
+    public let notes: String?
+    /// Когда событие правили в последний раз (`lastModifiedDate`); `nil` — база не сказала.
+    public var modified: Date?
+    /// Событие повторяется: его вхождения делят один идентификатор, поэтому такие события зеркало не трогает.
+    public let recurring: Bool
 
     public init(id: String, calendarId: String, title: String, start: Date, end: Date, allDay: Bool,
-                offsetSeconds: Int, locationTitle: String?, latitude: Double?, longitude: Double?, url: URL?) {
+                offsetSeconds: Int, locationTitle: String?, latitude: Double?, longitude: Double?, url: URL?,
+                notes: String? = nil, modified: Date? = nil, recurring: Bool = false) {
         self.id = id; self.calendarId = calendarId; self.title = title; self.start = start; self.end = end
         self.allDay = allDay; self.offsetSeconds = offsetSeconds; self.locationTitle = locationTitle
         self.latitude = latitude; self.longitude = longitude; self.url = url
+        self.notes = notes; self.modified = modified; self.recurring = recurring
     }
 
-    /// Совпадает ли событие с тем, что должно стоять. Сравниваются только наши поля: напоминания и заметки, которые
-    /// человек добавил сам, расхождением не считаются (`docs/14`: «мы это переживём»).
+    /// Заметки сравниваются без концевых пробелов и по единым переводам строк: база может переложить `\r\n` в `\n`.
+    static func normalized(_ notes: String?) -> String {
+        (notes ?? "").replacingOccurrences(of: "\r\n", with: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Совпадает ли событие с тем, что должно стоять. Сравниваются только наши поля: напоминания, которые человек
+    /// добавил сам, расхождением не считаются (`docs/14`: «мы это переживём»). Заметки — наше поле (30.4): правка
+    /// заметки в Календаре в запись не возвращается, и событие перепишется как у нас.
     public func matches(_ d: EventDraft) -> Bool {
-        guard title == d.title, allDay == d.allDay, url == d.url else { return false }
+        guard title == d.title, allDay == d.allDay, url == d.url, Self.normalized(notes) == Self.normalized(d.notes) else { return false }
+        return timeAndPlaceMatch(d)
+    }
+
+    /// То, что возвращается из Календаря в запись: время и место (30.4).
+    public func timeAndPlaceMatch(_ d: EventDraft) -> Bool {
+        guard allDay == d.allDay else { return false }
         if allDay {
             // «На весь день» система хранит по дням: конец последнего дня читается как 23:59:59 (замер на настоящем
             // EventKit), а мы кладём его начало. Сравниваются дни, а не секунды, иначе событие переписывалось бы
@@ -131,6 +156,41 @@ public struct StoredEvent: Sendable, Hashable {
         case let (x?, y?): abs(x - y) < 1e-5
         default: false
         }
+    }
+}
+
+/// Время и место события так, как их в последний раз видели и зеркало, и Календарь (шаг 30.4). Лежит на устройстве
+/// рядом со связью «запись → событие» и отвечает на один вопрос: кто двигал — приложение или человек в Календаре.
+/// Событие, которое отличается от этого отпечатка, правили в Календаре; запись, которая отличается, — в приложении.
+public struct EventFacts: Codable, Hashable, Sendable {
+    public var start: Double
+    public var end: Double
+    public var allDay: Bool
+    public var location: String
+    public var latitude: Double?
+    public var longitude: Double?
+
+    public init(event e: StoredEvent) {
+        start = e.start.timeIntervalSince1970; end = e.end.timeIntervalSince1970; allDay = e.allDay
+        location = e.locationTitle ?? ""; latitude = e.latitude; longitude = e.longitude
+    }
+
+    public init(draft d: EventDraft) {
+        start = d.start.timeIntervalSince1970; end = d.end.timeIntervalSince1970; allDay = d.allDay
+        location = d.locationTitle ?? ""; latitude = d.latitude; longitude = d.longitude
+    }
+
+    /// Те же допуски, что у `StoredEvent.matches`: секунда во времени и 1e-5 градуса в координатах.
+    public func isClose(to o: EventFacts) -> Bool {
+        guard allDay == o.allDay, location == o.location, abs(start - o.start) < 1, abs(end - o.end) < 1 else { return false }
+        func close(_ a: Double?, _ b: Double?) -> Bool {
+            switch (a, b) {
+            case (nil, nil): true
+            case let (x?, y?): abs(x - y) < 1e-5
+            default: false
+            }
+        }
+        return close(latitude, o.latitude) && close(longitude, o.longitude)
     }
 }
 
@@ -164,4 +224,7 @@ public protocol CalendarStoring: Sendable {
     /// Завести событие (`replacing == nil`) или переписать наши поля у существующего. Возвращает идентификатор.
     func save(_ draft: EventDraft, replacing id: String?, calendarId: String) async throws -> String
     func remove(eventId: String) async throws
+    /// Календарная база телефона изменилась (человек правил в Календаре, подтянулась синхронизация, мы сами записали):
+    /// `EKEventStoreChanged`. Подписчик сверяется, но не чаще, чем нужно, — склеивает всплески сам.
+    func changes() -> AsyncStream<Void>
 }

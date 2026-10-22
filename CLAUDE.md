@@ -91,7 +91,7 @@
   and the spots layer (pins, name plates, route numbers) sits between them, **not rotated**: each mark is placed at
   `MapSpots.screenTip` and stays upright. A new glass element near the rotor goes outside both halves.
   `node Tools/rotor.js --spots --bare --angles 0,45,…,33 --motion 4` measures plate size and place per angle (red on a swell).
-- **Calendar mirror (30.1–3).** Shoots, meetings and blocks → the iPhone Calendar, one way (`LightPlanData/Calendar/`:
+- **Calendar mirror (30.1–4).** Shoots, meetings and blocks → the iPhone Calendar; since 30.4 time/place and hand-made events come back (see the 30.4 paragraph below). 30.1–3: one way (`LightPlanData/Calendar/`:
   `CalendarPlan` records → events, `CalendarMirror` actor reconciles, `EventKitCalendarStore` is the only EventKit user,
   `InMemoryCalendarStore` is the fake for tests/shots; UI side `AppModel+CalendarMirror`, Settings «Съёмки» →
   `CalendarMirrorSection`). **Full Calendar access, not write-only** — measured on iOS 26.5 (`Tools/calendar_probe/README.md`):
@@ -99,6 +99,15 @@
   Link record↔event = `lightplan://shoot/<id>` inside the event (truth) + a device-local hint in `UserDefaults`
   (`CalendarMirrorRecord`), never in the snapshot. Real EventKit check: `python3 Tools/calendar_sim.py --app <.app>`
   (the app walks `-LPCalendarProbe <file>`; `--selftest` checks the checker).
+- **Calendar both ways (30.4).** Alexey: the calendar is personal → client phones + shoot notes go into the event (`CalendarNotes`: international
+  phones, no money/docs). Back from the Calendar: **time and place of a shoot/meeting** (`CalendarPlan.applying`; not titles/notes — those snap back) and
+  **events made by hand in the «Light Plan» calendar → draft shoots** (`Session.fromCalendar`, key `calTitle`; draft = `fromCalendar` + no genre + no client;
+  `kind == .shoot`; planner shows «Черновик» via `PlannerWords`). Who moved, decided by `CalendarMirrorRecord.facts` (device-local fingerprint of time/place at the last
+  meeting of both sides): event off the fingerprint, record on it → event wins; both moved → later `mt` / `lastModifiedDate` wins; no fingerprint → record wins. The mirror
+  only *reports* (`Report.incoming`); `AppModel.takeCalendarIncoming` applies, stamps `mt`, flushes to disk, and only then `adopt`s the event (links it to the new record).
+  All-day, recurring and >24 h events are left alone. Blocks do not come back. Zones: `learnCalendarZones` asks the geocoder for unknown 0.5° cells before a pass
+  (≤ 6 per pass, once per launch each), so Tomsk is +7 not the longitude estimate +6 once online. `-LPCalendarProbe` drives the whole thing on real EventKit
+  (`calendar_sim.py`: hand move / rename / hand-added draft / reinstall / draft event deleted).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

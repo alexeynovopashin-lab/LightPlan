@@ -15,8 +15,24 @@ public struct CalendarMirrorRecord: Codable, Equatable, Sendable {
     /// Запись → событие: ключ записи (`lightplan://shoot/<id>`) и идентификатор события. Подсказка, а не истина:
     /// событие в нашем календаре находится и по ссылке внутри него.
     public var links: [String: String] = [:]
+    /// Запись → время и место события, какими их в последний раз видели обе стороны (30.4): по нему узнаётся, что
+    /// человек подвинул событие в Календаре. Нет отпечатка (переустановка, первый проход) — побеждает запись.
+    public var facts: [String: EventFacts] = [:]
 
     public init() {}
+
+    // Запись, сохранённая сборкой до 30.4, не знает `facts`: без снисходительного чтения она бы не прочиталась, и
+    // зеркало выглядело бы выключенным.
+    private enum CodingKeys: String, CodingKey { case wanted, calendarId, sourceId, links, facts }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        wanted = try c.decodeIfPresent(Bool.self, forKey: .wanted) ?? false
+        calendarId = try c.decodeIfPresent(String.self, forKey: .calendarId)
+        sourceId = try c.decodeIfPresent(String.self, forKey: .sourceId)
+        links = try c.decodeIfPresent([String: String].self, forKey: .links) ?? [:]
+        facts = try c.decodeIfPresent([String: EventFacts].self, forKey: .facts) ?? [:]
+    }
 }
 
 public protocol CalendarMirrorMemory: AnyObject, Sendable {

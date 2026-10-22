@@ -61,7 +61,8 @@ def check(log):
     def ok(name, cond, detail=""):
         out.append((name, bool(cond), detail))
 
-    need = ["start", "on", "repeat", "deleted-by-hand", "reconciled", "moved", "trashed", "restored", "calendar-recreated", "reinstalled", "done"]
+    need = ["start", "on", "repeat", "deleted-by-hand", "reconciled", "moved", "trashed", "restored", "calendar-recreated", "reinstalled",
+            "hand-moved", "hand-moved-returned", "hand-renamed", "hand-added", "hand-added-repeat", "hand-added-reinstalled", "hand-draft-deleted", "done"]
     ok("журнал полон", all(n in by for n in need), f"есть шаги: {[s['stage'] for s in log]}")
     if not all(n in by for n in need):
         return out
@@ -72,9 +73,11 @@ def check(log):
     titles = sorted(e["title"] for e in events(on))
     ok("четыре записи — четыре события", titles == sorted(["Свадьба · Ирина", "Встреча · портрет · Олег", "Выходной", "Перелёт"]), str(titles))
     w = next((e for e in events(on) if e["title"] == "Свадьба · Ирина"), {})
-    ok("свадьба: ссылка, место, координаты, «занят» (где календарь это умеет), без напоминаний и заметок",
+    ok("свадьба: ссылка, место, координаты, «занят» (где календарь это умеет), без напоминаний",
        w.get("url") == "lightplan://shoot/probe-w" and w.get("location") == "Парк, ул. Ленина 5" and abs(w.get("lat", 0) - 56.4977) < 1e-3
-       and (w.get("busy") or not calendars(on)[0].get("supportsBusy")) and w.get("alarms") == 0 and w.get("notes") == "", str(w))
+       and (w.get("busy") or not calendars(on)[0].get("supportsBusy")) and w.get("alarms") == 0, str(w))
+    ok("свадьба: в заметках событий телефон клиента (международный вид) и заметки съёмки",
+       w.get("notes") == WEDDING_NOTES, repr(w.get("notes")))
     ok("свадьба: пояс места съёмки (оценка Томска +6 или +7), а не телефона", w.get("tzOffset") in (21600, 25200) and w.get("tz"), f"tz={w.get('tz')} off={w.get('tzOffset')}")
     f = next((e for e in events(on) if e["title"] == "Перелёт"), {})
     ok("перелёт: пояс вылета +7, четыре часа в пути", f.get("tzOffset") == 25200 and f.get("end") and
@@ -101,6 +104,67 @@ def check(log):
     re_ = by["reinstalled"]
     ok("переустановка: память стёрта — прежний календарь принят обратно, второго нет, дублей нет",
        len(calendars(re_)) == 1 and sorted(e["title"] for e in events(re_)) == titles, f"календарей {len(calendars(re_))}, событий {len(events(re_))}")
+    out += check_reverse(by)
+    return out
+
+
+WEDDING_NOTES = "Клиент: Ирина +7 916 123-45-67\n\nПриезжать за час"
+
+
+def secs(iso):
+    return time.mktime(time.strptime(iso, "%Y-%m-%dT%H:%M:%SZ"))
+
+
+def record(stage, rid=None):
+    rs = stage.get("sessions", [])
+    return next((r for r in rs if r["id"] == rid), None) if rid else rs
+
+
+def check_reverse(by):
+    """Шаг 30.4: человек работает в Календаре — время и место возвращаются, название и заметки нет, событие рождает один черновик."""
+    out = []
+
+    def ok(name, cond, detail=""):
+        out.append((name, bool(cond), detail))
+
+    before = record(by["reinstalled"], "probe-w")
+    ev = lambda st, title: next((e for e in events(st) if e["title"] == title), {})
+    w0, w1 = ev(by["reinstalled"], "Свадьба · Ирина"), ev(by["hand-moved-returned"], "Свадьба · Ирина")
+    r1 = record(by["hand-moved-returned"], "probe-w")
+    ok("двигали событие в Календаре: съёмка в приложении сдвинулась на тот же час и сменила место",
+       before and r1 and r1["start"] == before["start"] + 60 and r1["end"] == before["end"] + 60 and r1["place"] == "Набережная"
+       and r1["day"] == before["day"], f"{before and (before['start'], before['end'])} → {r1 and (r1['start'], r1['end'], r1['place'])}")
+    ok("двигали событие: метка правки (mt) записи стала свежей", r1 and before and r1["mt"] > before["mt"], f"{before and before['mt']} → {r1 and r1['mt']}")
+    ok("двигали событие: оно осталось там, куда его поставил человек, место в нём — новое, дубля нет",
+       w0.get("start") and w1.get("start") and secs(w1["start"]) - secs(w0["start"]) == 3600 and w1.get("location") == "Набережная"
+       and len(events(by["hand-moved-returned"])) == len(events(by["reinstalled"])),
+       f"{w0.get('start')} → {w1.get('start')} / {w1.get('location')}")
+    r2 = record(by["hand-renamed"], "probe-w")
+    w2 = ev(by["hand-renamed"], "Свадьба · Ирина")
+    ok("переименовали событие и переписали заметки: в съёмку это не вернулось",
+       r1 and r2 and all(r1[k] == r2[k] for k in ("start", "end", "contact", "notes", "genre", "place")), f"{r1} / {r2}")
+    ok("…а событие вернулось к названию и заметкам, как у нас", w2.get("notes") == WEDDING_NOTES and not [e for e in events(by["hand-renamed"]) if e["title"] == "Чужое название"],
+       f"{w2.get('notes')!r}")
+
+    added = by["hand-added"]
+    drafts = [r for r in record(added) if r["draft"]]
+    d = drafts[0] if drafts else {}
+    ok("событие, заведённое руками в «Light Plan», стало ровно одним черновиком съёмки", len(drafts) == 1 and d.get("from") == "Маша фотосессия"
+       and d.get("genre") == "" and d.get("contact") == "", str(record(added)))
+    ok("черновик: время, место и заметки взяты из события (название — первой строкой заметок)",
+       d.get("place") == "Парк Горького" and d.get("notes") == "Маша фотосессия\nв парке", str(d))
+    e = ev(added, "Маша фотосессия")
+    ok("событие получило ссылку на черновик и сохранило своё название; новых событий нет (всего на одно больше)",
+       e.get("url") == f"lightplan://shoot/{d.get('id')}" and len(events(added)) == len(events(by["hand-moved-returned"])) + 1, str(e))
+    for name in ("hand-added-repeat", "hand-added-reinstalled", "hand-draft-deleted"):
+        st = by[name]
+        ds = [r for r in record(st) if r["draft"]]
+        label = {"hand-added-repeat": "ещё два прохода", "hand-added-reinstalled": "«переустановка» (память стёрта)", "hand-draft-deleted": "событие черновика удалили руками"}[name]
+        ok(f"{label}: черновик один, событий столько же, календарь один",
+           len(ds) == 1 and ds[0]["id"] == d.get("id") and len(events(st)) == len(events(added)) and len(calendars(st)) == 1,
+           f"черновиков {len(ds)}, событий {len(events(st))}, календарей {len(calendars(st))}")
+    ok("событие черновика удалили руками: черновик остался, событие вернулось со ссылкой",
+       ev(by["hand-draft-deleted"], "Маша фотосессия").get("url") == f"lightplan://shoot/{d.get('id')}", str(ev(by["hand-draft-deleted"], "Маша фотосессия")))
     return out
 
 
@@ -109,7 +173,51 @@ def selftest():
     # Пустой и подпорченный журналы обязаны стать красными.
     bad = check(good)
     assert not all(c[1] for c in bad), "журнал без шагов прошёл проверку"
-    print("selftest: ok (неполный журнал красный)")
+
+    # Обратная сторона: синтетический хороший журнал зелёный, а каждая поломка по отдельности — красная.
+    def ev_row(title, start, url, notes="", loc=""):
+        return {"title": title, "start": start, "end": start, "allDay": False, "url": url, "notes": notes, "location": loc}
+
+    def st(name, events_, sessions):
+        return {"stage": name, "auth": "allowed", "on": True, "source": "iCloud",
+                "rows": [{"calendar": "Light Plan"}] + events_, "sessions": sessions}
+
+    base_s = {"id": "probe-w", "day": "2026-10-25", "start": 660, "end": 900, "draft": False, "from": "", "genre": "wedding",
+              "contact": "Ирина", "notes": "Приезжать за час", "place": "Парк", "mt": 10}
+    moved_s = dict(base_s, start=720, end=960, place="Набережная", mt=20)
+    draft_s = {"id": "n1", "day": "2026-11-01", "start": 900, "end": 960, "draft": True, "from": "Маша фотосессия", "genre": "", "contact": "",
+               "notes": "Маша фотосессия\nв парке", "place": "Парк Горького", "mt": 30}
+    w = lambda t: ev_row("Свадьба · Ирина", t, "lightplan://shoot/probe-w", WEDDING_NOTES, "Парк")
+    wm = lambda t: ev_row("Свадьба · Ирина", t, "lightplan://shoot/probe-w", WEDDING_NOTES, "Набережная")
+    other = ev_row("Выходной", "2026-10-28T00:00:00Z", "lightplan://block/probe-b")
+    draft_e = ev_row("Маша фотосессия", "2026-11-01T12:00:00Z", "lightplan://shoot/n1", "Маша фотосессия\nв парке", "Парк Горького")
+
+    def make(**kw):
+        d = {
+            "reinstalled": st("reinstalled", [w("2026-10-25T08:00:00Z"), other], [base_s]),
+            "hand-moved-returned": st("hand-moved-returned", [wm("2026-10-25T09:00:00Z"), other], [moved_s]),
+            "hand-renamed": st("hand-renamed", [wm("2026-10-25T09:00:00Z"), other], [moved_s]),
+            "hand-added": st("hand-added", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s, draft_s]),
+            "hand-added-repeat": st("hand-added-repeat", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s, draft_s]),
+            "hand-added-reinstalled": st("hand-added-reinstalled", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s, draft_s]),
+            "hand-draft-deleted": st("hand-draft-deleted", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s, draft_s]),
+        }
+        d.update(kw)
+        return d
+
+    assert all(c[1] for c in check_reverse(make())), [c for c in check_reverse(make()) if not c[1]]
+    breakages = {
+        "съёмка не сдвинулась": make(**{"hand-moved-returned": st("hand-moved-returned", [wm("2026-10-25T09:00:00Z"), other], [base_s])}),
+        "событие откатили к прежнему времени": make(**{"hand-moved-returned": st("hand-moved-returned", [w("2026-10-25T08:00:00Z"), other], [moved_s])}),
+        "название съёмки переписали из Календаря": make(**{"hand-renamed": st("hand-renamed", [wm("2026-10-25T09:00:00Z"), other], [dict(moved_s, notes="другой текст")])}),
+        "событие осталось переименованным": make(**{"hand-renamed": st("hand-renamed", [dict(wm("2026-10-25T09:00:00Z"), title="Чужое название"), other], [moved_s])}),
+        "второй черновик после переустановки": make(**{"hand-added-reinstalled": st("hand-added-reinstalled", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s, draft_s, dict(draft_s, id="n2")])}),
+        "событие черновика не вернулось": make(**{"hand-draft-deleted": st("hand-draft-deleted", [wm("2026-10-25T09:00:00Z"), other], [moved_s, draft_s])}),
+        "черновика нет": make(**{"hand-added": st("hand-added", [wm("2026-10-25T09:00:00Z"), other, draft_e], [moved_s])}),
+    }
+    for name, log in breakages.items():
+        assert not all(c[1] for c in check_reverse(log)), f"поломка «{name}» прошла проверку"
+    print(f"selftest: ok (неполный журнал красный; хороший обратный журнал зелёный; {len(breakages)} поломок красные)")
     return 0
 
 

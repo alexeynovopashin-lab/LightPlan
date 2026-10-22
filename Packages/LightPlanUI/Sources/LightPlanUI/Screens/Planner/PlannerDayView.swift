@@ -623,7 +623,9 @@ struct PlannerDayBody: View {
         }
         guard let s = it.session else { return ("", "", nil) }
         let who = f.words.clientName(s)
-        let name = !who.isEmpty ? who : it.kind == .meet ? f.t.t("day.meet") : it.kind == .event ? f.t.t("day.event") : f.words.typeName(s)
+        // Черновик из Календаря (30.4): над названием события стоит метка «Черновик», как у недели и месяца.
+        let name = s.isCalendarDraft ? [f.words.typeName(s), who].filter { !$0.isEmpty }.joined(separator: " · ")
+            : !who.isEmpty ? who : it.kind == .meet ? f.t.t("day.meet") : it.kind == .event ? f.t.t("day.event") : f.words.typeName(s)
         let sub: String
         switch it.kind {
         case .meet: sub = f.t.t("day.meetLower", ["genre": f.words.shortType(s).lowercased()])

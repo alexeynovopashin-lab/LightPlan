@@ -388,17 +388,18 @@ import Testing
         #expect(r.store.allEvents.contains { $0.url == CalendarPlan.url(shoot: "a") && $0.title == "Свадьба · Ирина" })
     }
 
-    @Test func anEventMovedByHandSnapsBackToTheRecord() async {
+    @Test func aRenamedEventSnapsBackToTheRecordTitle() async {
+        // Название — наше поле: правка в Календаре не возвращается (30.4: «двигать можно, переписывать нельзя»).
         let r = await Rig.on()
         let d = Self.draft("a")
         _ = await r.report([d])
         let id = r.store.allEvents[0].id
         r.store.userEdit(id) { $0 = StoredEvent(id: $0.id, calendarId: $0.calendarId, title: "Что-то другое",
-                                                start: $0.start.addingTimeInterval(7200), end: $0.end.addingTimeInterval(7200),
-                                                allDay: false, offsetSeconds: $0.offsetSeconds, locationTitle: nil,
-                                                latitude: nil, longitude: nil, url: $0.url) }
+                                                start: $0.start, end: $0.end, allDay: false, offsetSeconds: $0.offsetSeconds,
+                                                locationTitle: $0.locationTitle, latitude: $0.latitude,
+                                                longitude: $0.longitude, url: $0.url) }
         let rep = await r.report([d])
-        #expect(rep.updated == 1)
+        #expect(rep.updated == 1 && rep.incoming.isEmpty)
         #expect(r.store.allEvents[0].title == d.title && r.store.allEvents[0].start == d.start)
         #expect(r.store.allEvents[0].id == id)
     }
@@ -417,7 +418,7 @@ import Testing
         #expect(r.store.allEvents.count == 1 && r.store.allEvents[0].url == d.url)
     }
 
-    @Test func aPersonalEventInOurCalendarIsLeftAlone() async {
+    @Test func aPersonalEventInOurCalendarIsNotRewrittenByThePass() async {
         let r = await Rig.on()
         _ = await r.report([Self.draft("a")])
         let mine = r.store.userAdd(title: "14:00 встреча", start: Self.t0, end: Self.t0.addingTimeInterval(3600),

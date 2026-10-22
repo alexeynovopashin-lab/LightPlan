@@ -388,6 +388,18 @@ public final class AppModel {
     @ObservationIgnored var calendarGen = 0
     @ObservationIgnored var calendarForce = false
     @ObservationIgnored var calendarChain: Task<Void, Never>?
+    /// Слушает «база календарей изменилась» (30.4): подвинули событие в Календаре — запись узнает об этом без
+    /// возврата в приложение.
+    @ObservationIgnored var calendarWatch: Task<Void, Never>?
+    /// Клетки поясов, которые уже спрашивали у геокодера в этом запуске: не ответили (нет сети) — не долбим снова.
+    @ObservationIgnored var calendarZonesTried: Set<String> = []
+    /// Сколько проходов подряд, начатых уведомлением базы, сами что-то записали в календарь: запись будит уведомление,
+    /// и если календарь вечно переписывает своё (система нормализует поле по-своему), цепочка не гаснет. Три подряд —
+    /// предел: дальше уведомления ждут возврата в приложение или правки данных.
+    /// Тишина, после которой уведомление базы запускает проход (тест ставит короче).
+    @ObservationIgnored var calendarSettle: Duration = .seconds(1)
+    @ObservationIgnored var calendarWatchStreak = 0
+    @ObservationIgnored var calendarPassWrote = false
     /// Что последний раз привели в Календарь: без правки данных проход молчит (кроме возврата в приложение).
     @ObservationIgnored var calendarApplied: [EventDraft]?
     /// Что система сказала о праве на календарь: тумблер «Съёмки в Календаре» показывает его честно.

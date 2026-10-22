@@ -149,6 +149,10 @@ public struct Session: Sendable, Hashable, Identifiable {
     public var icsImportedAt: Int64?
     /// `mt` — когда запись правили последний раз (миллисекунды); нужна обмену устройств.
     public var modifiedAt: Int64?
+    /// `calTitle` — название события, из которого запись выросла в Календаре iPhone (шаг 30.4). Только у нас: веб
+    /// ключа не знает и сохраняет его как чужой. Пока жанр и клиент пусты, запись — черновик (`isCalendarDraft`) и
+    /// называется этим текстом; заполнили — текст остаётся в заметке, а поле — следом, откуда запись родом.
+    public var fromCalendar: String?
     /// Ключи снимка, которых эта сборка не знает: форма и запись их не трогают.
     public var extra: [String: JSONValue] = [:]
 
@@ -161,6 +165,13 @@ public struct Session: Sendable, Hashable, Identifiable {
         self.end = end
         self.duration = duration
         self.genre = genre
+    }
+
+    /// Черновик из Календаря (шаг 30.4): запись родилась из события, заведённого руками в календаре «Light Plan», и её
+    /// ещё не заполнили — ни жанра, ни клиента. Это съёмка (`kind == .shoot`) с пустыми полями, а не новый вид записи:
+    /// всё, что есть у съёмки (карточка, деньги, маршрут), у неё уже есть, фотографу остаётся дозаполнить.
+    public var isCalendarDraft: Bool {
+        fromCalendar != nil && kind == .shoot && genre == nil && contact.isEmpty && persons.isEmpty && orgId == nil
     }
 
     /// Жанр со всем, что из него выводится.

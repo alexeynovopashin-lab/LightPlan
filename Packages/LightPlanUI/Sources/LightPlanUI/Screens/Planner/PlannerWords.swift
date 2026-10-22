@@ -28,11 +28,15 @@ struct PlannerWords {
         return soft("genre." + g.rawValue, g.rawValue)
     }
 
-    /// Имя съёмки (веб `typeName`).
-    func typeName(_ s: Session) -> String { sub(s).map(subName) ?? genreName(s.genre) }
+    /// Имя съёмки (веб `typeName`). Черновик из Календаря (30.4) называется «Черновик» — жанра у него ещё нет, а метка
+    /// нужна везде, где строка съёмки: в ленте, неделе, месяце и шапке карточки.
+    func typeName(_ s: Session) -> String {
+        s.isCalendarDraft ? lexicon.t("calm.draft") : (sub(s).map(subName) ?? genreName(s.genre))
+    }
 
     /// Короткое имя для узких мест (веб `shortType`): «Архитект.» в клетке.
     func shortType(_ s: Session) -> String {
+        if s.isCalendarDraft { return lexicon.t("calm.draft") }
         if let x = sub(s) { return subName(x) }
         guard let g = s.genre else { return "" }
         return soft("genreShort." + g.rawValue, genreName(g))
@@ -44,6 +48,8 @@ struct PlannerWords {
     /// Кого снимаем (веб `clientName`): пару — по именам без фамилий, заказ —
     /// организацией, остальное — строкой клиента без телефона.
     func clientName(_ s: Session) -> String {
+        // Черновик из Календаря: клиента нет, зато есть название события, как его написал человек.
+        if s.isCalendarDraft { return s.fromCalendar ?? "" }
         let names = s.persons.map { Self.firstName($0.name) }.filter { !$0.isEmpty }
         if !names.isEmpty { return names.joined(separator: lexicon.t("card.and")) }
         if let id = s.orgId, let org = orgs.first(where: { $0.id == id }), !org.name.isEmpty { return org.name }

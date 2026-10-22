@@ -110,7 +110,8 @@ public final class EventKitCalendarStore: CalendarStoring, @unchecked Sendable {
         return StoredEvent(
             id: id, calendarId: cal.calendarIdentifier, title: e.title ?? "", start: e.startDate, end: e.endDate,
             allDay: e.isAllDay, offsetSeconds: zone.secondsFromGMT(for: e.startDate),
-            locationTitle: e.structuredLocation?.title, latitude: geo?.latitude, longitude: geo?.longitude, url: e.url)
+            locationTitle: e.structuredLocation?.title, latitude: geo?.latitude, longitude: geo?.longitude, url: e.url,
+            notes: e.notes, modified: e.lastModifiedDate, recurring: e.hasRecurrenceRules)
     }
 
     public func events(calendarId: String, from: Date, to: Date) async -> [StoredEvent] {
@@ -151,6 +152,8 @@ public final class EventKitCalendarStore: CalendarStoring, @unchecked Sendable {
             // «Занят»: ради этого половина затеи — глядя на свой календарь, человек видит, что день не свободен.
             if cal.supportedEventAvailabilities.contains(.busy) { e.availability = .busy }
             e.url = d.url
+            // Заметки — наше поле: телефон клиента и заметки съёмки; без них поле чистится.
+            e.notes = d.notes
             if let title = d.locationTitle {
                 let loc = EKStructuredLocation(title: title)
                 if let la = d.latitude, let lo = d.longitude { loc.geoLocation = CLLocation(latitude: la, longitude: lo) }
@@ -162,6 +165,17 @@ public final class EventKitCalendarStore: CalendarStoring, @unchecked Sendable {
             do { try store.save(e, span: .thisEvent, commit: true) } catch { throw CalendarStoreError.refused(error.localizedDescription) }
             guard let out = e.eventIdentifier else { throw CalendarStoreError.refused("no identifier after save") }
             return out
+        }
+    }
+
+    /// `EKEventStoreChanged` приходит и на наши собственные записи, и на правки в Календаре, и на синхронизацию
+    /// iCloud; всплески склеивает подписчик.
+    public func changes() -> AsyncStream<Void> {
+        AsyncStream { cont in
+            nonisolated(unsafe) let token = NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: store, queue: nil) { _ in
+                cont.yield()
+            }
+            cont.onTermination = { _ in NotificationCenter.default.removeObserver(token) }
         }
     }
 

@@ -76,6 +76,7 @@ import LightPlanDomain
         s.icsSignature = "sig"
         s.icsImportedAt = 1_780_000_000_000
         s.modifiedAt = 1_780_000_000_000
+        s.fromCalendar = "Маша фотосессия"
         s.extra = ["future": .string("поле веба новее этой сборки")]
         return s
     }

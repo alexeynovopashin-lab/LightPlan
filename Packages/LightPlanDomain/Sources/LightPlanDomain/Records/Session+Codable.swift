@@ -17,7 +17,7 @@ extension Session: Codable {
         case guests, trip, tripManual, tripPlace, brief, models, breed
         case docs, gear, playlist
         case questSent, questOff, fromMeetOn, fromMeetId, grewOn, grewToId, dayMoved
-        case route, synced, telLog, rep, doneAt, icsSig, icsAt, mt
+        case route, synced, telLog, rep, doneAt, icsSig, icsAt, mt, calTitle
     }
 
     public init(from decoder: Decoder) throws {
@@ -98,6 +98,7 @@ extension Session: Codable {
         icsSignature = try c.decodeIfPresent(String.self, forKey: .icsSig)
         icsImportedAt = try c.decodeIfPresent(Int64.self, forKey: .icsAt)
         modifiedAt = try c.decodeIfPresent(Int64.self, forKey: .mt)
+        fromCalendar = try c.decodeIfPresent(String.self, forKey: .calTitle)
 
         // Ключи, которых натив не знает (веб новее, чем эта сборка), лежат
         // как есть и уходят обратно при записи — сохранение их не теряет.
@@ -181,6 +182,7 @@ extension Session: Codable {
         try c.encodeIfPresent(icsSignature, forKey: .icsSig)
         try c.encodeIfPresent(icsImportedAt, forKey: .icsAt)
         try c.encodeIfPresent(modifiedAt, forKey: .mt)
+        try c.encodeIfPresent(fromCalendar, forKey: .calTitle)
 
         var dyn = encoder.container(keyedBy: AnyKey.self)
         for (k, v) in extra {

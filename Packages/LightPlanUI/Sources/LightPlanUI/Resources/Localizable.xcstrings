@@ -4166,6 +4166,41 @@
         }
       }
     },
+    "calm.draft" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Черновик"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Draft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrador"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下書き"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "草稿"
+          }
+        }
+      }
+    },
     "calm.failed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4347,31 +4382,136 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "В Календаре iPhone появится отдельный календарь «Light Plan»: в нём съёмки, встречи и занятое время. Правьте их здесь, в Light Plan, — Календарь только показывает. Подвинутое или удалённое там вернётся таким, как у вас здесь, когда вы откроете приложение."
+            "value" : "В Календаре iPhone появится отдельный календарь «Light Plan»: в нём съёмки, встречи и занятое время, а в описании события — телефоны клиента и заметки. Подвинули событие или сменили его место в Календаре — съёмка в Light Plan изменится так же. Названия и заметки правьте здесь: что изменено в Календаре, вернётся как у вас. Событие, которое вы добавите в календарь «Light Plan», станет в приложении черновиком съёмки — останется указать клиента и жанр. Удалённое в Календаре событие вернётся, когда вы откроете приложение; съёмка при этом остаётся."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Light Plan adds its own calendar named “Light Plan” to the iPhone Calendar and shows your shoots, meetings and busy time in it. Edit them here in Light Plan — the Calendar only displays them. Anything moved or deleted there comes back as it is in Light Plan the next time you open the app."
+            "value" : "Light Plan adds its own calendar named “Light Plan” to the iPhone Calendar with your shoots, meetings and busy time; each event lists the client’s phone numbers and your notes. Move an event or change its place in the Calendar and the shoot in Light Plan changes the same way. Edit titles and notes here: whatever you change in the Calendar is put back as it is in Light Plan. An event you add to the “Light Plan” calendar becomes a draft shoot in the app — you only add the client and the genre. An event deleted in the Calendar comes back when you open the app; the shoot stays."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Light Plan crea en el Calendario del iPhone un calendario aparte, «Light Plan», y muestra en él tus sesiones, reuniones y tiempo ocupado. Edítalas aquí, en Light Plan: el Calendario solo las muestra. Lo que muevas o borres allí volverá a quedar como en Light Plan la próxima vez que abras la app."
+            "value" : "Light Plan crea en el Calendario del iPhone un calendario aparte, «Light Plan», con tus sesiones, reuniones y tiempo ocupado; cada evento lleva los teléfonos del cliente y tus notas. Si mueves un evento o cambias el lugar en el Calendario, la sesión en Light Plan cambia igual. Edita los títulos y las notas aquí: lo que cambies en el Calendario vuelve a quedar como en Light Plan. Un evento que añadas al calendario «Light Plan» se convierte en un borrador de sesión en la app: solo falta indicar el cliente y el género. Un evento borrado en el Calendario vuelve al abrir la app; la sesión se queda."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Light PlanはiPhoneのカレンダーに「Light Plan」という専用カレンダーを作り、撮影・打ち合わせ・予定ありの時間を表示します。編集はLight Planで行ってください。カレンダー側は表示のみです。カレンダーで動かしたり削除したりした内容は、次にアプリを開いたときにLight Planの内容に戻ります。"
+            "value" : "Light PlanはiPhoneのカレンダーに「Light Plan」という専用カレンダーを作り、撮影・打ち合わせ・予定ありの時間を表示します。各予定には依頼主の電話番号とメモも入ります。カレンダーで予定を動かしたり場所を変えたりすると、Light Planの撮影も同じように変わります。タイトルとメモはLight Planで編集してください。カレンダー側で変えた内容は元に戻ります。「Light Plan」カレンダーに追加した予定は、アプリでは撮影の下書きになり、依頼主とジャンルを入れるだけで使えます。カレンダーで削除した予定は、アプリを開くと戻ります。撮影は残ります。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Light Plan 会在 iPhone 日历中新建一个名为“Light Plan”的日历，在其中显示你的拍摄、会面和已占用的时间。请在 Light Plan 里编辑，日历只负责显示。在日历里移动或删除的内容，会在你下次打开应用时恢复成 Light Plan 里的样子。"
+            "value" : "Light Plan 会在 iPhone 日历中新建一个名为“Light Plan”的日历，显示你的拍摄、会面和已占用的时间；每个日程里带有客户的电话和备注。在日历里移动日程或更改地点，Light Plan 里的拍摄会随之改变。标题和备注请在 Light Plan 里编辑，在日历里改动的内容会被改回来。你在“Light Plan”日历中添加的日程，会在应用里成为拍摄草稿，只需再填客户和类型。在日历里删除的日程会在你打开应用时回来，拍摄本身保留。"
+          }
+        }
+      }
+    },
+    "calm.noteClient" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клиент"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cliente"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "依頼主"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "客户"
+          }
+        }
+      }
+    },
+    "calm.noteContact" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Контакт"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contact"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contacto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連絡先"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "联系人"
+          }
+        }
+      }
+    },
+    "calm.notePhone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Телефон"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teléfono"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電話"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "电话"
           }
         }
       }

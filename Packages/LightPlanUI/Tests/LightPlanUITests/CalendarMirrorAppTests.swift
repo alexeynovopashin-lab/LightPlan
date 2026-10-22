@@ -138,7 +138,7 @@ struct CalendarMirrorAppTests {
         app.setCalendarMirror(true)
         await settle(app)
         let before = store.writeCounts
-        app.snapshot.sessions[0].notes = "позвонить за день"           // заметки в календарь не ездят
+        app.snapshot.sessions[0].rate = 40_000; app.snapshot.sessions[0].prepay = 10_000   // деньги в календарь не ездят
         app.persist()
         await settle(app)
         app.persist()
