@@ -339,8 +339,9 @@ public actor GhostCalendars {
         for ch in await choices() where ch.shown {
             reads += 1
             for e in await store.ghostEvents(calendarId: ch.calendar.id, from: from, to: to) {
-                // Отменённое и наши собственные записи (ссылка lightplan://…, где бы они ни лежали) призраками не бывают.
-                if e.cancelled || e.ours { continue }
+                // Отменённое, отклонённое владельцем и наши собственные записи (ссылка lightplan://…, где бы они ни лежали)
+                // призраками не бывают.
+                if e.cancelled || e.declined || e.ours { continue }
                 out.append(Ghost.make(e, in: ch.calendar, using: calendar))
             }
         }

@@ -106,6 +106,30 @@ import LightPlanDomain
         #expect(await r.week().isEmpty)
     }
 
+    @Test func onlyADeclinedInviteIsHiddenEveryOtherAnswerStaysAGhost() async {
+        let r = Rig()
+        func add(_ title: String, _ invite: InviteResponse?, _ m: Int) {
+            r.store.userAdd(title: title, start: Self.at(Self.day, m), end: Self.at(Self.day, m + 30), calendarId: r.work, invite: invite)
+        }
+        add("Отклонил", .declined, 600)
+        add("Под вопросом", .tentative, 660)
+        add("Не ответил", .pending, 720)
+        add("Принял", .accepted, 780)
+        add("Без приглашения", nil, 840)                 // своё событие или организатор: ответа нет
+        #expect(r.titles(await r.week()) == ["Под вопросом", "Не ответил", "Принял", "Без приглашения"])
+        // Отклонённое пропало и с ленты дня.
+        #expect(GhostDay.timed(on: Self.day, zone: Self.zone, ghosts: await r.week()).map(\.ghost.title) == ["Под вопросом", "Не ответил", "Принял", "Без приглашения"])
+    }
+
+    @Test func aDeclinedRepeatingEventIsHiddenInEveryOccurrenceAndOverlapIgnoresIt() async {
+        let r = Rig()
+        r.store.userAdd(title: "Отклонённый кружок", start: Self.at(Self.day, 600), end: Self.at(Self.day, 700), calendarId: r.son,
+                        repeating: .init(everyDays: 1, count: 3), invite: .declined)
+        let ghosts = await r.week()
+        #expect(ghosts.isEmpty)
+        #expect(GhostOverlap.find(start: Self.at(Self.day, 620), end: Self.at(Self.day, 640), day: Self.day, in: ghosts).isEmpty)
+    }
+
     @Test func ourOwnEventsAreSkippedEvenInSomeoneElsesCalendar() async {
         let r = Rig()
         r.store.userAdd(title: "Свадьба · Ирина", start: Self.at(Self.day, 600), end: Self.at(Self.day, 700), calendarId: r.work,

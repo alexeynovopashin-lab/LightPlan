@@ -165,7 +165,8 @@ public final class EventKitCalendarStore: CalendarStoring, @unchecked Sendable {
                 let place = e.structuredLocation?.title ?? e.location
                 return GhostEvent(id: id, calendarId: calendarId, title: e.title ?? "", start: e.startDate, end: e.endDate,
                                   allDay: e.isAllDay, location: place, cancelled: e.status == .canceled,
-                                  ours: CalendarPlan.isRecordLink(e.url))
+                                  ours: CalendarPlan.isRecordLink(e.url),
+                                  declined: e.attendees?.first(where: \.isCurrentUser)?.participantStatus == .declined)
             }
         }
     }

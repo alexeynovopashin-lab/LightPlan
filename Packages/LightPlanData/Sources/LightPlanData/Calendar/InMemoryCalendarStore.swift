@@ -20,6 +20,8 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         var repeats: [String: Repeat] = [:]
         /// Сколько раз спросили события календаря: тест кэша призраков.
         var eventReads = 0
+        /// Ответ владельца на приглашение у событий, заведённых с `invite:`.
+        var invites: [String: InviteResponse] = [:]
         /// Остановка чтения призраков посреди ответа: тест гонки «ответ пришёл после сброса кэша».
         var readGate: (@Sendable () async -> Void)?
         var next = 1
@@ -154,7 +156,8 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         if let gate = state.withLock({ $0.readGate }) { await gate() }
         return list.map { e in
             GhostEvent(id: e.id, calendarId: e.calendarId, title: e.title, start: e.start, end: e.end, allDay: e.allDay,
-                       location: e.locationTitle, cancelled: e.cancelled, ours: CalendarPlan.isRecordLink(e.url))
+                       location: e.locationTitle, cancelled: e.cancelled, ours: CalendarPlan.isRecordLink(e.url),
+                       declined: state.withLock { $0.invites[e.id] } == .declined)
         }
     }
 
@@ -250,7 +253,8 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
     public func userAdd(title: String, start: Date, end: Date, calendarId: String, url: URL? = nil,
                         allDay: Bool = false, offsetSeconds: Int = 0, location: String? = nil,
                         latitude: Double? = nil, longitude: Double? = nil, notes: String? = nil,
-                        recurring: Bool = false, cancelled: Bool = false, repeating: Repeat? = nil) -> String {
+                        recurring: Bool = false, cancelled: Bool = false, repeating: Repeat? = nil,
+                        invite: InviteResponse? = nil) -> String {
         let now = clock()
         defer { notify() }
         return state.withLock { s in
@@ -260,6 +264,7 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
                                        latitude: latitude, longitude: longitude, url: url, notes: notes,
                                        modified: now, recurring: recurring || repeating != nil, cancelled: cancelled)
             if let repeating { s.repeats[id] = repeating }
+            if let invite { s.invites[id] = invite }
             return id
         }
     }

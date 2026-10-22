@@ -386,6 +386,20 @@ struct GhostAppTests {
         #expect(r.app.formGhostWarning(form(r.app, start: 1200, duration: 60)) == nil)
     }
 
+    @Test func aDeclinedInviteNeverReachesTheStripTheWeekOrTheFormNote() async {
+        let r = await rig()
+        r.store.userAdd(title: "Отклонил", start: Self.at(Self.day, 600), end: Self.at(Self.day, 700), calendarId: r.work, invite: .declined)
+        r.store.userAdd(title: "Принял", start: Self.at(Self.day, 800), end: Self.at(Self.day, 900), calendarId: r.work, invite: .accepted)
+        r.store.userAdd(title: "Под вопросом", start: Self.at(Self.day, 1000), end: Self.at(Self.day, 1100), calendarId: r.work, invite: .tentative)
+        await r.app.reloadGhosts()
+        let f = PlannerFacts(app: r.app, dark: false)
+        #expect(f.ghostParts(on: Self.day).map(\.ghost.title) == ["Принял", "Под вопросом"])
+        #expect(GhostWeekRows.rows(f, Self.day).map(\.ghost.title) == ["Принял", "Под вопросом"])
+        #expect(r.app.formGhostWarning(form(r.app, start: 620, duration: 30)) == nil)                  // на отклонённое — молчит
+        #expect(r.app.formGhostWarning(form(r.app, start: 820, duration: 30)) != nil)                  // на принятое — предупреждает
+        #expect(r.app.formGhostWarning(form(r.app, start: 1020, duration: 30)) != nil)                 // на «под вопросом» — тоже
+    }
+
     @Test func aRealShootClashStillWinsOverTheGhostNote() async {
         var snap = Snapshot()
         snap.sessions = [Session(id: "s1", kind: .shoot, day: Self.day, start: 600, end: 720, genre: .portrait)]

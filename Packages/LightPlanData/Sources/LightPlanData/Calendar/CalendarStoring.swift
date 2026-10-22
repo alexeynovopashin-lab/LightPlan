@@ -223,6 +223,11 @@ public struct EventFacts: Codable, Hashable, Sendable {
     }
 }
 
+/// Ответ владельца телефона на приглашение (шаг 30.5б). Призраком не бывает только отклонённое.
+public enum InviteResponse: String, Sendable, Hashable {
+    case accepted, tentative, pending, declined
+}
+
 /// Чужое событие в том виде, в каком его читают призраки (шаг 30.5): только то, что показывается. Заметок, участников и
 /// ссылки здесь нет — для призрака их не читает уже сам слой календаря (ревью GPT к 3135988).
 public struct GhostEvent: Sendable, Hashable {
@@ -236,9 +241,14 @@ public struct GhostEvent: Sendable, Hashable {
     public let cancelled: Bool
     /// Событие — наша запись (ссылка `lightplan://…`): решает слой календаря на месте, сама ссылка наружу не выходит.
     public let ours: Bool
+    /// Владелец телефона отклонил это приглашение: человек туда не идёт, призраком оно не показывается. Читается один
+    /// признак — ответ самого владельца; список участников наружу не выходит. Нет приглашения (своё событие,
+    /// организатор, без участников) — `false`.
+    public let declined: Bool
 
     public init(id: String, calendarId: String, title: String, start: Date, end: Date, allDay: Bool,
-                location: String? = nil, cancelled: Bool = false, ours: Bool = false) {
+                location: String? = nil, cancelled: Bool = false, ours: Bool = false, declined: Bool = false) {
+        self.declined = declined
         self.id = id; self.calendarId = calendarId; self.title = title; self.start = start; self.end = end
         self.allDay = allDay; self.location = location; self.cancelled = cancelled; self.ours = ours
     }

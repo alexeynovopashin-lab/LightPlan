@@ -122,6 +122,8 @@
   by default; «Light Plan» (by mirror id and by title) never listed. Google-account holiday calendars arrive as ordinary calDAV —
   the person unticks them. Ghosts live in `AppModel.ghostList` only (memory): never in `snapshot`, never written to the Calendar.
   Privacy: only title, time, place, calendar name are read (`Ghost.make`); no notes/attendees/URLs; titles are never logged.
+  Declined invites (the phone owner's own attendee status, `GhostEvent.declined`) and cancelled events are not ghosts (30.5b); tentative/pending/
+  accepted/no-invite show. The simulator calendar cannot represent attendee status (EKParticipant is not creatable) — covered by the fake store only.
   Reading needs full access: «Другие календари» switch asks with a plain explanation first (`ghostAsk`), then the system prompt;
   denied earlier → row leads to iPhone Settings. Strip layout: ghosts get their own right rail ≤ 40 % of the lane after the 70 pt
   hour column, columns ≥ 56 pt (`GhostRail.capacity`: 2 on 393 pt, 1 on 320 pt); shoots narrow by the rail width **only on days with
