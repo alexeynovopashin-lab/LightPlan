@@ -112,6 +112,22 @@
   is *labelled* «Фотосъёмка» (`PlannerWords`, key `genre.photoshoot`), rules are the web's empty-genre ones (people group, 7 days); `EventForm.genreUnset` keeps nil on save. Zones: `learnCalendarZones` asks the geocoder for unknown 0.5° cells before a pass
   (≤ 6 per pass, once per launch each), so Tomsk is +7 not the longitude estimate +6 once online. `-LPCalendarProbe` drives the whole thing on real EventKit
   (`calendar_sim.py`: hand move / rename / hand-added draft / reinstall / draft event deleted).
+- **Other calendars as ghosts (30.5).** Events of the phone's other calendars (work, kids, matches) show on the day strip and the week
+  (not the month) as dashed ink-coloured read-only blocks; tap → `GhostSheet` with «Занять» (one plain busy block, title as note; never
+  automatic). Code: `LightPlanData/Calendar/GhostCalendars.swift` (policy, reader actor with cache, `GhostDay`, `GhostOverlap`,
+  `Ghost.busyBlock`), UI `Screens/Planner/PlannerGhosts.swift` (`GhostRail`, `GhostBlock`, all-day band, week rows, sheet),
+  `App/AppModel+Ghosts.swift`. **Default is one constant:** `GhostPolicy.ghostCalendarsDefault = .allPersonal | .none` (shipped
+  `.allPersonal`); the person's own ticks live apart (`GhostRecord.picks`, UserDefaults, not in the mirror record — mirror-off wipes
+  that one) and beat either default. Personal = EKCalendarType local/calDAV/exchange; subscription + birthday are listed but off
+  by default; «Light Plan» (by mirror id and by title) never listed. Google-account holiday calendars arrive as ordinary calDAV —
+  the person unticks them. Ghosts live in `AppModel.ghostList` only (memory): never in `snapshot`, never written to the Calendar.
+  Privacy: only title, time, place, calendar name are read (`Ghost.make`); no notes/attendees/URLs; titles are never logged.
+  Reading needs full access: «Другие календари» switch asks with a plain explanation first (`ghostAsk`), then the system prompt;
+  denied earlier → row leads to iPhone Settings. Strip layout: ghosts get their own right rail ≤ 40 % of the lane after the 70 pt
+  hour column, columns ≥ 56 pt (`GhostRail.capacity`: 2 on 393 pt, 1 on 320 pt); shoots narrow by the rail width **only on days with
+  ghosts**; a cluster with more columns than fit collapses into one «+N» block. Form: soft amber note between the clash and weather
+  notes (`formGhostWarning`, compares moments, not wall clocks). Real EventKit check: `calendar_sim.py` stages `ghost-*`
+  (second calendars «Сын»/«Работа», recurring, all-day, night, change notification, «Занять»).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

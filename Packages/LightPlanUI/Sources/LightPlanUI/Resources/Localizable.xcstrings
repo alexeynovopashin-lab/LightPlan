@@ -22885,6 +22885,846 @@
         }
       }
     },
+    "ghost.a11y" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из календаря «{cal}»: {name}, {when}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From the “{cal}” calendar: {name}, {when}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Del calendario «{cal}»: {name}, {when}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カレンダー「{cal}」：{name}、{when}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自日历“{cal}”：{name}，{when}"
+          }
+        }
+      }
+    },
+    "ghost.a11yDay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из календаря «{cal}»: {name}, весь день"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From the “{cal}” calendar: {name}, all day"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Del calendario «{cal}»: {name}, todo el día"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カレンダー「{cal}」：{name}、終日"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自日历“{cal}”：{name}，全天"
+          }
+        }
+      }
+    },
+    "ghost.a11yMany" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Событий из других календарей: {n}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Events from other calendars: {n}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eventos de otros calendarios: {n}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかのカレンダーの予定：{n}件"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他日历中的事件：{n}个"
+          }
+        }
+      }
+    },
+    "ghost.askM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы показать события других календарей (рабочий, дети, секции), Light Plan должен читать Календарь iPhone. Сейчас iPhone спросит разрешение. Чужие события видны только вам на этом телефоне, только для чтения: Light Plan их не меняет, не копирует в свои данные и никуда не отправляет."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To show events from your other calendars (work, kids, clubs), Light Plan needs to read the iPhone Calendar. iPhone will ask for permission next. Those events are visible only to you, on this phone, read-only: Light Plan never changes them, never copies them into its data and never sends them anywhere."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para mostrar los eventos de tus otros calendarios (trabajo, niños, actividades), Light Plan necesita leer el Calendario del iPhone. A continuación el iPhone pedirá permiso. Esos eventos solo los ves tú, en este teléfono y de solo lectura: Light Plan no los cambia, no los copia a los datos de la app y no los envía a ningún sitio."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仕事・子ども・習い事など、ほかのカレンダーの予定を表示するには、Light Planが iPhone のカレンダーを読み取る必要があります。このあと iPhone が許可を求めます。予定はこの iPhone 上であなただけに表示され、読み取り専用です。Light Planが変更したり、データにコピーしたり、外部へ送ったりすることはありません。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要显示其他日历（工作、孩子、兴趣班）中的事件，Light Plan 需要读取 iPhone 日历。接下来 iPhone 会请求权限。这些事件只在这部手机上对你可见，且只读：Light Plan 不会修改、不会复制到自己的数据中，也不会发送到任何地方。"
+          }
+        }
+      }
+    },
+    "ghost.askNo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сейчас"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not now"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora no"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今はしない"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂不"
+          }
+        }
+      }
+    },
+    "ghost.askT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать другие календари?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show your other calendars?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Mostrar tus otros calendarios?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかのカレンダーを表示しますか？"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要显示其他日历吗？"
+          }
+        }
+      }
+    },
+    "ghost.askYes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "続ける"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        }
+      }
+    },
+    "ghost.denied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ к Календарю выключен в настройках iPhone. Включите его там — и другие календари смогут показываться. Пока доступа нет, Light Plan работает как обычно."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar access is off in iPhone Settings. Turn it on there and your other calendars can be shown. Until then Light Plan works as usual."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El acceso al Calendario está desactivado en los Ajustes del iPhone. Actívalo allí y podrán mostrarse tus otros calendarios. Mientras tanto, Light Plan funciona como siempre."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhoneの設定でカレンダーへのアクセスがオフになっています。そこでオンにすると、ほかのカレンダーを表示できます。それまでもLight Planはいつもどおり使えます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 设置中已关闭日历访问权限。在那里打开后，才能显示其他日历。在此之前，Light Plan 照常使用。"
+          }
+        }
+      }
+    },
+    "ghost.fromCal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из календаря «{cal}»"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From the “{cal}” calendar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Del calendario «{cal}»"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カレンダー「{cal}」より"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自日历“{cal}”"
+          }
+        }
+      }
+    },
+    "ghost.listTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "События из других календарей"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Events from other calendars"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eventos de otros calendarios"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかのカレンダーの予定"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他日历中的事件"
+          }
+        }
+      }
+    },
+    "ghost.none" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На телефоне пока нет других календарей."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There are no other calendars on this phone yet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no hay otros calendarios en este teléfono."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この iPhone にはほかのカレンダーがまだありません。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这部手机上还没有其他日历。"
+          }
+        }
+      }
+    },
+    "ghost.note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рабочий календарь, расписание детей, матч сына — события из других календарей iPhone появятся в ленте дня и в неделе серыми пунктирными блоками. Они только для чтения: Light Plan их не меняет, никуда не отправляет и хранит только на этом телефоне. Увидели наложение — время занимаете сами, кнопкой «Занять»."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your work calendar, the kids’ schedule, your son’s match — events from your other iPhone calendars show up on the day and week views as grey dashed blocks. They are read-only: Light Plan never changes them, never sends them anywhere and keeps them on this phone only. If you see an overlap, you block the time yourself with “Block out”."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu calendario de trabajo, el horario de los niños, el partido de tu hijo: los eventos de tus otros calendarios del iPhone aparecen en el día y en la semana como bloques grises con borde discontinuo. Son de solo lectura: Light Plan no los cambia, no los envía a ningún sitio y los guarda solo en este teléfono. Si ves un solapamiento, tú decides bloquear el tiempo con «Bloquear»."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仕事のカレンダー、子どもの予定、息子さんの試合など、iPhoneのほかのカレンダーの予定が、日と週の表示にグレーの点線のブロックで表示されます。読み取り専用で、Light Planは変更せず、どこにも送らず、この iPhone にだけ保持します。重なりに気づいたら、「確保」で自分で時間を空けます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "工作日历、孩子的日程、儿子的比赛——iPhone 上其他日历中的事件会以灰色虚线块显示在日视图和周视图中。它们只读：Light Plan 不会修改、不会发送到任何地方，只保存在这部手机上。发现冲突时，由你自己用“占用”来留出时间。"
+          }
+        }
+      }
+    },
+    "ghost.noteDayM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этот день в календаре «{cal}»: {name}."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On this day in the “{cal}” calendar: {name}."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ese día en el calendario «{cal}»: {name}."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この日、カレンダー「{cal}」に「{name}」があります。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当天日历“{cal}”中有：{name}。"
+          }
+        }
+      }
+    },
+    "ghost.noteM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В это время в календаре «{cal}»: {name}, {when}."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At this time in the “{cal}” calendar: {name}, {when}."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A esta hora en el calendario «{cal}»: {name}, {when}."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この時間、カレンダー「{cal}」に「{name}」があります（{when}）。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此时日历“{cal}”中有：{name}，{when}。"
+          }
+        }
+      }
+    },
+    "ghost.occupied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Время уже занято"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time already blocked"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiempo ya bloqueado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すでに確保済み"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时间已占用"
+          }
+        }
+      }
+    },
+    "ghost.occupiedShort" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Занято"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocked"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloqueado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "確保済み"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已占用"
+          }
+        }
+      }
+    },
+    "ghost.occupy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Занять"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block out"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloquear"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "確保"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "占用"
+          }
+        }
+      }
+    },
+    "ghost.readOnly" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Событие из другого календаря. Light Plan его не меняет — решаете вы."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An event from another calendar. Light Plan does not change it — the decision is yours."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un evento de otro calendario. Light Plan no lo cambia: la decisión es tuya."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかのカレンダーの予定です。Light Planは変更しません。判断はあなたです。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自其他日历的事件。Light Plan 不会修改它——由你决定。"
+          }
+        }
+      }
+    },
+    "ghost.setTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другие календари"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other calendars"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otros calendarios"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかのカレンダー"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他日历"
+          }
+        }
+      }
+    },
+    "ghost.untitled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без названия"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Untitled"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin título"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無題"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无标题"
+          }
+        }
+      }
+    },
+    "ghost.weekMore" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё {n} из других календарей"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{n} more from other calendars"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{n} más de otros calendarios"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかのカレンダーからさらに{n}件"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他日历中还有{n}个"
+          }
+        }
+      }
+    },
+    "ghost.which" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Какие календари"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which calendars"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qué calendarios"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表示するカレンダー"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示哪些日历"
+          }
+        }
+      }
+    },
+    "ghost.whichNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отмеченные календари показываются. По умолчанию отмечены все личные; подписки (праздники, расписания) и «Дни рождения» сняты — отметьте их, если нужны. Календарь «Light Plan» не показывается никогда: это ваши съёмки."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ticked calendars are shown. By default all personal calendars are ticked; subscriptions (holidays, schedules) and Birthdays are off — tick them if you want them. The “Light Plan” calendar is never shown: those are your own shoots."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se muestran los calendarios marcados. De forma predeterminada están marcados todos los personales; las suscripciones (festivos, horarios) y los Cumpleaños están sin marcar: márcalos si los quieres. El calendario «Light Plan» nunca se muestra: son tus propias sesiones."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チェックしたカレンダーが表示されます。初期状態では個人用のカレンダーがすべてオンで、購読（祝日・日程）と「誕生日」はオフです。必要ならオンにしてください。「Light Plan」カレンダーは表示されません（自分の撮影のため）。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "勾选的日历会被显示。默认勾选所有个人日历；订阅日历（节假日、日程）和“生日”未勾选，需要时可自行勾选。“Light Plan”日历永远不会显示：那是你自己的拍摄。"
+          }
+        }
+      }
+    },
+    "ghost.whichNoteNone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отметьте календари, которые нужно показывать. Подписки (праздники, расписания) и «Дни рождения» тоже можно отметить. Календарь «Light Plan» не показывается никогда: это ваши съёмки."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tick the calendars you want to see. Subscriptions (holidays, schedules) and Birthdays can be ticked too. The “Light Plan” calendar is never shown: those are your own shoots."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marca los calendarios que quieras ver. También puedes marcar las suscripciones (festivos, horarios) y los Cumpleaños. El calendario «Light Plan» nunca se muestra: son tus propias sesiones."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表示したいカレンダーにチェックを入れてください。購読（祝日・日程）や「誕生日」も選べます。「Light Plan」カレンダーは表示されません（自分の撮影のため）。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "勾选想要显示的日历。订阅日历（节假日、日程）和“生日”也可以勾选。“Light Plan”日历永远不会显示：那是你自己的拍摄。"
+          }
+        }
+      }
+    },
     "glow.city" : {
       "extractionState" : "manual",
       "localizations" : {

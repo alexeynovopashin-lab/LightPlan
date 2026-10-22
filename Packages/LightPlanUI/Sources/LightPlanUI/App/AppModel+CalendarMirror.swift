@@ -31,16 +31,19 @@ extension AppModel {
     /// песочницы, а шаг про iPhone): строки в настройках тоже.
     func attachCalendar() {
         #if os(iOS)
-        attachCalendar(store: EventKitCalendarStore(), memory: DeviceCalendarMemory(), watch: true)
+        attachCalendar(store: EventKitCalendarStore(), memory: DeviceCalendarMemory(), watch: true, ghosts: DeviceGhostMemory())
         #endif
     }
 
     /// Подставки (тесты, снимки): календарь и память подаются снаружи. Слушать изменения базы (`watch`) — только живому
     /// приложению и тесту, который проверяет именно это: сверка по уведомлению идёт сама и мешала бы остальным
     /// ждать конца «своего» прохода.
-    func attachCalendar(store: any CalendarStoring, memory: any CalendarMirrorMemory, watch: Bool = false) {
+    func attachCalendar(store: any CalendarStoring, memory: any CalendarMirrorMemory, watch: Bool = false,
+                        ghosts: any GhostMemory = InMemoryGhostMemory(),
+                        ghostMode: GhostCalendarsDefault = GhostPolicy.ghostCalendarsDefault) {
         calendarStore = store
         calendarMirror = CalendarMirror(store: store, memory: memory)
+        attachGhosts(store: store, mirrorMemory: memory, memory: ghosts, mode: ghostMode, watch: watch)
         calendarWanted = memory.record.wanted
         calendarWatch?.cancel()
         calendarWatch = nil
@@ -105,7 +108,7 @@ extension AppModel {
 
     /// Всё, что идёт в Календарь, встаёт в одну очередь: включение, переезд, ответ на вопрос и проход друг друга не
     /// обгоняют. Тесты ждут её конец (`calendarChain`).
-    private func enqueueCalendar(_ work: @escaping @MainActor (AppModel) async -> Void) {
+    func enqueueCalendar(_ work: @escaping @MainActor (AppModel) async -> Void) {
         let prev = calendarChain
         calendarChain = Task { [weak self] in
             await prev?.value
@@ -178,6 +181,7 @@ extension AppModel {
         let defaultSource = await store.defaultSourceId()
         let tried = rec.sourceId ?? defaultSource
         calendarSourceTitle = cal?.sourceTitle ?? calendarSources.first { $0.id == tried }?.title
+        await refreshGhostFacts()
     }
 
     // MARK: - Проход

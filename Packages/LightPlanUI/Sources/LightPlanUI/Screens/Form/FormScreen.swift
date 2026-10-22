@@ -71,6 +71,8 @@ struct FormScreen: View {
                 }
                 .padding(.horizontal, 24)
             }
+            // Призраки чужих календарей на день формы: плашка наложения читает готовый список (30.5).
+            .task(id: f.day) { app.ghostsEnsure(around: f.day) }
             .onAppear { Self.launchScroll.map { id in DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { proxy.scrollTo(id, anchor: .top) } } }
             #if DEBUG
             // Снимок сценария (29.11): `-LPShotStopWheel start|end|hall` открывает барабан у точки 0.

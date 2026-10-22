@@ -85,10 +85,22 @@ public enum DayLanes {
         let lay = items.indices.filter { !items[$0].isAllDayBusy }
         let top = lay.map { self.top(items[$0].start) }
         let bot = lay.indices.map { top[$0] + max(minHeight, self.top(items[lay[$0]].end) - top[$0]) }
-        var i = 0
-        while i < lay.count {
+        let placed = place(top: top, bottom: bot)
+        for k in lay.indices {
+            out[lay[k]] = Slot(top: top[k], bottom: bot[k], column: placed[k].column, columns: placed[k].columns)
+        }
+        return out
+    }
+
+    /// Колонки по рамкам, уже стоящим по началу: сцепка — цепочка рамок, связанных перекрытием хотя бы через соседа;
+    /// рамка, начавшаяся после конца последней в колонке, занимает эту колонку, а не открывает новую. Та же раскладка
+    /// у блоков ленты и у призраков чужих календарей (30.5) — одна на двоих, а не две копии.
+    public static func place(top: [Double], bottom bot: [Double]) -> [(column: Int, columns: Int, cluster: Int)] {
+        var out = [(column: Int, columns: Int, cluster: Int)](repeating: (0, 1, 0), count: top.count)
+        var i = 0, cluster = 0
+        while i < top.count {
             var end = bot[i], j = i + 1
-            while j < lay.count, top[j] < end { end = max(end, bot[j]); j += 1 }
+            while j < top.count, top[j] < end { end = max(end, bot[j]); j += 1 }
             var ends: [Double] = [], col = [Int](repeating: 0, count: j - i)
             for k in i..<j {
                 var c = 0
@@ -97,10 +109,9 @@ public enum DayLanes {
                 ends[c] = bot[k]
                 col[k - i] = c
             }
-            for k in i..<j {
-                out[lay[k]] = Slot(top: top[k], bottom: bot[k], column: col[k - i], columns: ends.count)
-            }
+            for k in i..<j { out[k] = (col[k - i], ends.count, cluster) }
             i = j
+            cluster += 1
         }
         return out
     }

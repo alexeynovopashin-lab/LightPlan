@@ -46,7 +46,7 @@ public struct RootView: View {
             // И расписание студийного часа сверяется с данными и с разрешением (его могли дать в настройках iPhone).
             if phase == .active, let app { app.syncStudioAlerts(force: true) }
             // И Календарь iPhone сверяется с данными: событие могли удалить руками, право — выдать или отнять (30.3).
-            if phase == .active, let app { app.syncCalendarMirror(force: true) }
+            if phase == .active, let app { app.syncCalendarMirror(force: true); if app.ghostWanted { app.scheduleGhostReload() } }
             // Доступ к геопозиции могли дать или отнять в настройках iPhone; слежение берёт свежую точку (29.8в.12).
             if phase == .active, let app { app.placeBecameActive() }
         }
@@ -245,6 +245,8 @@ private struct Shell: View {
         .sheet(item: Binding(get: { app.form == nil ? app.blockSheet : nil }, set: { app.blockSheet = $0 })) { d in
             BlockSheet(app: app, draft: d, windowHeight: windowHeight)
         }
+        // Чужие календари призраками (30.5): лист события и вопрос перед системным запросом.
+        .modifier(GhostPresenters(app: app, windowHeight: windowHeight))
     }
 
     @State private var bottomInset: CGFloat = 34

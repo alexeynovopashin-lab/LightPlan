@@ -100,6 +100,8 @@ private struct WeekRow: View {
             } else {
                 ForEach(shoots, id: \.id) { s in card(s, pal) }
             }
+            // Чужие календари: призраки под съёмками дня, пунктирной точкой вместо знака жанра (30.5).
+            GhostWeekRows(app: app, f: f, day: day)
             if sky.set != nil || sky.goldenB != nil || binned > 0 {
                 HStack(spacing: 6) {
                     if binned > 0 {

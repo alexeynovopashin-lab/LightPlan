@@ -16,6 +16,10 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         var refusing: Set<String> = []
         var calendars: [String: StoredCalendar] = [:]
         var events: [String: StoredEvent] = [:]
+        /// Правила повторения событий (только у тех, что заведены через `userAddRepeating`): вхождения считаются при чтении.
+        var repeats: [String: Repeat] = [:]
+        /// Сколько раз спросили события календаря: тест кэша призраков.
+        var eventReads = 0
         var next = 1
         var saves = 0
         var removes = 0
@@ -31,6 +35,13 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         /// Подписчики на «база изменилась» (`EKEventStoreChanged`).
         var listeners: [Int: AsyncStream<Void>.Continuation] = [:]
         var nextListener = 0
+    }
+
+    /// Повторение для подставки: шаг в днях и сколько всего вхождений (с первым).
+    public struct Repeat: Sendable, Hashable {
+        public var everyDays: Int
+        public var count: Int
+        public init(everyDays: Int, count: Int) { self.everyDays = everyDays; self.count = count }
     }
 
     private let state: Mutex<State>
@@ -107,11 +118,32 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
         }
     }
 
+    public func allCalendars() async -> [StoredCalendar] {
+        state.withLock { $0.auth == .allowed ? $0.calendars.values.sorted { ($0.sourceTitle, $0.title, $0.id) < ($1.sourceTitle, $1.title, $1.id) } : [] }
+    }
+
     public func events(calendarId: String, from: Date, to: Date) async -> [StoredEvent] {
         state.withLock { s in
+            s.eventReads += 1
             guard s.auth == .allowed else { return [] }
-            return s.events.values.filter { $0.calendarId == calendarId && $0.start < to && $0.end >= from }
-                .sorted { ($0.start, $0.id) < ($1.start, $1.id) }
+            var out: [StoredEvent] = []
+            for e in s.events.values where e.calendarId == calendarId {
+                guard let r = s.repeats[e.id] else {
+                    if e.start < to && e.end >= from { out.append(e) }
+                    continue
+                }
+                // Как EventKit: каждое вхождение — отдельное событие с тем же идентификатором и своим временем.
+                for k in 0..<r.count {
+                    let shift = TimeInterval(k * r.everyDays * 86_400)
+                    let a = e.start.addingTimeInterval(shift), b = e.end.addingTimeInterval(shift)
+                    guard a < to && b >= from else { continue }
+                    out.append(StoredEvent(id: e.id, calendarId: e.calendarId, title: e.title, start: a, end: b, allDay: e.allDay,
+                                           offsetSeconds: e.offsetSeconds, locationTitle: e.locationTitle, latitude: e.latitude,
+                                           longitude: e.longitude, url: e.url, notes: e.notes, modified: e.modified, recurring: true,
+                                           cancelled: e.cancelled))
+                }
+            }
+            return out.sorted { ($0.start, $0.id) < ($1.start, $1.id) }
         }
     }
 
@@ -152,6 +184,21 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
     public var allEvents: [StoredEvent] { state.withLock { $0.events.values.sorted { ($0.start, $0.id) < ($1.start, $1.id) } } }
     public var allCalendars: [StoredCalendar] { state.withLock { $0.calendars.values.sorted { $0.id < $1.id } } }
 
+    /// Сколько раз с начала жизни подставки спрашивали события календаря.
+    public var eventReads: Int { state.withLock { $0.eventReads } }
+
+    /// Человек подключил или завёл ещё один календарь (рабочий, «Сын», праздники, дни рождения).
+    @discardableResult
+    public func userAddCalendar(title: String, type: CalendarType = .account, source: String = "iCloud") -> String {
+        let id = state.withLock { s -> String in
+            let id = "cal-\(s.next)"; s.next += 1
+            s.calendars[id] = StoredCalendar(id: id, title: title, sourceId: source.lowercased(), sourceTitle: source, type: type)
+            return id
+        }
+        notify()
+        return id
+    }
+
     /// Человек выдал или отнял право в настройках iPhone.
     public func setAuthorization(_ a: CalendarAuthorization) { state.withLock { $0.auth = a } }
     public func setSourceRefusing(_ id: String, _ on: Bool) {
@@ -190,7 +237,7 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
     public func userAdd(title: String, start: Date, end: Date, calendarId: String, url: URL? = nil,
                         allDay: Bool = false, offsetSeconds: Int = 0, location: String? = nil,
                         latitude: Double? = nil, longitude: Double? = nil, notes: String? = nil,
-                        recurring: Bool = false) -> String {
+                        recurring: Bool = false, cancelled: Bool = false, repeating: Repeat? = nil) -> String {
         let now = clock()
         defer { notify() }
         return state.withLock { s in
@@ -198,7 +245,8 @@ public final class InMemoryCalendarStore: CalendarStoring, @unchecked Sendable {
             s.events[id] = StoredEvent(id: id, calendarId: calendarId, title: title, start: start, end: end,
                                        allDay: allDay, offsetSeconds: offsetSeconds, locationTitle: location,
                                        latitude: latitude, longitude: longitude, url: url, notes: notes,
-                                       modified: now, recurring: recurring)
+                                       modified: now, recurring: recurring || repeating != nil, cancelled: cancelled)
+            if let repeating { s.repeats[id] = repeating }
             return id
         }
     }

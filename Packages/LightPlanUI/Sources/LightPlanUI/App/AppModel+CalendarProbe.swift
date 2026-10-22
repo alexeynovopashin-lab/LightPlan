@@ -142,6 +142,55 @@ extension AppModel {
             Self.probeDeleteByHand(title: "Маша фотосессия")
             syncCalendarMirror(force: true); await calendarChain?.value
             await dump("hand-draft-deleted")
+
+            // 30.5. Чужие календари призраками: «Сын» и «Работа» заводит второй EKEventStore, как Календарь.
+            @MainActor func dumpGhost(_ stage: String, extra: [String: Any] = [:]) async {
+                let iso = ISO8601DateFormatter(); iso.timeZone = TimeZone(secondsFromGMT: 0)
+                let ghosts: [[String: Any]] = ghostList.map { g in
+                    ["title": g.title, "cal": g.calendarTitle, "allDay": g.allDay, "start": iso.string(from: g.start),
+                     "end": iso.string(from: g.end), "loc": g.location ?? "", "id": g.id]
+                }
+                let choices: [[String: Any]] = ghostChoices.map { ["title": $0.calendar.title, "shown": $0.shown, "personal": $0.personal] }
+                let blocks: [[String: Any]] = snapshot.blocks.map { b in
+                    ["id": b.id, "note": b.note, "kind": b.kind.rawValue, "start": b.start ?? -1, "duration": b.duration ?? -1, "allDay": b.allDay]
+                }
+                let lp = await Self.probeRows().compactMap { $0["title"] as? String }
+                var d: [String: Any] = ["stage": stage, "ghostsOn": ghostsOn, "ghosts": ghosts, "choices": choices, "blocks": blocks,
+                                        "lpEvents": lp, "debug": ghostList.map { String(reflecting: $0) }.joined(separator: "\n"),
+                                        "snapshotJSON": String(decoding: (try? JSONEncoder().encode(snapshot)) ?? Data(), as: UTF8.self)]
+                for (k, v) in extra { d[k] = v }
+                let line = (try? JSONSerialization.data(withJSONObject: d, options: [.sortedKeys])) ?? Data()
+                let text = String(decoding: line, as: UTF8.self) + "\n"
+                if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(text.utf8)); try? h.close() }
+            }
+            Self.probeGhostSeed()
+            await dumpGhost("ghost-seed", extra: ["env": Self.probeCalendarTypes()])
+            setGhosts(true); await calendarChain?.value; await ghostLoad?.value
+            await dumpGhost("ghost-on", extra: ["env": Self.probeCalendarTypes()])
+            if let son = ghostChoices.first(where: { $0.calendar.title == "Сын" })?.id {
+                setGhostCalendar(son, shown: false); await calendarChain?.value; await ghostLoad?.value
+                await dumpGhost("ghost-unticked")
+                setGhostCalendar(son, shown: true); await calendarChain?.value; await ghostLoad?.value
+                await dumpGhost("ghost-reticked")
+            }
+            // Человек добавил событие в Календаре: уведомление базы приводит призрака само (склейка — секунда). Слушатель
+            // призраков живёт и после «переустановки» выше — её `attachCalendar` без `watch` его снял; поднимаем снова.
+            if let store = calendarStore { watchGhosts(store) }
+            Self.probeAddByHand(calendar: "Сын", title: "Новый матч", notes: nil, daysAhead: 9, hour: 9)
+            let waitFrom = Date()
+            while Date().timeIntervalSince(waitFrom) < 8, !ghostList.contains(where: { $0.title == "Новый матч" }) {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            await dumpGhost("ghost-changed", extra: ["waitedMs": Int(Date().timeIntervalSince(waitFrom) * 1000)])
+            // «Занять» на матче: ровно одно занятое время; зеркало кладёт его в «Light Plan», но призраком оно не становится.
+            if let match = ghostList.first(where: { $0.title == "Матч" }) {
+                _ = occupy(match); await calendarChain?.value; await ghostLoad?.value
+                syncCalendarMirror(force: true); await calendarChain?.value
+                await reloadGhosts()
+                await dumpGhost("ghost-occupied")
+            }
+            setGhosts(false); await calendarChain?.value
+            await dumpGhost("ghost-off")
             await dump("done")
 
             // Объём: сколько стоит первое включение у фотографа с долгой историей (`-LPCalendarBulk N`).
@@ -206,19 +255,65 @@ extension AppModel {
         }
     }
 
-    /// Событие, заведённое руками в нашем календаре: без ссылки, с названием, заметками и местом.
-    private static func probeAddByHand(title: String, notes: String, daysAhead: Int) {
+    /// Событие, заведённое руками в календаре (по умолчанию — в нашем): без ссылки, с названием, заметками и местом.
+    private static func probeAddByHand(calendar title: String = CalendarMirror.calendarTitle, title name: String,
+                                       notes: String?, daysAhead: Int, hour: Int? = nil) {
         let store = EKEventStore()
-        guard let c = store.calendars(for: .event).first(where: { $0.title == CalendarMirror.calendarTitle }) else { return }
+        guard let c = store.calendars(for: .event).first(where: { $0.title == title }) else { return }
         let e = EKEvent(eventStore: store)
         e.calendar = c
-        e.title = title
+        e.title = name
         e.notes = notes
-        e.startDate = Date().addingTimeInterval(Double(daysAhead) * 86_400)
+        let base = Date().addingTimeInterval(Double(daysAhead) * 86_400)
+        e.startDate = hour.flatMap { Calendar.current.date(bySettingHour: $0, minute: 0, second: 0, of: base) } ?? base
         e.endDate = e.startDate.addingTimeInterval(3600)
-        let loc = EKStructuredLocation(title: "Парк Горького"); loc.geoLocation = CLLocation(latitude: 55.73, longitude: 37.6)
-        e.structuredLocation = loc
+        if title == CalendarMirror.calendarTitle {
+            let loc = EKStructuredLocation(title: "Парк Горького"); loc.geoLocation = CLLocation(latitude: 55.73, longitude: 37.6)
+            e.structuredLocation = loc
+        }
         try? store.save(e, span: .thisEvent, commit: true)
+    }
+
+    /// Чужие календари, как их завёл бы человек: «Сын» (матч, каникулы на два дня, кружок на три дня, ночная смена) и «Работа».
+    /// Заметки и ссылка у матча — секрет: в призрак они попасть не должны.
+    private static func probeGhostSeed() {
+        let store = EKEventStore()
+        for t in ["Сын", "Работа"] { for c in store.calendars(for: .event) where c.title == t { try? store.removeCalendar(c, commit: true) } }
+        guard let source = store.sources.first(where: { $0.sourceType == .local }) ?? store.defaultCalendarForNewEvents?.source else { return }
+        func calendar(_ title: String) -> EKCalendar {
+            let c = EKCalendar(for: .event, eventStore: store); c.title = title; c.source = source
+            try? store.saveCalendar(c, commit: true)
+            return c
+        }
+        let son = calendar("Сын"), work = calendar("Работа")
+        let cal = Calendar.current
+        func at(_ days: Int, _ hour: Int, _ minute: Int = 0) -> Date {
+            cal.date(bySettingHour: hour, minute: minute, second: 0, of: cal.date(byAdding: .day, value: days, to: Date())!)!
+        }
+        func add(_ c: EKCalendar, _ title: String, _ a: Date, _ b: Date, allDay: Bool = false, _ tweak: (EKEvent) -> Void = { _ in }) {
+            let e = EKEvent(eventStore: store)
+            e.calendar = c; e.title = title; e.startDate = a; e.endDate = b; e.isAllDay = allDay
+            tweak(e)
+            try? store.save(e, span: .futureEvents, commit: true)
+        }
+        add(son, "Матч", at(4, 10), at(4, 11, 30)) { e in
+            e.structuredLocation = EKStructuredLocation(title: "Стадион")
+            e.notes = "SECRET-NOTES"
+            e.url = URL(string: "https://secret.example/x")
+        }
+        add(work, "Планёрка", at(4, 10, 30), at(4, 11))
+        add(son, "Каникулы", cal.startOfDay(for: at(5, 0)), cal.startOfDay(for: at(6, 0)).addingTimeInterval(86_399), allDay: true)
+        add(son, "Кружок", at(4, 17), at(4, 18)) { e in
+            e.addRecurrenceRule(EKRecurrenceRule(recurrenceWith: .daily, interval: 1, end: EKRecurrenceEnd(occurrenceCount: 3)))
+        }
+        add(work, "Ночная смена", at(7, 22), at(8, 6))
+    }
+
+    /// Все календари телефона и их виды: проверка «подписки и дни рождения по умолчанию сняты» читает отсюда.
+    private static func probeCalendarTypes() -> [[String: Any]] {
+        EKEventStore().calendars(for: .event).map { c in
+            ["title": c.title, "type": c.type.rawValue, "source": c.source?.title ?? ""]
+        }
     }
 
     private static func probeDeleteCalendarByHand() {

@@ -65,9 +65,26 @@ public final class EventKitCalendarStore: CalendarStoring, @unchecked Sendable {
         await read(nil) { [self] in store.defaultCalendarForNewEvents?.source?.sourceIdentifier }
     }
 
+    private static func type(_ t: EKCalendarType) -> CalendarType {
+        switch t {
+        case .local: .local
+        case .calDAV: .account
+        case .exchange: .exchange
+        case .subscription: .subscription
+        case .birthday: .birthday
+        @unknown default: .account
+        }
+    }
+
     private static func stored(_ c: EKCalendar) -> StoredCalendar {
         StoredCalendar(id: c.calendarIdentifier, title: c.title, sourceId: c.source?.sourceIdentifier ?? "",
-                       sourceTitle: c.source?.title ?? "")
+                       sourceTitle: c.source?.title ?? "", type: type(c.type))
+    }
+
+    public func allCalendars() async -> [StoredCalendar] {
+        await read([]) { [self] in
+            store.calendars(for: .event).map(Self.stored).sorted { ($0.sourceTitle, $0.title, $0.id) < ($1.sourceTitle, $1.title, $1.id) }
+        }
     }
 
     public func calendar(id: String) async -> StoredCalendar? {
@@ -111,7 +128,8 @@ public final class EventKitCalendarStore: CalendarStoring, @unchecked Sendable {
             id: id, calendarId: cal.calendarIdentifier, title: e.title ?? "", start: e.startDate, end: e.endDate,
             allDay: e.isAllDay, offsetSeconds: zone.secondsFromGMT(for: e.startDate),
             locationTitle: e.structuredLocation?.title, latitude: geo?.latitude, longitude: geo?.longitude, url: e.url,
-            notes: e.notes, modified: e.lastModifiedDate, recurring: e.hasRecurrenceRules)
+            notes: e.notes, modified: e.lastModifiedDate, recurring: e.hasRecurrenceRules,
+            cancelled: e.status == .canceled)
     }
 
     public func events(calendarId: String, from: Date, to: Date) async -> [StoredEvent] {

@@ -64,8 +64,67 @@ struct CalendarMirrorSection: View {
                 }
                 SetNote(text: t.t("calm.whereNote"), node: "note.where")
             }
+
+            ghostRows(t, pal)
         } else {
             SetItemRow(icon: nil, title: t.t("set.calendar"), value: "", chevron: false, dim: true)
+        }
+    }
+
+    // MARK: - Другие календари (30.5)
+
+    /// «Другие календари»: тумблер, под включённым — список календарей телефона с галочками. Чужие календари читаются
+    /// только для показа (призраки): в Light Plan они не правятся, ни в какие данные и никуда не уходят. Права ещё нет —
+    /// сначала объяснение, потом системный запрос (`app.ghostAsk`); отказали раньше — строка ведёт в настройки iPhone.
+    @ViewBuilder
+    private func ghostRows(_ t: Lexicon, _ pal: Palette) -> some View {
+        HStack(spacing: 12) {
+            Text(t.t("ghost.setTitle")).font(.system(size: 15)).foregroundStyle(pal.ink)
+            Spacer(minLength: 0)
+            Toggle("", isOn: Binding(
+                get: { app.ghostsOn },
+                set: { on in
+                    if on, app.calendarNeedsSettings { openSystemSettings() } else { app.setGhosts(on) }
+                }))
+                .labelsHidden().tint(pal.brass)
+                .frame(height: 31)
+                .shotNode("ghost.toggle", text: app.ghostsOn ? "on" : "off")
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 15)
+        .padding(.bottom, 16)
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+        SetNote(text: app.calendarNeedsSettings ? t.t("ghost.denied") : t.t("ghost.note"), node: "note.ghost")
+
+        if app.ghostsOn {
+            SecLabel(text: t.t("ghost.which"), node: "sec.ghost")
+            if app.ghostChoices.isEmpty {
+                SetNote(text: t.t("ghost.none"), node: "note.ghostNone")
+            }
+            ForEach(app.ghostChoices) { c in
+                Button { app.setGhostCalendar(c.id, shown: !c.shown) } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(c.calendar.title).font(.system(size: 15)).foregroundStyle(pal.ink)
+                            if !c.calendar.sourceTitle.isEmpty {
+                                Text(c.calendar.sourceTitle).font(.system(size: 12)).foregroundStyle(pal.ink5)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        if c.shown { Icon("check", size: 18, line: 2).foregroundStyle(pal.brass) }
+                    }
+                    .frame(minHeight: 18)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 13).padding(.bottom, 14)
+                    .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(c.shown ? .isSelected : [])
+                .shotNode("ghost.calendar", text: c.calendar.title + (c.shown ? " on" : " off"))
+            }
+            SetNote(text: t.t(GhostPolicy.ghostCalendarsDefault == .allPersonal ? "ghost.whichNote" : "ghost.whichNoteNone"),
+                    node: "note.ghostWhich")
         }
     }
 

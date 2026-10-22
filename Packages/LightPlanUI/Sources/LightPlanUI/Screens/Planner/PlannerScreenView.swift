@@ -53,6 +53,8 @@ public struct PlannerScreenView: View {
             .tabRise()
         }
         .scrollPosition($position)
+        // Чужие календари на выбранный день с запасом (30.5): пока окно прочитано, база не опрашивается.
+        .task(id: st.selected) { app.ghostsEnsure(around: st.selected) }
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.screen = $0 }
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: 0) {

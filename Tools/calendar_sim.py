@@ -62,7 +62,8 @@ def check(log):
         out.append((name, bool(cond), detail))
 
     need = ["start", "on", "repeat", "deleted-by-hand", "reconciled", "moved", "trashed", "restored", "calendar-recreated", "reinstalled",
-            "hand-moved", "hand-moved-returned", "hand-renamed", "hand-block-moved", "hand-added", "hand-added-repeat", "hand-added-reinstalled", "hand-draft-deleted", "done"]
+            "hand-moved", "hand-moved-returned", "hand-renamed", "hand-block-moved", "hand-added", "hand-added-repeat", "hand-added-reinstalled", "hand-draft-deleted",
+            "ghost-seed", "ghost-on", "ghost-unticked", "ghost-reticked", "ghost-changed", "ghost-occupied", "ghost-off", "done"]
     ok("журнал полон", all(n in by for n in need), f"есть шаги: {[s['stage'] for s in log]}")
     if not all(n in by for n in need):
         return out
@@ -105,6 +106,7 @@ def check(log):
     ok("переустановка: память стёрта — прежний календарь принят обратно, второго нет, дублей нет",
        len(calendars(re_)) == 1 and sorted(e["title"] for e in events(re_)) == titles, f"календарей {len(calendars(re_))}, событий {len(events(re_))}")
     out += check_reverse(by)
+    out += check_ghosts(by)
     return out
 
 
@@ -185,6 +187,67 @@ def check_reverse(by):
     return out
 
 
+SEEDED = ["Матч", "Планёрка", "Каникулы", "Кружок", "Ночная смена"]
+
+
+def check_ghosts(by):
+    """Шаг 30.5: чужие календари призраками. «Сын» и «Работа» заведены вторым EKEventStore; смотрим, что приложение прочитало."""
+    out = []
+
+    def ok(name, cond, detail=""):
+        out.append((name, bool(cond), detail))
+
+    g = lambda st, title=None: [x for x in st.get("ghosts", []) if title is None or x["title"] == title]
+    titles = lambda st: sorted(x["title"] for x in st.get("ghosts", []))
+    seed, on = by["ghost-seed"], by["ghost-on"]
+    ok("до включения призраков нет, тумблер выключен", not seed["ghosts"] and not seed["ghostsOn"], str(titles(seed)))
+    ok("включили (право уже было): тумблер включён", on["ghostsOn"], str(on["ghostsOn"]))
+    ok("прочитано всё заведённое: матч, планёрка, каникулы, кружок, ночная смена", all(g(on, t) for t in SEEDED), str(titles(on)))
+    m = (g(on, "Матч") or [{}])[0]
+    ok("матч: 10:00–11:30 (полтора часа), место «Стадион», календарь «Сын»",
+       m and secs(m["end"]) - secs(m["start"]) == 5400 and m["loc"] == "Стадион" and m["cal"] == "Сын" and not m["allDay"], str(m))
+    ok("каникулы — на весь день, кружок — три вхождения с разным началом (повторы раскрыты), ночная смена — восемь часов",
+       (g(on, "Каникулы") or [{}])[0].get("allDay") is True and len({x["start"] for x in g(on, "Кружок")}) == 3
+       and (g(on, "Ночная смена") or [{}])[0] and secs(g(on, "Ночная смена")[0]["end"]) - secs(g(on, "Ночная смена")[0]["start"]) == 8 * 3600,
+       f"кружок: {[x['start'] for x in g(on, 'Кружок')]}")
+    ok("наши съёмки и занятое время призраками не стали (календарь «Light Plan» не читается)",
+       not [x for x in on["ghosts"] if x["cal"] == "Light Plan"] and not [x for x in on["ghosts"] if x["title"] in ("Выходной", "Перелёт", "Маша фотосессия")],
+       str(titles(on)))
+    ok("«Light Plan» нет и в списке календарей для галочек", not [c for c in on["choices"] if c["title"] == "Light Plan"], str(on["choices"]))
+    ok("«Сын» и «Работа» отмечены по умолчанию", all(c["shown"] for c in on["choices"] if c["title"] in ("Сын", "Работа")) and
+       {c["title"] for c in on["choices"]} >= {"Сын", "Работа"}, str(on["choices"]))
+    env = on.get("env", [])
+    nonpersonal = [c for c in env if c["type"] in (3, 4)]          # EKCalendarTypeSubscription, EKCalendarTypeBirthday
+    shown = {c["title"]: c["shown"] for c in on["choices"]}
+    ok(f"подписки и дни рождения по умолчанию сняты (в симуляторе таких календарей: {len(nonpersonal)})",
+       all(shown.get(c["title"]) is False for c in nonpersonal if c["title"] in shown), str(nonpersonal))
+    blob = on["debug"] + on["snapshotJSON"]
+    ok("заметки и ссылка чужого события не прочитаны и не попали в данные", "SECRET" not in blob and "secret.example" not in blob, "")
+    ok("призраков нет в снимке данных (ни названия, ни календаря)", "Матч" not in on["snapshotJSON"] and "Планёрка" not in on["snapshotJSON"], "")
+
+    un = by["ghost-unticked"]
+    ok("сняли галочку у «Сын»: его призраки пропали, «Работа» осталась",
+       not [x for x in un["ghosts"] if x["cal"] == "Сын"] and g(un, "Планёрка") and g(un, "Ночная смена"), str(titles(un)))
+    re_ = by["ghost-reticked"]
+    ok("вернули галочку: всё, как было", titles(re_) == titles(on), f"{titles(on)} → {titles(re_)}")
+
+    ch = by["ghost-changed"]
+    ok("добавили событие в Календаре руками — призрак появился сам, без перезапуска", g(ch, "Новый матч"), f"ждали {ch.get('waitedMs')} мс; {titles(ch)}")
+
+    oc = by["ghost-occupied"]
+    before = by["ghost-changed"]["blocks"]
+    new = [b for b in oc["blocks"] if b["id"] not in {x["id"] for x in before}]
+    ok("«Занять» создало ровно одно занятое время с названием матча, 90 минут", len(new) == 1 and new[0]["note"] == "Матч"
+       and new[0]["kind"] == "busy" and new[0]["duration"] == 90 and not new[0]["allDay"], str(new))
+    ok("занятое время ушло в «Light Plan» обычным событием, а призраком не вернулось",
+       "Матч" in oc["lpEvents"] and not [x for x in oc["ghosts"] if x["cal"] == "Light Plan"] and len(g(oc, "Матч")) == 1,
+       f"в Light Plan: {oc['lpEvents']}; призраков «Матч»: {len(g(oc, 'Матч'))}")
+    ok("чужое событие осталось на месте и не изменилось (их по-прежнему одно в «Сын»)", len(g(oc, "Матч")) == 1 and g(oc, "Матч")[0]["cal"] == "Сын", "")
+    off = by["ghost-off"]
+    ok("выключили: призраков нет, тумблер выключен", not off["ghosts"] and not off["ghostsOn"], str(titles(off)))
+    return out
+
+
 def selftest():
     good = [{"stage": "start", "auth": "allowed", "on": False, "source": "", "rows": []}]
     # Пустой и подпорченный журналы обязаны стать красными.
@@ -242,6 +305,65 @@ def selftest():
     }
     for name, log in breakages.items():
         assert not all(c[1] for c in check_reverse(log)), f"поломка «{name}» прошла проверку"
+
+    # Призраки: синтетический хороший журнал зелёный, каждая поломка по отдельности — красная.
+    def gh(title, cal, start, end, all_day=False, loc=""):
+        return {"title": title, "cal": cal, "allDay": all_day, "start": start, "end": end, "loc": loc, "id": title + start}
+
+    base_g = [gh("Матч", "Сын", "2026-10-28T07:00:00Z", "2026-10-28T08:30:00Z", loc="Стадион"),
+              gh("Планёрка", "Работа", "2026-10-28T07:30:00Z", "2026-10-28T08:00:00Z"),
+              gh("Каникулы", "Сын", "2026-10-29T00:00:00Z", "2026-10-30T20:59:59Z", True),
+              gh("Кружок", "Сын", "2026-10-28T14:00:00Z", "2026-10-28T15:00:00Z"),
+              gh("Кружок", "Сын", "2026-10-29T14:00:00Z", "2026-10-29T15:00:00Z"),
+              gh("Кружок", "Сын", "2026-10-30T14:00:00Z", "2026-10-30T15:00:00Z"),
+              gh("Ночная смена", "Работа", "2026-10-31T15:00:00Z", "2026-10-31T23:00:00Z")]
+    choices = [{"title": "Сын", "shown": True, "personal": True}, {"title": "Работа", "shown": True, "personal": True},
+               {"title": "Дни рождения", "shown": False, "personal": False}]
+    env = [{"title": "Дни рождения", "type": 4, "source": "Другое"}, {"title": "Сын", "type": 0, "source": "На iPhone"}]
+    own = {"id": "b1", "note": "", "kind": "off", "start": -1, "duration": -1, "allDay": True}
+    busy = {"id": "b2", "note": "Матч", "kind": "busy", "start": 600, "duration": 90, "allDay": False}
+
+    def gs(name, ghosts, on_=True, blocks=(own,), lp=("Свадьба · Ирина",), **kw):
+        d = {"stage": name, "ghostsOn": on_, "ghosts": ghosts, "choices": choices, "blocks": list(blocks), "lpEvents": list(lp),
+             "debug": "", "snapshotJSON": "{}", "env": env}
+        d.update(kw)
+        return d
+
+    def gmake(**kw):
+        d = {
+            "ghost-seed": gs("ghost-seed", [], False),
+            "ghost-on": gs("ghost-on", base_g),
+            "ghost-unticked": gs("ghost-unticked", [x for x in base_g if x["cal"] != "Сын"]),
+            "ghost-reticked": gs("ghost-reticked", base_g),
+            "ghost-changed": gs("ghost-changed", base_g + [gh("Новый матч", "Сын", "2026-11-02T06:00:00Z", "2026-11-02T07:00:00Z")], waitedMs=1200),
+            "ghost-occupied": gs("ghost-occupied", base_g + [gh("Новый матч", "Сын", "2026-11-02T06:00:00Z", "2026-11-02T07:00:00Z")],
+                                 blocks=(own, busy), lp=("Свадьба · Ирина", "Матч")),
+            "ghost-off": gs("ghost-off", [], False),
+        }
+        d.update(kw)
+        return d
+
+    assert all(c[1] for c in check_ghosts(gmake())), [c for c in check_ghosts(gmake()) if not c[1]]
+    gbreak = {
+        "включено, но ничего не прочитано": gmake(**{"ghost-on": gs("ghost-on", [])}),
+        "призраки до включения": gmake(**{"ghost-seed": gs("ghost-seed", base_g)}),
+        "наш календарь стал призраком": gmake(**{"ghost-on": gs("ghost-on", base_g + [gh("Свадьба · Ирина", "Light Plan", "2026-10-28T07:00:00Z", "2026-10-28T08:00:00Z")])}),
+        "«Light Plan» попал в список галочек": gmake(**{"ghost-on": gs("ghost-on", base_g, choices=choices + [{"title": "Light Plan", "shown": True, "personal": True}])}),
+        "дни рождения показаны по умолчанию": gmake(**{"ghost-on": gs("ghost-on", base_g, choices=[dict(c, shown=True) for c in choices])}),
+        "заметки чужого события прочитаны": gmake(**{"ghost-on": gs("ghost-on", base_g, debug="notes: SECRET-NOTES")}),
+        "чужое событие попало в данные": gmake(**{"ghost-on": gs("ghost-on", base_g, snapshotJSON='{"note":"Матч"}')}),
+        "повтор не раскрыт": gmake(**{"ghost-on": gs("ghost-on", [x for x in base_g if x["title"] != "Кружок"] + base_g[3:4])}),
+        "галочка не сняла календарь": gmake(**{"ghost-unticked": gs("ghost-unticked", base_g)}),
+        "новое событие не появилось": gmake(**{"ghost-changed": gs("ghost-changed", base_g)}),
+        "«Занять» создало два блока": gmake(**{"ghost-occupied": gs("ghost-occupied", base_g, blocks=(own, busy, dict(busy, id="b3")), lp=("Матч",))}),
+        "«Занять» ничего не создало": gmake(**{"ghost-occupied": gs("ghost-occupied", base_g, blocks=(own,), lp=("Матч",))}),
+        "занятое время вернулось призраком из «Light Plan»": gmake(**{"ghost-occupied": gs("ghost-occupied", base_g + [gh("Матч", "Light Plan", "2026-10-28T07:00:00Z", "2026-10-28T08:30:00Z")], blocks=(own, busy), lp=("Матч",))}),
+        "после выключения призраки остались": gmake(**{"ghost-off": gs("ghost-off", base_g, False)}),
+    }
+    for name, log in gbreak.items():
+        assert not all(c[1] for c in check_ghosts(log)), f"поломка призраков «{name}» прошла проверку"
+    print(f"selftest призраков: ok (хороший журнал зелёный; {len(gbreak)} поломок красные)")
+
     print(f"selftest: ok (неполный журнал красный; хороший обратный журнал зелёный; {len(breakages)} поломок красные)")
     return 0
 

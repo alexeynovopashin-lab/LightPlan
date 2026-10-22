@@ -152,9 +152,10 @@ extension AppModel {
     // MARK: - Наложения
 
     /// Плашка вверху формы (веб `refreshForm`): наложение важнее погоды — первое
-    /// из самых тяжёлых, иначе «замысел против прогноза».
+    /// из самых тяжёлых, иначе «замысел против прогноза». Между ними — мягкое наложение с событием чужого
+    /// календаря (30.5): напоминание, не запрет.
     public func formWarning(_ f: EventForm) -> WishWarning? {
-        formBusyWarning(f) ?? formClashWarning(f) ?? formWishWarning(f)
+        formBusyWarning(f) ?? formClashWarning(f) ?? formGhostWarning(f) ?? formWishWarning(f)
     }
 
     /// Занято — запрет, а не совет: плашка называет, чем занято («Концерт — 18:00–21:00»), и что сохранить нельзя.

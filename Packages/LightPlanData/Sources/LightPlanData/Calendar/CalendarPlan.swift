@@ -83,6 +83,12 @@ public enum CalendarPlan {
 
     // MARK: - Съёмка и встреча
 
+    /// Когда съёмка или встреча идёт на самом деле — моментами, с поясом места (шаг 30.5: наложение с чужими
+    /// календарями сравнивается моментами, а не часами на стене двух разных поясов). `nil` — запись другого вида.
+    public static func span(of s: Session, _ ctx: Context) -> (start: Date, end: Date)? {
+        draft(of: s, ctx).map { ($0.start, $0.end) }
+    }
+
     static func draft(of s: Session, _ ctx: Context) -> EventDraft? {
         guard s.kind == .shoot || s.kind == .meet else { return nil }
         let stops = Stops.all(of: s, spots: ctx.spots, studios: ctx.studios)

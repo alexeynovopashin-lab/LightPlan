@@ -32,18 +32,34 @@ public struct CalendarSource: Sendable, Hashable, Identifiable {
     }
 }
 
+/// Вид календаря в базе телефона (`EKCalendarType`, шаг 30.5): по нему решается, что личное, а что праздники и дни
+/// рождения.
+public enum CalendarType: String, Sendable, Hashable {
+    /// На самом телефоне.
+    case local
+    /// iCloud, Google и другие учётные записи CalDAV.
+    case account
+    case exchange
+    /// Подписка на чужой календарь (праздники, расписание матчей, «Найдено в программах»).
+    case subscription
+    /// «Дни рождения» из Контактов.
+    case birthday
+}
+
 /// Календарь в базе телефона, как его видит приложение.
 public struct StoredCalendar: Sendable, Hashable {
     public let id: String
     public let title: String
     public let sourceId: String
     public let sourceTitle: String
+    public let type: CalendarType
 
-    public init(id: String, title: String, sourceId: String, sourceTitle: String) {
+    public init(id: String, title: String, sourceId: String, sourceTitle: String, type: CalendarType = .account) {
         self.id = id
         self.title = title
         self.sourceId = sourceId
         self.sourceTitle = sourceTitle
+        self.type = type
     }
 }
 
@@ -109,10 +125,13 @@ public struct StoredEvent: Sendable, Hashable {
     public var modified: Date?
     /// Событие повторяется: его вхождения делят один идентификатор, поэтому такие события зеркало не трогает.
     public let recurring: Bool
+    /// Отменено (приглашение отозвали): призраком не показывается.
+    public let cancelled: Bool
 
     public init(id: String, calendarId: String, title: String, start: Date, end: Date, allDay: Bool,
                 offsetSeconds: Int, locationTitle: String?, latitude: Double?, longitude: Double?, url: URL?,
-                notes: String? = nil, modified: Date? = nil, recurring: Bool = false) {
+                notes: String? = nil, modified: Date? = nil, recurring: Bool = false, cancelled: Bool = false) {
+        self.cancelled = cancelled
         self.id = id; self.calendarId = calendarId; self.title = title; self.start = start; self.end = end
         self.allDay = allDay; self.offsetSeconds = offsetSeconds; self.locationTitle = locationTitle
         self.latitude = latitude; self.longitude = longitude; self.url = url
@@ -225,6 +244,8 @@ public protocol CalendarStoring: Sendable {
     /// у бесплатной подписи приложение переставляют раз в семь дней): прежний календарь со своими событиями
     /// принимается обратно.
     func calendars(titled title: String) async -> [StoredCalendar]
+    /// Все календари событий, какие видит приложение, со своим видом (шаг 30.5, чужие календари призраками).
+    func allCalendars() async -> [StoredCalendar]
     func createCalendar(title: String, sourceId: String) async throws -> StoredCalendar
     /// Вместе со всеми событиями в нём.
     func removeCalendar(id: String) async throws

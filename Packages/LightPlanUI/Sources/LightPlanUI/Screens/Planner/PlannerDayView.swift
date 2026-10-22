@@ -109,6 +109,8 @@ struct PlannerDayBody: View {
         let items = f.items(on: d)
         VStack(spacing: 0) {
             PlannerLoadLabel(f: f, items: items)
+            // События «на весь день» чужих календарей — тонкой полосой над лентой, ленту не закрывают (30.5).
+            GhostAllDayBand(app: app, f: f, day: d)
             timeline(d, items)
                 .padding(.top, Self.lineTop)
                 .padding(.bottom, 20)
@@ -150,6 +152,8 @@ struct PlannerDayBody: View {
                 event(items[i], index: i, slot: slots[i], pal: pal)
                     .zIndex(isSelected(items[i]) ? (grip.live?.lifted == true ? 3 : 2) : 0)
             }
+            // Призраки чужих календарей: своя полоса справа, съёмки рядом с ними уже (30.5).
+            ghostRail(d)
             // Узлы начала — после всех блоков, чтобы ранний не ушёл под поздний.
             ForEach(Array(items.enumerated()), id: \.element.id) { _, it in dot(it, pal) }
             // Восход и закат — всегда, в любую погоду.
@@ -172,6 +176,36 @@ struct PlannerDayBody: View {
             laneWidth = $0.width
         }
         .modifier(DayGripMod(gesture: gripGesture(items, slots)))
+    }
+
+    // MARK: Призраки (30.5)
+
+    /// Ширина полосы призраков этого дня при ширине ленты `w`: на столько уже блоки съёмок. Без призраков — ноль,
+    /// и день рисуется так же, как раньше.
+    private func rail(_ w: CGFloat) -> GhostRail {
+        GhostRail.layout(f.ghostParts(on: app.planner.selected), width: w)
+    }
+
+    /// Рамка блока съёмки с учётом полосы призраков: рядом с призраком уже, в остальных часах — как раньше.
+    private func shootRect(start: Int, end: Int, slot: DayLanes.Slot?, width w: CGFloat) -> CGRect {
+        let full = Self.rect(start: start, end: end, slot: slot, width: w)
+        let r = rail(w).reserve(top: full.minY, bottom: full.maxY)
+        return r == 0 ? full : Self.rect(start: start, end: end, slot: slot, width: w - r)
+    }
+
+    private func ghostRail(_ d: CivilDate) -> some View {
+        let parts = f.ghostParts(on: d)
+        return GeometryReader { geo in
+            let rail = GhostRail.layout(parts, width: geo.size.width)
+            ForEach(Array(rail.cells.enumerated()), id: \.element.id) { i, c in
+                let r = rail.frame(of: c, width: geo.size.width)
+                GhostBlock(app: app, f: f, cell: c, index: i)
+                    .frame(width: r.width, height: r.height)
+                    .position(x: r.midX, y: r.midY)
+            }
+        }
+        .frame(height: 25 * Self.hourH)
+        .allowsHitTesting(!parts.isEmpty)
     }
 
     nonisolated static func top(_ m: Double) -> CGFloat { CGFloat(m) / 60 * hourH }
@@ -305,7 +339,7 @@ struct PlannerDayBody: View {
         let span = shown(it)
         let sel = isSelected(it), lifted = sel && grip.live?.lifted == true
         return GeometryReader { geo in
-            let r = Self.rect(start: span.start, end: span.end, slot: slot, width: geo.size.width)
+            let r = shootRect(start: span.start, end: span.end, slot: slot, width: geo.size.width)
             eventBody(it, index: index, height: r.height, cols: slot?.columns ?? 1, sel: sel, pal: pal)
                 .frame(width: r.width, height: r.height, alignment: .topLeading)
                 // Поднятое едет поверх сетки, а не прорастает сквозь неё: подложка
@@ -412,7 +446,7 @@ struct PlannerDayBody: View {
         let span = shown(it)
         let ink = it.kind == .shoot ? pal.brass : pal.ink3
         return GeometryReader { geo in
-            let r = Self.rect(start: span.start, end: span.end, slot: slot, width: geo.size.width)
+            let r = shootRect(start: span.start, end: span.end, slot: slot, width: geo.size.width)
             ZStack(alignment: .topLeading) {
                 // Узел снимка — поле касания 36×36, как `.dl-h` веба.
                 handleDot(ink, pal).frame(width: 36, height: 36).shotNode("grip.a").position(x: r.maxX - 22, y: r.minY)
@@ -452,7 +486,7 @@ struct PlannerDayBody: View {
     private func openLaneFan(_ id: String, _ items: [DayItem], _ slots: [DayLanes.Slot?]) {
         guard let k = items.firstIndex(where: { Self.grabbable($0) && $0.session?.id == id }) else { return }
         let span = shown(items[k])
-        let r = Self.rect(start: span.start, end: span.end, slot: slots[k], width: laneWidth)
+        let r = shootRect(start: span.start, end: span.end, slot: slots[k], width: laneWidth)
         fan = FanTarget(id: id, anchor: r.offsetBy(dx: grip.laneFrame.minX, dy: grip.laneFrame.minY), lane: true)
     }
 
@@ -490,7 +524,7 @@ struct PlannerDayBody: View {
         var deselected = false
         if let k = selectedIndex(items) {
             let it = items[k], span = shown(it)
-            let r = Self.rect(start: span.start, end: span.end, slot: slots[k], width: w)
+            let r = shootRect(start: span.start, end: span.end, slot: slots[k], width: w)
             func spot(_ x: CGFloat, _ y: CGFloat) -> CGRect { CGRect(x: x - 18, y: y - 18, width: 36, height: 36) }
             DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) sel=\(it.session?.id ?? "") box=\(Int(r.minX)),\(Int(r.minY)),\(Int(r.width))x\(Int(r.height))")
             if spot(r.maxX - 22, r.minY).contains(p) { return take(it, .start, hold: false, p) }
@@ -506,9 +540,14 @@ struct PlannerDayBody: View {
         // палец не отдают тому, что под ними.
         for i in DayLanes.drawOrder(items).reversed() {
             let it = items[i]
-            guard Self.rect(start: it.start, end: it.end, slot: slots[i], width: w).contains(p) else { continue }
+            guard shootRect(start: it.start, end: it.end, slot: slots[i], width: w).contains(p) else { continue }
             if !Self.grabbable(it) { DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) none(\(it.kind.rawValue))"); return .none }
             return take(it, .move, hold: true, p)
+        }
+        // Призрак чужого календаря: ни выделения, ни удержания, ни меню часа — только тап (лист «Занять»), его принимает сам блок.
+        if rail(w).hit(p, width: w) != nil {
+            DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) none(ghost)")
+            return .none
         }
         // Пустой час: удержание открывает меню часа, как тап (багфикс 10.10 — раньше
         // удержание не делало ничего). Касание, снявшее выделение, — нет.

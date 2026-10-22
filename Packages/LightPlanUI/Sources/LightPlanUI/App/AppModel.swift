@@ -421,6 +421,27 @@ public final class AppModel {
     public internal(set) var calendarFailed = false
     /// Выключить не вышло: календарь или события остались в телефоне, зеркало осталось включённым.
     public internal(set) var calendarOffFailed = false
+    // MARK: Чужие календари призраками (30.5)
+    /// Читатель чужих календарей; `nil` там же, где нет и зеркала (тесты без подставки, снимки, Mac).
+    @ObservationIgnored var ghostReader: GhostCalendars?
+    @ObservationIgnored var ghostMemory: (any GhostMemory)?
+    /// Окно дней, которое уже прочитано: пока выбранный день в нём, ничего не читается заново.
+    @ObservationIgnored var ghostWindow: (from: CivilDate, to: CivilDate)?
+    @ObservationIgnored var ghostLoad: Task<Void, Never>?
+    @ObservationIgnored var ghostLoadGen = 0
+    /// Склейка всплесков уведомлений базы: последнее уведомление запускает чтение через `calendarSettle`.
+    @ObservationIgnored var ghostGen = 0
+    @ObservationIgnored var ghostWatch: Task<Void, Never>?
+    /// Призраки на прочитанное окно дней — только в памяти этого запуска: ни в снимок, ни в веб, ни в Календарь.
+    public internal(set) var ghostList: [Ghost] = []
+    /// Человек включил «Другие календари» (память телефона).
+    public internal(set) var ghostWanted = false
+    /// Календари для списка в настройках: все, кроме «Light Plan», и показывается ли каждый.
+    public internal(set) var ghostChoices: [GhostCalendars.Choice] = []
+    /// Спрашиваем, можно ли читать Календарь, прежде чем показать системный запрос.
+    public var ghostAsk = false
+    /// Лист призрака (или нескольких, если на ленте они схлопнулись в «+N»); `nil` — закрыт.
+    public var ghostSheet: GhostSheetTarget?
     @ObservationIgnored var reachTask: Task<Void, Never>?
     /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
     @ObservationIgnored var pinTask: Task<Void, Never>?
