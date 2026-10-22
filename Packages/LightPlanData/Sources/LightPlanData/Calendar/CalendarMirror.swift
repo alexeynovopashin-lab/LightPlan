@@ -305,7 +305,10 @@ public actor CalendarMirror {
     /// превратил из «на весь день» в событие по часам (или обратно), остаётся как есть: оно перепишется как у нас.
     static func returnable(_ e: StoredEvent, _ d: EventDraft) -> Bool {
         guard !e.recurring, e.allDay == d.allDay, e.end >= e.start else { return false }
-        return CalendarPlan.shootId(in: d.url) != nil ? isDraftable(e) : true
+        if CalendarPlan.shootId(in: d.url) != nil { return isDraftable(e) }
+        // Занятость по часам — не длиннее, чем даёт лист «Занять время» (48 часов): планировщик показывает такой блок в
+        // его первый день, и растянутое дальше событие исчезло бы из остальных дней (ревью GPT к 2908f73).
+        return e.allDay || e.end.timeIntervalSince(e.start) <= 2880 * 60
     }
 
     /// Чья правка свежее, если время или место двигали с обеих сторон.

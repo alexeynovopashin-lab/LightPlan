@@ -161,6 +161,21 @@ import Testing
         #expect(key == d.key && rep.updated == 0)
     }
 
+    @Test func aBusyBlockStretchedPastTheSheetsLimitIsNotTakenBack() async {
+        let b = await Bench.on()
+        let d = EventDraft(title: "Дорога", start: Self.t0.addingTimeInterval(3600), end: Self.t0.addingTimeInterval(7200),
+                           timeZoneId: "Europe/Moscow", offsetSeconds: 10_800, url: CalendarPlan.url(block: "b1"))
+        _ = await b.pass([d])
+        b.store.userEdit(b.store.allEvents[0].id) { e in
+            e = StoredEvent(id: e.id, calendarId: e.calendarId, title: e.title, start: e.start, end: e.start.addingTimeInterval(72 * 3600),
+                            allDay: false, offsetSeconds: e.offsetSeconds, locationTitle: nil, latitude: nil, longitude: nil,
+                            url: e.url, notes: nil, modified: Self.later(60))
+        }
+        let rep = await b.pass([d])
+        #expect(rep.incoming.isEmpty && rep.updated == 1)
+        #expect(b.store.allEvents[0].end == d.end)                                   // событие вернулось к нашему виду
+    }
+
     @Test func anAllDayBlockEventIsNotSeenAsMovedWhenNobodyMovedIt() async {
         // EventKit читает конец «на весь день» как 23:59:59, мы кладём начало последнего дня: проходы не должны ничего писать
         // и не должны принимать это за сдвиг.
