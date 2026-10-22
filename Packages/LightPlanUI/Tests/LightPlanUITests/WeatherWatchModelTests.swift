@@ -134,6 +134,35 @@ struct WeatherWatchModelTests {
         #expect(await app.runWeatherWatch(force: true, channel: .banner).map(\.id) == ["a"])
     }
 
+    /// Фон обновил прогноз, но система уведомление не приняла; открыли приложение через 10 минут — в сеть не идём,
+    /// но несказанное говорим по уже полученному прогнозу (ревью GPT к 58e88fd).
+    @Test func returnWithinHalfHourStillTellsWhatBackgroundCouldNot() async {
+        let app = model([Self.shoot("a", day: 21)], seen: ["a": Self.mark("excellent", 90)], poster: Poster(accept: false))
+        #expect(await app.runWeatherWatch(force: true, channel: .notification).isEmpty)
+        #expect(await app.runWeatherWatch(force: false, channel: .banner).map(\.id) == ["a"])
+        #expect(app.notices.current?.sessionId == "a")
+    }
+
+    /// Пока шёл прогноз, приложение ушло в фон: баннер не ставится и сказанным не помечается.
+    @Test func bannerSilentWhenSceneIsNotActive() async {
+        let app = model([Self.shoot("a", day: 21)], seen: ["a": Self.mark("excellent", 90)])
+        app.sceneActive = false
+        #expect(await app.runWeatherWatch(force: true, channel: .banner).isEmpty)
+        #expect(app.notices.current == nil && told(app).isEmpty)
+        app.sceneActive = true
+        #expect(await app.announceWeather(.banner).map(\.id) == ["a"])
+    }
+
+    /// Отметку `wxSeen`, которую эта версия не читает, обход не затирает знакомством (ревью GPT к 58e88fd).
+    @Test func unreadableSeenMarkIsNotOverwritten() async {
+        let app = model([Self.shoot("a", day: 21)], seen: ["a": .object(["q": .string("storm-v2"), "sc": .number(40)])])
+        #expect(await app.runWeatherWatch(force: true, channel: .banner).isEmpty)
+        guard case .object(let o)? = app.snapshotForTests.extra["wxSeen"], case .object(let m)? = o["a"] else {
+            Issue.record("отметка пропала"); return
+        }
+        #expect(m["q"] == .string("storm-v2"))
+    }
+
     // MARK: - Уведомление и два канала
 
     /// Фон: по уведомлению на съёмку, слова те же, что у баннера; потом открытие приложения молчит.

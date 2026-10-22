@@ -393,6 +393,8 @@ public final class AppModel {
     /// Баннер стоит на экране (въехал и ещё не уехал).
     public internal(set) var noticeShown = false
     @ObservationIgnored var noticeTask: Task<Void, Never>?
+    /// Окно на экране (`scenePhase == .active`): баннер говорит только тогда. Пишет `RootView`; тесты — сами.
+    @ObservationIgnored public var sceneActive = true
     /// Зеркало съёмок в Календарь iPhone (30.1–3). `nil` — в тестах без подставки, в снимках и на Mac: ничего не пишется.
     @ObservationIgnored var calendarMirror: CalendarMirror?
     @ObservationIgnored var calendarStore: (any CalendarStoring)?

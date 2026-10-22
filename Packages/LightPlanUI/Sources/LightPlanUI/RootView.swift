@@ -39,6 +39,7 @@ public struct RootView: View {
             app?.watchWeather(force: true)
         }
         .onChange(of: scenePhase) { _, phase in
+            app?.sceneActive = phase == .active
             // Ушли в фон — отложенная запись дописывается сейчас: система
             // может закрыть приложение, не дождавшись дебаунса.
             // Открытая карточка организации сверяет номера и в фоне: закрытие может не наступить

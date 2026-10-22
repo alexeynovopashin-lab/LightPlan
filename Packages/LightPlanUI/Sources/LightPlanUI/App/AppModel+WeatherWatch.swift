@@ -34,13 +34,17 @@ extension AppModel {
     /// Обход по тому прогнозу, что уже лежит у точек: решения без сети. Выключено — следить не за кем, но отметки
     /// ушедших записей чистятся всё равно.
     func weatherPass() -> WeatherWatch.Pass {
+        let seen = WeatherMemory.read(WeatherMemory.seenKey, in: snapshot)
+        let seenRaw = WeatherMemory.ids(WeatherMemory.seenKey, in: snapshot)
+        // Отметка `wxSeen` есть, но эта версия её не читает (другой формат): съёмка не новая, и затирать отметку
+        // молчаливым знакомством нельзя — пропускаем её до версии, которая поймёт (ревью GPT к 58e88fd).
         let items: [WeatherWatch.Item] = notifOn("wx")
-            ? weatherWatched().compactMap { s in cardSkySnap(s).map { .init(id: s.id, day: s.day, now: $0) } }
+            ? weatherWatched().filter { seen[$0.id] != nil || !seenRaw.contains($0.id) }
+                .compactMap { s in cardSkySnap(s).map { .init(id: s.id, day: s.day, now: $0) } }
             : []
-        let memory = WeatherMemory.ids(WeatherMemory.seenKey, in: snapshot)
-            .union(WeatherMemory.ids(WeatherMemory.toldKey, in: snapshot))
+        let memory = seenRaw.union(WeatherMemory.ids(WeatherMemory.toldKey, in: snapshot))
         return WeatherWatch.pass(items: items, alive: Set(snapshot.sessions.map(\.id)),
-                                 seen: WeatherMemory.read(WeatherMemory.seenKey, in: snapshot),
+                                 seen: seen,
                                  told: WeatherMemory.read(WeatherMemory.toldKey, in: snapshot),
                                  memoryIds: memory)
     }
@@ -66,7 +70,11 @@ extension AppModel {
     func runWeatherWatch(force: Bool, channel: WeatherChannel) async -> [WeatherWatch.Say] {
         guard notifOn("wx") else { return [] }
         let t = now()
-        if !force, let last = wxWatchAt, t.timeIntervalSince(last) < Self.weatherWatchGap { return [] }
+        // Получаса не прошло — в сеть не ходим, но сравниваем по тому прогнозу, что уже есть: фоновый проход мог
+        // его обновить, а система — не принять уведомление; новость тогда несказанная (ревью GPT к 58e88fd).
+        if !force, let last = wxWatchAt, t.timeIntervalSince(last) < Self.weatherWatchGap {
+            return await announceWeather(channel)
+        }
         wxWatchAt = t
         let list = weatherWatched()
         guard !list.isEmpty else { return [] }
@@ -83,6 +91,9 @@ extension AppModel {
         var told: [WeatherWatch.Say] = []
         switch channel {
         case .banner:
+            // Пока шёл прогноз, приложение ушло в фон: баннер уехал бы невиданным, а новость считалась бы
+            // сказанной. Молчим — скажет возврат или фон (ревью GPT к 58e88fd).
+            guard sceneActive else { break }
             told = pass.say
             if let top = pass.say.first, let words = weatherWords(top) {
                 pushNotice(NoticeQueue.Notice(title: words.title, text: words.text, sessionId: top.id),
