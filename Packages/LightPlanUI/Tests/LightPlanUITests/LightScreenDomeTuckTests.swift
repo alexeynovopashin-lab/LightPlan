@@ -5,17 +5,19 @@ import CoreGraphics
 /// 29.8в.26: список «Света» поднят на `domeTuck` под дугой — «Подробно» не уходит под нижнюю панель.
 /// Зазор кнопка/панель в точках меряет `make lightfit` (нужен симулятор); здесь — то, что держит число.
 struct LightScreenDomeTuckTests {
-    /// Слово Алексея 21.10: 22 pt из пустой полосы под дугой.
-    @Test func tuckIsTwentyTwo() {
-        #expect(LightScreenView.domeTuck == 22)
+    /// Слово Алексея 21.10: 22 pt из пустой полосы под дугой; в «Астро» (29.8в.27) растёт до 34 только когда без этого не помещается важный набор, «Просто» остаётся на 22.
+    @Test func tuckIsTwentyTwoAndGrowsToThirtyFourOnlyWhenNeeded() {
+        #expect(LightScreenView.domeTuck(extra: 0) == 22)
+        #expect(LightScreenView.domeTuck(extra: LightCollapsedList.maxExtraTuck) == 34)
     }
 
     /// У веба от горизонта до рамки купола 240 − 196 = 44 pt и ещё 2 pt поля до подписи. Подпись не должна подойти к
-    /// линии горизонта ближе 20 pt (дуга и её концевые точки стоят на этой линии).
+    /// линии горизонта ближе 12 pt (слово Алексея 21.10, вариант F; дуга и её концевые точки стоят на этой линии).
     @Test func labelStaysClearOfHorizon() {
         let strip = CGFloat(DomeGeometry.viewHeight - DomeGeometry.horizonY) + 2
         #expect(strip == 46)
-        #expect(strip - LightScreenView.domeTuck >= 20)
+        #expect(strip - LightScreenView.domeTuck(extra: LightCollapsedList.maxExtraTuck) >= 12)
+        #expect(strip - LightScreenView.domeTuck(extra: 0) >= 20)
     }
 
     /// Рамка купола не укорочена: показание (124 от верха) и перетаскивание светила считаются от неё.

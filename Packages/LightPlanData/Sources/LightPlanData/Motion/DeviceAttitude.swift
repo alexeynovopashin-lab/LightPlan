@@ -262,7 +262,9 @@ public final class ScriptedAttitude: AttitudeSource {
             poses.append((v[0], v[1], v.count > 2 ? v[2] : 0))
             accuracies.append(v.count > 3 ? MagneticAccuracy(rawValue: Int(v[3])) : nil)
         }
-        return poses.isEmpty ? nil : (poses, accuracies)
+        // Xcode 27.1 падает на тернарнике с кортежем («failed to produce diagnostic»): то же самое двумя строками.
+        if poses.isEmpty { return nil }
+        return (poses, accuracies)
     }
 
     public var isAvailable: Bool { true }

@@ -11,6 +11,10 @@
               накрывает, у него высота > 0, первый ряд есть, лежит в рамке списка и начинается у её верха
               (`--selftest` — проверка самой проверки: нормальный список и испорченные, без симулятора);
      кнопка стоит на месте: её y в закрытом и раскрытом виде одинаков;
+     Строки (29.8в.27): колонка «строки» — сколько из «Теней», «Неба», «Ветра» стоят в закрытом списке (`Т Н В`; `—` — ни одной). «Астро»: стоят первые,
+              сколько помещается (`windProblems`: не вытесняют кнопку съёмки, спрятанная не уместилась бы); «Просто» (спойлера нет): все три на месте;
+     «действие» (29.8в.27): верх узла `timebar` − низ узла `action` («Запланировать съёмку»): сколько pt между кнопкой съёмки и нижней панелью
+              (в «Просто» на Pro Max стоит ровно 8: зазор `safeAreaInset`). Это тоже ИЗМЕРЕНИЕ; `--min-gap` красит и его;
      «воздух» (`tele.air`): низ строки против верха панели — для сведения (строка достижима прокруткой).
    Красный (выход 1) — только структура: нет узла, список вне места, кнопка уехала.
 
@@ -48,6 +52,52 @@ function listProblems(list, g0, head, sp) {
   if (list.y < head - 0.5) why.push('список накрывает шапку');
   return why;
 }
+/* Адаптация «Астро» под измеренную высоту (29.8в.27, слова Алексея 21.10). Вход — режим (`astro`), вид, узлы отчёта `n`.
+   «Просто» (спойлера нет): «Тени», «Небо», «Ветер» на месте, шапка в четыре строки (`header.sub`) и полоса прежние.
+   «Астро». Шапка сжата всегда (нет `header.sub`: «Астро» просит больше сведений). Запас = верх `timebar` − низ `spoiler` − высота `action` − 8:
+   сколько pt остаётся над естественным зазором кнопки съёмки (кнопка прижимается к панели, поэтому её собственный зазор при запасе всегда
+   ровно 8 — запас виден только через «Подробно»).
+     — стоят первые из «Теней», «Неба», «Ветра» по порядку на экране (нет «Ветра» без «Неба»);
+     — запас ≥ 0, если есть что жертвовать; иначе красный. Исключение — полоса поднята до предела (12): тогда это нехватка, не сбой;
+     — спрятанная следующая строка (35 pt) не уместилась бы: запас < 35;
+     — полоса поднята (сверх 22) только когда строк нет и ровно настолько, насколько нужно (запас ≈ 0, пока не упёрлись в 12);
+     — в раскрытом виде `spoiler.wind` есть и с текстом (там «Ветер» живёт всегда). */
+const OPT_ROWS = ['tele.shadow', 'tele.sky', 'tele.wind'], OPT_NAMES = { 'tele.shadow': '«Тени»', 'tele.sky': '«Небо»', 'tele.wind': '«Ветер»' };
+const MAX_EXTRA_TUCK = 12;
+/* Полоса при подъёме 22 (база): холст вписан в рамку купола как `meet` (масштаб k = min(ширина/390, 1)), горизонт — 196 из 240; на узком экране
+   база не 24, а (240 − 240k)/2 + 44k + 2 − 22 (SE: 26,9). Подъём сверх базы = база − измеренная полоса. */
+function stripBase(n) { const d = n.dome, k = Math.min(d.w / 390, d.h / 240); return (d.h - 240 * k) / 2 + 44 * k + 2 - 22; }
+function astroState(n) {
+  const on = OPT_ROWS.map(k => !!n[k]), tb = n.timebar, sp = n.spoiler, act = n.action;
+  const compact = !n['header.sub'], has = n.dome && n['next.label'];
+  const extra = has ? Math.max(0, stripBase(n) - strip(n)) : 0;
+  const spare = tb && sp && act ? tb.y - (sp.y + sp.h) - act.h - 8 : null;
+  return { on, shown: on.filter(Boolean).length, compact, extra, spare };
+}
+function windProblems(astro, view, n) {
+  const why = [];
+  if (!astro) {
+    for (const k of OPT_ROWS) if (!n[k]) why.push(`${OPT_NAMES[k]} пропал из закрытой части в «Просто»`);
+    if (!n['header.sub']) why.push('шапка «Просто» сжата');
+    return why;
+  }
+  const st = astroState(n);
+  if (!st.compact) why.push('шапка «Астро» не сжата');
+  for (let i = 1; i < st.on.length; i++) if (st.on[i] && !st.on[i - 1]) why.push(`${OPT_NAMES[OPT_ROWS[i]]} стоит без ${OPT_NAMES[OPT_ROWS[i - 1]]}`);
+  if (st.spare !== null) {
+    const exhausted = st.extra >= MAX_EXTRA_TUCK - 0.5;
+    if (st.spare < -0.5 && !exhausted) why.push(`кнопка съёмки под панелью (запас ${st.spare.toFixed(1)}), а уступки не исчерпаны`);
+    if (st.shown < OPT_ROWS.length && st.spare >= 35 - 0.5 && (n['spoiler.wind'] || st.shown > 0 || view === 'closed')) why.push(`спрятанная строка уместилась бы (запас ${st.spare.toFixed(1)} ≥ 35)`);
+    if (st.extra > 0.5 && st.shown > 0) why.push('полоса поднята при стоящих строках');
+    if (st.extra > 0.5 && st.extra < MAX_EXTRA_TUCK - 0.5 && st.spare > 1) why.push(`полоса поднята больше нужного (запас ${st.spare.toFixed(1)})`);
+  }
+  if (view === 'open') {
+    const wL = n['spoiler.wind'];
+    if (!wL) why.push('нет spoiler.wind в раскрытом списке');
+    else if (!wL.text) why.push('у spoiler.wind нет текста');
+  }
+  return why;
+}
 /* Порог зазора: `--min-gap <pt>` красит зазор меньше порога; зазор ≤ 0 (кнопка под панелью) красный, когда порог
    задан — иначе `--min-gap 0` пропускал зазор ровно 0 (ревью GPT к 6bc2131). Без порога — только пометка. */
 function gapWhy(gap, min) {
@@ -77,6 +127,32 @@ if (args.selftest) {
     ['зазор 0,1, порог 0', gapWhy(0.1, 0), false],
     ['зазор 0, порога нет', gapWhy(0, null), false],
     ['зазор 5, порог 8', gapWhy(5, 8), true],
+  );
+  const wa = { text: '2 м/с · слабый' }, fr = { x: 0, y: 0, w: 1, h: 1 };
+  const base = (spare, extra = {}) => ({ timebar: { y: 700, h: 100 }, spoiler: { y: 700 - 38 - 8 - spare - 43, h: 43 }, action: { y: 0, h: 38 }, ...extra });
+  const rows = (...k) => Object.fromEntries(k.map(x => [x, fr]));
+  const dome = (extraTuck) => ({ dome: { x: 0, y: 0, w: 390, h: 240 }, 'next.label': { x: 0, y: 196 + 46 - 22 - extraTuck, w: 1, h: 1 } });
+  const full = { 'header.sub': fr };
+  cases.push(
+    ['Просто: три строки на месте', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky', 'tele.wind'), ...full }), false],
+    ['Просто: ветер пропал', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky'), ...full }), true],
+    ['Просто: шапка сжата', windProblems(false, 'closed', rows('tele.shadow', 'tele.sky', 'tele.wind')), true],
+    ['Астро: шапка не сжата', windProblems(true, 'closed', { ...base(11), ...full }), true],
+    ['Астро, запас 11: строк нет', windProblems(true, 'closed', base(11)), false],
+    ['Астро, запас 30: строк нет', windProblems(true, 'closed', base(30)), false],
+    /* Запас в отчёте уже за вычетом стоящих строк: исходный 79 − 70 = 9; 106 − 105 = 1. */
+    ['Астро, исходный запас 79: «Тени»+«Небо»', windProblems(true, 'closed', base(79 - 70, rows('tele.shadow', 'tele.sky'))), false],
+    ['Астро, исходный запас 106: три строки', windProblems(true, 'closed', base(106 - 105, rows('tele.shadow', 'tele.sky', 'tele.wind'))), false],
+    ['Астро, запас 91, строк нет: зря спрятаны', windProblems(true, 'closed', base(91)), true],
+    ['Астро: строка выталкивает кнопку', windProblems(true, 'closed', base(-10, rows('tele.shadow'))), true],
+    ['Астро: «Ветер» без «Неба»', windProblems(true, 'closed', base(40, rows('tele.shadow', 'tele.wind'))), true],
+    ['Астро: полоса 2, запас 0, строк нет', windProblems(true, 'closed', { ...base(0), ...dome(2) }), false],
+    ['Астро: полоса 6, запас 10 — больше нужного', windProblems(true, 'closed', { ...base(10), ...dome(6) }), true],
+    ['Астро: полоса 6 при стоящей строке', windProblems(true, 'closed', { ...base(0, rows('tele.shadow')), ...dome(6) }), true],
+    ['Астро: полоса 12, запас −8 — нехватка, не сбой', windProblems(true, 'closed', { ...base(-8), ...dome(12) }), false],
+    ['Астро, раскрытый: есть spoiler.wind', windProblems(true, 'open', base(11, { 'spoiler.wind': wa })), false],
+    ['Астро, раскрытый: нет spoiler.wind', windProblems(true, 'open', base(11)), true],
+    ['Астро, раскрытый: пустой текст', windProblems(true, 'open', base(11, { 'spoiler.wind': { text: '' } })), true],
   );
   let bad = 0;
   for (const [name, why, wantRed] of cases) {
@@ -182,7 +258,7 @@ function strip(n) {
 let red = 0, under = 0, runs = 0;
 const f1 = v => v.toFixed(1).padStart(7);
 console.log('модель'.padEnd(26), 'тема'.padEnd(6), 'текст'.padEnd(6), 'вид'.padEnd(7), 'окно'.padEnd(10),
-  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель', ' полоса');
+  'шапка низ', ' кнопка верх/низ', ' панель верх', '  зазор', ' список верх/низ', ' 1-й ряд', ' воздух−панель', ' полоса', ' строки', ' шапка', ' провал', ' действие');
 for (const model of MODELS) {
   const { udid, created } = device(model);
   run('xcrun', ['simctl', 'install', udid, APP]);
@@ -191,11 +267,17 @@ for (const model of MODELS) {
     for (const view of VIEWS) {
       const j = shoot(udid, theme, c, view, path.join(OUT, model, theme + '-' + c.name + '-' + view)), n = j.nodes;
       const sp = n.spoiler, tb = n.timebar, list = n['spoiler.list'], g0 = n['spoiler.g0'], air = n['tele.air'];
-      const head = Math.max(...['header.note', 'wx.lo', 'wx.hi', 'wx.none'].filter(k => n[k]).map(k => bottomOf(n[k])));
+      const head = Math.max(...['header.date', 'header.note', 'wx.lo', 'wx.hi', 'wx.none'].filter(k => n[k]).map(k => bottomOf(n[k])));
       const win = `${Math.round(j.size[0])}×${Math.round(j.size[1] + j.safe[0] + j.safe[1])}`.padEnd(10);
       runs++;
       if (args.mode === 'simple' && tb && !sp) {
-        console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, '«Просто»: кнопки нет, панель сверху', f1(tb.y).trim()); continue;
+        /* «Просто»: спойлера нет, «Ветер» некуда переносить — он обязан остаться в закрытой части. */
+        const wS = n['tele.wind'], ws = windProblems(false, view, n), act = n.action;
+        const aG = act ? tb.y - bottomOf(act) : null;
+        const sWhy = [...ws, ...(aG !== null ? gapWhy(aG, MIN_GAP).map(w => 'действие: ' + w) : ['нет узла action («Запланировать съёмку»)'])];
+        if (sWhy.length) red++;
+        console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, '«Просто»: кнопки нет, панель сверху', f1(tb.y).trim(),
+          '· ветер', wS ? 'закр.' : 'ПРОПАЛ', '· действие', aG !== null ? f1(aG).trim() : '—', sWhy.length ? '← красный: ' + sWhy.join('; ') : ''); continue;
       }
       if (!sp || !tb) { console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, 'нет узла spoiler/timebar'); red++; continue; }
       const gap = tb.y - bottomOf(sp);
@@ -205,11 +287,18 @@ for (const model of MODELS) {
       if (closedY === null) closedY = sp.y;
       else if (Math.abs(sp.y - closedY) > 0.5) why.push(`кнопка уехала на ${(sp.y - closedY).toFixed(1)}`);
       if (view === 'open') why.push(...listProblems(list, g0, head, sp));
+      const wT = n['tele.wind'];
+      why.push(...windProblems(true, view, n));
+      const act = n.action, actGap = act ? tb.y - bottomOf(act) : null;
+      if (actGap === null) why.push('нет узла action («Запланировать съёмку»)');
+      else { if (actGap <= 0) note.push('съёмка под панелью'); why.push(...gapWhy(actGap, MIN_GAP).map(w => 'действие: ' + w)); }
       if (why.length) red++;
       console.log(model.padEnd(26), theme.padEnd(6), c.name.padEnd(6), view.padEnd(7), win, f1(head).padStart(9),
         (f1(sp.y) + '/' + f1(bottomOf(sp)).trim()).padStart(16), f1(tb.y).padStart(12), f1(gap),
         (list ? f1(list.y) + '/' + f1(bottomOf(list)).trim() : '—').padStart(16), (g0 ? f1(g0.y) : '—').padStart(8),
         (air ? f1(bottomOf(air) - tb.y) : '—').padStart(13), f1(strip(n)).padStart(7),
+        ((n['tele.shadow'] ? 'Т' : '') + (n['tele.sky'] ? 'Н' : '') + (n['tele.wind'] ? 'В' : '') || '—').padStart(7),
+        (n['header.sub'] ? '4 стр.' : '2 стр.').padStart(7), f1(tb.y - bottomOf(sp) - (act ? act.h : 38) - 8).padStart(7), (actGap !== null ? f1(actGap) : '—').padStart(9),
         why.length ? ' ← красный: ' + why.join('; ') : note.length ? ' · ' + note.join('; ') : '');
     }
   }

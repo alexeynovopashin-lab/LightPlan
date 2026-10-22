@@ -13,6 +13,14 @@ struct LightSpoilerView: View {
     /// `today.details` — подпись свёрнутого; `today.hide` — раскрытого (в бете подпись меняется в тот же клик, что и список).
     let title: String
     let openTitle: String
+    /// 29.8в.27: что стояло на экране в этой раскладке (строки, шапка, полоса) — вместе с низом кнопки уходит в `onMeasure` одним значением,
+    /// чтобы измерение и состояние, при котором оно снято, не разошлись (замыкание `action` бывает от другой отрисовки).
+    var measureTag = LightCollapsedList.Layout()
+    /// Низ кнопки в координатах `LightCollapsedList.contentSpace` вместе с `measureTag` — по ним экран считает запас высоты.
+    var onMeasure: (LightCollapsedList.Measurement) -> Void = { _ in }
+    /// Подпись строки «Ветер» (`pro.wind`): её значение получает узел `spoiler.wind` — прибор `make lightfit` проверяет, что
+    /// перенесённый из закрытой части «Ветер» лежит в раскрытом списке с тем же текстом.
+    var windLabel: String? = nil
 
     /// Пара снимков (28е): `-LPShotSpoiler 1` — раскрыт сразу и прокручен к плашке неба; `2` (прибор `make lightfit`) —
     /// раскрыт и стоит в начале, без прокрутки.
@@ -69,6 +77,9 @@ struct LightSpoilerView: View {
                 }
                 .buttonStyle(.plain)
                 .shotNode("spoiler")
+                .onGeometryChange(for: LightCollapsedList.Measurement.self) { [measureTag] in
+                    LightCollapsedList.Measurement(bottom: $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY, layout: measureTag)
+                } action: { onMeasure($0) }
                 .padding(.top, 6)
 
                 if mounted {
@@ -136,9 +147,10 @@ struct LightSpoilerView: View {
                 HStack(spacing: 12) {
                     Text(row.label).font(.system(size: 13)).foregroundStyle(pal.ink4)
                     Spacer(minLength: 0)
-                    Text(row.value).font(.system(size: 13, weight: .medium).monospacedDigit())
+                    let value = Text(row.value).font(.system(size: 13, weight: .medium).monospacedDigit())
                         .foregroundStyle(row.value == "—" ? pal.ink4 : pal.ink2)
                         .multilineTextAlignment(.trailing)
+                    if row.label == windLabel { value.shotNode("spoiler.wind", text: row.value) } else { value }
                 }
                 .padding(.vertical, 8)
                 .padding(.bottom, 1)
