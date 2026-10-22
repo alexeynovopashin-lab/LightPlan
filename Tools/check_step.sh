@@ -131,10 +131,13 @@ elif [ "$run_tests" = 0 ]; then
 else
   tfiles="$(git diff --name-only --diff-filter=AM "$mb" "$branch" -- 'Packages/*/Tests/*.swift')"
   # Новые тесты: `@Test` (Swift Testing) над func и `func test…` (XCTest).
-  names="$(git diff -U0 "$mb" "$branch" -- 'Packages/*/Tests/*.swift' | grep -E '^\+' | awk '
-    /@Test/ { flag = 1 }
-    match($0, /func [A-Za-z0-9_]+/) { n = substr($0, RSTART + 5, RLENGTH - 5); if (flag || n ~ /^test/) print n; flag = 0 }
-  ' | sort -u)"
+  new_names() { # <путь тестов>…  → имена новых тестов в диффе этих путей
+    git diff -U0 "$mb" "$branch" -- "$@" | grep -E '^\+' | awk '
+      /@Test/ { flag = 1 }
+      match($0, /func [A-Za-z0-9_]+/) { n = substr($0, RSTART + 5, RLENGTH - 5); if (flag || n ~ /^test/) print n; flag = 0 }
+    ' | sort -u
+  }
+  names="$(new_names 'Packages/*/Tests/*.swift')"
   if [ -z "$tfiles" ] || [ -z "$names" ]; then
     row нет "4. в диффе нет новых тестов пакетов (@Test или func test…) — нечего проверять на старом коде"
   else
@@ -149,6 +152,11 @@ else
       filt="$(printf '%s\n' "$names" | paste -sd'|' -)"
       failed_any=0; built_any=0; unverified=0; detail=""
       while IFS= read -r p; do
+        # Пакет, где новых тестов нет (правка тестов без новых функций), не проверяем: `swift test --filter` с пустым
+        # попаданием выходит с 0, и это читалось как «новые тесты проходят на старом коде» (29.8в.28).
+        pnames="$(new_names "$p/Tests/*.swift")"
+        [ -n "$pnames" ] || continue
+        filt="$(printf '%s\n' "$pnames" | paste -sd'|' -)"
         log="/tmp/cc-checkstep-$(basename "$p").log"
         ( cd "$wt/$p" && swift test --filter "$filt" ) > "$log" 2>&1; code=$?
         if [ $code -ne 0 ]; then
@@ -185,6 +193,15 @@ else
     row "?" "5. не удалось получить симулятор «LP checkstep» (Tools/sim.js): $simline"
   else
     fulldir="$(mktemp -d)"; TMPS+=("$fulldir" /tmp/cc-checkstep-dd-branch /tmp/cc-checkstep-dd-base)
+    # boot_wait <udid>: ждёт `simctl bootstatus -b` не дольше 180 с; код 0 — загрузился, иначе — нет (таймер снимается всегда).
+    boot_wait() {
+      local bpid wpid rc
+      xcrun simctl bootstatus "$1" -b > /dev/null 2>&1 & bpid=$!
+      ( sleep 180; kill "$bpid" 2>/dev/null ) > /dev/null 2>&1 & wpid=$!
+      wait "$bpid" 2>/dev/null; rc=$?
+      kill "$wpid" 2>/dev/null; wait "$wpid" 2>/dev/null
+      return $rc
+    }
     # failed_tests <папка проекта> <метка>  → файл $fulldir/<метка>.failed (имена).
     # Код: 0 — прогон дошёл до итога (TEST SUCCEEDED либо TEST FAILED с набором результатов);
     #      1 — не собралось (BUILD FAILED); 2 — прервано (убит, нет итоговой строки xcodebuild) или нет ни одного теста.
@@ -192,10 +209,32 @@ else
       local dir="$1" lab="$2" bundle log xc
       bundle="$fulldir/$lab.xcresult"; log="$fulldir/$lab.log"
       rm -rf "/tmp/cc-checkstep-dd-$lab"
-      ( cd "$dir" && xcodebuild test -project LightPlan.xcodeproj -scheme LightPlan-iOS \
-          -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "/tmp/cc-checkstep-dd-$lab" \
-          -resultBundlePath "$bundle" ${LP_FULL_TESTING_ARGS:-} ) > "$log" 2>&1
-      xc=$?
+      # Прогон, не дошедший до итога (симулятор не поднялся за минуту под нагрузкой машины, служба симулятора зависла),
+      # повторяем: до трёх попыток, перед каждой — дождаться загрузки симулятора (`bootstatus -b`, не дольше 3 минут), а при
+      # повторе — выключить и поднять его заново. Собранный проект остаётся в derived data, повтор дешёв. Итог
+      # (TEST SUCCEEDED / TEST FAILED / BUILD FAILED) повтором не лечится: красный тест остаётся красным (29.8в.28).
+      # `-collect-test-diagnostics never`: при красном тесте xcodebuild собирал диагностику симулятора и ждал ответа ровно
+      # 600 с («Timed out after 600.0 seconds», замер 29.8в.28: прогон 68 с стал 667 с); имена упавших берутся из xcresult.
+      local attempt=1 tries=3
+      while :; do
+        # Ждём загрузку не дольше трёх минут: служба симулятора, которая завесилась, не должна вешать и проверку шага.
+        if ! boot_wait "$udid"; then
+          echo "    (строка 5, $lab: симулятор не поднялся за 3 минуты — выключаю и поднимаю заново)" >&2
+          xcrun simctl shutdown "$udid" > /dev/null 2>&1; sleep 5; xcrun simctl boot "$udid" > /dev/null 2>&1
+          boot_wait "$udid" || echo "    (строка 5, $lab: симулятор и после перезапуска не готов — пробую прогон всё равно, повтор ниже подхватит)" >&2
+        fi
+        rm -rf "$bundle"
+        ( cd "$dir" && xcodebuild test -project LightPlan.xcodeproj -scheme LightPlan-iOS \
+            -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "/tmp/cc-checkstep-dd-$lab" \
+            -resultBundlePath "$bundle" -collect-test-diagnostics never ${LP_FULL_TESTING_ARGS:-} ) > "$log" 2>&1
+        xc=$?
+        if grep -qE '\*\* (TEST (SUCCEEDED|FAILED)|BUILD FAILED|TEST BUILD FAILED) \*\*' "$log" || [ "$attempt" -ge "$tries" ]; then break; fi
+        echo "    (строка 5, $lab: прогон прерван без итога, код $xc; попытка $attempt из $tries, симулятор перезапускаю)" >&2
+        cp "$log" "/tmp/cc-checkstep-full-$lab.attempt$attempt.log"
+        xcrun simctl shutdown "$udid" > /dev/null 2>&1; sleep 5
+        xcrun simctl boot "$udid" > /dev/null 2>&1
+        attempt=$((attempt + 1))
+      done
       cp "$log" "/tmp/cc-checkstep-full-$lab.log"
       # Итог по самому xcodebuild: частичный набор результатов прерванного прогона не считаем итогом.
       if grep -qE '\*\* (TEST )?BUILD FAILED \*\*' "$log"; then return 1; fi

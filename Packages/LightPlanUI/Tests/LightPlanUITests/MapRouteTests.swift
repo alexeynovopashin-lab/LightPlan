@@ -359,31 +359,39 @@ struct MapRouteTests {
         #expect(calls.seen.count == 1 && calls.seen[0] == "foot.test")
     }
 
-    /// Не чаще одного запроса в секунду на сервер: три подряд встают в очередь
-    /// с зазором (тут 0,6 с; пределы широкие — полный прогон грузит процессор).
-    @Test func throttleSpacesRequestsPerServer() async {
-        let t = RoadThrottle(gap: .milliseconds(600))
+    /// Часы подставные (29.8в.28): «сейчас» стоит, «заснуть до» только записывает, до какого мига. Ни одной настоящей
+    /// миллисекунды: раньше тут стояло «≥ 1190 мс» на настоящих часах (в полном прогоне тест шёл 30–55 с), а до того
+    /// «< 500 мс» (29.8в.22) — оба зависели от нагрузки машины.
+    private final class FakeClock: @unchecked Sendable {
         let t0 = ContinuousClock.now
-        await t.wait("s"); await t.wait("s"); await t.wait("s")
-        #expect(ContinuousClock.now - t0 >= .milliseconds(1190))
+        private let lock = NSLock()
+        private var _slept: [ContinuousClock.Instant] = []
+        var slept: [ContinuousClock.Instant] { lock.withLock { _slept } }
+        func sleep(until at: ContinuousClock.Instant) { lock.withLock { _slept.append(at) } }
+        func throttle(gap: Duration) -> RoadThrottle {
+            RoadThrottle(gap: gap, now: { [t0] in t0 }, sleep: { [self] at in sleep(until: at) })
+        }
     }
 
-    /// Другой сервер — своя очередь. Без часов: на «s» встаёт запрос, который ждёт 30 с, а «other» обязан пройти
-    /// мимо него. Раньше тут стояло «< 500 мс» — под нагрузкой (параллельные сборки) прогон растягивался до 0,635 с
-    /// на ветке, которая не спит вовсе (29.8в.22: один в покое 1,21–1,24 с на весь тест, упал при 43 с).
+    /// Не чаще одного запроса в секунду на сервер: три подряд встают в очередь с зазором (тут 0,6 с): первый идёт
+    /// сразу, второй спит до t₀ + 0,6, третий — до t₀ + 1,2. Ждут друг за другом, а не все до одного мига.
+    @Test func throttleSpacesRequestsPerServer() async {
+        let clock = FakeClock()
+        let t = clock.throttle(gap: .milliseconds(600))
+        await t.wait("s"); await t.wait("s"); await t.wait("s")
+        #expect(clock.slept == [clock.t0.advanced(by: .milliseconds(600)), clock.t0.advanced(by: .milliseconds(1200))])
+    }
+
+    /// Другой сервер — своя очередь: у «other» первый запрос идёт сразу, не заснув, хотя на «s» уже стоят в очереди.
     @Test func otherServerHasItsOwnQueue() async {
-        let t = RoadThrottle(gap: .seconds(30))
-        await t.wait("s")                          // первый — без ожидания
-        let queued = Task { await t.wait("s") }    // второй встаёт на 30 с
-        let passed = await withTaskGroup(of: Bool.self) { g in
-            g.addTask { await t.wait("other"); return true }
-            g.addTask { try? await Task.sleep(for: .seconds(15)); return false }
-            let first = await g.next() ?? false
-            g.cancelAll()
-            return first
-        }
-        queued.cancel()
-        #expect(passed)
+        let clock = FakeClock()
+        let t = clock.throttle(gap: .seconds(30))
+        await t.wait("s")                                      // первый — без ожидания
+        await t.wait("s")                                      // второй встаёт на 30 с
+        await t.wait("other")                                  // чужая очередь: не спит
+        #expect(clock.slept == [clock.t0.advanced(by: .seconds(30))])
+        await t.wait("other")                                  // и своя очередь у «other» отсчитывается от t₀, не от «s»
+        #expect(clock.slept == [clock.t0.advanced(by: .seconds(30)), clock.t0.advanced(by: .seconds(30))])
     }
 
     /// Итог для полосы: отказ — «недоступен», а не недостающая сумма; линия

@@ -437,42 +437,54 @@ struct SunARMilkyWayGaiaTests {
 
     // MARK: - (е) память
 
-    private static func footprintMB() -> Double {
-        var info = task_vm_info_data_t()
-        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
-        let kr = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
-        }
-        return kr == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : -1
+    /// Слабая ссылка на холст: жив ли он после выхода.
+    private struct WeakCanvas { weak var view: GaiaSkyUIView?; let found: Bool }
+
+    private static func canvas(in view: UIView) -> GaiaSkyUIView? {
+        if let c = view as? GaiaSkyUIView { return c }
+        for sub in view.subviews { if let c = canvas(in: sub) { return c } }
+        return nil
     }
 
-    @Test("(е) данные и видеокарта собираются один раз; 40 входов и выходов холста Gaia (окно с холстом создаётся, рисует кадр и уходит) не копят память больше 8 МБ")
+    /// 29.8в.28: раньше тут стоял `phys_footprint` процесса «не вырос больше 8 МБ» — число всего процесса, не холста.
+    /// Один раз в полном прогоне оно дало 24,4 МБ; в покое три прогона 1,0–2,7 МБ, в полном три — 1,2 МБ, ещё девять
+    /// прогонов (в одиночку, парой с `SunARMilkyWayPanoTests`, весь файл) — 1,0–2,5. Красный не воспроизведён; вероятная
+    /// причина — поверхность кадра 440 × 956 pt при 3× (≈ 15 МБ), которую система держит до показа дольше под нагрузкой:
+    /// счёт прыгает кратно ей. Утечку холста ловит не память, а жизнь: после выхода ни один холст не жив; данные и
+    /// видеокарта собраны один раз.
+    @Test("(е) данные и видеокарта собираются один раз; 40 входов и выходов холста Gaia (окно с холстом создаётся, рисует кадр и уходит) не оставляют ни одного живого холста")
     func loadedOnceNoLeak() throws {
         let gpu = try gpu()
         let minutes = 1350.0
         let basis = CameraBasis(azimuth: 180, altitude: 25)
         let lk = look(day: aug15, minutes: minutes, place: sochi, basis: basis)
-        func cycle() {
+        func cycle() -> WeakCanvas {
             let window = UIWindow(frame: CGRect(x: 0, y: 0, width: phone.width, height: phone.height))
             let host = UIHostingController(rootView: SunARGaiaSkyView(gpu: gpu, look: lk).frame(width: phone.width, height: phone.height))
             window.rootViewController = host
             window.isHidden = false
             host.view.layoutIfNeeded()
+            let found = Self.canvas(in: host.view)
+            let seen = WeakCanvas(view: found, found: found != nil)
             window.isHidden = true
             window.rootViewController = nil
+            return seen
         }
-        for _ in 0..<5 { autoreleasepool { cycle() } }
+        var seen: [WeakCanvas] = []
+        for _ in 0..<40 { autoreleasepool { seen.append(cycle()) } }
+        let allFound = seen.allSatisfy { $0.found }
+        #expect(allFound, "холст не нашёлся в окне — проверять нечего")
         gpu.queue.makeCommandBuffer().map { $0.commit(); $0.waitUntilCompleted() }
-        let before = Self.footprintMB()
-        for _ in 0..<40 { autoreleasepool { cycle() } }
-        gpu.queue.makeCommandBuffer().map { $0.commit(); $0.waitUntilCompleted() }
-        let after = Self.footprintMB()
+        var alive = seen.filter { $0.view != nil }.count
+        for _ in 0..<100 where alive > 0 {                  // условие, не время: SwiftUI отпускает вид на следующем обороте цикла
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
+            alive = seen.filter { $0.view != nil }.count
+        }
         _ = MilkyWayGaia.shared; _ = MilkyWayGaiaGPU.shared
-        print(String(format: "GAIA f.memory loads=%d builds=%d before=%.1fMB after=%.1fMB delta=%.1fMB", MilkyWayGaia.loads,
-                     MilkyWayGaiaGPU.builds, before, after, after - before))
+        print("GAIA f.memory loads=\(MilkyWayGaia.loads) builds=\(MilkyWayGaiaGPU.builds) canvases=\(seen.count) alive=\(alive)")
         #expect(MilkyWayGaia.loads == 1)
         #expect(MilkyWayGaiaGPU.builds == 1)
-        #expect(after - before <= 8, "память выросла на \(after - before) МБ за 40 входов")
+        #expect(alive == 0, "после выхода живых холстов Gaia: \(alive) из \(seen.count)")
     }
     #endif
 

@@ -75,8 +75,17 @@ public struct Lexicon: Sendable {
     /// Есть ли ключ в словаре самого языка, без цепочки. Нужно сверке состава.
     func defines(_ key: String, language: String) -> Bool {
         guard let b = Self.languageBundle(language, in: bundle) else { return false }
+        return Self.word(key, in: b) != nil
+    }
+
+    /// Слово ключа в папке языка или `nil`, если там его нет. Xcode 27.1 кладёт в `xx.lproj/Localizable.strings` языка с
+    /// частичным каталогом (у `en-US` — пять отличий от `en`) заглушки «ключ = ключ» для всех ключей, которые у
+    /// родителя — формы числа (29 штук: `deal.step`, `genreN.family`…): без этого `en-US` показывал бы сам ключ вместо
+    /// слова (Xcode 26: заглушек нет). Значение, равное ключу, — это «нет»: идём дальше по цепочке.
+    private static func word(_ key: String, in b: Bundle) -> String? {
         let sentinel = "\u{1}missing\u{1}"
-        return b.localizedString(forKey: key, value: sentinel, table: nil) != sentinel
+        let raw = b.localizedString(forKey: key, value: sentinel, table: nil)
+        return raw == sentinel || raw == key ? nil : raw
     }
 
     // MARK: - Правило числа
@@ -126,11 +135,9 @@ public struct Lexicon: Sendable {
     /// `sentinel` — значение, которого в каталоге быть не может: по нему
     /// «ключа нет» отличается от ключа с любым настоящим значением.
     private func find(_ key: String) -> Found? {
-        let sentinel = "\u{1}missing\u{1}"
         for c in Self.chain(code) {
             guard let b = Self.languageBundle(c, in: bundle) else { continue }
-            let raw = b.localizedString(forKey: key, value: sentinel, table: nil)
-            if raw != sentinel { return Found(raw: raw, language: c, isPlural: raw.contains("%#@")) }
+            if let raw = Self.word(key, in: b) { return Found(raw: raw, language: c, isPlural: raw.contains("%#@")) }
         }
         return nil
     }
