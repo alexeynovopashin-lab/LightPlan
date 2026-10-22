@@ -131,10 +131,13 @@ elif [ "$run_tests" = 0 ]; then
 else
   tfiles="$(git diff --name-only --diff-filter=AM "$mb" "$branch" -- 'Packages/*/Tests/*.swift')"
   # Новые тесты: `@Test` (Swift Testing) над func и `func test…` (XCTest).
-  names="$(git diff -U0 "$mb" "$branch" -- 'Packages/*/Tests/*.swift' | grep -E '^\+' | awk '
-    /@Test/ { flag = 1 }
-    match($0, /func [A-Za-z0-9_]+/) { n = substr($0, RSTART + 5, RLENGTH - 5); if (flag || n ~ /^test/) print n; flag = 0 }
-  ' | sort -u)"
+  new_names() { # <путь тестов>…  → имена новых тестов в диффе этих путей
+    git diff -U0 "$mb" "$branch" -- "$@" | grep -E '^\+' | awk '
+      /@Test/ { flag = 1 }
+      match($0, /func [A-Za-z0-9_]+/) { n = substr($0, RSTART + 5, RLENGTH - 5); if (flag || n ~ /^test/) print n; flag = 0 }
+    ' | sort -u
+  }
+  names="$(new_names 'Packages/*/Tests/*.swift')"
   if [ -z "$tfiles" ] || [ -z "$names" ]; then
     row нет "4. в диффе нет новых тестов пакетов (@Test или func test…) — нечего проверять на старом коде"
   else
@@ -149,6 +152,11 @@ else
       filt="$(printf '%s\n' "$names" | paste -sd'|' -)"
       failed_any=0; built_any=0; unverified=0; detail=""
       while IFS= read -r p; do
+        # Пакет, где новых тестов нет (правка тестов без новых функций), не проверяем: `swift test --filter` с пустым
+        # попаданием выходит с 0, и это читалось как «новые тесты проходят на старом коде» (29.8в.28).
+        pnames="$(new_names "$p/Tests/*.swift")"
+        [ -n "$pnames" ] || continue
+        filt="$(printf '%s\n' "$pnames" | paste -sd'|' -)"
         log="/tmp/cc-checkstep-$(basename "$p").log"
         ( cd "$wt/$p" && swift test --filter "$filt" ) > "$log" 2>&1; code=$?
         if [ $code -ne 0 ]; then
