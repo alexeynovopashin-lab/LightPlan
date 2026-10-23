@@ -52,6 +52,9 @@ import LightPlanDomain
         #expect(k(.landscape) == nil && k(.street) == nil, "у жанра нет клиента")
         #expect(k(.report, org: "o1") == nil && k(.portrait, org: "o1") == nil, "заказчик — организация: это «Компании»")
         #expect(k(.wedding, org: "agency", persons: [Self.anya, Self.mark]) == .couple, "свадьба через агентство: пара — клиент")
+        #expect(k(.party, org: "o1", persons: [Person(name: "Нина", phone: "")]) == nil
+                && k(.portrait, org: "o1", persons: [Self.anya]) == nil, "исключение — только свадьба: остальным организация клиента не оставляет")
+        #expect(k(.wedding, org: "agency") == nil, "свадьба через агентство без людей пары — компания, не клиент")
         #expect(k(.portrait, kind: .meet) == nil, "встреча клиента не заводит")
         #expect(k(.portrait, kind: .event) == nil)
     }
@@ -135,6 +138,42 @@ import LightPlanDomain
         #expect(o.alsoIn == [m.clientId!], "номер жениха есть у другого — карточка спросит «объединить?»")
         #expect(clients.count == 2 && clients[0].people.map(\.phone) == [Self.anya.phone], "номер жениха к первому клиенту сам не переехал")
         #expect(clients[1].people.map(\.phone) == [Self.mark.phone])
+    }
+
+    @Test func aSharedNumberOfANamedPairBelongsToTheFirstNamedPersonAndDoesNotDuplicate() {
+        var clients: [Client] = [], ids = Ids()
+        let names = [Person(name: "Аня", phone: ""), Person(name: "Марк", phone: "")]
+        var wed = Self.shoot("w", Self.day(1), genre: .wedding, contact: "Аня и Марк", phone: "+7 913 555-66-77", persons: names)
+        Self.save(&wed, &clients, ids: ids)
+        #expect(clients.count == 1 && clients[0].people.map(\.name) == ["Аня", "Марк"] && clients[0].people.map(\.phone) == ["+7 913 555-66-77", ""],
+                "общий номер — первому названному, третьего человека нет")
+        var next = Self.shoot("l", Self.day(20), genre: .lovestory, contact: "Аня", phone: "8 913 555-66-77")
+        Self.save(&next, &clients, ids: ids)
+        #expect(clients.count == 1 && next.clientId == wed.clientId, "следующая съёмка с тем же номером находит пару, а не заводит дубль")
+    }
+
+    @Test func aNumberOfThreeIsNotLostOnCreation() {
+        var clients: [Client] = [], ids = Ids()
+        var wed = Self.shoot("w", Self.day(1), genre: .wedding, contact: "Аня и Марк", phone: "+7 913 000-00-33", persons: [Self.anya, Self.mark])
+        Self.save(&wed, &clients, ids: ids)
+        var again = Self.shoot("a", Self.day(9), contact: "Мама", phone: "+7 913 000-00-33")
+        Self.save(&again, &clients, ids: ids)
+        #expect(clients.count == 1 && again.clientId == wed.clientId, "номер, названный третьим, узнаётся, а не плодит дубль")
+    }
+
+    @Test func anArchivedNumberFindsTheClientButIsNotWrittenBackAsAPerson() {
+        var clients: [Client] = [], ids = Ids()
+        var s = Self.shoot("a", Self.day(1), contact: "Ольга", phone: "+7 913 787-97-07")
+        Self.save(&s, &clients, ids: ids)
+        s.clientPhone = "+7 913 111-00-00"
+        Self.save(&s, &clients, ids: ids)
+        var call = Self.shoot("c", Self.day(5), contact: "Оля", phone: "8 913 787-97-07")
+        Self.save(&call, &clients, ids: ids)
+        #expect(call.clientId == s.clientId && clients[0].people.map(\.phone) == ["+7 913 111-00-00"], "прежний номер человека не воскресает вторым")
+        var wed = Self.shoot("w", Self.day(9), genre: .wedding, persons: [Person(name: "Ольга", phone: "+7 913 787-97-07"), Self.mark])
+        Self.save(&wed, &clients, ids: ids)
+        #expect(wed.clientId == s.clientId && clients[0].people.map(\.phone) == ["+7 913 111-00-00", Self.mark.phone],
+                "жених дописан вторым, прежний номер невесты места не занял")
     }
 
     // MARK: клиент без номера (§ 3.7)

@@ -21,7 +21,11 @@ public enum ClientBook {
     /// (это «Компании»), кроме свадьбы через агентство, где люди пары вписаны поимённо.
     public static func kind(for s: Session) -> ClientKind? {
         guard s.kind == .shoot, GenreProfile(s.genre).spec.client else { return nil }
-        if s.orgId != nil, s.persons.allSatisfy({ blank($0.name) && blank($0.phone) }) { return nil }
+        if s.orgId != nil {
+            // Свадьба через агентство: заказчик — компания, а пара вписана поимённо — она и клиент. Остальным жанрам
+            // организация-заказчик клиента не оставляет, кто бы ни был вписан.
+            guard s.genre == .wedding, s.persons.contains(where: { !blank($0.name) || !blank($0.phone) }) else { return nil }
+        }
         switch s.genre {
         case .wedding, .lovestory: return .couple
         case .family: return .family
@@ -42,8 +46,10 @@ public enum ClientBook {
             if !p.isBlank { out = [p] }
         } else if TelFormat.isReal(own, country: country),
                   !out.contains(where: { TelFormat.full($0.phone, country: country) == TelFormat.full(own, country: country) }) {
-            // Номер клиента сверх людей пары: тоже кто-то, имени нет.
-            out.append(ClientPerson(name: "", phone: own))
+            // Номер клиента сверх людей пары: общий номер достаётся первому названному без своего телефона, а если у
+            // всех свой — это ещё один человек без имени.
+            if let i = out.firstIndex(where: { blank($0.phone) }) { out[i].phone = own }
+            else { out.append(ClientPerson(name: "", phone: own)) }
         }
         return out.filter { p in
             let k = TelFormat.full(p.phone, country: country)
@@ -119,7 +125,7 @@ public enum ClientBook {
             var id = newId()
             for _ in 0..<8 where clients.contains(where: { $0.id == id }) { id = newId() }
             var c = Client(id: id, kind: kind)
-            c.people = Array(cands.prefix(capacity(kind)))
+            c.people = cands            // вместимость ограничивает дописывание, а не заведение: номер записи не теряется
             c.modifiedAt = nowMs
             clients.append(c)
             s.clientId = c.id
@@ -141,6 +147,8 @@ public enum ClientBook {
                 } else if wasBound, let j = replaceable(in: c, for: cand, covered: covered, country: country) {
                     c.people[j].phone = cand.phone                 // номер сменился (5)
                     if blank(c.people[j].name) { c.people[j].name = cand.name }
+                } else if owner[k] == target {
+                    continue                                       // прежний номер из `telLog`: узнан, но заново не вписывается
                 } else if c.people.count < capacity(c.kind) {
                     c.people.append(cand)
                 }
