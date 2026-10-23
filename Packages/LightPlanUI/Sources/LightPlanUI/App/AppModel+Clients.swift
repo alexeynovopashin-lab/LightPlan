@@ -13,8 +13,6 @@ struct ClientRow: Equatable, Identifiable {
     var subtitle: String
     /// Знак из библиотеки по виду: пара, семья, персона.
     var icon: String
-    /// Последняя съёмка клиента — туда ведёт строка, пока нет карточки клиента (К2).
-    var latestShoot: String?
 }
 
 /// Частные клиенты (шаг К1, справка `docs/clients_reference.md`): склейка при сохранении съёмки, разовый проход на
@@ -74,21 +72,8 @@ extension AppModel {
 
     /// Строки вкладки «Частные» под выбранным фильтром, свежие сверху.
     func clientRows() -> [ClientRow] {
-        let nt = NumberText(language: language)
-        let sessions = snapshot.sessions
-        return ClientBook.list(snapshot.clients, sessions: sessions, filter: org.clientsFilter).map { c in
-            let line = ClientBook.line(of: c.id, in: sessions, home: settings.currency)
-            var parts: [String] = []
-            if line.shootCount > 0 {
-                parts.append(lexicon.count("unit.shoot", line.shootCount))
-                parts += line.sums.map { nt.money(NSDecimalNumber(decimal: $0.sum).doubleValue, $0.currency.rawValue) }
-            } else {
-                parts.append(lexicon.t("cl.noShoots"))
-            }
-            let title = ClientBook.title(of: c, and: lexicon.t("card.and"))
-            return ClientRow(id: c.id, title: title.isEmpty ? lexicon.t("cl.noName") : title,
-                             subtitle: parts.joined(separator: " · "), icon: Self.clientIcon(c.kind),
-                             latestShoot: ClientBook.shoots(of: c.id, in: sessions).first?.id)
+        ClientBook.list(snapshot.clients, sessions: snapshot.sessions, filter: org.clientsFilter).map { c in
+            ClientRow(id: c.id, title: clientTitle(c), subtitle: clientLine(c.id), icon: Self.clientIcon(c.kind))
         }
     }
 
@@ -100,11 +85,8 @@ extension AppModel {
         }
     }
 
-    /// Строка клиента, пока нет его карточки (К2): открывается его последняя съёмка; экран «Клиенты» закрывается,
-    /// как при переходе из организации в её съёмку. Съёмок нет — нажимать некуда.
+    /// Строка клиента ведёт в его карточку (К2): слой поверх «Клиентов», «Назад» возвращает в список.
     func openClient(_ row: ClientRow) {
-        guard let id = row.latestShoot else { return }
-        closeOrgs()
-        openCard(id: id)
+        openClientCard(id: row.id)
     }
 }

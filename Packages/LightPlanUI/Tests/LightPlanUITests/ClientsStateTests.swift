@@ -175,26 +175,176 @@ struct ClientsStateTests {
         #expect(app.clientRows().isEmpty)
     }
 
-    @Test func aClientRowOpensItsLatestShootAndClosesTheLayer() {
+    @Test func aClientRowOpensItsCardOverTheList() {
         let app = model(sessions: [session("a", day(9, 5), client: "Ирина", tel: "8 916 123-45-67"),
                                    session("b", day(9, 25), client: "Ирина", tel: "8 916 123-45-67")])
         app.openForm(editing: "a"); app.saveForm()
         app.openForm(editing: "b"); app.saveForm()
         app.openClients()
         let row = app.clientRows()[0]
-        #expect(row.latestShoot == "b")
         app.openClient(row)
-        #expect(!app.org.listOpen && app.cardId == "b")
+        #expect(app.org.listOpen && app.org.clientCardId == row.id && app.cardId == nil, "карточка клиента слоем поверх списка (К2)")
+        app.closeClientCard()
+        #expect(app.org.listOpen && app.org.clientCardId == nil, "«Назад» — в список")
     }
 
-    @Test func aClientWithoutShootsHasNowhereToGoYet() {
+    @Test func aClientWithoutShootsOpensItsCardToo() {
         var snap = Snapshot()
-        snap.clients = [Client(id: "c1")]
+        var c = Client(id: "c1")
+        c.people = [ClientPerson(name: "", phone: "8 913 787-97-07")]
+        snap.clients = [c]
         let app = model(snapshot: snap)
         app.openClients()
         let row = app.clientRows()[0]
-        #expect(row.latestShoot == nil && row.title == app.lexicon.t("cl.noName") && row.subtitle == app.lexicon.t("cl.noShoots"))
+        #expect(row.title == "8 913 787-97-07" && row.subtitle == app.lexicon.t("cl.noShoots"))
         app.openClient(row)
-        #expect(app.org.listOpen && app.cardId == nil)
+        #expect(app.org.clientCardId == "c1")
+    }
+
+    // MARK: карточка клиента (К2)
+
+    /// Два клиента: Ирина (две съёмки по 8 000) и Ира с другим номером (одна съёмка 12 000).
+    private func twoIrinas() -> AppModel {
+        let app = model(sessions: [session("a", day(9, 5), client: "Ирина", tel: "8 916 123-45-67", rate: 8_000),
+                                   session("b", day(9, 20), client: "Ирина", tel: "8 916 123-45-67", rate: 8_000),
+                                   session("c", day(9, 25), client: "Ира", tel: "8 903 000-11-22", rate: 12_000)])
+        for id in ["a", "b", "c"] { app.openForm(editing: id); app.saveForm() }
+        return app
+    }
+
+    private func clientId(_ app: AppModel, of session: String) -> String { app.sessions.first { $0.id == session }!.clientId! }
+
+    @Test func editingTheNameWritesAtOnceAndTheListShowsIt() {
+        let app = twoIrinas()
+        let id = clientId(app, of: "a")
+        app.openClients()
+        app.openClientCard(id: id)
+        app.setClientPersonName(id, at: 0, "Ирина Смирнова")
+        #expect(app.clientRecord(id)?.people[0].name == "Ирина Смирнова" && app.clientRecord(id)?.modifiedAt != nil)
+        app.closeClientCard()
+        #expect(app.clientRows().contains { $0.title == "Ирина Смирнова" })
+        #expect(app.sessions.first { $0.id == "a" }?.contact == "Ирина", "прошлая съёмка своё имя не переписывает")
+    }
+
+    @Test func shootsAndSumsOfTheCardAreComputed() {
+        let app = twoIrinas()
+        let id = clientId(app, of: "a")
+        let line = app.clientLine(id)
+        #expect(line.hasPrefix("2 съёмки · ") && line.contains("16"), Comment(rawValue: line))
+        #expect(ClientBook.shoots(of: id, in: app.sessions).map(\.id) == ["b", "a"])
+        app.openForm(editing: "a"); app.setFormRate(20_000); app.saveForm()
+        #expect(app.clientLine(id).contains("28"), "сумма — из съёмок, не копия: \(app.clientLine(id))")
+    }
+
+    @Test func aChangedPhoneGoesToTheArchiveOnBackAndStillFindsTheClient() {
+        let app = twoIrinas()
+        let id = clientId(app, of: "a")
+        app.openClientCard(id: id)
+        app.setClientPersonPhone(id, at: 0, "+7 916 999-88-77")
+        app.closeClientCard()
+        let c = app.clientRecord(id)!
+        #expect(c.telLog.map { TelFormat.full($0.phone, country: app.telCountry) } == [TelFormat.full("8 916 123-45-67", country: app.telCountry)])
+        app.openForm(editing: "b"); app.saveForm()
+        #expect(app.sessions.first { $0.id == "b" }?.clientId == id && app.clients.count == 2, "по старому номеру клиент узнаётся")
+    }
+
+    @Test func mergeMovesTheShootsAndBuriesTheSecondClient() {
+        let app = twoIrinas()
+        let ira = clientId(app, of: "c"), irina = clientId(app, of: "a")
+        app.openClients()
+        app.openClientCard(id: irina)
+        #expect(app.clientMergeCandidates(irina).map(\.id) == [ira])
+        app.mergeClient(ira, into: irina)
+        #expect(app.clients.map(\.id) == [irina])
+        #expect(app.sessions.allSatisfy { $0.clientId == irina })
+        #expect(app.clientRecord(irina)?.people.count == 2, "телефоны слились: у Ирины оба номера")
+        #expect(app.clientLine(irina).hasPrefix("3 съёмки"))
+        guard case .array(let graves)? = app.snapshot.extra["graves"] else { Issue.record("нет могил"); return }
+        #expect(graves.contains { if case .object(let o) = $0 { o["id"] == .string(ira) } else { false } }, "второй клиент в могиле")
+        app.closeClientCard()
+        #expect(app.clientRecord(irina)?.telLog.isEmpty == true, "пришедшие номера при «Назад» не «уходят» в архив")
+    }
+
+    @Test func aShootInTheBinFollowsTheMerge() {
+        let app = twoIrinas()
+        let ira = clientId(app, of: "c"), irina = clientId(app, of: "a")
+        app.snapshot.trashed = [TrashedItem(record: app.sessions.first { $0.id == "c" }!, index: 2, deletedAt: 1)]
+        app.snapshot.sessions.removeAll { $0.id == "c" }
+        app.mergeClient(ira, into: irina)
+        #expect(app.snapshot.trashed[0].record.clientId == irina, "вернувшаяся из корзины съёмка не укажет в пустоту")
+    }
+
+    @Test func twinPlateNamesTheOtherClientWithTheSameNumber() {
+        let app = twoIrinas()
+        let ira = clientId(app, of: "c"), irina = clientId(app, of: "a")
+        #expect(app.clientTwins(irina).isEmpty)
+        app.openClientCard(id: irina)
+        app.addClientPerson(irina)
+        app.setClientPersonPhone(irina, at: 1, "+7 903 000-11-22")
+        #expect(app.clientTwins(irina).map { [$0.clientId, $0.title] } == [[ira, "Ира"]])
+    }
+
+    @Test func deleteKeepsTheShootsWithoutAClient() {
+        let app = twoIrinas()
+        let id = clientId(app, of: "a")
+        app.openClients()
+        app.openClientCard(id: id)
+        #expect(app.clientShootCount(id) == 2)
+        app.deleteClient(id)
+        #expect(app.org.clientCardId == nil && app.clientRecord(id) == nil)
+        #expect(app.sessions.count == 3 && app.sessions.filter { $0.clientId == nil }.map(\.id).sorted() == ["a", "b"])
+        #expect(app.sessions.first { $0.id == "a" }?.clientPhone == "8 916 123-45-67", "имя и номер в съёмке остаются")
+    }
+
+    @Test func newClientIsADraftUntilSomethingIsWritten() {
+        let app = model()
+        app.openClients()
+        app.newClient()
+        let id = app.org.clientCardId!
+        #expect(app.clients.isEmpty && app.clientRecord(id)?.people.count == 1)
+        app.setClientKind(id, .family)
+        #expect(app.clients.isEmpty, "вид — ещё не слово")
+        app.setClientPersonName(id, at: 0, "Кузнецовы")
+        #expect(app.clients.map(\.id) == [id] && app.clients[0].kind == .family)
+        app.closeClientCard()
+        #expect(app.clients.count == 1)
+    }
+
+    @Test func aBlankDraftOrAnEmptiedClientWithoutShootsIsNotKept() {
+        let app = model()
+        app.newClient()
+        app.closeClientCard()
+        #expect(app.clients.isEmpty && app.org.clientDraft == nil, "пустой черновик забыт")
+        app.newClient()
+        let id = app.org.clientCardId!
+        app.setClientPersonName(id, at: 0, "Ольга")
+        app.setClientPersonName(id, at: 0, "")
+        app.closeClientCard()
+        #expect(app.clients.isEmpty, "стёртый до пустоты клиент без съёмок не остаётся")
+    }
+
+    @Test func blankPersonRowsArePrunedOnBack() {
+        let app = twoIrinas()
+        let id = clientId(app, of: "a")
+        app.openClientCard(id: id)
+        app.setClientKind(id, .family)
+        app.addClientPerson(id)
+        app.addClientPerson(id)
+        #expect(app.clientRecord(id)?.people.count == 3)
+        app.closeClientCard()
+        #expect(app.clientRecord(id)?.people.count == 1)
+    }
+
+    @Test func ownLinksAreKeptAndATapOnAShootOpensIt() {
+        let app = twoIrinas()
+        let id = clientId(app, of: "a")
+        app.openClients()
+        app.openClientCard(id: id)
+        app.addClientLink(id, "disk.yandex.ru/gallery", title: "Галерея 2025")
+        #expect(app.clientRecord(id)?.links.map(\.url) == ["https://disk.yandex.ru/gallery"])
+        app.removeClientLink(id, linkId: app.clientRecord(id)!.links[0].id)
+        #expect(app.clientRecord(id)?.links.isEmpty == true)
+        app.openClientShoot("b")
+        #expect(app.org.clientCardId == nil && !app.org.listOpen && app.cardId == "b")
     }
 }

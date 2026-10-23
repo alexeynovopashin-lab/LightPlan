@@ -144,11 +144,13 @@ public enum ClientBook {
                     if blank(c.people[j].name) && !blank(cand.name) { c.people[j].name = cand.name }
                 } else if let o = owner[k], o != target {
                     continue                                       // номер другого клиента: не переносим (4)
+                } else if owner[k] == target {
+                    // Прежний номер из `telLog`: узнан, но заново не вписывается. Раньше смены номера (К2): номер, сменённый
+                    // в карточке клиента, не откатывается, когда пересохраняют старую съёмку со старым номером (§ 3.5).
+                    continue
                 } else if wasBound, let j = replaceable(in: c, for: cand, covered: covered, country: country) {
                     c.people[j].phone = cand.phone                 // номер сменился (5)
                     if blank(c.people[j].name) { c.people[j].name = cand.name }
-                } else if owner[k] == target {
-                    continue                                       // прежний номер из `telLog`: узнан, но заново не вписывается
                 } else if c.people.count < capacity(c.kind) {
                     c.people.append(cand)
                 }

@@ -147,8 +147,17 @@
   org-only shoots, meetings, landscape/street make no client. Own number never becomes a client (`myKeys`). The screen is the layer `ClientsScreen`
   (`Screens/Org/`, z `BackZ.orgList`): tabs «Частные | Компании», «Компании» = the old `OrgListScreen` unchanged (node `org.list` kept for the web pair);
   `openOrgs()` opens that layer on «Компании», `openClients()` on «Частные». Settings chapter `Chapter.clients` (`opensLayer`) stands after «Календарь»; «Организации» left
-  «Хранилище» (`Chapter.parts`). Card of a client is К2: until then a row opens the latest shoot, and there is no «+ Клиент». Check: `node Tools/shots/clients.js`
-  (native only: tabs vs «Назад», fields 24, row 64, kinds add up to «Все»).
+  «Хранилище» (`Chapter.parts`). Check: `node Tools/shots/clients.js`
+  (native only: tabs vs «Назад», fields 24, row 64, kinds add up to «Все»; К2 adds the card shots below).
+- **Client card (К2).** A row of «Частные» opens `ClientCardScreen` (`Screens/Org/`, layer z `BackZ.clientCard`, state in `OrgState.clientCardId`,
+  `AppModel+ClientCard.swift`); edits write at once, like the org card. Kind segment, people (name, phone with a call button), own links + links
+  of the client's shoots, shoots and sums — **computed** (`ClientBook.shoots`/`line`/`shootLinks`), never stored. Rules in `ClientCard.swift` (Domain):
+  `merge` (the open card stays, the picked one is poured in: its live and trashed shoots move, same number = one person, filled fields win, kind
+  of the target; graves the source), `delete` (shoots stay, `clientId` dropped, as `OrgBook.detach`), `twins` («номер есть у клиента …» plate, § 3.4),
+  `keeps`/`isBlank` (a blank client without shoots is not kept; «+ Клиент» is a draft until a word is written, like «+ Организация»). A phone changed in
+  the card goes to the client's `telLog` on «Назад»/background (`commitClientTels`); `bind` checks the client's own archived number **before** «номер
+  сменился», so re-saving an old shoot never rolls the card's number back. Not here: birthdays, anniversary, «Поздравлять» (К6), messengers and
+  «Пишем» (К4), entries from a shoot (К3). Shots: `clients.js` cases `card-couple|family|person|twin|pick|new` (`-LPShotSheet clientcard -LPShotWay …`).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

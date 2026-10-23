@@ -28,8 +28,16 @@ struct OrgState: Equatable {
     var contactsOpen = false
     /// Номера открытой карточки до правки — по ним при закрытии видно, какой ушёл (веб `orgTelSnap`).
     var telSnap: [PhoneBook.Tel] = []
+    /// Открытая карточка частного клиента (шаг К2); у черновика «+ Клиент» — его id.
+    var clientCardId: String?
+    /// Новый клиент, ещё не в данных: встаёт туда, когда в нём что-то вписано.
+    var clientDraft: Client?
+    /// Номера открытой карточки клиента до правки — ушедший ляжет в его `telLog`.
+    var clientTelSnap: [PhoneBook.Tel] = []
+    /// Открыт лист «С кем объединить».
+    var clientPick = false
 
-    var isOpen: Bool { listOpen || cardId != nil || contactsOpen }
+    var isOpen: Bool { listOpen || cardId != nil || contactsOpen || clientCardId != nil }
 }
 
 extension AppModel {

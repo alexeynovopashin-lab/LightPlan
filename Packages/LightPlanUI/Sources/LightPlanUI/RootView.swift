@@ -42,9 +42,9 @@ public struct RootView: View {
             app?.sceneActive = phase == .active
             // Ушли в фон — отложенная запись дописывается сейчас: система
             // может закрыть приложение, не дождавшись дебаунса.
-            // Открытая карточка организации сверяет номера и в фоне: закрытие может не наступить
+            // Открытая карточка организации (и клиента, К2) сверяет номера и в фоне: закрытие может не наступить
             // (ошибка веба 29 — ушедший номер писался только при «Назад»).
-            if phase == .background, let app { app.commitOrgTels(); Task { await app.flush() } }
+            if phase == .background, let app { app.commitOrgTels(); app.commitClientTels(); Task { await app.flush() } }
             // Ушли в фон — попросить iOS разбудить нас ради прогноза (30.6) или снять просьбу, если следить не за чем.
             if phase == .background, let app { app.scheduleWeatherWake(); app.debugWeatherBackgroundRun() }
             // Вернулись на экран — если прогноза или воздуха всё ещё нет, спросить сразу (28ж): раньше один
@@ -135,6 +135,15 @@ private struct Shell: View {
                     .edgeBack(app, z: BackZ.contacts) { app.closeContacts() }
                     .transition(.move(edge: .trailing))
                     .zIndex(BackZ.contacts)
+            }
+            // Карточка частного клиента (К2): над «Клиентами» и «Контактами», под карточкой организации.
+            if let id = app.org.clientCardId {
+                ClientCardScreen(app: app, id: id) {
+                    withAnimation(overlaySlide) { app.closeClientCard() }
+                }
+                .edgeBack(app, z: BackZ.clientCard) { app.closeClientCard() }
+                .transition(.move(edge: .trailing))
+                .zIndex(BackZ.clientCard)
             }
             if let id = app.org.cardId {
                 OrgCardScreen(app: app, id: id, backTitle: app.lexicon.t("org.tabOrgs")) {

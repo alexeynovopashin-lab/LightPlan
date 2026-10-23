@@ -227,6 +227,24 @@ extension AppModel {
             if s.way == "empty" { app.snapshot.clients = [] }
             if let f = s.way.flatMap(ClientBook.Filter.init(rawValue:)) { app.org.clientsFilter = f }
             app.openClients()
+        // Карточка клиента (К2) поверх «Частных»: `LPShotWay` — `couple|family|person` (тот из вида, у кого больше всего
+        // съёмок), `twin` — персона, у которой вписан номер человека пары (подсказка «объединить?»), `pick` — лист
+        // «С кем объединить», `new` — черновик «+ Клиент».
+        case "clientcard":
+            app.openClients()
+            let way = s.way ?? "couple"
+            if way == "new" { app.newClient(); break }
+            let kind: ClientKind = way == "family" ? .family : way == "person" || way == "twin" ? .person : .couple
+            let most = app.clients.filter { $0.kind == kind }
+                .max { app.clientShootCount($0.id) < app.clientShootCount($1.id) }
+            guard var c = most else { break }
+            if way == "twin", let pair = app.clients.first(where: { $0.kind == .couple && $0.people.count > 1 }),
+               let i = app.snapshot.clients.firstIndex(where: { $0.id == c.id }) {
+                c.people.append(ClientPerson(name: "", phone: pair.people[1].phone))
+                app.snapshot.clients[i] = c
+            }
+            app.openClientCard(id: c.id)
+            if way == "pick" { app.org.clientPick = true }
         case "docs":
             // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),
             // после плюса — вид (`list|table|months`), `q=слово` — запрос поиска (шаг 3б), `paper` — открыть

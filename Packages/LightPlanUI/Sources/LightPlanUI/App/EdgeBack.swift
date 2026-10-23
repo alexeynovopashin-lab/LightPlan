@@ -323,6 +323,7 @@ enum BackZ {
     static let refs = 1.5
     static let orgList = 1.52
     static let contacts = 1.54
+    static let clientCard = 1.56
     static let orgCard = 1.6
     static let sunAR = 1.7
     static let form = 10.0

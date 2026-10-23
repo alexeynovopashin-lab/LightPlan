@@ -8,8 +8,8 @@ import LightPlanDomain
 /// «Частные» — клиенты, собранные из съёмок по номеру телефона, с фильтром «Все · Пары · Семьи · Персоны»; свежие
 /// сверху. «Компании» — нынешние организации один в один (`OrgListScreen`), их карточка не менялась.
 ///
-/// Карточки клиента ещё нет (шаг К2): строка ведёт в его последнюю съёмку. «+ Клиент» тоже придёт с карточкой —
-/// клиент заводится сам, когда сохраняют съёмку.
+/// Строка ведёт в карточку клиента (шаг К2, `ClientCardScreen`); «+ Клиент» заводит клиента руками — черновиком, который
+/// встаёт в данные, когда в нём вписано слово. Обычно клиент заводится сам, когда сохраняют съёмку.
 struct ClientsScreen: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
@@ -61,6 +61,14 @@ struct ClientsScreen: View {
         }
         .padding(.top, 14)
         .shotNode("cl.list", text: "\(rows.count)")
+        // Как «+ Организация» на «Компаниях»: тихая строка под списком.
+        Button { withAnimation(overlaySlide) { app.newClient() } } label: {
+            Text(t.t("cl.add")).font(webFont(14.5)).foregroundStyle(pal.ink4)
+                .frame(maxWidth: .infinity).frame(height: 31).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("cl.add", text: t.t("cl.add"))
+        .padding(.top, 12)
     }
 
     static func filterKey(_ f: ClientBook.Filter) -> String {
@@ -98,7 +106,7 @@ struct ClientsScreen: View {
                     Text(r.subtitle).font(webFont(12)).foregroundStyle(pal.ink6).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                if r.latestShoot != nil { Icon("chevron", size: 16, line: 2.4).foregroundStyle(pal.ink6) }
+                Icon("chevron", size: 16, line: 2.4).foregroundStyle(pal.ink6)
             }
             .padding(14).frame(height: 64)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
@@ -114,6 +122,10 @@ struct ClientsScreen: View {
 struct ClientsSeg<V: Hashable>: View {
     let options: [(label: String, value: V)]
     @Binding var selection: V
+    /// Во всю ширину (вид клиента в карточке, К2): варианты делят строку поровну.
+    var stretch = false
+    var node = "cl.tabs"
+    var itemNode = "cl.tab"
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -130,16 +142,18 @@ struct ClientsSeg<V: Hashable>: View {
                         .foregroundStyle(on ? pal.ink : pal.ink4)
                         .lineLimit(1).minimumScaleFactor(0.8)
                         .padding(.vertical, 7).padding(.horizontal, 12)
+                        .frame(maxWidth: stretch ? .infinity : nil)
                         .background(on ? pal.segOn : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .shotNode("cl.tab.\(i)", text: options[i].label)
+                .shotNode("\(itemNode).\(i)", text: options[i].label)
             }
         }
         .padding(3)
+        .frame(maxWidth: stretch ? .infinity : nil)
         .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shotNode("cl.tabs")
+        .shotNode(node)
     }
 }
 
