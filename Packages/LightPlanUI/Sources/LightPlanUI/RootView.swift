@@ -58,6 +58,7 @@ public struct RootView: View {
             if phase == .active, let app { app.placeBecameActive() }
             // Прогноз к съёмкам переменился, пока нас не было (30.6): баннер; чаще получаса в сеть не ходим.
             if phase == .active, let app {
+                app.offerPendingWeatherAlerts()     // плашка, не дождавшаяся сцены (30.6b)
                 Task { try? await Task.sleep(for: .milliseconds(900)); app.watchWeather(force: false) }
             }
         }

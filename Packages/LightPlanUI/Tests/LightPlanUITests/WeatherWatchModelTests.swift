@@ -275,6 +275,20 @@ struct WeatherWatchModelTests {
         #expect(!calm.weatherAlertAsk)
     }
 
+    /// Свернули приложение, пока шёл первый баннер: плашка ждёт возврата, а не теряется (ревью GPT к 0b19747).
+    @Test func plateWaitsForReturnWhenBannerEndedInBackground() async {
+        let (app, _) = askModel(.notDetermined)
+        _ = await app.runWeatherWatch(force: true, channel: .banner)
+        app.sceneActive = false
+        await app.noticeTask?.value
+        await app.wxOfferTask?.value
+        #expect(!app.weatherAlertAsk)
+        app.sceneActive = true
+        app.offerPendingWeatherAlerts()                       // RootView на `.active`
+        await app.wxOfferTask?.value
+        #expect(app.weatherAlertAsk)
+    }
+
     /// «Да» — системное окно; разрешили — плашка больше не нужна.
     @Test func yesAsksTheSystem() async {
         let (app, center) = askModel(.notDetermined)

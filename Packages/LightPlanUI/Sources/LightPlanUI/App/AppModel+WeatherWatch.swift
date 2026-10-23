@@ -161,10 +161,17 @@ extension AppModel {
                 try? await Task.sleep(for: self.noticeTiming.step)
                 self.notices.advance()
             }
-            guard let self, self.wxOfferPending else { return }
-            self.wxOfferPending = false
-            self.offerWeatherAlerts()
+            self?.offerPendingWeatherAlerts()
         }
+    }
+
+    /// Баннер о прогнозе отыграл — предложить плашку. Приложение в фоне — ожидание доживает до возврата
+    /// (`RootView` зовёт снова на `.active`), иначе свёрнутое во время баннера не спросило бы никогда
+    /// (ревью GPT к 0b19747).
+    func offerPendingWeatherAlerts() {
+        guard wxOfferPending, notices.current == nil, sceneActive else { return }
+        wxOfferPending = false
+        offerWeatherAlerts()
     }
 
     // MARK: - Плашка «Сообщать и когда закрыто?» (30.6b)
