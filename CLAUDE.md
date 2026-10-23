@@ -167,7 +167,7 @@
   «Это … · N» + «Другой»; else, **only when the form has no real number** and «Другой» was not pressed, a name hint «Это …? N» + «Да» /
   «Другой» (exact name beats a word prefix, ties → freshest shoot). The answer is `EventForm.clientChoice` (not in the draft),
   applied by `ClientBook.applying` in `saveForm` before `bind`; a number still beats it. `bind` now fills an empty phone of the person
-  with the same first name instead of appending a second one. Shots: `clients.js` cases `head-*`, `form-*` (`-LPShotSheet clienthead|clientform`).
+  with the same first name instead of appending a second one — after «номер сменился», so a namesake never takes a changed number. Shots: `clients.js` cases `head-*`, `form-*` (`-LPShotSheet clienthead|clientform`).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

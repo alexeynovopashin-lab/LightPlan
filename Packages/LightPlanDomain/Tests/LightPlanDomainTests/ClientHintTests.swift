@@ -185,6 +185,20 @@ import LightPlanDomain
         #expect(clients[0].people.map(\.phone) == [B.anya.phone, B.mark.phone], "жених пары получил номер, а не потерял его")
     }
 
+    /// Ревью GPT к f4c1e94: в паре два одинаковых имени, номер одного сменили — новый номер его, старый в архиве, а не у второго.
+    @Test func aChangedNumberIsNotGivenToTheNamesakeWithoutOne() {
+        let ids = B.Ids()
+        var clients: [Client] = []
+        var w = B.shoot("w", B.day(1), genre: .wedding,
+                        persons: [Person(name: "Саша", phone: "+7 913 111-00-01"), Person(name: "Саша", phone: "")])
+        B.save(&w, &clients, ids: ids)
+        w.persons[0].phone = "+7 913 111-00-02"
+        B.save(&w, &clients, ids: ids)
+        #expect(clients.count == 1 && clients[0].people.map(\.phone) == ["+7 913 111-00-02", ""],
+                "номер сменился у первой Саши, вторая без номера")
+        #expect(clients[0].telLog.map(\.phone) == ["+7 913 111-00-01"], "старый номер — в архив")
+    }
+
     // MARK: плашка = склейка
 
     /// Что плашка обещает словами «по номеру» и «это …», то и делает «Сохранить».

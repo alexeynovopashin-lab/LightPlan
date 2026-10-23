@@ -139,13 +139,14 @@ public enum ClientBook {
                     // Прежний номер из `telLog`: узнан, но заново не вписывается. Раньше смены номера (К2): номер, сменённый
                     // в карточке клиента, не откатывается, когда пересохраняют старую съёмку со старым номером (§ 3.5).
                     continue
-                } else if let j = c.people.firstIndex(where: { blank($0.phone) && sameFirstName($0.name, cand.name) }) {
-                    // У человека с тем же именем номера не было — дозаполняется (2). Иначе подсказка «Да» по имени, а
-                    // потом вписанный номер, заводили в клиенте второго такого же человека (К3).
-                    c.people[j].phone = cand.phone
                 } else if wasBound, let j = replaceable(in: c, for: cand, covered: covered, country: country) {
                     c.people[j].phone = cand.phone                 // номер сменился (5)
                     if blank(c.people[j].name) { c.people[j].name = cand.name }
+                } else if let j = c.people.firstIndex(where: { blank($0.phone) && sameFirstName($0.name, cand.name) }) {
+                    // У человека с тем же именем номера не было — дозаполняется (2). Иначе подсказка «Да» по имени, а
+                    // потом вписанный номер, заводили в клиенте второго такого же человека (К3). После смены номера:
+                    // у тёзки без номера новый номер чужой (ревью GPT к f4c1e94).
+                    c.people[j].phone = cand.phone
                 } else if c.people.count < capacity(c.kind) {
                     c.people.append(cand)
                 }
