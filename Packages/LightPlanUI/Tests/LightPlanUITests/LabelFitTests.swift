@@ -51,7 +51,7 @@ struct LabelFitTests {
         Slot(name: "set.seg2", where_: "SettingsLook.swift WebSeg (2)", keys: ["net.auto", "net.direct", "set.modeSimple", "set.modePro", "fb.idea", "fb.bug"],
              size: 14, tracking: 0, lines: 1, avail: { ($0 - 54) / 2 - 22 }),
         // StudioAlertAskPlate.answer: плашка ≤ 360, поля 20, зазор 10.
-        Slot(name: "studio.ask.answer", where_: "StudioAlertAskPlate.swift answer()", keys: ["studio.askNo", "studio.askYes"],
+        Slot(name: "studio.ask.answer", where_: "StudioAlertAskPlate.swift AlertAskPlate.button()", keys: ["studio.askNo", "studio.askYes", "wx.askLater"],
              size: 16, tracking: 0, lines: 1, avail: { (min(360, $0 - 48) - 40 - 10) / 2 }),
     ]
 

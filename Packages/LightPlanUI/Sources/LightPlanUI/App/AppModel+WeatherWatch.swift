@@ -96,6 +96,7 @@ extension AppModel {
             guard sceneActive else { break }
             told = pass.say
             if let top = pass.say.first, let words = weatherWords(top) {
+                wxOfferPending = true
                 pushNotice(NoticeQueue.Notice(title: words.title, text: words.text, sessionId: top.id),
                            more: pass.say.count - 1)
             }
@@ -148,22 +149,68 @@ extension AppModel {
 
     // MARK: - Баннер
 
-    /// Показ: 5,2 с на экране, следующий — через 5,6 с (веб `notify` / `notifNext`).
-    static let noticeOnScreen: Duration = .milliseconds(5200)
-    static let noticeStep: Duration = .milliseconds(400)
-
+    /// Показ: 5,2 с на экране, следующий — через 5,6 с (веб `notify` / `notifNext`; `noticeTiming`). Очередь
+    /// кончилась после баннера о прогнозе — тогда, а не поверх него, плашка «Сообщать и когда закрыто?» (30.6b).
     func pushNotice(_ n: NoticeQueue.Notice, more: Int) {
         guard notices.push(n, more: more) else { return }
         noticeTask = Task { [weak self] in
             while let self, self.notices.current != nil {
                 self.noticeShown = true
-                try? await Task.sleep(for: Self.noticeOnScreen)
+                try? await Task.sleep(for: self.noticeTiming.onScreen)
                 self.noticeShown = false
-                try? await Task.sleep(for: Self.noticeStep)
+                try? await Task.sleep(for: self.noticeTiming.step)
                 self.notices.advance()
             }
+            guard let self, self.wxOfferPending else { return }
+            self.wxOfferPending = false
+            self.offerWeatherAlerts()
         }
     }
+
+    // MARK: - Плашка «Сообщать и когда закрыто?» (30.6b)
+
+    static let wxAskedKey = "lightplan.native.notify.wxAsked"
+
+    /// Плашку уже показывали и на неё ответили — на этой установке больше не появится.
+    var weatherAlertAsked: Bool { wxAskDefaults?.bool(forKey: Self.wxAskedKey) ?? wxAskedMemory }
+
+    private func markWeatherAlertAsked() {
+        wxAskedMemory = true
+        wxAskDefaults?.set(true, forKey: Self.wxAskedKey)
+    }
+
+    /// Все условия, кроме ответа системы: их же проверяем заново после ожидания.
+    private var canOfferWeatherAlerts: Bool {
+        alertCenter != nil && notifOn("wx") && !weatherAlertAsked && !weatherAlertAsk && !studioAlertAsk && sceneActive
+    }
+
+    /// После первого баннера о прогнозе: система ещё не спрашивала — своя плашка. Разрешили или отказали раньше
+    /// (здесь, в настройках или плашкой студийного часа) — не нужна. Системное окно здесь не зовётся никогда.
+    func offerWeatherAlerts() {
+        guard canOfferWeatherAlerts, let center = alertCenter else { return }
+        wxOfferTask = Task { [weak self] in
+            let auth = await center.authorization()
+            guard let self else { return }
+            alertAuth = auth
+            guard auth == .notDetermined, canOfferWeatherAlerts else { return }
+            weatherAlertAsk = true
+        }
+    }
+
+    /// «Да» — системное окно (то же, что кнопка «Разрешить уведомления»); «Не сейчас» и касание мимо — плашка
+    /// закрыта навсегда. «Спрашивали» — по ответу, не по показу: закрыли приложение с плашкой — спросим снова.
+    public func answerWeatherAlertAsk(yes: Bool) {
+        weatherAlertAsk = false
+        markWeatherAlertAsked()
+        if yes { allowWeatherAlerts() }
+    }
+
+    #if DEBUG
+    /// Снимки (`-LPWxAsk 1`): плашка на экране сразу, без баннера и без системы.
+    func debugShowWeatherAsk() {
+        if UserDefaults.standard.bool(forKey: "LPWxAsk") { weatherAlertAsk = true }
+    }
+    #endif
 
     /// Текст на экране: «И ещё N» — у последнего из показанных (веб `notifTail`, ключ карточки `card.clashMore`).
     public var noticeText: String? {
@@ -202,7 +249,7 @@ extension AppModel {
     /// «Разрешить уведомления» под тумблером: системный вопрос — по нажатию, не на запуске. Разрешение одно на
     /// приложение — студийный час сверяется с ним тоже.
     public func allowWeatherAlerts() {
-        Task { [weak self] in
+        wxOfferTask = Task { [weak self] in
             guard let self, let center = alertCenter else { return }
             if await center.authorization() == .notDetermined { _ = await center.requestAuthorization() }
             alertAuth = await center.authorization()

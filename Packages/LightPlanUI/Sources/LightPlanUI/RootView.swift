@@ -153,6 +153,11 @@ private struct Shell: View {
                 StudioAlertAskPlate(app: app)
                     .zIndex(BackZ.sunAR - 0.04)
             }
+            // Та же плашка после первого баннера о смене прогноза (30.6b).
+            if app.weatherAlertAsk {
+                WeatherAlertAskPlate(app: app)
+                    .zIndex(BackZ.sunAR - 0.04)
+            }
             // Слой AR (29.8в): дуга солнца поверх камеры; вход — место и момент, откуда открыли, экрану безразлично.
             if let target = app.sunAR {
                 SunARScreen(app: app, target: target)
@@ -250,6 +255,7 @@ private struct Shell: View {
             #if DEBUG
             app.debugOpenSunAR()
             app.debugShowStudioAsk()
+            app.debugShowWeatherAsk()
             #endif
             // Слои «Съёмок» лежат под вкладкой в дереве всегда: берём их, только пока вкладка выбрана.
             app.edgeBack.isLive = { [weak app] l in l.z >= EdgeBackRule.shellFloor || app?.tab == .planner }

@@ -48,6 +48,18 @@ struct WeatherWatchModelTests {
         func deliver(_ alert: InstantAlert) -> Bool { if accept { got.append(alert) }; return accept }
     }
 
+    /// Право уведомлять: что ответит система и сколько раз звали системное окно.
+    private actor Center: NotificationCentering {
+        var status: NotificationAuthorization
+        private(set) var asked = 0
+        init(_ status: NotificationAuthorization) { self.status = status }
+        func authorization() -> NotificationAuthorization { status }
+        func requestAuthorization() -> Bool { asked += 1; status = .allowed; return true }
+        func pending() -> [PendingAlert] { [] }
+        func add(_ alert: ScheduledAlert) -> Bool { true }
+        func remove(ids: [String]) {}
+    }
+
     private static let now = "2026-09-20T12:00:00+03:00"
 
     private static func shoot(_ id: String, day: Int, start: Int = 1080, kind: RecordKind = .shoot,
@@ -207,6 +219,86 @@ struct WeatherWatchModelTests {
         app.closeCard()
         #expect(told(app)["a"] == nil)
         #expect(seen(app)["a"]?.quality == .poor)
+    }
+
+    // MARK: - Плашка «Сообщать и когда закрыто?» (30.6b)
+
+    /// Модель с системой уведомлений и короткими баннерами; одна смена прогноза у съёмки «a».
+    private func askModel(_ status: NotificationAuthorization, notif: JSONValue? = nil) -> (AppModel, Center) {
+        let center = Center(status)
+        let app = model([Self.shoot("a", day: 21)], seen: ["a": Self.mark("excellent", 90)], notif: notif)
+        app.alertCenter = center
+        app.noticeTiming = (.milliseconds(5), .milliseconds(5))
+        return (app, center)
+    }
+
+    /// Баннер отыграл — дождаться очереди и проверки системы.
+    private func bannerPass(_ app: AppModel) async {
+        _ = await app.runWeatherWatch(force: true, channel: .banner)
+        await app.noticeTask?.value
+        await app.wxOfferTask?.value
+    }
+
+    /// После первого баннера, пока система не спрашивала, — плашка; системное окно не зовётся до «Да».
+    @Test func plateFollowsFirstBannerOnce() async {
+        let (app, center) = askModel(.notDetermined)
+        #expect(!app.weatherAlertAsk)
+        await bannerPass(app)
+        #expect(app.weatherAlertAsk)
+        #expect(await center.asked == 0)
+        app.answerWeatherAlertAsk(yes: false)                 // «Не сейчас»
+        #expect(!app.weatherAlertAsk && app.weatherAlertAsked)
+        // Прогноз сменился снова — баннер есть, плашки нет.
+        WeatherMemory.write(WeatherMemory.toldKey, ["a": nil], in: &app.snapshot)
+        await bannerPass(app)
+        #expect(app.notices.current == nil && !app.weatherAlertAsk)
+        #expect(await center.asked == 0)
+    }
+
+    /// Система уже ответила (разрешили или отказали) — плашка не нужна; выключенная погода — тоже.
+    @Test func plateSilentWhenAnsweredOrOff() async {
+        for status in [NotificationAuthorization.allowed, .denied] {
+            let (app, _) = askModel(status)
+            await bannerPass(app)
+            #expect(!app.weatherAlertAsk)
+        }
+        let (off, _) = askModel(.notDetermined, notif: .object(["wx": .bool(false)]))
+        await bannerPass(off)
+        off.offerWeatherAlerts()
+        await off.wxOfferTask?.value
+        #expect(!off.weatherAlertAsk)
+        // Без баннера (прогноз не менялся) плашки нет.
+        let center = Center(.notDetermined)
+        let calm = model([Self.shoot("a", day: 21)])
+        calm.alertCenter = center
+        await bannerPass(calm)
+        #expect(!calm.weatherAlertAsk)
+    }
+
+    /// «Да» — системное окно; разрешили — плашка больше не нужна.
+    @Test func yesAsksTheSystem() async {
+        let (app, center) = askModel(.notDetermined)
+        await bannerPass(app)
+        app.answerWeatherAlertAsk(yes: true)
+        await app.wxOfferTask?.value
+        #expect(await center.asked == 1)
+        #expect(app.alertAuth == .allowed && app.weatherAlertAsked && !app.weatherAlertAsk)
+    }
+
+    /// «Уже спрашивали» живёт в памяти телефона и переживает перезапуск; в общий снимок не пишется.
+    @Test func askedLivesOnTheDevice() async {
+        let suite = "lp.test.wxAsk.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let (first, _) = askModel(.notDetermined)
+        first.wxAskDefaults = defaults
+        await bannerPass(first)
+        first.answerWeatherAlertAsk(yes: false)
+        #expect(first.snapshotForTests.extra["notif"] == nil)
+        let (second, _) = askModel(.notDetermined)
+        second.wxAskDefaults = defaults
+        await bannerPass(second)
+        #expect(!second.weatherAlertAsk)
     }
 
     // MARK: - Настройки

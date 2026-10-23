@@ -393,6 +393,19 @@ public final class AppModel {
     /// Баннер стоит на экране (въехал и ещё не уехал).
     public internal(set) var noticeShown = false
     @ObservationIgnored var noticeTask: Task<Void, Never>?
+    /// Сколько баннер стоит и пауза до следующего (веб 5,2 с и 0,4 с); тесты укорачивают.
+    @ObservationIgnored var noticeTiming: (onScreen: Duration, step: Duration) = (.milliseconds(5200), .milliseconds(400))
+    /// Плашка «Сообщать и когда приложение закрыто?» стоит на экране (30.6b).
+    public internal(set) var weatherAlertAsk = false
+    /// Баннер о прогнозе показан — когда очередь баннеров кончится, можно предложить плашку.
+    @ObservationIgnored var wxOfferPending = false
+    /// Проверка «показывать ли плашку» в пути: тесты ждут её.
+    @ObservationIgnored var wxOfferTask: Task<Void, Never>?
+    /// Где помнится «плашку о погоде уже показывали»: память телефона, одна на установку (`live()` даёт
+    /// `.standard`); `nil` — тесты, помнится в `wxAskedMemory`. Не в снимке: веб пересобирает `notif` из своих
+    /// пяти ключей и чужой флаг стёр бы.
+    @ObservationIgnored var wxAskDefaults: UserDefaults?
+    @ObservationIgnored var wxAskedMemory = false
     /// Окно на экране (`scenePhase == .active`): баннер говорит только тогда. Пишет `RootView`; тесты — сами.
     @ObservationIgnored public var sceneActive = true
     /// Зеркало съёмок в Календарь iPhone (30.1–3). `nil` — в тестах без подставки, в снимках и на Mac: ничего не пишется.
@@ -633,6 +646,7 @@ public final class AppModel {
             .map { PolicyPinterestReader($0) { await hub.policy() } }
         model.imageLinks = ImageLinkReader(direct: DirectImageFetcher(), server: PinterestClient.live(config: PinterestConfig.load())) { await hub.policy() }
         model.attachNetwork(hub)
+        model.wxAskDefaults = .standard  // «плашку о погоде уже показывали» — на этой установке (30.6b)
         model.attachAlerts()        // студийный час по расписанию, пока приложение закрыто (30а)
         model.attachCalendar()      // съёмки в Календаре iPhone, если человек включил (30.1)
         model.debugCalendarProbe()  // замер на настоящем календаре симулятора (`-LPCalendarProbe`, Debug)
