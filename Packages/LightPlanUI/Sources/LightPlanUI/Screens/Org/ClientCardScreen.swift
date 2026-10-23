@@ -7,8 +7,8 @@ import LightPlanDomain
 /// Один прокручиваемый экран, правки пишутся сразу (как карточка организации). Сверху имя и вид «Пара | Семья | Персона»,
 /// подсказка «этот номер есть у другого клиента — объединить?», люди (имя, телефон со звонком), свои ссылки клиента и
 /// ссылки его съёмок, съёмки с суммами — они **считаются** из съёмок с этим клиентом, в клиенте не хранятся; внизу
-/// «Объединить с другим клиентом» и «Удалить клиента». Дни рождения, годовщина, «Поздравлять» — шаг К6, мессенджеры и
-/// «кому пишем» — К4: здесь их нет.
+/// «Объединить с другим клиентом» и «Удалить клиента». Мессенджеры людей, кнопка «написать» у телефона и «Пишем» —
+/// шаг К4. Дни рождения, годовщина, «Поздравлять» — шаг К6: здесь их нет.
 struct ClientCardScreen: View {
     @Bindable var app: AppModel
     let id: String
@@ -136,9 +136,15 @@ struct ClientCardScreen: View {
                                       text: Binding(get: { app.clientRecord(id)?.people[safe: i]?.phone ?? "" },
                                                     set: { app.setClientPersonPhone(id, at: i, $0) }), kind: .phone)
                         callButton(c.people[i].phone, i, pal)
+                        reachButton(c, i, pal)
                     }
+                    ForEach(c.people[i].messengers.compactMap { MessengerKind(rawValue: $0.kind) }, id: \.self) { k in
+                        messengerRow(c.people[i], i, k, pal)
+                    }
+                    addMessenger(c.people[i], i, pal)
                 }
             }
+            writeTo(c)
             if ClientBook.canAddPerson(c) {
                 Button { app.addClientPerson(id) } label: {
                     Text(t.t("clc.addPerson")).font(.system(size: 15)).foregroundStyle(pal.brass)
@@ -163,6 +169,88 @@ struct ClientCardScreen: View {
             .buttonStyle(PressFade())
             .accessibilityLabel(t.t("clc.call"))
             .shotNode("clc.call.\(i)")
+        }
+    }
+
+    // MARK: мессенджеры (К4, § 7.1)
+
+    /// Кнопка мессенджера у телефона: основной способ этого человека (звёздочка, иначе первый мессенджер, иначе SMS),
+    /// долгое нажатие — все его способы.
+    @ViewBuilder private func reachButton(_ c: Client, _ i: Int, _ pal: Palette) -> some View {
+        if let plan = app.personReach(c.people[i]) {
+            ReachButton(plan: plan, pal: pal, titled: false, node: "clc.reach.\(i)", write: { t.t("reach.write", ["way": $0]) })
+        }
+    }
+
+    /// Строка мессенджера: название, поле (вставленная ссылка профиля становится именем), звёздочка «основной», ✕.
+    private func messengerRow(_ p: ClientPerson, _ i: Int, _ k: MessengerKind, _ pal: Palette) -> some View {
+        let main = ClientReach.primary(of: p, country: app.telCountry)?.way == .messenger(k)
+        return HStack(spacing: 0) {
+            Text(k.title).font(.system(size: 15)).foregroundStyle(pal.ink3)
+                .frame(width: 92, alignment: .leading).padding(.leading, 15)
+            TextField("", text: Binding(get: { app.clientRecord(id)?.people[safe: i]?.messengers.first { $0.kind == k.rawValue }?.value ?? "" },
+                                        set: { app.setClientMessenger(id, at: i, k, $0) }),
+                      prompt: Text(placeholder(k, p)).foregroundStyle(pal.ink8))
+                .font(.system(size: 16)).foregroundStyle(pal.ink)
+                #if os(iOS)
+                .textInputAutocapitalization(.never).keyboardType(k == .whatsapp ? .phonePad : .URL)
+                #endif
+                .autocorrectionDisabled()
+                .frame(height: 48)
+            Button { app.setClientPreferred(id, at: i, k) } label: {
+                Icon("star", size: 16, line: 1.6).foregroundStyle(main ? pal.brass : pal.ink7)
+                    .frame(width: 40, height: 48).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(t.t("clc.msgMain"))
+            .accessibilityAddTraits(main ? .isSelected : [])
+            .shotNode("clc.msgMain.\(i).\(k.rawValue)", text: main ? "on" : "off")
+            Button { app.removeClientMessenger(id, at: i, k) } label: {
+                Icon("close", size: 13, line: 2).foregroundStyle(pal.ink5).frame(width: 36, height: 48).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(t.t("clc.msgRemove"))
+        }
+        .shotNode("clc.msg.\(i).\(k.rawValue)", text: k.rawValue)
+    }
+
+    /// Подсказка поля: что вписать. У Telegram и WhatsApp пустое поле значит «по номеру телефона».
+    private func placeholder(_ k: MessengerKind, _ p: ClientPerson) -> String {
+        let tel = TelFormat.isReal(p.phone, country: app.telCountry)
+        switch k {
+        case .telegram: return t.t(tel ? "clc.msgPhTgTel" : "clc.msgPhTg")
+        case .vk: return t.t("clc.msgPhVk")
+        case .instagram: return t.t("clc.msgPhIg")
+        case .whatsapp: return t.t(tel ? "clc.msgPhWaTel" : "clc.msgPhWa")
+        case .max: return t.t("clc.msgPhMax")
+        }
+    }
+
+    /// «+ мессенджер»: меню тех, каких у человека ещё нет.
+    @ViewBuilder private func addMessenger(_ p: ClientPerson, _ i: Int, _ pal: Palette) -> some View {
+        let left = ClientReach.missing(in: p)
+        if !left.isEmpty {
+            Menu {
+                ForEach(left, id: \.self) { k in Button(k.title) { app.addClientMessenger(id, at: i, k) } }
+            } label: {
+                Text(t.t("clc.addMessenger")).font(.system(size: 15)).foregroundStyle(pal.brass)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).frame(height: 44)
+                    .contentShape(Rectangle())
+            }
+            .menuOrder(.fixed)
+            .shotNode("clc.addMsg.\(i)", text: t.t("clc.addMessenger"))
+        }
+    }
+
+    /// «Пишем»: кому из людей пишет кнопка в шапке съёмки. Только когда связаться можно больше чем с одним.
+    @ViewBuilder private func writeTo(_ c: Client) -> some View {
+        let options = app.clientWriters(c)
+        if options.count > 1 {
+            FormGroupLabel(text: t.t("clc.writeTo"))
+            ClientsSeg(options: options,
+                       selection: Binding(get: { app.clientRecord(id).flatMap { ClientReach.writer(of: $0, country: app.telCountry) } ?? 0 },
+                                          set: { app.setClientMain(id, $0) }),
+                       stretch: true, node: "clc.writeTo", itemNode: "clc.writer")
         }
     }
 

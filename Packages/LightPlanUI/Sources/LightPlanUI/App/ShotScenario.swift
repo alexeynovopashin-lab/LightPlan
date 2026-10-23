@@ -234,10 +234,11 @@ extension AppModel {
             app.openClients()
             let way = s.way ?? "couple"
             if way == "new" { app.newClient(); break }
-            let kind: ClientKind = way == "family" ? .family : way == "person" || way == "twin" ? .person : .couple
+            let kind: ClientKind = way.hasPrefix("family") ? .family : way.hasPrefix("person") || way == "twin" ? .person : .couple
             let most = app.clients.filter { $0.kind == kind }
                 .max { app.clientShootCount($0.id) < app.clientShootCount($1.id) }
             guard var c = most else { break }
+            if way.hasSuffix("+msg") { Self.seedMessengers(app, c.id); c = app.clientRecord(c.id) ?? c }
             if way == "twin", let pair = app.clients.first(where: { $0.kind == .couple && $0.people.count > 1 }),
                let i = app.snapshot.clients.firstIndex(where: { $0.id == c.id }) {
                 c.people.append(ClientPerson(name: pair.people[1].name, phone: pair.people[1].phone))   // К3б: номер и имя
@@ -246,13 +247,16 @@ extension AppModel {
             app.openClientCard(id: c.id)
             if way == "pick" { app.org.clientPick = true }
         // Входы из съёмки (К3). `clienthead`: карточка последней съёмки клиента, имя в шапке со знаком «›»;
-        // `LPShotWay couple|person`, `…+open` — карточка клиента уже открыта из шапки («Назад» ведёт в съёмку).
+        // `LPShotWay couple|person`, `…+open` — карточка клиента уже открыта из шапки («Назад» ведёт в съёмку),
+        // `…+msg` (К4) — людям клиента вписаны мессенджеры (`seedMessengers`): кнопка у звонка — основной мессенджер;
+        // без `+msg` — кнопка «SMS». У карточки клиента (`clientcard`) `couple+msg` — то же в карточке.
         case "clienthead":
             let parts = (s.way ?? "couple").split(separator: "+").map(String.init)
             let kind: ClientKind = parts[0] == "person" ? .person : .couple
             guard let c = app.clients.filter({ $0.kind == kind })
                     .max(by: { app.clientShootCount($0.id) < app.clientShootCount($1.id) }),
                   let last = ClientBook.shoots(of: c.id, in: app.sessions).first else { break }
+            if parts.contains("msg") { Self.seedMessengers(app, c.id) }
             app.openCard(id: last.id)
             if parts.contains("open"), let sess = app.card { app.openShootClient(sess) }
         // Плашка клиента в новой форме (К3): `LPShotWay phone` — портрет с номером персоны из засева («По номеру — …»),
@@ -326,6 +330,19 @@ extension AppModel {
             app.placeSheetOpen = true
         }
         return app
+    }
+
+    /// Мессенджеры для снимков К4 — вписаны так, как их вставил бы фотограф (ссылкой профиля): у первого человека
+    /// Telegram (основной) и VK, у второго — WhatsApp по номеру и Instagram.
+    static func seedMessengers(_ app: AppModel, _ id: String) {
+        app.addClientMessenger(id, at: 0, .telegram)
+        app.setClientMessenger(id, at: 0, .telegram, "https://t.me/anna_photo")
+        app.addClientMessenger(id, at: 0, .vk)
+        app.setClientMessenger(id, at: 0, .vk, "https://vk.com/id123456")
+        guard (app.clientRecord(id)?.people.count ?? 0) > 1 else { return }
+        app.addClientMessenger(id, at: 1, .whatsapp)
+        app.addClientMessenger(id, at: 1, .instagram)
+        app.setClientMessenger(id, at: 1, .instagram, "instagram.com/ivan.p/")
     }
 }
 

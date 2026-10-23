@@ -171,6 +171,14 @@
   «Другой». The answer is `EventForm.clientChoice` (not in the draft), applied by `ClientBook.applying` in `saveForm` before `bind`;
   phone + name still beats it. `bind` fills an empty phone of the same-named person instead of appending a second one — after
   «номер сменился», so a namesake never takes a changed number. Shots: `clients.js` cases `head-*`, `form-*` (`-LPShotSheet clienthead|clientform`).
+- **Messengers (К4).** Per person `msg[]` (one per kind: telegram/vk/instagram/whatsapp/max) + `pref` (★); rules in `ClientReach` (Domain,
+  `Rules/ClientReach.swift`): `parse` pulls the handle out of a pasted profile link (`vk.com/id123` → `id123`, `wa.me/7916…` → `+7916…`;
+  MAX and foreign text stay as typed), `url` builds § 7.1 universal links (`t.me`, `vk.me`, `ig.me/m`, `wa.me`; empty Telegram/WhatsApp
+  field = by the person's phone; MAX = its own web link), `primary` = ★ → first messenger → `sms:`; `writer` = `main` if reachable, else the
+  first reachable. UI: `ReachButton` (`Screens/Org/`, `Menu` + `primaryAction`: tap opens, long press lists call/SMS/each messenger, per
+  person) in the shoot header next to the number (`CardHead.contactRow`, `AppModel.shootReach`: client's plan, else SMS to the header number)
+  and in the client card's phone row (`personReach`); card rows + «+ мессенджер» + «Пишем» segment (`AppModel+ClientReach.swift`). No brand
+  marks in the icon library: neutral `chat` glyph + the service name. Shots `clients.js` `head-msg`, `card-msg`, SMS in `head-couple|person`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

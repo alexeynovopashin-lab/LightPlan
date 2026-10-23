@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /* Шаг К1 «Клиенты»: экран «Клиенты» в обеих темах — «Частные» (все, пары, семьи, персоны), «Компании» и пустой.
+   Шаг К4 (`head-msg`, `card-msg`, кнопка «SMS» в `head-couple`/`head-person`): кнопка мессенджера справа от номера в шапке
+   съёмки, мессенджеры людей и «Пишем» в карточке клиента (мессенджеры вписывает `seedMessengers` сценария ссылками профиля).
    Шаг К3 (`head-*`, `form-*`): имя клиента в шапке карточки съёмки (по центру, знак «›» справа), карточка клиента из шапки
    («Назад» — в съёмку), плашка клиента в новой форме — по номеру, подсказка по имени, после «Да», у свадьбы.
    Шаг К2: карточка клиента — пара, семья, персона, подсказка «объединить?» (`twin`), лист «С кем объединить» (`pick`),
@@ -37,9 +39,12 @@ const CASES = [
   { name: 'card-twin', sheet: 'clientcard', way: 'twin', card: 'person' },
   { name: 'card-pick', sheet: 'clientcard', way: 'pick', card: 'couple' },
   { name: 'card-new', sheet: 'clientcard', way: 'new', card: 'person' },
+  // К4: мессенджеры людей, кнопка «написать» у телефона, «Пишем».
+  { name: 'card-msg', sheet: 'clientcard', way: 'couple+msg', card: 'couple', msg: true },
   // К3: входы из съёмки.
-  { name: 'head-couple', sheet: 'clienthead', way: 'couple' },
-  { name: 'head-person', sheet: 'clienthead', way: 'person' },
+  { name: 'head-couple', sheet: 'clienthead', way: 'couple', reach: 'sms' },
+  { name: 'head-person', sheet: 'clienthead', way: 'person', reach: 'sms' },
+  { name: 'head-msg', sheet: 'clienthead', way: 'couple+msg', reach: 'telegram' },
   { name: 'head-open', sheet: 'clienthead', way: 'couple+open', card: 'couple' },
   { name: 'form-phone', sheet: 'clientform', way: 'phone', plate: 'phone' },
   { name: 'form-name', sheet: 'clientform', way: 'name', plate: 'name' },
@@ -86,6 +91,27 @@ function cardVerdict(c, nodes, screen) {
   if (c.way === 'twin') inFields(n('clc.twin.0'), 'подсказка «объединить?»');
   if (c.card === 'couple' && c.way !== 'new') inFields(n('clc.person.1'), 'человек 2');
   n('clc.delete');
+  if (c.msg) {
+    // Вставленные ссылками профили стали строками своих видов, внутри группы человека; звёздочка — у первого
+    // вписанного; кнопка у телефона открывает основной; «Пишем» — оба человека.
+    const rowsOf = { 0: ['telegram', 'vk'], 1: ['whatsapp', 'instagram'] };
+    for (const i of [0, 1]) {
+      const g = nodes['clc.person.' + i];
+      for (const k of rowsOf[i]) {
+        const r = n(`clc.msg.${i}.${k}`);
+        if (r && g && (r.x < g.x - 0.1 || r.x + r.w > g.x + g.w + 0.1 || r.y < g.y - 0.1 || r.y + r.h > g.y + g.h + 0.1)) bad.push(`строка ${k} вне группы человека ${i + 1}`);
+        if (r && Math.abs(r.h - 48) > 0.6) bad.push(`строка ${k}: высота ${r.h.toFixed(1)} ≠ 48`);
+      }
+      const star = n(`clc.msgMain.${i}.${rowsOf[i][0]}`);
+      if (star && star.text !== 'on') bad.push(`звёздочка не у ${rowsOf[i][0]}`);
+      const reach = n('clc.reach.' + i);
+      if (reach && reach.text !== rowsOf[i][0]) bad.push(`кнопка человека ${i + 1} открывает «${reach.text}», ждали ${rowsOf[i][0]}`);
+      if (reach && Math.abs(reach.w - 48) > 0.6) bad.push(`кнопка человека ${i + 1}: ширина ${reach.w.toFixed(1)}`);
+      n('clc.addMsg.' + i);
+    }
+    inFields(n('clc.writeTo'), '«Пишем»');
+    n('clc.writer.0'); n('clc.writer.1');
+  }
   return bad;
 }
 
@@ -101,6 +127,18 @@ function headVerdict(c, nodes, screen) {
     return bad;
   }
   const link = n('card.client'), name = n('card.name'), go = n('card.nameGo');
+  if (c.reach) {
+    // К4: кнопка мессенджера справа от номера, на его высоте; строка «номер + кнопка» по центру экрана, в полях 16.
+    const tel = n('card.tel'), reach = n('card.reach');
+    if (reach && reach.text !== c.reach) bad.push(`кнопка открывает «${reach.text}», ждали ${c.reach}`);
+    if (tel && reach) {
+      if (reach.x < tel.x + tel.w - 0.1) bad.push('кнопка наезжает на номер');
+      if (Math.abs(reach.y + reach.h / 2 - (tel.y + tel.h / 2)) > 1) bad.push('кнопка не на высоте номера');
+      const mid = (tel.x + reach.x + reach.w) / 2;
+      if (Math.abs(mid - screen.w / 2) > 1) bad.push(`номер с кнопкой не по центру: ${mid.toFixed(1)} при ${screen.w / 2}`);
+      if (tel.x < 16 || reach.x + reach.w > screen.w - 16) bad.push('номер с кнопкой выходят за поля 16');
+    }
+  }
   if (link && !link.text) bad.push('у входа нет ключа клиента');
   if (name && Math.abs(name.x + name.w / 2 - screen.w / 2) > 1) bad.push(`имя не по центру: ${(name.x + name.w / 2).toFixed(1)} при ${screen.w / 2}`);
   if (name && go) {

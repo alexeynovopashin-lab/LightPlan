@@ -107,7 +107,7 @@ struct CardHead: View {
             }
             Text(h.when).font(webFont(13)).foregroundStyle(phase == .after ? pal.ink6 : pal.green)
                 .shotNode("card.when").padding(.top, 5)
-            if let tel = h.tel { telLink(tel) }
+            contactRow(h.tel)
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
@@ -134,7 +134,7 @@ struct CardHead: View {
     }
 
     /// Имя. У съёмки с частным клиентом (К3) оно нажимается и открывает его карточку слоем; знак «›» после имени
-    /// говорит, что это вход. Место у звонка остаётся кнопке мессенджера (К4).
+    /// говорит, что это вход. У звонка — кнопка мессенджера (К4, `contactRow`).
     @ViewBuilder private func nameLine(_ name: String) -> some View {
         if app.shootClient(s) != nil {
             Button { withAnimation(overlaySlide) { app.openShootClient(s) } } label: {
@@ -182,6 +182,19 @@ struct CardHead: View {
             .padding(.vertical, -size * (1.19 - 1.1) / 2)
     }
 
+    /// Номер со звонком и рядом кнопка мессенджера (К4): основной способ клиента «Пишем», без мессенджера — SMS,
+    /// долгое нажатие — все способы. Нет ни номера, ни мессенджера — строки нет.
+    @ViewBuilder private func contactRow(_ tel: (shown: String, dial: String)?) -> some View {
+        let reach = app.shootReach(s)
+        if tel != nil || reach != nil {
+            HStack(spacing: 4) {
+                if let tel { telLink(tel) }
+                if let reach { ReachButton(plan: reach, pal: pal, write: { app.lexicon.t("reach.write", ["way": $0]) }) }
+            }
+            .padding(.top, 4)
+        }
+    }
+
     private func telLink(_ tel: (shown: String, dial: String)) -> some View {
         Button { if let u = URL(string: "tel:" + tel.dial) { openURL(u) } } label: {
             HStack(spacing: 7) {
@@ -193,6 +206,5 @@ struct CardHead: View {
         }
         .buttonStyle(PressFade())
         .shotNode("card.tel")
-        .padding(.top, 4)
     }
 }
