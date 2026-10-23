@@ -20,13 +20,14 @@ public struct SettingsView: View {
     public init(app: AppModel) { self.app = app }
 
     enum Chapter: String, CaseIterable, Hashable {
-        case profile, view, shoots, alerts, places, store, data, network, locale, about
+        case profile, view, shoots, calendar, alerts, places, store, data, network, locale, about
 
         var icon: String {
             switch self {
             case .profile: "phone"
             case .view: "sun_moon"
             case .shoots: "camera"
+            case .calendar: "view_month"
             case .alerts: "alarm"
             case .places: "pin"
             case .store: "briefcase"
@@ -37,11 +38,31 @@ public struct SettingsView: View {
             }
         }
 
+        /// Что лежит в главе, где состав важен тесту: календарь (30.5г — всё про Календарь iPhone в одной главе), «Данные»
+        /// и «Съёмки» (сами строят своё тело, без календаря).
+        enum Part: Equatable {
+            /// Зеркало съёмок, «Другие календари» и списки галочек (`CalendarMirrorSection`).
+            case calendarSection
+            /// Строка чужой итерации: имя приглушённо, содержимого пока нет.
+            case foreign(String)
+            /// Остальное тело главы, построенное вручную.
+            case body
+        }
+
+        var parts: [Part] {
+            switch self {
+            case .calendar: [.calendarSection, .foreign("set.icsImport")]
+            case .data: [.foreign("set.data"), .foreign("cloud.title")]
+            default: [.body]
+            }
+        }
+
         var titleKey: String {
             switch self {
             case .profile: "set.grpProfile"
             case .view: "set.grpView"
             case .shoots: "set.grpShoots"
+            case .calendar: "set.calendar"
             case .alerts: "set.grpAlerts"
             case .places: "set.grpPlaces"
             case .store: "set.storage"
@@ -163,7 +184,7 @@ public struct SettingsView: View {
         case .locale:
             return SettingsText.languageName(app.language) + " · "
                 + NumberText(language: app.language).currencySign(s.currency.rawValue)
-        case .alerts, .store, .about:
+        case .calendar, .alerts, .store, .about:
             return ""
         }
     }

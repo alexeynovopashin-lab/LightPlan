@@ -123,6 +123,8 @@
   Privacy: only title, time, place, calendar name are read (`Ghost.make`); no notes/attendees/URLs; titles are never logged.
   Declined invites (the phone owner's own attendee status, `GhostEvent.declined`) and cancelled events are not ghosts (30.5b); tentative/pending/
   accepted/no-invite show. The simulator calendar cannot represent attendee status (EKParticipant is not creatable) — covered by the fake store only.
+  All calendar settings live in the Settings chapter «Календарь» (`SettingsView.Chapter.calendar`, right after «Съёмки»; `Chapter.parts` states its
+  content: `CalendarMirrorSection` + dimmed `.ics` import) — 30.5d; «Съёмки» and «Данные» no longer hold them.
   Reading needs full access: «Другие календари» switch asks with a plain explanation first (`ghostAsk`), then the system prompt;
   denied earlier → row leads to iPhone Settings. Strip layout: ghosts get their own right rail ≤ 40 % of the lane after the 70 pt
   hour column, columns ≥ 56 pt (`GhostRail.capacity`: 2 on 393 pt, 1 on 320 pt); shoots narrow by the rail width **only on days with

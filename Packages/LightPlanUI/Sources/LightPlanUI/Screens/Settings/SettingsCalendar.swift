@@ -4,7 +4,7 @@ import LightPlanData
 import UIKit
 #endif
 
-/// «Календарь» в главе «Съёмки» (шаг 30.1): тумблер «Съёмки в Календаре iPhone» и «Куда класть».
+/// Глава «Календарь» (шаги 30.1–30.5; до 30.5г лежало в «Съёмках»): тумблер «Съёмки в Календаре iPhone» и «Куда класть».
 ///
 /// Тумблер — единственный момент, когда у системы просят доступ к календарю. Отказ ничего не ломает: тумблер
 /// остаётся выключенным, строка под ним говорит, где доступ выдаётся. «Куда класть» стоит под включённым
@@ -21,7 +21,7 @@ struct CalendarMirrorSection: View {
     var body: some View {
         let t = app.lexicon, pal = Palette(colorScheme)
         if app.calendarAvailable {
-            SecLabel(text: t.t("set.calendar"), first: true, node: "sec.cal")
+            SecLabel(text: t.t("calm.label"), first: true, node: "sec.cal")
             HStack(spacing: 12) {
                 Text(t.t("calm.title")).font(.system(size: 15)).foregroundStyle(pal.ink)
                 Spacer(minLength: 0)
@@ -67,7 +67,8 @@ struct CalendarMirrorSection: View {
 
             ghostRows(t, pal)
         } else {
-            SetItemRow(icon: nil, title: t.t("set.calendar"), value: "", chevron: false, dim: true)
+            // Там, где зеркала нет (Mac, снимки): глава «Календарь» не пуста — строка названа тем, чего здесь нет.
+            SetItemRow(icon: nil, title: t.t("calm.title"), value: "", chevron: false, dim: true)
         }
     }
 

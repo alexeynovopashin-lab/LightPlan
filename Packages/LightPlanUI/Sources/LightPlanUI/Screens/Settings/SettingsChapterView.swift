@@ -26,10 +26,11 @@ struct SettingsChapterView: View {
             case .profile: profile
             case .view: view
             case .shoots: shoots
+            case .calendar: parts(chapter.parts)
             case .alerts: feedback; studioAlerts
             case .places: places
             case .store: moodboardRow; orgsRow; binRow
-            case .data: foreign("set.data"); foreign("set.icsImport"); foreign("cloud.title")
+            case .data: parts(chapter.parts)
             case .network: network
             case .locale: locale
             case .about: about
@@ -207,10 +208,21 @@ struct SettingsChapterView: View {
         #endif
     }
 
+    // MARK: - Состав главы по списку (30.5г)
+
+    @ViewBuilder private func parts(_ list: [SettingsView.Chapter.Part]) -> some View {
+        ForEach(Array(list.enumerated()), id: \.offset) { _, part in
+            switch part {
+            case .calendarSection: CalendarMirrorSection(app: app)
+            case .foreign(let key): foreign(key)
+            case .body: EmptyView()
+            }
+        }
+    }
+
     // MARK: - Съёмки
 
     @ViewBuilder private var shoots: some View {
-        CalendarMirrorSection(app: app)
         delivery
         segment("set.step", \.timeStep, AppSettings.steps.map { ($0, "set.step\($0)") },
                 note: s.timeStep == 30 ? t.t("set.stepNote30")
@@ -338,7 +350,7 @@ struct SettingsChapterView: View {
     /// когда режим уходит и возвращается.
     @ViewBuilder private var delivery: some View {
         let d = app.delivery
-        SecLabel(text: t.t("card.delivery"), node: "sec.delv")
+        SecLabel(text: t.t("card.delivery"), first: true, node: "sec.delv")
         WebSeg(options: [(t.t("set.delvGenre"), DeliveryMode.genre), (t.t("set.delvSingle"), .single),
                          (t.t("set.delvNone"), .none)],
                selection: Binding(get: { app.delivery.mode }, set: { app.setDelivery(mode: $0) }))
