@@ -347,4 +347,28 @@ struct ClientsStateTests {
         app.openClientShoot("b")
         #expect(app.org.clientCardId == nil && !app.org.listOpen && app.cardId == "b")
     }
+
+    // MARK: ответ на ревью GPT к 718a182
+
+    @Test func aNumberChangedInTheCardBeforeMergingStillGoesToTheArchive() {
+        let app = twoIrinas()
+        let ira = clientId(app, of: "c"), irina = clientId(app, of: "a")
+        app.openClients()
+        app.openClientCard(id: irina)
+        app.setClientPersonPhone(irina, at: 0, "+7 916 999-88-77")
+        app.mergeClient(ira, into: irina)
+        app.closeClientCard()
+        let log = app.clientRecord(irina)!.telLog.map { TelFormat.full($0.phone, country: app.telCountry) }
+        #expect(log == [TelFormat.full("8 916 123-45-67", country: app.telCountry)], "прежний номер в архиве")
+        app.openForm(editing: "a"); app.saveForm()
+        #expect(app.sessions.first { $0.id == "a" }?.clientId == irina && app.clients.count == 1, "старая съёмка узнаёт клиента")
+    }
+
+    @Test func shootsOnlyInTheBinStillMakeDeleteAsk() {
+        let app = twoIrinas()
+        let ira = clientId(app, of: "c")
+        app.snapshot.trashed = [TrashedItem(record: app.sessions.first { $0.id == "c" }!, index: 2, deletedAt: 1)]
+        app.snapshot.sessions.removeAll { $0.id == "c" }
+        #expect(app.clientShootCount(ira) == 1, "съёмка в корзине тоже числится — удаление спросит")
+    }
 }

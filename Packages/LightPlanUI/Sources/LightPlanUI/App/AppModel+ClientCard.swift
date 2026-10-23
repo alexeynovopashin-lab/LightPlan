@@ -175,6 +175,9 @@ extension AppModel {
     /// «Объединить»: `source` вливается в открытого `target` (правило — `ClientBook.merge`); могила второго — в снимке,
     /// чтобы облако его не вернуло.
     func mergeClient(_ source: String, into target: String) {
+        // Номер, сменённый в открытой карточке до объединения, сперва ложится в архив: снимок номеров ниже заменяется
+        // объединённым, и иначе старый номер не узнался бы (ревью GPT к 718a182).
+        if org.clientCardId == target { commitClientTels() }
         var clients = snapshot.clients, sessions = snapshot.sessions, bin = snapshot.trashed
         guard ClientBook.merge(source, into: target, clients: &clients, sessions: &sessions, trashed: &bin,
                                country: telCountry, nowMs: nowMs) else { return }
@@ -190,7 +193,11 @@ extension AppModel {
         org.clientPick = false
     }
 
-    func clientShootCount(_ id: String) -> Int { snapshot.sessions.filter { $0.clientId == id }.count }
+    /// Сколько съёмок числится за клиентом — с теми, что в корзине: удаление спрашивает и тогда, когда живых нет, а
+    /// вернувшиеся из корзины останутся без клиента (ревью GPT к 718a182).
+    func clientShootCount(_ id: String) -> Int {
+        snapshot.sessions.filter { $0.clientId == id }.count + snapshot.trashed.filter { $0.record.clientId == id }.count
+    }
 
     /// «Удалить клиента»: съёмки остаются без клиента (`ClientBook.delete`), в могилу ложится ключ.
     func deleteClient(_ id: String) {
