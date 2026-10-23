@@ -107,7 +107,8 @@ public enum ClientReach {
             return first(l.host == "ig.me" ? ["m"] : [])
         case .whatsapp:
             if l.host == "wa.me" { return first().flatMap(plusDigits) }
-            guard l.host.hasSuffix("whatsapp.com") else { return nil }
+            // Только сам `whatsapp.com` и его поддомены: `notwhatsapp.com` — чужой сайт (ревью GPT к 4555a60).
+            guard l.host == "whatsapp.com" || l.host.hasSuffix(".whatsapp.com") else { return nil }
             return l.query["phone"].flatMap(plusDigits)
         case .max:
             return nil

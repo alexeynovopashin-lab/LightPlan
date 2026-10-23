@@ -53,6 +53,9 @@ import LightPlanDomain
         #expect(ClientReach.parse("+7 916 123-45-67", as: .whatsapp) == "+7 916 123-45-67", "номер — как набран")
         #expect(ClientReach.parse("t.me/", as: .telegram) == "t.me/", "ссылка без имени остаётся, пока её набирают")
         #expect(ClientReach.parse("olga.s", as: .instagram) == "olga.s", "имя с точкой — не ссылка")
+        #expect(ClientReach.parse("https://notwhatsapp.com/send?phone=79161234567", as: .whatsapp)
+                == "https://notwhatsapp.com/send?phone=79161234567", "чужой сайт с «whatsapp.com» в конце имени — не WhatsApp")
+        #expect(ClientReach.parse("https://web.whatsapp.com/send?phone=79161234567", as: .whatsapp) == "+79161234567")
     }
 
     // MARK: адреса по таблице § 7.1
