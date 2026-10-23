@@ -8320,7 +8320,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los enlaces propios del cliente: galería, reseña, perfil en redes. Los enlaces de sus sesiones aparecen aquí solos."
+            "value" : "Los enlaces propios del cliente: galería, reseña, perfil en redes. Los enlaces de las sesiones del cliente aparecen aquí solos."
           }
         },
         "ja" : {
@@ -8600,7 +8600,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El cliente elegido se une a esta ficha: sus sesiones y teléfonos pasan aquí."
+            "value" : "El cliente elegido se une a esta ficha: las sesiones y los teléfonos de ese cliente pasan aquí."
           }
         },
         "ja" : {

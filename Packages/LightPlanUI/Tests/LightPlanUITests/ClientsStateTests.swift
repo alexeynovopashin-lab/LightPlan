@@ -360,8 +360,10 @@ struct ClientsStateTests {
         app.closeClientCard()
         let log = app.clientRecord(irina)!.telLog.map { TelFormat.full($0.phone, country: app.telCountry) }
         #expect(log == [TelFormat.full("8 916 123-45-67", country: app.telCountry)], "прежний номер в архиве")
-        app.openForm(editing: "a"); app.saveForm()
-        #expect(app.sessions.first { $0.id == "a" }?.clientId == irina && app.clients.count == 1, "старая съёмка узнаёт клиента")
+        // Новая съёмка со старым номером, без клиента (ревью GPT к a220859): находится по архиву, не заводит нового.
+        app.snapshot.sessions.append(session("d", day(10, 2), client: "Ирина", tel: "8 916 123-45-67"))
+        app.openForm(editing: "d"); app.saveForm()
+        #expect(app.sessions.first { $0.id == "d" }?.clientId == irina && app.clients.count == 1, "старый номер узнаёт клиента")
     }
 
     @Test func shootsOnlyInTheBinStillMakeDeleteAsk() {
