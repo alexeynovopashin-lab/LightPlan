@@ -120,13 +120,18 @@ extension ClientBook {
         return min(2, x.intersection(y).count)
     }
 
-    /// Слова имени: без регистра, «ё» = «е», без инициалов; отчество (…вич, …вна, …чна, …ична) — не имя и не фамилия
-    /// (ревью GPT к 8c67c5a: «Анна Сергеевна Петрова» и «Мария Сергеевна Петрова» — разные люди).
+    /// Слова имени: без регистра, «ё» = «е», без инициалов. Отчество — не имя и не фамилия (ревью GPT к 8c67c5a: «Анна
+    /// Сергеевна Петрова» и «Мария Сергеевна Петрова» — разные люди). Выпадает одно слово и по месту: в имени из трёх слов и
+    /// больше — второе («Имя Отчество Фамилия»), а если оно не похоже на отчество (…вич, …вна, …чна) — последнее
+    /// («Фамилия Имя Отчество»). Фамилия на «-вич» остаётся: «Роман Аркадьевич Абрамович» — роман, абрамович. В имени из
+    /// двух слов не выпадает ничего: «Роман Абрамович» — с фамилией (цена: «Анна Сергеевна» — отчество считается словом).
     static func nameWords(_ s: String) -> [String] {
-        let words = s.lowercased().replacingOccurrences(of: "ё", with: "е")
+        var words = s.lowercased().replacingOccurrences(of: "ё", with: "е")
             .split(whereSeparator: { !$0.isLetter && $0 != "-" }).map(String.init)
             .filter { $0.count >= 2 && $0 != "and" }
         guard words.count > 2 else { return words }
-        return words.filter { w in !["вич", "вна", "чна"].contains { w.count > 5 && w.hasSuffix($0) } }
+        func patronymic(_ w: String) -> Bool { w.count > 5 && ["вич", "вна", "чна"].contains { w.hasSuffix($0) } }
+        if patronymic(words[1]) { words.remove(at: 1) } else if patronymic(words[words.count - 1]) { words.removeLast() }
+        return words
     }
 }

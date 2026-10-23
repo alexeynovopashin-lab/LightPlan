@@ -172,6 +172,26 @@ import LightPlanDomain
         #expect(Self.hint(B.shoot("n", B.day(20), contact: "Мария Сергеевна", phone: Self.tel), clients, sessions: [a]) == nil,
                 "номер и отчество — не два фактора")
         #expect(Self.hint(B.shoot("n", B.day(20), contact: "Петрова Анна Сергеевна"), clients, sessions: [a])?.way == .name)
+        var fio: [Client] = []
+        var f = B.shoot("f", B.day(1), contact: "Петрова Анна Сергеевна", phone: Self.tel)
+        B.save(&f, &fio, ids: B.Ids())
+        #expect(Self.hint(B.shoot("n", B.day(20), contact: "Петрова Мария Сергеевна"), fio, sessions: [f]) == nil,
+                "«Фамилия Имя Отчество»: отчество последним тоже не фактор")
+    }
+
+    /// Отчество выпадает по месту, одно слово: фамилия на «-вич» остаётся (находка К3б, слово оркестратора).
+    @Test func aSurnameEndingInVichIsKept() {
+        let ids = B.Ids()
+        var clients: [Client] = []
+        var a = B.shoot("a", B.day(1), contact: "Роман Абрамович", phone: Self.tel)
+        B.save(&a, &clients, ids: ids)
+        for n in ["Роман Аркадьевич Абрамович", "Абрамович Роман Аркадьевич", "Абрамович Роман"] {
+            #expect(Self.hint(B.shoot("n", B.day(20), contact: n), clients, sessions: [a])?.way == .name, Comment(rawValue: n))
+        }
+        #expect(Self.hint(B.shoot("n", B.day(20), contact: "Роман Абрамович", phone: "+7 913 000-00-07"), clients, sessions: [a])?.way == .name,
+                "двухсловное имя с фамилией на «-вич» — не отчество")
+        #expect(Self.hint(B.shoot("n", B.day(20), contact: "Олег Абрамович", phone: Self.tel), clients, sessions: [a])?.way == .phone,
+                "номер + фамилия на «-вич» — сразу")
     }
 
     // MARK: одно совпадение — новый клиент
