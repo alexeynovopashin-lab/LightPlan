@@ -91,6 +91,8 @@ extension AppModel {
                                             newId: { UUID().uuidString.lowercased() })
         }
         let start = Date(), fixed = s.now
+        // Клиенты из съёмок засева — как на телефоне при первом запуске (шаг К1); пустой экран — `LPShotWay empty`.
+        AppModel.assembleClients(into: &snapshot, language: AppLanguage.current, now: fixed)
         let name = (try? Data(contentsOf: s.name ?? URL(fileURLWithPath: "/dev/null")))
             .flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
         // Слежение за местом (29.8в.12): `-LPShotFollow on` — доступ дан, телефон в месте засева; `hand` — место
@@ -220,6 +222,11 @@ extension AppModel {
         // Корзина мудборда съёмки (29б): папка подборки и лист корзины поверх неё.
         case "mbbin": if let id = s.way { app.openMbFolder(boardId: id); app.openMbBin(id) }
         case "orgs": app.openOrgs()
+        // «Клиенты» (К1): вкладка «Частные»; `LPShotWay` — фильтр `all|couples|families|persons`, `empty` — клиентов нет.
+        case "clients":
+            if s.way == "empty" { app.snapshot.clients = [] }
+            if let f = s.way.flatMap(ClientBook.Filter.init(rawValue:)) { app.org.clientsFilter = f }
+            app.openClients()
         case "docs":
             // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),
             // после плюса — вид (`list|table|months`), `q=слово` — запрос поиска (шаг 3б), `paper` — открыть

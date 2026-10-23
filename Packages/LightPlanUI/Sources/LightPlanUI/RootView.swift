@@ -122,9 +122,9 @@ private struct Shell: View {
                     .transition(.move(edge: .trailing))
                     .zIndex(BackZ.docs)
             }
-            // Организации (28, шаг 6): список из настроек и карточка поверх него.
+            // «Клиенты» (К1): «Частные» и «Компании» (организации, 28 шаг 6) из настроек; карточка организации поверх.
             if app.org.listOpen {
-                OrgListScreen(app: app)
+                ClientsScreen(app: app)
                     .edgeBack(app, z: BackZ.orgList) { app.closeOrgs() }
                     .transition(.move(edge: .trailing))
                     .zIndex(BackZ.orgList)

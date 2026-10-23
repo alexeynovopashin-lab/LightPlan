@@ -20,6 +20,10 @@ struct OrgState: Equatable {
     var docs = DocsPrefs()
     /// Слово в «Назад» списка.
     var backKey = "nav.settings"
+    /// Вкладка экрана «Клиенты» (шаг К1): «Частные» или «Компании» — нынешние организации.
+    var clientsTab: ClientsTab = .privates
+    /// Фильтр «Все · Пары · Семьи · Персоны» вкладки «Частные».
+    var clientsFilter: ClientBook.Filter = .all
     /// Открыт ли экран «Контакты» (настройки → профиль): слой стоит рядом со списком организаций.
     var contactsOpen = false
     /// Номера открытой карточки до правки — по ним при закрытии видно, какой ушёл (веб `orgTelSnap`).
@@ -32,7 +36,9 @@ extension AppModel {
 
     // MARK: - Слои
 
+    /// Организации переехали в экран «Клиенты», вкладку «Компании» (шаг К1): тот же слой, та же «Назад».
     func openOrgs(backKey: String = "nav.settings") {
+        org.clientsTab = .companies
         org.backKey = backKey
         org.docs = DocsPrefs.from(docsPrefsStore.load())
         org.listOpen = true

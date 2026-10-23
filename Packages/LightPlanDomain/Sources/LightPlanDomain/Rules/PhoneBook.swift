@@ -62,6 +62,12 @@ public enum PhoneBook {
         return out.filter { TelFormat.isReal($0.phone, country: country) }
     }
 
+    /// Номера клиента (шаг К1): люди карточки по порядку, поля `p1`, `p2`…; обрывки короче пяти цифр не берём.
+    public static func tels(of c: Client, country: TelCountry) -> [Tel] {
+        c.people.enumerated().map { Tel(field: "p\($0.offset + 1)", phone: $0.element.phone, name: $0.element.name) }
+            .filter { TelFormat.isReal($0.phone, country: country) }
+    }
+
     // MARK: - Ушедший номер (веб `telRetire`)
 
     /// Сверка карточки до правки и после: номер, которого больше нет **нигде в карточке**, ложится в

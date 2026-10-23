@@ -268,6 +268,8 @@ extension AppModel {
         // Номер, пропавший из записи при этой правке, уходит в её архив (веб `telRetire`).
         let gone = retireSessionTels(s)
         if !gone.isEmpty { s.telLog = gone }
+        // Клиент записи: склейка по номеру (шаг К1); копии повтора берут его вместе с записью.
+        bindClient(&s)
         // Повтор: копии заводятся один раз, здесь, и дальше живут сами (веб `repMake`).
         var copies: [Session] = []
         if f.repeatOn, let rule = f.repeatRule {
@@ -462,7 +464,10 @@ extension AppModel {
     // MARK: - Клиент, организация, телефон
 
     /// Страна номера фотографа (веб `telCountry`): записанная, иначе по поясу телефона и языку.
-    public var telCountry: TelCountry {
+    public var telCountry: TelCountry { Self.telCountry(of: snapshot, language: language) }
+
+    /// То же до того, как модель собрана (разовый проход по клиентам на старте).
+    static func telCountry(of snapshot: Snapshot, language: String) -> TelCountry {
         if case .string(let iso)? = snapshot.extra["telCountry"], let c = TelCountry.of(iso) { return c }
         let region = Locale(identifier: language).region?.identifier
         return TelCountry.guess(zoneId: TimeZone.current.identifier, region: region)

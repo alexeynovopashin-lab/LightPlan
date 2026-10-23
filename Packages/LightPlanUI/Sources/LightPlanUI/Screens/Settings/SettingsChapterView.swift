@@ -27,9 +27,10 @@ struct SettingsChapterView: View {
             case .view: view
             case .shoots: shoots
             case .calendar: parts(chapter.parts)
+            case .clients: parts(chapter.parts)
             case .alerts: feedback; studioAlerts
             case .places: places
-            case .store: moodboardRow; orgsRow; binRow
+            case .store: parts(chapter.parts)
             case .data: parts(chapter.parts)
             case .network: network
             case .locale: locale
@@ -215,6 +216,9 @@ struct SettingsChapterView: View {
             switch part {
             case .calendarSection: CalendarMirrorSection(app: app)
             case .foreign(let key): foreign(key)
+            case .clientsLayer: clientsRow
+            case .moodboardRow: moodboardRow
+            case .binRow: binRow
             case .body: EmptyView()
             }
         }
@@ -383,13 +387,13 @@ struct SettingsChapterView: View {
         .shotNode("item.mb", text: t.t("set.moodboards"))
     }
 
-    /// «Организации и документы» (веб `#orgsSetRow`): знак «документ», справа только шеврон; открывает список.
-    private var orgsRow: some View {
-        Button { withAnimation(overlaySlide) { app.openOrgs() } } label: {
-            SetItemRow(icon: "city", title: t.t("org.tabOrgs"), value: "")
+    /// «Клиенты» (К1): слой с вкладками «Частные» и «Компании»; «Организации» из «Хранилища» переехали туда.
+    private var clientsRow: some View {
+        Button { withAnimation(overlaySlide) { app.openClients() } } label: {
+            SetItemRow(icon: "heart", title: t.t("set.clients"), value: app.clientsValue)
         }
         .buttonStyle(.plain)
-        .shotNode("item.orgs", text: t.t("org.tabOrgs"))
+        .shotNode("item.clients", text: t.t("set.clients"))
     }
 
     /// «Контакты» (веб `#phonesRow`): справа число номеров или «нет», под строкой пояснение.

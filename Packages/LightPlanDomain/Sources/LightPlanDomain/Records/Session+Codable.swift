@@ -9,7 +9,7 @@ import LightPlanCore
 extension Session: Codable {
     enum CodingKeys: String, CodingKey, CaseIterable {
         case id, kind, date, min, end, dur, type, sub
-        case contact, clientTel, notes, orgId, person, phone, persons
+        case contact, clientTel, notes, orgId, clientId, person, phone, persons
         case place, placeTown, placeAddr, placeLat, placeLon, placeCity
         case studioId, hallId, rentFrom, rentTo, bookingRef, rentReq
         case wish, warn, deadlineChoice, delivered, deliveredAt
@@ -40,6 +40,7 @@ extension Session: Codable {
         clientPhone = try c.decodeIfPresent(String.self, forKey: .clientTel) ?? ""
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         orgId = try c.decodeIfPresent(String.self, forKey: .orgId)
+        clientId = try c.decodeIfPresent(String.self, forKey: .clientId)
         orderPerson = try c.decodeIfPresent(String.self, forKey: .person) ?? ""
         orderPhone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
         persons = try c.decodeIfPresent([Person].self, forKey: .persons) ?? []
@@ -124,6 +125,7 @@ extension Session: Codable {
         try c.encode(clientPhone, forKey: .clientTel)
         try c.encode(notes, forKey: .notes)
         try c.encodeIfPresent(orgId, forKey: .orgId)
+        try c.encodeIfPresent(clientId, forKey: .clientId)
         try c.encode(orderPerson, forKey: .person)
         try c.encode(orderPhone, forKey: .phone)
         try c.encode(persons, forKey: .persons)

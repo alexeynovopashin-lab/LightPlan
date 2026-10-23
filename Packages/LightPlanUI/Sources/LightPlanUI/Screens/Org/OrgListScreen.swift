@@ -2,11 +2,12 @@ import SwiftUI
 import LightPlanCore
 import LightPlanDomain
 
-// MARK: - Организации (`#orgOverlay`, итерация 28, шаг 6)
+// MARK: - Организации (`#orgOverlay`, итерация 28, шаг 6) — вкладка «Компании» экрана «Клиенты» (шаг К1)
 
 /// Список организаций со строкой 392×64 и «+ Организация». Порядок — как заведены, поиска нет (эталон
 /// заморожен, ошибка веба 27). «+ Организация» открывает карточку-черновик: пустая запись в данные не
-/// ложится. Бумаги ушли отсюда в «Документы» под мудбордом (28д, шаг 3а).
+/// ложится. Бумаги ушли отсюда в «Документы» под мудбордом (28д, шаг 3а). С К1 список живёт внутри экрана
+/// «Клиенты» (`ClientsScreen`) под вкладкой «Компании»: шапка и «Назад» — там, здесь только содержимое.
 struct OrgListScreen: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
@@ -14,19 +15,7 @@ struct OrgListScreen: View {
     private var t: Lexicon { app.lexicon }
 
     var body: some View {
-        let pal = Palette(scheme)
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                OverlayBack(title: t.t(app.org.backKey), node: "org.back") {
-                    withAnimation(overlaySlide) { app.closeOrgs() }
-                }
-                orgs(pal)
-            }
-            .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
-        }
-        .scrollIndicators(.hidden)
-        .background(pal.surface.ignoresSafeArea())
-        .shotNode("org.list", text: "\(app.orgs.count)")
+        orgs(Palette(scheme))
     }
 
     // MARK: организации

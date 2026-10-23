@@ -23,6 +23,7 @@ import LightPlanDomain
         s.clientPhone = "+7 913 000-00-01"
         s.notes = "сборы в 9"
         s.orgId = "o1"
+        s.clientId = "c1"
         s.orderPerson = "Мария"
         s.orderPhone = "+7 913 000-00-02"
         s.persons = [Person(name: "Анна", phone: "+7 913 000-00-01"), Person(name: "Илья", phone: "+7 913 000-00-03")]

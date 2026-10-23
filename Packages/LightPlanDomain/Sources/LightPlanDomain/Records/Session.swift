@@ -37,6 +37,10 @@ public struct Session: Sendable, Hashable, Identifiable {
     public var notes: String = ""
     /// `orgId` — ссылка на организацию, а не название (`docs/12`, «Организация как сущность»).
     public var orgId: String?
+    /// `clientId` — частный клиент (раздел `clients` снимка, шаг К1 «Клиенты»): склеивается по номеру телефона при
+    /// сохранении записи. Имя и телефон в записи остаются — клиент их не заменяет. Только у нас: веб ключа не знает и
+    /// сохраняет его как чужой.
+    public var clientId: String?
     /// `person` — контактное лицо заказчика.
     public var orderPerson: String = ""
     /// `phone` — телефон контактного лица.

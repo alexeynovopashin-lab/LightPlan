@@ -139,6 +139,16 @@
   wakes the task (`submit` fails; lldb `_simulateLaunchForTaskWithIdentifier` runs but calls nothing): Debug `-LPWxBgRun 1` runs the handler
   on going home instead; `-LPWxLog <file>` logs each pass, schedule result and delivered notifications. Seed a change by editing `wxSeen`
   in the sim's `light-plan.json`.
+- **Private clients (К1).** `Snapshot.clients` (`Client`, `LightPlanDomain/Records/Client.swift`: `id` `c…`, `kind` couple/family/person, `people[]`, `mt`) +
+  `Session.clientId`, same `light-plan.json`, same `persist()`; web does not know the section and drops it on re-save (the pass below rebuilds it). Glue by
+  phone number lives in `ClientBook.bind` (Domain, rules of `docs/clients_reference.md` § 3): called by `saveForm` before repeat copies are made
+  (`AppModel.bindClient`); the one-time pass over saved shoots is `AppModel.assembleClients` (`live()` on start, `Snapshot.clientsAssembled`; a shoot whose
+  `clientId` points at a missing client is bound again). A client without a number is created but never glued by name. Genre → kind table in `ClientBook.kind(for:)`;
+  org-only shoots, meetings, landscape/street make no client. Own number never becomes a client (`myKeys`). The screen is the layer `ClientsScreen`
+  (`Screens/Org/`, z `BackZ.orgList`): tabs «Частные | Компании», «Компании» = the old `OrgListScreen` unchanged (node `org.list` kept for the web pair);
+  `openOrgs()` opens that layer on «Компании», `openClients()` on «Частные». Settings chapter `Chapter.clients` (`opensLayer`) stands after «Календарь»; «Организации» left
+  «Хранилище» (`Chapter.parts`). Card of a client is К2: until then a row opens the latest shoot, and there is no «+ Клиент». Check: `node Tools/shots/clients.js`
+  (native only: tabs vs «Назад», fields 24, row 64, kinds add up to «Все»).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

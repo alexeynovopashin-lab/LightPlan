@@ -20,7 +20,7 @@ public struct SettingsView: View {
     public init(app: AppModel) { self.app = app }
 
     enum Chapter: String, CaseIterable, Hashable {
-        case profile, view, shoots, calendar, alerts, places, store, data, network, locale, about
+        case profile, view, shoots, calendar, clients, alerts, places, store, data, network, locale, about
 
         var icon: String {
             switch self {
@@ -28,6 +28,7 @@ public struct SettingsView: View {
             case .view: "sun_moon"
             case .shoots: "camera"
             case .calendar: "view_month"
+            case .clients: "heart"
             case .alerts: "alarm"
             case .places: "pin"
             case .store: "briefcase"
@@ -39,7 +40,7 @@ public struct SettingsView: View {
         }
 
         /// Что лежит в главе, где состав важен тесту: календарь (30.5г — всё про Календарь iPhone в одной главе), «Данные»
-        /// и «Съёмки» (сами строят своё тело, без календаря).
+        /// и «Съёмки» (сами строят своё тело, без календаря), «Хранилище» (К1 — организации ушли в «Клиенты»).
         enum Part: Equatable {
             /// Зеркало съёмок, «Другие календари» и списки галочек (`CalendarMirrorSection`).
             case calendarSection
@@ -47,15 +48,27 @@ public struct SettingsView: View {
             case foreign(String)
             /// Остальное тело главы, построенное вручную.
             case body
+            /// Строка «Клиенты» (шаг К1): открывает экран «Клиенты» слоем поверх вкладок. «Организации» теперь внутри него,
+            /// на вкладке «Компании».
+            case clientsLayer
+            /// Строка «Мудборды» в «Хранилище».
+            case moodboardRow
+            /// Строка «Корзина» в «Хранилище».
+            case binRow
         }
 
         var parts: [Part] {
             switch self {
             case .calendar: [.calendarSection, .foreign("set.icsImport")]
+            case .clients: [.clientsLayer]
+            case .store: [.moodboardRow, .binRow]
             case .data: [.foreign("set.data"), .foreign("cloud.title")]
             default: [.body]
             }
         }
+
+        /// Строка главы открывает слой поверх вкладок, а не страницу настроек (шаг К1).
+        var opensLayer: Bool { self == .clients }
 
         var titleKey: String {
             switch self {
@@ -63,6 +76,7 @@ public struct SettingsView: View {
             case .view: "set.grpView"
             case .shoots: "set.grpShoots"
             case .calendar: "set.calendar"
+            case .clients: "set.clients"
             case .alerts: "set.grpAlerts"
             case .places: "set.grpPlaces"
             case .store: "set.storage"
@@ -110,11 +124,20 @@ public struct SettingsView: View {
                     .padding(.top, 4)
                     VStack(spacing: 0) {
                         ForEach(Chapter.allCases, id: \.self) { ch in
-                            NavigationLink(value: ch) {
-                                SetItemRow(icon: ch.icon, title: t.t(ch.titleKey), value: value(of: ch))
+                            if ch.opensLayer {
+                                // «Клиенты» — не страница настроек, а слой, как «Организации» до К1.
+                                Button { withAnimation(overlaySlide) { app.openClients() } } label: {
+                                    SetItemRow(icon: ch.icon, title: t.t(ch.titleKey), value: value(of: ch))
+                                }
+                                .buttonStyle(.plain)
+                                .shotNode("nav." + ch.rawValue, text: t.t(ch.titleKey) + value(of: ch))
+                            } else {
+                                NavigationLink(value: ch) {
+                                    SetItemRow(icon: ch.icon, title: t.t(ch.titleKey), value: value(of: ch))
+                                }
+                                .buttonStyle(.plain)
+                                .shotNode("nav." + ch.rawValue, text: t.t(ch.titleKey) + value(of: ch))
                             }
-                            .buttonStyle(.plain)
-                            .shotNode("nav." + ch.rawValue, text: t.t(ch.titleKey) + value(of: ch))
                         }
                     }
                     .padding(.top, 2)
@@ -184,6 +207,8 @@ public struct SettingsView: View {
         case .locale:
             return SettingsText.languageName(app.language) + " · "
                 + NumberText(language: app.language).currencySign(s.currency.rawValue)
+        case .clients:
+            return app.clientsValue
         case .calendar, .alerts, .store, .about:
             return ""
         }

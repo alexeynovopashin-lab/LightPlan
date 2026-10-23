@@ -625,6 +625,10 @@ public final class AppModel {
         if let store {
             snapshot = await Self.startSnapshot(store: store, fresh: seeded, bundleID: Bundle.main.bundleIdentifier)
         }
+        // Клиенты из уже записанных съёмок — один раз на файл данных (шаг К1, справка `clients_reference.md` § 3.8).
+        if Self.assembleClients(into: &snapshot, language: AppLanguage.current, now: Date()) {
+            try? await store?.saveNow(snapshot)
+        }
         // Пустая жанровая папка на каждый включённый жанр — один раз, пишется сразу (веб `mbSeeded`).
         if RefLibrary.seedGenreFolders(in: &snapshot.extra, genres: Moodboard.enabledGenres(snapshot.genres).map(\.rawValue),
                                        newId: { UUID().uuidString.lowercased() },

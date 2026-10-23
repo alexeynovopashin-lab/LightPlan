@@ -15,6 +15,11 @@ import LightPlanDomain
 public struct Snapshot: Sendable, Hashable {
     public var sessions: [Session] = []
     public var orgs: [Org] = []
+    /// Частные клиенты (шаг К1 «Клиенты»): только у нас, веб при пересохранении раздел выбрасывает — тогда проход
+    /// `clientsAssembled` повторится и соберёт их заново из записей.
+    public var clients: [Client] = []
+    /// Разовый проход по уже записанным съёмкам сделан (справка `clients_reference.md` § 3.8).
+    public var clientsAssembled: Bool = false
     public var blocks: [Block] = []
     public var spots: [Spot] = []
     public var studios: [Studio] = []
@@ -82,7 +87,7 @@ extension Snapshot {
 
 extension Snapshot: Codable {
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case sessions, orgs, blocks, spots, studios, trashed, myDocs, trashedDocs
+        case sessions, orgs, clients, clientsAssembled, blocks, spots, studios, trashed, myDocs, trashedDocs
         case loc, theme, clock, tempUnit, currency, timeStep, travelMin
         case pro, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold, manualEnd
         case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment
@@ -101,6 +106,8 @@ extension Snapshot: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         sessions = try c.decodeIfPresent([Session].self, forKey: .sessions) ?? []
         orgs = try c.decodeIfPresent([Org].self, forKey: .orgs) ?? []
+        clients = try c.decodeIfPresent([Client].self, forKey: .clients) ?? []
+        clientsAssembled = try c.decodeIfPresent(Bool.self, forKey: .clientsAssembled) ?? false
         blocks = try c.decodeIfPresent([Block].self, forKey: .blocks) ?? []
         spots = try c.decodeIfPresent([Spot].self, forKey: .spots) ?? []
         studios = try c.decodeIfPresent([Studio].self, forKey: .studios) ?? []
@@ -149,6 +156,9 @@ extension Snapshot: Codable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(sessions, forKey: .sessions)
         try c.encode(orgs, forKey: .orgs)
+        // Пустого раздела и непройденного прохода в файле нет: файл без клиентов байт в байт как до К1.
+        if !clients.isEmpty { try c.encode(clients, forKey: .clients) }
+        if clientsAssembled { try c.encode(true, forKey: .clientsAssembled) }
         try c.encode(blocks, forKey: .blocks)
         try c.encode(spots, forKey: .spots)
         try c.encode(studios, forKey: .studios)
