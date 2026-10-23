@@ -446,7 +446,31 @@
     "clf.yes": "Да",
     "clf.other": "Другой",
     "card.debtsMore": "Ещё несданных: {n}",
-    "card.debtsAll": "Несданные: {n}"
+    "card.debtsAll": "Несданные: {n}",
+    "greet.title": "Поздравить клиентов",
+    "greet.today": "Сегодня: {list}",
+    "greet.anniv": "годовщина — {names}",
+    "greet.annivs": "годовщины — {names}",
+    "greet.bday": "день рождения — {names}",
+    "greet.bdays": "дни рождения — {names}",
+    "greet.comma": ", ",
+    "greet.semi": "; ",
+    "clc.bday": "День рождения",
+    "clc.age": [
+      "год",
+      "года",
+      "лет"
+    ],
+    "clc.dateAdd": "Добавить",
+    "clc.anniv": "Годовщина",
+    "clc.annivWedding": "из свадьбы",
+    "clc.greetSec": "Праздники",
+    "clc.greet": "Поздравлять",
+    "clc.greetNote": "В день рождения и в годовщину в 10:00 придёт напоминание поздравить. Включается само, когда вписана дата.",
+    "clc.greetDenied": "Уведомления для Light Plan выключены в настройках iPhone — нажмите, чтобы включить.",
+    "clc.noYear": "Без года",
+    "clc.dateOk": "Готово",
+    "clc.dateClear": "Убрать дату"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -894,7 +918,30 @@
     "clf.yes": "Yes",
     "clf.other": "Someone else",
     "card.debtsMore": "{n} more not delivered",
-    "card.debtsAll": "Not delivered: {n}"
+    "card.debtsAll": "Not delivered: {n}",
+    "greet.title": "Greet your clients",
+    "greet.today": "Today: {list}",
+    "greet.anniv": "anniversary — {names}",
+    "greet.annivs": "anniversaries — {names}",
+    "greet.bday": "birthday — {names}",
+    "greet.bdays": "birthdays — {names}",
+    "greet.comma": ", ",
+    "greet.semi": "; ",
+    "clc.bday": "Birthday",
+    "clc.age": [
+      "year old",
+      "years old"
+    ],
+    "clc.dateAdd": "Add",
+    "clc.anniv": "Anniversary",
+    "clc.annivWedding": "from the wedding",
+    "clc.greetSec": "Occasions",
+    "clc.greet": "Send greetings",
+    "clc.greetNote": "On the birthday and the anniversary you'll get a reminder at 10:00 to send greetings. Turns on by itself once a date is set.",
+    "clc.greetDenied": "Notifications for Light Plan are off in iPhone Settings — tap to turn them on.",
+    "clc.noYear": "No year",
+    "clc.dateOk": "Done",
+    "clc.dateClear": "Remove date"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1342,7 +1389,30 @@
     "clf.yes": "Sí",
     "clf.other": "Otra persona",
     "card.debtsMore": "{n} más sin entregar",
-    "card.debtsAll": "Sin entregar: {n}"
+    "card.debtsAll": "Sin entregar: {n}",
+    "greet.title": "Felicita a tus clientes",
+    "greet.today": "Hoy: {list}",
+    "greet.anniv": "aniversario — {names}",
+    "greet.annivs": "aniversarios — {names}",
+    "greet.bday": "cumpleaños — {names}",
+    "greet.bdays": "cumpleaños — {names}",
+    "greet.comma": ", ",
+    "greet.semi": "; ",
+    "clc.bday": "Cumpleaños",
+    "clc.age": [
+      "año",
+      "años"
+    ],
+    "clc.dateAdd": "Añadir",
+    "clc.anniv": "Aniversario",
+    "clc.annivWedding": "de la boda",
+    "clc.greetSec": "Fechas especiales",
+    "clc.greet": "Felicitar",
+    "clc.greetNote": "En el cumpleaños y el aniversario te llegará a las 10:00 un aviso para felicitar. Se activa solo al poner una fecha.",
+    "clc.greetDenied": "Las notificaciones de Light Plan están desactivadas en Ajustes del iPhone; toca para activarlas.",
+    "clc.noYear": "Sin año",
+    "clc.dateOk": "Listo",
+    "clc.dateClear": "Quitar fecha"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1789,7 +1859,29 @@
     "clf.yes": "はい",
     "clf.other": "別の人",
     "card.debtsMore": "未納品あと{n}件",
-    "card.debtsAll": "未納品: {n}件"
+    "card.debtsAll": "未納品: {n}件",
+    "greet.title": "お客さまにお祝いを",
+    "greet.today": "今日：{list}",
+    "greet.anniv": "結婚記念日 — {names}",
+    "greet.annivs": "結婚記念日 — {names}",
+    "greet.bday": "誕生日 — {names}",
+    "greet.bdays": "誕生日 — {names}",
+    "greet.comma": "、",
+    "greet.semi": "；",
+    "clc.bday": "誕生日",
+    "clc.age": [
+      "歳"
+    ],
+    "clc.dateAdd": "追加",
+    "clc.anniv": "結婚記念日",
+    "clc.annivWedding": "挙式日から",
+    "clc.greetSec": "記念日",
+    "clc.greet": "お祝いする",
+    "clc.greetNote": "誕生日と結婚記念日の10:00に、お祝いのリマインダーが届きます。日付を入れると自動でオンになります。",
+    "clc.greetDenied": "iPhoneの設定でLight Planの通知がオフです。タップしてオンにしてください。",
+    "clc.noYear": "年なし",
+    "clc.dateOk": "完了",
+    "clc.dateClear": "日付を削除"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2236,6 +2328,28 @@
     "clf.yes": "是",
     "clf.other": "其他人",
     "card.debtsMore": "还有 {n} 个未交付",
-    "card.debtsAll": "未交付：{n}"
+    "card.debtsAll": "未交付：{n}",
+    "greet.title": "祝福你的客户",
+    "greet.today": "今天：{list}",
+    "greet.anniv": "结婚纪念日 — {names}",
+    "greet.annivs": "结婚纪念日 — {names}",
+    "greet.bday": "生日 — {names}",
+    "greet.bdays": "生日 — {names}",
+    "greet.comma": "、",
+    "greet.semi": "；",
+    "clc.bday": "生日",
+    "clc.age": [
+      "岁"
+    ],
+    "clc.dateAdd": "添加",
+    "clc.anniv": "结婚纪念日",
+    "clc.annivWedding": "来自婚礼",
+    "clc.greetSec": "纪念日",
+    "clc.greet": "送上祝福",
+    "clc.greetNote": "生日和结婚纪念日当天10:00会提醒你送上祝福。填写日期后自动开启。",
+    "clc.greetDenied": "iPhone设置中已关闭Light Plan的通知，轻点以开启。",
+    "clc.noYear": "不含年份",
+    "clc.dateOk": "完成",
+    "clc.dateClear": "删除日期"
   }
 }

@@ -631,7 +631,10 @@ public final class AppModel {
             snapshot = await Self.startSnapshot(store: store, fresh: seeded, bundleID: Bundle.main.bundleIdentifier)
         }
         // Клиенты из уже записанных съёмок — один раз на файл данных (шаг К1, справка `clients_reference.md` § 3.8).
-        if Self.assembleClients(into: &snapshot, language: AppLanguage.current, now: Date()) {
+        let assembled = Self.assembleClients(into: &snapshot, language: AppLanguage.current, now: Date())
+        // Годовщина пары из свадьбы — в снимок (К6, § 2.4): экраны считают её сами, запись — для облака.
+        let settled = Self.settleAnniversaries(in: &snapshot, now: Date())
+        if assembled || settled {
             try? await store?.saveNow(snapshot)
         }
         // Пустая жанровая папка на каждый включённый жанр — один раз, пишется сразу (веб `mbSeeded`).
@@ -643,6 +646,17 @@ public final class AppModel {
         let language = AppLanguage.current
         let locale = Locale(identifier: language)
         let hub = NetworkPolicyHub(mode: Self.netMode(of: snapshot), detector: .live())
+        var clock: @Sendable () -> Date = { Date() }
+        #if DEBUG
+        // Переезд во времени для замеров (К6, `-LPTravelTo <ISO 8601>`): часы приложения идут с этого момента, и запросы к
+        // системе уведомлений переводятся на тот же сдвиг (`SystemNotificationCenter.debugShift`) — поздравление «завтра в
+        // 10:00» приходит в настоящую минуту, когда часы приложения показывают 10:00. Расписание и текст — те же, что у людей.
+        if let text = UserDefaults.standard.string(forKey: "LPTravelTo"), let to = ISO8601DateFormatter().date(from: text) {
+            let shift = to.timeIntervalSinceNow
+            clock = { Date().addingTimeInterval(shift) }
+            SystemNotificationCenter.debugShift = shift
+        }
+        #endif
         let model = AppModel(snapshot: snapshot, store: store, language: language,
                         locator: CoreLocationProvider(), geocoder: AppleReverseGeocoder(locale: locale),
                         cityLookup: AppleCityLookup(locale: locale), placeSearch: ApplePlaceSearch(locale: locale),
@@ -650,7 +664,7 @@ public final class AppModel {
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading(),
                         weatherReachability: SystemReachability(),
                         // Место и слежение — в памяти телефона (29.8в.12); тесты и снимки пар живут в памяти запуска.
-                        placeMemory: DevicePlaceMemory())
+                        placeMemory: DevicePlaceMemory(), now: clock)
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
         model.pinterest = PinterestClient.live(config: PinterestConfig.load())
@@ -831,7 +845,7 @@ public final class AppModel {
     /// `after` идёт, когда снимок записан на диск и запись подтверждена (без диска — сразу): так стирают файлы кадров, что ушли
     /// из данных, — оборвись приложение раньше, в данных остался бы кадр без картинки (ревью GPT к a2549e7).
     func persist(then after: (@Sendable () -> Void)? = nil) {
-        syncStudioAlerts()      // расписание студийного часа — функция данных (30а)
+        syncAlerts()      // расписание студийного часа — функция данных (30а)
         syncCalendarMirror()    // и событие в Календаре iPhone — тоже (30.2)
         guard let store else { after?(); return }
         let snap = snapshot, prev = saving

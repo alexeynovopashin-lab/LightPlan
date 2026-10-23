@@ -98,13 +98,13 @@ extension AppModel {
                 }
                 alertAuth = auth
                 // Пока шёл системный вопрос, человек нажал ещё раз: действует последнее нажатие.
-                guard wish == alertWish else { return syncStudioAlerts(force: true) }
+                guard wish == alertWish else { return syncAlerts(force: true) }
                 // Своего «Разрешить все» у натива пока нет: включая студийный час руками, человек разрешает.
                 writeNotif(["studio": true, "all": true])
             } else {
                 writeNotif(["studio": on])
             }
-            syncStudioAlerts(force: true)
+            syncAlerts(force: true)
         }
     }
 
@@ -129,10 +129,11 @@ extension AppModel {
         return notices.map { StudioAlertText.alert($0, lexicon: lexicon, clock: clock) }
     }
 
-    /// Привести систему к данным. Правки идут пачками — запрос откладывается на треть секунды и склеивается;
-    /// `force` (запуск, возврат в приложение, смена тумблера) опрашивает систему даже при тех же данных:
-    /// разрешение могли выдать или отнять в настройках iPhone.
-    func syncStudioAlerts(force: Bool = false) {
+    /// Привести систему к данным — студийный час и поздравления (К6) одной сверкой: 64 места делятся по таблице
+    /// (`NotificationScheduler.lanes`), а не по тому, кто сверился последним. Правки идут пачками — запрос откладывается
+    /// на треть секунды и склеивается; `force` (запуск, возврат в приложение, смена тумблера) опрашивает систему даже при
+    /// тех же данных: разрешение могли выдать или отнять в настройках iPhone, а у поздравлений сменился «сегодня».
+    func syncAlerts(force: Bool = false) {
         guard let center = alertCenter else { return }
         alertGen += 1
         if force { alertForce = true }
@@ -148,13 +149,13 @@ extension AppModel {
             let auth = await center.authorization()
             alertAuth = auth
             let scheduler = NotificationScheduler(center: center)
-            guard studioAlertsWanted, auth == .allowed else {
+            let plan = auth == .allowed ? (studioAlertsWanted ? studioAlertPlan() : []) + greetAlertPlan() : []
+            guard !plan.isEmpty else {
                 if alertApplied != nil || force { await scheduler.clear() }
                 alertApplied = nil
                 await alertLog("idle wanted=\(studioAlertsWanted) auth=\(auth)")
                 return
             }
-            let plan = studioAlertPlan()
             let sig = plan.map { $0.id + "=" + $0.signature }
             if !force, alertApplied == sig { return }
             let report = await scheduler.sync(plan)
@@ -189,15 +190,20 @@ extension AppModel {
         alertPresenter = .shared
         alertPresenter.setCardCheck { [weak self] sid in self?.cardId == sid }
         SystemNotificationCenter.install(delegate: alertPresenter)
-        // Нажали на уведомление «прогноз переменился» — его карточка (30.6).
-        alertPresenter.setOpenCard { [weak self] sid in self?.openFromNotice(sid) }
+        // Нажали на уведомление: «прогноз переменился» — его карточка (30.6), поздравление — клиент или «Клиенты» (К6).
+        alertPresenter.setOpen { [weak self] tap in
+            switch tap {
+            case .card(let sid): self?.openFromNotice(sid)
+            case .client(let cid): self?.openGreetClient(cid)
+            }
+        }
         #if DEBUG
         // Замеры (`-LPAlertToggle on|off`): то же, что нажатие на тумблер «Студийный час», без руки.
         if let v = UserDefaults.standard.string(forKey: "LPAlertToggle"), v == "on" || v == "off" {
             setStudioAlerts(v == "on"); return
         }
         #endif
-        syncStudioAlerts(force: true)
+        syncAlerts(force: true)
     }
 }
 

@@ -51,7 +51,7 @@ public struct RootView: View {
             // сорвавшийся запрос оставлял приложение без прогноза до перезапуска.
             if phase == .active, let app { app.light.weather.resume(); app.sweepMbBins() }
             // И расписание студийного часа сверяется с данными и с разрешением (его могли дать в настройках iPhone).
-            if phase == .active, let app { app.syncStudioAlerts(force: true) }
+            if phase == .active, let app { app.syncAlerts(force: true) }
             // И Календарь iPhone сверяется с данными: событие могли удалить руками, право — выдать или отнять (30.3).
             if phase == .active, let app { app.syncCalendarMirror(force: true); if app.ghostWanted { app.scheduleGhostReload() } }
             // Доступ к геопозиции могли дать или отнять в настройках iPhone; слежение берёт свежую точку (29.8в.12).

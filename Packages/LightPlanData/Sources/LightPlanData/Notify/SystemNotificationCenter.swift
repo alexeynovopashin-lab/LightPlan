@@ -1,6 +1,7 @@
 import Foundation
 import Synchronization
 import UserNotifications
+import LightPlanCore
 
 /// Настоящая система уведомлений iOS: `UNUserNotificationCenter` и
 /// `UNCalendarNotificationTrigger` (шаг 30а).
@@ -31,6 +32,24 @@ public struct SystemNotificationCenter: NotificationCentering {
         return UNCalendarNotificationTrigger(dateMatching: c, repeats: false)
     }
 
+    /// Поздравление (К6): поля без пояса и без календаря — система читает их по часам телефона в момент срабатывания,
+    /// так 10:00 остаётся 10:00 и после перелёта (из документации Apple, на телефоне не мерено).
+    public static func trigger(wall: WallTime) -> UNCalendarNotificationTrigger {
+        var c = DateComponents()
+        c.year = wall.day.year
+        c.month = wall.day.month
+        c.day = wall.day.day
+        c.hour = wall.minutes / 60
+        c.minute = wall.minutes % 60
+        return UNCalendarNotificationTrigger(dateMatching: c, repeats: false)
+    }
+
+    #if DEBUG
+    /// Сдвиг часов приложения при переезде во времени (`-LPTravelTo`, только Debug), секунды: запрос встаёт на настоящий
+    /// момент `fire − сдвиг`, триггером «через N секунд».
+    nonisolated(unsafe) public static var debugShift: TimeInterval = 0
+    #endif
+
     public func authorization() async -> NotificationAuthorization {
         switch await center.notificationSettings().authorizationStatus {
         case .notDetermined: return .notDetermined
@@ -60,9 +79,24 @@ public struct SystemNotificationCenter: NotificationCentering {
         content.title = alert.title
         content.body = alert.body
         content.sound = .default
-        content.threadIdentifier = "lp.studio"
-        content.userInfo = ["sig": alert.signature, "session": alert.sessionId]
-        let trigger = Self.trigger(fire: alert.fire.date, offsetHours: alert.offsetHours)
+        var info: [String: String] = ["sig": alert.signature, "session": alert.sessionId]
+        var trigger: UNNotificationTrigger
+        if let wall = alert.wall {
+            content.threadIdentifier = "lp.greet"
+            if let cid = alert.clientId { info["client"] = cid }
+            trigger = Self.trigger(wall: wall)
+        } else {
+            content.threadIdentifier = "lp.studio"
+            trigger = Self.trigger(fire: alert.fire.date, offsetHours: alert.offsetHours)
+        }
+        content.userInfo = info
+        #if DEBUG
+        if Self.debugShift != 0 {
+            let left = alert.fire.date.timeIntervalSinceNow - Self.debugShift
+            guard left > 0 else { return false }
+            trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, left), repeats: false)
+        }
+        #endif
         do {
             try await center.add(UNNotificationRequest(identifier: alert.id, content: content, trigger: trigger))
             return true
@@ -82,7 +116,8 @@ public struct SystemNotificationCenter: NotificationCentering {
         }
         return delivered.sorted() + requests.map { r in
             let t = r.trigger as? UNCalendarNotificationTrigger
-            let next = t?.nextTriggerDate().map { iso.string(from: $0) } ?? "—"
+            let next = (t?.nextTriggerDate() ?? (r.trigger as? UNTimeIntervalNotificationTrigger)?.nextTriggerDate())
+                .map { iso.string(from: $0) } ?? "—"
             let c = t?.dateComponents
             let fields = c.map { "\($0.year ?? 0)-\($0.month ?? 0)-\($0.day ?? 0) \($0.hour ?? 0):\($0.minute ?? 0) tz=\($0.timeZone?.secondsFromGMT() ?? 0)" } ?? "—"
             return "\(r.identifier) | \(next) | \(fields) | \(r.content.title) | \(r.content.body)"
@@ -125,11 +160,19 @@ public final class NotificationPresenter: NSObject, UNUserNotificationCenterDele
 
     private let cardOpen = Mutex<CardCheck>({ _ in false })
 
-    /// Нажали на уведомление о погоде — открыть карточку этой записи (шаг 30.6). Вызывается на главном потоке.
-    public typealias OpenCard = @MainActor @Sendable (_ sessionId: String) -> Void
-    private let openCard = Mutex<OpenCard?>(nil)
+    /// Куда ведёт нажатие на уведомление.
+    public enum Tap: Sendable, Equatable {
+        /// Прогноз переменился (30.6): карточка этой записи.
+        case card(String)
+        /// Поздравление (К6): карточка клиента, если праздники дня у одного клиента; `nil` — список «Клиенты».
+        case client(String?)
+    }
+
+    /// Что делать с нажатием. Вызывается на главном потоке.
+    public typealias Open = @MainActor @Sendable (Tap) -> Void
+    private let open = Mutex<Open?>(nil)
     /// Нажатие пришло раньше, чем приложение собрало себя (холодный запуск из уведомления): ждёт хозяина.
-    private let waiting = Mutex<String?>(nil)
+    private let waiting = Mutex<Tap?>(nil)
 
     public override init() { super.init() }
 
@@ -141,22 +184,28 @@ public final class NotificationPresenter: NSObject, UNUserNotificationCenterDele
         cardOpen.withLock { $0 = check }
     }
 
-    /// Хозяин готов открывать карточки; нажатие, что ждало его, исполняется сразу.
-    public func setOpenCard(_ open: @escaping OpenCard) {
-        openCard.withLock { $0 = open }
-        if let sid = waiting.withLock({ w -> String? in defer { w = nil }; return w }) {
-            Task { @MainActor in open(sid) }
+    /// Хозяин готов открывать; нажатие, что ждало его, исполняется сразу.
+    public func setOpen(_ handler: @escaping Open) {
+        open.withLock { $0 = handler }
+        if let tap = waiting.withLock({ w -> Tap? in defer { w = nil }; return w }) {
+            Task { @MainActor in handler(tap) }
         }
+    }
+
+    /// Нажатие по идентификатору запроса и его `userInfo`: чужое и не наше — `nil`. Отдельно от системы, чтобы читалось тестом.
+    public static func tap(id: String, info: [AnyHashable: Any]) -> Tap? {
+        if id.hasPrefix(InstantAlert.weatherPrefix), let sid = info["session"] as? String { return .card(sid) }
+        if id.hasPrefix(GreetSchedule.idPrefix) { return .client(info["client"] as? String) }
+        return nil
     }
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter,
                                        didReceive response: UNNotificationResponse) async {
         let r = response.notification.request
         guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
-              r.identifier.hasPrefix(InstantAlert.weatherPrefix),
-              let sid = r.content.userInfo["session"] as? String else { return }
-        guard let open = openCard.withLock({ $0 }) else { waiting.withLock { $0 = sid }; return }
-        await MainActor.run { open(sid) }
+              let tap = Self.tap(id: r.identifier, info: r.content.userInfo) else { return }
+        guard let handler = open.withLock({ $0 }) else { waiting.withLock { $0 = tap }; return }
+        await MainActor.run { handler(tap) }
     }
 
     /// Правило показа — отдельно от системы, чтобы читалось тестом.

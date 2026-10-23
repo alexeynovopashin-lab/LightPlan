@@ -188,6 +188,17 @@
   step 52 of 74), oldest on top, no cap; band tap → that debt as view 1. Anything else opens the day stack, unchanged. The mode is
   set on open, so a card marked «сдана» stays open and is gone from pile/list once you move on; `closeCard` resets both. Shots:
   `clients.js --cases debts,debts-list,debts-few,debts-done` (20 debts via `LPShotWay many`).
+- **Greetings (К6).** Birthday per person (`bd`, `Birthday`: day+month, year optional → age), couple anniversary = earliest wedding
+  unless hand-edited (`annivManual`; cleared by hand stays cleared), «Поздравлять» per card (`greet`, turns on by itself when a date
+  is first written by hand — `Greetings.turnsGreetOn`; a wedding-derived anniversary does not flip it). Rules: `LightPlanDomain/Rules/Greetings.swift`
+  (`days`: one `Day` per date with all occasions, 29 Feb → 28 Feb, nearest 40). One notification per day `lp.greet.<YYYY-MM-DD>` at 10:00
+  **phone clock**: `ScheduledAlert(wall:)` → calendar trigger without zone/calendar. Tap → client card (all occasions of one client) or
+  «Клиенты» (`NotificationPresenter.Tap`, `openGreetClient`). **The 64 pending slots are shared by one sync of all lanes**
+  (`NotificationScheduler.lanes`: greet cap 40, studio = the rest ≥ 24; unknown foreign requests still count): `AppModel.syncAlerts`
+  (was `syncStudioAlerts`) plans studio + greetings together on launch, return and every `persist()` — never sync one lane alone.
+  Debug `-LPTravelTo <ISO>`: the app clock starts there and every request is moved by the same shift (`SystemNotificationCenter.debugShift`,
+  interval trigger) — a «tomorrow 10:00» greeting is delivered a minute later on the simulator; log with `-LPAlertLog <file>`.
+  Shots: `clients.js --cases card-greet,card-greet-person`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

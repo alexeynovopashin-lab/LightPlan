@@ -257,7 +257,7 @@ extension AppModel {
             app.openClients()
         // Карточка клиента (К2) поверх «Частных»: `LPShotWay` — `couple|family|person` (тот из вида, у кого больше всего
         // съёмок), `twin` — персона, у которой вписаны имя и номер человека пары (подсказка «объединить?»), `pick` — лист
-        // «С кем объединить», `new` — черновик «+ Клиент».
+        // «С кем объединить», `new` — черновик «+ Клиент»; `…+greet` (К6) — дни рождения и «Поздравлять».
         case "clientcard":
             app.openClients()
             let way = s.way ?? "couple"
@@ -267,6 +267,14 @@ extension AppModel {
                 .max { app.clientShootCount($0.id) < app.clientShootCount($1.id) }
             guard var c = most else { break }
             if way.hasSuffix("+msg") { Self.seedMessengers(app, c.id); c = app.clientRecord(c.id) ?? c }
+            // К6 `…+greet`: дни рождения людей (у первого с годом — видно возраст, у второго без года), «Поздравлять» включён;
+            // годовщина пары — из свадьбы засева.
+            if way.hasSuffix("+greet"), let i = app.snapshot.clients.firstIndex(where: { $0.id == c.id }) {
+                let days = ["1994-04-05", "11-02", "2019-07-21"]
+                for k in app.snapshot.clients[i].people.indices { app.snapshot.clients[i].people[k].birthday = days[k % days.count] }
+                app.snapshot.clients[i].greet = true
+                c = app.snapshot.clients[i]
+            }
             if way == "twin", let pair = app.clients.first(where: { $0.kind == .couple && $0.people.count > 1 }),
                let i = app.snapshot.clients.firstIndex(where: { $0.id == c.id }) {
                 c.people.append(ClientPerson(name: pair.people[1].name, phone: pair.people[1].phone))   // К3б: номер и имя

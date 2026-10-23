@@ -260,7 +260,7 @@ extension AppModel {
             guard let self, let center = alertCenter else { return }
             if await center.authorization() == .notDetermined { _ = await center.requestAuthorization() }
             alertAuth = await center.authorization()
-            syncStudioAlerts(force: true)
+            syncAlerts(force: true)
         }
     }
 

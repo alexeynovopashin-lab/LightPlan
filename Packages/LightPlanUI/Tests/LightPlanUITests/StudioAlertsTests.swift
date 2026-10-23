@@ -106,7 +106,7 @@ struct StudioAlertsTests {
     @Test func permissionIsNotAskedAtLaunchOnlyWhenTheToggleTurnsOn() async {
         let fake = Fake(.notDetermined)
         let app = model(Self.snapshot(), center: fake)
-        app.syncStudioAlerts(force: true)      // запуск, возврат в приложение
+        app.syncAlerts(force: true)      // запуск, возврат в приложение
         await settle(app)
         #expect(await fake.asked == 0)
         #expect(await fake.table.isEmpty)
@@ -153,7 +153,7 @@ struct StudioAlertsTests {
         let fake = Fake(.allowed)
         let app = model(Self.snapshot(), center: fake)
         await fake.foreignOne()
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         #expect(await fake.table.count == 3)
         app.setStudioAlerts(false)
@@ -167,7 +167,7 @@ struct StudioAlertsTests {
     @Test func scheduleLandsOnTheBetasNumbersInThePlacesZone() async {
         let fake = Fake(.allowed)
         let app = model(Self.snapshot(), center: fake)
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         let t = await fake.table
         #expect(t.keys.sorted() == ["lp.studio.s1.0.1", "lp.studio.s1.0.2"])
@@ -181,7 +181,7 @@ struct StudioAlertsTests {
     @Test func editingHoursAndExtendingRewriteTheSameRequests() async {
         let fake = Fake(.allowed)
         let app = model(Self.snapshot(), center: fake)
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         // Подтверждённое продление: конец ячейки уехал на час.
         app.snapshot.sessions[0].route[0].end = 840
@@ -204,7 +204,7 @@ struct StudioAlertsTests {
     @Test func removingTheCellOrTheShootRemovesTheirRequests() async {
         let fake = Fake(.allowed)
         let app = model(Self.snapshot(), center: fake)
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         #expect(await fake.table.count == 2)
         app.snapshot.sessions[0].route = []
@@ -213,7 +213,7 @@ struct StudioAlertsTests {
         #expect(await fake.table.isEmpty)
         // И запись целиком — в корзину.
         let app2 = model(Self.snapshot(), center: fake)
-        app2.syncStudioAlerts(force: true)
+        app2.syncAlerts(force: true)
         await settle(app2)
         #expect(await fake.table.count == 2)
         app2.trashSession(id: "s1")
@@ -224,12 +224,12 @@ struct StudioAlertsTests {
     @Test func reopeningFindsAMovedScheduleAndFixesIt() async {
         let fake = Fake(.allowed)
         let app = model(Self.snapshot(), center: fake)
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         // Расписание разошлось с данными (запрос потерян): возврат в приложение чинит.
         await fake.remove(ids: ["lp.studio.s1.0.2"])
         #expect(await fake.table.count == 1)
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         #expect(await fake.table.count == 2)
     }
@@ -238,7 +238,7 @@ struct StudioAlertsTests {
         let fake = Fake(.allowed)
         // 12:47 — первая ступень (12:45) прошла.
         let app = model(Self.snapshot(), center: fake, at: "2026-10-20T12:47:00+03:00")
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         #expect(await fake.table.keys.sorted() == ["lp.studio.s1.0.2"])
     }
@@ -254,7 +254,7 @@ struct StudioAlertsTests {
             return s
         }
         let app = model(snap, center: fake)
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         #expect(await fake.table.count == 64)
         #expect(await fake.table["lp.studio.s31.0.2"] != nil)
@@ -267,7 +267,7 @@ struct StudioAlertsTests {
                                                           "clash": .bool(true), "studio": .bool(false)])])
         let app = model(snap, center: fake)
         #expect(app.studioAlertsWanted == false)
-        app.syncStudioAlerts(force: true)
+        app.syncAlerts(force: true)
         await settle(app)
         #expect(await fake.table.isEmpty)
         app.setStudioAlerts(true)
@@ -290,7 +290,7 @@ struct StudioAlertsTests {
                                locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
                                weatherSource: DryWeather(), now: { now })
             app.alertCenter = fake
-            app.syncStudioAlerts(force: true)
+            app.syncAlerts(force: true)
             await settle(app)
             return await fake.table.mapValues(\.fire)
         }

@@ -284,10 +284,13 @@ actor FakeCenter: NotificationCentering {
     func add(_ alert: ScheduledAlert) -> Bool {
         if refuse.contains(alert.id) { return false }
         table[alert.id] = alert; adds.append(alert.id)
+        peak = max(peak, table.count + foreign.count)
         return true
     }
     func setRefuse(_ ids: Set<String>) { refuse = ids }
     func remove(ids: [String]) { ids.forEach { table[$0] = nil }; foreign.removeAll { ids.contains($0) }; removes += ids }
+    /// Больше всего запросов, что система держала разом.
+    private(set) var peak = 0
     func setForeign(_ n: Int) { foreign = (0..<n).map { "other.\($0)" } }
     func resetLog() { adds = []; removes = [] }
 }
@@ -388,7 +391,119 @@ actor FakeCenter: NotificationCentering {
     }
 }
 
+/// Общий потолок 64 (К6, справка `clients_reference.md` § 6): студийный час и поздравления делят места по таблице —
+/// поздравлениям не больше 40, студийному часу всё остальное; кто сверился последним, роли не играет.
+@Suite struct SharedCeilingTests {
+    static let start = CivilDate(year: 2026, month: 10, day: 25)
+
+    /// `n` поздравлений, по одному на день.
+    static func greets(_ n: Int) -> [ScheduledAlert] {
+        (0..<n).map { i in
+            let d = start.adding(days: i)
+            let w = WallTime(day: d, minutes: 600)
+            return ScheduledAlert(id: GreetSchedule.id(d), wall: w, fire: w.moment(utcOffsetHours: 3), clientId: "c\(i)",
+                                  title: "Поздравления", body: "Сегодня: день рождения — \(i)")
+        }
+    }
+
+    /// `n` сессий студийного часа — по два сигнала, ближайшие первыми.
+    static func studio(_ n: Int) -> [ScheduledAlert] {
+        (0..<n).flatMap { i in
+            NotificationSchedulerTests.alerts(StudioScheduleTests.session("s\(i)", cells: [(720, 780)], day: start.adding(days: i)))
+        }.sorted { ($0.fire, $0.id) < ($1.fire, $1.id) }
+    }
+
+    static func count(_ table: [String: ScheduledAlert], _ prefix: String) -> Int { table.keys.filter { $0.hasPrefix(prefix) }.count }
+
+    @Test func bothFullSplitFortyAndTwentyFour() async {
+        let center = FakeCenter()
+        let r = await NotificationScheduler(center: center).sync(Self.greets(100) + Self.studio(50))
+        let t = await center.table
+        #expect(Self.count(t, "lp.greet.") == 40 && Self.count(t, "lp.studio.") == 24)
+        #expect(t.count == 64 && r.dropped.count == 60 + 76)
+        // Взяты ближайшие в каждой полосе.
+        #expect(t[GreetSchedule.id(Self.start.adding(days: 39))] != nil && t[GreetSchedule.id(Self.start.adding(days: 40))] == nil)
+        #expect(t["lp.studio.s11.0.2"] != nil && t["lp.studio.s12.0.1"] == nil)
+    }
+
+    @Test func studioTakesWhatGreetingsLeave() async {
+        let center = FakeCenter()
+        await NotificationScheduler(center: center).sync(Self.greets(5) + Self.studio(50))
+        let t = await center.table
+        #expect(Self.count(t, "lp.greet.") == 5 && Self.count(t, "lp.studio.") == 59)
+    }
+
+    @Test func greetingsAreNotStarvedByAFullStudioQueue() async {
+        // Система уже держит 64 сигнала студийного часа (как было до К6); пришли поздравления.
+        let center = FakeCenter()
+        let sched = NotificationScheduler(center: center)
+        await sched.sync(Self.studio(50))
+        #expect(await center.table.count == 64)
+        await sched.sync(Self.greets(100) + Self.studio(50))
+        let t = await center.table
+        #expect(Self.count(t, "lp.greet.") == 40 && Self.count(t, "lp.studio.") == 24)
+        // Лишние сигналы аренды сняты раньше, чем встали поздравления: система не держала больше 64 ни на миг.
+        #expect(await center.peak <= 64)
+    }
+
+    @Test func studioIsNotStarvedByGreetingsWhateverTheOrder() async {
+        let center = FakeCenter()
+        let sched = NotificationScheduler(center: center)
+        await sched.sync(Self.greets(100))
+        #expect(await center.table.count == 40, "одних поздравлений — всё равно не больше 40")
+        await sched.sync(Self.greets(100) + Self.studio(50))
+        var t = await center.table
+        #expect(Self.count(t, "lp.studio.") == 24)
+        // Повтор той же сверки ничего не меняет — дележа «кто последний» нет.
+        await center.resetLog()
+        let r = await sched.sync(Self.studio(50) + Self.greets(100))
+        t = await center.table
+        #expect(r.added.isEmpty && r.removed.isEmpty && Self.count(t, "lp.greet.") == 40 && Self.count(t, "lp.studio.") == 24)
+    }
+
+    @Test func emptyLaneIsCleared() async {
+        let center = FakeCenter()
+        let sched = NotificationScheduler(center: center)
+        await sched.sync(Self.greets(3) + Self.studio(1))
+        let r = await sched.sync(Self.studio(1))
+        let t = await center.table
+        #expect(r.removed.count == 3 && Self.count(t, "lp.greet.") == 0)
+    }
+
+    @Test func foreignStillCountsAndStudioYieldsFirst() async {
+        let center = FakeCenter()
+        await center.setForeign(10)
+        await NotificationScheduler(center: center).sync(Self.greets(100) + Self.studio(50))
+        let t = await center.table
+        #expect(Self.count(t, "lp.greet.") == 40 && Self.count(t, "lp.studio.") == 14)
+        #expect(await center.pending().count == 64)
+    }
+
+    @Test func greetingTriggerHasNoZoneAndStudioKeepsItsOwn() throws {
+        let w = WallTime(day: CivilDate(year: 2026, month: 10, day: 25), minutes: 600)
+        let g = SystemNotificationCenter.trigger(wall: w)
+        #expect(g.dateComponents.timeZone == nil && g.dateComponents.calendar == nil)
+        #expect(g.dateComponents.hour == 10 && g.dateComponents.minute == 0 && g.dateComponents.day == 25)
+        let s = SystemNotificationCenter.trigger(fire: Date(timeIntervalSince1970: 0), offsetHours: 3)
+        #expect(s.dateComponents.timeZone?.secondsFromGMT() == 3 * 3600)
+    }
+
+    @Test func greetingSignatureDoesNotDependOnThePhonesZone() {
+        let w = WallTime(day: CivilDate(year: 2026, month: 10, day: 25), minutes: 600)
+        let a = ScheduledAlert(id: "lp.greet.x", wall: w, fire: w.moment(utcOffsetHours: 3), clientId: nil, title: "t", body: "b")
+        let b = ScheduledAlert(id: "lp.greet.x", wall: w, fire: w.moment(utcOffsetHours: -5), clientId: nil, title: "t", body: "b")
+        #expect(a.signature == b.signature)
+    }
+}
+
 @Suite struct NotificationPresenterTests {
+    @Test func tapOnAGreetingOpensTheClientOrTheList() {
+        #expect(NotificationPresenter.tap(id: "lp.greet.2026-10-25", info: ["client": "c1"]) == .client("c1"))
+        #expect(NotificationPresenter.tap(id: "lp.greet.2026-10-25", info: [:]) == .client(nil))
+        #expect(NotificationPresenter.tap(id: "lp.wx.s1", info: ["session": "s1"]) == .card("s1"))
+        #expect(NotificationPresenter.tap(id: "lp.studio.s1.0.1", info: ["session": "s1"]) == nil)
+    }
+
     @Test func openCardSuppressesTheBannerOtherwiseItIsShown() {
         #expect(NotificationPresenter.options(cardOpen: true) == [])
         #expect(NotificationPresenter.options(cardOpen: false).contains(.banner))

@@ -45,6 +45,9 @@ const CASES = [
   { name: 'card-new', sheet: 'clientcard', way: 'new', card: 'person' },
   // К4: мессенджеры людей, кнопка «написать» у телефона, «Пишем».
   { name: 'card-msg', sheet: 'clientcard', way: 'couple+msg', card: 'couple', msg: true },
+  // К6: дни рождения людей, годовщина пары из свадьбы, «Поздравлять».
+  { name: 'card-greet', sheet: 'clientcard', way: 'couple+greet', card: 'couple', greet: true },
+  { name: 'card-greet-person', sheet: 'clientcard', way: 'person+greet', card: 'person', greet: true },
   // К3: входы из съёмки.
   { name: 'head-couple', sheet: 'clienthead', way: 'couple', reach: 'sms' },
   { name: 'head-person', sheet: 'clienthead', way: 'person', reach: 'sms' },
@@ -100,6 +103,28 @@ function cardVerdict(c, nodes, screen) {
   if (c.way === 'twin') inFields(n('clc.twin.0'), 'подсказка «объединить?»');
   if (c.card === 'couple' && c.way !== 'new') inFields(n('clc.person.1'), 'человек 2');
   n('clc.delete');
+  if (c.greet) {
+    // Строка дня рождения — внутри группы своего человека, 52 и выше; у первого с годом — возраст; группа праздников в полях;
+    // у пары — годовщина из свадьбы; тумблер включён.
+    const people = c.card === 'couple' ? [0, 1] : [0];
+    for (const i of people) {
+      const g = nodes['clc.person.' + i], r = n('clc.bday.' + i), v = n('clc.bdayValue.' + i);
+      if (r && g && (r.y < g.y - 0.1 || r.y + r.h > g.y + g.h + 0.1)) bad.push(`день рождения ${i + 1} вне группы человека`);
+      if (r && r.h < 51.4) bad.push(`день рождения ${i + 1}: высота ${r.h.toFixed(1)} < 52`);
+      if (v && !v.text) bad.push(`день рождения ${i + 1} не вписан`);
+    }
+    if (!nodes['clc.bday.0.sub']) bad.push('у дня рождения с годом нет возраста');
+    if (c.card === 'couple' && nodes['clc.bday.1.sub']) bad.push('у дня рождения без года есть возраст');
+    inFields(n('clc.greetGroup'), 'группа праздников');
+    const t = n('clc.greet');
+    if (c.card === 'couple') {
+      const a = n('clc.anniv'), av = n('clc.annivValue');
+      if (av && !/^\d{4}-\d{2}-\d{2}$/.test(av.text)) bad.push(`годовщина «${av.text}» не из свадьбы`);
+      if (a && t && a.y > t.y) bad.push('годовщина ниже тумблера');
+      n('clc.anniv.sub');
+    } else if (nodes['clc.anniv']) bad.push('у персоны строка годовщины');
+    n('clc.greetNote');
+  }
   if (c.msg) {
     // Вставленные ссылками профили стали строками своих видов, внутри группы человека; звёздочка — у первого
     // вписанного; кнопка у телефона открывает основной; «Пишем» — оба человека.

@@ -8,7 +8,7 @@ import LightPlanDomain
 /// подсказка «этот номер есть у другого клиента — объединить?», люди (имя, телефон со звонком), свои ссылки клиента и
 /// ссылки его съёмок, съёмки с суммами — они **считаются** из съёмок с этим клиентом, в клиенте не хранятся; внизу
 /// «Объединить с другим клиентом» и «Удалить клиента». Мессенджеры людей, кнопка «написать» у телефона и «Пишем» —
-/// шаг К4. Дни рождения, годовщина, «Поздравлять» — шаг К6: здесь их нет.
+/// шаг К4. Дни рождения людей, годовщина пары и «Поздравлять» — шаг К6 (`AppModel+Greetings`).
 struct ClientCardScreen: View {
     @Bindable var app: AppModel
     let id: String
@@ -19,6 +19,13 @@ struct ClientCardScreen: View {
     @State private var askingDelete = false
     /// Подсказка «объединить?» ждёт подтверждения: кого вливаем.
     @State private var askingMerge: ClientTwinRow?
+    /// Открыт лист даты: чей день рождения или годовщина.
+    @State private var dateAsk: DateAsk?
+
+    private enum DateAsk: Identifiable, Hashable {
+        case birthday(Int), anniversary
+        var id: Self { self }
+    }
 
     private var t: Lexicon { app.lexicon }
 
@@ -38,6 +45,7 @@ struct ClientCardScreen: View {
                     .padding(.top, 14)
                 twins(pal)
                 people(c, pal)
+                greet(c, pal)
                 FormGroupLabel(text: t.t("clc.links"))
                 links(c, pal)
                 FormGroupLabel(text: t.t("nav.shoots"))
@@ -58,6 +66,7 @@ struct ClientCardScreen: View {
                 if let a { app.addClientLink(id, a.url, title: a.title) }
             }
         }
+        .sheet(item: $dateAsk) { dateSheet($0) }
         .sheet(isPresented: $app.org.clientPick) {
             ClientMergePicker(app: app, targetId: id)
         }
@@ -138,6 +147,7 @@ struct ClientCardScreen: View {
                         callButton(c.people[i].phone, i, pal)
                         reachButton(c, i, pal)
                     }
+                    birthdayRow(c.people[i], i, pal)
                     ForEach(c.people[i].messengers.compactMap { MessengerKind(rawValue: $0.kind) }, id: \.self) { k in
                         messengerRow(c.people[i], i, k, pal)
                     }
@@ -169,6 +179,106 @@ struct ClientCardScreen: View {
             .buttonStyle(PressFade())
             .accessibilityLabel(t.t("clc.call"))
             .shotNode("clc.call.\(i)")
+        }
+    }
+
+    // MARK: праздники (К6, § 6)
+
+    private var facts: PlannerFacts { PlannerFacts(app: app, dark: true) }
+
+    /// «2 ноября» без года, «2 ноября 1990» с годом.
+    private func dayText(year: Int?, month: Int, day: Int) -> String {
+        let f = facts
+        let d = f.date(CivilDate(year: year ?? 2000, month: month, day: day))
+        return year == nil ? f.dates.dMon(d) : f.dates.dMonYear(d)
+    }
+
+    /// «День рождения»: дата справа, под подписью — сколько лет, если год известен. Нет даты — латунное «Добавить».
+    private func birthdayRow(_ p: ClientPerson, _ i: Int, _ pal: Palette) -> some View {
+        let b = Birthday(p.birthday)
+        let age = b?.age(on: app.today).map { t.count("clc.age", $0) }
+        return Button { dateAsk = .birthday(i) } label: {
+            FormSubRow(node: "clc.bday.\(i)", label: t.t("clc.bday"), sub: age) {
+                Text(b.map { dayText(year: $0.year, month: $0.month, day: $0.day) } ?? t.t("clc.dateAdd"))
+                    .font(.system(size: 16)).foregroundStyle(b == nil ? pal.brass : pal.ink3)
+                    .shotNode("clc.bdayValue.\(i)", text: p.birthday ?? "")
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Годовщина пары (у пары), «Поздравлять» и строка о том, что будет: в 10:00 в день праздника. Уведомления запрещены
+    /// в настройках iPhone — строка ведёт туда.
+    private func greet(_ c: Client, _ pal: Palette) -> some View {
+        let denied = app.greetNeedsSettings(c)
+        return VStack(alignment: .leading, spacing: 0) {
+            FormGroupLabel(text: t.t("clc.greetSec"))
+            FormGroup(node: "clc.greetGroup") {
+                if c.kind == .couple {
+                    let a = app.clientAnniversary(c)
+                    Button { dateAsk = .anniversary } label: {
+                        FormSubRow(node: "clc.anniv", label: t.t("clc.anniv"),
+                                   sub: app.clientAnniversaryFromWedding(c) ? t.t("clc.annivWedding") : nil) {
+                            Text(a.map { dayText(year: $0.year, month: $0.month, day: $0.day) } ?? t.t("clc.dateAdd"))
+                                .font(.system(size: 16)).foregroundStyle(a == nil ? pal.brass : pal.ink3)
+                                .shotNode("clc.annivValue", text: a?.snapshotString ?? "")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                FormToggleRow(node: "clc.greet", label: t.t("clc.greet"), on: c.greet) { app.setClientGreet(id, $0) }
+            }
+            Button {
+                #if os(iOS)
+                if denied, let u = URL(string: UIApplication.openSettingsURLString) { openURL(u) }
+                #endif
+            } label: {
+                Text(t.t(denied ? "clc.greetDenied" : "clc.greetNote")).font(.system(size: 13))
+                    .foregroundStyle(denied ? pal.brass : pal.ink4).lineSpacing(4).multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4).padding(.top, 8)
+            }
+            .buttonStyle(.plain)
+            .disabled(!denied)
+            .shotNode("clc.greetNote", text: denied ? "denied" : "note")
+        }
+    }
+
+    @ViewBuilder private func dateSheet(_ ask: DateAsk) -> some View {
+        let c = app.clientRecord(id) ?? Client(id: id)
+        let today = app.today
+        let f = facts
+        let words = { (title: String) in
+            ClientDateSheet.Words(title: title, noYear: t.t("clc.noYear"), ok: t.t("clc.dateOk"), cancel: t.t("ask.cancel"),
+                                  clear: t.t("clc.dateClear"))
+        }
+        let month = { (m: Int) in f.dates.monthTitle(f.date(CivilDate(year: 2000, month: m, day: 1))) }
+        switch ask {
+        case .birthday(let i):
+            let b = Birthday(c.people[safe: i]?.birthday)
+            ClientDateSheet(words: words(t.t("clc.bday")), yearOptional: true, canClear: b != nil, thisYear: today.year,
+                            initial: b.map { ($0.year, $0.month, $0.day) } ?? (nil, today.month, today.day),
+                            monthName: month) { a in
+                dateAsk = nil
+                switch a {
+                case .set(let y, let m, let d): app.setClientBirthday(id, at: i, Birthday(year: y, month: m, day: d))
+                case .clear: app.setClientBirthday(id, at: i, nil)
+                case .cancel: break
+                }
+            }
+        case .anniversary:
+            let a = app.clientAnniversary(c)
+            ClientDateSheet(words: words(t.t("clc.anniv")), yearOptional: false, canClear: a != nil, thisYear: today.year,
+                            initial: a.map { ($0.year, $0.month, $0.day) } ?? (today.year, today.month, today.day),
+                            monthName: month) { ans in
+                dateAsk = nil
+                switch ans {
+                case .set(let y, let m, let d):
+                    app.setClientAnniversary(id, CivilDate(year: y ?? today.year, month: m, day: d))
+                case .clear: app.setClientAnniversary(id, nil)
+                case .cancel: break
+                }
+            }
         }
     }
 
