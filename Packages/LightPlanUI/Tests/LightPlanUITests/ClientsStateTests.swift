@@ -60,7 +60,7 @@ struct ClientsStateTests {
 
     @Test func savingTheFormCreatesAClientAndTheNextShootWithTheSameNumberJoinsIt() {
         let app = model(sessions: [session("a", day(9, 5), client: "Ирина", tel: "8 916 123-45-67"),
-                                   session("b", day(9, 20), client: "Ира", tel: "8 916 123-45-67")])
+                                   session("b", day(9, 20), client: "Ирина", tel: "8 916 123-45-67")])
         #expect(app.clients.isEmpty, "пока не сохраняли — клиентов нет")
         app.openForm(editing: "a"); app.saveForm()
         app.openForm(editing: "b"); app.saveForm()
@@ -116,7 +116,7 @@ struct ClientsStateTests {
     @Test func theOneTimePassBuildsClientsAndRunsOnlyOnce() {
         var snap = Snapshot()
         snap.sessions = [session("a", day(9, 5), client: "Ирина", tel: "8 916 123-45-67"),
-                         session("b", day(9, 6), client: "Ира", tel: "+7 916 123-45-67"),
+                         session("b", day(9, 6), client: "Ирина", tel: "+7 916 123-45-67"),
                          session("c", day(9, 7), genre: .wedding, client: "Аня и Марк",
                                  persons: [Person(name: "Аня", phone: "+7 913 555-66-77"), Person(name: "Марк", phone: "+7 913 555-66-78")])]
         let now = ISO8601DateFormatter().date(from: "2026-09-30T09:00:00+03:00")!
@@ -281,6 +281,8 @@ struct ClientsStateTests {
         app.openClientCard(id: irina)
         app.addClientPerson(irina)
         app.setClientPersonPhone(irina, at: 1, "+7 903 000-11-22")
+        #expect(app.clientTwins(irina).isEmpty, "К3б: один номер без имени — не повод объединять")
+        app.setClientPersonName(irina, at: 1, "Ира")
         #expect(app.clientTwins(irina).map { [$0.clientId, $0.title] } == [[ira, "Ира"]])
     }
 
@@ -387,75 +389,99 @@ struct ClientsStateTests {
         app.form?.clientPhone = tel
     }
 
-    @Test func aNewShootWithAnOldClientsNumberIsHisAndThePlateSaysSo() {
+    /// Две Ирины из `twoIrinas`, у первой в карточке имя с фамилией — «Ирина Смирнова».
+    private func fullIrina() -> (app: AppModel, irina: String, ira: String) {
         let app = twoIrinas()
         let irina = clientId(app, of: "a")
-        newForm(app, name: "Ира Смирнова", tel: "+7 916 123 45 67")
+        app.setClientPersonName(irina, at: 0, "Ирина Смирнова")
+        return (app, irina, clientId(app, of: "c"))
+    }
+
+    @Test func aNewShootWithAnOldClientsNumberAndNameIsHisAndThePlateSaysSo() {
+        let app = twoIrinas()
+        let irina = clientId(app, of: "a")
+        newForm(app, name: "Ирина Смирнова", tel: "+7 916 123 45 67")
         let plate = app.formClientPlate(app.form!)
         #expect(plate?.clientId == irina && plate?.way == .phone)
         #expect(plate?.text == "По номеру — Ирина · 2 съёмки")
         let s = app.saveForm()!
-        #expect(s.clientId == irina && app.clients.count == 2, "привязано к старому клиенту, нового нет")
+        #expect(s.clientId == irina && app.clients.count == 2, "номер и имя — привязано к старому клиенту, нового нет")
         #expect(ClientBook.shoots(of: irina, in: app.sessions).count == 3)
     }
 
-    @Test func aNameAloneOnlyAsksAndYesBinds() {
+    @Test func theSameNumberWithAnotherNameIsANewClient() {
         let app = twoIrinas()
-        let irina = clientId(app, of: "a")
+        newForm(app, name: "Олег Смирнов", tel: "+7 916 123 45 67")
+        #expect(app.formClientPlate(app.form!) == nil, "К3б: один номер — не повод, это муж с телефона жены")
+        let s = app.saveForm()!
+        #expect(app.clients.count == 3 && s.clientId != clientId(app, of: "a"))
+    }
+
+    @Test func onlyTheFirstNameShowsNoPlate() {
+        let (app, _, _) = fullIrina()
         newForm(app, name: "Ирина")
+        #expect(app.formClientPlate(app.form!) == nil)
+        app.saveForm()
+        #expect(app.clients.count == 3)
+    }
+
+    @Test func firstAndLastNameAskAndYesBinds() {
+        let (app, irina, _) = fullIrina()
+        newForm(app, name: "Смирнова Ирина")
         let ask = app.formClientPlate(app.form!)
-        #expect(ask?.way == .name && ask?.clientId == irina && ask?.text == "Это Ирина? 2 съёмки")
+        #expect(ask?.way == .name && ask?.clientId == irina && ask?.text == "Это Ирина Смирнова? 2 съёмки")
         app.answerFormClient(.pick(irina))
-        #expect(app.formClientPlate(app.form!)?.way == .bound && app.formClientPlate(app.form!)?.text == "Это Ирина · 2 съёмки")
+        #expect(app.formClientPlate(app.form!)?.way == .bound && app.formClientPlate(app.form!)?.text == "Это Ирина Смирнова · 2 съёмки")
         let s = app.saveForm()!
         #expect(s.clientId == irina && app.clients.count == 2)
     }
 
-    @Test func withoutYesANameMakesANewClient() {
-        let app = twoIrinas()
-        newForm(app, name: "Ирина")
+    @Test func withoutYesAFullNameMakesANewClient() {
+        let (app, irina, _) = fullIrina()
+        newForm(app, name: "Ирина Смирнова")
         let s = app.saveForm()!
-        #expect(app.clients.count == 3 && s.clientId != clientId(app, of: "a"), "клиент без номера сам ни с кем не склеивается")
+        #expect(app.clients.count == 3 && s.clientId != irina, "вопрос без «Да» сам не склеивает")
     }
 
     @Test func otherHidesTheHintAndMakesANewClient() {
-        let app = twoIrinas()
-        newForm(app, name: "Ирина")
+        let (app, _, _) = fullIrina()
+        newForm(app, name: "Ирина Смирнова")
         app.answerFormClient(.other)
         #expect(app.formClientPlate(app.form!) == nil)
-        app.form?.contact = "Ирина Петрова"
-        #expect(app.formClientPlate(app.form!) == nil, "сменили имя — подсказка для этой съёмки не возвращается")
+        app.form?.contact = "Смирнова Ирина"
+        #expect(app.formClientPlate(app.form!) == nil, "сменили запись имени — вопрос для этой съёмки не возвращается")
         let s = app.saveForm()!
         #expect(app.clients.count == 3 && s.clientId == app.clients.last?.id)
     }
 
     @Test func aCancelledFormLeavesNoClients() {
-        let app = twoIrinas()
+        let (app, irina, _) = fullIrina()
         let before = app.snapshot.clients
-        newForm(app, name: "Ирина")
-        app.answerFormClient(.pick(clientId(app, of: "a")))
+        newForm(app, name: "Ирина Смирнова")
+        app.answerFormClient(.pick(irina))
         app.form?.clientPhone = "+7 999 000-00-00"
         _ = app.formClientPlate(app.form!)
         app.closeForm()
         #expect(app.snapshot.clients == before && app.sessions.count == 3, "отмена — ни клиентов, ни съёмки")
-        newForm(app, name: "Ирина")
+        newForm(app, name: "Ирина Смирнова")
         #expect(app.form?.clientChoice == nil && app.formClientPlate(app.form!)?.way == .name, "ответ не пережил отмену")
     }
 
     @Test func changingTheNumberInTheFormSwitchesThePlate() {
-        let app = twoIrinas()
-        let irina = clientId(app, of: "a"), ira = clientId(app, of: "c")
-        newForm(app, name: "Ирина")
+        let (app, irina, _) = fullIrina()
+        newForm(app, name: "Ирина Смирнова")
         #expect(app.formClientPlate(app.form!)?.way == .name)
         app.form?.clientPhone = "8 903 000-11-22"
-        #expect(app.formClientPlate(app.form!)?.clientId == ira && app.formClientPlate(app.form!)?.way == .phone, "номер Иры — съёмка Иры")
+        #expect(app.formClientPlate(app.form!)?.clientId == irina && app.formClientPlate(app.form!)?.way == .name,
+                "номер Иры без её имени — не Ира, вопрос про Ирину держится")
+        app.form?.clientPhone = "+7 916 123-45-67"
+        #expect(app.formClientPlate(app.form!)?.clientId == irina && app.formClientPlate(app.form!)?.way == .phone, "номер Ирины — сразу")
         app.form?.clientPhone = "+7 999 000-00-00"
-        #expect(app.formClientPlate(app.form!) == nil, "незнакомый номер — будет новый клиент")
-        app.form?.clientPhone = ""
         app.answerFormClient(.pick(irina))
-        app.form?.clientPhone = "+7 999 000-00-00"
         #expect(app.formClientPlate(app.form!)?.clientId == irina && app.formClientPlate(app.form!)?.way == .bound,
                 "после «Да» новый номер остаётся у выбранной")
+        app.saveForm()
+        #expect(app.clientRecord(irina)?.people.map(\.phone) == ["+7 999 000-00-00"], "«Да» — новый номер у Ирины, прежний в архиве")
     }
 
     @Test func editingABoundShootShowsItsClient() {

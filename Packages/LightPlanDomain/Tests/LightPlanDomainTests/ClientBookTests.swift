@@ -75,7 +75,7 @@ import LightPlanDomain
     @Test func sameNumberInAnotherFormatIsTheSameClient() {
         var clients: [Client] = [], ids = Ids()
         var a = Self.shoot("a", Self.day(1), contact: "Ольга Смирнова", phone: "8 913 787-97-07")
-        var b = Self.shoot("b", Self.day(9), genre: .animals, contact: "Оля", phone: "+7 913 787-97-07")
+        var b = Self.shoot("b", Self.day(9), genre: .animals, contact: "Ольга", phone: "+7 913 787-97-07")
         Self.save(&a, &clients, ids: ids)
         let o = Self.save(&b, &clients, ids: ids)
         #expect(clients.count == 1 && b.clientId == a.clientId && !o.created, "«8 913…» и «+7 913…» — один номер")
@@ -84,15 +84,21 @@ import LightPlanDomain
 
     @Test func emptyFieldsAreFilledFromTheShootButFilledOnesAreNot() {
         var clients: [Client] = [], ids = Ids()
-        var a = Self.shoot("a", Self.day(1), contact: "", phone: "+7 913 111-22-33")
+        // Пара: у второго человека только номер. Пара узнана по Ане (номер + имя), имя второго дозаполняется.
+        var a = Self.shoot("a", Self.day(1), genre: .wedding, persons: [Self.anya, Person(name: "", phone: Self.mark.phone)])
         Self.save(&a, &clients, ids: ids)
-        #expect(clients[0].people.map(\.name) == [""])
-        var b = Self.shoot("b", Self.day(2), contact: "Ира", phone: "+7 913 111-22-33")
+        #expect(clients[0].people.map(\.name) == ["Аня", ""])
+        var b = Self.shoot("b", Self.day(2), genre: .lovestory, persons: [Self.anya, Self.mark])
         Self.save(&b, &clients, ids: ids, now: 5)
-        #expect(clients[0].people.map(\.name) == ["Ира"] && clients[0].modifiedAt == 5, "пустое имя дозаполнено, отметка правки свежая")
-        var c = Self.shoot("c", Self.day(3), contact: "Ирина", phone: "+7 913 111-22-33")
+        #expect(clients[0].people.map(\.name) == ["Аня", "Марк"] && clients[0].modifiedAt == 5, "пустое имя дозаполнено, отметка правки свежая")
+        var c = Self.shoot("c", Self.day(3), genre: .lovestory, persons: [Self.anya, Person(name: "Марк Петров", phone: Self.mark.phone)])
         Self.save(&c, &clients, ids: ids, now: 9)
-        #expect(clients[0].people.map(\.name) == ["Ира"] && clients[0].modifiedAt == 5, "ничего не изменилось — правки нет")
+        #expect(clients[0].people.map(\.name) == ["Аня", "Марк"] && clients[0].modifiedAt == 5, "ничего не изменилось — правки нет")
+        // К3б: у клиента только номер, имени нет — один номер не узнаёт, это новый клиент.
+        var d = Self.shoot("d", Self.day(4), contact: "", phone: "+7 913 111-22-33")
+        var e = Self.shoot("e", Self.day(5), contact: "Ира", phone: "+7 913 111-22-33")
+        Self.save(&d, &clients, ids: ids); Self.save(&e, &clients, ids: ids)
+        #expect(clients.count == 3 && d.clientId != e.clientId)
     }
 
     @Test func secondPersonOfAPairIsFilledIn() {
@@ -156,9 +162,12 @@ import LightPlanDomain
         var clients: [Client] = [], ids = Ids()
         var wed = Self.shoot("w", Self.day(1), genre: .wedding, contact: "Аня и Марк", phone: "+7 913 000-00-33", persons: [Self.anya, Self.mark])
         Self.save(&wed, &clients, ids: ids)
-        var again = Self.shoot("a", Self.day(9), contact: "Мама", phone: "+7 913 000-00-33")
+        var again = Self.shoot("a", Self.day(9), contact: "Аня", phone: "+7 913 000-00-33")
         Self.save(&again, &clients, ids: ids)
-        #expect(clients.count == 1 && again.clientId == wed.clientId, "номер, названный третьим, узнаётся, а не плодит дубль")
+        #expect(clients.count == 1 && again.clientId == wed.clientId, "номер, названный третьим, узнаётся (с именем пары), а не плодит дубль")
+        var mom = Self.shoot("m", Self.day(10), contact: "Мама", phone: "+7 913 000-00-33")
+        Self.save(&mom, &clients, ids: ids)
+        #expect(clients.count == 2 && mom.clientId != wed.clientId, "К3б: тот же номер с другим именем — новый клиент")
     }
 
     @Test func anArchivedNumberFindsTheClientButIsNotWrittenBackAsAPerson() {
@@ -167,7 +176,7 @@ import LightPlanDomain
         Self.save(&s, &clients, ids: ids)
         s.clientPhone = "+7 913 111-00-00"
         Self.save(&s, &clients, ids: ids)
-        var call = Self.shoot("c", Self.day(5), contact: "Оля", phone: "8 913 787-97-07")
+        var call = Self.shoot("c", Self.day(5), contact: "Ольга", phone: "8 913 787-97-07")
         Self.save(&call, &clients, ids: ids)
         #expect(call.clientId == s.clientId && clients[0].people.map(\.phone) == ["+7 913 111-00-00"], "прежний номер человека не воскресает вторым")
         var wed = Self.shoot("w", Self.day(9), genre: .wedding, persons: [Person(name: "Ольга", phone: "+7 913 787-97-07"), Self.mark])
@@ -249,9 +258,9 @@ import LightPlanDomain
         #expect(clients.count == 1 && clients[0].people.map(\.phone) == ["+7 913 111-00-00"])
         #expect(clients[0].telLog.map(\.phone) == ["+7 913 787-97-07"], "старый уходит в telLog")
         #expect(old.clientPhone == "+7 913 787-97-07", "прошлая запись свой номер не переписывает")
-        var call = Self.shoot("call", Self.day(5), contact: "Оля", phone: "8 913 787-97-07")
+        var call = Self.shoot("call", Self.day(5), contact: "Ольга", phone: "8 913 787-97-07")
         Self.save(&call, &clients, ids: ids)
-        #expect(call.clientId == s.clientId && clients.count == 1, "старый номер продолжает узнаваться")
+        #expect(call.clientId == s.clientId && clients.count == 1, "старый номер продолжает узнаваться (с тем же именем)")
     }
 
     @Test func aNumberOfAnotherClientRebindsInsteadOfChangingThePerson() {
@@ -261,7 +270,11 @@ import LightPlanDomain
         Self.save(&a, &clients, ids: ids); Self.save(&b, &clients, ids: ids)
         b.clientPhone = "+7 913 787-97-07"
         Self.save(&b, &clients, ids: ids)
-        #expect(b.clientId == a.clientId && clients.count == 2)
+        #expect(b.clientId == clients[1].id && clients.count == 2, "К3б: один чужой номер без имени не переводит съёмку")
+        #expect(clients[1].people.map(\.phone) == ["+7 913 222-33-44"], "Иван остался со своим номером, чужой ему не вписан")
+        b.contact = "Ольга"
+        Self.save(&b, &clients, ids: ids)
+        #expect(b.clientId == a.clientId && clients.count == 2, "номер и имя Ольги — съёмка Ольги")
         #expect(clients[1].people.map(\.phone) == ["+7 913 222-33-44"], "Иван остался со своим номером")
     }
 
@@ -280,7 +293,9 @@ import LightPlanDomain
 
     @Test func theOneTimePassBuildsClientsFromAllShootsOldestFirst() {
         var sessions = [
-            Self.shoot("late", Self.day(20), genre: .animals, contact: "Оля", phone: "8 913 787-97-07"),
+            Self.shoot("late", Self.day(20), genre: .animals, contact: "Ольга", phone: "8 913 787-97-07"),
+            // К3б: с того же номера записан муж — один номер без имени не склеивает, это свой клиент.
+            Self.shoot("husband", Self.day(15), contact: "Сергей Смирнов", phone: "8 913 787-97-07"),
             Self.shoot("early", Self.day(2), genre: .portrait, contact: "Ольга Смирнова", phone: "+7 913 787-97-07"),
             Self.shoot("wed", Self.day(10), genre: .wedding, persons: [Self.anya, Self.mark]),
             Self.shoot("land", Self.day(11), genre: .landscape),
@@ -291,16 +306,17 @@ import LightPlanDomain
         let ids = Ids()
         let n = ClientBook.assemble(sessions: &sessions, clients: &clients, mine: [], country: Self.ru, nowMs: 5,
                                     retiredAt: "x", newId: { ids.next() })
-        #expect(n == 3 && clients.count == 2)
+        #expect(n == 4 && clients.count == 3)
         let byId = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
         #expect(byId["early"]!.clientId == byId["late"]!.clientId && byId["early"]!.clientId != nil)
+        #expect(byId["husband"]!.clientId != nil && byId["husband"]!.clientId != byId["early"]!.clientId)
         #expect(clients.first { $0.id == byId["early"]!.clientId }!.people.map(\.name) == ["Ольга Смирнова"], "имя берётся с самой ранней записи")
         #expect(clients.first { $0.id == byId["wed"]!.clientId }!.kind == .couple)
         #expect(byId["land"]!.clientId == nil && byId["org"]!.clientId == nil && byId["nobody"]!.clientId == nil)
         // Второй проход ничего не добавляет: все, у кого мог быть клиент, его уже имеют.
         let again = ClientBook.assemble(sessions: &sessions, clients: &clients, mine: [], country: Self.ru, nowMs: 6,
                                         retiredAt: "x", newId: { ids.next() })
-        #expect(again == 0 && clients.count == 2, "повторный проход не плодит клиентов")
+        #expect(again == 0 && clients.count == 3, "повторный проход не плодит клиентов")
     }
 
     // MARK: список, суммы, фильтры

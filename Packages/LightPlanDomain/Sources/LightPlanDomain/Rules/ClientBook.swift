@@ -99,12 +99,10 @@ public enum ClientBook {
         func key(_ p: ClientPerson) -> String { TelFormat.full(p.phone, country: country) }
         func real(_ p: ClientPerson) -> Bool { TelFormat.isReal(p.phone, country: country) }
 
-        // Чей чей номер: живой главнее прежнего (тот же счёт у плашки формы, `hint`).
-        let owner = owners(clients, country: country)
-        var hits: [Int] = []
-        for p in cands where real(p) {
-            if let i = owner[key(p)], !hits.contains(i) { hits.append(i) }
-        }
+        // Кого запись узнаёт: номер и имя или фамилия (два фактора из трёх, тот же счёт у плашки формы, `hint`).
+        // Номер без имени и имя без номера сами не склеивают.
+        let byPhone = phoneOwners(clients, country: country)
+        let hits = linkedHits(cands, clients: clients, country: country)
         let current = s.clientId.flatMap { id in clients.firstIndex { $0.id == id } }
 
         let target: Int
@@ -133,16 +131,15 @@ public enum ClientBook {
                 let k = key(cand)
                 if let j = c.people.firstIndex(where: { key($0) == k }) {
                     if blank(c.people[j].name) && !blank(cand.name) { c.people[j].name = cand.name }
-                } else if let o = owner[k], o != target {
-                    continue                                       // номер другого клиента: не переносим (4)
-                } else if owner[k] == target {
-                    // Прежний номер из `telLog`: узнан, но заново не вписывается. Раньше смены номера (К2): номер, сменённый
-                    // в карточке клиента, не откатывается, когда пересохраняют старую съёмку со старым номером (§ 3.5).
+                } else if !(byPhone[k] ?? []).isEmpty {
+                    // Номер другого клиента не переносим (4). Прежний номер из `telLog` этого клиента узнан, но заново не
+                    // вписывается — раньше смены номера (К2): номер, сменённый в карточке клиента, не откатывается, когда
+                    // пересохраняют старую съёмку со старым номером (§ 3.5).
                     continue
                 } else if wasBound, let j = replaceable(in: c, for: cand, covered: covered, country: country) {
                     c.people[j].phone = cand.phone                 // номер сменился (5)
                     if blank(c.people[j].name) { c.people[j].name = cand.name }
-                } else if let j = c.people.firstIndex(where: { blank($0.phone) && sameFirstName($0.name, cand.name) }) {
+                } else if let j = c.people.firstIndex(where: { blank($0.phone) && sameName($0.name, cand.name) }) {
                     // У человека с тем же именем номера не было — дозаполняется (2). Иначе подсказка «Да» по имени, а
                     // потом вписанный номер, заводили в клиенте второго такого же человека (К3). После смены номера:
                     // у тёзки без номера новый номер чужой (ревью GPT к f4c1e94).
@@ -172,6 +169,8 @@ public enum ClientBook {
                                     country: TelCountry) -> Int? {
         let free = c.people.indices.filter { !covered(c.people[$0]) && TelFormat.isReal(c.people[$0].phone, country: country) }
         if free.isEmpty { return nil }
+        // Имя и фамилия в любом порядке («Петрова Анна») главнее одного первого слова.
+        if let j = free.first(where: { nameFactors(cand.name, c.people[$0].name) >= 2 }) { return j }
         let first = PhoneBook.firstName(cand.name).lowercased()
         if !first.isEmpty, let j = free.first(where: { PhoneBook.firstName(c.people[$0].name).lowercased() == first }) { return j }
         if blank(cand.name) || free.allSatisfy({ blank(c.people[$0].name) }) { return free.count == 1 ? free[0] : nil }
@@ -263,9 +262,10 @@ public enum ClientBook {
 
     // MARK: - Мелочи
 
-    private static func sameFirstName(_ a: String, _ b: String) -> Bool {
+    /// Тот же человек по имени: то же первое слово или те же имя и фамилия в любом порядке.
+    private static func sameName(_ a: String, _ b: String) -> Bool {
         let x = PhoneBook.firstName(a).lowercased()
-        return !x.isEmpty && x == PhoneBook.firstName(b).lowercased()
+        return (!x.isEmpty && x == PhoneBook.firstName(b).lowercased()) || nameFactors(a, b) >= 2
     }
 
     private static func trimmed(_ s: String) -> String { s.trimmingCharacters(in: .whitespacesAndNewlines) }

@@ -163,11 +163,14 @@
   `ClientCardScreen` over the shoot card, «Назад» (`OrgState.clientBackKey`); a shoot tapped there replaces the open card. Room next
   to the call button stays for the messenger (К4). Form: plate under the name (under both people for a couple), computed per render
   from `EventForm.session` by `ClientBook.hint` (Domain `Rules/ClientHint.swift`), writes nothing — a cancelled form leaves no client.
-  Order = `bind`'s: a number (live or `telLog`) → «По номеру — …», no buttons; else the client the shoot already has or «Да» picked →
-  «Это … · N» + «Другой»; else, **only when the form has no real number** and «Другой» was not pressed, a name hint «Это …? N» + «Да» /
-  «Другой» (exact name beats a word prefix, ties → freshest shoot). The answer is `EventForm.clientChoice` (not in the draft),
-  applied by `ClientBook.applying` in `saveForm` before `bind`; a number still beats it. `bind` now fills an empty phone of the person
-  with the same first name instead of appending a second one — after «номер сменился», so a namesake never takes a changed number. Shots: `clients.js` cases `head-*`, `form-*` (`-LPShotSheet clienthead|clientform`).
+  **Matching = two of three (Alexey 23.10, К3б)**: first name, last name, phone, per person. Phone (live or `telLog`) + a shared name
+  word with that client → linked at once («По номеру — …», no buttons; `ClientBook.linkedHits`, used by `bind`, `hint`, `twins`); two
+  shared name words (first + last, any order, case/ё/initials/middle name ignored — `nameFactors`), phone absent or different →
+  «Это …? N» + «Да» / «Другой»; one factor only → new client, so one phone may live in two clients (`phoneOwners` keeps all).
+  Diminutives («Оля»/«Ольга») and nameless clients are not matched. The client the shoot already has or «Да» picked → «Это … · N» +
+  «Другой». The answer is `EventForm.clientChoice` (not in the draft), applied by `ClientBook.applying` in `saveForm` before `bind`;
+  phone + name still beats it. `bind` fills an empty phone of the same-named person instead of appending a second one — after
+  «номер сменился», so a namesake never takes a changed number. Shots: `clients.js` cases `head-*`, `form-*` (`-LPShotSheet clienthead|clientform`).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

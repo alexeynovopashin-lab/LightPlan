@@ -93,26 +93,18 @@ extension ClientBook {
     public static func twins(of clientId: String, clients: [Client], sessions: [Session], mine: Set<String>,
                              country: TelCountry) -> [Twin] {
         guard let me = clients.first(where: { $0.id == clientId }) else { return [] }
-        var owner: [String: String] = [:]
-        for c in clients where c.id != clientId {
-            for p in c.people where TelFormat.isReal(p.phone, country: country) {
-                let k = TelFormat.full(p.phone, country: country)
-                owner[k] = owner[k] ?? c.id
-            }
-        }
-        for c in clients where c.id != clientId {
-            for t in c.telLog where TelFormat.isReal(t.phone, country: country) {
-                let k = TelFormat.full(t.phone, country: country)
-                owner[k] = owner[k] ?? c.id
-            }
-        }
+        // Другой клиент — тот, кого номер узнал бы при склейке: номер и имя или фамилия (два фактора из трёх, К3б). Один
+        // общий номер — не повод объединять: муж и жена с одного телефона — разные клиенты.
+        let others = clients.filter { $0.id != clientId }
         var named: [ClientPerson] = me.people
         for s in shoots(of: clientId, in: sessions) { named += people(of: s, mine: mine, country: country) }
         var out: [Twin] = []
         for p in named where TelFormat.isReal(p.phone, country: country) {
             let k = TelFormat.full(p.phone, country: country)
-            guard !mine.contains(k), let other = owner[k], !out.contains(where: { $0.clientId == other }) else { continue }
-            out.append(Twin(clientId: other, name: p.name.trimmingCharacters(in: .whitespacesAndNewlines), phone: p.phone))
+            guard !mine.contains(k) else { continue }
+            for i in linkedHits([p], clients: others, country: country) where !out.contains(where: { $0.clientId == others[i].id }) {
+                out.append(Twin(clientId: others[i].id, name: p.name.trimmingCharacters(in: .whitespacesAndNewlines), phone: p.phone))
+            }
         }
         return out
     }

@@ -202,12 +202,16 @@ import LightPlanDomain
 
     @Test func aNumberTypedInTheCardOrAnOldNumberAlsoCounts() {
         var x = Self.client("c1", .person, [Self.p("Ольга", "8 913 787-97-07")])
-        var y = Self.client("c2", .person, [Self.p("Оля", "8 913 000-00-09")])
-        y.telLog = [TelLogEntry(field: "p1", phone: "+7 913 787-97-07", name: "Оля", retiredAt: "x")]
+        var y = Self.client("c2", .person, [Self.p("Ольга", "8 913 000-00-09")])
+        y.telLog = [TelLogEntry(field: "p1", phone: "+7 913 787-97-07", name: "Ольга", retiredAt: "x")]
         let z = Self.client("c3", .person, [Self.p("Мама", "8 913 222-33-44")])
-        x.people.append(Self.p("", "+7 913 222-33-44"))
+        x.people.append(Self.p("Мама", "+7 913 222-33-44"))
         let twins = ClientBook.twins(of: "c1", clients: [x, y, z], sessions: [], mine: [], country: Self.ru)
         #expect(twins.map(\.clientId) == ["c2", "c3"], "прежний номер другого клиента и вписанный руками")
+        // К3б: один общий номер при разных именах — не повод объединять (муж и жена с одного телефона).
+        let wife = Self.client("c4", .person, [Self.p("Ольга Иванова", "8 913 555-00-01")])
+        let husband = Self.client("c5", .person, [Self.p("Сергей Иванов", "8 913 555-00-01")])
+        #expect(ClientBook.twins(of: "c4", clients: [wife, husband], sessions: [], mine: [], country: Self.ru).isEmpty)
     }
 
     @Test func myOwnNumberIsNeverATwin() {

@@ -228,7 +228,7 @@ extension AppModel {
             if let f = s.way.flatMap(ClientBook.Filter.init(rawValue:)) { app.org.clientsFilter = f }
             app.openClients()
         // Карточка клиента (К2) поверх «Частных»: `LPShotWay` — `couple|family|person` (тот из вида, у кого больше всего
-        // съёмок), `twin` — персона, у которой вписан номер человека пары (подсказка «объединить?»), `pick` — лист
+        // съёмок), `twin` — персона, у которой вписаны имя и номер человека пары (подсказка «объединить?»), `pick` — лист
         // «С кем объединить», `new` — черновик «+ Клиент».
         case "clientcard":
             app.openClients()
@@ -240,7 +240,7 @@ extension AppModel {
             guard var c = most else { break }
             if way == "twin", let pair = app.clients.first(where: { $0.kind == .couple && $0.people.count > 1 }),
                let i = app.snapshot.clients.firstIndex(where: { $0.id == c.id }) {
-                c.people.append(ClientPerson(name: "", phone: pair.people[1].phone))
+                c.people.append(ClientPerson(name: pair.people[1].name, phone: pair.people[1].phone))   // К3б: номер и имя
                 app.snapshot.clients[i] = c
             }
             app.openClientCard(id: c.id)

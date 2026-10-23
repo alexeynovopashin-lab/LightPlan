@@ -42,8 +42,9 @@ extension ClientBook {
     }
 
     /// Плашка для записи, собранной из формы (`EventForm.session`) — до ответа плашке. Тот же порядок, что у склейки:
-    /// номер главнее, потом клиент, за которым запись уже числится, потом подсказка по имени — только когда номера в форме
-    /// нет совсем и «Другой» не нажат. `nil` — плашки нет (клиента запись не заводит или он будет новым).
+    /// номер вместе с именем или фамилией главнее, потом клиент, за которым запись уже числится, потом вопрос «Это …?» —
+    /// когда совпали имя и фамилия, а номера нет или он другой, и «Другой» не нажат. Одно совпадение (только имя, только
+    /// фамилия, только номер) плашки не даёт: будет новый клиент (слово Алексея 23.10). `nil` — плашки нет.
     public static func hint(for draft: Session, choice: Choice?, clients: [Client], sessions: [Session],
                             mine: Set<String>, country: TelCountry) -> Hint? {
         var s = draft
@@ -51,70 +52,73 @@ extension ClientBook {
         guard kind(for: s) != nil else { return nil }
         let cands = people(of: s, mine: mine, country: country)
         guard !cands.isEmpty else { return nil }
-        let real = cands.filter { TelFormat.isReal($0.phone, country: country) }
 
-        let hits = phoneHits(real, clients: clients, country: country)
+        let hits = linkedHits(cands, clients: clients, country: country).map { clients[$0].id }
         let current = s.clientId.flatMap { id in clients.contains { $0.id == id } ? id : nil }
         if !hits.isEmpty {
-            // Как `bind`: запись остаётся за своим клиентом, если номер его; иначе — первый, чей номер назван.
+            // Как `bind`: запись остаётся за своим клиентом, если он узнан; иначе — первый узнанный.
             return Hint(clientId: current.flatMap { hits.contains($0) ? $0 : nil } ?? hits[0], way: .phone)
         }
         if let current { return Hint(clientId: current, way: .bound) }
-        guard choice != .other, real.isEmpty else { return nil }
+        guard choice != .other else { return nil }
         return nameMatch(cands, clients: list(clients, sessions: sessions)).map { Hint(clientId: $0, way: .name) }
     }
 
-    /// Клиенты, чей живой или прежний номер назван, в порядке названных номеров (как `bind`).
-    static func phoneHits(_ cands: [ClientPerson], clients: [Client], country: TelCountry) -> [String] {
-        let owner = owners(clients, country: country)
-        var out: [String] = []
-        for p in cands {
-            if let i = owner[TelFormat.full(p.phone, country: country)], !out.contains(clients[i].id) { out.append(clients[i].id) }
+    // MARK: - Два фактора из трёх (слово Алексея 23.10)
+
+    /// Клиенты (номера в `clients`), которых запись узнаёт сразу: номер человека записи есть у клиента (живой или прежний)
+    /// **и** совпало имя или фамилия — с кем-то из людей этого клиента или с именем у прежнего номера. Один номер без
+    /// имени не узнаёт: с телефона мужа записалась жена — это новый клиент. В порядке названных номеров.
+    static func linkedHits(_ cands: [ClientPerson], clients: [Client], country: TelCountry) -> [Int] {
+        let byPhone = phoneOwners(clients, country: country)
+        var out: [Int] = []
+        for p in cands where TelFormat.isReal(p.phone, country: country) {
+            let k = TelFormat.full(p.phone, country: country)
+            for i in byPhone[k] ?? [] where !out.contains(i) && linked(p, to: clients[i], key: k, country: country) {
+                out.append(i)
+            }
         }
         return out
     }
 
-    /// Чей чей номер: живой главнее прежнего, раньше заведённый — главнее позднего.
-    static func owners(_ clients: [Client], country: TelCountry) -> [String: Int] {
-        var owner: [String: Int] = [:]
-        for (i, c) in clients.enumerated() {
-            for p in c.people where TelFormat.isReal(p.phone, country: country) {
-                let k = TelFormat.full(p.phone, country: country)
-                owner[k] = owner[k] ?? i
-            }
+    /// Номер `key` у клиента есть, а имя человека записи делит с ним имя или фамилию.
+    static func linked(_ p: ClientPerson, to c: Client, key: String, country: TelCountry) -> Bool {
+        var names = c.people.map(\.name)
+        names += c.telLog.filter { TelFormat.full($0.phone, country: country) == key }.compactMap(\.name)
+        return names.contains { nameFactors(p.name, $0) >= 1 }
+    }
+
+    /// Чьи номера: номер — все клиенты, у кого он есть (живой раньше прежнего, раньше заведённый раньше). Один номер может
+    /// быть у двух клиентов: муж и жена с одного телефона.
+    static func phoneOwners(_ clients: [Client], country: TelCountry) -> [String: [Int]] {
+        var owner: [String: [Int]] = [:]
+        func add(_ phone: String, _ i: Int) {
+            guard TelFormat.isReal(phone, country: country) else { return }
+            let k = TelFormat.full(phone, country: country)
+            if !(owner[k] ?? []).contains(i) { owner[k, default: []].append(i) }
         }
-        for (i, c) in clients.enumerated() {
-            for t in c.telLog where TelFormat.isReal(t.phone, country: country) {
-                let k = TelFormat.full(t.phone, country: country)
-                owner[k] = owner[k] ?? i
-            }
-        }
+        for (i, c) in clients.enumerated() { for p in c.people { add(p.phone, i) } }
+        for (i, c) in clients.enumerated() { for t in c.telLog { add(t.phone, i) } }
         return owner
     }
 
-    /// Клиент, чьё имя совпало с названным: целиком — главнее, чем началом («Анна» — «Анна Петрова»); при равных — тот,
-    /// что выше в списке (свежая съёмка). Имя короче двух букв не ищется.
+    /// Клиент для вопроса «Это …?»: у кого-то из его людей те же имя и фамилия, что у человека записи; при нескольких —
+    /// тот, что выше в списке (свежая съёмка).
     static func nameMatch(_ cands: [ClientPerson], clients ordered: [Client]) -> String? {
-        var best: (id: String, score: Int)?
-        for c in ordered {
-            var score = 0
-            for cand in cands { for p in c.people { score = max(score, nameScore(cand.name, p.name)) } }
-            if score > (best?.score ?? 0) { best = (c.id, score) }
-        }
-        return best?.id
+        ordered.first { c in cands.contains { cand in c.people.contains { nameFactors(cand.name, $0.name) >= 2 } } }?.id
     }
 
-    /// 2 — имя то же, 1 — одно начинается другим по словам, 0 — не то. Регистр и «ё» не различаются.
-    static func nameScore(_ a: String, _ b: String) -> Int {
-        let x = nameWords(a), y = nameWords(b)
-        guard let first = x.first, first.count >= 2, !y.isEmpty else { return 0 }
-        if x == y { return 2 }
-        let n = min(x.count, y.count)
-        return Array(x.prefix(n)) == Array(y.prefix(n)) ? 1 : 0
+    /// Сколько совпало из «имя, фамилия»: 0, 1 или 2. Слова сравниваются без порядка («Петрова Анна» — «Анна Петрова»: 2),
+    /// регистр и «ё» не различаются, слова короче двух букв (инициалы, «и») и отчество в середине не мешают — общее слово
+    /// считается один раз. Совпали два слова — это имя и фамилия.
+    static func nameFactors(_ a: String, _ b: String) -> Int {
+        let x = Set(nameWords(a)), y = Set(nameWords(b))
+        return min(2, x.intersection(y).count)
     }
 
-    private static func nameWords(_ s: String) -> [String] {
+    static func nameWords(_ s: String) -> [String] {
         s.lowercased().replacingOccurrences(of: "ё", with: "е")
-            .split(whereSeparator: { $0.isWhitespace || $0 == "," }).map(String.init)
+            .split(whereSeparator: { !$0.isLetter && $0 != "-" }).map(String.init)
+            .filter { $0.count >= 2 && $0 != "and" }
     }
 }
