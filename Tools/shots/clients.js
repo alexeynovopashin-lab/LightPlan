@@ -7,12 +7,15 @@
    Шаг К2: карточка клиента — пара, семья, персона, подсказка «объединить?» (`twin`), лист «С кем объединить» (`pick`),
    черновик «+ Клиент» (`new`): «Назад» и поля 24, вид в карточке совпадает с выбранным, группы людей и строки съёмок во всю
    ширину полей, строк съёмок столько, сколько в итоге «N съёмок», в листе — все клиенты, кроме открытого.
+   Шаг К5 (`debts-*`): стопка долгов — карточка самого нового несданного с клиентом, открытая как из календаря; над ней
+   края других долгов (старый ближе к листу, справа день и просрочка, а не часы), видно шесть, остальные — строка «Ещё
+   несданных: N»; `few` — три края без строки, `done` — открытая отмечена «сдана», стопка та же. Мессенджер в шапке.
    Только натив: у веба такого экрана нет (его «Организации» сверяет пара `make shots ARGS="--screens m28 --m28 orgs"`,
    узлы `org.*` остались теми же). Числа — из рамок узлов (`-LPShotReport`): поля 24 pt, строка клиента 64 pt, переключатель
    «Частные | Компании» не наезжает на «Назад» и не выходит за правое поле, фишки внутри полей, сумма по видам равна «Все».
    Засев — `test_seed.json` приложения (24 записи, свадьбы с двумя людьми): клиенты собирает тот же проход, что на телефоне.
 
-     node Tools/shots/clients.js [--skip-build] [--out <dir>]                                                   */
+     node Tools/shots/clients.js [--skip-build] [--out <dir>] [--cases debts,debts-few]                                                   */
 const fs = require('fs'), os = require('os'), path = require('path');
 const { execFileSync } = require('child_process');
 const sim = require('../sim');
@@ -50,6 +53,10 @@ const CASES = [
   { name: 'form-name', sheet: 'clientform', way: 'name', plate: 'name' },
   { name: 'form-yes', sheet: 'clientform', way: 'yes', plate: 'bound' },
   { name: 'form-couple', sheet: 'clientform', way: 'couple', plate: 'phone' },
+  // К5: стопка долгов. edges — сколько краёв видно, more — строка «Ещё несданных» (число), delivered — открытая сдана.
+  { name: 'debts', sheet: 'debts', way: 'msg', edges: 6, more: true, reach: 'telegram' },
+  { name: 'debts-few', sheet: 'debts', way: 'few+msg', edges: 3, more: false, reach: 'telegram' },
+  { name: 'debts-done', sheet: 'debts', way: 'done+msg', edges: 6, more: true, reach: 'telegram', delivered: true },
 ];
 
 const num = t => parseInt(t, 10);
@@ -166,7 +173,37 @@ function formVerdict(c, nodes) {
   return bad;
 }
 
+/* Стопка долгов (К5): краёв столько, сколько ждали, каждый следующий выше на 22 и уже на 10 с каждой стороны (до
+   четвёртого), справа у края — день, а не часы; строка «Ещё» над стопкой — только когда долгов больше шести; лист под
+   краями; кнопка мессенджера в шапке; у `done` строка сдачи говорит «сдан». */
+function debtsVerdict(c, nodes, screen) {
+  const bad = [], n = k => { if (!nodes[k]) bad.push('нет узла ' + k); return nodes[k]; };
+  if (nodes['card.peek.' + c.edges]) bad.push(`краёв больше ${c.edges}`);
+  const peeks = [];
+  for (let k = 0; k < c.edges; k++) peeks.push(n('card.peek.' + k));
+  peeks.forEach((p, k) => {
+    if (!p) return;
+    const inset = 10 + Math.min(k, 3) * 10;
+    if (Math.abs(p.x - (24 + inset)) > 0.6 || Math.abs(p.w - (screen.w - 48 - 2 * inset)) > 0.6) bad.push(`край ${k}: x=${p.x.toFixed(1)} w=${p.w.toFixed(1)}`);
+    if (k > 0 && peeks[k - 1] && Math.abs(peeks[k - 1].y - p.y - 22) > 0.6) bad.push(`край ${k} не на 22 выше ${k - 1}: ${(peeks[k - 1].y - p.y).toFixed(1)}`);
+    const t = nodes['card.peekTime.' + k];
+    if (!t) bad.push('нет узла card.peekTime.' + k);
+    else if (/\d:\d/.test(t.text) || !/[а-я]/.test(t.text)) bad.push(`край ${k} пишет «${t.text}», ждали день`);
+  });
+  const more = nodes['card.debtsMore'];
+  if (c.more && !more) bad.push('нет строки «Ещё несданных»');
+  if (!c.more && more) bad.push(`строка «Ещё» при ${c.edges} краях: ${more.text}`);
+  if (more && peeks[c.edges - 1] && more.y + more.h > peeks[c.edges - 1].y + 0.1) bad.push('строка «Ещё» наезжает на дальний край');
+  const reach = n('card.reach'), name = n('card.name');
+  if (reach && reach.text !== c.reach) bad.push(`кнопка открывает «${reach.text}», ждали ${c.reach}`);
+  if (name && peeks[0] && name.y < peeks[0].y + 22 - 0.1) bad.push('имя листа под краями');
+  const dv = n('card.deliveryText');
+  if (dv && !!c.delivered !== /^сдан/i.test(dv.text)) bad.push(`сдача «${dv.text}»`);
+  return bad;
+}
+
 function verdict(c, nodes, screen) {
+  if (c.sheet === 'debts') return debtsVerdict(c, nodes, screen);
   if (c.sheet === 'clienthead') return headVerdict(c, nodes, screen);
   if (c.sheet === 'clientform') return formVerdict(c, nodes);
   if (c.sheet === 'clientcard') return cardVerdict(c, nodes, screen);
@@ -219,7 +256,8 @@ function verdict(c, nodes, screen) {
   const rows = [];
   for (const theme of ['dark', 'light']) {
     run('xcrun', ['simctl', 'ui', dev.udid, 'appearance', theme]);
-    for (const c of CASES) {
+    const only = typeof args.cases === 'string' ? args.cases.split(',') : null;
+    for (const c of CASES.filter(c => !only || only.includes(c.name))) {
       const dir = path.join(OUT, 'clients-' + c.name + '-' + theme);
       fs.mkdirSync(dir, { recursive: true });
       const report = path.join(dir, 'native.json');
@@ -241,12 +279,13 @@ function verdict(c, nodes, screen) {
       // Размер экрана — `size` [w, h]; `screen` в отчёте — имя вкладки (до К3 ширина тут была NaN, и проверки ширины молчали).
       const screen = { w: rep.size[0], h: rep.size[1] };
       const bad = verdict(c, nodes, screen);
-      const list = nodes['clc.picker'] || nodes['cl.list'] || nodes['org.list'];
+      const list = nodes['clc.picker'] || nodes['cl.list'] || nodes['org.list'] || nodes['card.debtsMore'];
       rows.push({ shot: c.name + '_' + theme, c: c.name, theme, bad, count: list ? num(list.text) : null });
     }
   }
   // Виды делят «Все» без остатка: пары + семьи + персоны = все.
   for (const theme of ['dark', 'light']) {
+    if (!rows.some(r => r.c === 'all' && r.theme === theme)) continue;
     const get = n => (rows.find(r => r.c === n && r.theme === theme) || {}).count;
     const all = get('all'), sum = get('couples') + get('families') + get('persons');
     if (all !== sum) rows.find(r => r.c === 'all' && r.theme === theme).bad.push(`виды (${sum}) не равны «Все» (${all})`);

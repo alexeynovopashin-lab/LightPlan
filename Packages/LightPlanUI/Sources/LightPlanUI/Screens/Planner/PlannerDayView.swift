@@ -641,7 +641,7 @@ struct PlannerDayBody: View {
         grip.live = nil
         if h.pinned { DayGripLog.note("release pinned"); return }
         if h.hold { openLaneFan(h.id, items, slots); DayGripLog.note("fan \(h.id)") }
-        else if h.mode == .move { DayGripLog.note("card \(h.id)"); PlanMotion.openCard(app, id: h.id) }
+        else if h.mode == .move { DayGripLog.note("card \(h.id)"); PlanMotion.openFromCalendar(app, id: h.id) }
     }
 
     private func icon(_ it: DayItem, _ pal: Palette) -> some View {

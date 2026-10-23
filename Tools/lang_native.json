@@ -444,7 +444,8 @@
     "clf.is": "Это {name} · {n}",
     "clf.tel": "По номеру — {name} · {n}",
     "clf.yes": "Да",
-    "clf.other": "Другой"
+    "clf.other": "Другой",
+    "card.debtsMore": "Ещё несданных: {n}"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -890,7 +891,8 @@
     "clf.is": "This is {name} · {n}",
     "clf.tel": "By number — {name} · {n}",
     "clf.yes": "Yes",
-    "clf.other": "Someone else"
+    "clf.other": "Someone else",
+    "card.debtsMore": "{n} more not delivered"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1336,7 +1338,8 @@
     "clf.is": "Es {name} · {n}",
     "clf.tel": "Por el número — {name} · {n}",
     "clf.yes": "Sí",
-    "clf.other": "Otra persona"
+    "clf.other": "Otra persona",
+    "card.debtsMore": "{n} más sin entregar"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1781,7 +1784,8 @@
     "clf.is": "{name} · {n}",
     "clf.tel": "番号から — {name} · {n}",
     "clf.yes": "はい",
-    "clf.other": "別の人"
+    "clf.other": "別の人",
+    "card.debtsMore": "未納品あと{n}件"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2226,6 +2230,7 @@
     "clf.is": "这是{name} · {n}",
     "clf.tel": "按号码 — {name} · {n}",
     "clf.yes": "是",
-    "clf.other": "其他人"
+    "clf.other": "其他人",
+    "card.debtsMore": "还有 {n} 个未交付"
   }
 }

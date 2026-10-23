@@ -59,6 +59,11 @@ enum PlanMotion {
         withAnimation(pick(overlay)) { app.openCard(id: id) }
     }
 
+    /// Нажатие на запись в календаре (месяц, неделя, лента дня): несданная съёмка открывается со стопкой долгов (К5).
+    @MainActor static func openFromCalendar(_ app: AppModel, id: String) {
+        withAnimation(pick(overlay)) { app.openCardFromCalendar(id: id) }
+    }
+
     @MainActor static func closeCard(_ app: AppModel) {
         withAnimation(pick(overlay)) { app.closeCard() }
     }

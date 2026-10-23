@@ -14,10 +14,12 @@ extension AppModel {
         return snapshot.sessions.first { $0.id == id }
     }
 
-    public func openCard(id: String) {
+    /// - Parameter stack: стопка над листом; всё, кроме календаря и края стопки долгов, открывает стопку дня.
+    public func openCard(id: String, stack: CardStackMode = .day) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
         if cardId != id { cardFolds = []; cardTuning = false; cardDocMessage = nil; refsFull = nil }
         cardId = id
+        cardStackMode = stack
         askCardWeather(s)
         Task { await learnZone(of: s) }
     }
@@ -37,6 +39,7 @@ extension AppModel {
     public func closeCard() {
         if let id = cardId, let s = snapshot.sessions.first(where: { $0.id == id }) { acknowledgeForecast(s) }
         cardId = nil
+        cardStackMode = .day
         refsFull = nil
         cardFolds = []
         cardDocMessage = nil

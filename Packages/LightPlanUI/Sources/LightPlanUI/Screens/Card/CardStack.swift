@@ -4,14 +4,48 @@ import LightPlanDomain
 
 // MARK: - Стопка карточек дня (веб `dayStack` + `renderStack`, шаг 4 итерации 25)
 
+/// Чья стопка над листом (шаг К5): соседи по дню или все долги.
+public enum CardStackMode: Sendable {
+    /// Записи того же дня (веб `dayStack`).
+    case day
+    /// Все несданные съёмки (`Debts`): так открывает календарь нажатие на несданную.
+    case debts
+}
+
 extension AppModel {
+    /// Долг ли запись сейчас (`Debts.isDebt`): часы места съёмки и «Завершать вручную» — те же, что у фазы карточки.
+    func isDebt(_ s: Session) -> Bool {
+        Debts.isDebt(s, now: wallNow(at: s), manualEnd: settings.manualEnd)
+    }
+
+    /// Все долги, старый первым (`Debts.stack`).
+    func debts() -> [Session] {
+        Debts.stack(snapshot.sessions, now: { self.wallNow(at: $0) }, manualEnd: settings.manualEnd)
+    }
+
+    /// Вход из календаря (месяц, неделя, лента дня): нажали несданную съёмку — над её карточкой все долги;
+    /// сданную, будущую, встречу — обычная стопка дня. Отдельной кнопки «Долги» нет (Алексей, 21.10).
+    public func openCardFromCalendar(id: String) {
+        guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
+        openCard(id: id, stack: isDebt(s) ? .debts : .day)
+    }
+
+    /// Соседи карточки в стопке. В стопке долгов — все долги, кроме самой карточки, старый ближе к листу; режим
+    /// держится, пока карточка открыта: отмеченная «сдана» остаётся листом и уходит из стопки, когда открыли следующий.
+    func stack(of s: Session) -> [Session] {
+        switch cardStackMode {
+        case .day: dayStack(of: s)
+        case .debts: debts().filter { $0.id != s.id }
+        }
+    }
+
     /// Соседи карточки в стопке: все записи её дня, кроме неё самой, — съёмки,
     /// встречи и события, без слоя событий (веб `onDay` без `shownRec`).
     /// Порядок — от ближнего к листу краю: последняя по началу съёмка дня
     /// первой, при равном начале — позже записанная (`b.min − a.min || b.i − a.i`).
     /// Правило «свадьба первой» у веба живёт только в списке дня, на стопку не
     /// влияет. Съёмка через полночь лежит в обоих днях (`partOfDay`).
-    func stack(of s: Session) -> [Session] {
+    func dayStack(of s: Session) -> [Session] {
         snapshot.sessions.enumerated()
             .filter { $0.element.id != s.id && $0.element.part(on: s.day) != nil }
             .sorted { a, b in
@@ -39,16 +73,34 @@ struct PeekText {
     /// Третья строка: первая строка заметки (веб `notes.split("\n")[0].trim()`).
     var note: String
 
-    init(_ p: Session, card s: Session, app: AppModel) {
+    /// - Parameter debts: край стопки долгов (К5): справа не часы, а день съёмки и просрочка — «2 окт · −7 дн»,
+    ///   просроченный терракотой; соседи из разных дней по часам не сравниваются.
+    /// День долга коротко, как в эскизе: «2 окт»; долг прошлого года — с годом.
+    static func debtDay(_ day: CivilDate, app: AppModel) -> String {
+        let f = PlannerFacts(app: app, dark: true), d = f.date(day)
+        return day.year == app.today.year ? f.dates.dMonShort(d) : f.dates.dMonShortYear(d)
+    }
+
+    init(_ p: Session, card s: Session, app: AppModel, debts: Bool = false) {
         let f = PlannerFacts(app: app, dark: true)
         genre = p.kind == .meet ? f.t.t("plan.meet") : f.words.typeName(p)
         name = f.words.clientName(p)
-        time = f.fmt(Double(p.start)) + " – " + f.fmt(Double(p.endMinute))
-        // Минуты соседа — на шкале дня карточки: вчерашняя съёмка через полночь
-        // начинается «до нуля». Веб сравнивает `s.min` без дат — ошибка эталона
-        // (ревью GPT к 4224ce1).
-        let d = p.day.days(since: s.day) * 1440
-        over = p.start + d < s.endMinute && s.start < p.endMinute + d
+        if debts {
+            time = Self.debtDay(p.day, app: app)
+            if case .overdue(let days) = app.deliveryStatus(p) {
+                time += " · −" + f.t.count("unit.dayShort", days)
+                over = true
+            } else {
+                over = false
+            }
+        } else {
+            time = f.fmt(Double(p.start)) + " – " + f.fmt(Double(p.endMinute))
+            // Минуты соседа — на шкале дня карточки: вчерашняя съёмка через полночь
+            // начинается «до нуля». Веб сравнивает `s.min` без дат — ошибка эталона
+            // (ревью GPT к 4224ce1).
+            let d = p.day.days(since: s.day) * 1440
+            over = p.start + d < s.endMinute && s.start < p.endMinute + d
+        }
         town = p.placeTown
         spot = p.place
         note = (p.notes.split(separator: "\n", omittingEmptySubsequences: false).first.map(String.init) ?? "")
@@ -80,12 +132,38 @@ struct CardStack<Sheet: View>: View {
     /// Отступ края с каждой стороны (веб `10 + min(k, 3)·10`).
     static func inset(_ k: Int) -> CGFloat { CGFloat(10 + min(k, 3) * 10) }
 
+    /// Сколько краёв стопки долгов видно (К5). После сезона долгов десятки, а каждый край — 22 pt над листом:
+    /// тридцать краёв унесли бы лист за экран. Видны самые старые, ближние к листу; остальные ждут очереди —
+    /// над стопкой строка «Ещё несданных: N». Стопка дня не режется.
+    static var debtsShown: Int { 6 }
+
+    /// Края, которые рисуются, и сколько осталось за ними.
+    static func shown(_ all: [Session], mode: CardStackMode) -> (edges: [Session], more: Int) {
+        guard mode == .debts, all.count > debtsShown else { return (all, 0) }
+        return (Array(all.prefix(debtsShown)), all.count - debtsShown)
+    }
+
     var body: some View {
-        let others = app.stack(of: s)
+        let mode = app.cardStackMode
+        let (others, more) = Self.shown(app.stack(of: s), mode: mode)
         let n = others.count
+        VStack(spacing: 0) {
+            if more > 0 {
+                Text(app.lexicon.t("card.debtsMore", ["n": "\(more)"]))
+                    .font(webFont(11.5))
+                    .foregroundStyle(pal.ink6)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.bottom, 8)
+                    .shotNode("card.debtsMore", text: "\(more)")
+            }
+            stack(others, n: n, debts: mode == .debts)
+        }
+    }
+
+    private func stack(_ others: [Session], n: Int, debts: Bool) -> some View {
         ZStack(alignment: .top) {
             ForEach(Array(others.enumerated()), id: \.element.id) { k, p in
-                edge(p, k)
+                edge(p, k, debts: debts)
                     .padding(.horizontal, Self.inset(k))
                     .padding(.top, CGFloat(n - 1 - k) * Self.peekStep)
                     .modifier(PullShift(travel: StackPull.peekTravel(k: k, n: n), p: pull, tag: "k\(k)"))
@@ -130,10 +208,11 @@ struct CardStack<Sheet: View>: View {
             })
     }
 
-    private func edge(_ p: Session, _ k: Int) -> some View {
-        let x = PeekText(p, card: s, app: app)
+    private func edge(_ p: Session, _ k: Int, debts: Bool) -> some View {
+        let x = PeekText(p, card: s, app: app, debts: debts)
         let w = PlannerWords(lexicon: app.lexicon, orgs: app.orgs)
-        return Button { app.openCard(id: p.id) } label: {
+        // Край стопки долгов открывает следующий долг, и стопка остаётся стопкой долгов.
+        return Button { app.openCard(id: p.id, stack: debts ? .debts : .day) } label: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 7) {
                     Group {

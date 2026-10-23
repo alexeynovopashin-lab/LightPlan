@@ -4977,6 +4977,41 @@
         }
       }
     },
+    "card.debtsMore" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё несданных: {n}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{n} more not delivered"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{n} más sin entregar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未納品あと{n}件"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还有 {n} 个未交付"
+          }
+        }
+      }
+    },
     "card.delMeet" : {
       "extractionState" : "manual",
       "localizations" : {

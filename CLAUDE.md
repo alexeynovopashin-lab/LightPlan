@@ -179,6 +179,12 @@
   person) in the shoot header next to the number (`CardHead.contactRow`, `AppModel.shootReach`: client's plan, else SMS to the header number)
   and in the client card's phone row (`personReach`); card rows + «+ мессенджер» + «Пишем» segment (`AppModel+ClientReach.swift`). No brand
   marks in the icon library: neutral `chat` glyph + the service name. Shots `clients.js` `head-msg`, `card-msg`, SMS in `head-couple|person`.
+- **Debts stack (К5).** Rule `Debts` (Domain): work kind, genre with delivery or none, phase `.after` by the card's clock (manual end
+  respected), «сдана» not pressed; the deadline never changes it; order oldest first. A tap in the calendar (month row, week row, day
+  lane → `PlanMotion.openFromCalendar` → `openCardFromCalendar`) on a debt opens the card with `cardStackMode = .debts`: the stack
+  above is all other debts (oldest nearest), edges say day + overdue instead of hours; anything else opens the day stack. The mode
+  is set on open and kept while edges are tapped, so a card marked «сдана» stays open and drops out on the next edge; `closeCard`
+  resets it. Six edges show (`CardStack.debtsShown`), the rest is the line «Ещё несданных: N». Shots: `clients.js --cases debts,debts-few,debts-done`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

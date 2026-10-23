@@ -632,7 +632,7 @@ struct RowAct: ViewModifier {
                     if grip?.swallows == true { DayGripLog.note("swallow card \(s.id)"); return }
                     if let k = swipeKey, app.rowSwipe.takesTap(k) { return }
                     DayGripLog.note("tap card \(s.id)")
-                    PlanMotion.openCard(app, id: s.id)
+                    PlanMotion.openFromCalendar(app, id: s.id)
                 }
                 .modifier(FanHold(id: s.id, fan: $fan, off: lane))
                 // Плашка, что улетает в корзину из веера, формы или карточки (29.7).

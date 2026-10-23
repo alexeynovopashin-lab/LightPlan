@@ -185,7 +185,7 @@ private struct WeekRow: View {
         .contentShape(Rectangle())
         .onTapGesture {
             if app.rowSwipe.takesTap("w." + s.id) { return }
-            PlanMotion.openCard(app, id: s.id)
+            PlanMotion.openFromCalendar(app, id: s.id)
         }
         // Свайп влево «Удалить» (29.3г); строка без своей подложки — кнопка скруглена как плашка дня.
         .rowSwipe(app, key: "w." + s.id, id: s.id, corner: 10, word: f.t.t("swipe.del"))
