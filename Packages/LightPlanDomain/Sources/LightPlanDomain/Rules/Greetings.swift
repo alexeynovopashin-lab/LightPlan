@@ -19,11 +19,14 @@ public struct Birthday: Sendable, Hashable {
 
     /// Строка снимка; всё, что не `ММ-ДД` / `ГГГГ-ММ-ДД`, — `nil` (поле не теряется, но и не поздравляет).
     public init?(_ s: String?) {
-        guard let parts = s?.split(separator: "-").map(String.init),
-              parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else { return nil }
-        switch parts.count {
-        case 2: self.init(month: Int(parts[0])!, day: Int(parts[1])!)
-        case 3 where parts[0].count == 4: self.init(year: Int(parts[0])!, month: Int(parts[1])!, day: Int(parts[2])!)
+        // Только цифры ASCII: «½» или «٣» — тоже `isNumber`, но не число для `Int` (ревью GPT к 570ed3e).
+        guard let parts = s?.split(separator: "-", omittingEmptySubsequences: false).map(String.init),
+              parts.allSatisfy({ (1...4).contains($0.count) && $0.allSatisfy { $0.isASCII && $0.isNumber } }) else { return nil }
+        let n = parts.compactMap { Int($0) }
+        guard n.count == parts.count else { return nil }
+        switch n.count {
+        case 2: self.init(month: n[0], day: n[1])
+        case 3 where parts[0].count == 4: self.init(year: n[0], month: n[1], day: n[2])
         default: return nil
         }
     }
@@ -34,9 +37,11 @@ public struct Birthday: Sendable, Hashable {
     }
 
     /// Сколько лет исполнилось к дню `d`; года нет — `nil`.
+    /// Рождённый 29 февраля в невисокосный год прибавляет год 28 февраля — в день, когда приходит поздравление.
     public func age(on d: CivilDate) -> Int? {
         guard let year else { return nil }
-        return d.year - year - ((d.month, d.day) < (month, day) ? 1 : 0)
+        let party = Greetings.observed(month: month, day: day, in: d.year)
+        return d.year - year - (d < party ? 1 : 0)
     }
 }
 

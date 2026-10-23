@@ -24,9 +24,12 @@ struct ClientDateSheet: View {
     @State private var year = 0
     @Environment(\.colorScheme) private var scheme
 
+    /// Последние сто лет; год уже вписанной даты, если он за пределом, — тоже: «Готово» без правок его не теряет
+    /// (ревью GPT к 570ed3e).
     private var years: [Int] {
-        let top = yearOptional ? thisYear : thisYear + 1
-        return (yearOptional ? [0] : []) + Array(stride(from: top, through: thisYear - 100, by: -1))
+        let top = max(yearOptional ? thisYear : thisYear + 1, initial.year ?? 0)
+        let bottom = min(thisYear - 100, initial.year ?? thisYear)
+        return (yearOptional ? [0] : []) + Array(stride(from: top, through: bottom, by: -1))
     }
 
     /// Последнее настоящее число месяца; без года февраль — 29.
@@ -104,7 +107,7 @@ struct ClientDateSheet: View {
         .onAppear {
             day = initial.day
             month = initial.month
-            year = initial.year.flatMap { y in years.contains(y) ? y : nil } ?? (yearOptional ? 0 : thisYear)
+            year = initial.year ?? (yearOptional ? 0 : thisYear)
         }
     }
 

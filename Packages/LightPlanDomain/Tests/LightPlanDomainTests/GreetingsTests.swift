@@ -45,6 +45,9 @@ import LightPlanDomain
         #expect(Birthday("2023-02-29") == nil, "в невисокосный год 29 февраля не бывает")
         #expect(Birthday("13-01") == nil && Birthday("04-31") == nil && Birthday("") == nil && Birthday(nil) == nil)
         #expect(Birthday("abc") == nil && Birthday("90-11-02") == nil)
+        // Не падает на «цифрах», которых `Int` не знает, и на слишком длинных числах (ревью GPT к 570ed3e).
+        #expect(Birthday("½-02") == nil && Birthday("٠٣-٠٧") == nil && Birthday("99999999999999999999-01") == nil)
+        #expect(Birthday("+3-07") == nil && Birthday("03--07") == nil && Birthday("-03-07") == nil)
         #expect(Birthday(month: 3, day: 7)!.snapshotString == "03-07")
         #expect(Birthday(year: 1990, month: 3, day: 7)!.snapshotString == "1990-03-07")
     }
@@ -54,6 +57,10 @@ import LightPlanDomain
         #expect(b.age(on: Self.d(2026, 11, 1)) == 35)
         #expect(b.age(on: Self.d(2026, 11, 2)) == 36)
         #expect(Birthday(month: 11, day: 2)!.age(on: Self.d(2026, 11, 2)) == nil)
+        // 29 февраля: в невисокосный год год прибавляется 28-го — в день поздравления (ревью GPT к 570ed3e).
+        let leap = Birthday(year: 2000, month: 2, day: 29)!
+        #expect(leap.age(on: Self.d(2027, 2, 27)) == 26 && leap.age(on: Self.d(2027, 2, 28)) == 27)
+        #expect(leap.age(on: Self.d(2028, 2, 28)) == 27 && leap.age(on: Self.d(2028, 2, 29)) == 28)
     }
 
     // MARK: по дням
