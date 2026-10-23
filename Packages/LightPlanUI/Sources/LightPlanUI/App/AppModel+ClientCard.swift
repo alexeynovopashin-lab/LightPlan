@@ -17,8 +17,10 @@ extension AppModel {
 
     // MARK: - Слой
 
-    func openClientCard(id: String) {
+    /// `backKey` — подпись «Назад»: из «Клиентов» — «Клиенты», из карточки съёмки (К3) — «Назад».
+    func openClientCard(id: String, backKey: String = "set.clients") {
         guard let c = clientRecord(id) else { return }
+        org.clientBackKey = backKey
         org.clientTelSnap = PhoneBook.tels(of: c, country: telCountry)
         org.clientPick = false
         org.clientCardId = id
@@ -29,6 +31,7 @@ extension AppModel {
         var c = Client(id: ClientBook.newId(at: nowMs), kind: .person)
         c.people = [ClientPerson()]
         org.clientDraft = c
+        org.clientBackKey = "set.clients"
         org.clientTelSnap = []
         org.clientPick = false
         org.clientCardId = c.id

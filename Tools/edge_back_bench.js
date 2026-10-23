@@ -72,6 +72,9 @@ const SCREENS = {
   orgs: () => m28('orgs'),
   orgcard: () => m28('orgcard', 'sd_org_agency'),
   contacts: () => m28('contacts'),
+  // Карточка клиента (К2) поверх «Частных» и (К3) поверх карточки съёмки — из имени в шапке.
+  clientcard: () => m28('clientcard', 'couple'),
+  'client-head': () => m28('clienthead', 'couple+open'),
   form: () => plain(['-LPShotSheet', 'form', '-LPShotWay', 'wedding']),
   year: () => plain(['-LPShotSheet', 'year']),
   year12: () => plain(['-LPShotSheet', 'year12']),

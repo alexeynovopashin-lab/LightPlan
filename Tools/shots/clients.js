@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /* Шаг К1 «Клиенты»: экран «Клиенты» в обеих темах — «Частные» (все, пары, семьи, персоны), «Компании» и пустой.
+   Шаг К3 (`head-*`, `form-*`): имя клиента в шапке карточки съёмки (по центру, знак «›» справа), карточка клиента из шапки
+   («Назад» — в съёмку), плашка клиента в новой форме — по номеру, подсказка по имени, после «Да», у свадьбы.
    Шаг К2: карточка клиента — пара, семья, персона, подсказка «объединить?» (`twin`), лист «С кем объединить» (`pick`),
    черновик «+ Клиент» (`new`): «Назад» и поля 24, вид в карточке совпадает с выбранным, группы людей и строки съёмок во всю
    ширину полей, строк съёмок столько, сколько в итоге «N съёмок», в листе — все клиенты, кроме открытого.
@@ -35,6 +37,14 @@ const CASES = [
   { name: 'card-twin', sheet: 'clientcard', way: 'twin', card: 'person' },
   { name: 'card-pick', sheet: 'clientcard', way: 'pick', card: 'couple' },
   { name: 'card-new', sheet: 'clientcard', way: 'new', card: 'person' },
+  // К3: входы из съёмки.
+  { name: 'head-couple', sheet: 'clienthead', way: 'couple' },
+  { name: 'head-person', sheet: 'clienthead', way: 'person' },
+  { name: 'head-open', sheet: 'clienthead', way: 'couple+open', card: 'couple' },
+  { name: 'form-phone', sheet: 'clientform', way: 'phone', plate: 'phone' },
+  { name: 'form-name', sheet: 'clientform', way: 'name', plate: 'name' },
+  { name: 'form-yes', sheet: 'clientform', way: 'yes', plate: 'bound' },
+  { name: 'form-couple', sheet: 'clientform', way: 'couple', plate: 'phone' },
 ];
 
 const num = t => parseInt(t, 10);
@@ -79,7 +89,48 @@ function cardVerdict(c, nodes, screen) {
   return bad;
 }
 
+/* Шапка карточки съёмки (К3): имя по центру, как у веба, знак «›» справа от него и в экране; из шапки — карточка клиента
+   поверх съёмки, «Назад» ведёт в неё. */
+function headVerdict(c, nodes, screen) {
+  const bad = [], n = k => { if (!nodes[k]) bad.push('нет узла ' + k); return nodes[k]; };
+  if (c.way.includes('open')) {
+    const back = n('clc.back'), card = n('clc.card');
+    if (back && back.text !== 'Назад') bad.push(`«Назад» подписан «${back.text}»`);
+    if (back && Math.abs(back.x - 24) > 0.6) bad.push(`«Назад» не на поле 24: x=${back.x.toFixed(1)}`);
+    if (card && card.text !== c.card) bad.push(`вид карточки ${card.text}, ждали ${c.card}`);
+    return bad;
+  }
+  const link = n('card.client'), name = n('card.name'), go = n('card.nameGo');
+  if (link && !link.text) bad.push('у входа нет ключа клиента');
+  if (name && Math.abs(name.x + name.w / 2 - screen.w / 2) > 1) bad.push(`имя не по центру: ${(name.x + name.w / 2).toFixed(1)} при ${screen.w / 2}`);
+  if (name && go) {
+    if (go.x < name.x + name.w - 0.1) bad.push('знак «›» наезжает на имя');
+    if (go.x + go.w > screen.w - 16) bad.push(`знак «›» у края экрана: ${(go.x + go.w).toFixed(1)}`);
+    if (Math.abs(go.y + go.h / 2 - (name.y + name.h / 2)) > 3) bad.push('знак «›» не на высоте имени');
+  }
+  return bad;
+}
+
+/* Плашка клиента в форме (К3): вид плашки тот, что ждали; «Да» — только у подсказки по имени, «Другой» — у подсказки и у
+   выбранного, у «по номеру» кнопок нет; плашка во всю ширину группы «Клиент». */
+function formVerdict(c, nodes) {
+  const bad = [], n = k => { if (!nodes[k]) bad.push('нет узла ' + k); return nodes[k]; };
+  const plate = n('form.client'), who = n('form.who'), text = n('form.clientText');
+  if (plate && plate.text !== c.plate) bad.push(`плашка «${plate.text}», ждали «${c.plate}»`);
+  if (plate && who && (Math.abs(plate.x - who.x) > 0.6 || Math.abs(plate.w - who.w) > 0.6)) bad.push(`плашка не во всю группу: x=${plate.x.toFixed(1)} w=${plate.w.toFixed(1)}`);
+  if (plate && who && (plate.y < who.y - 0.1 || plate.y + plate.h > who.y + who.h + 0.1)) bad.push('плашка вне группы «Клиент»');
+  const yes = !!nodes['form.clientYes'], other = !!nodes['form.clientOther'];
+  if (yes !== (c.plate === 'name')) bad.push(yes ? '«Да» не у подсказки' : 'нет «Да»');
+  if (other !== (c.plate !== 'phone')) bad.push(other ? '«Другой» у плашки «по номеру»' : 'нет «Другой»');
+  const word = { phone: 'По номеру — ', name: 'Это ', bound: 'Это ' }[c.plate];
+  if (text && !text.text.startsWith(word)) bad.push(`текст «${text.text}»`);
+  if (text && (c.plate === 'name') !== text.text.includes('?')) bad.push(`вопрос не там: «${text.text}»`);
+  return bad;
+}
+
 function verdict(c, nodes, screen) {
+  if (c.sheet === 'clienthead') return headVerdict(c, nodes, screen);
+  if (c.sheet === 'clientform') return formVerdict(c, nodes);
   if (c.sheet === 'clientcard') return cardVerdict(c, nodes, screen);
   const bad = [], n = k => { if (!nodes[k]) bad.push('нет узла ' + k); return nodes[k]; };
   const back = n('org.back');
@@ -149,7 +200,8 @@ function verdict(c, nodes, screen) {
       run('xcrun', ['simctl', 'io', dev.udid, 'screenshot', '--type=png', path.join(dir, 'native.png')], { stdio: 'ignore' });
       const rep = JSON.parse(fs.readFileSync(report, 'utf8'));
       const nodes = rep.nodes || {};
-      const screen = rep.screen || { w: 440 };
+      // Размер экрана — `size` [w, h]; `screen` в отчёте — имя вкладки (до К3 ширина тут была NaN, и проверки ширины молчали).
+      const screen = { w: rep.size[0], h: rep.size[1] };
       const bad = verdict(c, nodes, screen);
       const list = nodes['clc.picker'] || nodes['cl.list'] || nodes['org.list'];
       rows.push({ shot: c.name + '_' + theme, c: c.name, theme, bad, count: list ? num(list.text) : null });

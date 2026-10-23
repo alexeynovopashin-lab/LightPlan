@@ -426,7 +426,12 @@
     "clc.pickTitle": "С кем объединить «{name}»?",
     "clc.pickHint": "Выбранный клиент вольётся в эту карточку: его съёмки и телефоны перейдут сюда.",
     "clc.del": "Удалить клиента",
-    "clc.delAsk": "У клиента {n}. Удалить всё равно? Съёмки останутся, но без клиента."
+    "clc.delAsk": "У клиента {n}. Удалить всё равно? Съёмки останутся, но без клиента.",
+    "clf.ask": "Это {name}? {n}",
+    "clf.is": "Это {name} · {n}",
+    "clf.tel": "По номеру — {name} · {n}",
+    "clf.yes": "Да",
+    "clf.other": "Другой"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -854,7 +859,12 @@
     "clc.pickTitle": "Merge “{name}” with whom?",
     "clc.pickHint": "The client you pick merges into this card: their shoots and phones move here.",
     "clc.del": "Delete client",
-    "clc.delAsk": "This client has {n}. Delete anyway? The shoots stay, but without a client."
+    "clc.delAsk": "This client has {n}. Delete anyway? The shoots stay, but without a client.",
+    "clf.ask": "Is this {name}? {n}",
+    "clf.is": "This is {name} · {n}",
+    "clf.tel": "By number — {name} · {n}",
+    "clf.yes": "Yes",
+    "clf.other": "Someone else"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1282,7 +1292,12 @@
     "clc.pickTitle": "¿Con quién unir «{name}»?",
     "clc.pickHint": "El cliente elegido se une a esta ficha: las sesiones y los teléfonos de ese cliente pasan aquí.",
     "clc.del": "Eliminar cliente",
-    "clc.delAsk": "Este cliente tiene {n}. ¿Eliminar igual? Las sesiones quedan, pero sin cliente."
+    "clc.delAsk": "Este cliente tiene {n}. ¿Eliminar igual? Las sesiones quedan, pero sin cliente.",
+    "clf.ask": "¿Es {name}? {n}",
+    "clf.is": "Es {name} · {n}",
+    "clf.tel": "Por el número — {name} · {n}",
+    "clf.yes": "Sí",
+    "clf.other": "Otra persona"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1709,7 +1724,12 @@
     "clc.pickTitle": "「{name}」を誰と統合しますか?",
     "clc.pickHint": "選んだ顧客はこのカードに統合され、撮影と電話がここへ移ります。",
     "clc.del": "顧客を削除",
-    "clc.delAsk": "この顧客には {n} があります。それでも削除しますか?撮影は残りますが、顧客なしになります。"
+    "clc.delAsk": "この顧客には {n} があります。それでも削除しますか?撮影は残りますが、顧客なしになります。",
+    "clf.ask": "{name}ですか？ {n}",
+    "clf.is": "{name} · {n}",
+    "clf.tel": "番号から — {name} · {n}",
+    "clf.yes": "はい",
+    "clf.other": "別の人"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2136,6 +2156,11 @@
     "clc.pickTitle": "将“{name}”与谁合并?",
     "clc.pickHint": "所选客户将并入此卡片:其拍摄和电话转到这里。",
     "clc.del": "删除客户",
-    "clc.delAsk": "该客户有 {n}。仍要删除吗?拍摄会保留,但不再关联客户。"
+    "clc.delAsk": "该客户有 {n}。仍要删除吗?拍摄会保留,但不再关联客户。",
+    "clf.ask": "是{name}吗？{n}",
+    "clf.is": "这是{name} · {n}",
+    "clf.tel": "按号码 — {name} · {n}",
+    "clf.yes": "是",
+    "clf.other": "其他人"
   }
 }

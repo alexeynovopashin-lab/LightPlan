@@ -196,6 +196,7 @@ struct FormScreen: View {
                 FormGroup(node: "form.who") {
                     if f.shows(.contactLine) {
                         FormTextField(placeholder: t.t("whoHint." + group), text: text(\.contact), kind: .name)
+                        clientPlate(f, pal, t)
                         phoneRow(t.t("form.phone"), text: phone(\.clientPhone))
                     }
                     if f.shows(.breed) {
@@ -206,6 +207,8 @@ struct FormScreen: View {
                                       text: person(i, name: true), kind: .name)
                         phoneRow(t.t("form.phone"), text: person(i, name: false, phone: true))
                     }
+                    // У пары плашка одна на обоих — под их строками.
+                    if !f.shows(.contactLine) { clientPlate(f, pal, t) }
                     if f.shows(.organization) { orgRow(f, pal, t, group: group) }
                     if f.shows(.orderContact) {
                         FormTextField(placeholder: t.t("form.person"), text: text(\.orderPerson), kind: .name)
@@ -216,6 +219,56 @@ struct FormScreen: View {
                 }
             }
         }
+    }
+
+    /// Плашка клиента (К3, справка § 4.5): по номеру — съёмка уже его, плашка только сообщает; по одному имени — подсказка,
+    /// привязка по «Да»; «Другой» — новый клиент, подсказка для этой съёмки больше не навязывается.
+    @ViewBuilder
+    private func clientPlate(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
+        if let p = app.formClientPlate(f) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    Icon(p.icon, size: 17, line: 1.6).foregroundStyle(pal.brass).padding(.top, 1)
+                    Text(p.text).font(.system(size: 14)).foregroundStyle(pal.ink3).lineSpacing(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .shotNode("form.clientText", text: p.text)
+                }
+                if p.way != .phone {
+                    HStack(spacing: 8) {
+                        if p.way == .name {
+                            plateButton(t.t("clf.yes"), ink: pal.brass, back: pal.pressBrass, node: "form.clientYes") {
+                                app.answerFormClient(.pick(p.clientId))
+                            }
+                        }
+                        plateButton(t.t("clf.other"), ink: pal.ink3, back: pal.press, node: "form.clientOther") {
+                            app.answerFormClient(.other)
+                        }
+                    }
+                    .padding(.leading, 29)
+                }
+            }
+            .padding(.horizontal, 15).padding(.vertical, 13)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .shotNode("form.client", text: Self.wayName(p.way))
+        }
+    }
+
+    static func wayName(_ w: ClientBook.Hint.Way) -> String {
+        switch w {
+        case .phone: "phone"
+        case .bound: "bound"
+        case .name: "name"
+        }
+    }
+
+    private func plateButton(_ title: String, ink: Color, back: Color, node: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(ink)
+                .padding(.horizontal, 14).frame(height: 32)
+                .background(back, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .shotNode(node)
     }
 
     private func phoneRow(_ placeholder: String, text: Binding<String>) -> some View {

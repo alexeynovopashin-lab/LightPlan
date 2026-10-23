@@ -36,6 +36,8 @@ struct OrgState: Equatable {
     var clientTelSnap: [PhoneBook.Tel] = []
     /// Открыт лист «С кем объединить».
     var clientPick = false
+    /// Подпись «Назад» карточки клиента: «Клиенты» или, из шапки съёмки (К3), «Назад».
+    var clientBackKey = "set.clients"
 
     var isOpen: Bool { listOpen || cardId != nil || contactsOpen || clientCardId != nil }
 }

@@ -99,17 +99,8 @@ public enum ClientBook {
         func key(_ p: ClientPerson) -> String { TelFormat.full(p.phone, country: country) }
         func real(_ p: ClientPerson) -> Bool { TelFormat.isReal(p.phone, country: country) }
 
-        // Чей чей номер: живой главнее прежнего.
-        var owner: [String: Int] = [:]
-        for (i, c) in clients.enumerated() {
-            for p in c.people where TelFormat.isReal(p.phone, country: country) { owner[key(p)] = owner[key(p)] ?? i }
-        }
-        for (i, c) in clients.enumerated() {
-            for t in c.telLog where TelFormat.isReal(t.phone, country: country) {
-                let k = TelFormat.full(t.phone, country: country)
-                owner[k] = owner[k] ?? i
-            }
-        }
+        // Чей чей номер: живой главнее прежнего (тот же счёт у плашки формы, `hint`).
+        let owner = owners(clients, country: country)
         var hits: [Int] = []
         for p in cands where real(p) {
             if let i = owner[key(p)], !hits.contains(i) { hits.append(i) }
@@ -148,6 +139,10 @@ public enum ClientBook {
                     // Прежний номер из `telLog`: узнан, но заново не вписывается. Раньше смены номера (К2): номер, сменённый
                     // в карточке клиента, не откатывается, когда пересохраняют старую съёмку со старым номером (§ 3.5).
                     continue
+                } else if let j = c.people.firstIndex(where: { blank($0.phone) && sameFirstName($0.name, cand.name) }) {
+                    // У человека с тем же именем номера не было — дозаполняется (2). Иначе подсказка «Да» по имени, а
+                    // потом вписанный номер, заводили в клиенте второго такого же человека (К3).
+                    c.people[j].phone = cand.phone
                 } else if wasBound, let j = replaceable(in: c, for: cand, covered: covered, country: country) {
                     c.people[j].phone = cand.phone                 // номер сменился (5)
                     if blank(c.people[j].name) { c.people[j].name = cand.name }
@@ -266,6 +261,11 @@ public enum ClientBook {
     }
 
     // MARK: - Мелочи
+
+    private static func sameFirstName(_ a: String, _ b: String) -> Bool {
+        let x = PhoneBook.firstName(a).lowercased()
+        return !x.isEmpty && x == PhoneBook.firstName(b).lowercased()
+    }
 
     private static func trimmed(_ s: String) -> String { s.trimmingCharacters(in: .whitespacesAndNewlines) }
     private static func blank(_ s: String) -> Bool { trimmed(s).isEmpty }

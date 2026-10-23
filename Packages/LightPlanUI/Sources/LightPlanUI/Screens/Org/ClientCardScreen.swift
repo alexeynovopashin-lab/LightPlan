@@ -27,7 +27,7 @@ struct ClientCardScreen: View {
         let c = app.clientRecord(id) ?? Client(id: id)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                OverlayBack(title: t.t("set.clients"), node: "clc.back", action: onBack)
+                OverlayBack(title: t.t(app.org.clientBackKey), node: "clc.back", action: onBack)
                 Text(app.clientTitle(c)).font(webFont(26, 700)).tracking(-0.5).foregroundStyle(pal.ink)
                     .lineLimit(2).padding(.top, 14).padding(.horizontal, 4)
                     .shotNode("clc.title", text: app.clientTitle(c))

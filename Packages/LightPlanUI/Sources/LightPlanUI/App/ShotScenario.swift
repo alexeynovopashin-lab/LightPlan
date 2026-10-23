@@ -245,6 +245,44 @@ extension AppModel {
             }
             app.openClientCard(id: c.id)
             if way == "pick" { app.org.clientPick = true }
+        // Входы из съёмки (К3). `clienthead`: карточка последней съёмки клиента, имя в шапке со знаком «›»;
+        // `LPShotWay couple|person`, `…+open` — карточка клиента уже открыта из шапки («Назад» ведёт в съёмку).
+        case "clienthead":
+            let parts = (s.way ?? "couple").split(separator: "+").map(String.init)
+            let kind: ClientKind = parts[0] == "person" ? .person : .couple
+            guard let c = app.clients.filter({ $0.kind == kind })
+                    .max(by: { app.clientShootCount($0.id) < app.clientShootCount($1.id) }),
+                  let last = ClientBook.shoots(of: c.id, in: app.sessions).first else { break }
+            app.openCard(id: last.id)
+            if parts.contains("open"), let sess = app.card { app.openShootClient(sess) }
+        // Плашка клиента в новой форме (К3): `LPShotWay phone` — портрет с номером персоны из засева («По номеру — …»),
+        // `name` — только её имя (вопрос «Это …?» с «Да» / «Другой»), `yes` — то же после «Да», `couple` — свадьба,
+        // жених с номером жениха пары (плашка под людьми пары).
+        case "clientform":
+            app.draftStore = MemoryDraftStore()
+            let way = s.way ?? "name"
+            Task { @MainActor in
+                await app.light.weather.settled()
+                let kind: ClientKind = way == "couple" ? .couple : .person
+                let real = { (p: ClientPerson) in TelFormat.isReal(p.phone, country: app.telCountry) && !p.name.isEmpty }
+                guard let c = app.clients.filter({ $0.kind == kind && $0.people.contains(where: real) })
+                        .max(by: { app.clientShootCount($0.id) < app.clientShootCount($1.id) }),
+                      let who = c.people.last(where: real) else { return }
+                app.openForm(day: app.planner.selected)
+                if way == "couple" {
+                    app.pickFormGenre(.wedding)
+                    app.editForm { f in
+                        if f.persons.count > 1 { f.persons[1] = Person(name: PhoneBook.firstName(who.name), phone: who.phone) }
+                    }
+                } else {
+                    app.pickFormGenre(.portrait)
+                    app.editForm { f in
+                        f.contact = who.name
+                        if way == "phone" { f.clientPhone = who.phone }
+                    }
+                    if way == "yes" { app.answerFormClient(.pick(c.id)) }
+                }
+            }
         case "docs":
             // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),
             // после плюса — вид (`list|table|months`), `q=слово` — запрос поиска (шаг 3б), `paper` — открыть

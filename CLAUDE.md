@@ -61,7 +61,7 @@
   (`edgeBackBlocked`) refuse it. Settings' `NavigationStack` keeps the system gesture — don't register it.
   Measure with `-LPEdgeBackLog <file>` (Debug): begin / end dx v / closed / `gate no` lines, and per gesture one
   `meter` line (CADisplayLink frames missed / p95 + main-thread CPU ms per frame + `body` re-evaluations, `App/EdgeBackMeter.swift`).
-  `node Tools/edge_back_bench.js --app <.app>` drives all 16 layer screens without a finger (table: frames, missed, p95, CPU);
+  `node Tools/edge_back_bench.js --app <.app>` drives all 18 layer screens without a finger (table: frames, missed, p95, CPU);
   `--shade` compares a layer at rest with its first gesture frame pixel by pixel. **In the simulator trust CPU ms, not frame
   intervals**: ~60 % of a late frame there is the main thread sleeping on the sim's renderer (`wait_image_queue`).
   Layer shadow is a 20 pt gradient strip left of the edge (`EdgeShade`), never `.shadow` on the content (that shades every
@@ -158,6 +158,16 @@
   the card goes to the client's `telLog` on «Назад»/background (`commitClientTels`); `bind` checks the client's own archived number **before** «номер
   сменился», so re-saving an old shoot never rolls the card's number back. Not here: birthdays, anniversary, «Поздравлять» (К6), messengers and
   «Пишем» (К4), entries from a shoot (К3). Shots: `clients.js` cases `card-couple|family|person|twin|pick|new` (`-LPShotSheet clientcard -LPShotWay …`).
+- **Entries from a shoot (К3).** Card head (`CardHead`): a shoot whose `clientId` is in `snapshot.clients` gets a tappable name with a
+  hanging «›» (overlay, symmetric padding — the name stays where the web pair `card.name` has it) → `openShootClient` opens
+  `ClientCardScreen` over the shoot card, «Назад» (`OrgState.clientBackKey`); a shoot tapped there replaces the open card. Room next
+  to the call button stays for the messenger (К4). Form: plate under the name (under both people for a couple), computed per render
+  from `EventForm.session` by `ClientBook.hint` (Domain `Rules/ClientHint.swift`), writes nothing — a cancelled form leaves no client.
+  Order = `bind`'s: a number (live or `telLog`) → «По номеру — …», no buttons; else the client the shoot already has or «Да» picked →
+  «Это … · N» + «Другой»; else, **only when the form has no real number** and «Другой» was not pressed, a name hint «Это …? N» + «Да» /
+  «Другой» (exact name beats a word prefix, ties → freshest shoot). The answer is `EventForm.clientChoice` (not in the draft),
+  applied by `ClientBook.applying` in `saveForm` before `bind`; a number still beats it. `bind` now fills an empty phone of the person
+  with the same first name instead of appending a second one. Shots: `clients.js` cases `head-*`, `form-*` (`-LPShotSheet clienthead|clientform`).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

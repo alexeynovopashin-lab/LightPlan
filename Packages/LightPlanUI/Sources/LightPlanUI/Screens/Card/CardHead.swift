@@ -100,7 +100,7 @@ struct CardHead: View {
         let h = CardHeadText(s, phase: phase, app: app)
         VStack(spacing: 0) {
             sign
-            title(h.name).shotNode("card.name").padding(.top, 6)
+            nameLine(h.name).padding(.top, 6)
             if !h.person.isEmpty {
                 Text(h.person).font(webFont(14.5)).foregroundStyle(pal.ink2)
                     .shotNode("card.person").padding(.top, 5)
@@ -133,13 +133,43 @@ struct CardHead: View {
         .shotNode("card.sign")
     }
 
+    /// Имя. У съёмки с частным клиентом (К3) оно нажимается и открывает его карточку слоем; знак «›» после имени
+    /// говорит, что это вход. Место у звонка остаётся кнопке мессенджера (К4).
+    @ViewBuilder private func nameLine(_ name: String) -> some View {
+        if app.shootClient(s) != nil {
+            Button { withAnimation(overlaySlide) { app.openShootClient(s) } } label: {
+                title(name, link: true).contentShape(Rectangle())
+            }
+            .buttonStyle(PressFade())
+            .shotNode("card.client", text: s.clientId ?? "")
+        } else {
+            title(name, link: false)
+        }
+    }
+
     /// Имя одной строкой на самом крупном кегле, какой влезает.
-    private func title(_ name: String) -> some View {
+    private func title(_ name: String, link: Bool) -> some View {
         ViewThatFits(in: .horizontal) {
             ForEach(Self.titleSizes, id: \.self) { size in
-                line(name, size).lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                withChevron(line(name, size).lineLimit(1).fixedSize(horizontal: true, vertical: false), size, link)
             }
-            line(name, Self.titleSizes.last!)
+            withChevron(line(name, Self.titleSizes.last!), Self.titleSizes.last!, link)
+        }
+    }
+
+    /// Знак «›» справа от имени, слева — пустая распорка той же ширины: имя стоит по центру там же, где у веба
+    /// (пара `card.name`), а строка со знаком влезает в ширину целиком.
+    @ViewBuilder private func withChevron(_ v: some View, _ size: CGFloat, _ link: Bool) -> some View {
+        if link {
+            let w = (size * 0.62).rounded(), gap = (size * 0.2).rounded()
+            HStack(alignment: .center, spacing: gap) {
+                Color.clear.frame(width: w, height: 1)
+                v.shotNode("card.name")
+                Icon("chevron", size: w, line: 2.4).foregroundStyle(pal.ink6).frame(width: w, height: w)
+                    .shotNode("card.nameGo")
+            }
+        } else {
+            v.shotNode("card.name")
         }
     }
 
