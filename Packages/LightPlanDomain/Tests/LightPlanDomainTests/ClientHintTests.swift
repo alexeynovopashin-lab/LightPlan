@@ -145,6 +145,35 @@ import LightPlanDomain
         #expect(Self.save(&l, &clients, ids: ids).clientId == "c1" && clients.count == 1)
     }
 
+    /// Ревью GPT к 8c67c5a: номер сверяется с тем человеком, чей он, — Анна с номером Марка не узнаёт их пару.
+    @Test func thePhoneMustBelongToTheNamedPerson() {
+        let ids = B.Ids()
+        var clients: [Client] = []
+        var w = B.shoot("w", B.day(1), genre: .wedding, persons: [B.anya, B.mark])
+        B.save(&w, &clients, ids: ids)
+        var s = B.shoot("p", B.day(20), contact: "Аня", phone: B.mark.phone)
+        #expect(Self.hint(s, clients, sessions: [w]) == nil, "имя одного человека пары, номер другого — один фактор")
+        #expect(Self.save(&s, &clients, ids: ids).created && clients.count == 2)
+        var old = clients[0]
+        old.telLog = [TelLogEntry(field: nil, phone: "+7 913 000-00-09", name: "Марк", retiredAt: "x")]
+        #expect(Self.hint(B.shoot("q", B.day(21), contact: "Аня", phone: "+7 913 000-00-09"), [old], sessions: [w]) == nil,
+                "прежний номер — того, чьё имя у него в архиве")
+        #expect(Self.hint(B.shoot("r", B.day(21), contact: "Марк", phone: "+7 913 000-00-09"), [old], sessions: [w])?.way == .phone)
+    }
+
+    /// Ревью GPT к 8c67c5a: отчество — не имя и не фамилия.
+    @Test func aPatronymicIsNotAFactor() {
+        let ids = B.Ids()
+        var clients: [Client] = []
+        var a = B.shoot("a", B.day(1), contact: "Анна Сергеевна Петрова", phone: Self.tel)
+        B.save(&a, &clients, ids: ids)
+        #expect(Self.hint(B.shoot("n", B.day(20), contact: "Мария Сергеевна Петрова"), clients, sessions: [a]) == nil,
+                "общие отчество и фамилия — одно совпадение")
+        #expect(Self.hint(B.shoot("n", B.day(20), contact: "Мария Сергеевна", phone: Self.tel), clients, sessions: [a]) == nil,
+                "номер и отчество — не два фактора")
+        #expect(Self.hint(B.shoot("n", B.day(20), contact: "Петрова Анна Сергеевна"), clients, sessions: [a])?.way == .name)
+    }
+
     // MARK: одно совпадение — новый клиент
 
     @Test func onlyTheFirstNameMakesANewClient() {

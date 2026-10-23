@@ -135,7 +135,7 @@ import LightPlanDomain
         var sessions = [a, b]
         var bin: [TrashedItem] = []
         ClientBook.merge(b.clientId!, into: a.clientId!, clients: &clients, sessions: &sessions, trashed: &bin, country: Self.ru, nowMs: 9)
-        var c = B.shoot("c", B.day(7), contact: "Иван", phone: "+7 903 444-55-66")
+        var c = B.shoot("c", B.day(7), contact: "Ваня", phone: "+7 903 444-55-66")
         B.save(&c, &clients, ids: ids)
         #expect(clients.count == 1 && c.clientId == a.clientId, "второй номер теперь у объединённого клиента")
     }

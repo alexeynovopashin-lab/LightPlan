@@ -164,8 +164,8 @@
   to the call button stays for the messenger (К4). Form: plate under the name (under both people for a couple), computed per render
   from `EventForm.session` by `ClientBook.hint` (Domain `Rules/ClientHint.swift`), writes nothing — a cancelled form leaves no client.
   **Matching = two of three (Alexey 23.10, К3б)**: first name, last name, phone, per person. Phone (live or `telLog`) + a shared name
-  word with that client → linked at once («По номеру — …», no buttons; `ClientBook.linkedHits`, used by `bind`, `hint`, `twins`); two
-  shared name words (first + last, any order, case/ё/initials/middle name ignored — `nameFactors`), phone absent or different →
+  word with **the owner of that phone** (archived: the name in `telLog`) → linked at once («По номеру — …», no buttons; `ClientBook.linkedHits`, used by `bind`, `hint`, `twins`); two
+  shared name words (first + last, any order, case/ё/initials/patronymic …вич/…вна/…чна ignored — `nameFactors`), phone absent or different →
   «Это …? N» + «Да» / «Другой»; one factor only → new client, so one phone may live in two clients (`phoneOwners` keeps all).
   Diminutives («Оля»/«Ольга») and nameless clients are not matched. The client the shoot already has or «Да» picked → «Это … · N» +
   «Другой». The answer is `EventForm.clientChoice` (not in the draft), applied by `ClientBook.applying` in `saveForm` before `bind`;

@@ -162,12 +162,14 @@ import LightPlanDomain
         var clients: [Client] = [], ids = Ids()
         var wed = Self.shoot("w", Self.day(1), genre: .wedding, contact: "Аня и Марк", phone: "+7 913 000-00-33", persons: [Self.anya, Self.mark])
         Self.save(&wed, &clients, ids: ids)
+        #expect(clients.count == 1 && clients[0].people.map(\.phone).contains("+7 913 000-00-33"), "номер, названный третьим, не потерян")
+        // К3б, ревью GPT к 8c67c5a: третий номер — у человека без имени; имя сверяется с хозяином номера, так что «Аня» с ним
+        // пару не узнаёт (один фактор), «Мама» — тем более.
         var again = Self.shoot("a", Self.day(9), contact: "Аня", phone: "+7 913 000-00-33")
         Self.save(&again, &clients, ids: ids)
-        #expect(clients.count == 1 && again.clientId == wed.clientId, "номер, названный третьим, узнаётся (с именем пары), а не плодит дубль")
         var mom = Self.shoot("m", Self.day(10), contact: "Мама", phone: "+7 913 000-00-33")
         Self.save(&mom, &clients, ids: ids)
-        #expect(clients.count == 2 && mom.clientId != wed.clientId, "К3б: тот же номер с другим именем — новый клиент")
+        #expect(clients.count == 3 && again.clientId != wed.clientId && mom.clientId != wed.clientId)
     }
 
     @Test func anArchivedNumberFindsTheClientButIsNotWrittenBackAsAPerson() {

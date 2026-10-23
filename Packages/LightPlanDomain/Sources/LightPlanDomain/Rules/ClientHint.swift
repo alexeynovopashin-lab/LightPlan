@@ -81,10 +81,14 @@ extension ClientBook {
         return out
     }
 
-    /// Номер `key` у клиента есть, а имя человека записи делит с ним имя или фамилию.
+    /// Номер `key` у клиента есть, и человек записи делит имя или фамилию с **тем, чей это номер** (ревью GPT к 8c67c5a):
+    /// живой номер — с его хозяином, прежний — с именем в архиве; у прежнего номера без имени хозяин неизвестен — со всеми
+    /// людьми клиента. Анна с телефона Марка их пару не узнаёт.
     static func linked(_ p: ClientPerson, to c: Client, key: String, country: TelCountry) -> Bool {
-        var names = c.people.map(\.name)
-        names += c.telLog.filter { TelFormat.full($0.phone, country: country) == key }.compactMap(\.name)
+        var names = c.people.filter { TelFormat.full($0.phone, country: country) == key }.map(\.name)
+        for t in c.telLog where TelFormat.full(t.phone, country: country) == key {
+            if let n = t.name, !n.trimmingCharacters(in: .whitespaces).isEmpty { names.append(n) } else { names += c.people.map(\.name) }
+        }
         return names.contains { nameFactors(p.name, $0) >= 1 }
     }
 
@@ -109,16 +113,20 @@ extension ClientBook {
     }
 
     /// Сколько совпало из «имя, фамилия»: 0, 1 или 2. Слова сравниваются без порядка («Петрова Анна» — «Анна Петрова»: 2),
-    /// регистр и «ё» не различаются, слова короче двух букв (инициалы, «и») и отчество в середине не мешают — общее слово
+    /// регистр и «ё» не различаются, слова короче двух букв (инициалы, «и») и отчество не считаются — общее слово
     /// считается один раз. Совпали два слова — это имя и фамилия.
     static func nameFactors(_ a: String, _ b: String) -> Int {
         let x = Set(nameWords(a)), y = Set(nameWords(b))
         return min(2, x.intersection(y).count)
     }
 
+    /// Слова имени: без регистра, «ё» = «е», без инициалов; отчество (…вич, …вна, …чна, …ична) — не имя и не фамилия
+    /// (ревью GPT к 8c67c5a: «Анна Сергеевна Петрова» и «Мария Сергеевна Петрова» — разные люди).
     static func nameWords(_ s: String) -> [String] {
-        s.lowercased().replacingOccurrences(of: "ё", with: "е")
+        let words = s.lowercased().replacingOccurrences(of: "ё", with: "е")
             .split(whereSeparator: { !$0.isLetter && $0 != "-" }).map(String.init)
             .filter { $0.count >= 2 && $0 != "and" }
+        guard words.count > 2 else { return words }
+        return words.filter { w in !["вич", "вна", "чна"].contains { w.count > 5 && w.hasSuffix($0) } }
     }
 }
