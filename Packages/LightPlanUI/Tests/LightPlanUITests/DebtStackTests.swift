@@ -6,9 +6,11 @@ import LightPlanCore
 import LightPlanDomain
 import LightPlanData
 
-/// Шаг К5: стопка долгов (`clients_reference.md` § 7.2). Нажатие в календаре на несданную съёмку — над её карточкой
-/// все долги, старый ближе к листу; на сданную, будущую, встречу — стопка дня. «Сдана» держит карточку открытой,
-/// из стопки она уходит, когда открыли следующий долг. Посев сезона (`seed_planner.json`), 23.10 12:00, Барнаул.
+/// Шаг К5: стопка долгов как в Wallet (`clients_reference.md` § 7.2; Алексей 23.10). Нажатие в календаре на несданную
+/// съёмку — вид 1: её карточка, над ней пусто, остальные долги стопкой внизу; нажатие на стопку — вид 2: все долги
+/// полосами, старый сверху; нажатие на полосу — этот долг видом 1. На сданную, будущую, встречу — стопка дня. «Сдана»
+/// держит карточку открытой, из стопки она уходит, когда открыли следующий долг. Посев сезона (`seed_planner.json`),
+/// 23.10 12:00, Барнаул.
 @MainActor
 struct DebtStackTests {
 
@@ -48,13 +50,57 @@ struct DebtStackTests {
 
     // MARK: - Два режима
 
-    /// Нажали несданную свадьбу 24.09 — над ней все остальные долги, старый ближе к листу, а не соседи по дню.
-    @Test func calendarTapOnADebtStacksAllDebts() {
+    /// Нажали несданную свадьбу 24.09 — вид 1: над листом краёв нет, внизу стопка из всех остальных долгов (три кромки,
+    /// счёт — все девять), а не соседи по дню; списка ещё нет.
+    @Test func calendarTapOnADebtOpensViewOne() {
         let a = app()
         a.openCardFromCalendar(id: "sd_sep_wed")
         #expect(a.card?.id == "sd_sep_wed")
         #expect(a.cardStackMode == .debts)
+        #expect(!a.debtsListOpen)
+        #expect(CardStack<EmptyView>.edges(a, of: a.card!).isEmpty, "над листом пусто")
         #expect(others(a) == Self.debts.filter { $0 != "sd_sep_wed" })
+        #expect(DebtPile.plates(others(a).count) == 3)
+        #expect(DebtPile.plates(2) == 2 && DebtPile.plates(1) == 1)
+    }
+
+    /// Стопка дня не изменилась: края над листом — соседи по дню, стопки внизу нет.
+    @Test func dayStackKeepsEdgesAbove() {
+        let a = app()
+        a.openCardFromCalendar(id: "sd_sep_meet")
+        #expect(CardStack<EmptyView>.edges(a, of: a.card!).map(\.id) == ["sd_sep_now"])
+        a.openDebtsList()
+        #expect(!a.debtsListOpen, "у стопки дня списка долгов нет")
+    }
+
+    // MARK: - Вид 2
+
+    /// Нажатие на стопку — список всех долгов, старый сверху, открытая тоже; «✕» и свайп — назад к той же карточке.
+    @Test func pileTapOpensTheListAndBackReturns() {
+        let a = app()
+        a.openCardFromCalendar(id: "sd_sep_wed")
+        a.openDebtsList()
+        #expect(a.debtsListOpen)
+        #expect(a.debtsList().map(\.id) == Self.debts)
+        a.closeDebtsList()
+        #expect(!a.debtsListOpen)
+        #expect(a.card?.id == "sd_sep_wed")
+        #expect(a.cardStackMode == .debts)
+    }
+
+    /// Нажатие на полосу — этот долг видом 1, остальные снова стопкой внизу; закрыли карточку — список сброшен.
+    @Test func bandTapOpensThatDebtAsViewOne() {
+        let a = app()
+        a.openCardFromCalendar(id: "sd_sep_wed")
+        a.openDebtsList()
+        a.openDebtFromList(id: "sd_sep_pet")
+        #expect(a.card?.id == "sd_sep_pet")
+        #expect(!a.debtsListOpen)
+        #expect(a.cardStackMode == .debts)
+        #expect(others(a) == Self.debts.filter { $0 != "sd_sep_pet" })
+        a.openDebtsList()
+        a.closeCard()
+        #expect(!a.debtsListOpen && a.cardStackMode == .day)
     }
 
     /// Сданная, будущая и встреча открываются со стопкой своего дня.
@@ -84,7 +130,7 @@ struct DebtStackTests {
 
     // MARK: - «Сдана»
 
-    /// Отметили «сдана» — карточка открыта, стопка над ней та же; открыли следующий долг с края — отмеченной в стопке нет.
+    /// Отметили «сдана» — карточка открыта, стопка внизу та же; в списке и после перехода к следующему долгу её нет.
     @Test func deliveredCardStaysOpenAndLeavesOnNext() {
         let a = app()
         a.openCardFromCalendar(id: "sd_sep_love")
@@ -94,30 +140,18 @@ struct DebtStackTests {
         #expect(a.card?.delivered == true)
         #expect(a.cardStackMode == .debts)
         #expect(others(a) == before)
-        // Тап по ближнему краю — как у `CardStack.edge` в стопке долгов.
-        a.openCard(id: before[0], stack: .debts)
+        a.openDebtsList()
+        #expect(!a.debtsList().contains { $0.id == "sd_sep_love" })
+        a.openDebtFromList(id: before[0])
         #expect(a.card?.id == "sd_sep_party")
         #expect(a.cardStackMode == .debts)
         #expect(!others(a).contains("sd_sep_love"))
         #expect(others(a) == Self.debts.filter { $0 != "sd_sep_love" && $0 != "sd_sep_party" })
     }
 
-    // MARK: - Края
+    // MARK: - Полосы
 
-    /// Видны шесть старых краёв, остальные считает строка над стопкой; стопка дня не режется.
-    @Test func debtsStackShowsSixOldestAndCountsTheRest() {
-        let a = app()
-        a.openCardFromCalendar(id: "sd_oct_ad")
-        let all = a.stack(of: a.card!)
-        let (edges, more) = CardStack<EmptyView>.shown(all, mode: .debts)
-        #expect(edges.map(\.id) == Array(Self.debts.prefix(6)))
-        #expect(more == 3)
-        let few = Array(all.prefix(4))
-        #expect(CardStack<EmptyView>.shown(few, mode: .debts).more == 0)
-        #expect(CardStack<EmptyView>.shown(all, mode: .day).edges.count == all.count)
-    }
-
-    /// Край долга пишет день съёмки и просрочку («17 сент · −N дн», терракотой), а не часы.
+    /// Полоса долга пишет день съёмки и просрочку («17 сен · −N дн.», терракотой), а не часы.
     @Test func debtEdgeSaysDayAndOverdue() {
         let a = app()
         a.openCardFromCalendar(id: "sd_oct_ad")

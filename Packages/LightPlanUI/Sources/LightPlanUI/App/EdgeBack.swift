@@ -317,6 +317,8 @@ enum BackZ {
     static let docsSection = 0.91
     static let docsPaper = 0.92
     static let card = 1.0
+    /// Список долгов (К5) — над карточкой долга, свайп от края возвращает к ней.
+    static let debtsList = 1.05
     static let gallery = 1.2
     static let shelf = 1.3
     static let folder = 1.4

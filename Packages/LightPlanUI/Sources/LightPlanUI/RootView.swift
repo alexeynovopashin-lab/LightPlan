@@ -86,6 +86,13 @@ private struct Shell: View {
                     .edgeBack(app, z: BackZ.card) { app.closeCard() }
                     .transition(.move(edge: .bottom))
                     .zIndex(BackZ.card)
+                // Список долгов (К5, вид 2) — над карточкой долга; свайп от края и «✕» возвращают к ней.
+                if app.debtsListOpen {
+                    DebtsListScreen(app: app)
+                        .edgeBack(app, z: BackZ.debtsList) { app.closeDebtsList() }
+                        .transition(.move(edge: .bottom))
+                        .zIndex(BackZ.debtsList)
+                }
                 // Полный экран референсов (27) — поверх карточки, `z-index 92` веба.
                 if app.refsFull != nil {
                     RefsFullScreen(app: app, s: s)

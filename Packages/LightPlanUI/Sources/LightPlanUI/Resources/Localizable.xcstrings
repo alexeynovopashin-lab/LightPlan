@@ -4977,6 +4977,41 @@
         }
       }
     },
+    "card.debtsAll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Несданные: {n}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not delivered: {n}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin entregar: {n}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未納品: {n}件"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未交付：{n}"
+          }
+        }
+      }
+    },
     "card.debtsMore" : {
       "extractionState" : "manual",
       "localizations" : {

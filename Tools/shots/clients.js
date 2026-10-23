@@ -7,9 +7,10 @@
    Шаг К2: карточка клиента — пара, семья, персона, подсказка «объединить?» (`twin`), лист «С кем объединить» (`pick`),
    черновик «+ Клиент» (`new`): «Назад» и поля 24, вид в карточке совпадает с выбранным, группы людей и строки съёмок во всю
    ширину полей, строк съёмок столько, сколько в итоге «N съёмок», в листе — все клиенты, кроме открытого.
-   Шаг К5 (`debts-*`): стопка долгов — карточка самого нового несданного с клиентом, открытая как из календаря; над ней
-   края других долгов (старый ближе к листу, справа день и просрочка, а не часы), видно шесть, остальные — строка «Ещё
-   несданных: N»; `few` — три края без строки, `done` — открытая отмечена «сдана», стопка та же. Мессенджер в шапке.
+   Шаг К5 (`debts-*`, как в Wallet): вид 1 — карточка самого нового несданного с клиентом, открытая как из календаря, над
+   ней краёв нет, остальные долги стопкой внизу экрана (кромки одной ширины, «Ещё несданных: N»); `debts-list` — вид 2,
+   все двадцать долгов полосами одной ширины, старый сверху, справа день и просрочка; `few` — две кромки, `done` —
+   открытая отмечена «сдана». Мессенджер в шапке.
    Только натив: у веба такого экрана нет (его «Организации» сверяет пара `make shots ARGS="--screens m28 --m28 orgs"`,
    узлы `org.*` остались теми же). Числа — из рамок узлов (`-LPShotReport`): поля 24 pt, строка клиента 64 pt, переключатель
    «Частные | Компании» не наезжает на «Назад» и не выходит за правое поле, фишки внутри полей, сумма по видам равна «Все».
@@ -53,10 +54,11 @@ const CASES = [
   { name: 'form-name', sheet: 'clientform', way: 'name', plate: 'name' },
   { name: 'form-yes', sheet: 'clientform', way: 'yes', plate: 'bound' },
   { name: 'form-couple', sheet: 'clientform', way: 'couple', plate: 'phone' },
-  // К5: стопка долгов. edges — сколько краёв видно, more — строка «Ещё несданных» (число), delivered — открытая сдана.
-  { name: 'debts', sheet: 'debts', way: 'msg', edges: 6, more: true, reach: 'telegram' },
-  { name: 'debts-few', sheet: 'debts', way: 'few+msg', edges: 3, more: false, reach: 'telegram' },
-  { name: 'debts-done', sheet: 'debts', way: 'done+msg', edges: 6, more: true, reach: 'telegram', delivered: true },
+  // К5: стопка долгов как в Wallet. pile — сколько долгов в стопке внизу (кромок не больше трёх), list — вид 2.
+  { name: 'debts', sheet: 'debts', way: 'many+msg', pile: 19, reach: 'telegram' },
+  { name: 'debts-list', sheet: 'debts', way: 'many+msg+list', list: 20 },
+  { name: 'debts-few', sheet: 'debts', way: 'few+msg', pile: 2, reach: 'telegram' },
+  { name: 'debts-done', sheet: 'debts', way: 'many+done+msg', pile: 19, reach: 'telegram', delivered: true },
 ];
 
 const num = t => parseInt(t, 10);
@@ -173,30 +175,50 @@ function formVerdict(c, nodes) {
   return bad;
 }
 
-/* Стопка долгов (К5): краёв столько, сколько ждали, каждый следующий выше на 22 и уже на 10 с каждой стороны (до
-   четвёртого), справа у края — день, а не часы; строка «Ещё» над стопкой — только когда долгов больше шести; лист под
-   краями; кнопка мессенджера в шапке; у `done` строка сдачи говорит «сдан». */
+/* Стопка долгов (К5, Wallet). Вид 1: над листом краёв нет; стопка внизу экрана — кромок min(3, N) одной ширины (поля
+   24), каждая на 8 ниже, счёт N; стопка под листом шапки и у нижнего края; кнопка мессенджера; у `done` — «сдан».
+   Вид 2: полос столько, сколько долгов, все одной ширины в полях 24, шаг 52, справа у каждой день (не часы), дни
+   по порядку — старый сверху. */
+const MON = { янв: 1, фев: 2, мар: 3, апр: 4, мая: 5, май: 5, июн: 6, июл: 7, авг: 8, сен: 9, окт: 10, ноя: 11, дек: 12 };
+const dayKey = t => { const m = /^(\d+) ([а-я]+)/.exec(t); return m ? (MON[m[2].slice(0, 3)] || 0) * 100 + num(m[1]) : NaN; };
 function debtsVerdict(c, nodes, screen) {
   const bad = [], n = k => { if (!nodes[k]) bad.push('нет узла ' + k); return nodes[k]; };
-  if (nodes['card.peek.' + c.edges]) bad.push(`краёв больше ${c.edges}`);
-  const peeks = [];
-  for (let k = 0; k < c.edges; k++) peeks.push(n('card.peek.' + k));
-  peeks.forEach((p, k) => {
-    if (!p) return;
-    const inset = 10 + Math.min(k, 3) * 10;
-    if (Math.abs(p.x - (24 + inset)) > 0.6 || Math.abs(p.w - (screen.w - 48 - 2 * inset)) > 0.6) bad.push(`край ${k}: x=${p.x.toFixed(1)} w=${p.w.toFixed(1)}`);
-    if (k > 0 && peeks[k - 1] && Math.abs(peeks[k - 1].y - p.y - 22) > 0.6) bad.push(`край ${k} не на 22 выше ${k - 1}: ${(peeks[k - 1].y - p.y).toFixed(1)}`);
-    const t = nodes['card.peekTime.' + k];
-    if (!t) bad.push('нет узла card.peekTime.' + k);
-    else if (/\d:\d/.test(t.text) || !/[а-я]/.test(t.text)) bad.push(`край ${k} пишет «${t.text}», ждали день`);
-  });
-  const more = nodes['card.debtsMore'];
-  if (c.more && !more) bad.push('нет строки «Ещё несданных»');
-  if (!c.more && more) bad.push(`строка «Ещё» при ${c.edges} краях: ${more.text}`);
-  if (more && peeks[c.edges - 1] && more.y + more.h > peeks[c.edges - 1].y + 0.1) bad.push('строка «Ещё» наезжает на дальний край');
+  const wide = (r, what) => { if (r && (Math.abs(r.x - 24) > 0.6 || Math.abs(r.w - (screen.w - 48)) > 0.6)) bad.push(`${what}: x=${r.x.toFixed(1)} w=${r.w.toFixed(1)}`); };
+  if (c.list) {
+    const list = n('debts.list'), title = n('debts.title');
+    if (list && num(list.text) !== c.list) bad.push(`в списке ${list.text}, ждали ${c.list}`);
+    if (title && num(title.text) !== c.list) bad.push(`заголовок ${title.text}`);
+    if (nodes['debts.band.' + c.list]) bad.push(`полос больше ${c.list}`);
+    let prev = -1;
+    for (let k = 0; k < c.list; k++) {
+      const b = n('debts.band.' + k), t = nodes['debts.bandTime.' + k];
+      wide(b, 'полоса ' + k);
+      const a = nodes['debts.band.' + (k - 1)];
+      if (b && a && Math.abs(b.y - a.y - 52) > 0.6) bad.push(`полоса ${k} не на 52 ниже: ${(b.y - a.y).toFixed(1)}`);
+      if (!t) { bad.push('нет узла debts.bandTime.' + k); continue; }
+      if (/\d:\d/.test(t.text)) bad.push(`полоса ${k} пишет часы «${t.text}»`);
+      const d = dayKey(t.text);
+      if (!(d >= prev)) bad.push(`полоса ${k} «${t.text}» раньше предыдущей`);
+      prev = d;
+    }
+    return bad;
+  }
+  if (nodes['card.peek.0']) bad.push('над листом есть края');
+  const pile = n('card.debtsPile'), more = n('card.debtsMore');
+  if (pile && num(pile.text) !== c.pile) bad.push(`в стопке ${pile.text}, ждали ${c.pile}`);
+  if (more && num(more.text) !== c.pile) bad.push(`строка счёта ${more.text}`);
+  const m = Math.min(3, c.pile);
+  if (nodes['card.pile.' + m]) bad.push(`кромок больше ${m}`);
+  for (let k = 0; k < m; k++) {
+    const p = n('card.pile.' + k), a = nodes['card.pile.' + (k - 1)];
+    wide(p, 'кромка ' + k);
+    if (p && a && Math.abs(p.y + p.h - a.y - a.h - 8) > 0.6) bad.push(`кромка ${k} не на 8 ниже: ${(p.y + p.h - a.y - a.h).toFixed(1)}`);
+  }
+  // `size` в отчёте — без полос системы; низ экрана в точках — по ширине кадра (у Pro Max ×3).
+  if (pile && (pile.y + pile.h > screen.full + 0.1 || pile.y + pile.h < screen.full - 60)) bad.push(`стопка не у нижнего края: низ ${(pile.y + pile.h).toFixed(1)} при ${screen.full}`);
   const reach = n('card.reach'), name = n('card.name');
   if (reach && reach.text !== c.reach) bad.push(`кнопка открывает «${reach.text}», ждали ${c.reach}`);
-  if (name && peeks[0] && name.y < peeks[0].y + 22 - 0.1) bad.push('имя листа под краями');
+  if (name && pile && name.y + name.h > pile.y) bad.push('имя карточки под стопкой');
   const dv = n('card.deliveryText');
   if (dv && !!c.delivered !== /^сдан/i.test(dv.text)) bad.push(`сдача «${dv.text}»`);
   return bad;
@@ -277,9 +299,10 @@ function verdict(c, nodes, screen) {
       const rep = JSON.parse(fs.readFileSync(report, 'utf8'));
       const nodes = rep.nodes || {};
       // Размер экрана — `size` [w, h]; `screen` в отчёте — имя вкладки (до К3 ширина тут была NaN, и проверки ширины молчали).
-      const screen = { w: rep.size[0], h: rep.size[1] };
+      const png = fs.readFileSync(path.join(dir, 'native.png'));
+      const screen = { w: rep.size[0], h: rep.size[1], full: png.readUInt32BE(20) * rep.size[0] / png.readUInt32BE(16) };
       const bad = verdict(c, nodes, screen);
-      const list = nodes['clc.picker'] || nodes['cl.list'] || nodes['org.list'] || nodes['card.debtsMore'];
+      const list = nodes['clc.picker'] || nodes['cl.list'] || nodes['org.list'] || nodes['debts.list'] || nodes['card.debtsPile'];
       rows.push({ shot: c.name + '_' + theme, c: c.name, theme, bad, count: list ? num(list.text) : null });
     }
   }

@@ -20,6 +20,7 @@ extension AppModel {
         if cardId != id { cardFolds = []; cardTuning = false; cardDocMessage = nil; refsFull = nil }
         cardId = id
         cardStackMode = stack
+        debtsListOpen = false
         askCardWeather(s)
         Task { await learnZone(of: s) }
     }
@@ -40,6 +41,7 @@ extension AppModel {
         if let id = cardId, let s = snapshot.sessions.first(where: { $0.id == id }) { acknowledgeForecast(s) }
         cardId = nil
         cardStackMode = .day
+        debtsListOpen = false
         refsFull = nil
         cardFolds = []
         cardDocMessage = nil

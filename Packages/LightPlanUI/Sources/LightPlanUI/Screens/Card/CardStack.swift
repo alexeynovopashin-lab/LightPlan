@@ -23,15 +23,16 @@ extension AppModel {
         Debts.stack(snapshot.sessions, now: { self.wallNow(at: $0) }, manualEnd: settings.manualEnd)
     }
 
-    /// Вход из календаря (месяц, неделя, лента дня): нажали несданную съёмку — над её карточкой все долги;
+    /// Вход из календаря (месяц, неделя, лента дня): нажали несданную съёмку — под её карточкой стопка всех долгов;
     /// сданную, будущую, встречу — обычная стопка дня. Отдельной кнопки «Долги» нет (Алексей, 21.10).
     public func openCardFromCalendar(id: String) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
         openCard(id: id, stack: isDebt(s) ? .debts : .day)
     }
 
-    /// Соседи карточки в стопке. В стопке долгов — все долги, кроме самой карточки, старый ближе к листу; режим
-    /// держится, пока карточка открыта: отмеченная «сдана» остаётся листом и уходит из стопки, когда открыли следующий.
+    /// Соседи карточки в стопке. В стопке долгов — все долги, кроме самой карточки, старый первым (стопка внизу экрана,
+    /// `DebtPile`); режим держится, пока карточка открыта: отмеченная «сдана» остаётся листом и уходит из стопки, когда
+    /// открыли следующий.
     func stack(of s: Session) -> [Session] {
         switch cardStackMode {
         case .day: dayStack(of: s)
@@ -132,38 +133,21 @@ struct CardStack<Sheet: View>: View {
     /// Отступ края с каждой стороны (веб `10 + min(k, 3)·10`).
     static func inset(_ k: Int) -> CGFloat { CGFloat(10 + min(k, 3) * 10) }
 
-    /// Сколько краёв стопки долгов видно (К5). После сезона долгов десятки, а каждый край — 22 pt над листом:
-    /// тридцать краёв унесли бы лист за экран. Видны самые старые, ближние к листу; остальные ждут очереди —
-    /// над стопкой строка «Ещё несданных: N». Стопка дня не режется.
-    static var debtsShown: Int { 6 }
-
-    /// Края, которые рисуются, и сколько осталось за ними.
-    static func shown(_ all: [Session], mode: CardStackMode) -> (edges: [Session], more: Int) {
-        guard mode == .debts, all.count > debtsShown else { return (all, 0) }
-        return (Array(all.prefix(debtsShown)), all.count - debtsShown)
+    /// Края над листом. В стопке долгов их нет (К5, Алексей 23.10: «подобно стопкам Wallet»): другие долги лежат
+    /// стопкой внизу экрана (`DebtPile`), над листом — пусто.
+    static func edges(_ app: AppModel, of s: Session) -> [Session] {
+        app.cardStackMode == .debts ? [] : app.stack(of: s)
     }
 
     var body: some View {
-        let mode = app.cardStackMode
-        let (others, more) = Self.shown(app.stack(of: s), mode: mode)
-        let n = others.count
-        VStack(spacing: 0) {
-            if more > 0 {
-                Text(app.lexicon.t("card.debtsMore", ["n": "\(more)"]))
-                    .font(webFont(11.5))
-                    .foregroundStyle(pal.ink6)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.bottom, 8)
-                    .shotNode("card.debtsMore", text: "\(more)")
-            }
-            stack(others, n: n, debts: mode == .debts)
-        }
+        let others = Self.edges(app, of: s)
+        stack(others, n: others.count)
     }
 
-    private func stack(_ others: [Session], n: Int, debts: Bool) -> some View {
+    private func stack(_ others: [Session], n: Int) -> some View {
         ZStack(alignment: .top) {
             ForEach(Array(others.enumerated()), id: \.element.id) { k, p in
-                edge(p, k, debts: debts)
+                edge(p, k)
                     .padding(.horizontal, Self.inset(k))
                     .padding(.top, CGFloat(n - 1 - k) * Self.peekStep)
                     .modifier(PullShift(travel: StackPull.peekTravel(k: k, n: n), p: pull, tag: "k\(k)"))
@@ -208,68 +192,9 @@ struct CardStack<Sheet: View>: View {
             })
     }
 
-    private func edge(_ p: Session, _ k: Int, debts: Bool) -> some View {
-        let x = PeekText(p, card: s, app: app, debts: debts)
-        let w = PlannerWords(lexicon: app.lexicon, orgs: app.orgs)
-        // Край стопки долгов открывает следующий долг, и стопка остаётся стопкой долгов.
-        return Button { app.openCard(id: p.id, stack: debts ? .debts : .day) } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 7) {
-                    Group {
-                        if let n = w.iconName(p) { Icon(n, size: 14, line: 1.5) }
-                        else { Icon(genre: p.genre?.rawValue ?? "", size: 14, line: 1.5) }
-                    }
-                    .foregroundStyle(pal.brass)
-                    .frame(width: 14, height: 14)
-                    Text(x.genre + (x.name.isEmpty ? "" : " ·")).foregroundStyle(pal.ink6)
-                        .fixedSize()
-                    if !x.name.isEmpty {
-                        Text(x.name).font(webFont(11.5, 600)).foregroundStyle(pal.ink3)
-                            .lineLimit(1).truncationMode(.tail)
-                            .shotNode("card.peekName.\(k)")
-                    }
-                    if p.repeatInfo != nil {
-                        Icon("repeat", size: 12).foregroundStyle(pal.ink5)
-                            .frame(width: 12, height: 12)
-                            .padding(.leading, -3)
-                    }
-                    Spacer(minLength: 0)
-                    Text(x.time).monospacedDigit().foregroundStyle(x.over ? pal.terra : pal.ink4)
-                        .fixedSize()
-                        .shotNode("card.peekTime.\(k)", text: x.time)
-                }
-                .foregroundStyle(pal.ink4)
-                .frame(height: 18)
-                // Строки под кромкой открываются оттянутым листом (веб `.peek-sub`):
-                // «где» — 7 pt под первой, заметка — 4 pt ниже, обе `--ink-7`/`--ink-8`
-                // в одну строку. Строка веба — 12 pt: текст стоит по её середине.
-                if !x.town.isEmpty || !x.spot.isEmpty {
-                    HStack(spacing: 10) {
-                        Text(x.town).lineLimit(1).truncationMode(.tail)
-                            .frame(height: 12)
-                            .shotNode("card.peekTown.\(k)", text: x.town)
-                        if !x.spot.isEmpty {
-                            Spacer(minLength: 0)
-                            Text(x.spot).lineLimit(1).truncationMode(.tail)
-                                .frame(height: 12)
-                                .shotNode("card.peekSpot.\(k)", text: x.spot)
-                        }
-                    }
-                    .foregroundStyle(pal.ink7)
-                    .padding(.top, 7)
-                }
-                if !x.note.isEmpty {
-                    Text(x.note).lineLimit(1).truncationMode(.tail)
-                        .foregroundStyle(pal.ink8)
-                        .frame(height: 12)
-                        .shotNode("card.peekNote.\(k)", text: x.note)
-                        .padding(.top, 4)
-                }
-            }
-            .font(webFont(11.5))
-            .padding(EdgeInsets(top: 4, leading: 16, bottom: 0, trailing: 16))
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .contentShape(Rectangle())
+    private func edge(_ p: Session, _ k: Int) -> some View {
+        Button { app.openCard(id: p.id) } label: {
+            PeekLabel(app: app, p: p, x: PeekText(p, card: s, app: app), pal: pal, node: "card.peek", k: k)
         }
         .buttonStyle(PeekPress(fill: k == 0 ? pal.peek1 : pal.peek2, press: pal.press, edge: pal.stackEdge,
                                shade: k == 0 ? pal.stackShade : nil))
@@ -278,10 +203,82 @@ struct CardStack<Sheet: View>: View {
     }
 }
 
+/// Надпись края: знак жанра, «Жанр ·» и имя, справа часы (или день долга); под кромкой — «где» и заметка.
+/// Общая у края стопки дня и полосы списка долгов (К5); узлы снимков — `<node>Name.k`, `<node>Time.k`, …
+struct PeekLabel: View {
+    let app: AppModel
+    let p: Session
+    let x: PeekText
+    let pal: Palette
+    let node: String
+    let k: Int
+
+    var body: some View {
+        let w = PlannerWords(lexicon: app.lexicon, orgs: app.orgs)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 7) {
+                Group {
+                    if let n = w.iconName(p) { Icon(n, size: 14, line: 1.5) }
+                    else { Icon(genre: p.genre?.rawValue ?? "", size: 14, line: 1.5) }
+                }
+                .foregroundStyle(pal.brass)
+                .frame(width: 14, height: 14)
+                Text(x.genre + (x.name.isEmpty ? "" : " ·")).foregroundStyle(pal.ink6)
+                    .fixedSize()
+                if !x.name.isEmpty {
+                    Text(x.name).font(webFont(11.5, 600)).foregroundStyle(pal.ink3)
+                        .lineLimit(1).truncationMode(.tail)
+                        .shotNode("\(node)Name.\(k)")
+                }
+                if p.repeatInfo != nil {
+                    Icon("repeat", size: 12).foregroundStyle(pal.ink5)
+                        .frame(width: 12, height: 12)
+                        .padding(.leading, -3)
+                }
+                Spacer(minLength: 0)
+                Text(x.time).monospacedDigit().foregroundStyle(x.over ? pal.terra : pal.ink4)
+                    .fixedSize()
+                    .shotNode("\(node)Time.\(k)", text: x.time)
+            }
+            .foregroundStyle(pal.ink4)
+            .frame(height: 18)
+            // Строки под кромкой открываются оттянутым листом (веб `.peek-sub`):
+            // «где» — 7 pt под первой, заметка — 4 pt ниже, обе `--ink-7`/`--ink-8`
+            // в одну строку. Строка веба — 12 pt: текст стоит по её середине.
+            if !x.town.isEmpty || !x.spot.isEmpty {
+                HStack(spacing: 10) {
+                    Text(x.town).lineLimit(1).truncationMode(.tail)
+                        .frame(height: 12)
+                        .shotNode("\(node)Town.\(k)", text: x.town)
+                    if !x.spot.isEmpty {
+                        Spacer(minLength: 0)
+                        Text(x.spot).lineLimit(1).truncationMode(.tail)
+                            .frame(height: 12)
+                            .shotNode("\(node)Spot.\(k)", text: x.spot)
+                    }
+                }
+                .foregroundStyle(pal.ink7)
+                .padding(.top, 7)
+            }
+            if !x.note.isEmpty {
+                Text(x.note).lineLimit(1).truncationMode(.tail)
+                    .foregroundStyle(pal.ink8)
+                    .frame(height: 12)
+                    .shotNode("\(node)Note.\(k)", text: x.note)
+                    .padding(.top, 4)
+            }
+        }
+        .font(webFont(11.5))
+        .padding(EdgeInsets(top: 4, leading: 16, bottom: 0, trailing: 16))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
+    }
+}
+
 /// Тон края, кант по верхней кромке (`inset 0 1px 0 --stack-edge`) и у
 /// ближнего — тень вверх на лист за ним (`0 −6px 14px −4px --stack-shade`).
 /// Нажатый край — `--press` (веб `.peek:active`).
-private struct PeekPress: ButtonStyle {
+struct PeekPress: ButtonStyle {
     let fill: Color, press: Color, edge: Color
     let shade: Color?
 

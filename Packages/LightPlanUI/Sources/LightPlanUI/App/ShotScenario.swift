@@ -222,20 +222,34 @@ extension AppModel {
         // Корзина мудборда съёмки (29б): папка подборки и лист корзины поверх неё.
         case "mbbin": if let id = s.way { app.openMbFolder(boardId: id); app.openMbBin(id) }
         case "orgs": app.openOrgs()
-        // Стопка долгов (К5): `LPShotSheet debts` — карточка самого нового долга с клиентом, открытая как нажатием в
-        // календаре. `LPShotWay` через «+»: `few` — сданы все долги, кроме трёх старых и открытого (три края, строки
-        // «Ещё» нет), `msg` — людям клиента вписаны мессенджеры (`seedMessengers`), `done` — открытая отмечена «сдана».
+        // Стопка долгов (К5, как в Wallet): `LPShotSheet debts` — карточка самого нового долга с клиентом, открытая как
+        // нажатием в календаре, остальные долги стопкой внизу. `LPShotWay` через «+»: `many` — долгов двадцать (копии
+        // несданных засева на 1–3 недели раньше), `few` — сданы все, кроме двух старых и открытого,
+        // `msg` — людям клиента вписаны мессенджеры (`seedMessengers`), `done` — открытая отмечена «сдана»,
+        // `list` — вид 2: все долги полосами.
         case "debts":
             let parts = Set((s.way ?? "").split(separator: "+").map(String.init))
+            if parts.contains("many") {
+                let base = app.debts()
+                var i = 0
+                while app.debts().count < 20, !base.isEmpty {
+                    var c = base[i % base.count]
+                    c.id += "_k5_\(i)"
+                    c.day = c.day.adding(days: -7 * (i / base.count + 1))
+                    app.snapshot.sessions.append(c)
+                    i += 1
+                }
+            }
             let all = app.debts()
             guard let target = all.last(where: { $0.clientId != nil }) ?? all.last else { break }
             if parts.contains("few") {
-                let keep = Set(all.prefix(3).map(\.id) + [target.id])
+                let keep = Set(all.prefix(2).map(\.id) + [target.id])
                 for d in all where !keep.contains(d.id) { app.toggleDelivered(id: d.id) }
             }
             if parts.contains("msg"), let c = target.clientId { Self.seedMessengers(app, c) }
             app.openCardFromCalendar(id: target.id)
             if parts.contains("done") { app.toggleDelivered(id: target.id) }
+            if parts.contains("list") { app.openDebtsList() }
         // «Клиенты» (К1): вкладка «Частные»; `LPShotWay` — фильтр `all|couples|families|persons`, `empty` — клиентов нет.
         case "clients":
             if s.way == "empty" { app.snapshot.clients = [] }
