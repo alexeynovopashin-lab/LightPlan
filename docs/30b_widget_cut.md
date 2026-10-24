@@ -100,7 +100,7 @@ Goal: Live Activity per Q4–Q5. Island compact / expanded / minimal + lock scre
 cannot switch by itself (row 9), «until start» and «until end» are two timers side by side, each
 counting only in its own window; the app ends the activity when it runs, otherwise the system removes
 it (8 h limit — documentation). Start rule per Q4 (cannot start with the app closed — row 7).
-Every timer checks its target is still ahead before `Date()...target`: a past target is an inverted
+Every timer takes one `now`, checks the target is still ahead and builds `now...target`: a past target is an inverted
 `ClosedRange` and crashes the extension at the next re-render (GPT review of the spike, fixed there).
 Done when: simulator screenshots of all four presentations by numbers; the start rule unit-tested;
 Alexey sees it on a shoot day.

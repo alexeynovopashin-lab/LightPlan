@@ -97,8 +97,9 @@ struct Countdown: View {
     var body: some View {
         // A past target makes `Date()...target` an inverted ClosedRange — a crash at re-render (GPT review of 79d3528).
         let target = stale ? state.end : state.until
-        if target > Date() {
-            Text(timerInterval: Date()...target, countsDown: true).monospacedDigit()
+        let now = Date()
+        if target > now {
+            Text(timerInterval: now...target, countsDown: true).monospacedDigit()
         } else {
             Text("0:00").monospacedDigit()
         }
