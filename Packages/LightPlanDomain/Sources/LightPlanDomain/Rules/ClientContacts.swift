@@ -154,8 +154,10 @@ public enum ClientContacts {
     public enum Action: Sendable, Hashable {
         /// Номера нет в книге — завести контакт.
         case create(key: String, card: ContactCard)
-        /// Свой контакт, клиента поправили — поправить контакт.
-        case update(key: String, id: String, card: ContactCard)
+        /// Свой контакт, клиента поправили — поправить контакт. `was` — каким его записали в прошлый раз: стирается только
+        /// записанное приложением, дописанное человеком в Контактах остаётся. `key` — нынешний ключ человека (люди могли
+        /// переставиться: связь переезжает к нему).
+        case update(key: String, id: String, card: ContactCard, was: ContactCard)
         /// Свой контакт удалили руками в Контактах — связь забыть и заново не заводить.
         case gone(key: String)
     }
@@ -196,15 +198,34 @@ public enum ClientContacts {
         }
         var plan = Plan()
         for c in clients where allowed.contains(c.id) {
-            for (key, person, card) in cards(of: c, anniversary: anniversary(c), country: country) {
+            let desired = cards(of: c, anniversary: anniversary(c), country: country)
+            // Связи этого клиента. Человек узнаёт свой контакт сперва по номеру, потом по месту: удалили первого человека
+            // семьи — второй не переезжает в контакт первого (ревью GPT к 3e34cb3).
+            let mine = links.filter { $0.key.hasPrefix(c.id + "#") }.sorted { $0.key < $1.key }
+            let desiredPhones = Set(desired.map { phoneKey($0.card.phone, country: country) })
+            var claimed = Set<String>()
+            for (key, person, card) in desired {
                 let k = phoneKey(card.phone, country: country)
-                if let link = links[key] {
+                let byPhone = mine.first { !claimed.contains($0.key) && phoneKey($0.value.card.phone, country: country) == k }
+                let byPlace: (key: String, value: Link)? = links[key].flatMap { l in
+                    let lk = phoneKey(l.card.phone, country: country)
+                    return claimed.contains(key) || (lk != k && desiredPhones.contains(lk)) ? nil : (key, l)
+                }
+                if let (lk, link) = byPhone.map({ ($0.key, $0.value) }) ?? byPlace {
+                    claimed.insert(lk)
                     if !inBook.contains(link.id) {
-                        plan.actions.append(.gone(key: key))
-                    } else if link.card != card {
-                        plan.actions.append(.update(key: key, id: link.id, card: card))
-                        own.insert(k)
+                        plan.actions.append(.gone(key: lk))
+                        continue
                     }
+                    // Новый номер уже есть в чужом контакте — свой не правим (был бы дубль), из чужого читаем.
+                    if phoneKey(link.card.phone, country: country) != k, let f = foreign[k] {
+                        plan.reads.append(Read(client: c.id, person: person, contactId: f))
+                        continue
+                    }
+                    if link.card != card || lk != key {
+                        plan.actions.append(.update(key: key, id: link.id, card: card, was: link.card))
+                    }
+                    own.insert(k)
                     continue
                 }
                 guard !dropped.contains(key) else { continue }

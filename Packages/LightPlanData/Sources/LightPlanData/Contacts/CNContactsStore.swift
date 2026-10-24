@@ -122,12 +122,12 @@ public final class CNContactsStore: ContactsStoring, @unchecked Sendable {
     ].map { $0 as NSString }
     }
 
-    public func update(id: String, _ card: ContactCard) async throws {
+    public func update(id: String, _ card: ContactCard, was: ContactCard) async throws {
         try await run {
             guard let c = try self.store.unifiedContacts(matching: CNContact.predicateForContacts(withIdentifiers: [id]),
                                                     keysToFetch: Self.writeKeys).first?.mutableCopy() as? CNMutableContact
             else { throw Missing() }
-            Self.fill(c, card)
+            Self.fill(c, card, was: was)
             let req = CNSaveRequest()
             req.update(c)
             try self.store.execute(req)
@@ -145,23 +145,36 @@ public final class CNContactsStore: ContactsStoring, @unchecked Sendable {
         }
     }
 
-    static func fill(_ c: CNMutableContact, _ card: ContactCard) {
+    /// Записать карту в контакт. `was` — каким приложение записало его прошлый раз (`nil` — новый контакт): из номеров,
+    /// дат и профилей убирается только записанное приложением, дописанное человеком в Контактах остаётся (ревью GPT к
+    /// 3e34cb3: правка имени стирала чужие профили). Имя приложение держит своим.
+    static func fill(_ c: CNMutableContact, _ card: ContactCard, was: ContactCard? = nil) {
+        let cc = TelCountry.fallback
         c.givenName = card.given
         c.middleName = card.middle
         c.familyName = card.family
-        c.phoneNumbers = card.phone.isEmpty ? []
-            : [CNLabeledValue(label: CNLabelPhoneNumberMobile, value: CNPhoneNumber(stringValue: card.phone))]
+        let ours = Set([was?.phone, card.phone].compactMap { $0 }.map { ClientContacts.phoneKey($0, country: cc) }.filter { !$0.isEmpty })
+        var phones = c.phoneNumbers.filter { !ours.contains(ClientContacts.phoneKey($0.value.stringValue, country: cc)) }
+        if !card.phone.isEmpty {
+            phones.insert(CNLabeledValue(label: CNLabelPhoneNumberMobile, value: CNPhoneNumber(stringValue: card.phone)), at: 0)
+        }
+        c.phoneNumbers = phones
+        let now = c.birthday.flatMap { ClientContacts.birthday(year: $0.year, month: $0.month, day: $0.day) }
         if let b = Birthday(card.birthday) {
             var d = DateComponents()
             d.year = b.year
             d.month = b.month
             d.day = b.day
             c.birthday = d
-        } else {
-            c.birthday = nil
+        } else if now != nil, now == was?.birthday {
+            c.birthday = nil            // у клиента день рождения стёрли — стираем и тот, что записали сами
         }
-        // Годовщина — среди «Дат» с меткой «годовщина»; прочие даты, если человек их дописал, остаются.
-        var dates = c.isKeyAvailable(CNContactDatesKey) ? c.dates.filter { $0.label != CNLabelDateAnniversary } : []
+        // Годовщина — среди «Дат» с меткой «годовщина»; убирается только записанная приложением.
+        func same(_ v: CNLabeledValue<NSDateComponents>, _ a: CivilDate?) -> Bool {
+            guard let a else { return false }
+            return v.label == CNLabelDateAnniversary && v.value.year == a.year && v.value.month == a.month && v.value.day == a.day
+        }
+        var dates = c.dates.filter { !same($0, was?.anniversary) && !same($0, card.anniversary) }
         if let a = card.anniversary {
             let d = NSDateComponents()
             d.year = a.year
@@ -170,11 +183,17 @@ public final class CNContactsStore: ContactsStoring, @unchecked Sendable {
             dates.append(CNLabeledValue(label: CNLabelDateAnniversary, value: d))
         }
         c.dates = dates
-        c.socialProfiles = card.messengers.compactMap { m in
+        let written = Set((was?.messengers ?? []) + card.messengers)
+        var profiles = c.socialProfiles.filter { p in
+            guard let m = ClientContacts.messenger(service: p.value.service, username: p.value.username, url: p.value.urlString) else { return true }
+            return !written.contains(m)
+        }
+        profiles += card.messengers.compactMap { m in
             guard let kind = MessengerKind(rawValue: m.kind) else { return nil }
-            let url = ClientReach.url(kind, value: m.value, phone: card.phone, country: .fallback)?.absoluteString ?? ""
+            let url = ClientReach.url(kind, value: m.value, phone: card.phone, country: cc)?.absoluteString ?? ""
             return CNLabeledValue(label: nil, value: CNSocialProfile(urlString: url, username: m.value, userIdentifier: nil,
                                                                      service: kind.title))
         }
+        c.socialProfiles = profiles
     }
 }

@@ -85,9 +85,41 @@ struct ClientContactsTests {
         var edited = c
         edited.people[0].name = "Ольга Петрова"
         let p = plan([edited], links: ["c1#0": .init(id: "app-1", card: card)], book: book)
-        guard case .update(let key, let id, let new)? = p.actions.first, p.actions.count == 1 else { Issue.record("\(p.actions)"); return }
+        guard case .update(let key, let id, let new, _)? = p.actions.first, p.actions.count == 1 else { Issue.record("\(p.actions)"); return }
         #expect(key == "c1#0" && id == "app-1" && new.family == "Петрова")
         #expect(p.reads.isEmpty)    // свой контакт — не «твой»: из него не читаем
+    }
+
+    /// Ревью GPT к 3e34cb3: номер клиента сменили на номер, что уже есть в твоём контакте, — свой не правим (был бы дубль),
+    /// из твоего читаем.
+    @Test func numberChangedToOneInTheBookDoesNotDuplicate() {
+        let c = client("c1", .person, [("Ольга", "8 916 123-45-67")])
+        let card = ClientContacts.cards(of: c, anniversary: nil, country: ru)[0].card
+        var moved = c
+        moved.people[0].phone = "8 903 111-22-33"
+        let book = [ClientContacts.BookEntry(id: "app-1", phones: ["+79161234567"]), .init(id: "mine", phones: ["+7 903 111-22-33"])]
+        let p = plan([moved], links: ["c1#0": .init(id: "app-1", card: card)], book: book)
+        #expect(p.actions.isEmpty)
+        #expect(p.reads == [ClientContacts.Read(client: "c1", person: 0, contactId: "mine")])
+    }
+
+    /// Ревью GPT к 3e34cb3: удалили первого человека семьи — второй узнаёт свой контакт по номеру, а не по месту.
+    @Test func peopleShiftedKeepTheirOwnContacts() {
+        let fam = client("f", .family, [("Мария", "8 913 222-33-44"), ("Иван", "8 913 555-66-77")])
+        let cards = ClientContacts.cards(of: fam, anniversary: nil, country: ru)
+        let links = ["f#0": ClientContacts.Link(id: "app-m", card: cards[0].card), "f#1": .init(id: "app-i", card: cards[1].card)]
+        let book = [ClientContacts.BookEntry(id: "app-m", phones: ["+79132223344"]), .init(id: "app-i", phones: ["+79135556677"])]
+        var left = fam
+        left.people.remove(at: 0)
+        let p = plan([left], links: links, book: book)
+        guard case .update(let key, let id, let card, _)? = p.actions.first, p.actions.count == 1 else { Issue.record("\(p.actions)"); return }
+        #expect(key == "f#0" && id == "app-i" && card.given == "Иван")
+        // Поменяли местами — каждый остаётся в своём контакте.
+        var swapped = fam
+        swapped.people.swapAt(0, 1)
+        let q = plan([swapped], links: links, book: book)
+        let ids = q.actions.compactMap { a -> String? in if case .update(_, let id, let card, _) = a { return id + ":" + card.given } else { return nil } }
+        #expect(ids.sorted() == ["app-i:Иван", "app-m:Мария"])
     }
 
     @Test func ownContactDeletedByHandIsForgottenAndNotRecreated() {

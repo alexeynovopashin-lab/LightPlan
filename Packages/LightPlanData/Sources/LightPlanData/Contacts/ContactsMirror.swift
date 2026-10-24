@@ -64,9 +64,13 @@ public actor ContactsMirror {
                     edit { $0.links[key] = ClientContacts.Link(id: id, card: card) }
                     report.created += 1
                 } else { report.failed += 1 }
-            case .update(let key, let id, let card):
-                if (try? await store.update(id: id, card)) != nil {
-                    edit { $0.links[key] = ClientContacts.Link(id: id, card: card) }
+            case .update(let key, let id, let card, let was):
+                if (try? await store.update(id: id, card, was: was)) != nil {
+                    // Связь переезжает к нынешнему ключу человека; прежний ключ того же контакта забывается.
+                    edit { r in
+                        r.links = r.links.filter { $0.value.id != id }
+                        r.links[key] = ClientContacts.Link(id: id, card: card)
+                    }
                     report.updated += 1
                 } else { report.failed += 1 }
             case .gone(let key):

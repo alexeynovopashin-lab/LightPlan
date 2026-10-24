@@ -19,7 +19,8 @@ public protocol ContactsStoring: Sendable {
     /// Что прочитать из контакта (день рождения, мессенджеры); нет такого — `nil`.
     func found(id: String) async -> FoundContact?
     func create(_ card: ContactCard) async throws -> String
-    func update(id: String, _ card: ContactCard) async throws
+    /// Поправить свой контакт: `was` — каким его записали прошлый раз; дописанное человеком остаётся.
+    func update(id: String, _ card: ContactCard, was: ContactCard) async throws
     func delete(id: String) async throws
 }
 

@@ -7,6 +7,8 @@ import LightPlanDomain
 struct ContactsApplied: Equatable {
     var clients: [Client]
     var allowed: Set<String>
+    /// Годовщины пар считаются из свадеб: сдвинули свадьбу — контакт тоже правится (ревью GPT к 3e34cb3).
+    var anniversaries: [String: CivilDate]
 }
 
 /// Клиенты в Контактах iPhone (шаг К7, справка `docs/clients_reference.md` § 5): iPhone показывает, кто звонит.
@@ -117,12 +119,12 @@ extension AppModel {
         contactsAuth = await store.authorization()
         readContactsMemory()
         let allowed = contactsAllowed()
-        let applied = ContactsApplied(clients: snapshot.clients, allowed: allowed)
         guard !allowed.isEmpty else { contactsApplied = nil; return }
-        if !force, contactsApplied == applied { return }
         let annivs = Dictionary(snapshot.clients.compactMap { c in
             Greetings.anniversary(of: c, in: snapshot.sessions).map { (c.id, $0) }
         }, uniquingKeysWith: { a, _ in a })
+        let applied = ContactsApplied(clients: snapshot.clients, allowed: allowed, anniversaries: annivs)
+        if !force, contactsApplied == applied { return }
         switch await mirror.sync(clients: snapshot.clients, allowed: allowed, anniversaries: annivs, country: telCountry) {
         case .synced(let report):
             contactsFailed = report.failed > 0

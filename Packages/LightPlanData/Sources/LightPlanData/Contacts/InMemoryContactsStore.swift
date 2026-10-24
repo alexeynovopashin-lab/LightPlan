@@ -91,7 +91,7 @@ public final class InMemoryContactsStore: ContactsStoring, @unchecked Sendable {
         }
     }
 
-    public func update(id: String, _ card: ContactCard) async throws {
+    public func update(id: String, _ card: ContactCard, was: ContactCard) async throws {
         try box.withLock { s in
             guard s.auth == .full, !s.failWrites, let i = s.entries.firstIndex(where: { $0.id == id }) else { throw Failed() }
             s.writes += 1

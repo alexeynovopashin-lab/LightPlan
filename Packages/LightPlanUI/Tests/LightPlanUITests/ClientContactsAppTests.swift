@@ -201,6 +201,26 @@ struct ClientContactsAppTests {
         #expect(store.writes == 0)
     }
 
+    /// Ревью GPT к 3e34cb3: сдвинули свадьбу — годовщина в Контактах тоже сдвигается, хотя карточка клиента та же.
+    @Test func weddingMovedUpdatesTheAnniversary() async {
+        let store = InMemoryContactsStore(auth: .full)
+        var pair = Client(id: "p", kind: .couple)
+        pair.people = [ClientPerson(name: "Анна", phone: "+7 903 111-22-33")]
+        let app = model([])
+        app.attachContacts(store: store, memory: InMemoryContactsMemory(), writes: true)
+        var w = Session(id: "w", kind: .shoot, day: CivilDate(year: 2025, month: 6, day: 14), start: 600, end: 840, genre: .wedding)
+        w.clientId = "p"
+        app.snapshot.clients = [pair]
+        app.snapshot.sessions = [w]
+        app.syncContacts(force: true)
+        await settle(app)
+        #expect(store.entries.first?.card?.anniversary == CivilDate(year: 2025, month: 6, day: 14))
+        app.snapshot.sessions[0].day = CivilDate(year: 2025, month: 6, day: 21)
+        app.syncContacts()
+        await settle(app)
+        #expect(store.entries.first?.card?.anniversary == CivilDate(year: 2025, month: 6, day: 21))
+    }
+
     @Test func pickedContactFillsTheCardPerson() {
         let app = model([Self.person("c", "", "")])
         app.takeClientContact("c", at: 0, FoundContact(name: "Ольга Смирнова", phones: ["+7 (903) 111-22-33", "8 916 123-45-67"],

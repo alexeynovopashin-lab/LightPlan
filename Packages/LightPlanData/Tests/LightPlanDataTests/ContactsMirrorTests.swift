@@ -142,6 +142,37 @@ import Contacts
         #expect(f.messengers == [ClientMessenger(kind: "vk", value: "id123"), ClientMessenger(kind: "telegram", value: "olga_s")])
     }
 
+    /// Ревью GPT к 3e34cb3: правка своего контакта не стирает то, что человек дописал в Контактах сам.
+    @Test func updateKeepsWhatThePersonAddedByHand() {
+        let was = ContactCard(given: "Ольга", family: "Смирнова", phone: "+79161234567", birthday: "1990-10-25",
+                              anniversary: CivilDate(year: 2025, month: 6, day: 14),
+                              messengers: [ClientMessenger(kind: "telegram", value: "olga_s")])
+        let c = CNMutableContact()
+        CNContactsStore.fill(c, was)
+        c.phoneNumbers.append(CNLabeledValue(label: CNLabelWork, value: CNPhoneNumber(stringValue: "+7 383 222-33-44")))
+        c.socialProfiles.append(CNLabeledValue(label: nil, value: CNSocialProfile(urlString: nil, username: "olga.ig", userIdentifier: nil, service: "Instagram")))
+        let party = NSDateComponents(); party.month = 3; party.day = 1
+        c.dates.append(CNLabeledValue(label: "праздник", value: party))
+        var now = was
+        now.family = "Петрова"
+        now.phone = "+79035556677"
+        now.messengers = [ClientMessenger(kind: "telegram", value: "olga_p")]
+        now.anniversary = CivilDate(year: 2025, month: 6, day: 15)
+        CNContactsStore.fill(c, now, was: was)
+        #expect(c.familyName == "Петрова")
+        #expect(c.phoneNumbers.map { $0.value.stringValue } == ["+79035556677", "+7 383 222-33-44"])
+        #expect(c.socialProfiles.map { $0.value.service + ":" + $0.value.username }.sorted() == ["Instagram:olga.ig", "Telegram:olga_p"])
+        #expect(c.dates.map { "\($0.label ?? ""):\($0.value.month)-\($0.value.day)" }.sorted() == ["_$!<Anniversary>!$_:6-15", "праздник:3-1"])
+        // День рождения стёрли у клиента — уходит и записанный приложением; поставленный человеком другой — остаётся.
+        var noBd = now
+        noBd.birthday = nil
+        CNContactsStore.fill(c, noBd, was: now)
+        #expect(c.birthday == nil)
+        c.birthday = DateComponents(month: 1, day: 2)
+        CNContactsStore.fill(c, noBd, was: now)
+        #expect(c.birthday?.month == 1)
+    }
+
     @Test func cardWrittenByTheAppReadsBack() {
         let card = ContactCard(given: "Анна", family: "Петрова", phone: "+79031112233", birthday: "1994-04-05",
                                anniversary: CivilDate(year: 2025, month: 6, day: 14),
