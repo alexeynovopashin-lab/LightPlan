@@ -186,6 +186,8 @@ case "$cmd" in
       die "сборка не прошла: лимит Apple бесплатной команды (10 новых App ID за 7 дней). Слот $bid ещё не зарегистрирован — подождать, пока окно в 7 дней освободит места, либо поставить ветку под уже зарегистрированным: LP_BRANCH=<старая ветка> (приложение будет носить её имя). Журнал $log" 4
     fi
     [ $code -eq 0 ] || die "сборка не прошла (exit=$code), журнал $log" 4
+    # Значок (24.10): «LP …» — с «α», основной — чистый; иначе не ставим (два «Light Plan» без различия на экране).
+    "$root/Tools/check_app_icon.sh" "$dd/Build/Products/Debug-iphoneos/LightPlan.app" || die "значок не тот — не ставлю" 4
     xcrun devicectl device install app --device "$DEVICE_ID" "$dd/Build/Products/Debug-iphoneos/LightPlan.app" \
       > "$log.install" 2>&1 || { tail -5 "$log.install"; die "установка не прошла (лимит бесплатной команды? тогда снять закрытые ветки: phone.sh list / uninstall)" 5; }
     # В записи — штамп собранного приложения (то же, что строка в его «Настройках»; файл build_stamp.plist), а не «сейчас»:
