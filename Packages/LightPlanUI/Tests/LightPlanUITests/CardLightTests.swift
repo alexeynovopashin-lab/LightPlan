@@ -53,11 +53,11 @@ struct CardLightTests {
         return s
     }
 
-    private func model(_ sessions: [Session], rain: Bool) -> AppModel {
+    private func model(_ sessions: [Session], rain: Bool, language: String = "ru") -> AppModel {
         var snap = Snapshot()
         snap.sessions = sessions
         let now = ISO8601DateFormatter().date(from: "2026-09-20T12:00:00+03:00")!
-        return AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
+        return AppModel(snapshot: snap, store: nil, language: language, zone: TimeZone(identifier: "Europe/Moscow")!,
                         locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
                         weatherSource: SkySource(rain: rain), now: { now })
     }
@@ -80,6 +80,26 @@ struct CardLightTests {
         #expect(says.first?.text.contains("дождь") == true)
         #expect(app.cardBlocks(s, phase: .before).contains(.light))
         #expect(app.cardWishMissed(s, phase: .before) == "Ожидался закат. Прогноз на этот день — дождь.")
+    }
+
+    /// Та же реплика на пяти языках: en/es/ja/zh начинают с {name} — подставляется точка, как у веба
+    /// («Съёмка», когда точка без имени); ru имени не пишет. Ни одной сырой скобки на экране.
+    @Test(.enabled(if: catalogCompiled, "каталог не скомпилирован: запускать через xcodebuild test"))
+    func badSkyLineInEveryLanguage() async {
+        let want = [
+            "ru": "Ожидался закат, а прогноз обещает дождь · облачность 95%.",
+            "en": "The shoot wanted the sunset, but the forecast says rain · 95% cloud.",
+            "es": "La sesión esperaba el atardecer, pero el pronóstico anuncia lluvia · nubosidad 95%.",
+            "ja": "撮影は日の入りを希望していましたが、予報は雨 · 雲量95%です。",
+            "zh": "拍摄期望日落，但预报为雨·云量95%。",
+        ]
+        for (lang, text) in want.sorted(by: { $0.key < $1.key }) {
+            let app = model([Self.shoot("a", wishes: [.sunset])], rain: true, language: lang)
+            let s = await open(app, "a")
+            let line = app.cardSays(s, phase: .before).first { $0.kind == .golden }?.text ?? ""
+            #expect(line == text, "\(lang)")
+            #expect(!line.contains("{"), "\(lang): сырая подстановка в «\(line)»")
+        }
     }
 
     /// «Звёзды» без «Заката»: о золотом часе ни слова, своя строка есть.

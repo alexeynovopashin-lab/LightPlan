@@ -15,14 +15,31 @@ struct LexiconParityTests {
 
     static let codes = ["ru", "en", "en-GB", "en-US", "es", "ja", "zh"]
 
+    /// Поправки слов веба в приложении (`Tools/lang_fixes.json`, {язык: {ключ: {web, app, why}}}):
+    /// там каталог намеренно расходится с вебом. Поправка годна, пока у веба лежит её `web`.
+    static func fixes(_ f: TextFixtures.LangFile) throws -> [String: [String: String]] {
+        let url = TextFixtures.root.appendingPathComponent("Tools/lang_fixes.json")
+        let obj = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: [String: [String: String]]])
+        var out: [String: [String: String]] = [:]
+        for (code, keys) in obj {
+            for (key, fix) in keys {
+                let i = try #require(f.keys.firstIndex(of: key), "\(key): нет у веба")
+                #expect(f.langs[code]?.t[i] == fix["web"], "\(key) (\(code)): веб сменил слово, поправку смотреть заново")
+                out[code, default: [:]][key] = fix["app"]
+            }
+        }
+        return out
+    }
+
     @Test func everyKeyEveryLanguageMatchesWeb() throws {
         let f = try TextFixtures.load("lang.json", as: TextFixtures.LangFile.self)
+        let fixes = try Self.fixes(f)
         var tally = Tally("строки")
         for code in Self.codes {
             let lex = Lexicon(code)
             let want = try #require(f.langs[code])
             for (i, key) in f.keys.enumerated() {
-                tally.check(code, lex.t(key), want.t[i], key)
+                tally.check(code, lex.t(key), fixes[code]?[key] ?? want.t[i], key)
             }
         }
         #expect(tally.total == 0, Comment(rawValue: tally.report))
@@ -50,12 +67,14 @@ struct LexiconParityTests {
 
     @Test func substitutionByName() throws {
         let f = try TextFixtures.load("lang.json", as: TextFixtures.LangFile.self)
+        let fixes = try Self.fixes(f)
         var tally = Tally("подстановка")
         for code in Self.codes {
             let lex = Lexicon(code)
             let want = try #require(f.langs[code])
             for (key, vars) in f.substVars {
-                tally.check(code, lex.t(key, vars), want.subst[key] ?? "", key)
+                let fixed = fixes[code]?[key].map { Lexicon.substitute($0, vars) }
+                tally.check(code, lex.t(key, vars), fixed ?? want.subst[key] ?? "", key)
             }
         }
         #expect(tally.total == 0, Comment(rawValue: tally.report))

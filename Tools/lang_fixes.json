@@ -1,0 +1,9 @@
+{
+  "zh": {
+    "week.wx": {
+      "web": "{cond}·云量{cloud}%·风速{wind}米/秒",
+      "app": "云量{cloud}%·风速{wind}米/秒",
+      "why": "zh only has {cond}; the week row passes cloud and wind (PlannerWeekView.wxLine), like the web, so {cond} showed raw. ru, en, es, ja say cloud and wind only."
+    }
+  }
+}

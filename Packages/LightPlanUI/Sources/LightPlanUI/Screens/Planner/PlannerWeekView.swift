@@ -33,6 +33,11 @@ struct PlannerWeekBody: View {
         .padding(.horizontal, 20)
         .padding(.top, 6)
     }
+
+    /// Строка погоды раскрытого дня (`.wk-wxs`): те же подстановки, что у веба, — облачность и ветер.
+    nonisolated static func wxLine(_ t: Lexicon, cloud: Int, wind: Int) -> String {
+        t.t("week.wx", ["cloud": "\(cloud)", "wind": "\(wind)"])
+    }
 }
 
 private struct WeekRow: View {
@@ -198,7 +203,7 @@ private struct WeekRow: View {
             det(pal, "sunrise", f.t.t("tele.sunrise"), f.fmt(sky.rise), gold: false)
             if sky.set != nil { det(pal, "sunset", f.t.t("tele.sunset"), f.fmt(sky.set), gold: false) }
             if sky.goldenB != nil { det(pal, "clock", f.t.t("tele.golden"), f.range(sky.goldenB, sky.blueB), gold: true) }
-            Text(wx.map { f.t.t("week.wx", ["cloud": "\($0.cloud)", "wind": "\($0.wind)"]) } ?? f.forecastNote)
+            Text(wx.map { PlannerWeekBody.wxLine(f.t, cloud: $0.cloud, wind: $0.wind) } ?? f.forecastNote)
                 .font(webFont(12)).foregroundStyle(pal.ink4)
         }
         .padding(EdgeInsets(top: 2, leading: 12, bottom: 10, trailing: 12))

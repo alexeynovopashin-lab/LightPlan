@@ -316,7 +316,10 @@ copy of `icons.js` pasted into `beta/index.html` drifted from the file.
 
 `LightPlanUI/Resources/Localizable.xcstrings` is generated from the web's
 `beta/lang.js` (`Tools/lang2xcstrings.js`) — never hand-edit it; a word changes
-on the web and comes here by `make lang`. Only Xcode compiles a catalog: under
+on the web and comes here by `make lang`. Exception: a web word the web keeps but the app must
+not show (Alexey 24.10, «правим только приложение») goes to `Tools/lang_fixes.json`
+(`{lang: {key: {web, app, why}}}`); it applies only while the web still holds `web`, else the
+generator stops. Only Xcode compiles a catalog: under
 `swift test` on the host the catalog tests skip (with a note), so run
 `xcodebuild test` before calling the strings verified. Scripts find the web
 folder next to the repo; **from a worktree set `LIGHT_PLAN_WEB=<path to Light_Plan>`**.
