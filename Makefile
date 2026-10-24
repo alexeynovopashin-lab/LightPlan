@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: phone checkstep help parity blocks lang icons appicon widgetid brightstars milkywaygaia mwdata domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
+.PHONY: phone checkstep clocksweep help parity blocks lang icons appicon widgetid brightstars milkywaygaia mwdata domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -32,6 +32,7 @@ help:
 	@echo "make glass    стекло без подделки: ни системного материала, ни нарисованного блика вне Timebar/ (20д; идёт и фазой сборки)"
 	@echo "make phone    сборка на iPhone Алексея: ARGS=\"install\" | \"uninstall\" | \"list\"; ветка ставит «LP <ветка>» в один из четырёх слотов slotA…D (26т, пул 12.10)"
 	@echo "make checkstep ветка шага против базы: пять строк да/нет, любое «нет» — код 1; ARGS=\"wt/26 [main] --type код [--tests] [--full]\" (26т)"
+	@echo "make clocksweep мины дат: полный набор тестов на подставных «сейчас» (полночь МСК и Томска, конец месяца и года, 2027–2031), ~45 мин; ARGS=\"--targeted\" — каждая будущая дата из тестов, \"--selftest\" — проверка прибора (аудит часов 24.10)"
 	@echo "make draftday  форма при черновике другого дня: окно вопроса, плашка, порядок блоков, числа (28о)"
 	@echo "make shots    пары снимков веб / натив «Света», «Карты», «Съёмок» и «Настроек» и сверка числами (19б, 20а, 21)"
 
@@ -217,3 +218,7 @@ phone:
 # Итерация 26т: проверка шага — четыре строки да/нет.
 checkstep:
 	@Tools/check_step.sh $(ARGS)
+
+# Аудит часов 24.10: тест, сравнивающий «сегодня» с вписанной датой, краснеет ровно в тот день — ловим заранее.
+clocksweep:
+	@python3 Tools/clock_sweep.py $(ARGS)

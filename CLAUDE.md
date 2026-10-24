@@ -278,6 +278,7 @@ make phone ARGS="install"          # slot + name from the branch, build, install
 make phone ARGS="list"             # slot, «Сборка · branch · sha · DD.MM» (same line as at the bottom of its Settings), free slots
 make phone ARGS="uninstall slotB" # a slot, or a branch standing in one (`wt/24a`); uninstall --main only from Alexey's word
 make checkstep ARGS="wt/26 main --type код --tests --full"   # step check: five lines yes/no
+make clocksweep ARGS="--targeted"  # date mines: tests on a faked «now» (Tools/clock_sweep.py); a test model reads the real clock unless built with `now:`
 ```
 
 `Tools/phone.sh`: `main` → «Light Plan»; any other branch → `LP <rest>` in a pool slot (see above);
