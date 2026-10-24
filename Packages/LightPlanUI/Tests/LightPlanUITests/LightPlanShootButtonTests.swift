@@ -33,9 +33,16 @@ struct LightPlanShootButtonTests {
         func save(_ data: Data?) { self.data = data }
     }
 
+    /// «Сейчас» приложения закреплено. День «Съёмок» — «сегодня» по часам в поясе места приложения (без сохранённого
+    /// места — столица языка, Москва), и с настоящими часами 24.10.2026 он совпал с выбранным днём «Света» первого теста:
+    /// тест краснел с 00:00 МСК 24.10 (замер: 23.10 23:59 МСК — зелёный, 24.10 00:01 МСК — красный; 790f4c1 и 7819edb одинаково).
+    private static let now = ISO8601DateFormatter().date(from: "2026-10-20T12:00:00+03:00")!
+
     private func app() -> AppModel {
+        let now = Self.now
         let app = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
-                           locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather())
+                           locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather(),
+                           now: { now })
         app.draftStore = Disk()
         return app
     }
