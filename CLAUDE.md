@@ -251,6 +251,10 @@ for every branch meant each install replaced the previous one. So:
 - Branch merged or dropped → `uninstall` it (commands below); the slot frees up.
 - Old per-branch ids (`Novopashin.LightPlan.wt…`) are not in the pool; `uninstall wt26` and `list` still work with them.
 - Tell Alexey the icon name he is checking.
+- **Icon (24.10):** only `Novopashin.LightPlan` gets the clean `AppIcon`; every other iOS bundle id gets `AppIconAlpha`
+  (same icon + brass «α» badge, placed like the web beta's «B»). Chosen by id in `Config/iOS.xcconfig`; held by
+  `Tools/check_app_icon.sh` (build phase: settings; `phone.sh`: the built .app before install; `--selftest`).
+  Main icon changed → `make appicon` regenerates the α set (`ARGS=--check` only checks it).
 
 One script does all of it — do not hand-build for the phone:
 

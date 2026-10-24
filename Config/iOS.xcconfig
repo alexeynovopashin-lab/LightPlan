@@ -26,3 +26,11 @@ INFOPLIST_KEY_NSCameraUsageDescription = Light Plan uses the camera to show wher
 // «Съёмки в Календаре». Полный доступ, не «только запись»: под записью нельзя завести календарь и нельзя найти своё
 // событие, чтобы сдвинуть или убрать (замер iOS 26.5, Tools/calendar_probe). Читаем и правим только свой календарь.
 INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = Light Plan shows your shoots in its own calendar called “Light Plan” and keeps it up to date when you change something. For that it needs access to Calendar: it reads and changes only its own calendar, never touches other events, and sends nothing anywhere.
+
+// Значок (Алексей 24.10: «пусть на значке будет бирка как на web версии… тут пусть будет альфа»). Чистый AppIcon — только
+// у основного «Light Plan» (Novopashin.LightPlan, ставится из main); любой другой идентификатор (слоты slotA…D, старые wt…)
+// получает AppIconAlpha — тот же значок с латунной «α» (Tools/app_icon_alpha.py). Выбор по идентификатору, не по ветке:
+// phone.sh задаёт его в командной строке, и обойти выбор, не сменив идентификатор, нельзя. Сторожит Tools/check_app_icon.sh.
+LP_APPICON_Novopashin_LightPlan = AppIcon
+LP_APPICON = $(LP_APPICON_$(PRODUCT_BUNDLE_IDENTIFIER:identifier))
+ASSETCATALOG_COMPILER_APPICON_NAME = $(LP_APPICON:default=AppIconAlpha)
