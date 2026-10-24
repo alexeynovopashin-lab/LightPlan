@@ -4,7 +4,7 @@
 # ветки затёрла проверяемую правку. Теперь имя и идентификатор берутся из ветки,
 # а основной идентификатор скрипт даёт только из `main`.
 #
-#   Tools/phone.sh install [--main] [--dry-run]   собрать, поставить, запустить
+#   Tools/phone.sh install [--main] [--dry-run]   собрать, поставить, запустить (--dry-run: слот и адреса, без сборки)
 #   Tools/phone.sh uninstall [--main|slotA|<ветка>|<старый слаг>]   снять приложение (ветка закрыта)
 #   Tools/phone.sh list                           слот, ветка, sha, что стоит на телефоне; свободные слоты
 #   make phone ARGS="install"
@@ -154,7 +154,7 @@ case "$cmd" in
     fi
     if [ "$branch" = "main" ]; then
       bid="$MAIN_BID"; why="основное приложение"
-      [ "$dry" = 1 ] && echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid ($why)" && exit 0
+      [ "$dry" = 1 ] && echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid ($why)" && { "$root/Tools/check_widget_id.sh" --ids "$bid"; exit $?; }
       need_phone
     else
       [ "$dry" = 1 ] || need_phone
@@ -170,6 +170,8 @@ case "$cmd" in
       unlock_slots
       if [ "$dry" = 1 ]; then
         echo "dry-run: ветка $branch @ $sha$dirty → «$name», $bid (слот ${slot#slot} — $why)"
+        # Адреса виджета и общей папки (30б.1) — из настроек сборки с тем же LP_APP_ID, что уйдёт в xcodebuild.
+        "$root/Tools/check_widget_id.sh" --ids "$bid" || exit 1
         sleep "${LP_PHONE_DRY_HOLD:-0}"
         exit 0
       fi
@@ -179,7 +181,7 @@ case "$cmd" in
     echo "сборка «$name» ($bid) из $branch @ $sha$dirty…"
     ( cd "$root" && xcodebuild -project LightPlan.xcodeproj -scheme LightPlan-iOS -configuration Debug \
         -destination "platform=iOS,id=$DEVICE_ID" -derivedDataPath "$dd" -allowProvisioningUpdates \
-        PRODUCT_BUNDLE_IDENTIFIER="$bid" INFOPLIST_KEY_CFBundleDisplayName="$name" build ) > "$log" 2>&1
+        LP_APP_ID="$bid" LP_APP_NAME="$name" build ) > "$log" 2>&1
     code=$?
     grep -nE 'error:|BUILD (SUCCEEDED|FAILED)' "$log" | head -10
     if [ $code -ne 0 ] && grep -q "maximum App ID limit" "$log"; then
@@ -188,6 +190,8 @@ case "$cmd" in
     [ $code -eq 0 ] || die "сборка не прошла (exit=$code), журнал $log" 4
     # Значок (24.10): «LP …» — с «α», основной — чистый; иначе не ставим (два «Light Plan» без различия на экране).
     "$root/Tools/check_app_icon.sh" "$dd/Build/Products/Debug-iphoneos/LightPlan.app" || die "значок не тот — не ставлю" 4
+    # Виджет (30б.1): внутри, с адресом <приложение>.Widget и общей папкой group.<приложение> у обоих — иначе не ставим.
+    "$root/Tools/check_widget_id.sh" "$dd/Build/Products/Debug-iphoneos/LightPlan.app" || die "адреса виджета не те — не ставлю" 4
     xcrun devicectl device install app --device "$DEVICE_ID" "$dd/Build/Products/Debug-iphoneos/LightPlan.app" \
       > "$log.install" 2>&1 || { tail -5 "$log.install"; die "установка не прошла (лимит бесплатной команды? тогда снять закрытые ветки: phone.sh list / uninstall)" 5; }
     # В записи — штамп собранного приложения (то же, что строка в его «Настройках»; файл build_stamp.plist), а не «сейчас»:

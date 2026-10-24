@@ -7,11 +7,44 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8A5BFE90308D136700E039E2 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8A5BFE8F308D136700E039E2 /* WidgetKit.framework */; };
+		8A5BFE92308D136700E039E2 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8A5BFE91308D136700E039E2 /* SwiftUI.framework */; };
+		8A5BFE9F308D136800E039E2 /* LightPlanWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8A5BFE8D308D136700E039E2 /* LightPlanWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8A5BFEA6308D13ED00E039E2 /* LightPlanCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8A5BFEA5308D13ED00E039E2 /* LightPlanCore */; };
+		8A5BFEA8308D13F600E039E2 /* LightPlanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 8A5BFEA7308D13F600E039E2 /* LightPlanDomain */; };
 		A60000000000000000000001 /* LightPlanUI in Frameworks */ = {isa = PBXBuildFile; productRef = A50000000000000000000001 /* LightPlanUI */; };
 		A60000000000000000000002 /* LightPlanUI in Frameworks */ = {isa = PBXBuildFile; productRef = A50000000000000000000002 /* LightPlanUI */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		8A5BFE9D308D136800E039E2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AB0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A5BFE8C308D136700E039E2;
+			remoteInfo = LightPlanWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8A5BFEA0308D136800E039E2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				8A5BFE9F308D136800E039E2 /* LightPlanWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		8A5BFE8D308D136700E039E2 /* LightPlanWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LightPlanWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A5BFE8F308D136700E039E2 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		8A5BFE91308D136700E039E2 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		8A5BFEA9308D142200E039E2 /* Widget.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Widget.xcconfig; sourceTree = "<group>"; };
 		A10000000000000000000001 /* LightPlan.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LightPlan.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000002 /* LightPlan.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LightPlan.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000010 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
@@ -28,7 +61,25 @@
 		A10000000000000000000031 /* Spikes */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Spikes; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8A5BFEA3308D136800E039E2 /* Exceptions for "LightPlanWidget" folder in "LightPlanWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8A5BFE8C308D136700E039E2 /* LightPlanWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		8A5BFE93308D136700E039E2 /* LightPlanWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8A5BFEA3308D136800E039E2 /* Exceptions for "LightPlanWidget" folder in "LightPlanWidgetExtension" target */,
+			);
+			path = LightPlanWidget;
+			sourceTree = "<group>";
+		};
 		A30000000000000000000001 /* App-iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "App-iOS";
@@ -42,6 +93,17 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		8A5BFE8A308D136700E039E2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A5BFEA6308D13ED00E039E2 /* LightPlanCore in Frameworks */,
+				8A5BFE92308D136700E039E2 /* SwiftUI.framework in Frameworks */,
+				8A5BFEA8308D13F600E039E2 /* LightPlanDomain in Frameworks */,
+				8A5BFE90308D136700E039E2 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A70000000000000000000003 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -61,6 +123,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		8A5BFE8E308D136700E039E2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8A5BFE8F308D136700E039E2 /* WidgetKit.framework */,
+				8A5BFE91308D136700E039E2 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A20000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
@@ -70,6 +141,8 @@
 				A10000000000000000000031 /* Spikes */,
 				A10000000000000000000030 /* Tools */,
 				A20000000000000000000003 /* Config */,
+				8A5BFE93308D136700E039E2 /* LightPlanWidget */,
+				8A5BFE8E308D136700E039E2 /* Frameworks */,
 				A20000000000000000000002 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -79,6 +152,7 @@
 			children = (
 				A10000000000000000000001 /* LightPlan.app */,
 				A10000000000000000000002 /* LightPlan.app */,
+				8A5BFE8D308D136700E039E2 /* LightPlanWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -91,6 +165,7 @@
 				A10000000000000000000012 /* Release.xcconfig */,
 				A10000000000000000000013 /* iOS.xcconfig */,
 				A10000000000000000000014 /* macOS.xcconfig */,
+				8A5BFEA9308D142200E039E2 /* Widget.xcconfig */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -110,6 +185,30 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		8A5BFE8C308D136700E039E2 /* LightPlanWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A5BFEA4308D136800E039E2 /* Build configuration list for PBXNativeTarget "LightPlanWidgetExtension" */;
+			buildPhases = (
+				8A5BFE89308D136700E039E2 /* Sources */,
+				8A5BFE8A308D136700E039E2 /* Frameworks */,
+				8A5BFE8B308D136700E039E2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8A5BFE93308D136700E039E2 /* LightPlanWidget */,
+			);
+			name = LightPlanWidgetExtension;
+			packageProductDependencies = (
+				8A5BFEA5308D13ED00E039E2 /* LightPlanCore */,
+				8A5BFEA7308D13F600E039E2 /* LightPlanDomain */,
+			);
+			productName = LightPlanWidgetExtension;
+			productReference = 8A5BFE8D308D136700E039E2 /* LightPlanWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		A80000000000000000000001 /* LightPlan-iOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = AA0000000000000000000002 /* Build configuration list for PBXNativeTarget "LightPlan-iOS" */;
@@ -119,10 +218,12 @@
 				A70000000000000000000003 /* Frameworks */,
 				A70000000000000000000004 /* Resources */,
 				A70000000000000000000021 /* Stamp build info */,
+				8A5BFEA0308D136800E039E2 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				8A5BFE9E308D136800E039E2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A30000000000000000000001 /* App-iOS */,
@@ -167,9 +268,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2600;
-				LastUpgradeCheck = 2600;
+				LastSwiftUpdateCheck = 2710;
+				LastUpgradeCheck = 2710;
 				TargetAttributes = {
+					8A5BFE8C308D136700E039E2 = {
+						CreatedOnToolsVersion = 27.1;
+					};
 					A80000000000000000000001 = {
 						CreatedOnToolsVersion = 26.0;
 					};
@@ -201,11 +305,19 @@
 			targets = (
 				A80000000000000000000001 /* LightPlan-iOS */,
 				A80000000000000000000002 /* LightPlan-macOS */,
+				8A5BFE8C308D136700E039E2 /* LightPlanWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		8A5BFE8B308D136700E039E2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A70000000000000000000004 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -302,6 +414,13 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		8A5BFE89308D136700E039E2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A70000000000000000000002 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -318,7 +437,29 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		8A5BFE9E308D136800E039E2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A5BFE8C308D136700E039E2 /* LightPlanWidgetExtension */;
+			targetProxy = 8A5BFE9D308D136800E039E2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		8A5BFEA1308D136800E039E2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8A5BFEA9308D142200E039E2 /* Widget.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		8A5BFEA2308D136800E039E2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8A5BFEA9308D142200E039E2 /* Widget.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
 		A90000000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A10000000000000000000011 /* Debug.xcconfig */;
@@ -364,6 +505,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		8A5BFEA4308D136800E039E2 /* Build configuration list for PBXNativeTarget "LightPlanWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8A5BFEA1308D136800E039E2 /* Debug */,
+				8A5BFEA2308D136800E039E2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		AA0000000000000000000001 /* Build configuration list for PBXProject "LightPlan" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -417,6 +567,16 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		8A5BFEA5308D13ED00E039E2 /* LightPlanCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A40000000000000000000001 /* XCLocalSwiftPackageReference "Packages/LightPlanCore" */;
+			productName = LightPlanCore;
+		};
+		8A5BFEA7308D13F600E039E2 /* LightPlanDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A40000000000000000000002 /* XCLocalSwiftPackageReference "Packages/LightPlanDomain" */;
+			productName = LightPlanDomain;
+		};
 		A50000000000000000000001 /* LightPlanUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A40000000000000000000005 /* XCLocalSwiftPackageReference "Packages/LightPlanUI" */;

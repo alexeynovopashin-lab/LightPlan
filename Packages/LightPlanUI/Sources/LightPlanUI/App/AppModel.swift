@@ -364,6 +364,8 @@ public final class AppModel {
     var imageLinks: (any ImageLinkReading)?
     /// Режим «Сеть» и детектор доступности зарубежного (28л.6): общий для погоды и читалок; `nil` — в тестах и снимках.
     var netHub: NetworkPolicyHub?
+    /// Файл виджета в общей папке (30б.1); `nil` — в тестах, снимках и на Mac.
+    var widgetShare: WidgetShare?
     /// Режим «Авто» / «Только напрямую»: ключ `netMode` лежит в снимке среди чужих (`extra`), веб его не знает.
     public internal(set) var netMode: NetworkMode
     /// Что детектор думает о зарубежных адресах; экран «Сеть» пишет это словом.
@@ -707,6 +709,8 @@ public final class AppModel {
         model.attachCalendar()      // съёмки в Календаре iPhone, если человек включил (30.1)
         model.debugCalendarProbe()  // замер на настоящем календаре симулятора (`-LPCalendarProbe`, Debug)
         model.attachContacts()      // клиенты в Контактах iPhone — пишет только обычный «Light Plan» (К7)
+        model.widgetShare = WidgetShare.live()
+        model.publishWidget()       // место «Света» — виджету на главном экране (30б.1)
         model.debugContactsProbe()  // замер на настоящей книге симулятора (`-LPContactsProbe`, Debug)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
@@ -927,6 +931,7 @@ public final class AppModel {
         }
         light.placeFollowing = followingLive
         remember()
+        publishWidget()
     }
 
     // MARK: - Перевод настроек в типы экранов

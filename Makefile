@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: phone checkstep help parity blocks lang icons appicon brightstars milkywaygaia mwdata domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
+.PHONY: phone checkstep help parity blocks lang icons appicon widgetid brightstars milkywaygaia mwdata domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -15,6 +15,7 @@ help:
 	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
 	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
 	@echo "make appicon  значок «LP …» с биркой «α» из основного AppIcon (ARGS=--check — собран ли из нынешнего), и проверка выбора значка по идентификатору"
+	@echo "make widgetid адреса виджета: основной и слоты slotA…D дают <адрес>.Widget и group.<адрес> (30б.1)"
 	@echo "make brightstars яркие звёзды AR (V ≤ 2,5): JSON из снимков каталогов, Swift из JSON, проверка числами; без сети (снимки — node Tools/bright_stars/fetch.js)"
 	@echo "make milkywaygaia Млечный Путь из Gaia DR3: звёзды G ≤ 10 + карта свечения, картинки, проверка числами и повтор прогона; без сети, если есть сырой кэш (python3 Tools/milkyway_gaia/fetch.py, ~15 мин)"
 	@echo "make mwdata   данные Gaia (звёзды, карта свечения, spec.json) в ресурсы приложения без правки, сверка побайтно (29.8в.19)"
@@ -81,6 +82,10 @@ lang:
 appicon:
 	@python3 Tools/app_icon_alpha.py $(ARGS)
 	@Tools/check_app_icon.sh --selftest
+
+# Адреса виджета (30б.1): основной и четыре слота — приложение, <адрес>.Widget, group.<адрес>.
+widgetid:
+	@Tools/check_widget_id.sh --selftest
 
 icons:
 	@node Tools/icons2assets.js

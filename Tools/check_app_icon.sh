@@ -41,8 +41,9 @@ case "${1:-}" in
     expect 1 "$MAIN_BID.slotA" AppIcon
     expect 1 "$MAIN_BID" AppIconAlpha
     for bid in "$MAIN_BID" "$MAIN_BID.slotA" "$MAIN_BID.slotD" "$MAIN_BID.wt26"; do
-      got="$(cd "$root" && xcodebuild -project LightPlan.xcodeproj -scheme LightPlan-iOS -configuration Debug -showBuildSettings \
-        PRODUCT_BUNDLE_IDENTIFIER="$bid" 2>/dev/null | sed -n 's/^ *ASSETCATALOG_COMPILER_APPICON_NAME = //p')"
+      # Только таргет приложения: у схемы ещё и виджет (30б.1) со своим пустым значком. Адрес — как у phone.sh, через LP_APP_ID.
+      got="$(cd "$root" && xcodebuild -project LightPlan.xcodeproj -target LightPlan-iOS -configuration Debug -showBuildSettings \
+        LP_APP_ID="$bid" 2>/dev/null | sed -n 's/^ *ASSETCATALOG_COMPILER_APPICON_NAME = //p')"
       verdict "$bid" "$got" "Config/iOS.xcconfig" || fail=1
     done
     [ "$fail" = 0 ] && echo "selftest значка: ок"
