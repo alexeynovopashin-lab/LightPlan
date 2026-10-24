@@ -95,6 +95,12 @@ struct Countdown: View {
     let state: GoldenAttributes.ContentState
     let stale: Bool
     var body: some View {
-        Text(timerInterval: Date()...(stale ? state.end : state.until), countsDown: true).monospacedDigit()
+        // A past target makes `Date()...target` an inverted ClosedRange — a crash at re-render (GPT review of 79d3528).
+        let target = stale ? state.end : state.until
+        if target > Date() {
+            Text(timerInterval: Date()...target, countsDown: true).monospacedDigit()
+        } else {
+            Text("0:00").monospacedDigit()
+        }
     }
 }
