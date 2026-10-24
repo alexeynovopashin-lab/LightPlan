@@ -1,0 +1,381 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		622526F23A19EF41A0598477 /* ext.bf.LightPlanDomain */ = {
+			isa = PBXBuildFile;
+			productRef = 8806DDE99E4ECAE560CA4646;
+		};
+		8D757C871E754B26F73BDB71 /* app.bf.LightPlanCore */ = {
+			isa = PBXBuildFile;
+			productRef = AD1D591B898CE8D60EAFB080;
+		};
+		B0BC7FF03BC6EC6072A193B3 /* app.bf.embed */ = {
+			isa = PBXBuildFile;
+			fileRef = 8AB26D46DEF0304B282E3310;
+			settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); };
+		};
+		B9C05A220474F582F6CF31BE /* ext.bf.LightPlanCore */ = {
+			isa = PBXBuildFile;
+			productRef = EAC83769A073602CE1E40670;
+		};
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C749E954CD7D70F90CB42C34 /* proxy.ext */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0;
+			proxyType = 1;
+			remoteGlobalIDString = B764994D01C1F55C59861410;
+			remoteInfo = Spike30bWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		377660779F178B0A5325BAC1 /* app.phase.embed */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B0BC7FF03BC6EC6072A193B3,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		845F65209D19F1E91A3C573D /* product.app */ = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.application;
+			includeInIndex = 0;
+			path = Spike30b.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		8AB26D46DEF0304B282E3310 /* product.ext */ = {
+			isa = PBXFileReference;
+			explicitFileType = "wrapper.app-extension";
+			includeInIndex = 0;
+			path = Spike30bWidget.appex;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		3A05D798353EC86B1B05509D /* group.Widget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Widget;
+			sourceTree = "<group>";
+		};
+		9E9FA5AA261BC5BDC27DE6C3 /* group.Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		D29FC6E3AF445F2F81853E9F /* group.App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		27E1F855DAAC6C96DAD1192D /* ext.phase.PBXFrameworksBuildPhase */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B9C05A220474F582F6CF31BE,
+				622526F23A19EF41A0598477,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A8CA1565BB8FFB929A3F969B /* app.phase.PBXFrameworksBuildPhase */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D757C871E754B26F73BDB71,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8916C45310B24E205C92B70E /* group.Products */ = {
+			isa = PBXGroup;
+			children = (
+				845F65209D19F1E91A3C573D,
+				8AB26D46DEF0304B282E3310,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AB48CFA305015276AB5620D4 /* group.main */ = {
+			isa = PBXGroup;
+			children = (
+				D29FC6E3AF445F2F81853E9F,
+				3A05D798353EC86B1B05509D,
+				9E9FA5AA261BC5BDC27DE6C3,
+				8916C45310B24E205C92B70E,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B764994D01C1F55C59861410 /* target.ext */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9DE9254F7DBCB2C0236CD2B6;
+			buildPhases = (
+				EC6913EA0439D554D1D1B739,
+				27E1F855DAAC6C96DAD1192D,
+				FAE8FF3A0826937F63A126B2,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				3A05D798353EC86B1B05509D,
+				9E9FA5AA261BC5BDC27DE6C3,
+			);
+			name = Spike30bWidget;
+			packageProductDependencies = (
+				EAC83769A073602CE1E40670,
+				8806DDE99E4ECAE560CA4646,
+			);
+			productName = Spike30bWidget;
+			productReference = 8AB26D46DEF0304B282E3310;
+			productType = "com.apple.product-type.app-extension";
+		};
+		B902F7C2327297FC583709E1 /* target.app */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ABC57FFEAE38538D0F03B297;
+			buildPhases = (
+				C16C1BC023E8BC55DFD54A8E,
+				A8CA1565BB8FFB929A3F969B,
+				4C58D2B9303D08708875A11C,
+				377660779F178B0A5325BAC1,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0A7E20E0599DC37FF9D0CF48,
+			);
+			fileSystemSynchronizedGroups = (
+				D29FC6E3AF445F2F81853E9F,
+				9E9FA5AA261BC5BDC27DE6C3,
+			);
+			name = Spike30b;
+			packageProductDependencies = (
+				AD1D591B898CE8D60EAFB080,
+			);
+			productName = Spike30b;
+			productReference = 845F65209D19F1E91A3C573D;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 /* project */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = FAEC637DACCF7BEA284B5025;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AB48CFA305015276AB5620D4;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4F9E4761B8B50EA15CF7F298,
+				A228CD42007010B244329CD0,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8916C45310B24E205C92B70E;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B902F7C2327297FC583709E1,
+				B764994D01C1F55C59861410,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4C58D2B9303D08708875A11C /* app.phase.PBXResourcesBuildPhase */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FAE8FF3A0826937F63A126B2 /* ext.phase.PBXResourcesBuildPhase */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C16C1BC023E8BC55DFD54A8E /* app.phase.PBXSourcesBuildPhase */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EC6913EA0439D554D1D1B739 /* ext.phase.PBXSourcesBuildPhase */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0A7E20E0599DC37FF9D0CF48 /* tdep.ext */ = {
+			isa = PBXTargetDependency;
+			target = B764994D01C1F55C59861410;
+			targetProxy = C749E954CD7D70F90CB42C34;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		23B360C22BBF592BED471EB1 /* ext.conf.Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "Spike30bWidget";
+				SWIFT_VERSION = "6.0";
+				TARGETED_DEVICE_FAMILY = "1";
+				IPHONEOS_DEPLOYMENT_TARGET = "26.0";
+				LP_SPIKE_ID = "Novopashin.LightPlan.spike30b";
+				GENERATE_INFOPLIST_FILE = "YES";
+				MARKETING_VERSION = "0.1";
+				CURRENT_PROJECT_VERSION = "1";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LP_SPIKE_ID).Widget";
+				INFOPLIST_FILE = "Support/Widget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Spike30b";
+				CODE_SIGN_ENTITLEMENTS = "Support/Spike.entitlements";
+				SKIP_INSTALL = "YES";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+			};
+			name = Debug;
+		};
+		341858C6A1F7C0B2A088A9C5 /* app.conf.Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "Spike30b";
+				SWIFT_VERSION = "6.0";
+				TARGETED_DEVICE_FAMILY = "1";
+				IPHONEOS_DEPLOYMENT_TARGET = "26.0";
+				LP_SPIKE_ID = "Novopashin.LightPlan.spike30b";
+				GENERATE_INFOPLIST_FILE = "YES";
+				MARKETING_VERSION = "0.1";
+				CURRENT_PROJECT_VERSION = "1";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LP_SPIKE_ID)";
+				INFOPLIST_KEY_CFBundleDisplayName = "Spike30b";
+				INFOPLIST_KEY_NSSupportsLiveActivities = "YES";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = "YES";
+				INFOPLIST_KEY_UILaunchScreen_Generation = "YES";
+				CODE_SIGN_ENTITLEMENTS = "Support/Spike.entitlements";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+			};
+			name = Debug;
+		};
+		637455E670CD6009B93E3A20 /* project.conf.Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SDKROOT = "iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				DEVELOPMENT_TEAM = "4A3PUKS9R9";
+				CODE_SIGN_STYLE = "Automatic";
+				ONLY_ACTIVE_ARCH = "YES";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				ENABLE_USER_SCRIPT_SANDBOXING = "YES";
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9DE9254F7DBCB2C0236CD2B6 /* ext.conflist */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23B360C22BBF592BED471EB1,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		ABC57FFEAE38538D0F03B297 /* app.conflist */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				341858C6A1F7C0B2A088A9C5,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FAEC637DACCF7BEA284B5025 /* project.conflist */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				637455E670CD6009B93E3A20,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4F9E4761B8B50EA15CF7F298 /* pkg.LightPlanCore */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/LightPlanCore;
+		};
+		A228CD42007010B244329CD0 /* pkg.LightPlanDomain */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/LightPlanDomain;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8806DDE99E4ECAE560CA4646 /* ext.dep.LightPlanDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A228CD42007010B244329CD0;
+			productName = LightPlanDomain;
+		};
+		AD1D591B898CE8D60EAFB080 /* app.dep.LightPlanCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F9E4761B8B50EA15CF7F298;
+			productName = LightPlanCore;
+		};
+		EAC83769A073602CE1E40670 /* ext.dep.LightPlanCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F9E4761B8B50EA15CF7F298;
+			productName = LightPlanCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0;
+}
