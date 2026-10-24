@@ -213,7 +213,7 @@
   Toggle default on; permission asked at the first «Клиенты» opening; limited/denied → shown off with a note, tap → iPhone Settings.
   «Из Контактов» = `CNContactPickerViewController` (no permission): form phone rows (extras land in the client on «Сохранить»,
   `takeFormPicked`) and card person rows. Real book check: `python3 Tools/contacts_sim.py --app <.app>` (`-LPContactsProbe`, `--selftest`).
-  Shots: `clients.js --cases contacts-past,contacts-on,contacts-no,contacts-limited,contacts-test` (`-LPShotContacts`).
+  Shots: `clients.js --cases contacts-past,contacts-on,contacts-no,contacts-limited,contacts-denied,contacts-test` (`-LPShotContacts`); captions never name the screen's own controls (К7б), the shot checks it.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

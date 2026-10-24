@@ -288,9 +288,9 @@ extension AppModel {
 
     /// Часть «Контакты» для снимков (`-LPShotContacts`): `past` — первое открытие, вопрос о прошлых; `on` — все клиенты
     /// записаны, видна кнопка «Убрать всё»; `no` — на вопрос ответили «Нет», строка «спросить снова»; `limited` —
-    /// частичный доступ; `test` — тестовая сборка, тумблера нет.
+    /// частичный доступ; `denied` — доступа нет; `test` — тестовая сборка, тумблера нет.
     func shotContacts(_ kind: String) {
-        let store = InMemoryContactsStore(auth: kind == "limited" ? .limited : .full)
+        let store = InMemoryContactsStore(auth: kind == "limited" ? .limited : kind == "denied" ? .denied : .full)
         var r = ContactsRecord()
         switch kind {
         case "on":

@@ -54,6 +54,7 @@ const CASES = [
   { name: 'contacts-on', sheet: 'clients', way: 'families', contacts: 'on' },
   { name: 'contacts-no', sheet: 'clients', way: 'families', contacts: 'no' },
   { name: 'contacts-limited', sheet: 'clients', way: 'families', contacts: 'limited' },
+  { name: 'contacts-denied', sheet: 'clients', way: 'families', contacts: 'denied' },
   { name: 'contacts-test', sheet: 'clients', way: 'families', contacts: 'test' },
   // К3: входы из съёмки.
   { name: 'head-couple', sheet: 'clienthead', way: 'couple', reach: 'sms' },
@@ -266,12 +267,15 @@ function contactsVerdict(c, nodes, screen) {
   const tog = nodes['clk.toggle'];
   if (c.contacts === 'test') { no('clk.toggle'); no('clk.remove'); n('clk.testBuild'); return bad; }
   n('clk.toggle'); n('clk.note');
-  const on = { past: 'on', on: 'on', no: 'on', limited: 'off' }[c.contacts];
+  const on = { past: 'on', on: 'on', no: 'on', limited: 'off', denied: 'off' }[c.contacts];
   if (tog && tog.text !== on) bad.push(`тумблер ${tog.text}, ждали ${on}`);
   if (c.contacts === 'past') { const p = n('clk.past'); n('clk.pastYes'); n('clk.pastNo'); if (p && !(num(p.text) > 0)) bad.push('в вопросе нет числа'); no('clk.remove'); }
   else no('clk.past');
   if (c.contacts === 'on') n('clk.remove');
   if (c.contacts === 'no') n('clk.pastAgain'); else no('clk.pastAgain');
+  // К7б: подписи не говорят про сам экран (тумблер, кнопка, «здесь»).
+  for (const k of ['clk.note', 'clk.testBuild', 'clk.pastNote']) { const t = nodes[k]; if (t && /тумблер|кнопк|здесь/i.test(t.text)) bad.push(`${k} говорит про экран: ${t.text}`); }
+  if (c.contacts === 'denied') { const t = nodes['clk.note']; if (t && !/Нет доступа/.test(t.text)) bad.push('подпись не про отказ'); no('clk.remove'); }
   if (c.contacts === 'limited') { const t = nodes['clk.note']; if (t && !/части контактов/.test(t.text)) bad.push('подпись не про частичный доступ'); no('clk.remove'); }
   return bad;
 }

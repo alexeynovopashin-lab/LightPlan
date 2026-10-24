@@ -10063,31 +10063,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нет доступа к Контактам — клиенты живут только в приложении. Разрешить доступ можно в настройках iPhone: нажмите на тумблер."
+            "value" : "Нет доступа к Контактам — клиенты живут только в приложении. Доступ открывается в настройках iPhone."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No access to Contacts, so clients live only in the app. You can allow access in iPhone Settings: tap the switch."
+            "value" : "No access to Contacts, so clients live only in the app. Access is granted in iPhone Settings."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sin acceso a Contactos: los clientes solo viven en la app. Puedes permitirlo en los Ajustes del iPhone: toca el interruptor."
+            "value" : "Sin acceso a Contactos: los clientes solo viven en la app. El acceso se concede en los Ajustes del iPhone."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "連絡先へのアクセスがないため、クライアントはアプリ内だけです。iPhoneの設定で許可できます。スイッチをタップしてください。"
+            "value" : "連絡先へのアクセスがないため、クライアントはアプリ内だけです。アクセスはiPhoneの設定で許可できます。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "没有通讯录权限，客户只保存在应用里。可在 iPhone 设置中允许：轻点开关。"
+            "value" : "没有通讯录权限，客户只保存在应用里。可在 iPhone 设置中开启权限。"
           }
         }
       }
@@ -10133,31 +10133,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Открыт доступ только к части контактов: так не узнать, кто уже записан, и появятся дубли. Чтобы клиенты сохранялись, разрешите все контакты в настройках iPhone: нажмите на тумблер."
+            "value" : "Открыт доступ только к части контактов: так не узнать, кто уже записан, и появятся дубли. Чтобы клиенты сохранялись, разрешите все контакты в настройках iPhone."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Only some contacts are shared: the app cannot tell who is already saved, and duplicates would appear. To save clients, allow all contacts in iPhone Settings: tap the switch."
+            "value" : "Only some contacts are shared: the app cannot tell who is already saved, and duplicates would appear. To save clients, allow all contacts in iPhone Settings."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Solo se comparten algunos contactos: así no se sabe quién ya está guardado y aparecerían duplicados. Para guardar clientes, permite todos los contactos en los Ajustes del iPhone: toca el interruptor."
+            "value" : "Solo se comparten algunos contactos: así no se sabe quién ya está guardado y aparecerían duplicados. Para guardar clientes, permite todos los contactos en los Ajustes del iPhone."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一部の連絡先だけが共有されています。これでは誰が保存済みか分からず、重複ができてしまいます。クライアントを保存するには、iPhoneの設定ですべての連絡先を許可してください。スイッチをタップしてください。"
+            "value" : "一部の連絡先だけが共有されています。これでは誰が保存済みか分からず、重複ができてしまいます。クライアントを保存するには、iPhoneの設定ですべての連絡先を許可してください。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "只共享了部分联系人：这样无法知道谁已保存，会出现重复。要保存客户，请在 iPhone 设置中允许全部联系人：轻点开关。"
+            "value" : "只共享了部分联系人：这样无法知道谁已保存，会出现重复。要保存客户，请在 iPhone 设置中允许全部联系人。"
           }
         }
       }
@@ -10308,31 +10308,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Они собраны из съёмок, что были записаны раньше. «Нет» — останутся только в приложении; спросить снова можно здесь же, под тумблером."
+            "value" : "Они собраны из съёмок, что были записаны раньше. «Нет» — останутся только в приложении; спросить снова можно позже."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "They were gathered from shoots saved earlier. “No” keeps them in the app only; you can be asked again here, under the switch."
+            "value" : "They were gathered from shoots saved earlier. “No” keeps them in the app only; you can be asked again later."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se reunieron de sesiones guardadas antes. «No»: se quedan solo en la app; puedes volver a preguntar aquí, bajo el interruptor."
+            "value" : "Se reunieron de sesiones guardadas antes. «No»: se quedan solo en la app; se puede volver a preguntar más tarde."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "以前に保存した撮影から集めたクライアントです。「いいえ」ならアプリ内だけに残ります。スイッチの下からもう一度聞けます。"
+            "value" : "以前に保存した撮影から集めたクライアントです。「いいえ」ならアプリ内だけに残ります。あとでもう一度聞くこともできます。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "他们来自之前保存的拍摄。选“否”则只保留在应用里；可在开关下方再次询问。"
+            "value" : "他们来自之前保存的拍摄。选“否”则只保留在应用里；之后还可以再次询问。"
           }
         }
       }
@@ -10553,31 +10553,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тестовая сборка в Контакты iPhone не пишет — это делает только обычный «Light Plan». «Из Контактов» здесь работает."
+            "value" : "Тестовая сборка в Контакты iPhone не пишет — это делает только обычный «Light Plan». Взять человека из Контактов она может."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A test build never writes to iPhone Contacts; only the regular “Light Plan” does. “From Contacts” works here."
+            "value" : "A test build never writes to iPhone Contacts; only the regular “Light Plan” does. It can still take a person from Contacts."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una versión de prueba no escribe en Contactos del iPhone; solo lo hace “Light Plan” normal. «De Contactos» funciona aquí."
+            "value" : "Una versión de prueba no escribe en Contactos del iPhone; solo lo hace “Light Plan” normal. Aun así puede tomar a una persona de Contactos."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "テスト版はiPhoneの連絡先に書き込みません。書き込むのは通常の「Light Plan」だけです。「連絡先から」はここでも使えます。"
+            "value" : "テスト版はiPhoneの連絡先に書き込みません。書き込むのは通常の「Light Plan」だけです。連絡先から人を取り込むことはできます。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "测试版不会写入 iPhone 通讯录，只有正式的“Light Plan”会写入。“从通讯录”在这里可用。"
+            "value" : "测试版不会写入 iPhone 通讯录，只有正式的“Light Plan”会写入。它仍可以从通讯录取用联系人。"
           }
         }
       }

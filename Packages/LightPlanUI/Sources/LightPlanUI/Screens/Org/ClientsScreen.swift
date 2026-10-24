@@ -170,6 +170,7 @@ struct ClientsScreen: View {
                         .foregroundStyle(pal.ink).lineSpacing(3)
                         .shotNode("clk.pastText", text: "\(n)")
                     Text(t.t("clk.pastNote")).font(.system(size: 13)).foregroundStyle(pal.ink5).lineSpacing(3)
+                        .shotNode("clk.pastNote", text: t.t("clk.pastNote"))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)

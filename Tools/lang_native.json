@@ -475,8 +475,8 @@
     "clk.toggle": "Сохранять клиентов в Контакты iPhone",
     "clk.noteOn": "Новый клиент с номером сам попадает в Контакты — iPhone покажет, кто звонит. Номер, который уже есть в Контактах, не дублируется, и ваш контакт не меняется.",
     "clk.noteOff": "Клиенты живут только в приложении. То, что уже записано в Контакты, остаётся там.",
-    "clk.denied": "Нет доступа к Контактам — клиенты живут только в приложении. Разрешить доступ можно в настройках iPhone: нажмите на тумблер.",
-    "clk.limited": "Открыт доступ только к части контактов: так не узнать, кто уже записан, и появятся дубли. Чтобы клиенты сохранялись, разрешите все контакты в настройках iPhone: нажмите на тумблер.",
+    "clk.denied": "Нет доступа к Контактам — клиенты живут только в приложении. Доступ открывается в настройках iPhone.",
+    "clk.limited": "Открыт доступ только к части контактов: так не узнать, кто уже записан, и появятся дубли. Чтобы клиенты сохранялись, разрешите все контакты в настройках iPhone.",
     "clk.failed": "Часть клиентов не записалась в Контакты — приложение попробует снова, когда вы вернётесь в него.",
     "clk.pastAsk": "Сохранить в Контакты {n} из прошлых съёмок?",
     "clk.clients": [
@@ -484,7 +484,7 @@
       "клиентов",
       "клиентов"
     ],
-    "clk.pastNote": "Они собраны из съёмок, что были записаны раньше. «Нет» — останутся только в приложении; спросить снова можно здесь же, под тумблером.",
+    "clk.pastNote": "Они собраны из съёмок, что были записаны раньше. «Нет» — останутся только в приложении; спросить снова можно позже.",
     "clk.pastAgain": "Сохранить в Контакты клиентов из прошлых съёмок: {n}",
     "clk.remove": "Убрать из Контактов всё, что записало приложение",
     "clk.removeAsk": "Убрать из Контактов {n}, записанных приложением?",
@@ -496,7 +496,7 @@
     "clk.removeNote": "Ваши контакты не тронутся. Сохранение клиентов в Контакты выключится.",
     "clk.removeYes": "Убрать",
     "clk.removed": "Убрано из Контактов: {n}.",
-    "clk.testBuild": "Тестовая сборка в Контакты iPhone не пишет — это делает только обычный «Light Plan». «Из Контактов» здесь работает.",
+    "clk.testBuild": "Тестовая сборка в Контакты iPhone не пишет — это делает только обычный «Light Plan». Взять человека из Контактов она может.",
     "clk.pick": "Из Контактов"
   },
   "en": {
@@ -973,15 +973,15 @@
     "clk.toggle": "Save clients to iPhone Contacts",
     "clk.noteOn": "A new client with a number goes to Contacts by itself, so the iPhone shows who is calling. A number already in Contacts is not duplicated, and your contact is not changed.",
     "clk.noteOff": "Clients live only in the app. What was already saved to Contacts stays there.",
-    "clk.denied": "No access to Contacts, so clients live only in the app. You can allow access in iPhone Settings: tap the switch.",
-    "clk.limited": "Only some contacts are shared: the app cannot tell who is already saved, and duplicates would appear. To save clients, allow all contacts in iPhone Settings: tap the switch.",
+    "clk.denied": "No access to Contacts, so clients live only in the app. Access is granted in iPhone Settings.",
+    "clk.limited": "Only some contacts are shared: the app cannot tell who is already saved, and duplicates would appear. To save clients, allow all contacts in iPhone Settings.",
     "clk.failed": "Some clients were not saved to Contacts; the app will try again when you come back to it.",
     "clk.pastAsk": "Save {n} from past shoots to Contacts?",
     "clk.clients": [
       "client",
       "clients"
     ],
-    "clk.pastNote": "They were gathered from shoots saved earlier. “No” keeps them in the app only; you can be asked again here, under the switch.",
+    "clk.pastNote": "They were gathered from shoots saved earlier. “No” keeps them in the app only; you can be asked again later.",
     "clk.pastAgain": "Save clients from past shoots to Contacts: {n}",
     "clk.remove": "Remove everything the app saved to Contacts",
     "clk.removeAsk": "Remove {n} saved by the app from Contacts?",
@@ -992,7 +992,7 @@
     "clk.removeNote": "Your own contacts stay untouched. Saving clients to Contacts will turn off.",
     "clk.removeYes": "Remove",
     "clk.removed": "Removed from Contacts: {n}.",
-    "clk.testBuild": "A test build never writes to iPhone Contacts; only the regular “Light Plan” does. “From Contacts” works here.",
+    "clk.testBuild": "A test build never writes to iPhone Contacts; only the regular “Light Plan” does. It can still take a person from Contacts.",
     "clk.pick": "From Contacts"
   },
   "es": {
@@ -1469,15 +1469,15 @@
     "clk.toggle": "Guardar clientes en Contactos del iPhone",
     "clk.noteOn": "Un cliente nuevo con número pasa solo a Contactos: el iPhone mostrará quién llama. Un número que ya está en Contactos no se duplica y tu contacto no cambia.",
     "clk.noteOff": "Los clientes solo viven en la app. Lo que ya se guardó en Contactos se queda allí.",
-    "clk.denied": "Sin acceso a Contactos: los clientes solo viven en la app. Puedes permitirlo en los Ajustes del iPhone: toca el interruptor.",
-    "clk.limited": "Solo se comparten algunos contactos: así no se sabe quién ya está guardado y aparecerían duplicados. Para guardar clientes, permite todos los contactos en los Ajustes del iPhone: toca el interruptor.",
+    "clk.denied": "Sin acceso a Contactos: los clientes solo viven en la app. El acceso se concede en los Ajustes del iPhone.",
+    "clk.limited": "Solo se comparten algunos contactos: así no se sabe quién ya está guardado y aparecerían duplicados. Para guardar clientes, permite todos los contactos en los Ajustes del iPhone.",
     "clk.failed": "Algunos clientes no se guardaron en Contactos; la app lo intentará de nuevo cuando vuelvas.",
     "clk.pastAsk": "¿Guardar en Contactos {n} de sesiones anteriores?",
     "clk.clients": [
       "cliente",
       "clientes"
     ],
-    "clk.pastNote": "Se reunieron de sesiones guardadas antes. «No»: se quedan solo en la app; puedes volver a preguntar aquí, bajo el interruptor.",
+    "clk.pastNote": "Se reunieron de sesiones guardadas antes. «No»: se quedan solo en la app; se puede volver a preguntar más tarde.",
     "clk.pastAgain": "Guardar en Contactos clientes de sesiones anteriores: {n}",
     "clk.remove": "Quitar de Contactos todo lo que guardó la app",
     "clk.removeAsk": "¿Quitar de Contactos {n} guardados por la app?",
@@ -1488,7 +1488,7 @@
     "clk.removeNote": "Tus propios contactos no se tocan. Guardar clientes en Contactos se desactivará.",
     "clk.removeYes": "Quitar",
     "clk.removed": "Quitado de Contactos: {n}.",
-    "clk.testBuild": "Una versión de prueba no escribe en Contactos del iPhone; solo lo hace “Light Plan” normal. «De Contactos» funciona aquí.",
+    "clk.testBuild": "Una versión de prueba no escribe en Contactos del iPhone; solo lo hace “Light Plan” normal. Aun así puede tomar a una persona de Contactos.",
     "clk.pick": "De Contactos"
   },
   "ja": {
@@ -1963,14 +1963,14 @@
     "clk.toggle": "クライアントをiPhoneの連絡先に保存",
     "clk.noteOn": "番号のある新しいクライアントは自動で連絡先に入り、iPhoneに着信相手が表示されます。連絡先にすでにある番号は重複せず、あなたの連絡先も変更されません。",
     "clk.noteOff": "クライアントはアプリ内だけに残ります。すでに連絡先に保存したものはそのまま残ります。",
-    "clk.denied": "連絡先へのアクセスがないため、クライアントはアプリ内だけです。iPhoneの設定で許可できます。スイッチをタップしてください。",
-    "clk.limited": "一部の連絡先だけが共有されています。これでは誰が保存済みか分からず、重複ができてしまいます。クライアントを保存するには、iPhoneの設定ですべての連絡先を許可してください。スイッチをタップしてください。",
+    "clk.denied": "連絡先へのアクセスがないため、クライアントはアプリ内だけです。アクセスはiPhoneの設定で許可できます。",
+    "clk.limited": "一部の連絡先だけが共有されています。これでは誰が保存済みか分からず、重複ができてしまいます。クライアントを保存するには、iPhoneの設定ですべての連絡先を許可してください。",
     "clk.failed": "一部のクライアントを連絡先に保存できませんでした。アプリに戻ったときにもう一度試します。",
     "clk.pastAsk": "過去の撮影の{n}を連絡先に保存しますか？",
     "clk.clients": [
       "人のクライアント"
     ],
-    "clk.pastNote": "以前に保存した撮影から集めたクライアントです。「いいえ」ならアプリ内だけに残ります。スイッチの下からもう一度聞けます。",
+    "clk.pastNote": "以前に保存した撮影から集めたクライアントです。「いいえ」ならアプリ内だけに残ります。あとでもう一度聞くこともできます。",
     "clk.pastAgain": "過去の撮影のクライアントを連絡先に保存：{n}",
     "clk.remove": "アプリが連絡先に保存したものをすべて削除",
     "clk.removeAsk": "アプリが保存した{n}を連絡先から削除しますか？",
@@ -1980,7 +1980,7 @@
     "clk.removeNote": "あなた自身の連絡先はそのままです。クライアントの連絡先への保存はオフになります。",
     "clk.removeYes": "削除",
     "clk.removed": "連絡先から削除：{n}。",
-    "clk.testBuild": "テスト版はiPhoneの連絡先に書き込みません。書き込むのは通常の「Light Plan」だけです。「連絡先から」はここでも使えます。",
+    "clk.testBuild": "テスト版はiPhoneの連絡先に書き込みません。書き込むのは通常の「Light Plan」だけです。連絡先から人を取り込むことはできます。",
     "clk.pick": "連絡先から"
   },
   "zh": {
@@ -2455,14 +2455,14 @@
     "clk.toggle": "将客户保存到 iPhone 通讯录",
     "clk.noteOn": "有号码的新客户会自动进入通讯录，iPhone 就能显示来电者。通讯录里已有的号码不会重复，你的联系人也不会被改动。",
     "clk.noteOff": "客户只保存在应用里。已经写入通讯录的内容会保留。",
-    "clk.denied": "没有通讯录权限，客户只保存在应用里。可在 iPhone 设置中允许：轻点开关。",
-    "clk.limited": "只共享了部分联系人：这样无法知道谁已保存，会出现重复。要保存客户，请在 iPhone 设置中允许全部联系人：轻点开关。",
+    "clk.denied": "没有通讯录权限，客户只保存在应用里。可在 iPhone 设置中开启权限。",
+    "clk.limited": "只共享了部分联系人：这样无法知道谁已保存，会出现重复。要保存客户，请在 iPhone 设置中允许全部联系人。",
     "clk.failed": "部分客户没有写入通讯录，回到应用时会再试一次。",
     "clk.pastAsk": "将以往拍摄中的{n}保存到通讯录？",
     "clk.clients": [
       "位客户"
     ],
-    "clk.pastNote": "他们来自之前保存的拍摄。选“否”则只保留在应用里；可在开关下方再次询问。",
+    "clk.pastNote": "他们来自之前保存的拍摄。选“否”则只保留在应用里；之后还可以再次询问。",
     "clk.pastAgain": "将以往拍摄的客户保存到通讯录：{n}",
     "clk.remove": "从通讯录移除应用写入的全部内容",
     "clk.removeAsk": "从通讯录移除应用写入的{n}？",
@@ -2472,7 +2472,7 @@
     "clk.removeNote": "你自己的联系人不受影响。保存客户到通讯录将关闭。",
     "clk.removeYes": "移除",
     "clk.removed": "已从通讯录移除：{n}。",
-    "clk.testBuild": "测试版不会写入 iPhone 通讯录，只有正式的“Light Plan”会写入。“从通讯录”在这里可用。",
+    "clk.testBuild": "测试版不会写入 iPhone 通讯录，只有正式的“Light Plan”会写入。它仍可以从通讯录取用联系人。",
     "clk.pick": "从通讯录"
   }
 }
