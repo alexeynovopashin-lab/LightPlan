@@ -9,6 +9,8 @@ Where the words live (measured, see Tools/lang2xcstrings.js):
   Tools/lang_native.json              words only the phone says: {lang: {key: str | [forms]}},
                                       langs ru en es ja zh; a list = word by number forms
                                       (ru 3, en/es 2, ja/zh 1)
+  Tools/lang_fixes.json               app-only corrections of web words the web keeps:
+                                      {lang: {key: {web, app, why}}}; the catalog carries `app`
   .../Resources/Localizable.xcstrings the String Catalog GENERATED from both (never
                                       hand-edited): web keys + native keys, disjoint.
                                       Plural keys are stored as CLDR variations whose forms
@@ -42,6 +44,7 @@ import sys
 
 CATALOG_REL = "Packages/LightPlanUI/Sources/LightPlanUI/Resources/Localizable.xcstrings"
 NATIVE_REL = "Tools/lang_native.json"
+FIXES_REL = "Tools/lang_fixes.json"
 WEB_REL = "Fixtures/lang.json"
 
 BASE_LANGS = ["ru", "en", "es", "ja", "zh"]   # full sets
@@ -100,23 +103,15 @@ ALLOWED = {
     ("d", "lg.osmTail", "en"): "text fragment glued to the map credit: the space is part of the English wording",
     ("d", "lg.osmTail", "es"): "text fragment glued to the map credit: the space is part of the Spanish wording",
     ("d", "rep.week2", "zh"): "每两周: zh writes the number 2 as 两",
+    ("c", "light.waitedSunset", "en"): "Swift passes `name` (the point, «The shoot» without one), as the web does; ru dropped the name on purpose (DECISIONS «Строка света»)",
+    ("c", "light.waitedSunset", "es"): "same: Swift passes `name`; ru dropped it on purpose",
+    ("c", "light.waitedSunset", "ja"): "same: Swift passes `name`; ru dropped it on purpose",
+    ("c", "light.waitedSunset", "zh"): "same: Swift passes `name`; ru dropped it on purpose",
 }
 
 # Notes on findings that are NOT fixed by editing a translation, or that a person has to decide.
 # Printed in the report only while the key still has a finding. {key: text}
 REVIEW_NOTES = {
-    "light.waitedSunset": (
-        "Swift (`AppModel+CardLight.swift`, `cardSays`, case `.badSky`) passes only `cond` and `cloud`. "
-        "`Lexicon.substitute` leaves an unknown `{name}` as written, so on the en/es/ja/zh card the text starts "
-        "with a literal «{name}». ru has no `{name}`; the web's substitution list for this key includes `name`. "
-        "Two fixes, and the data cannot say which one is meant: pass `\"name\": name(p)` in Swift (the point "
-        "is already known in `.badSky(let p, _)`), or drop `{name}` from the four texts to match ru. "
-        "No fix proposed in `lang_check_proposed_fixes.json`."),
-    "week.wx": (
-        "zh only. Swift (`PlannerWeekView.swift`) passes `cloud` and `wind`, so the zh week row would show a "
-        "literal «{cond}». ru, en, es and ja have no `{cond}`. A fix is in `lang_check_proposed_fixes.json` "
-        "(drop `{cond}·`). The key comes from the web's `lang.js`, and `lang_native.json` cannot carry a key the "
-        "web has (`lang2xcstrings.js` refuses it), so the word is changed on the web side and brought in by `make lang`."),
 }
 
 CATEGORY_TITLES = collections.OrderedDict([
@@ -448,7 +443,7 @@ def check_web(web_keys, web_plural, web_langs, found):
                                                                      sorted(set(pb) - set(pa)) or "-", short(t[i])))
 
 
-def check_drift(catalog, native, native_langs, web_keys, web_plural, web_langs, found):
+def check_drift(catalog, native, native_langs, web_keys, web_plural, web_langs, fixes, found):
     cat_keys = set(catalog)
     nat_keys = set(native)
     web_set = set(web_keys)
@@ -518,6 +513,12 @@ def check_drift(catalog, native, native_langs, web_keys, web_plural, web_langs, 
                 if entry.plural or i >= len(rec["t"]):
                     continue
                 web_value = rec["t"][i]
+                fix = fixes.get(lang, {}).get(key)
+                if fix is not None:
+                    if fix.get("web") != web_value:
+                        found.add("f", key, lang, "lang_fixes.json: the web changed the word that was corrected",
+                                  "fix for `%s` · web now `%s`" % (short(fix.get("web", "")), short(web_value)))
+                    web_value = fix.get("app")
                 if isinstance(web_value, str):
                     if entry.forms["-"] != web_value:
                         found.add("f", key, lang, "value differs: Fixtures/lang.json vs catalog",
@@ -629,6 +630,8 @@ def main(argv=None):
         catalog, source_lang = read_catalog(os.path.join(root, CATALOG_REL))
         native, native_langs = read_native(os.path.join(root, NATIVE_REL))
         web_keys, web_plural, web_langs = read_web(os.path.join(root, WEB_REL))
+        fixes_path = os.path.join(root, FIXES_REL)
+        fixes = load_json(fixes_path) if os.path.exists(fixes_path) else {}
     except DataError as err:
         sys.stderr.write("lang_check: %s\n" % err)
         return 2
@@ -637,7 +640,7 @@ def main(argv=None):
     check_catalog(catalog, found)
     check_native(native, native_langs, found)
     check_web(web_keys, web_plural, web_langs, found)
-    check_drift(catalog, native, native_langs, web_keys, web_plural, web_langs, found)
+    check_drift(catalog, native, native_langs, web_keys, web_plural, web_langs, fixes, found)
 
     plural_catalog = sum(1 for k in catalog if any(e.plural for e in catalog[k].values()))
     stats = [

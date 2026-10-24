@@ -96,6 +96,28 @@ function addNative(dict) {
   return dict;
 }
 
+/* Поправки слов веба, которые веб не правит (Алексей, 24.10: «правим только
+   приложение»). `Tools/lang_fixes.json`: {язык: {ключ: {web, app, why}}}.
+   Поправка встаёт, только пока у веба лежит ровно то слово, что записано в
+   `web`: веб поменял его — скрипт останавливается, поправку смотрят заново,
+   а не накладывают вслепую. */
+function addFixes(dict) {
+  const file = path.join(__dirname, "lang_fixes.json");
+  if (!fs.existsSync(file)) return dict;
+  const fixes = JSON.parse(fs.readFileSync(file, "utf8"));
+  for (const code of Object.keys(fixes)) {
+    if (!dict[code]) throw new Error("lang_fixes.json: языка " + code + " нет у веба");
+    for (const key of Object.keys(fixes[code])) {
+      const fix = fixes[code][key];
+      if (dict[code][key] !== fix.web) {
+        throw new Error("lang_fixes.json: у веба " + key + " (" + code + ") уже не то слово, что поправлялось — пересмотреть поправку");
+      }
+      dict[code][key] = fix.app;
+    }
+  }
+  return dict;
+}
+
 const baseOf = (code) => code.split("-")[0];
 
 function unit(value) {
@@ -158,7 +180,7 @@ function print(v, indent) {
 
 function main() {
   const check = process.argv.includes("--check");
-  const { catalog, codes, plural } = build(addNative(loadDict()));
+  const { catalog, codes, plural } = build(addFixes(addNative(loadDict())));
   const text = print(catalog, 0) + "\n";
   const keyCount = Object.keys(catalog.strings).length;
   if (check) {

@@ -145,9 +145,11 @@ extension AppModel {
         func range(_ w: ClosedRange<Int>) -> String { f.range(Double(w.lowerBound), Double(w.upperBound)) }
         var out: [CardSay] = []
         switch cardLightCase(s, phase: phase) {
-        case .badSky(_, let d)?:
+        case .badSky(let p, let d)?:
             let day = pointDay(anchor(s), d)?.day
+            // Имя — как у веба: en/es/ja/zh начинают с {name}, ru его не пишет (DECISIONS «Строка света»).
             out.append(CardSay(kind: .golden, icon: "warn", text: lexicon.t("light.waitedSunset", [
+                "name": name(p),
                 "cond": lexicon.t("qualCond." + (day?.quality.rawValue ?? "poor")).lowercased(),
                 "cloud": "\(day?.cloud ?? 0)"]), bad: true))
         case .inGolden(let p, let w)?:
