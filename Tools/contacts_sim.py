@@ -104,7 +104,7 @@ def check(log):
     ok("после «Да» прошлый клиент записан", len(by_name(py, "Сергей Прошлый")) == 1, by_name(py, "Сергей Прошлый"))
     ok("после «Да» вопрос ушёл", py["pastAsk"] == -1, py["pastAsk"])
     # Удалён руками.
-    ok("удалённый руками свой контакт не заведён снова", not by_name(gn, "Мария Иванова") and "probe-c#0" in gn["dropped"],
+    ok("удалённый руками свой контакт не заведён снова", not by_name(gn, "Мария Иванова") and "probe-c#tel:79132223344" in gn["dropped"],
        (by_name(gn, "Мария Иванова"), gn["dropped"]))
     # «Убрать всё».
     left = sorted(r["name"] for r in probe_rows(rm))
@@ -137,7 +137,7 @@ def selftest():
     ed = dict(op, stage="edited", rows=base + edr, pastAsk=1)
     rs = dict(ed, stage="resaved")
     py = dict(ed, stage="past-yes", rows=ed["rows"] + [row("p", "Сергей Прошлый", "+79995556677")], pastAsk=-1)
-    gn = dict(py, stage="gone", rows=[r for r in py["rows"] if r["id"] != "c"], dropped=["probe-c#0"])
+    gn = dict(py, stage="gone", rows=[r for r in py["rows"] if r["id"] != "c"], dropped=["probe-c#tel:79132223344"])
     rm = dict(gn, stage="removed", rows=base, removed=4, on=False, wanted=False, links={})
     log = good + [op, ed, rs, py, gn, rm, dict(rm, stage="done")]
     bad = [r for r in check(log) if not r[1]]

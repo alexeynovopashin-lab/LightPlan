@@ -67,14 +67,18 @@ public actor ContactsMirror {
             case .update(let key, let id, let card, let was):
                 if (try? await store.update(id: id, card, was: was)) != nil {
                     // Связь переезжает к нынешнему ключу человека; прежний ключ того же контакта забывается.
+                    // Ключ занят связью другого контакта (люди сдвинулись) — та связь не теряется, а отходит в запасной
+                    // ключ того же клиента: её контакт по-прежнему свой, его найдут по номеру и уберёт «Убрать всё»
+                    // (ревью GPT к d613efc).
                     edit { r in
                         r.links = r.links.filter { $0.value.id != id }
+                        if let other = r.links[key] { r.links[key + "~" + other.id] = other }
                         r.links[key] = ClientContacts.Link(id: id, card: card)
                     }
                     report.updated += 1
                 } else { report.failed += 1 }
-            case .gone(let key):
-                edit { $0.links[key] = nil; $0.dropped.insert(key) }
+            case .gone(let key, let tel):
+                edit { $0.links[key] = nil; $0.dropped.insert(tel) }
                 report.gone += 1
             }
         }

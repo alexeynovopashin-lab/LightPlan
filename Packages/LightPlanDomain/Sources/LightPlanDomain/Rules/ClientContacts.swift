@@ -102,6 +102,10 @@ public enum ClientContacts {
     /// Ключ контакта в связи «клиент → контакт» (память телефона): клиент и номер человека в нём.
     public static func key(client: String, person: Int) -> String { client + "#" + String(person) }
 
+    /// Отметка «свой контакт удалён руками» — по клиенту и **номеру**, не по месту человека: люди семьи сдвинулись —
+    /// отметка остаётся при своём человеке (ревью GPT к d613efc).
+    public static func dropKey(client: String, phoneKey: String) -> String { client + "#tel:" + phoneKey }
+
     /// Имя одной строкой → имя / отчество / фамилия контакта: первое слово — имя, последнее — фамилия, между ними —
     /// отчество. Порядок — как вписано.
     public static func nameParts(_ name: String) -> (given: String, middle: String, family: String) {
@@ -158,8 +162,8 @@ public enum ClientContacts {
         /// записанное приложением, дописанное человеком в Контактах остаётся. `key` — нынешний ключ человека (люди могли
         /// переставиться: связь переезжает к нему).
         case update(key: String, id: String, card: ContactCard, was: ContactCard)
-        /// Свой контакт удалили руками в Контактах — связь забыть и заново не заводить.
-        case gone(key: String)
+        /// Свой контакт удалили руками в Контактах — связь забыть и заново не заводить (`tel` — отметка `dropKey`).
+        case gone(key: String, tel: String)
     }
 
     /// Чужой контакт с тем же номером: из него читаем недостающее (день рождения, мессенджер), сам он не правится.
@@ -206,6 +210,8 @@ public enum ClientContacts {
             var claimed = Set<String>()
             for (key, person, card) in desired {
                 let k = phoneKey(card.phone, country: country)
+                // Свой контакт этого человека удалили руками — ни заводить снова, ни писать его в чужой контакт.
+                guard !dropped.contains(dropKey(client: c.id, phoneKey: k)) else { continue }
                 let byPhone = mine.first { !claimed.contains($0.key) && phoneKey($0.value.card.phone, country: country) == k }
                 let byPlace: (key: String, value: Link)? = links[key].flatMap { l in
                     let lk = phoneKey(l.card.phone, country: country)
@@ -214,7 +220,7 @@ public enum ClientContacts {
                 if let (lk, link) = byPhone.map({ ($0.key, $0.value) }) ?? byPlace {
                     claimed.insert(lk)
                     if !inBook.contains(link.id) {
-                        plan.actions.append(.gone(key: lk))
+                        plan.actions.append(.gone(key: lk, tel: dropKey(client: c.id, phoneKey: phoneKey(link.card.phone, country: country))))
                         continue
                     }
                     // Новый номер уже есть в чужом контакте — свой не правим (был бы дубль), из чужого читаем.
@@ -228,7 +234,6 @@ public enum ClientContacts {
                     own.insert(k)
                     continue
                 }
-                guard !dropped.contains(key) else { continue }
                 if let f = foreign[k] {
                     plan.reads.append(Read(client: c.id, person: person, contactId: f))
                     continue

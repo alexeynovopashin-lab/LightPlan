@@ -122,12 +122,27 @@ struct ClientContactsTests {
         #expect(ids.sorted() == ["app-i:Иван", "app-m:Мария"])
     }
 
+    /// Ревью GPT к d613efc: люди сдвинулись, а контакт второго удалили руками — его не заводят снова и не пишут в
+    /// оставшийся контакт первого.
+    @Test func shiftedPersonWithDeletedContactStaysOut() {
+        let fam = client("f", .family, [("Мария", "8 913 222-33-44"), ("Иван", "8 913 555-66-77")])
+        let cards = ClientContacts.cards(of: fam, anniversary: nil, country: ru)
+        let links = ["f#0": ClientContacts.Link(id: "app-m", card: cards[0].card), "f#1": .init(id: "app-i", card: cards[1].card)]
+        let book = [ClientContacts.BookEntry(id: "app-m", phones: ["+79132223344"])]      // контакт Ивана удалён руками
+        var left = fam
+        left.people.remove(at: 0)
+        let p = plan([left], links: links, book: book)
+        #expect(p.actions == [.gone(key: "f#1", tel: "f#tel:79135556677")])
+        let next = plan([left], links: ["f#0": links["f#0"]!], dropped: ["f#tel:79135556677"], book: book)
+        #expect(next.actions.isEmpty && next.reads.isEmpty)
+    }
+
     @Test func ownContactDeletedByHandIsForgottenAndNotRecreated() {
         let c = client("c1", .person, [("Ольга", "8 916 123-45-67")])
         let card = ClientContacts.cards(of: c, anniversary: nil, country: ru)[0].card
         let p = plan([c], links: ["c1#0": .init(id: "app-1", card: card)], book: [])
-        #expect(p.actions == [.gone(key: "c1#0")])
-        #expect(plan([c], dropped: ["c1#0"]).actions.isEmpty)
+        #expect(p.actions == [.gone(key: "c1#0", tel: "c1#tel:79161234567")])
+        #expect(plan([c], dropped: ["c1#tel:79161234567"]).actions.isEmpty)
     }
 
     @Test func notAllowedClientIsLeftAlone() {

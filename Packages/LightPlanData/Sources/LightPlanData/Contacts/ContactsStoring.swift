@@ -33,7 +33,7 @@ public struct ContactsRecord: Codable, Equatable, Sendable {
     public var wanted = true
     /// Человек клиента (`ClientContacts.key`) → контакт, заведённый приложением.
     public var links: [String: ClientContacts.Link] = [:]
-    /// Свой контакт удалили руками в Контактах: заново его не заводим.
+    /// Свой контакт удалили руками в Контактах: заново его не заводим (`ClientContacts.dropKey` — клиент и номер).
     public var dropped: Set<String> = []
     /// Прошлые клиенты уже отмечены (первый запуск сборки с К7 или «Убрать всё»).
     public var baseline = false

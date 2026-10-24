@@ -160,13 +160,15 @@ public final class CNContactsStore: ContactsStoring, @unchecked Sendable {
         }
         c.phoneNumbers = phones
         let now = c.birthday.flatMap { ClientContacts.birthday(year: $0.year, month: $0.month, day: $0.day) }
-        if let b = Birthday(card.birthday) {
+        // День рождения, исправленный человеком в Контактах после нашей записи, остаётся его (ревью GPT к d613efc).
+        let handEdited = now != nil && now != was?.birthday
+        if let b = Birthday(card.birthday), !handEdited {
             var d = DateComponents()
             d.year = b.year
             d.month = b.month
             d.day = b.day
             c.birthday = d
-        } else if now != nil, now == was?.birthday {
+        } else if card.birthday == nil, now != nil, now == was?.birthday {
             c.birthday = nil            // у клиента день рождения стёрли — стираем и тот, что записали сами
         }
         // Годовщина — среди «Дат» с меткой «годовщина»; убирается только записанная приложением.

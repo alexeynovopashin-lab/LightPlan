@@ -92,7 +92,24 @@ import LightPlanDomain
         guard case .synced(let r) = await sync(m, [c]) else { Issue.record("нет прохода"); return }
         #expect(r.gone == 1 && r.created == 0)
         _ = await sync(m, [c])
-        #expect(store.entries.isEmpty && memory.record.dropped == ["a#0"])
+        #expect(store.entries.isEmpty && memory.record.dropped == ["a#tel:79161234567"])
+    }
+
+    /// Ревью GPT к d613efc: удалили первого человека семьи — его контакт остаётся своим (связь не затёрта), и «Убрать всё»
+    /// убирает оба.
+    @Test func shiftedPeopleKeepEveryOwnContactKnown() async {
+        let store = InMemoryContactsStore(), memory = InMemoryContactsMemory()
+        let m = ContactsMirror(store: store, memory: memory)
+        var fam = client("f", .family, [("Мария", "8 913 222-33-44"), ("Иван", "8 913 555-66-77")])
+        _ = await sync(m, [fam])
+        let ids = Set(memory.record.links.values.map(\.id))
+        fam.people.remove(at: 0)
+        guard case .synced(let r) = await sync(m, [fam]) else { Issue.record("нет прохода"); return }
+        #expect(r.updated == 1 && r.created == 0)
+        #expect(Set(memory.record.links.values.map(\.id)) == ids)
+        #expect(memory.record.links["f#0"]?.card.given == "Иван")
+        #expect(await m.removeAll()?.removed == 2)
+        #expect(store.entries.isEmpty)
     }
 
     @Test func partialOrNoAccessWritesNothing() async {
@@ -164,6 +181,13 @@ import Contacts
         #expect(c.socialProfiles.map { $0.value.service + ":" + $0.value.username }.sorted() == ["Instagram:olga.ig", "Telegram:olga_p"])
         #expect(c.dates.map { "\($0.label ?? ""):\($0.value.month)-\($0.value.day)" }.sorted() == ["_$!<Anniversary>!$_:6-15", "праздник:3-1"])
         // День рождения стёрли у клиента — уходит и записанный приложением; поставленный человеком другой — остаётся.
+        // Исправил день рождения прямо в Контактах — правка клиента его не перезаписывает.
+        c.birthday = DateComponents(year: 1990, month: 10, day: 26)
+        var renamed = now
+        renamed.family = "Сидорова"
+        CNContactsStore.fill(c, renamed, was: now)
+        #expect(c.familyName == "Сидорова" && c.birthday?.day == 26)
+        c.birthday = DateComponents(year: 1990, month: 10, day: 25)
         var noBd = now
         noBd.birthday = nil
         CNContactsStore.fill(c, noBd, was: now)
