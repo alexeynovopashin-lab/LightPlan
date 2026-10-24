@@ -8572,6 +8572,41 @@
         }
       }
     },
+    "clc.greetAsk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы напоминание пришло, разрешите уведомления — нажмите здесь."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To get the reminder, allow notifications — tap here."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para recibir el aviso, permite las notificaciones: toca aquí."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リマインダーを受け取るには通知を許可してください。ここをタップ。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要收到提醒，请允许通知——轻点此处。"
+          }
+        }
+      }
+    },
     "clc.greetDenied" : {
       "extractionState" : "manual",
       "localizations" : {

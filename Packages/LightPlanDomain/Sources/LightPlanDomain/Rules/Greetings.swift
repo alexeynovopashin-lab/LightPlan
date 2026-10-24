@@ -172,6 +172,16 @@ public enum Greetings {
         !hasDate(before) && hasDate(after)
     }
 
+    /// Свадьба впервые привязана к паре при «Сохранить» (создана или впервые склеена с клиентом — решение Алексея
+    /// по К6, вариант 3): годовщина из неё включает «Поздравлять». Прошлые пары сюда не попадают — разовый проход по
+    /// старым съёмкам (`assemble`) это правило не зовёт; тумблер, тронутый руками, не включается. `true` — включён.
+    @discardableResult
+    public static func greetNewWedding(_ c: inout Client) -> Bool {
+        guard c.kind == .couple, !c.greet, !c.greetHand, !(c.anniversaryManual && c.anniversary == nil) else { return false }
+        c.greet = true
+        return true
+    }
+
     /// Вписана ли руками хоть одна дата: день рождения кого-то из людей или годовщина, правленая руками.
     public static func hasDate(_ c: Client) -> Bool {
         c.people.contains { Birthday($0.birthday) != nil } || (c.anniversaryManual && c.anniversary != nil)

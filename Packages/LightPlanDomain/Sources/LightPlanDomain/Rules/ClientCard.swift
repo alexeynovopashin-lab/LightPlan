@@ -152,6 +152,7 @@ extension ClientBook {
             if let a = src.anniversary { dst.anniversary = a; dst.anniversaryManual = src.anniversaryManual }
         }
         dst.greet = dst.greet || src.greet
+        dst.greetHand = dst.greetHand || src.greetHand
         for l in src.links where !dst.links.contains(where: { $0.id == l.id || ($0.url != nil && $0.url == l.url) }) {
             dst.links.append(l)
         }

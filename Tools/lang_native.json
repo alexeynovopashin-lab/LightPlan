@@ -470,7 +470,8 @@
     "clc.greetDenied": "Уведомления для Light Plan выключены в настройках iPhone — нажмите, чтобы включить.",
     "clc.noYear": "Без года",
     "clc.dateOk": "Готово",
-    "clc.dateClear": "Убрать дату"
+    "clc.dateClear": "Убрать дату",
+    "clc.greetAsk": "Чтобы напоминание пришло, разрешите уведомления — нажмите здесь."
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -941,7 +942,8 @@
     "clc.greetDenied": "Notifications for Light Plan are off in iPhone Settings — tap to turn them on.",
     "clc.noYear": "No year",
     "clc.dateOk": "Done",
-    "clc.dateClear": "Remove date"
+    "clc.dateClear": "Remove date",
+    "clc.greetAsk": "To get the reminder, allow notifications — tap here."
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1412,7 +1414,8 @@
     "clc.greetDenied": "Las notificaciones de Light Plan están desactivadas en Ajustes del iPhone; toca para activarlas.",
     "clc.noYear": "Sin año",
     "clc.dateOk": "Listo",
-    "clc.dateClear": "Quitar fecha"
+    "clc.dateClear": "Quitar fecha",
+    "clc.greetAsk": "Para recibir el aviso, permite las notificaciones: toca aquí."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1881,7 +1884,8 @@
     "clc.greetDenied": "iPhoneの設定でLight Planの通知がオフです。タップしてオンにしてください。",
     "clc.noYear": "年なし",
     "clc.dateOk": "完了",
-    "clc.dateClear": "日付を削除"
+    "clc.dateClear": "日付を削除",
+    "clc.greetAsk": "リマインダーを受け取るには通知を許可してください。ここをタップ。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2350,6 +2354,7 @@
     "clc.greetDenied": "iPhone设置中已关闭Light Plan的通知，轻点以开启。",
     "clc.noYear": "不含年份",
     "clc.dateOk": "完成",
-    "clc.dateClear": "删除日期"
+    "clc.dateClear": "删除日期",
+    "clc.greetAsk": "要收到提醒，请允许通知——轻点此处。"
   }
 }

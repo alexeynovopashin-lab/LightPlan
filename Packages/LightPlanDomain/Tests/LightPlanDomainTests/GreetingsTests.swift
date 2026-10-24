@@ -179,6 +179,28 @@ import LightPlanDomain
 
     // MARK: тумблер сам
 
+    @Test func newWeddingTurnsOnlyAnUntouchedCoupleOn() {
+        var c = Self.couple("c1", "Анна", "Иван", greet: false)
+        #expect(Greetings.greetNewWedding(&c) && c.greet)
+        var hand = Self.couple("c2", "Анна", "Иван", greet: false)
+        hand.greetHand = true
+        #expect(!Greetings.greetNewWedding(&hand) && !hand.greet, "выключен руками — остаётся")
+        var person = Self.person("c3", "Ольга", bd: nil, greet: false)
+        #expect(!Greetings.greetNewWedding(&person), "не пара — годовщины нет")
+        var cleared = Self.couple("c4", "Анна", "Иван", greet: false)
+        cleared.anniversaryManual = true
+        #expect(!Greetings.greetNewWedding(&cleared), "годовщину убрали руками — свадьба её не возвращает")
+    }
+
+    @Test func greetHandSurvivesTheFile() throws {
+        var c = Self.couple("c1", "Анна", "Иван", greet: false)
+        c.greetHand = true
+        let back = try JSONDecoder().decode(Client.self, from: JSONEncoder().encode(c))
+        #expect(back.greetHand && !back.greet)
+        let bare = String(data: try JSONEncoder().encode(Self.couple("c2", "А", "Б", greet: false)), encoding: .utf8)!
+        #expect(!bare.contains("greetHand"))
+    }
+
     @Test func greetTurnsOnWhenTheFirstDateIsWritten() {
         let blank = Self.person("c1", "Ольга", bd: nil, greet: false)
         var with = blank

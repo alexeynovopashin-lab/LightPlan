@@ -242,6 +242,82 @@ struct GreetAlertsTests {
         #expect(!AppModel.settleAnniversaries(in: &s, now: Date()))
     }
 
+    // MARK: - Свадьба после обновления (К6б, вариант 3)
+
+    private static func wedding(_ id: String, _ d: CivilDate, client: String? = nil) -> Session {
+        var s = Session(id: id, kind: .shoot, day: d, start: 600, end: 1200, duration: 600, genre: .wedding)
+        s.contact = "Аня и Марк"
+        s.clientPhone = "+7 913 555-66-77"
+        s.persons = [Person(name: "Аня", phone: "+7 913 555-66-77"), Person(name: "Марк", phone: "+7 913 555-66-78")]
+        s.clientId = client
+        return s
+    }
+
+    private static func pastCouple() -> Client {
+        var c = Client(id: "c1", kind: .couple)
+        c.people = [ClientPerson(name: "Аня", phone: "+7 913 555-66-77"), ClientPerson(name: "Марк", phone: "+7 913 555-66-78")]
+        return c
+    }
+
+    @Test func pastWeddingStaysOffOnLaunchAndOnResave() async {
+        // Пара, собранная до обновления: свадьба уже за клиентом, тумблер выключен.
+        let fake = Fake(.notDetermined)
+        let app = model(snap([Self.pastCouple()], sessions: [Self.wedding("w", CivilDate(year: 2025, month: 6, day: 14), client: "c1")]),
+                        center: fake)
+        app.syncAlerts(force: true)
+        await settle(app)
+        app.openForm(editing: "w"); app.saveForm()
+        await settle(app)
+        #expect(app.clientRecord("c1")?.greet == false, "старая свадьба тумблер не включает")
+        let asked = await fake.asked, table = await fake.table
+        #expect(asked == 0 && table.isEmpty)
+        // И разовый проход по старым съёмкам (первый запуск сборки с клиентами) — тоже нет.
+        var old = snap([], sessions: [Self.wedding("w", CivilDate(year: 2025, month: 6, day: 14))])
+        old.clientsAssembled = false
+        AppModel.assembleClients(into: &old, language: "ru", now: Date())
+        #expect(old.clients.count == 1 && old.clients[0].kind == .couple && old.clients[0].greet == false)
+    }
+
+    @Test func newWeddingTurnsGreetOnWithoutTheSystemQuestion() async {
+        let fake = Fake(.notDetermined)
+        let app = model(snap([], sessions: [Self.wedding("w", CivilDate(year: 2026, month: 11, day: 7))]), center: fake)
+        app.openForm(editing: "w"); app.saveForm()
+        await settle(app)
+        let c = app.clients.first { $0.kind == .couple }
+        #expect(c?.greet == true, "свадьба впервые встала к клиенту — «Поздравлять» включено")
+        #expect(c?.greetHand == false)
+        #expect(await fake.asked == 0, "системный вопрос сам не задаётся")
+        #expect(c.map(app.greetNeedsAsk) == true, "карточка предлагает разрешить уведомления")
+        // Нажали строку — тот же вопрос, что у тумблера.
+        app.askGreetPermission()
+        await settle(app)
+        #expect(await fake.asked == 1)
+    }
+
+    @Test func weddingAddedToAPastCoupleTurnsItOn() {
+        // Новая свадьба склеилась по номеру с парой, собранной раньше.
+        let app = model(snap([Self.pastCouple()], sessions: [Self.wedding("w2", CivilDate(year: 2026, month: 11, day: 7))]), center: nil)
+        app.openForm(editing: "w2"); app.saveForm()
+        #expect(app.sessions.first { $0.id == "w2" }?.clientId == "c1")
+        #expect(app.clientRecord("c1")?.greet == true)
+    }
+
+    @Test func turnedOffByHandStaysOffAfterResaveAndAnotherWedding() {
+        let app = model(snap([], sessions: [Self.wedding("w", CivilDate(year: 2026, month: 11, day: 7)),
+                                            Self.wedding("w2", CivilDate(year: 2026, month: 11, day: 8))]), center: nil)
+        app.openForm(editing: "w"); app.saveForm()
+        let id = app.clients.first { $0.kind == .couple }!.id
+        #expect(app.clientRecord(id)?.greet == true)
+        app.setClientGreet(id, false)
+        app.openForm(editing: "w"); app.saveForm()
+        #expect(app.clientRecord(id)?.greet == false, "пересохранили ту же свадьбу — выключено")
+        app.openForm(editing: "w2"); app.saveForm()
+        #expect(app.sessions.first { $0.id == "w2" }?.clientId == id)
+        #expect(app.clientRecord(id)?.greet == false, "ещё одна свадьба той же пары — выключено")
+        app.setClientBirthday(id, at: 0, Birthday(month: 5, day: 5))
+        #expect(app.clientRecord(id)?.greet == false, "и первая вписанная дата — тоже")
+    }
+
     // MARK: - Нажатие
 
     @Test func tapOpensTheClientCardOrTheClientsList() {

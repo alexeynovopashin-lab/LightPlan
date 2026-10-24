@@ -211,6 +211,7 @@ struct ClientCardScreen: View {
     /// в настройках iPhone — строка ведёт туда.
     private func greet(_ c: Client, _ pal: Palette) -> some View {
         let denied = app.greetNeedsSettings(c)
+        let ask = app.greetNeedsAsk(c)
         return VStack(alignment: .leading, spacing: 0) {
             FormGroupLabel(text: t.t("clc.greetSec"))
             FormGroup(node: "clc.greetGroup") {
@@ -229,18 +230,19 @@ struct ClientCardScreen: View {
                 FormToggleRow(node: "clc.greet", label: t.t("clc.greet"), on: c.greet) { app.setClientGreet(id, $0) }
             }
             Button {
+                if ask { app.askGreetPermission() }
                 #if os(iOS)
                 if denied, let u = URL(string: UIApplication.openSettingsURLString) { openURL(u) }
                 #endif
             } label: {
-                Text(t.t(denied ? "clc.greetDenied" : "clc.greetNote")).font(.system(size: 13))
-                    .foregroundStyle(denied ? pal.brass : pal.ink4).lineSpacing(4).multilineTextAlignment(.leading)
+                Text(t.t(denied ? "clc.greetDenied" : ask ? "clc.greetAsk" : "clc.greetNote")).font(.system(size: 13))
+                    .foregroundStyle(denied || ask ? pal.brass : pal.ink4).lineSpacing(4).multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 4).padding(.top, 8)
             }
             .buttonStyle(.plain)
-            .disabled(!denied)
-            .shotNode("clc.greetNote", text: denied ? "denied" : "note")
+            .disabled(!denied && !ask)
+            .shotNode("clc.greetNote", text: denied ? "denied" : ask ? "ask" : "note")
         }
     }
 

@@ -64,6 +64,8 @@ public struct Client: Sendable, Hashable, Identifiable {
     public var anniversaryManual: Bool = false
     /// `greet` — «Поздравлять»: один тумблер на карточку (К6).
     public var greet: Bool = false
+    /// `greetHand` — тумблер «Поздравлять» трогали руками (К6б): дальше он сам не включается ни от даты, ни от свадьбы.
+    public var greetHand: Bool = false
     /// `links` — свои ссылки клиента; ссылки съёмок сюда не копируются.
     public var links: [Attachment] = []
     /// `telLog` — ушедшие номера людей карточки: по ним клиент узнаётся и по старому номеру.
@@ -101,7 +103,7 @@ extension ClientPerson: Codable {
 
 extension Client: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, kind, people, main, anniv, annivManual, greet, links, telLog, mt
+        case id, kind, people, main, anniv, annivManual, greet, greetHand, links, telLog, mt
     }
 
     public init(from decoder: Decoder) throws {
@@ -114,6 +116,7 @@ extension Client: Codable {
         anniversary = (try c.decodeIfPresent(String.self, forKey: .anniv)).flatMap(CivilDate.init(snapshotString:))
         anniversaryManual = try c.decodeIfPresent(Bool.self, forKey: .annivManual) ?? false
         greet = try c.decodeIfPresent(Bool.self, forKey: .greet) ?? false
+        greetHand = try c.decodeIfPresent(Bool.self, forKey: .greetHand) ?? false
         links = try c.decodeIfPresent([Attachment].self, forKey: .links) ?? []
         telLog = try c.decodeIfPresent([TelLogEntry].self, forKey: .telLog) ?? []
         modifiedAt = try c.decodeIfPresent(Int64.self, forKey: .mt)
@@ -128,6 +131,7 @@ extension Client: Codable {
         try c.encodeIfPresent(anniversary?.snapshotString, forKey: .anniv)
         if anniversaryManual { try c.encode(true, forKey: .annivManual) }
         if greet { try c.encode(true, forKey: .greet) }
+        if greetHand { try c.encode(true, forKey: .greetHand) }
         if !links.isEmpty { try c.encode(links, forKey: .links) }
         if !telLog.isEmpty { try c.encode(telLog, forKey: .telLog) }
         try c.encodeIfPresent(modifiedAt, forKey: .mt)

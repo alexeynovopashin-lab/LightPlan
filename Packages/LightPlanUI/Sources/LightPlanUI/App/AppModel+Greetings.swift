@@ -62,17 +62,31 @@ extension AppModel {
         guard let before = clientRecord(id) else { return }
         editClient(id) { c in
             body(&c)
-            if Greetings.turnsGreetOn(before: before, after: c) { c.greet = true }
+            if !c.greetHand, Greetings.turnsGreetOn(before: before, after: c) { c.greet = true }
         }
         if !before.greet, clientRecord(id)?.greet == true { askGreetPermission() }
     }
 
     /// Тумблер «Поздравлять». Включение — момент спросить у системы право уведомлять, если ещё не спрашивали; отказ
-    /// ничего не ломает: тумблер стоит, под ним строка ведёт в настройки iPhone.
+    /// ничего не ломает: тумблер стоит, под ним строка ведёт в настройки iPhone. Тронутый руками тумблер сам больше не
+    /// включается (`greetHand`).
     func setClientGreet(_ id: String, _ on: Bool) {
-        editClient(id) { $0.greet = on }
+        editClient(id) { $0.greet = on; $0.greetHand = true }
         if on { askGreetPermission() }
     }
+
+    /// «Сохранить» свадьбы, которая впервые встала к клиенту (новая или впервые склеилась): «Поздравлять» включается
+    /// само (К6б, вариант 3). Системный вопрос здесь не задаётся — человек сохранял съёмку, а не просил уведомлений:
+    /// карточка покажет строку «Разрешить уведомления» (`greetNeedsAsk`).
+    func greetNewWedding(_ s: Session, linkedBefore: String?) {
+        guard s.genre == .wedding, let cid = s.clientId, cid != linkedBefore,
+              let i = snapshot.clients.firstIndex(where: { $0.id == cid }),
+              Greetings.greetNewWedding(&snapshot.clients[i]) else { return }
+        snapshot.clients[i].modifiedAt = nowMs
+    }
+
+    /// Поздравлять включено, а система ещё не спрашивала: строка под тумблером задаёт тот же вопрос, что и тумблер.
+    func greetNeedsAsk(_ c: Client) -> Bool { c.greet && alertCenter != nil && alertAuth == .notDetermined }
 
     /// Тот же системный вопрос, что у тумблера «Студийный час»: задаётся один раз, ответ — в `alertAuth`.
     func askGreetPermission() {

@@ -190,7 +190,7 @@
   `clients.js --cases debts,debts-list,debts-few,debts-done` (20 debts via `LPShotWay many`).
 - **Greetings (К6).** Birthday per person (`bd`, `Birthday`: day+month, year optional → age), couple anniversary = earliest wedding
   unless hand-edited (`annivManual`; cleared by hand stays cleared), «Поздравлять» per card (`greet`, turns on by itself when a date
-  is first written by hand — `Greetings.turnsGreetOn`; a wedding-derived anniversary does not flip it). Rules: `LightPlanDomain/Rules/Greetings.swift`
+  is first written by hand — `Greetings.turnsGreetOn`; К6б, Alexey's option 3: a wedding turns it on only when «Сохранить» links it to the client for the first time — `AppModel.greetNewWedding` in `saveForm`, never the one-time `assemble` pass, so past couples stay off and nothing re-evaluates on reinstall/cloud; no system prompt there, the card offers «разрешите уведомления»; `greetHand` = the toggle was touched by hand → no auto-on ever again). Rules: `LightPlanDomain/Rules/Greetings.swift`
   (`days`: one `Day` per date with all occasions, 29 Feb → 28 Feb, nearest 40). One notification per day `lp.greet.<YYYY-MM-DD>` at 10:00
   **phone clock**: `ScheduledAlert(wall:)` → calendar trigger without zone/calendar. Tap → client card (all occasions of one client) or
   «Клиенты» (`NotificationPresenter.Tap`, `openGreetClient`). **The 64 pending slots are shared by one sync of all lanes**

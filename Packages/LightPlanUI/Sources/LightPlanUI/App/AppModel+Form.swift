@@ -270,7 +270,9 @@ extension AppModel {
         if !gone.isEmpty { s.telLog = gone }
         // Клиент записи: ответ плашке формы (К3), затем склейка по номеру (К1); копии повтора берут его вместе с записью.
         ClientBook.applying(f.clientChoice, to: &s)
+        let linkedBefore = snapshot.sessions.first { $0.id == s.id }?.clientId
         bindClient(&s)
+        greetNewWedding(s, linkedBefore: linkedBefore)
         // Повтор: копии заводятся один раз, здесь, и дальше живут сами (веб `repMake`).
         var copies: [Session] = []
         if f.repeatOn, let rule = f.repeatRule {
