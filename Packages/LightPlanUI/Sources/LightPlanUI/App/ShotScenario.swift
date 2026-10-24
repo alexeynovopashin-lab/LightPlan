@@ -124,6 +124,8 @@ extension AppModel {
         // Чужие календари призраками (30.5): `-LPShotGhosts few|many|six` — подставной календарь с событиями на выбранный день.
         if let kind = UserDefaults.standard.string(forKey: "LPShotGhosts") { app.debugShotGhosts(kind: kind) }
         #endif
+        // Клиенты в Контактах (К7): `-LPShotContacts past|on|no|limited|test` — подставная книга; без аргумента части «Контакты» нет.
+        if let kind = UserDefaults.standard.string(forKey: "LPShotContacts") { app.shotContacts(kind) }
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
         if let mode = UserDefaults.standard.string(forKey: "LPShotRoads") { app.roads.useShotRoads(RoadBook.shotRouter(mode)) }
         // 28л.6: состояние детектора без сети — для снимков раздела «Сеть» (`reachable` | `unreachable` | `unknown`).

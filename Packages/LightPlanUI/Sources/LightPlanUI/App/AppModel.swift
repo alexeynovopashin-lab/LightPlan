@@ -475,6 +475,37 @@ public final class AppModel {
     public var ghostSheet: GhostSheetTarget?
     /// Дни недели, где список призраков раскрыт («Ещё N ⌄»): по дням, только в памяти запуска.
     public var ghostWeekOpen: Set<CivilDate> = []
+    // MARK: Клиенты в Контактах iPhone (К7)
+    /// Проход по книге; `nil` — тесты без подставки, снимки без подставки, Mac: ничего не пишется и не читается.
+    @ObservationIgnored var contactsMirror: ContactsMirror?
+    @ObservationIgnored var contactsStore: (any ContactsStoring)?
+    @ObservationIgnored var contactsMemory: (any ContactsMemory)?
+    @ObservationIgnored var contactsChain: Task<Void, Never>?
+    @ObservationIgnored var contactsGen = 0
+    @ObservationIgnored var contactsForce = false
+    /// Что последний проход привёл в книгу (клиенты и кого можно писать): без правки данных проход молчит.
+    @ObservationIgnored var contactsApplied: ContactsApplied?
+    /// «Из Контактов» в открытой форме: что подставлено; после «Сохранить» недостающее (день рождения, мессенджеры)
+    /// ложится в клиента записи.
+    @ObservationIgnored var formPicked: [FoundContact] = []
+    /// Эта сборка пишет в книгу: только обычный «Light Plan» (защита 1). Тестовые «LP …» — нет, и тумблера у них нет.
+    public internal(set) var contactsWrites = false
+    public internal(set) var contactsAuth: ContactsAuthorization = .notDetermined
+    /// Тумблер «Сохранять клиентов в Контакты iPhone» (память телефона, по умолчанию вкл).
+    public internal(set) var contactsWanted = true
+    /// Вопрос «Сохранить в Контакты N клиентов из прошлых съёмок?» на экране — N; `nil` — вопроса нет.
+    public var contactsPastAsk: Int?
+    /// Прошлые клиенты с номером, что ждут «Да».
+    public internal(set) var contactsPastWaiting = 0
+    public internal(set) var contactsPastAnswer: Bool?
+    /// Сколько контактов записало приложение на этом телефоне.
+    public internal(set) var contactsOwnCount = 0
+    /// «Убрать всё» спросило подтверждение.
+    public var contactsRemoveAsk = false
+    /// Итог «Убрать всё»: сколько убрано; `nil` — ещё не убирали в этот заход.
+    public internal(set) var contactsRemoved: Int?
+    /// Последний проход что-то не записал (книга отказала).
+    public internal(set) var contactsFailed = false
     @ObservationIgnored var reachTask: Task<Void, Never>?
     /// Закачка доски идёт этой задачей; «Остановить» отменяет её.
     @ObservationIgnored var pinTask: Task<Void, Never>?
@@ -607,7 +638,7 @@ public final class AppModel {
     /// файл не трогаем, пока человек сам что-нибудь не поменяет.
     static func startSnapshot(store: Store, fresh: Bool, bundleID: String?, now: Date = Date()) async -> Snapshot {
         var snapshot = (try? await store.load()) ?? Snapshot()
-        if fresh, bundleID != "Novopashin.LightPlan", let seed = TestSeed.snapshot(now: now) {
+        if fresh, bundleID != ClientContacts.mainBundleID, let seed = TestSeed.snapshot(now: now) {
             snapshot = seed
             try? await store.saveNow(seed)
         }
@@ -675,6 +706,8 @@ public final class AppModel {
         model.attachAlerts()        // студийный час по расписанию, пока приложение закрыто (30а)
         model.attachCalendar()      // съёмки в Календаре iPhone, если человек включил (30.1)
         model.debugCalendarProbe()  // замер на настоящем календаре симулятора (`-LPCalendarProbe`, Debug)
+        model.attachContacts()      // клиенты в Контактах iPhone — пишет только обычный «Light Plan» (К7)
+        model.debugContactsProbe()  // замер на настоящей книге симулятора (`-LPContactsProbe`, Debug)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)
@@ -847,6 +880,7 @@ public final class AppModel {
     func persist(then after: (@Sendable () -> Void)? = nil) {
         syncAlerts()      // расписание студийного часа — функция данных (30а)
         syncCalendarMirror()    // и событие в Календаре iPhone — тоже (30.2)
+        syncContacts()          // и клиенты в Контактах iPhone (К7)
         guard let store else { after?(); return }
         let snap = snapshot, prev = saving
         saving = Task {

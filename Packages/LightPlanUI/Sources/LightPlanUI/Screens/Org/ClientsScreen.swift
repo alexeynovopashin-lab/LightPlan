@@ -1,6 +1,10 @@
 import SwiftUI
 import LightPlanCore
+import LightPlanData
 import LightPlanDomain
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Клиенты (шаг К1, справка `docs/clients_reference.md` § 4.2–4.3)
 
@@ -13,6 +17,7 @@ import LightPlanDomain
 struct ClientsScreen: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.openURL) private var openURL
 
     private var t: Lexicon { app.lexicon }
 
@@ -40,6 +45,15 @@ struct ClientsScreen: View {
         // «Компании» держат прежний узел `org.list` на весь экран — пара с вебом остаётся как была.
         .shotNode(app.org.clientsTab == .privates ? "cl.screen" : "org.list",
                   text: "\(app.org.clientsTab == .privates ? app.clients.count : app.orgs.count)")
+        // Первое открытие «Клиентов» — момент спросить доступ к Контактам и о прошлых клиентах (К7, § 5).
+        .task { app.contactsOpened() }
+        .confirmationDialog(t.t("clk.removeAsk", ["n": t.count("clk.contacts", app.contactsOwnCount)]),
+                            isPresented: $app.contactsRemoveAsk, titleVisibility: .visible) {
+            Button(t.t("clk.removeYes"), role: .destructive) { app.removeAppContacts() }
+            Button(t.t("ask.cancel"), role: .cancel) {}
+        } message: {
+            Text(t.t("clk.removeNote"))
+        }
     }
 
     // MARK: Частные
@@ -49,6 +63,7 @@ struct ClientsScreen: View {
         ClientFilterChips(options: ClientBook.Filter.allCases.map { (t.t(Self.filterKey($0)), $0) },
                           selection: $app.org.clientsFilter)
             .padding(.top, 14)
+        if let n = app.contactsPastAsk { pastPlate(n, pal).padding(.top, 14) }
         VStack(spacing: 10) {
             if app.clients.isEmpty {
                 emptyPlate(pal)
@@ -69,6 +84,122 @@ struct ClientsScreen: View {
         .buttonStyle(.plain)
         .shotNode("cl.add", text: t.t("cl.add"))
         .padding(.top, 12)
+        contactsPart(pal)
+    }
+
+    // MARK: Контакты iPhone (К7, § 5)
+
+    /// Под списком: тумблер «Сохранять клиентов в Контакты iPhone» (по умолчанию вкл), подпись — почему так, строка
+    /// «спросить снова» о прошлых клиентах и «Убрать из Контактов всё, что записало приложение». В тестовой сборке
+    /// тумблера нет — она в книгу не пишет никогда (защита 1); остаётся подпись, почему.
+    @ViewBuilder private func contactsPart(_ pal: Palette) -> some View {
+        if app.contactsAvailable {
+            VStack(alignment: .leading, spacing: 8) {
+                if app.contactsWrites {
+                    HStack(spacing: 12) {
+                        Text(t.t("clk.toggle")).font(.system(size: 15)).foregroundStyle(pal.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Toggle("", isOn: Binding(
+                            get: { app.contactsOn },
+                            set: { on in
+                                // Отказали или открыли часть книги — спросить снова нельзя: ведём в настройки iPhone.
+                                if on, app.contactsNeedsSettings { openSystemSettings() } else { app.setContactsWanted(on) }
+                            }))
+                            .labelsHidden().tint(pal.brass)
+                            .shotNode("clk.toggle", text: app.contactsOn ? "on" : "off")
+                    }
+                    .padding(.horizontal, 15).padding(.vertical, 13)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
+                    contactsNote(contactsNoteText, pal, node: "clk.note")
+                    if app.contactsOn, app.contactsPastAnswer == false, app.contactsPastWaiting > 0, app.contactsPastAsk == nil {
+                        contactsLine(t.t("clk.pastAgain", ["n": "\(app.contactsPastWaiting)"]), ink: pal.brass, pal, node: "clk.pastAgain") {
+                            app.askPastClientsAgain()
+                        }
+                    }
+                    if app.contactsOwnCount > 0 {
+                        contactsLine(t.t("clk.remove"), ink: pal.ink3, pal, node: "clk.remove") { app.contactsRemoveAsk = true }
+                    }
+                    if let n = app.contactsRemoved {
+                        contactsNote(t.t("clk.removed", ["n": "\(n)"]), pal, node: "clk.removed")
+                    }
+                } else {
+                    contactsNote(t.t("clk.testBuild"), pal, node: "clk.testBuild")
+                }
+            }
+            .padding(.top, 22)
+            .shotNode("clk.part")
+        }
+    }
+
+    private var contactsNoteText: String {
+        if app.contactsAuth == .denied { return t.t("clk.denied") }
+        if app.contactsAuth == .limited { return t.t("clk.limited") }
+        if !app.contactsOn { return t.t("clk.noteOff") }
+        if app.contactsFailed { return t.t("clk.failed") }
+        return t.t("clk.noteOn")
+    }
+
+    private func contactsNote(_ text: String, _ pal: Palette, node: String) -> some View {
+        Text(text).font(.system(size: 13)).foregroundStyle(pal.ink5).lineSpacing(4)
+            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 4)
+            .fixedSize(horizontal: false, vertical: true)
+            .shotNode(node, text: text)
+    }
+
+    private func contactsLine(_ title: String, ink: Color, _ pal: Palette, node: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 15)).foregroundStyle(ink).multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).padding(.vertical, 12)
+                .frame(minHeight: 44)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode(node, text: title)
+    }
+
+    /// «Сохранить в Контакты N клиентов из прошлых съёмок?» — «Да» / «Нет» (защита 2). Плашка над списком: её видно
+    /// сразу, как открыли «Клиенты».
+    private func pastPlate(_ n: Int, _ pal: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Icon("partner", size: 17, line: 1.6).foregroundStyle(pal.brass).padding(.top, 1)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(t.t("clk.pastAsk", ["n": t.count("clk.clients", n)])).font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(pal.ink).lineSpacing(3)
+                        .shotNode("clk.pastText", text: "\(n)")
+                    Text(t.t("clk.pastNote")).font(.system(size: 13)).foregroundStyle(pal.ink5).lineSpacing(3)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 8) {
+                pastButton(t.t("clf.yes"), ink: pal.brass, back: pal.pressBrass, node: "clk.pastYes") { app.answerPastClients(true) }
+                pastButton(t.t("studio.askNo"), ink: pal.ink3, back: pal.press, node: "clk.pastNo") { app.answerPastClients(false) }
+            }
+            .padding(.leading, 29)
+        }
+        .padding(.horizontal, 15).padding(.vertical, 13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
+        .shotNode("clk.past", text: "\(n)")
+    }
+
+    private func pastButton(_ title: String, ink: Color, back: Color, node: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(ink)
+                .padding(.horizontal, 14).frame(height: 32)
+                .background(back, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .shotNode(node)
+    }
+
+    private func openSystemSettings() {
+        #if os(iOS)
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+        #endif
     }
 
     static func filterKey(_ f: ClientBook.Filter) -> String {

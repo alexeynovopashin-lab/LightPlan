@@ -144,6 +144,42 @@
           }
         }
       }
+    },
+    "NSContactsUsageDescription": {
+      "comment": "Текст системного запроса Контактов (К7): клиенты в книге iPhone, чтобы было видно, кто звонит. Просим полный доступ: при частичном не найти, кто уже записан. Базовое значение — английский в Config/iOS.xcconfig, переводы — здесь; формулировку согласует Алексей.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan saves your clients to Contacts so your iPhone shows who is calling. It adds only your clients, never changes contacts you saved yourself (it only reads a birthday or messenger a client is missing), and sends nothing anywhere."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan сохраняет ваших клиентов в Контакты, чтобы iPhone показывал, кто звонит. Приложение добавляет только ваших клиентов, не меняет контакты, которые вы сохранили сами (лишь читает день рождения или мессенджер, которых нет у клиента), и ничего никуда не отправляет."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan guarda a tus clientes en Contactos para que el iPhone muestre quién llama. Solo añade tus clientes, nunca cambia los contactos que guardaste tú (solo lee un cumpleaños o mensajero que le falte al cliente) y no envía nada a ningún sitio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Planはクライアントを連絡先に保存し、iPhoneに着信相手が表示されるようにします。追加するのはあなたのクライアントだけで、あなたが自分で保存した連絡先は変更しません（クライアントにない誕生日やメッセンジャーを読み取るだけです）。どこにも何も送信しません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light Plan 会把你的客户保存到通讯录，让 iPhone 显示来电者。它只添加你的客户，绝不改动你自己保存的联系人（只读取客户缺少的生日或通讯软件），也不会向任何地方发送内容。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

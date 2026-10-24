@@ -21,6 +21,9 @@ struct ClientCardScreen: View {
     @State private var askingMerge: ClientTwinRow?
     /// Открыт лист даты: чей день рождения или годовщина.
     @State private var dateAsk: DateAsk?
+    /// «Из Контактов» (К7): какому человеку достанется выбранный контакт.
+    @State private var pickIndex = 0
+    @State private var picking = false
 
     private enum DateAsk: Identifiable, Hashable {
         case birthday(Int), anniversary
@@ -67,6 +70,11 @@ struct ClientCardScreen: View {
             }
         }
         .sheet(item: $dateAsk) { dateSheet($0) }
+        .contactPicker(isPresented: $picking) { app.takeClientContact(id, at: pickIndex, $0) }
+        #if DEBUG
+        // Снимок системного листа «Из Контактов» (К7): `-LPShotPickContact YES` открывает его у первого человека.
+        .task { if UserDefaults.standard.bool(forKey: "LPShotPickContact") { pickIndex = 0; picking = true } }
+        #endif
         .sheet(isPresented: $app.org.clientPick) {
             ClientMergePicker(app: app, targetId: id)
         }
@@ -152,6 +160,7 @@ struct ClientCardScreen: View {
                         messengerRow(c.people[i], i, k, pal)
                     }
                     addMessenger(c.people[i], i, pal)
+                    pickRow(i, pal)
                 }
             }
             writeTo(c)
@@ -352,6 +361,20 @@ struct ClientCardScreen: View {
             .menuOrder(.fixed)
             .shotNode("clc.addMsg.\(i)", text: t.t("clc.addMessenger"))
         }
+    }
+
+    /// «Из Контактов» (К7, § 5): системный выбор контакта, без разрешения на книгу. Номер и имя — выбранные, день
+    /// рождения и мессенджеры — недостающие.
+    @ViewBuilder private func pickRow(_ i: Int, _ pal: Palette) -> some View {
+        #if os(iOS)
+        Button { pickIndex = i; picking = true } label: {
+            Text(t.t("clk.pick")).font(.system(size: 15)).foregroundStyle(pal.brass)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).frame(height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("clc.pick.\(i)", text: t.t("clk.pick"))
+        #endif
     }
 
     /// «Пишем»: кому из людей пишет кнопка в шапке съёмки. Только когда связаться можно больше чем с одним.

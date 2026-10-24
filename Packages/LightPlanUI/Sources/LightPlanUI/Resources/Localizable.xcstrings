@@ -9867,6 +9867,756 @@
         }
       }
     },
+    "clk.clients" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣клиента"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣клиентов"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣клиентов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣клиентов"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣client"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣clients"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣cliente"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣clientes"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣人のクライアント"
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣位客户"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "clk.contacts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣контакт"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣контакта"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣контактов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣контактов"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣contact"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣contacts"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣contacto"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣contactos"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣件の連絡先"
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld⁣个联系人"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "clk.denied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет доступа к Контактам — клиенты живут только в приложении. Разрешить доступ можно в настройках iPhone: нажмите на тумблер."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No access to Contacts, so clients live only in the app. You can allow access in iPhone Settings: tap the switch."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin acceso a Contactos: los clientes solo viven en la app. Puedes permitirlo en los Ajustes del iPhone: toca el interruptor."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連絡先へのアクセスがないため、クライアントはアプリ内だけです。iPhoneの設定で許可できます。スイッチをタップしてください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有通讯录权限，客户只保存在应用里。可在 iPhone 设置中允许：轻点开关。"
+          }
+        }
+      }
+    },
+    "clk.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часть клиентов не записалась в Контакты — приложение попробует снова, когда вы вернётесь в него."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some clients were not saved to Contacts; the app will try again when you come back to it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algunos clientes no se guardaron en Contactos; la app lo intentará de nuevo cuando vuelvas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一部のクライアントを連絡先に保存できませんでした。アプリに戻ったときにもう一度試します。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "部分客户没有写入通讯录，回到应用时会再试一次。"
+          }
+        }
+      }
+    },
+    "clk.limited" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыт доступ только к части контактов: так не узнать, кто уже записан, и появятся дубли. Чтобы клиенты сохранялись, разрешите все контакты в настройках iPhone: нажмите на тумблер."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only some contacts are shared: the app cannot tell who is already saved, and duplicates would appear. To save clients, allow all contacts in iPhone Settings: tap the switch."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se comparten algunos contactos: así no se sabe quién ya está guardado y aparecerían duplicados. Para guardar clientes, permite todos los contactos en los Ajustes del iPhone: toca el interruptor."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一部の連絡先だけが共有されています。これでは誰が保存済みか分からず、重複ができてしまいます。クライアントを保存するには、iPhoneの設定ですべての連絡先を許可してください。スイッチをタップしてください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只共享了部分联系人：这样无法知道谁已保存，会出现重复。要保存客户，请在 iPhone 设置中允许全部联系人：轻点开关。"
+          }
+        }
+      }
+    },
+    "clk.noteOff" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клиенты живут только в приложении. То, что уже записано в Контакты, остаётся там."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clients live only in the app. What was already saved to Contacts stays there."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los clientes solo viven en la app. Lo que ya se guardó en Contactos se queda allí."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クライアントはアプリ内だけに残ります。すでに連絡先に保存したものはそのまま残ります。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "客户只保存在应用里。已经写入通讯录的内容会保留。"
+          }
+        }
+      }
+    },
+    "clk.noteOn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый клиент с номером сам попадает в Контакты — iPhone покажет, кто звонит. Номер, который уже есть в Контактах, не дублируется, и ваш контакт не меняется."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new client with a number goes to Contacts by itself, so the iPhone shows who is calling. A number already in Contacts is not duplicated, and your contact is not changed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un cliente nuevo con número pasa solo a Contactos: el iPhone mostrará quién llama. Un número que ya está en Contactos no se duplica y tu contacto no cambia."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "番号のある新しいクライアントは自動で連絡先に入り、iPhoneに着信相手が表示されます。連絡先にすでにある番号は重複せず、あなたの連絡先も変更されません。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有号码的新客户会自动进入通讯录，iPhone 就能显示来电者。通讯录里已有的号码不会重复，你的联系人也不会被改动。"
+          }
+        }
+      }
+    },
+    "clk.pastAgain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить в Контакты клиентов из прошлых съёмок: {n}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save clients from past shoots to Contacts: {n}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar en Contactos clientes de sesiones anteriores: {n}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "過去の撮影のクライアントを連絡先に保存：{n}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将以往拍摄的客户保存到通讯录：{n}"
+          }
+        }
+      }
+    },
+    "clk.pastAsk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить в Контакты {n} из прошлых съёмок?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save {n} from past shoots to Contacts?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Guardar en Contactos {n} de sesiones anteriores?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "過去の撮影の{n}を連絡先に保存しますか？"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将以往拍摄中的{n}保存到通讯录？"
+          }
+        }
+      }
+    },
+    "clk.pastNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Они собраны из съёмок, что были записаны раньше. «Нет» — останутся только в приложении; спросить снова можно здесь же, под тумблером."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They were gathered from shoots saved earlier. “No” keeps them in the app only; you can be asked again here, under the switch."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se reunieron de sesiones guardadas antes. «No»: se quedan solo en la app; puedes volver a preguntar aquí, bajo el interruptor."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以前に保存した撮影から集めたクライアントです。「いいえ」ならアプリ内だけに残ります。スイッチの下からもう一度聞けます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "他们来自之前保存的拍摄。选“否”则只保留在应用里；可在开关下方再次询问。"
+          }
+        }
+      }
+    },
+    "clk.pick" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из Контактов"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From Contacts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De Contactos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連絡先から"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从通讯录"
+          }
+        }
+      }
+    },
+    "clk.remove" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать из Контактов всё, что записало приложение"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove everything the app saved to Contacts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar de Contactos todo lo que guardó la app"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリが連絡先に保存したものをすべて削除"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从通讯录移除应用写入的全部内容"
+          }
+        }
+      }
+    },
+    "clk.removeAsk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать из Контактов {n}, записанных приложением?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove {n} saved by the app from Contacts?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Quitar de Contactos {n} guardados por la app?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリが保存した{n}を連絡先から削除しますか？"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从通讯录移除应用写入的{n}？"
+          }
+        }
+      }
+    },
+    "clk.removeNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваши контакты не тронутся. Сохранение клиентов в Контакты выключится."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your own contacts stay untouched. Saving clients to Contacts will turn off."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus propios contactos no se tocan. Guardar clientes en Contactos se desactivará."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あなた自身の連絡先はそのままです。クライアントの連絡先への保存はオフになります。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你自己的联系人不受影响。保存客户到通讯录将关闭。"
+          }
+        }
+      }
+    },
+    "clk.removeYes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "削除"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除"
+          }
+        }
+      }
+    },
+    "clk.removed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрано из Контактов: {n}."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed from Contacts: {n}."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitado de Contactos: {n}."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連絡先から削除：{n}。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已从通讯录移除：{n}。"
+          }
+        }
+      }
+    },
+    "clk.testBuild" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тестовая сборка в Контакты iPhone не пишет — это делает только обычный «Light Plan». «Из Контактов» здесь работает."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A test build never writes to iPhone Contacts; only the regular “Light Plan” does. “From Contacts” works here."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una versión de prueba no escribe en Contactos del iPhone; solo lo hace “Light Plan” normal. «De Contactos» funciona aquí."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "テスト版はiPhoneの連絡先に書き込みません。書き込むのは通常の「Light Plan」だけです。「連絡先から」はここでも使えます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "测试版不会写入 iPhone 通讯录，只有正式的“Light Plan”会写入。“从通讯录”在这里可用。"
+          }
+        }
+      }
+    },
+    "clk.toggle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранять клиентов в Контакты iPhone"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save clients to iPhone Contacts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar clientes en Contactos del iPhone"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クライアントをiPhoneの連絡先に保存"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将客户保存到 iPhone 通讯录"
+          }
+        }
+      }
+    },
     "cloud.connection" : {
       "extractionState" : "manual",
       "localizations" : {

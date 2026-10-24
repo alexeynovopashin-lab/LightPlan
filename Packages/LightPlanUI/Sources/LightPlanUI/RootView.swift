@@ -53,7 +53,7 @@ public struct RootView: View {
             // И расписание студийного часа сверяется с данными и с разрешением (его могли дать в настройках iPhone).
             if phase == .active, let app { app.syncAlerts(force: true) }
             // И Календарь iPhone сверяется с данными: событие могли удалить руками, право — выдать или отнять (30.3).
-            if phase == .active, let app { app.syncCalendarMirror(force: true); if app.ghostWanted { app.scheduleGhostReload() } }
+            if phase == .active, let app { app.syncCalendarMirror(force: true); app.syncContacts(force: true); if app.ghostWanted { app.scheduleGhostReload() } }
             // Доступ к геопозиции могли дать или отнять в настройках iPhone; слежение берёт свежую точку (29.8в.12).
             if phase == .active, let app { app.placeBecameActive() }
             // Прогноз к съёмкам переменился, пока нас не было (30.6): баннер; чаще получаса в сеть не ходим.

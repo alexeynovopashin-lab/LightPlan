@@ -199,6 +199,21 @@
   Debug `-LPTravelTo <ISO>`: the app clock starts there and every request is moved by the same shift (`SystemNotificationCenter.debugShift`,
   interval trigger) — a «tomorrow 10:00» greeting is delivered a minute later on the simulator; log with `-LPAlertLog <file>`.
   Shots: `clients.js --cases card-greet,card-greet-person`.
+- **iPhone Contacts (К7).** Each person of a client **with a number** = one contact (name split first/middle/last, one e164 mobile
+  number, birthday, messengers as social profiles, couple anniversary in «Dates» of both); never Notes. Rules `ClientContacts` (Domain:
+  `phoneKey` = `TelFormat.full` with extension cut — «8…» = «+7…»; `cards`, `plan`, `fill`). Number already in the book (not ours) → no
+  contact, theirs untouched, only missing birthday/messengers read into the client. Edits go only to own contacts (link person key
+  `clientId#i` → contact id + last written card, device-local `ContactsRecord` in UserDefaults, never the snapshot); own contact deleted by
+  hand → `dropped`, never recreated; deleting a client leaves its contact. Data: `ContactsMirror` actor, `CNContactsStore` (only `Contacts`
+  user, `unifyResults = false`), fake `InMemoryContactsStore`. App: `AppModel+ClientContacts.swift` (`AppModel+Contacts.swift` is the old
+  «Контакты» number list of iteration 28 — different thing). **Three protections (Alexey 23.10):** (1) only `ClientContacts.mainBundleID`
+  writes (same constant decides the seed) — slots «LP …» get no toggle, a note instead; (2) every client existing at the first K7 launch
+  is `past`, written only after «Сохранить в Контакты N … из прошлых съёмок?» → «Да» (plate over the list; «Нет» → line under the toggle);
+  (3) «Убрать из Контактов всё, что записало приложение» (confirm) deletes by link only, turns the toggle off and re-marks all clients past.
+  Toggle default on; permission asked at the first «Клиенты» opening; limited/denied → shown off with a note, tap → iPhone Settings.
+  «Из Контактов» = `CNContactPickerViewController` (no permission): form phone rows (extras land in the client on «Сохранить»,
+  `takeFormPicked`) and card person rows. Real book check: `python3 Tools/contacts_sim.py --app <.app>` (`-LPContactsProbe`, `--selftest`).
+  Shots: `clients.js --cases contacts-past,contacts-on,contacts-no,contacts-limited,contacts-test` (`-LPShotContacts`).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

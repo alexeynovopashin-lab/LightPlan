@@ -71,6 +71,7 @@ extension AppModel {
     public func openForm(day: CivilDate? = nil, start: Int? = nil, fromLight: Bool = true, mode: FormMode = .shoot) {
         let d = day ?? planner.selected
         formOverDraft = false
+        formPicked = []
         if let data = draftStore.load(), let draft = EventForm.fromDraft(data), draft.hasTypedContent {
             // Черновик встречи без даты называть датой нечем — он поднимается без вопроса.
             if !draft.dayUnset, draft.day != d {
@@ -151,6 +152,7 @@ extension AppModel {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
         formIsDraft = false
         formOverDraft = false
+        formPicked = []
         form = EventForm.editing(s, home: settings.currency)
         reapplyQuestDraft(for: id)
     }
@@ -273,6 +275,7 @@ extension AppModel {
         let linkedBefore = snapshot.sessions.first { $0.id == s.id }?.clientId
         bindClient(&s)
         greetNewWedding(s, linkedBefore: linkedBefore)
+        takeFormPicked(s)      // «Из Контактов»: день рождения и мессенджеры — клиенту записи (К7)
         // Повтор: копии заводятся один раз, здесь, и дальше живут сами (веб `repMake`).
         var copies: [Session] = []
         if f.repeatOn, let rule = f.repeatRule {

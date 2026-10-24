@@ -26,3 +26,7 @@ INFOPLIST_KEY_NSCameraUsageDescription = Light Plan uses the camera to show wher
 // «Съёмки в Календаре». Полный доступ, не «только запись»: под записью нельзя завести календарь и нельзя найти своё
 // событие, чтобы сдвинуть или убрать (замер iOS 26.5, Tools/calendar_probe). Читаем и правим только свой календарь.
 INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = Light Plan shows your shoots in its own calendar called “Light Plan” and keeps it up to date when you change something. For that it needs access to Calendar: it reads and changes only its own calendar, never touches other events, and sends nothing anywhere.
+// Контакты — клиенты в книге iPhone (шаг К7, docs/clients_reference.md § 5): iPhone показывает, кто звонит. Спрашивается при
+// первом открытии «Клиентов» и только в обычном «Light Plan» (тестовые «LP …» в книгу не пишут). Полный доступ: при
+// частичном не найти, кто уже записан. «Заметки» не трогаем — для них нужно особое разрешение Apple.
+INFOPLIST_KEY_NSContactsUsageDescription = Light Plan saves your clients to Contacts so your iPhone shows who is calling. It adds only your clients, never changes contacts you saved yourself (it only reads a birthday or messenger a client is missing), and sends nothing anywhere.

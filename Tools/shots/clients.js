@@ -48,6 +48,13 @@ const CASES = [
   // К6: дни рождения людей, годовщина пары из свадьбы, «Поздравлять».
   { name: 'card-greet', sheet: 'clientcard', way: 'couple+greet', card: 'couple', greet: true },
   { name: 'card-greet-person', sheet: 'clientcard', way: 'person+greet', card: 'person', greet: true },
+  // К7: часть «Контакты» под «Семьями» (две строки — тумблер виден без прокрутки): вопрос о прошлых, всё записано, «Нет»,
+  // частичный доступ, тестовая сборка.
+  { name: 'contacts-past', sheet: 'clients', way: 'families', contacts: 'past' },
+  { name: 'contacts-on', sheet: 'clients', way: 'families', contacts: 'on' },
+  { name: 'contacts-no', sheet: 'clients', way: 'families', contacts: 'no' },
+  { name: 'contacts-limited', sheet: 'clients', way: 'families', contacts: 'limited' },
+  { name: 'contacts-test', sheet: 'clients', way: 'families', contacts: 'test' },
   // К3: входы из съёмки.
   { name: 'head-couple', sheet: 'clienthead', way: 'couple', reach: 'sms' },
   { name: 'head-person', sheet: 'clienthead', way: 'person', reach: 'sms' },
@@ -249,11 +256,32 @@ function debtsVerdict(c, nodes, screen) {
   return bad;
 }
 
+/* К7: что видно в части «Контакты» по виду; всё в полях 24 и на экране. */
+function contactsVerdict(c, nodes, screen) {
+  const bad = [], n = k => { if (!nodes[k]) bad.push('нет узла ' + k); return nodes[k]; };
+  const no = k => { if (nodes[k]) bad.push('лишний узел ' + k); };
+  const part = n('clk.part');
+  if (part && (part.x < 23.9 || part.x + part.w > screen.w - 23.9)) bad.push('часть «Контакты» вне полей');
+  if (part && part.y + part.h > screen.h) bad.push(`часть «Контакты» ниже экрана: ${(part.y + part.h).toFixed(1)} > ${screen.h}`);
+  const tog = nodes['clk.toggle'];
+  if (c.contacts === 'test') { no('clk.toggle'); no('clk.remove'); n('clk.testBuild'); return bad; }
+  n('clk.toggle'); n('clk.note');
+  const on = { past: 'on', on: 'on', no: 'on', limited: 'off' }[c.contacts];
+  if (tog && tog.text !== on) bad.push(`тумблер ${tog.text}, ждали ${on}`);
+  if (c.contacts === 'past') { const p = n('clk.past'); n('clk.pastYes'); n('clk.pastNo'); if (p && !(num(p.text) > 0)) bad.push('в вопросе нет числа'); no('clk.remove'); }
+  else no('clk.past');
+  if (c.contacts === 'on') n('clk.remove');
+  if (c.contacts === 'no') n('clk.pastAgain'); else no('clk.pastAgain');
+  if (c.contacts === 'limited') { const t = nodes['clk.note']; if (t && !/части контактов/.test(t.text)) bad.push('подпись не про частичный доступ'); no('clk.remove'); }
+  return bad;
+}
+
 function verdict(c, nodes, screen) {
   if (c.sheet === 'debts') return debtsVerdict(c, nodes, screen);
   if (c.sheet === 'clienthead') return headVerdict(c, nodes, screen);
   if (c.sheet === 'clientform') return formVerdict(c, nodes);
   if (c.sheet === 'clientcard') return cardVerdict(c, nodes, screen);
+  if (c.contacts) return contactsVerdict(c, nodes, screen);
   const bad = [], n = k => { if (!nodes[k]) bad.push('нет узла ' + k); return nodes[k]; };
   const back = n('org.back');
   if (back && Math.abs(back.x - 24) > 0.6) bad.push(`«Назад» не на поле 24: x=${back.x.toFixed(1)}`);
@@ -316,7 +344,7 @@ function verdict(c, nodes, screen) {
         '-LPShotNow', '2026-10-23T12:00:00+07:00', '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', seedFile,
         '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'), '-LPShotAir', path.join(FX, 'air_barnaul.json'),
         '-LPShotName', path.join(FX, 'place_barnaul.json'), '-LPShotScreen', 'planner', '-LPShotScope', 'month',
-        '-LPShotSheet', c.sheet, ...(c.way ? ['-LPShotWay', c.way] : []), '-LPShotReportDelay', '4', '-LPShotReport', report]);
+        '-LPShotSheet', c.sheet, ...(c.way ? ['-LPShotWay', c.way] : []), ...(c.contacts ? ['-LPShotContacts', c.contacts] : []), '-LPShotReportDelay', '4', '-LPShotReport', report]);
       for (let i = 0; i < 240 && !fs.existsSync(report); i++) await sleep(250);
       if (!fs.existsSync(report)) throw new Error('нет рамок: ' + dir);
       await sleep(1200);

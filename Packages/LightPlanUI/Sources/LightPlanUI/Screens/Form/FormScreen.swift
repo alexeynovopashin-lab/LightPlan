@@ -13,6 +13,9 @@ struct FormScreen: View {
     /// Раскрыта одна из четырёх строк времени — по одной, как `ROWS` веба.
     @State private var picker: TimePicker? = Self.launchPicker
     @State private var orgSheet = false
+    /// «Из Контактов» у поля телефона (К7): какому полю достанется выбранный контакт.
+    @State private var pickSlot: FormPickSlot?
+    @State private var picking = false
     @State private var genreSheet = false
     @State private var paySheet = false
     @State private var kitSheet = false
@@ -197,7 +200,7 @@ struct FormScreen: View {
                     if f.shows(.contactLine) {
                         FormTextField(placeholder: t.t("whoHint." + group), text: text(\.contact), kind: .name)
                         clientPlate(f, pal, t)
-                        phoneRow(t.t("form.phone"), text: phone(\.clientPhone))
+                        phoneRow(t.t("form.phone"), text: phone(\.clientPhone), slot: .client, pal, t)
                     }
                     if f.shows(.breed) {
                         FormTextField(placeholder: t.t("form.breedPh"), text: text(\.breed))
@@ -205,19 +208,20 @@ struct FormScreen: View {
                     ForEach(Array(f.genre.persons.enumerated()), id: \.offset) { i, role in
                         FormTextField(placeholder: t.t("form.namePh", ["role": t.t("person." + role.rawValue).lowercased()]),
                                       text: person(i, name: true), kind: .name)
-                        phoneRow(t.t("form.phone"), text: person(i, name: false, phone: true))
+                        phoneRow(t.t("form.phone"), text: person(i, name: false, phone: true), slot: .person(i), pal, t)
                     }
                     // У пары плашка одна на обоих — под их строками.
                     if !f.shows(.contactLine) { clientPlate(f, pal, t) }
                     if f.shows(.organization) { orgRow(f, pal, t, group: group) }
                     if f.shows(.orderContact) {
                         FormTextField(placeholder: t.t("form.person"), text: text(\.orderPerson), kind: .name)
-                        phoneRow(t.t("form.phone"), text: phone(\.orderPhone))
+                        phoneRow(t.t("form.phone"), text: phone(\.orderPhone), slot: .order, pal, t)
                     }
                     if f.shows(.guests) { guestsRow(f, pal, t) }
                     if f.repeatOn { repToggle(.client, f, t) }
                 }
             }
+            .contactPicker(isPresented: $picking) { takePicked($0) }
         }
     }
 
@@ -271,8 +275,34 @@ struct FormScreen: View {
         .shotNode(node)
     }
 
-    private func phoneRow(_ placeholder: String, text: Binding<String>) -> some View {
-        FormTextField(placeholder: placeholder, text: text, kind: .phone)
+    /// Поле телефона и справа «Из Контактов» (К7, § 4.5): системный выбор контакта, без разрешения на книгу.
+    private func phoneRow(_ placeholder: String, text: Binding<String>, slot: FormPickSlot, _ pal: Palette, _ t: Lexicon) -> some View {
+        HStack(spacing: 0) {
+            FormTextField(placeholder: placeholder, text: text, kind: .phone)
+            #if os(iOS)
+            Button { pickSlot = slot; picking = true } label: {
+                Text(t.t("clk.pick")).font(.system(size: 13, weight: .medium)).foregroundStyle(pal.brass)
+                    .lineLimit(1).fixedSize()
+                    .padding(.horizontal, 14).frame(height: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(PressFade())
+            .shotNode("form.pick." + slot.node)
+            #endif
+        }
+    }
+
+    /// Выбранный контакт — в поля имени и номера своего места; день рождения и мессенджеры ждут «Сохранить».
+    private func takePicked(_ c: FoundContact) {
+        guard let slot = pickSlot else { return }
+        switch slot {
+        case .client:
+            app.pickForForm(c, name: { $0.contact = $1 }, phone: { $0.clientPhone = $1 })
+        case .person(let i):
+            app.pickForForm(c, name: { f, v in if i < f.persons.count { f.persons[i].name = v } },
+                            phone: { f, v in if i < f.persons.count { f.persons[i].phone = v } })
+        case .order:
+            app.pickForForm(c, name: { $0.orderPerson = $1 }, phone: { $0.orderPhone = $1 })
+        }
     }
 
     private func orgRow(_ f: EventForm, _ pal: Palette, _ t: Lexicon, group: String) -> some View {
@@ -637,5 +667,18 @@ struct OrgPickSheet: View {
         guard !v.isEmpty else { return }
         app.setFormOrg(app.addOrg(name: v))
         name = ""
+    }
+}
+
+/// Место формы, куда ложится контакт «Из Контактов»: клиент, человек пары/семьи, контакт заказчика.
+enum FormPickSlot: Hashable {
+    case client, person(Int), order
+
+    var node: String {
+        switch self {
+        case .client: "client"
+        case .person(let i): "p\(i)"
+        case .order: "order"
+        }
     }
 }
