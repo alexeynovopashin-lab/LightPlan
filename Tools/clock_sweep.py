@@ -6,7 +6,7 @@
 его не ловит ни один прогон до этого дня. Здесь часы процесса тестов сдвигаются (Tools/clock_sweep/fakeclock.c,
 DYLD_INSERT_LIBRARIES в процесс тестов симулятора), и набор гоняется на ряде «сейчас»:
 
-  python3 Tools/clock_sweep.py                 полный набор: настоящие часы + 16 моментов (полночь МСК и Томска,
+  python3 Tools/clock_sweep.py                 полный набор: настоящие часы + 15 моментов (полночь МСК и Томска,
                                                конец месяца и года, 2027–2031), ~45 мин
   python3 Tools/clock_sweep.py --targeted      каждая будущая дата, вписанная в тесты: файлы с ней на шести
                                                моментах вокруг неё (накануне, 23:30 и 02:30 МСК, полдень, назавтра)
@@ -14,7 +14,8 @@ DYLD_INSERT_LIBRARIES в процесс тестов симулятора), и �
   python3 Tools/clock_sweep.py --selftest      проверка прибора: сдвиг часов виден в Date() процесса Swift на Mac
 
 Тест, красный на одних моментах и зелёный на других, перепроверяется в одиночку на обоих; повторилось — мина
-(код 1), нет — шаткий, не дата. Симулятор по умолчанию — `LP <ветка>` (node Tools/sim.js); сборка — в /tmp/cc-clock-sweep.
+(код 1), нет — шаткий, не дата. Прогон без единого теста или неудавшаяся перепроверка — «не проверено» (код 2,
+если мин нет). Симулятор по умолчанию — `LP <ветка>` (node Tools/sim.js); сборка — в /tmp/cc-clock-sweep.
 """
 import argparse, collections, datetime, glob, json, os, re, subprocess, sys, tempfile
 
@@ -167,6 +168,7 @@ def main():
     jobs = [(iso, a.only) for iso in a.at] if a.at else \
         [(iso, s) for d, s in plan().items() for iso in around(d)] if a.targeted else [(iso, a.only) for iso in BROAD]
     seen = collections.defaultdict(dict)       # тест → {момент: результат}
+    unchecked = []                             # моменты и перепроверки, где не выполнилось ни одного нужного теста
     for iso, only in [(None, a.only)] + jobs:
         r = run(lib, xctestrun, udid, iso, only)
         red = sorted(t for t, v in r.items() if v == "Failed")
@@ -174,6 +176,7 @@ def main():
               + "".join(f"\n    ✘ {t}" for t in red), flush=True)
         if not r:
             print(f"    ни одного теста — журнал {WORK}/last-run.log")
+            unchecked.append(iso or "настоящие часы")
         for t, v in r.items():
             seen[t][iso] = v
     mines = []
@@ -183,14 +186,19 @@ def main():
         if not (reds and greens):
             continue
         only = ["/".join(t.split("/")[:2])]
-        again_red = run(lib, xctestrun, udid, reds[0], only).get(t) == "Failed"
-        again_green = run(lib, xctestrun, udid, greens[0], only).get(t) == "Passed"
-        verdict = "МИНА ДАТЫ" if again_red and again_green else "шаткий, не дата"
+        on_red = run(lib, xctestrun, udid, reds[0], only).get(t)
+        on_green = run(lib, xctestrun, udid, greens[0], only).get(t)
+        again_red, again_green = on_red == "Failed", on_green == "Passed"
+        if on_red is None or on_green is None:
+            verdict = "не перепроверен (тест не выполнился)"
+            unchecked.append(t)
+        else:
+            verdict = "МИНА ДАТЫ" if again_red and again_green else "шаткий, не дата"
         print(f"{verdict}: {t}\n    красный: {', '.join(m or 'настоящие часы' for m in reds)}")
         if again_red and again_green:
             mines.append(t)
-    print(f"итог: мин {len(mines)}")
-    return 1 if mines else 0
+    print(f"итог: мин {len(mines)}" + (f", не проверено {len(unchecked)}: {', '.join(unchecked)}" if unchecked else ""))
+    return 1 if mines else 2 if unchecked else 0
 
 
 if __name__ == "__main__":
