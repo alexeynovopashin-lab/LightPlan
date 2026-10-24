@@ -1,0 +1,25 @@
+// Таргет LightPlanWidgetExtension (итерация 30б.1): виджет и Dynamic Island, встроен в LightPlan-iOS.
+// Поверх Debug/Release (Shared.xcconfig) так же, как iOS.xcconfig у приложения: в pbxproj у таргета своих настроек нет.
+
+SDKROOT = iphoneos
+SUPPORTED_PLATFORMS = iphoneos iphonesimulator
+IPHONEOS_DEPLOYMENT_TARGET = 26.0
+TARGETED_DEVICE_FAMILY = 1
+SKIP_INSTALL = YES
+// Расширение лежит в LightPlan.app/PlugIns/, пакеты (LightPlanCore, LightPlanDomain) — рядом с ним или в Frameworks приложения.
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks
+
+// Shared.xcconfig называет продукт LightPlan и даёт ему AppIcon — у расширения своё имя и значка нет.
+PRODUCT_NAME = $(TARGET_NAME)
+ASSETCATALOG_COMPILER_APPICON_NAME =
+ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground
+ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
+
+// Адрес от адреса приложения (docs/30b_widget_cut.md): у основного Novopashin.LightPlan.Widget, у слота <слот>.Widget.
+// Каждый такой адрес — свой App ID у Apple; phone.sh задаёт только LP_APP_ID, остальное выводится здесь.
+PRODUCT_BUNDLE_IDENTIFIER = $(LP_APP_ID).Widget
+INFOPLIST_KEY_CFBundleDisplayName = $(LP_APP_NAME)
+// NSExtension (точка расширения WidgetKit) ключом INFOPLIST_KEY_* не задаётся — он в файле, остальное собирает Xcode.
+INFOPLIST_FILE = LightPlanWidget/Info.plist
+// Общая папка приложения и виджета: group.$(LP_APP_ID).
+CODE_SIGN_ENTITLEMENTS = Config/LightPlanWidget.entitlements

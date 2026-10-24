@@ -4,7 +4,11 @@
 
 PRODUCT_NAME = LightPlan
 // Постоянный адрес приложения в системах Apple (docs/17 § 19). Одинаков на iOS и macOS.
-PRODUCT_BUNDLE_IDENTIFIER = Novopashin.LightPlan
+// LP_APP_ID — один адрес на всю сборку: приложение, виджет ($(LP_APP_ID).Widget, Config/Widget.xcconfig) и общая папка
+// (group.$(LP_APP_ID)). phone.sh подменяет только его (слоты): PRODUCT_BUNDLE_IDENTIFIER в командной строке лёг бы
+// на все таргеты разом и дал бы виджету адрес приложения (docs/30b_widget_cut.md).
+LP_APP_ID = Novopashin.LightPlan
+PRODUCT_BUNDLE_IDENTIFIER = $(LP_APP_ID)
 DEVELOPMENT_TEAM = 4A3PUKS9R9
 CODE_SIGN_STYLE = Automatic
 CODE_SIGN_IDENTITY = Apple Development
@@ -19,7 +23,9 @@ CURRENT_PROJECT_VERSION = 1
 ALWAYS_SEARCH_USER_PATHS = NO
 
 GENERATE_INFOPLIST_FILE = YES
-INFOPLIST_KEY_CFBundleDisplayName = Light Plan
+// Имя на главном экране; слоты phone.sh зовёт «LP <ветка>» через LP_APP_NAME (виджет носит то же имя).
+LP_APP_NAME = Light Plan
+INFOPLIST_KEY_CFBundleDisplayName = $(LP_APP_NAME)
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
 
 // Фаза «Check module boundaries» читает Packages/ и Tools/ за пределами своих входов.

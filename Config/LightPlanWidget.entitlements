@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Общая папка с приложением (30б): виджет читает из неё то, что сам не вычислит. Адрес от адреса приложения — у каждого слота своя. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.$(LP_APP_ID)</string>
+	</array>
+</dict>
+</plist>
