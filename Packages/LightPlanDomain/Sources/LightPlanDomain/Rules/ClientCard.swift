@@ -151,7 +151,13 @@ extension ClientBook {
         if dst.anniversary == nil || (!dst.anniversaryManual && src.anniversaryManual) {
             if let a = src.anniversary { dst.anniversary = a; dst.anniversaryManual = src.anniversaryManual }
         }
-        dst.greet = dst.greet || src.greet
+        // «Поздравлять»: выбор руками сильнее включённого само (ревью GPT к 6a75f1a) — выключенный руками у одной карточки не
+        // включается от другой; оба руками или оба сами — включён, если включён хоть у одной.
+        if dst.greetHand != src.greetHand {
+            dst.greet = dst.greetHand ? dst.greet : src.greet
+        } else {
+            dst.greet = dst.greet || src.greet
+        }
         dst.greetHand = dst.greetHand || src.greetHand
         for l in src.links where !dst.links.contains(where: { $0.id == l.id || ($0.url != nil && $0.url == l.url) }) {
             dst.links.append(l)

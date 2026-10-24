@@ -102,6 +102,30 @@ import LightPlanDomain
         #expect(m.anniversary == CivilDate(year: 2025, month: 6, day: 14) && m.greet)
     }
 
+    @Test func greetTurnedOffByHandSurvivesTheMerge() {
+        func merged(_ x: Client, _ y: Client) -> Client {
+            var clients = [x, y]
+            var sessions: [Session] = []
+            var bin: [TrashedItem] = []
+            ClientBook.merge("c2", into: "c1", clients: &clients, sessions: &sessions, trashed: &bin, country: Self.ru, nowMs: 9)
+            return clients[0]
+        }
+        var auto = Self.client("c1", .couple, [Self.p("Аня", "8 913 555-66-77")]); auto.greet = true
+        var off = Self.client("c2", .couple, [Self.p("Марк", "8 913 555-66-78")]); off.greetHand = true
+        var m = merged(auto, off)
+        #expect(!m.greet && m.greetHand, "выключенное руками во вливаемой карточке не включается от целевой")
+        var offTarget = auto; offTarget.greet = false; offTarget.greetHand = true
+        var autoSrc = off; autoSrc.greetHand = false; autoSrc.greet = true
+        m = merged(offTarget, autoSrc)
+        #expect(!m.greet && m.greetHand, "и наоборот")
+        var onHand = off; onHand.greet = true
+        var offHand = offTarget
+        m = merged(offHand, onHand)
+        #expect(m.greet && m.greetHand, "оба руками — включён, если включён у одной")
+        offHand.greetHand = false; onHand.greetHand = false
+        #expect(merged(offHand, onHand).greet, "оба сами — так же")
+    }
+
     @Test func aHandEditedAnniversaryOfTheTargetStays() {
         var x = Self.client("c1", .couple, [Self.p("Аня", "8 913 555-66-77")])
         var y = Self.client("c2", .couple, [Self.p("Марк", "8 913 555-66-78")])
