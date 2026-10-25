@@ -39,17 +39,19 @@ public struct AppSettings: Sendable, Equatable {
     public var home: HomeCity
     /// «Завершать вручную» (веб `manualEnd`, по умолчанию выключено).
     public var manualEnd: Bool
+    /// Плеер по умолчанию (веб `musicApp`); `nil` — «Выкл». Незнакомое значение снимка читается как «Выкл».
+    public var musicApp: MusicApp?
 
     public init(pro: Bool = false, theme: Theme = .dark, ribbonMode: RibbonMode = .drum,
                 drumSlot: DrumSlot = .paper, timeStep: Int = 5, travelMin: Int = 40,
                 tempUnit: TempUnit = .c, clock: Clock = .auto, currency: Currency = .rub,
                 practice: Practice = .ru, practicePicked: Bool = false, home: HomeCity = HomeCity(),
-                manualEnd: Bool = false) {
+                manualEnd: Bool = false, musicApp: MusicApp? = nil) {
         self.pro = pro; self.theme = theme; self.ribbonMode = ribbonMode; self.drumSlot = drumSlot
         self.timeStep = timeStep; self.travelMin = travelMin; self.tempUnit = tempUnit
         self.clock = clock; self.currency = currency; self.practice = practice
         self.practicePicked = practicePicked; self.home = home
-        self.manualEnd = manualEnd
+        self.manualEnd = manualEnd; self.musicApp = musicApp
     }
 
     /// Прочитать из снимка по правилам веба. `zone` — пояс телефона, по
@@ -73,6 +75,7 @@ public struct AppSettings: Sendable, Equatable {
         }
         home = HomeCity(me: s.extra["me"])
         manualEnd = s.manualEnd
+        musicApp = s.musicApp.flatMap(MusicApp.init(rawValue:))
     }
 
     /// Записать в снимок. Прочие поля снимка и прочие ключи `me` (номер,
@@ -93,6 +96,9 @@ public struct AppSettings: Sendable, Equatable {
         s.practice = practicePicked ? practice.rawValue : nil
         s.extra["me"] = home.merged(into: s.extra["me"])
         s.manualEnd = manualEnd
+        // Строку снимка трогаем, только когда выбор изменился: незнакомое значение веб держит
+        // «как записано», и безобидное сохранение настроек не должно его переписать в «off».
+        if s.musicApp.flatMap(MusicApp.init(rawValue:)) != musicApp { s.musicApp = musicApp?.rawValue ?? "off" }
     }
 
     /// Практика по часовому поясу — порт `guessPractice` веба: пояс — это

@@ -61,6 +61,9 @@ public struct EventForm: Equatable, Sendable {
     public var models = ""
     /// Что из общего списка оборудования взято на съёмку — имена (веб `fGear`).
     public var gear: [String] = []
+    /// Имя выбранного плейлиста из общей библиотеки (веб `fPlaylist`); пусто — музыки на съёмке нет.
+    /// Имя, которого в библиотеке уже нет, форма хранит как есть, пока человек не выберет другое.
+    public var playlist = ""
     /// Документы заказа (веб `fDocs`): файлы на Диске и ссылки.
     public var docs: [Attachment] = []
 
@@ -167,6 +170,7 @@ public struct EventForm: Equatable, Sendable {
         f.brief = s.brief
         f.models = s.models
         f.gear = s.gear
+        f.playlist = s.playlist ?? ""
         f.docs = s.docs
         f.wishes = s.wishes
         // Запись без `tripManual`, но с выездом, считается правленой руками (веб L30416).
@@ -398,6 +402,8 @@ public struct EventForm: Equatable, Sendable {
         s.brief = brief
         s.models = models
         s.gear = gear
+        // Пустое имя не пишем строкой: пустое поле в записи — то же, что нет поля.
+        s.playlist = playlist.isEmpty ? nil : playlist
         s.docs = docs
         // Место съёмки и студия — копия первой точки (веб `#fSave`, `headStudio`).
         s.place = sessionPlace.name
@@ -445,6 +451,8 @@ extension EventForm {
         var money: DraftMoney?
         /// Оборудование и документы (веб `gear`, `docs` черновика).
         var gear: [String]?, docs: [Attachment]?
+        /// Выбранный плейлист (веб `playlist` черновика).
+        var playlist: String?
         /// Выезд и бронь (веб `trip`, `tripManual`, `bookingRef` черновика).
         var trip: Bool?, tripManual: Bool?, bookingRef: String?
     }
@@ -483,7 +491,8 @@ extension EventForm {
                       money: DraftMoney(pay: pay.rawValue, rate: rate, units: units, expense: expense, prepay: prepayTyped,
                                         auto: prepayAuto, cur: currency.rawValue, monthly: repeatMonthly, open: payOpen,
                                         delv: Self.deadlineKey(deadline), done: delivered, doneAt: deliveredAt),
-                      gear: gear, docs: docs, trip: tripOn, tripManual: tripManual, bookingRef: bookingRef)
+                      gear: gear, docs: docs, playlist: playlist.isEmpty ? nil : playlist,
+                      trip: tripOn, tripManual: tripManual, bookingRef: bookingRef)
         return try? JSONEncoder().encode(d)
     }
 
@@ -498,7 +507,7 @@ extension EventForm {
         f.contact = d.contact; f.clientPhone = d.clientPhone; f.breed = d.breed; f.orgId = d.orgId
         f.orderPerson = d.orderPerson; f.orderPhone = d.orderPhone; f.guests = d.guests
         f.notes = d.notes; f.brief = d.brief; f.models = d.models
-        f.gear = d.gear ?? []; f.docs = d.docs ?? []
+        f.gear = d.gear ?? []; f.docs = d.docs ?? []; f.playlist = d.playlist ?? ""
         f.tripOn = d.trip ?? false; f.tripManual = d.tripManual ?? false; f.bookingRef = d.bookingRef
         f.persons = d.persons.map { Person(name: $0.first ?? "", phone: $0.count > 1 ? $0[1] : "") }
         f.repeatRule = d.repRule.flatMap(RepeatRule.init(rawValue:))

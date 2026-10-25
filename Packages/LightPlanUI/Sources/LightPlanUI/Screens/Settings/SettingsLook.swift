@@ -39,6 +39,8 @@ struct WebSeg<V: Hashable>: View {
     /// Имена узлов пары по кнопкам (`mode.simple`, `mode.pro`).
     var nodes: [String] = []
     var sky: Bool = false
+    /// Сколько строк позволено подписи кнопки: у веба «Apple Music» в четвёртой части переносится на две.
+    var lines = 1
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -53,8 +55,8 @@ struct WebSeg<V: Hashable>: View {
                     Text(options[i].label)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(on ? pal.ink : pal.ink4)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
+                        .lineLimit(lines).multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, maxHeight: lines > 1 ? .infinity : nil)
                         .padding(11)
                         .background(on ? pal.segOn : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .contentShape(Rectangle())
@@ -63,6 +65,8 @@ struct WebSeg<V: Hashable>: View {
                 .shotNode(i < nodes.count ? nodes[i] : "", text: options[i].label)
             }
         }
+        // Кнопки одной высоты: переносится одна — вровень с ней встают остальные (`flex` растягивает).
+        .fixedSize(horizontal: false, vertical: lines > 1)
         .padding(3)
         .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(alignment: .trailing) {

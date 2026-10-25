@@ -80,6 +80,7 @@ extension AppModel {
             }
             formIsDraft = true
             form = draft
+            form?.refreshPlaylist(in: snapshot.playlists)
             return
         }
         openCleanForm(day: d, start: start, fromLight: fromLight, mode: mode)
@@ -112,6 +113,7 @@ extension AppModel {
         formOverDraft = false
         formIsDraft = true
         form = draft
+        form?.refreshPlaylist(in: snapshot.playlists)
     }
 
     /// Ответ «Новая на выбранный день»: чистая форма на день из календаря. Черновик на диске
@@ -154,6 +156,7 @@ extension AppModel {
         formOverDraft = false
         formPicked = []
         form = EventForm.editing(s, home: settings.currency)
+        form?.refreshPlaylist(in: snapshot.playlists)
         reapplyQuestDraft(for: id)
     }
 

@@ -235,8 +235,9 @@ struct SettingsChapterView: View {
         WebSeg(options: AppSettings.travelChoices.map { (String($0), $0) }, selection: binding(\.travelMin))
             .padding(.horizontal, 24).padding(.top, 12)
         SetNote(text: t.t("set.travelNote", ["n": t.count("unit.min", s.travelMin)]))
-        foreign("set.music")
-        foreign("set.playlists")
+        // Номера узлов — по главе веба: у него впереди «Календарь» (sec.0), «Сдача» … «Дорога» (1…3).
+        MusicPlayerSection(app: app, index: 4)
+        PlaylistsSection(app: app, index: 5)
         finish
     }
 

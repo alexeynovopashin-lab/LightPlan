@@ -27,7 +27,7 @@ struct FormScreen: View {
     @State private var screenHeight: CGFloat = 956
     @FocusState private var focus: Bool
 
-    enum TimePicker: String { case startDate, startTime, endDate, endTime, repeatCount }
+    enum TimePicker: String { case startDate, startTime, endDate, endTime, repeatCount, playlist }
 
     /// Снимок сценария: `-LPShotPicker startTime` раскрывает строку сразу (только Debug).
     private static var launchPicker: TimePicker? {
@@ -505,6 +505,7 @@ struct FormScreen: View {
                 // Список техники ведёт сам фотограф — каталога не навязываем (веб `#fKitRow`).
                 FormKitRow(app: app, form: f, sheet: $kitSheet)
                 if f.repeatOn { repToggle(.kit, f, t) }
+                musicRows(f, pal, t)
             }
         }
     }
@@ -528,6 +529,49 @@ struct FormScreen: View {
             .font(.system(size: 16)).foregroundStyle(pal.ink).lineSpacing(3)
             .lineLimit(2...12)
             .padding(15).frame(minHeight: 92, alignment: .topLeading)
+    }
+
+    /// Строка «Плейлист» (`#fMusicRow`): тумблер включает первый плейлист библиотеки, капсула с именем
+    /// открывает барабан (`#fMusicPick`). Строки нет, пока библиотека пуста: выбирать не из чего, а пустая
+    /// строка — обещание работы, которой нет. Вопрос «Повторять плейлист» — тоже только при непустой библиотеке.
+    @ViewBuilder
+    private func musicRows(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
+        let list = app.playlists
+        if f.playlistRowShown(in: list) {
+            let on = f.playlistOn(in: list)
+            HStack(spacing: 12) {
+                Text(t.t("form.playlist")).font(.system(size: 16)).foregroundStyle(pal.ink)
+                Spacer(minLength: 8)
+                HStack(spacing: 6) {    // `.caps` веба: зазор 6
+                    if on {
+                        FormCapsule(node: "form.musicVal", text: f.playlist, open: picker == .playlist, maxWidth: 190) { toggle(.playlist) }
+                    }
+                    Toggle("", isOn: Binding(get: { on }, set: { _ in
+                        if on, picker == .playlist { withAnimation(.easeOut(duration: 0.34)) { picker = nil } }
+                        app.toggleFormPlaylist()
+                    }))
+                    .labelsHidden().tint(pal.brass)
+                    .frame(height: 31)       // `.toggle` веба — 31; переключатель iOS 26 — 28
+                    .accessibilityLabel(t.t("form.playlist"))
+                    .shotNode("form.musicToggle", text: on ? "on" : "off")
+                }
+            }
+            .padding(.vertical, 14).padding(.horizontal, 15).frame(minHeight: 52)      // `.row`: 14 + тумблер 31 + 14 = 59
+            .shotNode("form.music")
+            .id("music")   // `-LPShotFormScroll music`
+            if on, picker == .playlist {
+                Picker("", selection: Binding(get: { list.firstIndex { $0.name == f.playlist } ?? 0 },
+                                              set: { app.pickFormPlaylist(at: $0) })) {
+                    ForEach(list.indices, id: \.self) { Text(list[$0].name).tag($0) }
+                }
+                #if os(iOS)
+                .pickerStyle(.wheel)
+                #endif
+                .frame(height: 140)
+                .padding(.horizontal, 10)
+            }
+            if f.repeatOn { repToggle(.playlist, f, t) }
+        }
     }
 
     private func repToggle(_ b: RepeatBlock, _ f: EventForm, _ t: Lexicon) -> some View {

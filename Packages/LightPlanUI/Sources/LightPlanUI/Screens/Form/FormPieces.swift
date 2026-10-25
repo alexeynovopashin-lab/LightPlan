@@ -80,6 +80,8 @@ struct FormCapsule: View {
     var node = ""
     let text: String
     let open: Bool
+    /// Потолок ширины для подписи, которую придумал человек (имя плейлиста): длинное имя режется многоточием.
+    var maxWidth: CGFloat?
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
     var body: some View {
@@ -87,7 +89,8 @@ struct FormCapsule: View {
         Button(action: action) {
             Text(text)
                 .font(.system(size: 16).monospacedDigit())
-                .lineLimit(1)
+                .lineLimit(1).truncationMode(.tail)
+                .frame(maxWidth: maxWidth)
                 .foregroundStyle(open ? pal.brass : pal.ink)
                 .padding(.horizontal, 12)
                 .frame(minWidth: 72, minHeight: 28)

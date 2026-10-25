@@ -16,6 +16,8 @@ struct CardScreen: View {
     let s: Session
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var still
+    @Environment(\.openURL) private var openURL
+    @State private var actsWidth: CGFloat = 345
 
     @State private var scrollPos = ScrollPosition(edge: .top)
     @State private var scrollBridge = CardScrollBridge()
@@ -176,12 +178,36 @@ struct CardScreen: View {
 
     // MARK: - Нижний ряд (`.card-acts`)
 
+    /// Кнопка музыки (`.card-music`): та же мягкая пилюля, что у корзины — фон `--press`, слово 13 `--ink-3`,
+    /// поля 10×14, знак 17 pt латунью, зазор 7; имя урезается многоточием, ширина не больше 45 % экрана.
+    /// Ссылка universal: стоит приложение сервиса — откроется оно, нет — сайт.
+    private func musicPill(_ m: MusicChoice, _ pal: Palette) -> some View {
+        Button {
+            if let url = URL(string: m.href) { openURL(url) }
+        } label: {
+            HStack(spacing: 7) {
+                Icon("music", size: 17, line: 1.6).foregroundStyle(pal.brass)
+                Text(m.name).font(webFont(13, 400)).foregroundStyle(pal.ink3).lineLimit(1).truncationMode(.tail)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(Capsule().fill(pal.press))
+        }
+        // `max-width: 45vw`: ряд — экран без полей 24. Потолок, а не ширина: короткое имя пилюлю не растягивает.
+        .capWidth(0.45 * (actsWidth + 48))
+        .buttonStyle(PressFade())
+        .accessibilityLabel(t.t("card.musicAria"))
+        .accessibilityValue(m.name)
+        .shotNode("card.music", text: m.name)
+    }
+
     /// «Завершить» — только в ручном режиме у идущей съёмки, у левого края
     /// ряда: «Удалить» прижата вправо (`margin-left: auto`), остальное стоит
     /// слева (веб перенёс кнопку из плитки дня 1.09). Удаление — тем же путём,
     /// что из списка: в корзину и полоса «Вернуть».
     private func acts(_ pal: Palette) -> some View {
         HStack(spacing: 12) {
+            // Музыка (веб `#cdMusic`): тихая пилюля рядом с «Завершить», только в окне съёмки.
+            if let music = app.musicButton(for: s) { musicPill(music, pal) }
             if app.canFinish(s) {
                 // Контур 1 pt у веба снаружи полей 9×15 — у SwiftUI внутри,
                 // поэтому поля 10×16 (пара шага 4: 109,5×37).
@@ -215,6 +241,23 @@ struct CardScreen: View {
             .buttonStyle(PressFade())
             .shotNode("card.delete") }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { actsWidth = $0 }
         .padding(.top, 22).padding(.bottom, 4)   // `.card-acts`: gap 12, margin 22/0/4
     }
+}
+
+/// Потолок ширины без растяжки: `frame(maxWidth:)` у SwiftUI раздувает вид до потолка, а CSS `max-width` — нет.
+private struct WidthCap: Layout {
+    let cap: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let v = subviews.first else { return .zero }
+        return v.sizeThatFits(ProposedViewSize(width: min(proposal.width ?? cap, cap), height: proposal.height))
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
+    }
+}
+
+private extension View {
+    func capWidth(_ cap: CGFloat) -> some View { WidthCap(cap: cap) { self } }
 }

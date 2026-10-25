@@ -58,6 +58,11 @@ public struct Snapshot: Sendable, Hashable {
     public var packs: [Genre: [Pack]] = [:]
     public var delivery: DeliverySetting = .standard
     public var equipment: [String] = []
+    /// Плеер по умолчанию (веб `musicApp`: `"yandex"`, `"spotify"`, `"apple"`, `"off"`). Строка как записана:
+    /// незнакомое значение веб читает как «выкл», но пишет обратно как есть — и мы тоже.
+    public var musicApp: String?
+    /// Библиотека плейлистов (веб `playlists`, до десяти). Пустой список в файл не пишется.
+    public var playlists: [Playlist] = []
     public var cardOrder: [GenreGroup: [CardBlock]] = [:]
     public var cardOff: [GenreGroup: [CardBlock]] = [:]
     public var sync: String = "off"
@@ -90,8 +95,14 @@ extension Snapshot: Codable {
         case sessions, orgs, clients, clientsAssembled, blocks, spots, studios, trashed, myDocs, trashedDocs
         case loc, theme, clock, tempUnit, currency, timeStep, travelMin
         case pro, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold, manualEnd
-        case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment
+        case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment, musicApp, playlists
         case cardOrder, cardOff, sync
+    }
+
+    /// Элемент списка плейлистов, не разобравшийся — `nil`, а не отказ всего снимка.
+    private struct LossyPlaylist: Decodable {
+        let value: Playlist?
+        init(from decoder: Decoder) throws { value = try? Playlist(from: decoder) }
     }
 
     private struct DynamicKey: CodingKey {
@@ -139,6 +150,10 @@ extension Snapshot: Codable {
         packs = Pack.genrePacks(from: try? c.decodeIfPresent(JSONValue.self, forKey: .packs))
         delivery = try c.decodeIfPresent(DeliverySetting.self, forKey: .delivery) ?? .standard
         equipment = try c.decodeIfPresent([String].self, forKey: .equipment) ?? []
+        musicApp = try? c.decodeIfPresent(String.self, forKey: .musicApp)
+        // Запись без имени или без адреса веб при чтении отбрасывает молча; не массив — как пусто.
+        let lossy = (try? c.decodeIfPresent([LossyPlaylist].self, forKey: .playlists)).flatMap { $0 } ?? []
+        playlists = Music.clean(lossy.compactMap(\.value))
         cardOrder = try c.decodeLenientDictionaryOfArrays(keyedBy: GenreGroup.self, elementType: CardBlock.self, forKey: .cardOrder)
         cardOff = try c.decodeLenientDictionaryOfArrays(keyedBy: GenreGroup.self, elementType: CardBlock.self, forKey: .cardOff)
         sync = try c.decodeIfPresent(String.self, forKey: .sync) ?? "off"
@@ -192,6 +207,8 @@ extension Snapshot: Codable {
         }
         try c.encode(delivery, forKey: .delivery)
         try c.encode(equipment, forKey: .equipment)
+        try c.encodeIfPresent(musicApp, forKey: .musicApp)
+        if !playlists.isEmpty { try c.encode(playlists, forKey: .playlists) }
         try c.encodeLenientDictionaryOfArrays(cardOrder, forKey: .cardOrder)
         try c.encodeLenientDictionaryOfArrays(cardOff, forKey: .cardOff)
         try c.encode(sync, forKey: .sync)

@@ -139,6 +139,11 @@ const LAYER_SHEETS = { bin: 1, blk: 1 };
    `tune` — заказ до съёмки в режиме перестановки (26, лист «ползунков»),
    `meet` — встреча (26), без маршрута и сдачи.
    Часть — `--cards people,stack`, `--phases during`. */
+/* Шаг «Музыка» (25.10): плеер по умолчанию и два плейлиста — в засеве главы «Съёмки», формы `+music` и карточки
+   `music` / `musicapp`. Общий засев их не несёт, чтобы не сдвинуть прежние пары. */
+const MUSIC = { musicApp: 'spotify', playlists: [
+  { n: 'Сборы', u: 'https://open.spotify.com/playlist/37i9dQZF1DX0XUsuxWHRQd' },
+  { n: 'Вечер', u: 'https://music.yandex.ru/users/lightplan/playlists/1003' }] };
 const CARDS = { event: 'sd_sep_wed', people: 'sd_sep_clash_a', client: 'sd_sep_inter', own: 'sd_aug_land' };
 /* Маршрут и референсы (27): свадьба из 12 точек (08:00 – 20:30), два документа,
    четыре кадра (два своих, три в наборе жанра, один лежит в обоих), часы — 18:00
@@ -160,7 +165,7 @@ const R27_BOARDS = [{ id: 'bd_r27_own', kind: 'shoot', sid: 'sd_sep_wed', genre:
 /* `panes` (29.2з): «Настя и Родион» с выездом и тремя пунктами оборудования — «Гостей» и «Выезд» в одной
    строке, «Оборудование» одно (растянуто на ряд). Сверяется высота плиток строки; один день, до съёмки. */
 const PANES = 'sd_oct_wed_kem';
-const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet', 'panes', ...Object.keys(R27)];
+const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet', 'panes', 'music', 'musicapp', ...Object.keys(R27)];
 const phases = (args.phases || 'before,during,after').split(',');
 // Стена часов Барнаула (+7, без перехода) в минуту `m` суток записи `iso`.
 /* Мудборды, организации, «Контакты», опросник, встреча (итерация 28, шаг 10б). Кадры — ссылки
@@ -562,6 +567,7 @@ function markdown(results) {
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
     const s = { ...(scope ? plannerSeed : seed), theme, pro: mode === 'astro', drumSlot: slot, ribbonMode: ribbon };
+    if (screen === 'settings' && chapter === 'shoots') Object.assign(s, MUSIC);
     /* Карта (итерация 20а): в «Просто» солнце и луна, в «Астро» к ним
        Млечный Путь — так обе пары слоёв снимаются без отдельного перебора.
        Сводка — свёрнутая и раскрытая (`--fold`). */
@@ -594,8 +600,8 @@ function markdown(results) {
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
     const seedFile = path.join(dir, 'seed.json');
-    fs.writeFileSync(seedFile, JSON.stringify({ ...seed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' }));
-    list.push({ name, dir, screen: 'planner', theme, moment: 'day', form: g, seed: seedFile });
+    fs.writeFileSync(seedFile, JSON.stringify({ ...seed, ...(g.endsWith('+music') ? MUSIC : {}), theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' }));
+    list.push({ name, dir, screen: 'planner', theme, moment: 'day', form: g.replace('+music', ''), seed: seedFile });
   }
   for (const layer of layers) for (const theme of themes) {
     const name = ['planner', 'layer', layer, theme].join('-');
@@ -628,6 +634,10 @@ function markdown(results) {
           { ...b, id: 'shot_st_late', min: 1140, end: 1200, dur: 60, contact: 'Ольга Верх', persons: [] }];
       }
       if (g === 'finish') s.manualEnd = true;
+      if (g === 'music' || g === 'musicapp') {
+        Object.assign(s, MUSIC);
+        if (g === 'music') s.sessions = s.sessions.map(x => x.id !== id ? x : { ...x, playlist: 'Сборы' });
+      }
       if (g === 'panes') s.sessions = s.sessions.map(x => x.id !== id ? x : { ...x, gear: ['body', 'lens', 'flash'] });
       if (R27[g]) {
         // Копия записи: `s` — поверхностная, правка общего объекта протекла бы в другие сценарии (ревью GPT к 7d3362c).
