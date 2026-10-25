@@ -23,3 +23,7 @@ INFOPLIST_KEY_CFBundleDisplayName = $(LP_APP_NAME)
 INFOPLIST_FILE = LightPlanWidget/Info.plist
 // Общая папка приложения и виджета: group.$(LP_APP_ID).
 CODE_SIGN_ENTITLEMENTS = Config/LightPlanWidget.entitlements
+
+// Виды виджета лежат в LightPlanWidget/Views и собираются ещё и набором UI-тестов (ссылка WidgetViews), где знаки берутся из
+// `LightPlanUI`. Модуль виден и расширению (он в продуктах сборки), но не слинкован, поэтому выбор — этим флагом, а не `canImport`.
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) LP_WIDGET_EXTENSION
