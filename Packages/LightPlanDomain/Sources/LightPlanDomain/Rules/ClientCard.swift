@@ -41,7 +41,12 @@ extension ClientBook {
     }
 
     /// «+ человек»: новая пустая строка.
-    public static func addPerson(to c: inout Client) { c.people.append(ClientPerson()) }
+    /// Новый герой встаёт перед теми, кто на связи (в досье они идут за героями); «кому пишем» остаётся на том же человеке.
+    public static func addPerson(to c: inout Client) {
+        let at = c.people.firstIndex { $0.relation != nil } ?? c.people.count
+        c.people.insert(ClientPerson(), at: at)
+        if c.main >= at && at < c.people.count - 1 { c.main += 1 }
+    }
 
     /// Убрать человека; «кому пишем» остаётся на том же человеке (или первом, если убрали его самого).
     public static func removePerson(at i: Int, from c: inout Client) {

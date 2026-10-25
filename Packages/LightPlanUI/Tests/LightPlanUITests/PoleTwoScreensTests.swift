@@ -166,6 +166,28 @@ struct PoleTwoScreensTests {
         #expect(h.via == "На связи · родственник" && h.tel?.dial == "+79135556677")
     }
 
+    // MARK: ревью GPT к ab89487
+
+    @Test func anUnfinishedFriendNumberDoesNotTakeTheCallFromTheHero() {
+        var s = party(heroPhone: "+7 913 000-11-22", via: ContactVia(relation: .friend, name: "Лида", phone: "89"))
+        s.clientId = nil
+        let app = model(sessions: [s])
+        let h = CardHeadText(s, phase: app.phase(of: s), app: app)
+        #expect(h.tel?.dial == "+79130001122" && h.via == "на связи: Лида, друг", "недописанный номер — звонок герою, строка про Лиду остаётся")
+    }
+
+    @Test func theHeadFollowsTheFriendNumberCorrectedInTheDossier() throws {
+        var s = party(via: ContactVia(relation: .girlfriend, name: "Алёна", phone: alyona))
+        s.clientId = "c1"
+        var c = Client(id: "c1")
+        c.people = [ClientPerson(name: "Ольга"), friend("Алёна", "+7 913 777-00-00", msg: [(.telegram, "alyona_t")])]
+        c.telLog = [TelLogEntry(field: PhoneBook.Field.via, phone: alyona, name: "Алёна", retiredAt: "2026-10-26T00:00:00Z")]
+        let app = model(clients: [c], sessions: [s])
+        let h = CardHeadText(s, phase: app.phase(of: s), app: app)
+        #expect(h.tel?.dial == "+79137770000", "звонок — на новый номер из досье, не на старый из съёмки")
+        #expect(app.shootReach(s)?.primary.messenger == .telegram, "и её мессенджеры не пропали из меню")
+    }
+
     // MARK: книга номеров
 
     @Test func theNumberListNamesTheFriendByTheRelationOfThatShoot() throws {

@@ -235,13 +235,18 @@ public enum ClientBook {
     private static func placeVia(_ v: ClientPerson, in c: inout Client, wasBound: Bool, country: TelCountry) {
         func key(_ p: ClientPerson) -> String { TelFormat.full(p.phone, country: country) }
         let existing = c.people.indices.filter { c.people[$0].relation != nil }
-        if TelFormat.isReal(v.phone, country: country), let j = existing.first(where: { key(c.people[$0]) == key(v) }) {
+        let real = TelFormat.isReal(v.phone, country: country)
+        if real, let j = existing.first(where: { key(c.people[$0]) == key(v) }) {
             if blank(c.people[j].name) { c.people[j].name = v.name }
             c.people[j].relation = v.relation
             return
         }
+        // Номер, который в карточке уже заменили (он в архиве), старая съёмка назад не возвращает — ни вместо нового (§ 3.5),
+        // ни вторым человеком (ревью GPT к ab89487).
+        let retired = real && c.telLog.contains { TelFormat.full($0.phone, country: country) == key(v) }
         if !blank(v.name), let j = existing.first(where: { sameName(c.people[$0].name, v.name) || nameFactors(c.people[$0].name, v.name) >= 1 }) {
             let there = c.people[j]
+            if retired { c.people[j].relation = v.relation; return }
             if blank(there.phone) {
                 c.people[j].phone = v.phone                    // номера не было — дозаполняется
                 c.people[j].relation = v.relation
@@ -254,7 +259,24 @@ public enum ClientBook {
                 return
             }
         }
+        if retired { return }
         c.people.append(v)
+    }
+
+    /// Человек на связи у съёмки в досье клиента: с тем же номером; иначе — тот, чей прежний номер (из архива) назван в
+    /// съёмке, или с тем же именем: номер в досье могли поправить, а съёмка хранит старый (ревью GPT к ab89487). Нет такого — `nil`.
+    public static func viaPerson(for v: ContactVia, in c: Client, country: TelCountry) -> ClientPerson? {
+        let people = c.people.filter { $0.relation != nil }
+        let real = TelFormat.isReal(v.phone, country: country)
+        let k = TelFormat.full(v.phone, country: country)
+        if real, let p = people.first(where: { TelFormat.full($0.phone, country: country) == k }) { return p }
+        guard !blank(v.name) else { return nil }
+        let named = people.filter { nameFactors($0.name, v.name) >= 1 }
+        if real, c.telLog.contains(where: { TelFormat.full($0.phone, country: country) == k && $0.field == PhoneBook.Field.via }) {
+            return named.first
+        }
+        // Тёзка с другим живым номером — другой человек, пока этот номер не ушёл в архив.
+        return real ? named.first(where: { !TelFormat.isReal($0.phone, country: country) }) : named.first
     }
 
     // MARK: - Разовый проход (§ 3.8)

@@ -302,6 +302,49 @@ import LightPlanDomain
         #expect(ClientBook.hint(for: other, choice: nil, clients: clients, sessions: [a], mine: [], country: B.ru) == nil)
     }
 
+    // MARK: ревью GPT к ab89487
+
+    @Test func anOldShootDoesNotRollBackACorrectedFriendNumber() {
+        var clients: [Client] = [], ids = B.Ids()
+        var s = Self.party("a", 24)
+        B.save(&s, &clients, ids: ids)
+        // Номер Алёны поправили в досье: новый живёт, прежний — в архиве.
+        clients[0].people[1].phone = "+7 913 777-00-00"
+        clients[0].telLog = [TelLogEntry(field: PhoneBook.Field.via, phone: Self.alyona, name: "Алёна", retiredAt: "2026-10-26T00:00:00Z")]
+        B.save(&s, &clients, ids: ids)      // съёмка всё ещё называет старый номер
+        #expect(clients[0].people.map(\.phone) == ["", "+7 913 777-00-00"] && clients[0].people.count == 2, "исправление не откатилось и второй Алёны нет")
+        #expect(clients[0].telLog.map(\.phone) == [Self.alyona])
+        // и если съёмку успели переименовать — старый номер вторым человеком не встаёт
+        s.via = ContactVia(relation: .girlfriend, name: "Аля", phone: Self.alyona)
+        B.save(&s, &clients, ids: ids)
+        #expect(clients[0].people.count == 2)
+    }
+
+    @Test func viaPersonIsFoundAfterItsNumberWasCorrectedAndNotForANamesake() {
+        var c = Client(id: "c1")
+        var friend = ClientPerson(name: "Алёна", phone: "+7 913 777-00-00"); friend.relation = .girlfriend
+        c.people = [ClientPerson(name: "Ольга"), friend]
+        c.telLog = [TelLogEntry(field: PhoneBook.Field.via, phone: Self.alyona, name: "Алёна", retiredAt: "x")]
+        let found = ClientBook.viaPerson(for: ContactVia(relation: .girlfriend, name: "алена", phone: Self.alyona), in: c, country: B.ru)
+        #expect(found?.phone == "+7 913 777-00-00", "по прежнему номеру из архива и имени (е = ё, регистр)")
+        #expect(ClientBook.viaPerson(for: ContactVia(relation: .girlfriend, name: "Алёна", phone: "+7 913 000-00-01"), in: c, country: B.ru) == nil,
+                "другой номер у тёзки — другая Алёна, пока номер не ушёл в архив")
+        #expect(ClientBook.viaPerson(for: ContactVia(relation: .friend, name: "Мария", phone: Self.alyona), in: c, country: B.ru) == nil)
+        #expect(ClientBook.viaPerson(for: ContactVia(relation: .friend, name: "Алёна", phone: ""), in: c, country: B.ru)?.name == "Алёна")
+    }
+
+    @Test func aNewHeroAddedByHandStandsBeforeTheFriend() {
+        var c = Client(id: "c1", kind: .family)
+        var friend = ClientPerson(name: "Алёна", phone: Self.alyona); friend.relation = .girlfriend
+        c.people = [ClientPerson(name: "Ольга"), friend]; c.main = 1
+        ClientBook.addPerson(to: &c)
+        #expect(c.people.map(\.name) == ["Ольга", "", "Алёна"] && c.people.map(\.relation) == [nil, nil, .girlfriend] && c.main == 2)
+        var alone = Client(id: "c2")
+        alone.people = [ClientPerson(name: "Ольга")]
+        ClientBook.addPerson(to: &alone)
+        #expect(alone.people.count == 2 && alone.main == 0, "без тех, кто на связи, — в конец, как раньше")
+    }
+
     // MARK: Досье и книга телефонов
 
     @Test func mergeKeepsTheFriendAFriendAndAHeroOfTheSameNameApart() {

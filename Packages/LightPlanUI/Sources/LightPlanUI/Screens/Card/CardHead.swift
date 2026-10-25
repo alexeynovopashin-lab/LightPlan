@@ -66,7 +66,7 @@ struct CardHeadText {
 
         // Номер показываем и набираем только целым: «961 887-80-78» без кода
         // страны набирается лишь из своей области.
-        let raw = w.callPhone(s)
+        let raw = app.shootCallPhone(s)
         if let v = s.via, !v.isBlank {
             let rel = f.t.t("via." + v.relation.rawValue).lowercased()
             let name = v.name.trimmingCharacters(in: .whitespaces)

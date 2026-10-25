@@ -54,18 +54,20 @@ extension AppModel {
     func shootReach(_ s: Session) -> ReachPlan? {
         if let v = shootVia(s), let plan = personReach(v) { return plan }
         if let c = shootClient(s), let plan = clientReach(c) { return plan }
-        return personReach(ClientPerson(phone: PlannerWords(lexicon: lexicon, orgs: orgs).callPhone(s)))
+        return personReach(ClientPerson(phone: PlannerWords(lexicon: lexicon, orgs: orgs).firstPhone(s)))
     }
 
-    /// Человек на связи у съёмки: из досье клиента — тот, чей номер назван в записи (у него могут быть мессенджеры); нет
-    /// такого — как записан в съёмке. Ничего не вписано — `nil`.
+    /// Куда звонить из шапки: тому, кто на связи, если его номер годится для звонка (пять цифр и больше — недописанный
+    /// не отнимает звонок у героя); иначе первый телефон записи, как раньше.
+    func shootCallPhone(_ s: Session) -> String {
+        if let p = shootVia(s), TelFormat.isReal(p.phone, country: telCountry) { return p.phone }
+        return PlannerWords(lexicon: lexicon, orgs: orgs).firstPhone(s)
+    }
+
+    /// Человек на связи у съёмки: из досье клиента (там его свежий номер и мессенджеры); нет такого — как записан в съёмке. Ничего не вписано — `nil`.
     func shootVia(_ s: Session) -> ClientPerson? {
         guard let v = s.via, !v.isBlank else { return nil }
-        let key = TelFormat.full(v.phone, country: telCountry)
-        if TelFormat.isReal(v.phone, country: telCountry),
-           let p = shootClient(s)?.people.first(where: { $0.relation != nil && TelFormat.full($0.phone, country: telCountry) == key }) {
-            return p
-        }
+        if let c = shootClient(s), let p = ClientBook.viaPerson(for: v, in: c, country: telCountry) { return p }
         var p = ClientPerson(name: v.name, phone: v.phone)
         p.relation = v.relation
         return p
