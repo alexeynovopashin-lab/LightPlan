@@ -67,12 +67,12 @@ struct LockCircularView: View {
         let st = WidgetStyle(dark: scheme == .dark)
         ZStack {
             Circle().stroke(st.ink.opacity(0.22), lineWidth: 4)
-            if let g = goldenLeft {
+            if let g = goldenLeft, let label {
                 Circle().trim(from: 0, to: g.progress).stroke(st.ink, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 VStack(spacing: 0) {
                     WidgetSign(title: "sun", size: 13).foregroundStyle(st.ink)
-                    ColonCount(seconds: g.left, size: 21).foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.6)
+                    ColonCount(text: label, size: 21).foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.6)
                 }
             } else {
                 WidgetSign(title: "sun", size: 22).foregroundStyle(st.ink.opacity(0.6))
