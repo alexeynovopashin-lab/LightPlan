@@ -9,6 +9,7 @@ struct SpikeBundle: WidgetBundle {
     var body: some Widget {
         DayWidget()
         GoldenLive()
+        ProbeLive()
     }
 }
 

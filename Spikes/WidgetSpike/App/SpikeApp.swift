@@ -6,9 +6,16 @@ import WidgetKit
 /// Launch arguments drive the probe (probe.sh): `-LA start|bgstart|bgupdate|end`.
 @main
 struct SpikeApp: App {
+    @UIApplicationDelegateAdaptor(ProbeDelegate.self) private var delegate
+    @Environment(\.scenePhase) private var phase
+
     var body: some Scene {
         // Run once the scene is up: beginBackgroundTask from App.init was silently dropped (bgstart, 24.10).
-        WindowGroup { Text("Spike 30b").font(.largeTitle).task { Probe.run() } }
+        WindowGroup { ProbeView().task { Probe.run() } }
+            .onChange(of: phase) { _, now in
+                // Opening the app moves the highlighted point to the current one (decision 25.10).
+                if now == .active { Task { await ProbeActivity.refresh() } }
+            }
     }
 }
 
@@ -32,7 +39,11 @@ enum Probe {
         case "start": start(minutes: 3)
         case "phase": start(minutes: 20.0 / 60, endMinutes: 80.0 / 60, tag: "phase")
         case "update": Task { await update(title: "updated") }
-        case "end": Task { await endAll() }
+        case "end": Task { await endAll(); await ProbeActivity.endAll() }
+        case "probe": Task { await ProbeControl.start(notifyMinutes: 1) }
+        case "probe-notice": Task { await ProbeControl.start(notifyMinutes: 1); await ProbeControl.scheduleNotice(seconds: 12) }
+        case "plus": Task { await ProbeActivity.plusHour() }
+        case "studio": Task { await ProbeActivity.switchToStudio(source: "launch arg") }
         case "bgstart":
             // Ask for a Live Activity 8 s after launch; probe.sh sends the app home at 3 s.
             hold(seconds: 25)

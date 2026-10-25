@@ -5,6 +5,8 @@
 #   Spikes/WidgetSpike/probe.sh sim      build, install, run the Live Activity scenarios, print the shared log
 #   Spikes/WidgetSpike/probe.sh device   iphoneos build unsigned (compiles?) and signed (which profiles are missing?)
 #   Spikes/WidgetSpike/probe.sh log      print the shared log (the widget writes there too)
+#   Spikes/WidgetSpike/probe.sh lock     30б.3а: start the lock-screen probe on the simulator, press «+1 час» and «Студия» by launch argument, print the log
+#   LP_SPIKE_PHONE=yes Spikes/WidgetSpike/probe.sh phone   30б.3а: signed build + install on iPhone ALno (registers 2 App IDs) — ONLY on Alexey's word
 #
 # The widget itself runs only once it is in the gallery or on the home screen: long-press the
 # home screen, «+», «Spike30b», «Добавить виджет»; then `probe.sh log` shows its `snapshot` / `timeline` lines.
@@ -48,5 +50,30 @@ device)
 log)
     S="$(sim)"; grep -v 'container=' "$(log_path "$S")"
     ;;
-*) sed -n '2,12p' "$0"; exit 2 ;;
+lock)
+    S="$(sim)"
+    xcrun simctl boot "$S" 2> /dev/null; xcrun simctl bootstatus "$S" -b > /dev/null
+    xcodebuild -project "$here/WidgetSpike.xcodeproj" -scheme Spike30b -destination "id=$S" \
+        -derivedDataPath "$DD" build > /tmp/cc-spike-sim.log 2>&1 || { grep -m5 'error:' /tmp/cc-spike-sim.log; exit 1; }
+    xcrun simctl install "$S" "$DD/Build/Products/Debug-iphonesimulator/Spike30b.app"
+    : > "$(log_path "$S")"
+    echo "· start the activity";            launch -LA probe; sleep 4
+    echo "· «+1 час» by launch argument";   launch -LA plus; sleep 3
+    echo "· studio mode by launch argument"; launch -LA studio; sleep 3
+    launch -LA end; sleep 2
+    grep -E 'probe|notice' "$(log_path "$S")"
+    ;;
+phone)
+    # The signed build registers `spike30b` and `spike30b.Widget` (2 of the free team's 10 new App IDs per 7 days).
+    [ "${LP_SPIKE_PHONE:-}" = yes ] || { echo "phone: only on Alexey's word — rerun with LP_SPIKE_PHONE=yes"; exit 2; }
+    DEV=5A94DA8F-B9E0-5DB8-BECF-14F387CFE24F   # iPhone ALno. Not «iPhone Elena».
+    xcodebuild -project "$here/WidgetSpike.xcodeproj" -scheme Spike30b -destination "platform=iOS,id=$DEV" \
+        -derivedDataPath "$DD" -allowProvisioningUpdates build > /tmp/cc-spike-phone.log 2>&1 \
+        || { grep -m8 -E 'error:|No profiles' /tmp/cc-spike-phone.log; exit 1; }
+    xcrun devicectl device install app --device "$DEV" "$DD/Build/Products/Debug-iphoneos/Spike30b.app" > /tmp/cc-spike-install.log 2>&1 \
+        || { tail -3 /tmp/cc-spike-install.log; exit 1; }
+    xcrun devicectl device process launch --device "$DEV" "$ID" > /dev/null 2>&1 || echo "installed; phone locked? open «LP 30b-3a» by hand"
+    echo "on iPhone ALno: «LP 30b-3a» ($ID) from $(git -C "$root" rev-parse --short HEAD)"
+    ;;
+*) sed -n '2,14p' "$0"; exit 2 ;;
 esac
