@@ -30,6 +30,13 @@ public enum Guests {
         return String(Swift.min(max, n))
     }
 
+    /// Что стоит в поле, пока его правят, когда число гостей изменилось. Набранное совпадает с числом — поле не трогаем
+    /// (набранный «0» остаётся «0», пока из поля не вышли; ревью GPT к 17542a4); число ушло иначе, кнопкой, — поле берёт его.
+    public static func editingText(_ text: String, value: Int) -> String {
+        if parse(text) == value { return text }
+        return value == 0 ? "" : String(value)
+    }
+
     /// Набранное → число; пусто и «не число» — 0.
     public static func parse(_ raw: String) -> Int { Int(sanitize(raw)) ?? 0 }
 }

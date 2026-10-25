@@ -77,6 +77,18 @@ import LightPlanDomain
         #expect(Guests.parse("-5") == 5, "минус — не цифра, как в вебе")
     }
 
+    @Test func aTypedZeroStaysInTheFieldWhileItIsEdited() {
+        // Ревью GPT к 17542a4: был 5, набрали «0» — число стало 0, а поле не должно стереть набранное.
+        #expect(Guests.editingText("0", value: 0) == "0")
+        #expect(Guests.editingText("", value: 0) == "")
+        #expect(Guests.editingText("5", value: 5) == "5", "набранное и есть число — не трогаем")
+        #expect(Guests.editingText("007", value: 7) == "007")
+        // Число ушло кнопкой — поле берёт его.
+        #expect(Guests.editingText("5", value: 6) == "6")
+        #expect(Guests.editingText("1", value: 0) == "", "«−» с единицы: в поле пусто, цифры пойдут с чистого места")
+        #expect(Guests.editingText("20", value: 10) == "10")
+    }
+
     @Test func theFormTakesTypingAndButtonsOneAfterAnother() {
         var f = party()
         f.typeGuests("7")

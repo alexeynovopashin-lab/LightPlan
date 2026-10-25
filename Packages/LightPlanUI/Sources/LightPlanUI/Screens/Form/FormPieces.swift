@@ -205,6 +205,8 @@ struct FormStepper: View {
     let onType: (String) -> Void
     /// Что поле показывает после набора (форма вернула число — поле берёт его же, а не набранное).
     let clean: (String) -> String
+    /// Что стоит в поле, пока его правят, когда число изменилось: набранное, если оно и есть число, иначе число.
+    let editing: (String, Int) -> String
     @Environment(\.colorScheme) private var scheme
     @FocusState private var focused: Bool
     @State private var text = ""
@@ -229,7 +231,7 @@ struct FormStepper: View {
                 .onAppear { text = shown }
                 // Вошли в поле — убрать «—», чтобы цифры шли с чистого места; вышли — вернуть слово пустой клетки.
                 .onChange(of: focused) { _, now in text = now ? typed : shown }
-                .onChange(of: value) { _, _ in text = focused ? typed : shown }
+                .onChange(of: value) { _, v in text = focused ? editing(text, v) : shown }
                 .onChange(of: text) { _, now in
                     guard focused else { return }
                     let c = clean(now)
