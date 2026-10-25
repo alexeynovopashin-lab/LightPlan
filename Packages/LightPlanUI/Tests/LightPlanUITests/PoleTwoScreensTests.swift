@@ -188,6 +188,17 @@ struct PoleTwoScreensTests {
         #expect(app.shootReach(s)?.primary.messenger == .telegram, "и её мессенджеры не пропали из меню")
     }
 
+    @Test func aRetiredNumberOfAnUnrecognisedFriendIsNotOfferedForTheCall() {
+        var s = party(heroPhone: "+7 913 000-11-22", via: ContactVia(relation: .friend, name: "Лида", phone: alyona))
+        s.clientId = "c1"
+        var c = Client(id: "c1")
+        c.people = [ClientPerson(name: "Ольга", phone: "+7 913 000-11-22"), friend("Алёна", "+7 913 777-00-00")]
+        c.telLog = [TelLogEntry(field: PhoneBook.Field.via, phone: alyona, name: "Тамара", retiredAt: "2026-10-26T00:00:00Z")]
+        let app = model(clients: [c], sessions: [s])
+        let h = CardHeadText(s, phase: app.phase(of: s), app: app)
+        #expect(h.tel?.dial == "+79130001122", "номер, который в досье заменили, не предлагается: звонок герою")
+    }
+
     // MARK: книга номеров
 
     @Test func theNumberListNamesTheFriendByTheRelationOfThatShoot() throws {

@@ -67,8 +67,11 @@ extension AppModel {
     /// Человек на связи у съёмки: из досье клиента (там его свежий номер и мессенджеры); нет такого — как записан в съёмке. Ничего не вписано — `nil`.
     func shootVia(_ s: Session) -> ClientPerson? {
         guard let v = s.via, !v.isBlank else { return nil }
-        if let c = shootClient(s), let p = ClientBook.viaPerson(for: v, in: c, country: telCountry) { return p }
-        var p = ClientPerson(name: v.name, phone: v.phone)
+        let c = shootClient(s)
+        if let c, let p = ClientBook.viaPerson(for: v, in: c, country: telCountry) { return p }
+        // Номер из съёмки в досье заменили, а человека не узнать — старый номер не предлагаем.
+        let old = c.map { ClientBook.viaNumberRetired(v, in: $0, country: telCountry) } ?? false
+        var p = ClientPerson(name: v.name, phone: old ? "" : v.phone)
         p.relation = v.relation
         return p
     }

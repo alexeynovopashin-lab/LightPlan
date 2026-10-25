@@ -329,8 +329,43 @@ import LightPlanDomain
         #expect(found?.phone == "+7 913 777-00-00", "по прежнему номеру из архива и имени (е = ё, регистр)")
         #expect(ClientBook.viaPerson(for: ContactVia(relation: .girlfriend, name: "Алёна", phone: "+7 913 000-00-01"), in: c, country: B.ru) == nil,
                 "другой номер у тёзки — другая Алёна, пока номер не ушёл в архив")
-        #expect(ClientBook.viaPerson(for: ContactVia(relation: .friend, name: "Мария", phone: Self.alyona), in: c, country: B.ru) == nil)
+        #expect(ClientBook.viaPerson(for: ContactVia(relation: .friend, name: "Мария", phone: Self.alyona), in: c, country: B.ru)?.name == "Алёна",
+                "номер из архива называет хозяйку номера: Алёна — даже если в съёмке записали другое имя")
         #expect(ClientBook.viaPerson(for: ContactVia(relation: .friend, name: "Алёна", phone: ""), in: c, country: B.ru)?.name == "Алёна")
+    }
+
+    @Test func theRetiredNumberFindsTheFriendByTheNameItHadThenAndNeverCallsTheOldNumber() {
+        var c = Client(id: "c1")
+        var friend = ClientPerson(name: "Алёна", phone: "+7 913 777-00-00"); friend.relation = .girlfriend
+        c.people = [ClientPerson(name: "Ольга"), friend]
+        c.telLog = [TelLogEntry(field: PhoneBook.Field.via, phone: Self.alyona, name: "Алёна", retiredAt: "x")]
+        let renamed = ContactVia(relation: .girlfriend, name: "Аля", phone: Self.alyona)
+        #expect(ClientBook.viaPerson(for: renamed, in: c, country: B.ru)?.phone == "+7 913 777-00-00", "имя из архива сводит «Алю» с Алёной")
+        let stranger = ContactVia(relation: .friend, name: "Лида", phone: Self.alyona)
+        c.telLog = [TelLogEntry(field: PhoneBook.Field.via, phone: Self.alyona, name: "Тамара", retiredAt: "x")]   // в архиве — другая
+        #expect(ClientBook.viaPerson(for: stranger, in: c, country: B.ru) == nil)
+        #expect(ClientBook.viaNumberRetired(stranger, in: c, country: B.ru), "узнать нельзя — но звонить на старый номер тоже нельзя")
+        #expect(!ClientBook.viaNumberRetired(ContactVia(name: "Лида", phone: "+7 913 000-00-01"), in: c, country: B.ru))
+    }
+
+    @Test func aFriendWithoutANumberInTheDossierGetsTheNumberOfTheShoot() {
+        var c = Client(id: "c1")
+        var friend = ClientPerson(name: "Алёна"); friend.relation = .girlfriend
+        friend.messengers = [ClientMessenger(kind: "telegram", value: "alyona_t")]
+        c.people = [ClientPerson(name: "Ольга"), friend]
+        let p = ClientBook.viaPerson(for: ContactVia(relation: .girlfriend, name: "Алёна", phone: Self.alyona), in: c, country: B.ru)
+        #expect(p?.phone == Self.alyona && p?.messengers.count == 1, "звонок — по номеру съёмки, мессенджеры — из досье")
+    }
+
+    @Test func aHeroOldNumberDoesNotBlockAFriendWithThatNumber() {
+        var clients: [Client] = [], ids = B.Ids()
+        var s = Self.party("a", 24, heroPhone: Self.alyona, via: nil)
+        B.save(&s, &clients, ids: ids)
+        clients[0].people[0].phone = "+7 913 000-11-22"
+        clients[0].telLog = [TelLogEntry(field: "p1", phone: Self.alyona, name: "Ольга", retiredAt: "x")]
+        var t = Self.party("b", 25, hero: "Ольга")        // подруга — с тем номером, что когда-то был у Ольги
+        B.save(&t, &clients, ids: ids)
+        #expect(clients.contains { $0.people.contains { $0.relation == .girlfriend } }, "архив героя не мешает завести человека на связи")
     }
 
     @Test func aNewHeroAddedByHandStandsBeforeTheFriend() {
