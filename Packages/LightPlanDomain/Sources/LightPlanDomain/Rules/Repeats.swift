@@ -113,7 +113,7 @@ public enum Repeats {
         c.dayMoved = nil
         if !on.contains(.client) {
             c.contact = ""; c.clientPhone = ""; c.orgId = nil; c.orderPerson = ""; c.orderPhone = ""
-            c.persons = []; c.guests = 0; c.breed = ""
+            c.persons = []; c.via = nil; c.guests = 0; c.breed = ""
         }
         if !on.contains(.route) {
             c.route = []; c.place = ""; c.placeTown = home.town; c.placeAddress = ""

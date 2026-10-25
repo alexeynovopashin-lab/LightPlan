@@ -49,9 +49,26 @@ extension AppModel {
 
     /// Кнопка в шапке карточки съёмки: у съёмки с клиентом — его кнопка; без клиента (или клиенту не написать) — SMS на
     /// номер шапки, в меню звонок и SMS. Номера нет — кнопки нет.
+    ///
+    /// Тому, кто на связи (Поле-2), если он записан с чем-то, чем с ним связаться: его номер и мессенджеры из досье.
     func shootReach(_ s: Session) -> ReachPlan? {
+        if let v = shootVia(s), let plan = personReach(v) { return plan }
         if let c = shootClient(s), let plan = clientReach(c) { return plan }
-        return personReach(ClientPerson(phone: PlannerWords(lexicon: lexicon, orgs: orgs).firstPhone(s)))
+        return personReach(ClientPerson(phone: PlannerWords(lexicon: lexicon, orgs: orgs).callPhone(s)))
+    }
+
+    /// Человек на связи у съёмки: из досье клиента — тот, чей номер назван в записи (у него могут быть мессенджеры); нет
+    /// такого — как записан в съёмке. Ничего не вписано — `nil`.
+    func shootVia(_ s: Session) -> ClientPerson? {
+        guard let v = s.via, !v.isBlank else { return nil }
+        let key = TelFormat.full(v.phone, country: telCountry)
+        if TelFormat.isReal(v.phone, country: telCountry),
+           let p = shootClient(s)?.people.first(where: { $0.relation != nil && TelFormat.full($0.phone, country: telCountry) == key }) {
+            return p
+        }
+        var p = ClientPerson(name: v.name, phone: v.phone)
+        p.relation = v.relation
+        return p
     }
 
     /// Кнопка одного человека (у телефона в карточке клиента): его основной способ, в меню — только его способы.

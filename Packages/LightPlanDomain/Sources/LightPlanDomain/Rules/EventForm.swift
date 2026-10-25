@@ -49,6 +49,10 @@ public struct EventForm: Equatable, Sendable {
 
     public var contact = ""
     public var clientPhone = ""
+    /// «На связи через» (шаг «Поле-2»): отношение, имя, телефон. Пустые имя и телефон — строки нет.
+    public var viaRelation: ViaRelation = .organizer
+    public var viaName = ""
+    public var viaPhone = ""
     public var breed = ""
     public var orgId: String?
     public var orderPerson = ""
@@ -160,6 +164,7 @@ public struct EventForm: Equatable, Sendable {
         f.subGenre = s.subGenre
         f.contact = s.contact
         f.clientPhone = s.clientPhone
+        if let v = s.via { f.viaRelation = v.relation; f.viaName = v.name; f.viaPhone = v.phone }
         f.breed = s.breed
         f.orgId = s.orgId
         f.orderPerson = s.orderPerson
@@ -318,6 +323,17 @@ public struct EventForm: Equatable, Sendable {
             .filter { !$0.name.isEmpty || !$0.phone.isEmpty }
     }
 
+    /// Показывает ли жанр формы строку «На связи через».
+    public var showsVia: Bool { FormShape.showsVia(genre: genreUnset ? nil : genre) }
+
+    /// Тот, кто на связи, как он ляжет в запись: ничего не вписано или жанру он не нужен — `nil`.
+    var filledVia: ContactVia? {
+        guard showsVia else { return nil }
+        let v = ContactVia(relation: viaRelation, name: viaName.trimmingCharacters(in: .whitespaces),
+                           phone: viaPhone.trimmingCharacters(in: .whitespaces))
+        return v.isBlank ? nil : v
+    }
+
     static func firstName(_ full: String) -> String {
         full.split(whereSeparator: { $0.isWhitespace }).first.map(String.init) ?? ""
     }
@@ -354,7 +370,7 @@ public struct EventForm: Equatable, Sendable {
     /// место, подставленные самим приложением, черновика не делают.
     public var hasTypedContent: Bool {
         func blank(_ s: String) -> Bool { s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        return ![contact, clientPhone, notes, orderPerson, orderPhone, brief, models, breed].allSatisfy(blank)
+        return ![contact, clientPhone, viaName, viaPhone, notes, orderPerson, orderPhone, brief, models, breed].allSatisfy(blank)
             || persons.contains { !blank($0.name) || !blank($0.phone) }
             || guests > 0
             || (!routeSeeded && !routeOut.isEmpty) || !wishes.isEmpty
@@ -393,6 +409,7 @@ public struct EventForm: Equatable, Sendable {
         s.persons = filledPersons
         s.contact = contactLine(orgName: orgName, and: and)
         s.clientPhone = clientPhone.trimmingCharacters(in: .whitespaces)
+        s.via = filledVia
         s.orgId = orgId
         s.orderPerson = orderPerson.trimmingCharacters(in: .whitespaces)
         s.orderPhone = orderPhone.trimmingCharacters(in: .whitespaces)
@@ -442,6 +459,8 @@ extension EventForm {
         var y: Int, m: Int, d: Int, start: Int, duration: Int, proposed: Bool, light: Bool
         var contact: String, clientPhone: String, breed: String, orgId: String?
         var orderPerson: String, orderPhone: String, persons: [[String]], guests: Int
+        /// «На связи через»: отношение, имя, телефон (шаг «Поле-2»); старый черновик ключа не знает.
+        var via: [String]?
         var notes: String, brief: String, models: String
         /// Повтор (веб `repDraft`): пишется, только когда правило выбрано.
         var repRule: String?, repN: Int?, repOn: [String]?
@@ -477,6 +496,7 @@ extension EventForm {
                       contact: contact, clientPhone: clientPhone, breed: breed, orgId: orgId,
                       orderPerson: orderPerson, orderPhone: orderPhone,
                       persons: persons.map { [$0.name, $0.phone] }, guests: guests,
+                      via: viaName.isEmpty && viaPhone.isEmpty ? nil : [viaRelation.rawValue, viaName, viaPhone],
                       notes: notes, brief: brief, models: models,
                       repRule: repeatRule?.rawValue, repN: repeatRule == nil ? nil : repeatCount,
                       repOn: repeatRule == nil ? nil : repeatBlocks.map(\.rawValue).sorted(),
@@ -510,6 +530,9 @@ extension EventForm {
         f.gear = d.gear ?? []; f.docs = d.docs ?? []; f.playlist = d.playlist ?? ""
         f.tripOn = d.trip ?? false; f.tripManual = d.tripManual ?? false; f.bookingRef = d.bookingRef
         f.persons = d.persons.map { Person(name: $0.first ?? "", phone: $0.count > 1 ? $0[1] : "") }
+        if let v = d.via, v.count == 3 {
+            f.viaRelation = ViaRelation(rawValue: v[0]) ?? .organizer; f.viaName = v[1]; f.viaPhone = v[2]
+        }
         f.repeatRule = d.repRule.flatMap(RepeatRule.init(rawValue:))
         if let n = d.repN { f.repeatCount = min(max(n, Repeats.minCount), Repeats.maxCount) }
         if let on = d.repOn { f.repeatBlocks = Set(on.compactMap(RepeatBlock.init(rawValue:))) }

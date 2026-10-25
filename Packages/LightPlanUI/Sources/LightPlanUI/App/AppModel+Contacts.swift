@@ -39,6 +39,12 @@ extension AppModel {
             }
             return lexicon.t("form.person")
         case PhoneBook.Field.client: return lexicon.t("who.client")
+        case PhoneBook.Field.via:
+            // «На связи · подруга»: отношение — из записи, где номер назван.
+            if case .shoot(let id) = r.card, let v = snapshot.sessions.first(where: { $0.id == id })?.via {
+                return lexicon.t("via.label", ["rel": lexicon.t("via." + v.relation.rawValue).lowercased()])
+            }
+            return lexicon.t("form.person")
         case PhoneBook.Field.org: return lexicon.t("form.person")
         case PhoneBook.Field.director: return lexicon.t("org.director")
         default:

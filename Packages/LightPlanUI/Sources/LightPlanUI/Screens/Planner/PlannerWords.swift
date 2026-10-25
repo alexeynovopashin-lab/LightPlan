@@ -68,6 +68,12 @@ struct PlannerWords {
         n.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
     }
 
+    /// Куда звонить из карточки (Поле-2): тому, кто на связи, если он записан с номером; иначе первый телефон записи.
+    func callPhone(_ s: Session) -> String {
+        if let v = s.via, !v.phone.trimmingCharacters(in: .whitespaces).isEmpty { return v.phone }
+        return firstPhone(s)
+    }
+
     /// Первый телефон записи (веб `firstPhone`): пара, заказчик, клиент,
     /// организация, потом номер, вписанный в строку клиента или заметки.
     func firstPhone(_ s: Session) -> String {

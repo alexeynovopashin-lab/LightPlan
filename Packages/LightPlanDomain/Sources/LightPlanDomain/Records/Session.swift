@@ -47,6 +47,9 @@ public struct Session: Sendable, Hashable, Identifiable {
     public var orderPhone: String = ""
     /// `persons` — пара поимённо: невеста и жених, виновник торжества.
     public var persons: [Person] = []
+    /// `via` — «на связи через»: подруга, организатор, родственник героя съёмки (шаг «Поле-2»). Звонок и «написать» из
+    /// карточки идут ему. Только у нас: веб ключа не знает и при пересохранении теряет.
+    public var via: ContactVia?
 
     /// `place` — имя точки съёмки.
     public var place: String = ""

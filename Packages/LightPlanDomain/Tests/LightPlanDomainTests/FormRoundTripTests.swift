@@ -27,6 +27,7 @@ import LightPlanDomain
         s.orderPerson = "Мария"
         s.orderPhone = "+7 913 000-00-02"
         s.persons = [Person(name: "Анна", phone: "+7 913 000-00-01"), Person(name: "Илья", phone: "+7 913 000-00-03")]
+        s.via = ContactVia(relation: .relative, name: "Мария Ивановна", phone: "+7 913 000-00-04")
         s.place = "Люмен, зал Белый"
         s.placeTown = "Томск"
         s.placeAddress = "Нахимова, 8"

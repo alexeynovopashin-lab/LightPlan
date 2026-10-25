@@ -51,9 +51,12 @@ extension ClientBook {
         applying(choice, to: &s)
         guard kind(for: s) != nil else { return nil }
         let cands = people(of: s, mine: mine, country: country)
-        guard !cands.isEmpty else { return nil }
+        let via = via(of: s, heroes: cands, mine: mine, country: country)
+        guard !cands.isEmpty || via != nil else { return nil }
 
-        let hits = linkedHits(cands, clients: clients, country: country).map { clients[$0].id }
+        var found = linkedHits(cands, clients: clients, country: country)
+        for i in viaHits(cands, via: via, clients: clients, country: country) where !found.contains(i) { found.append(i) }
+        let hits = found.map { clients[$0].id }
         let current = s.clientId.flatMap { id in clients.contains { $0.id == id } ? id : nil }
         if !hits.isEmpty {
             // Как `bind`: запись остаётся за своим клиентом, если он узнан; иначе — первый узнанный.
@@ -85,9 +88,10 @@ extension ClientBook {
     /// живой номер — с его хозяином, прежний — с именем в архиве; у прежнего номера без имени хозяин неизвестен — со всеми
     /// людьми клиента. Анна с телефона Марка их пару не узнаёт.
     static func linked(_ p: ClientPerson, to c: Client, key: String, country: TelCountry) -> Bool {
-        var names = c.people.filter { TelFormat.full($0.phone, country: country) == key }.map(\.name)
-        for t in c.telLog where TelFormat.full(t.phone, country: country) == key {
-            if let n = t.name, !n.trimmingCharacters(in: .whitespaces).isEmpty { names.append(n) } else { names += c.people.map(\.name) }
+        let heroes = c.people.filter { $0.relation == nil }
+        var names = heroes.filter { TelFormat.full($0.phone, country: country) == key }.map(\.name)
+        for t in c.telLog where TelFormat.full(t.phone, country: country) == key && t.field != PhoneBook.Field.via {
+            if let n = t.name, !n.trimmingCharacters(in: .whitespaces).isEmpty { names.append(n) } else { names += heroes.map(\.name) }
         }
         return names.contains { nameFactors(p.name, $0) >= 1 }
     }
@@ -101,15 +105,16 @@ extension ClientBook {
             let k = TelFormat.full(phone, country: country)
             if !(owner[k] ?? []).contains(i) { owner[k, default: []].append(i) }
         }
-        for (i, c) in clients.enumerated() { for p in c.people { add(p.phone, i) } }
-        for (i, c) in clients.enumerated() { for t in c.telLog { add(t.phone, i) } }
+        // Тот, кто на связи, номерами героев не владеет: подруга, заказавшая потом свой портрет, — не клиент с чужой карточки.
+        for (i, c) in clients.enumerated() { for p in c.people where p.relation == nil { add(p.phone, i) } }
+        for (i, c) in clients.enumerated() { for t in c.telLog where t.field != PhoneBook.Field.via { add(t.phone, i) } }
         return owner
     }
 
     /// Клиент для вопроса «Это …?»: у кого-то из его людей те же имя и фамилия, что у человека записи; при нескольких —
     /// тот, что выше в списке (свежая съёмка).
     static func nameMatch(_ cands: [ClientPerson], clients ordered: [Client]) -> String? {
-        ordered.first { c in cands.contains { cand in c.people.contains { nameFactors(cand.name, $0.name) >= 2 } } }?.id
+        ordered.first { c in cands.contains { cand in c.people.contains { $0.relation == nil && nameFactors(cand.name, $0.name) >= 2 } } }?.id
     }
 
     /// Сколько совпало из «имя, фамилия»: 0, 1 или 2. Слова сравниваются без порядка («Петрова Анна» — «Анна Петрова»: 2),

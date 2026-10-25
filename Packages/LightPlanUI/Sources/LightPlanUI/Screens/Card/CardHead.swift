@@ -12,8 +12,10 @@ struct CardHeadText {
     var person: String
     /// «Портрет · 23 сентября, завтра · 12:20 – 13:50».
     var when: String
-    /// Номер для показа («+7 961 887-80-78») и для набора; нет номера — `nil`.
+    /// Номер для показа («+7 961 887-80-78») и для набора; нет номера — `nil`. Есть тот, кто на связи, — его номер.
     var tel: (shown: String, dial: String)?
+    /// «на связи: Алёна, подруга» (Поле-2); на связи никого — `nil`.
+    var via: String?
 
     init(_ s: Session, phase: EventPhase, app: AppModel) {
         let f = PlannerFacts(app: app, dark: true)
@@ -64,7 +66,14 @@ struct CardHeadText {
 
         // Номер показываем и набираем только целым: «961 887-80-78» без кода
         // страны набирается лишь из своей области.
-        let raw = w.firstPhone(s)
+        let raw = w.callPhone(s)
+        if let v = s.via, !v.isBlank {
+            let rel = f.t.t("via." + v.relation.rawValue).lowercased()
+            let name = v.name.trimmingCharacters(in: .whitespaces)
+            via = name.isEmpty ? f.t.t("via.label", ["rel": rel]) : f.t.t("via.head", ["name": name, "rel": rel])
+        } else {
+            via = nil
+        }
         if raw.isEmpty { tel = nil } else {
             let e = TelFormat.e164(raw, country: app.telCountry)
             tel = (e.isEmpty ? raw : TelFormat.format(e, country: app.telCountry),
@@ -107,6 +116,10 @@ struct CardHead: View {
             }
             Text(h.when).font(webFont(13)).foregroundStyle(phase == .after ? pal.ink6 : pal.green)
                 .shotNode("card.when").padding(.top, 5)
+            if let via = h.via {
+                Text(via).font(webFont(13)).foregroundStyle(pal.ink3)
+                    .shotNode("card.via", text: via).padding(.top, 3)
+            }
             contactRow(h.tel)
         }
         .multilineTextAlignment(.center)
@@ -205,6 +218,6 @@ struct CardHead: View {
             .padding(.horizontal, 10).padding(.vertical, 9)
         }
         .buttonStyle(PressFade())
-        .shotNode("card.tel")
+        .shotNode("card.tel", text: tel.dial)
     }
 }

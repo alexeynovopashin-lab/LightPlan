@@ -15,6 +15,8 @@ public enum PhoneBook {
         public static let personTwo = "p2"
         /// Контактное лицо заказчика.
         public static let contact = "person"
+        /// Тот, кто на связи через (шаг «Поле-2»): подруга, организатор. Прежний номер с этим полем героев не узнаёт.
+        public static let via = "via"
         public static let org = "org"
         /// Директор организации.
         public static let director = "director"
@@ -51,6 +53,7 @@ public enum PhoneBook {
             out.append(Tel(field: "p\(i + 1)", phone: p.phone, name: p.name))
         }
         if !s.orderPhone.isEmpty { out.append(Tel(field: Field.contact, phone: s.orderPhone, name: s.orderPerson)) }
+        if let v = s.via, !v.phone.isEmpty { out.append(Tel(field: Field.via, phone: v.phone, name: v.name)) }
         return out.filter { TelFormat.isReal($0.phone, country: country) }
     }
 
@@ -64,7 +67,8 @@ public enum PhoneBook {
 
     /// Номера клиента (шаг К1): люди карточки по порядку, поля `p1`, `p2`…; обрывки короче пяти цифр не берём.
     public static func tels(of c: Client, country: TelCountry) -> [Tel] {
-        c.people.enumerated().map { Tel(field: "p\($0.offset + 1)", phone: $0.element.phone, name: $0.element.name) }
+        c.people.enumerated().map { Tel(field: $0.element.relation == nil ? "p\($0.offset + 1)" : Field.via,
+                                        phone: $0.element.phone, name: $0.element.name) }
             .filter { TelFormat.isReal($0.phone, country: country) }
     }
 

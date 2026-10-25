@@ -67,6 +67,14 @@ public enum FormShape {
         }
     }
 
+    /// Строка «На связи через» (шаг «Поле-2»): везде, где есть частный клиент, — свадьба, праздник, портрет, лавстори, семья,
+    /// животные. Отдельно от `FormField`: у веба такой строки нет, а `FormField` сверяется с его таблицей `FORM_FIELDS`.
+    /// Встреча её показывает: связь с клиентом начинается до съёмки.
+    public static func showsVia(genre: Genre?) -> Bool {
+        let p = GenreProfile(genre)
+        return p.spec.client && !p.groupSpec.order
+    }
+
     /// Все поля, которые жанр показывает, в порядке таблицы.
     public static func fields(genre: Genre?, mode: FormMode) -> [FormField] {
         FormField.allCases.filter { shows($0, genre: genre, mode: mode) }

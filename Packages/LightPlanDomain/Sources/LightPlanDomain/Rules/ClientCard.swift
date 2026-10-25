@@ -35,8 +35,8 @@ extension ClientBook {
     public static func canAddPerson(_ c: Client) -> Bool {
         switch c.kind {
         case .family: true
-        case .couple: c.people.count < 2
-        case .person: c.people.isEmpty
+        case .couple: heroCount(c) < 2
+        case .person: heroCount(c) == 0
         }
     }
 
@@ -96,7 +96,7 @@ extension ClientBook {
         // Другой клиент — тот, кого номер узнал бы при склейке: номер и имя или фамилия (два фактора из трёх, К3б). Один
         // общий номер — не повод объединять: муж и жена с одного телефона — разные клиенты.
         let others = clients.filter { $0.id != clientId }
-        var named: [ClientPerson] = me.people
+        var named: [ClientPerson] = me.people.filter { $0.relation == nil }
         for s in shoots(of: clientId, in: sessions) { named += people(of: s, mine: mine, country: country) }
         var out: [Twin] = []
         for p in named where TelFormat.isReal(p.phone, country: country) {
@@ -143,8 +143,9 @@ extension ClientBook {
         }
 
         for p in src.people where !p.isBlank {
-            let j: Int? = real(p) ? dst.people.firstIndex { real($0) && key($0) == key(p) }
-                                  : dst.people.firstIndex { !real($0) && sameName($0.name, p.name) }
+            // Герой сливается с героем, тот, кто на связи, — с тем, кто на связи.
+            let j: Int? = real(p) ? dst.people.firstIndex { ($0.relation == nil) == (p.relation == nil) && real($0) && key($0) == key(p) }
+                                  : dst.people.firstIndex { ($0.relation == nil) == (p.relation == nil) && !real($0) && sameName($0.name, p.name) }
             if let j { fill(&dst.people[j], from: p) } else { dst.people.append(p) }
         }
 

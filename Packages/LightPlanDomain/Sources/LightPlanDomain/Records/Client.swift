@@ -32,6 +32,10 @@ public struct ClientPerson: Sendable, Hashable {
     public var messengers: [ClientMessenger] = []
     /// `pref` — основной мессенджер (его тип).
     public var preferred: String?
+    /// `rel` — «на связи · подруга» (шаг «Поле-2»): человек не герой съёмки, а тот, через кого идёт связь. `nil` — герой.
+    /// Такой человек в склейке героев не участвует: его номер не узнаёт чужих клиентов и клиент не узнаётся по нему как
+    /// по герою (решение шага, DECISIONS «Поле-2»).
+    public var relation: ViaRelation?
 
     public init(name: String = "", phone: String = "") {
         self.name = name
@@ -80,7 +84,7 @@ public struct Client: Sendable, Hashable, Identifiable {
 }
 
 extension ClientPerson: Codable {
-    enum CodingKeys: String, CodingKey { case n, tel, bd, msg, pref }
+    enum CodingKeys: String, CodingKey { case n, tel, bd, msg, pref, rel }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -89,6 +93,7 @@ extension ClientPerson: Codable {
         birthday = try c.decodeIfPresent(String.self, forKey: .bd)
         messengers = try c.decodeIfPresent([ClientMessenger].self, forKey: .msg) ?? []
         preferred = try c.decodeIfPresent(String.self, forKey: .pref)
+        relation = try c.decodeIfPresent(String.self, forKey: .rel).map { ViaRelation(rawValue: $0) ?? .organizer }
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -98,6 +103,7 @@ extension ClientPerson: Codable {
         try c.encodeIfPresent(birthday, forKey: .bd)
         if !messengers.isEmpty { try c.encode(messengers, forKey: .msg) }
         try c.encodeIfPresent(preferred, forKey: .pref)
+        try c.encodeIfPresent(relation?.rawValue, forKey: .rel)
     }
 }
 

@@ -147,11 +147,11 @@ struct ClientCardScreen: View {
 
     /// Человек — группа «имя / телефон»; у телефона кнопка звонка. Подпись группы — «Человек», у пары и семьи — с номером.
     private func people(_ c: Client, _ pal: Palette) -> some View {
-        let many = c.kind != .person || c.people.count > 1
+        let many = c.kind != .person || c.people.filter { $0.relation == nil }.count > 1
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(c.people.indices), id: \.self) { i in
                 HStack(spacing: 0) {
-                    FormGroupLabel(text: many ? t.t("clc.personN", ["n": "\(i + 1)"]) : t.t("clc.person"))
+                    FormGroupLabel(text: personLabel(c, i, many: many)).shotNode("clc.label.\(i)", text: personLabel(c, i, many: many))
                     if c.people.count > 1 {
                         Button { app.removeClientPerson(id, at: i) } label: {
                             Icon("close", size: 14, line: 2).foregroundStyle(pal.ink5)
@@ -194,6 +194,15 @@ struct ClientCardScreen: View {
                 .shotNode("clc.addPerson", text: t.t("clc.addPerson"))
             }
         }
+    }
+
+    /// Подпись человека: «На связи · подруга» у того, кто на связи; у героев — «Человек» или «Человек N» (N считает героев).
+    private func personLabel(_ c: Client, _ i: Int, many: Bool) -> String {
+        if let r = c.people[i].relation {
+            return t.t("via.label", ["rel": t.t("via." + r.rawValue).lowercased()])
+        }
+        let n = c.people[...i].filter { $0.relation == nil }.count
+        return many ? t.t("clc.personN", ["n": "\(n)"]) : t.t("clc.person")
     }
 
     /// Звонок: номер настоящий (пять цифр и больше) — кнопка с трубкой; набирается международный номер.

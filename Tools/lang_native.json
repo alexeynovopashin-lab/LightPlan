@@ -500,7 +500,15 @@
     "clk.pick": "Из Контактов",
     "sub.bachelorette": "Девичник",
     "sub.bachelor": "Мальчишник",
-    "studio.callAdmin": "Позвонить админу"
+    "studio.callAdmin": "Позвонить админу",
+    "via.title": "На связи через",
+    "via.organizer": "Организатор",
+    "via.girlfriend": "Подруга",
+    "via.friend": "Друг",
+    "via.relative": "Родственник",
+    "via.namePh": "Имя",
+    "via.label": "На связи · {rel}",
+    "via.head": "на связи: {name}, {rel}"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -999,7 +1007,15 @@
     "clk.pick": "From Contacts",
     "sub.bachelorette": "Bachelorette",
     "sub.bachelor": "Bachelor",
-    "studio.callAdmin": "Call the admin"
+    "studio.callAdmin": "Call the admin",
+    "via.title": "Contact through",
+    "via.organizer": "Organizer",
+    "via.girlfriend": "Female friend",
+    "via.friend": "Male friend",
+    "via.relative": "Relative",
+    "via.namePh": "Name",
+    "via.label": "Contact · {rel}",
+    "via.head": "contact: {name}, {rel}"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1498,7 +1514,15 @@
     "clk.pick": "De Contactos",
     "sub.bachelorette": "Despedida soltera",
     "sub.bachelor": "Despedida soltero",
-    "studio.callAdmin": "Llamar al administrador"
+    "studio.callAdmin": "Llamar al administrador",
+    "via.title": "Contacto a través de",
+    "via.organizer": "Organizador",
+    "via.girlfriend": "Amiga",
+    "via.friend": "Amigo",
+    "via.relative": "Familiar",
+    "via.namePh": "Nombre",
+    "via.label": "Contacto · {rel}",
+    "via.head": "contacto: {name}, {rel}"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1993,7 +2017,15 @@
     "clk.pick": "連絡先から",
     "sub.bachelorette": "バチェロレッテ",
     "sub.bachelor": "バチェラー",
-    "studio.callAdmin": "管理者に電話"
+    "studio.callAdmin": "管理者に電話",
+    "via.title": "連絡の窓口",
+    "via.organizer": "主催者",
+    "via.girlfriend": "友人（女性）",
+    "via.friend": "友人（男性）",
+    "via.relative": "親族",
+    "via.namePh": "名前",
+    "via.label": "連絡の窓口 · {rel}",
+    "via.head": "連絡先：{name}（{rel}）"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2488,6 +2520,14 @@
     "clk.pick": "从通讯录",
     "sub.bachelorette": "女生单身派对",
     "sub.bachelor": "男生单身派对",
-    "studio.callAdmin": "致电管理员"
+    "studio.callAdmin": "致电管理员",
+    "via.title": "联系人经由",
+    "via.organizer": "组织者",
+    "via.girlfriend": "女性朋友",
+    "via.friend": "男性朋友",
+    "via.relative": "亲属",
+    "via.namePh": "姓名",
+    "via.label": "联系人 · {rel}",
+    "via.head": "联系人：{name}（{rel}）"
   }
 }

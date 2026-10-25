@@ -27,6 +27,7 @@ public enum MeetGrow {
         s.clientPhone = meet.clientPhone
         s.notes = meet.notes
         s.persons = meet.persons
+        s.via = meet.via
         s.orderPerson = meet.orderPerson
         s.orderPhone = meet.orderPhone
         s.orgId = meet.orgId

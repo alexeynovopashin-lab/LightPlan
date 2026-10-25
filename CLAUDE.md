@@ -248,6 +248,15 @@
   and their words live in `Tools/lang_native.json`; `DomainTablesTests.subGenres` compares the web table without them. Messenger stars (`ClientReach.starred`): only with
   two or more reachable ways, only on reachable rows. Settings chapter `Chapter.playlists` (player + library) sits between «Язык и регион» and «О приложении»; the web
   nodes `sec.4/5`, `seg.4`, `note.4/5`, `pl.*` are dropped from the «Съёмки» shot pair on purpose. Shots: `clients.js --cases card-msg,card-msg1`, form `-LPShotGuests <n>`.
+- **On the line through someone (Поле-2, Alexey 25.10).** `Session.via` (`ContactVia`: relation organizer/girlfriend/friend/relative + name + phone, key `via` `{r,n,tel}`;
+  web does not know it and drops it on re-save — like К1) — form row «На связи через» (`EventForm.viaRelation/viaName/viaPhone`, `FormShape.showsVia`: the six genres with a private
+  client; deliberately **not** a `FormField` case — that enum is compared with the web's table), collapsed while empty. In the dossier the person is a `ClientPerson` with
+  `relation != nil` («На связи · подруга»), after the heroes; it takes no seat in the kind's capacity (`ClientBook.heroCount`), is not written to iPhone Contacts (К7 only if asked)
+  and its `telLog` entries carry field `via`. **Gluing rules** (`ClientBook.via/viaHits/placeVia`): a friend's number never recognises a *hero* (`phoneOwners`, `linked`, `nameMatch` skip
+  via persons), so «Алёна orders her own portrait» is a new client, not a guest in Olga's card; a shoot joins a client by the friend's number only together with a hero name word
+  (`viaHits`) — one friend organising two birthdays gives two cards; a hero without a name never joins by the number alone. Same number on hero and friend → the number stays on the hero.
+  Head of the card: call and «написать» go to the friend if she has a number (`PlannerWords.callPhone`, `AppModel.shootReach/shootVia`, messengers from her dossier row), line
+  `card.via` «на связи: Алёна, подруга». Shots: `node Tools/shots/pole2.js` (form, collapsed form, dossier, head; numbers from node frames).
 - **Studio tile (Поле-1 п.7–8).** `Screens/Card/CardStudio.swift`: the countdown colon is **lifted by font metrics** (`StudioColon.lift` — middle of the colon glyph to the middle of the digits, any size),
   measured on frames: colon centre − digit centre +2.67 pt (sat on the baseline) → 0.00 pt, digits did not move (`.padding(.top, -lift)` keeps the line height). The colon **blinks 0.5 s on / 0.5 s off**
   (Alexey 29.09; the web does not blink at all — `paintStudio` repaints every 20 s, per second only in the last 15 min), so a screenshot can catch it off: shoot several frames. The admin's number is no

@@ -336,6 +336,31 @@ extension AppModel {
                     if way == "yes" { app.answerFormClient(.pick(c.id)) }
                 }
             }
+        // Поле-2: Ольга (день рождения, без номера) через подругу Алёну. `LPShotWay`: `form` — форма «Праздник» с заполненным
+        // «На связи через · подруга», `form-empty` — та же, строка свёрнута, `dossier` — досье клиента после «Сохранить»,
+        // `head` — шапка карточки этой съёмки (звонок и «написать» — Алёне; у неё в досье вписан Telegram).
+        case "poletwo":
+            app.draftStore = MemoryDraftStore()
+            let way = s.way ?? "form"
+            app.openForm(day: app.planner.selected)
+            app.pickFormGenre(.party)
+            app.editForm { f in
+                f.persons[0] = Person(name: "Ольга", phone: "")
+                guard way != "form-empty" else { return }
+                f.viaRelation = .girlfriend; f.viaName = "Алёна"; f.viaPhone = "+7 913 555-66-77"
+            }
+            guard way == "dossier" || way == "head" else { break }
+            app.saveForm()
+            guard let saved = app.sessions.last(where: { $0.persons.first?.name == "Ольга" }), let id = saved.clientId else { break }
+            if way == "head", let i = app.snapshot.clients.firstIndex(where: { $0.id == id }),
+               let k = app.snapshot.clients[i].people.firstIndex(where: { $0.relation != nil }) {
+                ClientReach.addMessenger(.telegram, to: &app.snapshot.clients[i].people[k])
+                ClientReach.setMessenger(.telegram, "t.me/alyona_s", in: &app.snapshot.clients[i].people[k])
+                app.openCard(id: saved.id)
+            } else {
+                app.openClients()
+                app.openClientCard(id: id)
+            }
         case "docs":
             // Экран «Документы» (28д, шаг 3а): `LPShotWay` — раздел (`attention|recent|bySession|byOrg|byKind|byMonth|mine|bin`),
             // после плюса — вид (`list|table|months`), `q=слово` — запрос поиска (шаг 3б), `paper` — открыть

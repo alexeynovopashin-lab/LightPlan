@@ -15,6 +15,8 @@ struct FormScreen: View {
     @State private var orgSheet = false
     /// «Из Контактов» у поля телефона (К7): какому полю достанется выбранный контакт.
     @State private var pickSlot: FormPickSlot?
+    /// «На связи через» раскрыта нажатием, пока в ней ещё пусто (с данными она раскрыта сама).
+    @State private var viaOpen = false
     @State private var picking = false
     @State private var genreSheet = false
     @State private var paySheet = false
@@ -213,6 +215,7 @@ struct FormScreen: View {
                     // У пары плашка одна на обоих — под их строками.
                     if !f.shows(.contactLine) { clientPlate(f, pal, t) }
                     if f.shows(.organization) { orgRow(f, pal, t, group: group) }
+                    if f.showsVia { viaRows(f, pal, t) }
                     if f.shows(.orderContact) {
                         FormTextField(placeholder: t.t("form.person"), text: text(\.orderPerson), kind: .name)
                         phoneRow(t.t("form.phone"), text: phone(\.orderPhone), slot: .order, pal, t)
@@ -221,7 +224,43 @@ struct FormScreen: View {
                     if f.repeatOn { repToggle(.client, f, t) }
                 }
             }
+            .id("who")   // `-LPShotFormScroll who`
             .contactPicker(isPresented: $picking) { takePicked($0) }
+        }
+    }
+
+    /// «На связи через» (Поле-2, слова Алексея 25.10): связь идёт не с героем съёмки, а через организатора, подругу, друга или
+    /// родственника. Пустая — одна свёрнутая строка; с данными (или нажатая) — отношение чипсами, имя и телефон «Из Контактов».
+    @ViewBuilder
+    private func viaRows(_ f: EventForm, _ pal: Palette, _ t: Lexicon) -> some View {
+        let filled = !f.viaName.trimmingCharacters(in: .whitespaces).isEmpty || !f.viaPhone.trimmingCharacters(in: .whitespaces).isEmpty
+        if filled || viaOpen {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(t.t("via.title")).font(.system(size: 16)).foregroundStyle(pal.ink)
+                FormChips(options: ViaRelation.allCases.map { (t.t("via." + $0.rawValue), $0.rawValue) },
+                          selected: f.viaRelation.rawValue, hPad: 11) { raw in
+                    edit { $0.viaRelation = ViaRelation(rawValue: raw) ?? .organizer }
+                }
+                .padding(.top, 10)
+                .shotNode("form.via.chips")
+            }
+            .padding(.horizontal, 15).padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .shotNode("form.via")
+            FormTextField(placeholder: t.t("via.namePh"), text: text(\.viaName), kind: .name)
+                .shotNode("form.viaName")
+            phoneRow(t.t("form.phone"), text: phone(\.viaPhone), slot: .via, pal, t)
+        } else {
+            Button { viaOpen = true } label: {
+                HStack(spacing: 12) {
+                    Text(t.t("via.title")).font(.system(size: 16)).foregroundStyle(pal.ink)
+                    Spacer()
+                    Icon("plus", size: 18, line: 2).foregroundStyle(pal.ink6)
+                }
+                .padding(15).frame(minHeight: 52).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .shotNode("form.via")
         }
     }
 
@@ -302,6 +341,8 @@ struct FormScreen: View {
                             phone: { f, v in if i < f.persons.count { f.persons[i].phone = v } })
         case .order:
             app.pickForForm(c, name: { $0.orderPerson = $1 }, phone: { $0.orderPhone = $1 })
+        case .via:
+            app.pickForForm(c, name: { $0.viaName = $1 }, phone: { $0.viaPhone = $1 })
         }
     }
 
@@ -717,10 +758,11 @@ struct OrgPickSheet: View {
 
 /// Место формы, куда ложится контакт «Из Контактов»: клиент, человек пары/семьи, контакт заказчика.
 enum FormPickSlot: Hashable {
-    case client, person(Int), order
+    case client, person(Int), order, via
 
     var node: String {
         switch self {
+        case .via: "via"
         case .client: "client"
         case .person(let i): "p\(i)"
         case .order: "order"

@@ -57,6 +57,40 @@ public enum ClientBook {
         }
     }
 
+    /// Тот, кто на связи через (шаг «Поле-2»): человек клиента с отношением. Свой номер клиентом не становится — человек с
+    /// ним выпадает целиком. Номер, что стоит и у героя съёмки (герой на связи сам), второй раз не пишется: человек остаётся
+    /// с именем и отношением, а номер — у героя. Ничего не вписано — `nil`.
+    public static func via(of s: Session, heroes: [ClientPerson], mine: Set<String>, country: TelCountry) -> ClientPerson? {
+        guard let v = s.via, !v.isBlank else { return nil }
+        var p = ClientPerson(name: trimmed(v.name), phone: trimmed(v.phone))
+        p.relation = v.relation
+        let k = TelFormat.full(p.phone, country: country)
+        if TelFormat.isReal(p.phone, country: country) {
+            if mine.contains(k) { return nil }
+            if heroes.contains(where: { TelFormat.full($0.phone, country: country) == k }) { p.phone = "" }
+        }
+        return p.isBlank ? nil : p
+    }
+
+    /// Герои карточки: люди без отношения. Вместимость вида, «+ человек» и склейка считают только их.
+    static func heroCount(_ c: Client) -> Int { c.people.filter { $0.relation == nil }.count }
+
+    /// Клиенты (номера в `clients`), у которых тот же человек на связи: номер на связи совпал с номером человека на связи
+    /// клиента **и** имя героя записи делит слово с кем-то из героев клиента. Один номер подруги без героя клиентов не
+    /// склеивает: Алёна ведёт дни рождения Ольги и Марии — это две карточки, а не одна (решение шага «Поле-2»). Герой без
+    /// имени (на съёмке имя узнают позже) сам по себе тоже никуда не приводит.
+    static func viaHits(_ heroes: [ClientPerson], via: ClientPerson?, clients: [Client], country: TelCountry) -> [Int] {
+        guard let via, TelFormat.isReal(via.phone, country: country) else { return [] }
+        let k = TelFormat.full(via.phone, country: country)
+        let named = heroes.filter { !trimmed($0.name).isEmpty }
+        guard !named.isEmpty else { return [] }
+        return clients.indices.filter { i in
+            let c = clients[i]
+            return c.people.contains { $0.relation != nil && TelFormat.full($0.phone, country: country) == k }
+                && named.contains { h in c.people.contains { $0.relation == nil && nameFactors(h.name, $0.name) >= 1 } }
+        }
+    }
+
     // MARK: - Склейка (§ 3)
 
     /// Чем кончилась склейка одной записи.
@@ -92,7 +126,8 @@ public enum ClientBook {
             return Outcome(clientId: nil, created: false, alsoIn: [])
         }
         let cands = people(of: s, mine: mine, country: country)
-        guard !cands.isEmpty else {
+        let via = via(of: s, heroes: cands, mine: mine, country: country)
+        guard !cands.isEmpty || via != nil else {
             s.clientId = nil
             return Outcome(clientId: nil, created: false, alsoIn: [])
         }
@@ -102,7 +137,8 @@ public enum ClientBook {
         // Кого запись узнаёт: номер и имя или фамилия (два фактора из трёх, тот же счёт у плашки формы, `hint`).
         // Номер без имени и имя без номера сами не склеивают.
         let byPhone = phoneOwners(clients, country: country)
-        let hits = linkedHits(cands, clients: clients, country: country)
+        var hits = linkedHits(cands, clients: clients, country: country)
+        for i in viaHits(cands, via: via, clients: clients, country: country) where !hits.contains(i) { hits.append(i) }
         let current = s.clientId.flatMap { id in clients.firstIndex { $0.id == id } }
 
         let target: Int
@@ -115,6 +151,7 @@ public enum ClientBook {
             for _ in 0..<8 where clients.contains(where: { $0.id == id }) { id = newId() }
             var c = Client(id: id, kind: kind)
             c.people = cands            // вместимость ограничивает дописывание, а не заведение: номер записи не теряется
+            if let via { c.people.append(via) }
             c.modifiedAt = nowMs
             clients.append(c)
             s.clientId = c.id
@@ -129,7 +166,7 @@ public enum ClientBook {
         for cand in cands {
             if real(cand) {
                 let k = key(cand)
-                if let j = c.people.firstIndex(where: { key($0) == k }) {
+                if let j = c.people.firstIndex(where: { $0.relation == nil && key($0) == k }) {
                     if blank(c.people[j].name) && !blank(cand.name) { c.people[j].name = cand.name }
                 } else if !(byPhone[k] ?? []).isEmpty {
                     // Номер другого клиента не переносим (4). Прежний номер из `telLog` этого клиента узнан, но заново не
@@ -139,18 +176,25 @@ public enum ClientBook {
                 } else if wasBound, let j = replaceable(in: c, for: cand, covered: covered, country: country) {
                     c.people[j].phone = cand.phone                 // номер сменился (5)
                     if blank(c.people[j].name) { c.people[j].name = cand.name }
-                } else if let j = c.people.firstIndex(where: { blank($0.phone) && sameName($0.name, cand.name) }) {
+                } else if let j = c.people.firstIndex(where: { $0.relation == nil && blank($0.phone) && sameName($0.name, cand.name) }) {
                     // У человека с тем же именем номера не было — дозаполняется (2). Иначе подсказка «Да» по имени, а
                     // потом вписанный номер, заводили в клиенте второго такого же человека (К3). После смены номера:
                     // у тёзки без номера новый номер чужой (ревью GPT к f4c1e94).
                     c.people[j].phone = cand.phone
-                } else if c.people.count < capacity(c.kind) {
-                    c.people.append(cand)
+                } else if heroCount(c) < capacity(c.kind) {
+                    insertHero(cand, into: &c)
                 }
-            } else if !blank(cand.name), c.people.isEmpty {
-                // Имя без номера нового человека не заводит: найти клиента по нему нельзя (7).
-                c.people.append(cand)
+            } else if !blank(cand.name), heroCount(c) == 0 {
+                // Имя без номера нового человека не заводит: найти клиента по нему нельзя (7). Герой, которого ещё нет в
+                // карточке (на связи пока одна подруга), дописывается — клиент ведь уже есть.
+                insertHero(cand, into: &c)
             }
+        }
+        if let via { placeVia(via, in: &c, wasBound: wasBound, country: country) }
+        // Номер героя и номер на связи совпали — номер остаётся у героя: у человека на связи его нет.
+        for j in c.people.indices where c.people[j].relation != nil && real(c.people[j]) {
+            let k = key(c.people[j])
+            if c.people.contains(where: { $0.relation == nil && key($0) == k }) { c.people[j].phone = "" }
         }
         let after = PhoneBook.tels(of: c, country: country)
         c.telLog = PhoneBook.retire(before: before, after: after, log: c.telLog, at: retiredAt, country: country)
@@ -167,7 +211,9 @@ public enum ClientBook {
     /// а без имён тому, кто на том же месте в записи.
     private static func replaceable(in c: Client, for cand: ClientPerson, covered: (ClientPerson) -> Bool,
                                     country: TelCountry) -> Int? {
-        let free = c.people.indices.filter { !covered(c.people[$0]) && TelFormat.isReal(c.people[$0].phone, country: country) }
+        let free = c.people.indices.filter {
+            c.people[$0].relation == nil && !covered(c.people[$0]) && TelFormat.isReal(c.people[$0].phone, country: country)
+        }
         if free.isEmpty { return nil }
         // Имя и фамилия в любом порядке («Петрова Анна») главнее одного первого слова.
         if let j = free.first(where: { nameFactors(cand.name, c.people[$0].name) >= 2 }) { return j }
@@ -175,6 +221,40 @@ public enum ClientBook {
         if !first.isEmpty, let j = free.first(where: { PhoneBook.firstName(c.people[$0].name).lowercased() == first }) { return j }
         if blank(cand.name) || free.allSatisfy({ blank(c.people[$0].name) }) { return free.count == 1 ? free[0] : nil }
         return nil
+    }
+
+    /// Герой встаёт перед теми, кто на связи: в досье они идут за героями; «кому пишем» остаётся на том же человеке.
+    private static func insertHero(_ p: ClientPerson, into c: inout Client) {
+        let at = c.people.firstIndex { $0.relation != nil } ?? c.people.count
+        c.people.insert(p, at: at)
+        if c.main >= at && at < c.people.count - 1 { c.main += 1 }
+    }
+
+    /// Человек на связи ложится в карточку: тот же номер или то же имя (подруга, чей номер сменили, — на связи у связанной
+    /// съёмки) — тот же человек, отношение берётся из съёмки; иначе дописывается. Вместимость вида его не считает.
+    private static func placeVia(_ v: ClientPerson, in c: inout Client, wasBound: Bool, country: TelCountry) {
+        func key(_ p: ClientPerson) -> String { TelFormat.full(p.phone, country: country) }
+        let existing = c.people.indices.filter { c.people[$0].relation != nil }
+        if TelFormat.isReal(v.phone, country: country), let j = existing.first(where: { key(c.people[$0]) == key(v) }) {
+            if blank(c.people[j].name) { c.people[j].name = v.name }
+            c.people[j].relation = v.relation
+            return
+        }
+        if !blank(v.name), let j = existing.first(where: { sameName(c.people[$0].name, v.name) || nameFactors(c.people[$0].name, v.name) >= 1 }) {
+            let there = c.people[j]
+            if blank(there.phone) {
+                c.people[j].phone = v.phone                    // номера не было — дозаполняется
+                c.people[j].relation = v.relation
+                return
+            }
+            if blank(v.phone) { c.people[j].relation = v.relation; return }
+            if wasBound {
+                c.people[j].phone = v.phone                    // номер сменился: старый уйдёт в архив клиента
+                c.people[j].relation = v.relation
+                return
+            }
+        }
+        c.people.append(v)
     }
 
     // MARK: - Разовый проход (§ 3.8)
@@ -252,7 +332,9 @@ public enum ClientBook {
     /// Имя в строке списка: у пары — имена без фамилий через союз («Анна и Иван»), у остальных — как вписано. Имён нет —
     /// первый номер; нет и его — пусто (экран подставит «Без имени»).
     public static func title(of c: Client, and: String) -> String {
-        let named = c.people.filter { !blank($0.name) }
+        // Название — герои; пока в карточке только тот, кто на связи, — он.
+        let heroes = c.people.filter { $0.relation == nil }
+        let named = (heroes.contains { !blank($0.name) } ? heroes : c.people).filter { !blank($0.name) }
         if c.kind == .couple, named.count > 1 {
             return named.map { PhoneBook.firstName($0.name) }.joined(separator: and)
         }

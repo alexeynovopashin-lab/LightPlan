@@ -191,6 +191,8 @@ func capFirst(_ s: String) -> String { s.prefix(1).uppercased() + s.dropFirst() 
 struct FormChips: View {
     let options: [(String, String)]
     let selected: String
+    /// Поля чипса по горизонтали: 15 у веба; у четырёх длинных слов («На связи через») уже — чтобы лечь в одну строку.
+    var hPad: CGFloat = 15
     let pick: (String) -> Void
     @Environment(\.colorScheme) private var scheme
     var body: some View {
@@ -202,7 +204,7 @@ struct FormChips: View {
                     Text(options[i].0)
                         .font(.system(size: 13, weight: on ? .semibold : .regular))
                         .foregroundStyle(on ? pal.brass : pal.ink3)
-                        .padding(.vertical, 10).padding(.horizontal, 15)
+                        .padding(.vertical, 10).padding(.horizontal, hPad)
                         .background(on ? pal.pressBrass : pal.press, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
                 .buttonStyle(.plain)

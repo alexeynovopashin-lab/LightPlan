@@ -121,7 +121,8 @@ public enum ClientContacts {
     public static func cards(of c: Client, anniversary: CivilDate?, country: TelCountry) -> [(key: String, person: Int, card: ContactCard)] {
         c.people.indices.compactMap { i in
             let p = c.people[i]
-            guard TelFormat.isReal(p.phone, country: country) else { return nil }
+            // Тот, кто на связи (подруга, организатор), в Контакты сам не пишется — только если Алексей попросит (Поле-2).
+            guard p.relation == nil, TelFormat.isReal(p.phone, country: country) else { return nil }
             let n = nameParts(p.name)
             var card = ContactCard(given: n.given, middle: n.middle, family: n.family,
                                    phone: TelFormat.e164(p.phone, country: country))
