@@ -11,18 +11,28 @@ import AppKit
 /// жирным (700); `Font.Weight` его не знает, а системный шрифт переменный и
 /// берёт любую точку шкалы (0,3 — 600, 0,4 — 700).
 func webFont(_ size: CGFloat, _ weight: Int = 400) -> Font {
-    let w: CGFloat = switch weight {
+    Font(webPlatformFont(size, weight))
+}
+
+/// Тот же шрифт, что `webFont`, в виде системного — для замеров по метрикам (положение двоеточия в студийном часе).
+#if canImport(UIKit)
+func webPlatformFont(_ size: CGFloat, _ weight: Int = 400) -> UIFont {
+    UIFont.systemFont(ofSize: size, weight: UIFont.Weight(rawValue: webWeightValue(weight)))
+}
+#else
+func webPlatformFont(_ size: CGFloat, _ weight: Int = 400) -> NSFont {
+    NSFont.systemFont(ofSize: size, weight: NSFont.Weight(rawValue: webWeightValue(weight)))
+}
+#endif
+
+private func webWeightValue(_ weight: Int) -> CGFloat {
+    switch weight {
     case ..<450: 0
     case ..<550: 0.23
     case ..<625: 0.3
     case ..<675: 0.35
     default: 0.4
     }
-    #if canImport(UIKit)
-    return Font(UIFont.systemFont(ofSize: size, weight: UIFont.Weight(rawValue: w)))
-    #else
-    return Font(NSFont.systemFont(ofSize: size, weight: NSFont.Weight(rawValue: w)))
-    #endif
 }
 
 extension DayQuality {

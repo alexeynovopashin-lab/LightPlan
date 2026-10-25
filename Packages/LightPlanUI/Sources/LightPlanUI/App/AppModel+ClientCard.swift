@@ -23,6 +23,7 @@ extension AppModel {
         org.clientBackKey = backKey
         org.clientTelSnap = PhoneBook.tels(of: c, country: telCountry)
         org.clientPick = false
+        org.clientEdited = false
         org.clientCardId = id
     }
 
@@ -34,7 +35,15 @@ extension AppModel {
         org.clientBackKey = "set.clients"
         org.clientTelSnap = []
         org.clientPick = false
+        org.clientEdited = false
         org.clientCardId = c.id
+    }
+
+    /// Галочка вверху карточки (поле-1, п. 6): то, что вписано, уже записано (правки пишутся сразу), — карточка закрывается
+    /// так же, как «Назад», и ненадолго показывает знак «Сохранено».
+    func doneClientCard() {
+        closeClientCard()
+        org.savedSign = true
     }
 
     /// «Назад»: пустые строки людей убираются, ушедший номер ложится в архив, пустой клиент без съёмок не остаётся.
@@ -76,6 +85,7 @@ extension AppModel {
             c.modifiedAt = nowMs
             snapshot.clients[i] = c
             persist()
+            org.clientEdited = true
         } else if var d = org.clientDraft, d.id == id {
             body(&d)
             if ClientBook.isBlank(d) { org.clientDraft = d; return }
@@ -83,6 +93,7 @@ extension AppModel {
             snapshot.clients.append(d)
             org.clientDraft = nil
             persist()
+            org.clientEdited = true
         }
     }
 
@@ -189,6 +200,7 @@ extension AppModel {
         snapshot.trashed = bin
         bury(source, now: now())
         persist()
+        if org.clientCardId == target { org.clientEdited = true }
         if org.clientCardId == target, let c = clientRecord(target) {
             // Пришедшие номера не «ушли»: сверка при «Назад» начинается с объединённой карточки.
             org.clientTelSnap = PhoneBook.tels(of: c, country: telCountry)

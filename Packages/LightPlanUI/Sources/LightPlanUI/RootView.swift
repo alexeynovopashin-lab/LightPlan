@@ -145,9 +145,11 @@ private struct Shell: View {
             }
             // Карточка частного клиента (К2): над «Клиентами» и «Контактами», под карточкой организации.
             if let id = app.org.clientCardId {
-                ClientCardScreen(app: app, id: id) {
+                ClientCardScreen(app: app, id: id, onBack: {
                     withAnimation(overlaySlide) { app.closeClientCard() }
-                }
+                }, onDone: {
+                    withAnimation(overlaySlide) { app.doneClientCard() }
+                })
                 .edgeBack(app, z: BackZ.clientCard) { app.closeClientCard() }
                 .transition(.move(edge: .trailing))
                 .zIndex(BackZ.clientCard)
@@ -216,6 +218,8 @@ private struct Shell: View {
         .overlay { MbFlyLayer(fly: app.mbFly).ignoresSafeArea() }
         // Баннер «прогноз переменился» (30.6, `#notif` z-index 95): над слоями оболочки, под формой и листами.
         .overlay { NoticeBanner(app: app) }
+        // Знак «Сохранено» после галочки досье клиента (поле-1, п. 6): карточка уже закрыта, знак живёт над слоями.
+        .overlay { SavedSign(app: app) }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
         .onGeometryChange(for: ShotWindow.self) { ShotWindow(safe: $0.safeAreaInsets, size: $0.size) } action: {
             ShotProbe.shared.window($0)

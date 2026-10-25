@@ -62,6 +62,29 @@ struct StudioTileState {
     }
 }
 
+extension StudioTileState {
+    /// Звонок администратору (поле-1, п. 8): кнопка «Позвонить админу» звонит на тот же номер, что раньше показывала строка.
+    static func callURL(_ tel: (shown: String, dial: String)) -> URL? { URL(string: "tel:" + tel.dial) }
+}
+
+/// Двоеточие остатка (поле-1, п. 7): в SF двоеточие сидит между базовой линией и высотой строчной, а цифры — до высоты
+/// прописной, и оно выглядело лежащим на строке. `lift` — на сколько его поднять, чтобы середина двоеточия легла на середину
+/// высоты цифр. Считается по метрикам того же шрифта, а не подобрана на глаз, поэтому верна при любом кегле.
+enum StudioColon {
+    static func lift(size: CGFloat, weight: Int) -> CGFloat {
+        let font = webPlatformFont(size, weight) as CTFont
+        func mid(_ ch: Character) -> CGFloat {
+            var unit = Array(String(ch).utf16)
+            var glyph = [CGGlyph](repeating: 0, count: unit.count)
+            guard CTFontGetGlyphsForCharacters(font, &unit, &glyph, unit.count) else { return 0 }
+            var box = CGRect.zero
+            CTFontGetBoundingRectsForGlyphs(font, .horizontal, glyph, &box, 1)
+            return box.midY
+        }
+        return mid("0") - mid(":")
+    }
+}
+
 /// Студийный час (`#cdStudio`): кольцо 104 pt, внутри час выхода и остаток,
 /// справа студия с залом, окно аренды и номер администратора. Последние
 /// 15 минут счёт идёт по секундам.
@@ -97,12 +120,17 @@ struct CardStudio: View {
         }
     }
 
+    /// Кегль и вес остатка в кольце — по ним и считается подъём двоеточия.
+    private static let numSize: CGFloat = 25
+    private static let numWeight = 700
+    private static let colonLift = StudioColon.lift(size: numSize, weight: numWeight)
+
     /// Остаток с двоеточием: `on` — первая половина секунды. Место под
     /// двоеточие держится — цифры не прыгают.
     private func blink(_ clock: String, _ color: Color, on: Bool) -> Text {
         guard let i = clock.firstIndex(of: ":") else { return Text(clock).foregroundStyle(color) }
         return Text(clock[..<i]).foregroundStyle(color)
-            + Text(":").foregroundStyle(on ? color : .clear)
+            + Text(":").foregroundStyle(on ? color : .clear).baselineOffset(Self.colonLift)
             + Text(clock[clock.index(after: i)...]).foregroundStyle(color)
     }
 
@@ -130,7 +158,10 @@ struct CardStudio: View {
                         Text(st.exitAt).monospacedDigit()
                     }
                     .font(webFont(10.5)).foregroundStyle(c.at)
-                    blink(st.clock, c.num, on: colon).font(webFont(25, 700)).tracking(-0.8).monospacedDigit()
+                    blink(st.clock, c.num, on: colon).font(webFont(Self.numSize, Self.numWeight)).tracking(-0.8).monospacedDigit()
+                        // Поднятое двоеточие растит строку сверху на `colonLift`; без этой подкладки цифры и «колокольчик»
+                        // над ними сдвинулись бы в кольце на полподъёма (замер: цифры на 1,3 pt ниже прежнего).
+                        .padding(.top, -Self.colonLift)
                         .shotNode("card.studioNum", text: st.clock)
                 }
             }
@@ -158,22 +189,25 @@ struct CardStudio: View {
         .padding(.top, 9)
     }
 
-    /// Номер администратора — та же ссылка, что у клиента, но в плитке мельче:
-    /// кегль 15, знак 13, поле под палец 11×8 со сдвигом назад.
+    /// Кнопка «Позвонить админу» (поле-1, п. 8; слово Алексея 25.10: номер в плитке не нужен, нужна кнопка): звонит на тот же
+    /// номер администратора, самого номера на экране нет. Нет номера у студии — нет и кнопки (`tel` тогда `nil`). Внутри плитки
+    /// кегль 15, плашка латунным тоном; без плитки (последние пять минут) — кегль 17 на её месте.
     private func telRow(_ tel: (shown: String, dial: String), inside: Bool = false) -> some View {
-        Button { if let u = URL(string: "tel:" + tel.dial) { openURL(u) } } label: {
+        Button { if let u = StudioTileState.callURL(tel) { openURL(u) } } label: {
             HStack(spacing: 7) {
-                Text(tel.shown).font(webFont(inside ? 15 : 19)).monospacedDigit()
-                Icon("phone", size: inside ? 13 : 15)
+                Icon("phone", size: inside ? 14 : 16)
+                Text(app.lexicon.t("studio.callAdmin")).font(webFont(inside ? 15 : 17, 600)).lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundStyle(pal.brass)
-            .padding(.horizontal, inside ? 8 : 10).padding(.vertical, inside ? 11 : 9)
+            .padding(.horizontal, 12).padding(.vertical, inside ? 8 : 10)
+            .background(pal.pressBrass, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(PressFade())
-        // Рамка — поле под палец, как `getBoundingClientRect` у веба: сдвиг
-        // назад (`margin −7/0/−7/−8`) её не ужимает.
+        .accessibilityLabel(app.lexicon.t("studio.callAdmin"))
         .shotNode("card.studioTel")
-        .padding(inside ? EdgeInsets(top: -7, leading: -8, bottom: -7, trailing: 0) : EdgeInsets())
+        .padding(.top, inside ? 8 : 0)
     }
 
     @Environment(\.openURL) private var openURL

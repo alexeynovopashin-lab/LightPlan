@@ -13,6 +13,8 @@ struct ClientCardScreen: View {
     @Bindable var app: AppModel
     let id: String
     let onBack: () -> Void
+    /// Галочка вверху (поле-1, п. 6): закрывает так же, как «Назад», и показывает знак «Сохранено».
+    let onDone: () -> Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.openURL) private var openURL
     @State private var askingLink = false
@@ -37,7 +39,23 @@ struct ClientCardScreen: View {
         let c = app.clientRecord(id) ?? Client(id: id)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                OverlayBack(title: t.t(app.org.clientBackKey), node: "clc.back", action: onBack)
+                HStack(spacing: 0) {
+                    OverlayBack(title: t.t(app.org.clientBackKey), node: "clc.back", action: onBack)
+                    Spacer(minLength: 0)
+                    // Появляется после первой записанной правки: данные уже сохранены (правки пишутся сразу), галочка —
+                    // подтверждение для человека, что они сохранились.
+                    if app.org.clientEdited {
+                        Button(action: onDone) {
+                            Icon("check", size: 22, line: 2.2).foregroundStyle(pal.brass)
+                                .frame(width: 44, height: 40).contentShape(Rectangle())
+                        }
+                        .buttonStyle(PressFade())
+                        .accessibilityLabel(t.t("pick.done"))
+                        .transition(.opacity)
+                        .shotNode("clc.done")
+                    }
+                }
+                .animation(.easeOut(duration: 0.2), value: app.org.clientEdited)
                 Text(app.clientTitle(c)).font(webFont(26, 700)).tracking(-0.5).foregroundStyle(pal.ink)
                     .lineLimit(2).padding(.top, 14).padding(.horizontal, 4)
                     .shotNode("clc.title", text: app.clientTitle(c))

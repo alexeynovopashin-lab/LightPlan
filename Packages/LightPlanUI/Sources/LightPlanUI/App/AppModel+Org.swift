@@ -38,6 +38,11 @@ struct OrgState: Equatable {
     var clientPick = false
     /// Подпись «Назад» карточки клиента: «Клиенты» или, из шапки съёмки (К3), «Назад».
     var clientBackKey = "set.clients"
+    /// В открытой карточке клиента что-то записали (поле-1, п. 6): с этого момента вверху стоит галочка «Готово».
+    /// Сбрасывается при каждом открытии; правка, которая данных не меняет, её не включает.
+    var clientEdited = false
+    /// Короткий знак «Сохранено» после галочки: живёт над слоями, пока карточка уже закрыта.
+    var savedSign = false
 
     var isOpen: Bool { listOpen || cardId != nil || contactsOpen || clientCardId != nil }
 }

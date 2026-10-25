@@ -156,7 +156,10 @@
   of the target; graves the source), `delete` (shoots stay, `clientId` dropped, as `OrgBook.detach`), `twins` («номер есть у клиента …» plate, § 3.4),
   `keeps`/`isBlank` (a blank client without shoots is not kept; «+ Клиент» is a draft until a word is written, like «+ Организация»). A phone changed in
   the card goes to the client's `telLog` on «Назад»/background (`commitClientTels`); `bind` checks the client's own archived number **before** «номер
-  сменился», so re-saving an old shoot never rolls the card's number back. Not here: birthdays, anniversary, «Поздравлять» (К6), messengers and
+  сменился», so re-saving an old shoot never rolls the card's number back. **Check mark (Поле-1 п.6):** after the first real write (`editClient` that changed data or turned a draft into a client, a merge, a contact fill — `OrgState.clientEdited`, reset on open)
+  a ✓ stands top right (`clc.done`); tap = `doneClientCard()` = «Назад» + a 1.4 s «Сохранено» sign (`SavedSign`, over the layers; Debug `-LPSavedSignHold`). Edits still write at once; an edit that
+  changes nothing or a blank draft shows no ✓. Shots: `-LPShotSheet clientcard -LPShotWay couple+msg+edited[+sign]`.
+  Not here: birthdays, anniversary, «Поздравлять» (К6), messengers and
   «Пишем» (К4), entries from a shoot (К3). Shots: `clients.js` cases `card-couple|family|person|twin|pick|new` (`-LPShotSheet clientcard -LPShotWay …`).
 - **Entries from a shoot (К3).** Card head (`CardHead`): a shoot whose `clientId` is in `snapshot.clients` gets a tappable name with a
   hanging «›» (overlay, symmetric padding — the name stays where the web pair `card.name` has it) → `openShootClient` opens
@@ -177,8 +180,11 @@
   field = by the person's phone; MAX = its own web link), `primary` = ★ → first messenger → `sms:`; `writer` = `main` if reachable, else the
   first reachable. UI: `ReachButton` (`Screens/Org/`, `Menu` + `primaryAction`: tap opens, long press lists call/SMS/each messenger, per
   person) in the shoot header next to the number (`CardHead.contactRow`, `AppModel.shootReach`: client's plan, else SMS to the header number)
-  and in the client card's phone row (`personReach`); card rows + «+ мессенджер» + «Пишем» segment (`AppModel+ClientReach.swift`). No brand
-  marks in the icon library: neutral `chat` glyph + the service name. Shots `clients.js` `head-msg`, `card-msg`, SMS in `head-couple|person`.
+  and in the client card's phone row (`personReach`); card rows + «+ мессенджер» + «Пишем» segment (`AppModel+ClientReach.swift`). **Button glyph (Поле-1 п.5, Alexey 25.10: «значок выбранного мессенджера»):** `ReachButton` shows the glyph of `plan.primary.messenger`
+  (`ReachItem.messenger`, set only for a messenger way) — Telegram plane, WhatsApp bubble+handset, VK square+«VK», Instagram, MAX bubble+«M» — one colour like every
+  card glyph, **not brand colours**; SMS keeps `chat`. Drawn by hand in `Icons/MessengerGlyph.swift` (same string format and 24×24 canvas as `IconLibrary`, drawn by
+  `Icon(messenger:)`): **outside `IconLibrary.generated.swift`, so `make icons` never erases them** (`glyphsLiveOutsideTheGeneratedLibrary` holds it); the web has none (frozen).
+  Same `ClientReach.primary` as the stars, so a star, a removal or «Пишем» changes the glyph at once. Shots `clients.js` `head-msg`, `card-msg`, SMS in `head-couple|person`.
 - **Debts stack (К5, Wallet-like — Alexey 23.10: «подобно стопкам Wallet», «перспектива не нужна»).** Rule `Debts` (Domain): work
   kind, genre with delivery or none, phase `.after` by the card's clock (manual end respected), «сдана» not pressed; the deadline never
   changes it; order oldest first. A tap in the calendar (month row, week row, day lane → `PlanMotion.openFromCalendar` →
@@ -242,6 +248,10 @@
   and their words live in `Tools/lang_native.json`; `DomainTablesTests.subGenres` compares the web table without them. Messenger stars (`ClientReach.starred`): only with
   two or more reachable ways, only on reachable rows. Settings chapter `Chapter.playlists` (player + library) sits between «Язык и регион» and «О приложении»; the web
   nodes `sec.4/5`, `seg.4`, `note.4/5`, `pl.*` are dropped from the «Съёмки» shot pair on purpose. Shots: `clients.js --cases card-msg,card-msg1`, form `-LPShotGuests <n>`.
+- **Studio tile (Поле-1 п.7–8).** `Screens/Card/CardStudio.swift`: the countdown colon is **lifted by font metrics** (`StudioColon.lift` — middle of the colon glyph to the middle of the digits, any size),
+  measured on frames: colon centre − digit centre +2.67 pt (sat on the baseline) → 0.00 pt, digits did not move (`.padding(.top, -lift)` keeps the line height). The colon **blinks 0.5 s on / 0.5 s off**
+  (Alexey 29.09; the web does not blink at all — `paintStudio` repaints every 20 s, per second only in the last 15 min), so a screenshot can catch it off: shoot several frames. The admin's number is no
+  longer shown: a button «Позвонить админу» (`studio.callAdmin`, `Tools/lang_native.json`) dials the same number; no number — no button. Node `card.studioTel` is kept for the web pair (frame differs now).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

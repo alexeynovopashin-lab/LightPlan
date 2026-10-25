@@ -2,9 +2,10 @@ import SwiftUI
 import LightPlanDomain
 
 /// Кнопка мессенджера (шаг К4, справка `docs/clients_reference.md` § 7.1): нажатие открывает основной способ, долгое
-/// нажатие — меню всех способов (позвонить, SMS, каждый мессенджер; у пары и семьи — по людям). Знаков сервисов в
-/// библиотеке нет (`tools/icons.html`), рисовать чужие логотипы не стали: знак — нейтральное облачко `chat`, а какой
-/// мессенджер — говорит подпись рядом (`titled`) или подпись для VoiceOver.
+/// нажатие — меню всех способов (позвонить, SMS, каждый мессенджер; у пары и семьи — по людям). Знак на кнопке —
+/// знак главного способа (поле-1, п. 5): Telegram, WhatsApp, VK, Instagram, MAX одним цветом, как остальные знаки карточки
+/// (`MessengerGlyph`, мимо генерируемой библиотеки); SMS — прежнее облачко `chat`. Какой именно — говорит и подпись
+/// рядом (`titled`), и подпись для VoiceOver.
 struct ReachButton: View {
     let plan: ReachPlan
     let pal: Palette
@@ -39,17 +40,26 @@ struct ReachButton: View {
         .shotNode(node, text: plan.primary.id)
     }
 
+    /// Знак главного способа: мессенджер — его силуэт, SMS — облачко.
+    @ViewBuilder private func glyph(_ size: CGFloat) -> some View {
+        if let kind = plan.primary.messenger {
+            Icon(messenger: kind, size: size, line: 1.6)
+        } else {
+            Icon("chat", size: size)
+        }
+    }
+
     @ViewBuilder private var label: some View {
         if titled {
             HStack(spacing: 6) {
-                Icon("chat", size: 15)
+                glyph(15)
                 Text(plan.primary.title).font(webFont(15)).lineLimit(1)
             }
             .foregroundStyle(pal.brass)
             .padding(.horizontal, 10).padding(.vertical, 9)
             .contentShape(Rectangle())
         } else {
-            Icon("chat", size: 17).foregroundStyle(pal.brass).frame(width: 48, height: 48).contentShape(Rectangle())
+            glyph(17).foregroundStyle(pal.brass).frame(width: 48, height: 48).contentShape(Rectangle())
         }
     }
 }

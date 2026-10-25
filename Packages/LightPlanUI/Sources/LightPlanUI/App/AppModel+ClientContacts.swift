@@ -245,6 +245,7 @@ extension AppModel {
             c.modifiedAt = nowMs
             snapshot.clients[cj] = c
             persist()
+            org.clientEdited = true
         }
     }
 

@@ -9,6 +9,8 @@ struct ReachItem: Equatable, Identifiable {
     var title: String
     var detail: String
     var url: URL
+    /// Какой мессенджер — знак на кнопке «написать» (поле-1, п. 5); у звонка и SMS `nil`, там прежний знак.
+    var messenger: MessengerKind? = nil
 }
 
 /// Человек в меню: у пары и семьи — под своим именем, у персоны без подписи.
@@ -62,12 +64,13 @@ extension AppModel {
     /// Способ словами экрана.
     private func reachItem(_ o: ClientReach.Option, person: Int?) -> ReachItem {
         let key: String, title: String
+        var kind: MessengerKind?
         switch o.way {
         case .call: key = "call"; title = lexicon.t("clc.call")
         case .sms: key = "sms"; title = lexicon.t("reach.sms")
-        case .messenger(let k): key = k.rawValue; title = k.title
+        case .messenger(let k): key = k.rawValue; title = k.title; kind = k
         }
-        return ReachItem(id: person.map { "\($0).\(key)" } ?? key, title: title, detail: o.detail, url: o.url)
+        return ReachItem(id: person.map { "\($0).\(key)" } ?? key, title: title, detail: o.detail, url: o.url, messenger: kind)
     }
 
     // MARK: - Правка мессенджеров (пишется сразу)

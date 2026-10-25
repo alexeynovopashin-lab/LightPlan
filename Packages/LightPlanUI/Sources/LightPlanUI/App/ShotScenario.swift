@@ -264,7 +264,11 @@ extension AppModel {
         // «С кем объединить», `new` — черновик «+ Клиент»; `…+greet` (К6) — дни рождения и «Поздравлять».
         case "clientcard":
             app.openClients()
-            let way = s.way ?? "couple"
+            // Поле-1, п. 6: `…+edited` — в карточке уже что-то записали, вверху галочка (`org.clientEdited`).
+            // `…+sign` — и знак «Сохранено» после галочки (держится `-LPSavedSignHold`).
+            let edited = (s.way ?? "").contains("+edited")
+            let signed = (s.way ?? "").contains("+sign")
+            let way = (s.way ?? "couple").replacingOccurrences(of: "+edited", with: "").replacingOccurrences(of: "+sign", with: "")
             if way == "new" { app.newClient(); break }
             let kind: ClientKind = way.hasPrefix("family") ? .family : way.hasPrefix("person") || way == "twin" ? .person : .couple
             let most = app.clients.filter { $0.kind == kind }
@@ -288,6 +292,8 @@ extension AppModel {
                 app.snapshot.clients[i] = c
             }
             app.openClientCard(id: c.id)
+            if edited { app.org.clientEdited = true }
+            if signed { app.org.savedSign = true }
             if way == "pick" { app.org.clientPick = true }
         // Входы из съёмки (К3). `clienthead`: карточка последней съёмки клиента, имя в шапке со знаком «›»;
         // `LPShotWay couple|person`, `…+open` — карточка клиента уже открыта из шапки («Назад» ведёт в съёмку),
