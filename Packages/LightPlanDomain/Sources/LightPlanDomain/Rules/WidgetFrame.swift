@@ -186,6 +186,7 @@ extension WidgetFeed {
     public struct Schedule: Equatable, Sendable {
         public var dates: [Date]
         public var reload: Date
+        public init(dates: [Date], reload: Date) { self.dates = dates; self.reload = reload }
     }
 
     public func timeline(from now: Date, horizon: TimeInterval = 36 * 3600, limit: Int = 60) -> Schedule {
