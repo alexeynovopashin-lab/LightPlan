@@ -185,6 +185,18 @@ struct FieldOneTailStateTests {
         #expect(p.preferred == "instagram" && p.name == "Ольга Н.", "звёздочка и имя подряд — обе записаны")
     }
 
+    @Test func aSecondCheckWhileTheSignStandsRestartsItsTimer() {
+        let app = model(clients: [client("c1", [person("Ольга", "8 913 787-97-07")]), client("c2", [person("Иван", "8 913 111-22-33")])])
+        app.openClientCard(id: "c1")
+        app.setClientPersonName("c1", at: 0, "Ольга С.")
+        app.doneClientCard()
+        let first = app.org.savedSignTick
+        app.openClientCard(id: "c2")
+        app.setClientPersonName("c2", at: 0, "Иван П.")
+        app.doneClientCard()
+        #expect(app.org.savedSign && app.org.savedSignTick == first + 1, "знак уже стоял — всё равно новый такт для таймера")
+    }
+
     // MARK: 7–8. студийный час: двоеточие и «Позвонить админу»
 
     @Test func theColonIsLiftedSoItsMiddleMeetsTheMiddleOfTheDigits() {

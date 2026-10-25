@@ -37,7 +37,7 @@ struct SavedSign: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.easeOut(duration: 0.25), value: app.org.savedSign)
         .allowsHitTesting(false)
-        .task(id: app.org.savedSign) {
+        .task(id: app.org.savedSignTick) {
             guard app.org.savedSign else { return }
             try? await Task.sleep(for: .seconds(Self.hold))
             if !Task.isCancelled { app.org.savedSign = false }

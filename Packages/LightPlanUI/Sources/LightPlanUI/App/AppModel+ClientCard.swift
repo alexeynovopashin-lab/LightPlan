@@ -44,6 +44,7 @@ extension AppModel {
     func doneClientCard() {
         closeClientCard()
         org.savedSign = true
+        org.savedSignTick += 1
     }
 
     /// «Назад»: пустые строки людей убираются, ушедший номер ложится в архив, пустой клиент без съёмок не остаётся.

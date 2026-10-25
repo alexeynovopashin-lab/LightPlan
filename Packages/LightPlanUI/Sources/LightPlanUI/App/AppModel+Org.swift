@@ -43,6 +43,9 @@ struct OrgState: Equatable {
     var clientEdited = false
     /// Короткий знак «Сохранено» после галочки: живёт над слоями, пока карточка уже закрыта.
     var savedSign = false
+    /// Сколько раз показан знак: таймер знака стартует заново на каждое сохранение, а не только при `false → true`
+    /// (вторая галочка в пределах 1,4 с иначе гасила бы знак по времени первой; ревью GPT к 773a2e2).
+    var savedSignTick = 0
 
     var isOpen: Bool { listOpen || cardId != nil || contactsOpen || clientCardId != nil }
 }
