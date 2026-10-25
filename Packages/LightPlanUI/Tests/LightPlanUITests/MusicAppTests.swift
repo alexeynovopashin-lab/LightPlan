@@ -134,6 +134,27 @@ struct MusicAppTests {
         #expect(a.form?.playlist == "")
     }
 
+    @Test func renameCarriesTheOpenFormsChoice() {
+        // Ревью GPT к cfc937a: форма открыта, плейлист переименовали — выбор не должен считаться удалённым.
+        let a = app("2026-09-23T13:00:00+07:00") { withMusic(&$0) }
+        a.openForm(editing: id)
+        #expect(a.renamePlaylist(at: 0, to: "Утро") == "Утро")
+        #expect(a.form?.playlist == "Утро")
+        #expect(a.form?.session(orgName: nil, and: " и ").playlist == "Утро")
+        // другой выбор формы переименование не трогает
+        a.pickFormPlaylist(at: 1)
+        #expect(a.renamePlaylist(at: 0, to: "Утро 2") == "Утро 2")
+        #expect(a.form?.playlist == "Вечер")
+    }
+
+    @Test func explicitOffReplacesAnUnknownPlayerString() {
+        // Ревью GPT: «deezer» читается как «Выкл», но явное «Выкл» должно записаться.
+        let a = app("2026-09-23T13:00:00+07:00") { $0.musicApp = "deezer" }
+        #expect(a.musicApp == nil && a.snapshot.musicApp == "deezer")
+        a.setMusicApp(nil)
+        #expect(a.snapshot.musicApp == "off")
+    }
+
     @Test func toggleAndWheelWriteTheFormField() {
         let a = app("2026-09-23T13:00:00+07:00") { withMusic(&$0, playlist: nil) }
         a.openForm(editing: id)

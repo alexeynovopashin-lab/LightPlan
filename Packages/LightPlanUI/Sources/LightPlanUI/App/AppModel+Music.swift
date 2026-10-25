@@ -15,6 +15,11 @@ extension AppModel {
 
     public func setMusicApp(_ app: MusicApp?) {
         update { $0.musicApp = app }
+        // Незнакомая строка снимка читается как «Выкл»: явное «Выкл» поверх неё настройки не меняет, а записать надо.
+        if app == nil, snapshot.musicApp != "off" {
+            snapshot.musicApp = "off"
+            persist()
+        }
     }
 
     /// «＋» в настройках (веб `#plAdd`). `false` — адреса нет или список полон: поле остаётся как было.
@@ -32,10 +37,13 @@ extension AppModel {
     @discardableResult
     public func renamePlaylist(at i: Int, to name: String) -> String? {
         var list = snapshot.playlists, sessions = snapshot.sessions, trashed = snapshot.trashed
+        let was = list.indices.contains(i) ? list[i].name : nil
         guard let now = Music.rename(at: i, to: name, list: &list, sessions: &sessions, trashed: &trashed) else { return nil }
         snapshot.playlists = list
         snapshot.sessions = sessions
         snapshot.trashed = trashed
+        // Открытая форма держит выбор тем же именем: без этого она сочла бы его удалённым.
+        if let was, form?.playlist == was { form?.playlist = now }
         form?.refreshPlaylist(in: list)
         persist()
         return now

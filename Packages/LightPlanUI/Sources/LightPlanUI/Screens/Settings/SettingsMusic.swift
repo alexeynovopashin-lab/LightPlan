@@ -30,8 +30,17 @@ struct PlaylistsSection: View {
 
     @State private var newName = ""
     @State private var newURL = ""
+    /// Устойчивые ключи строк: строка помнит черновик и фокус под своим ключом, а не под номером,
+    /// иначе после удаления строки выше текст одной записи ушёл бы в другой плейлист.
+    @State private var keys: [UUID]
     @FocusState private var focus: Field?
     @Environment(\.colorScheme) private var scheme
+
+    init(app: AppModel, index: Int? = nil) {
+        self.app = app
+        self.index = index
+        _keys = State(initialValue: app.playlists.map { _ in UUID() })
+    }
 
     enum Field: Hashable { case newName, newURL }
 
@@ -49,7 +58,9 @@ struct PlaylistsSection: View {
                 .shotNode("pl.empty", text: t.t("set.plEmpty"))
         } else {
             ForEach(list.indices, id: \.self) { i in
-                PlaylistRow(app: app, index: i, playlist: list[i])
+                let key = keys.indices.contains(i) ? keys[i] : nil
+                PlaylistRow(app: app, index: i, playlist: list[i]) { remove(i) }
+                    .id(key)
                     .shotNode("pl.item")
             }
         }
@@ -82,9 +93,16 @@ struct PlaylistsSection: View {
         .shotNode("pl.new")
     }
 
+    /// Крестик: строка уходит вместе со своим ключом, остальные сохраняют черновики и фокус.
+    private func remove(_ i: Int) {
+        if keys.indices.contains(i) { keys.remove(at: i) }
+        app.removePlaylist(at: i)
+    }
+
     /// Без адреса плейлиста нет: «＋» просто возвращает курсор в поле адреса.
     private func add() {
         if app.addPlaylist(name: newName, url: newURL) {
+            keys.append(UUID())
             newName = ""; newURL = ""; focus = .newName
         } else if app.playlists.count < Music.maxPlaylists {
             focus = .newURL
@@ -98,14 +116,15 @@ private struct PlaylistRow: View {
     @Bindable var app: AppModel
     let index: Int
     let playlist: Playlist
+    let onRemove: () -> Void
 
     @State private var name: String
     @State private var url: String
     @FocusState private var focus: Bool?
     @Environment(\.colorScheme) private var scheme
 
-    init(app: AppModel, index: Int, playlist: Playlist) {
-        self.app = app; self.index = index; self.playlist = playlist
+    init(app: AppModel, index: Int, playlist: Playlist, onRemove: @escaping () -> Void) {
+        self.app = app; self.index = index; self.playlist = playlist; self.onRemove = onRemove
         _name = State(initialValue: playlist.name); _url = State(initialValue: playlist.url)
     }
 
@@ -119,7 +138,7 @@ private struct PlaylistRow: View {
             urlField("", text: Binding(get: { url }, set: { v in url = v; app.setPlaylistURL(at: index, to: v) }), pal: pal)
                 .focused($focus, equals: false)
         } trailing: {
-            Button { app.removePlaylist(at: index) } label: {
+            Button(action: onRemove) {
                 Text("✕").font(.system(size: 15)).foregroundStyle(pal.ink6)
                     .frame(width: 30, height: 44).contentShape(Rectangle())
             }
