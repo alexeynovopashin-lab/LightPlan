@@ -15,8 +15,11 @@ enum WidgetLook: Equatable { case plain, ring }
 /// «до конца свадьбы» — родительный падеж жанра, для других жанров вторая часть берёт «съёмки», если словарь приложения не знает формы.
 enum WidgetSketchWords {
     static let toPoint = "до конца точки"
-    static let toShoot = "до конца свадьбы"
-    static let shoot = "свадьба"
+    /// «до конца свадьбы» / «свадьба» — по жанру съёмки; жанру без своей формы — нейтральное «съёмки» / «съёмка»
+    /// (ревью GPT к 6b15258: подпись «свадьба» не должна появиться у портрета). Во второй части формы берутся из словаря приложения.
+    static func toShoot(_ title: String) -> String { isWedding(title) ? "до конца свадьбы" : "до конца съёмки" }
+    static func shoot(_ title: String) -> String { isWedding(title) ? "свадьба" : "съёмка" }
+    private static func isWedding(_ title: String) -> Bool { title.lowercased().hasPrefix("свадьб") }
     static let point = "точка"
     static let route = "Дальше"
     static let points = "точек"
@@ -158,9 +161,13 @@ struct ColonCount: View {
     let seconds: TimeInterval
     var size: CGFloat = 20
 
-    var body: some View {
+    static func text(_ seconds: TimeInterval) -> String {
         let m = Int((seconds / 60).rounded(.up))
-        Text(String(format: "%d:%02d", m / 60, m % 60))
+        return String(format: "%d:%02d", m / 60, m % 60)
+    }
+
+    var body: some View {
+        Text(Self.text(seconds))
             .font(.system(size: size, weight: .semibold, design: .rounded))
             .monospacedDigit()
     }

@@ -60,6 +60,9 @@ struct LockCircularView: View {
         return (g.timeIntervalSince(frame.now), total > 0 ? min(1, max(0, frame.now.timeIntervalSince(from) / total)) : 0)
     }
 
+    /// Единственный текст круга: остаток до золотого часа («4:10»); без него круг пуст. Ничего про клиента здесь нет и быть не может.
+    var label: String? { goldenLeft.map { ColonCount.text($0.left) } }
+
     var body: some View {
         let st = WidgetStyle(dark: scheme == .dark)
         ZStack {
@@ -88,19 +91,27 @@ struct LockRectangularView: View {
     var alpha = false
     @Environment(\.colorScheme) private var scheme
 
+    /// Все строки вида, как они рисуются: время точки, жанр, место. Из данных кадра берутся только эти три поля — имя клиента
+    /// сюда не приходит ни параметром, ни из ленты (она его не несёт); тест сверяет текст целиком (`WidgetSketchTests`).
+    var lines: [String] {
+        guard let plan = DayPlan(frame) else { return ["—"] }
+        let range = plan.current.flatMap { c in plan.pointEnd.map { plan.range(c.date, $0) } } ?? plan.shootRange
+        let place = plan.current?.place.isEmpty == false ? plan.current!.place : plan.shoot.place
+        return [range, plan.shoot.title] + (place.isEmpty ? [] : [place])
+    }
+
     var body: some View {
         let st = WidgetStyle(dark: scheme == .dark)
+        let lines = lines
         HStack(alignment: .center, spacing: 6) {
             RoundedRectangle(cornerRadius: 1.5).fill(st.ink).frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
-                if let plan = DayPlan(frame) {
-                    let range = plan.current.flatMap { c in plan.pointEnd.map { plan.range(c.date, $0) } } ?? plan.shootRange
-                    Text(range).font(.caption.weight(.semibold)).monospacedDigit().foregroundStyle(st.ink.opacity(0.75)).lineLimit(1)
-                    Text(plan.shoot.title).font(.headline).foregroundStyle(st.ink).lineLimit(1)
-                    let place = plan.current?.place.isEmpty == false ? plan.current!.place : plan.shoot.place
-                    if !place.isEmpty { Text(place).font(.caption).foregroundStyle(st.ink.opacity(0.75)).lineLimit(1) }
+                if lines.count > 1 {
+                    Text(lines[0]).font(.caption.weight(.semibold)).monospacedDigit().foregroundStyle(st.ink.opacity(0.75)).lineLimit(1)
+                    Text(lines[1]).font(.headline).foregroundStyle(st.ink).lineLimit(1)
+                    if lines.count > 2 { Text(lines[2]).font(.caption).foregroundStyle(st.ink.opacity(0.75)).lineLimit(1) }
                 } else {
-                    Text("—").font(.headline).foregroundStyle(st.ink)
+                    Text(lines[0]).font(.headline).foregroundStyle(st.ink)
                 }
             }
             Spacer(minLength: 0)

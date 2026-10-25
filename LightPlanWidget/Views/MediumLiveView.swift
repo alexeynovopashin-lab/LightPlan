@@ -51,7 +51,7 @@ struct MediumLiveView: View {
                             .foregroundStyle(st.amber).lineLimit(1).minimumScaleFactor(0.6)
                         Text(WidgetSketchWords.toPoint).font(.caption2).foregroundStyle(st.ink2).lineLimit(1)
                     }
-                    Text("\(WidgetSketchWords.toShoot) \(DayPlan.long(plan.shootLeft))")
+                    Text("\(WidgetSketchWords.toShoot(plan.shoot.title)) \(DayPlan.long(plan.shootLeft))")
                         .font(.caption2).monospacedDigit().foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.75).padding(.top, 3)
                 }
                 .frame(width: 148, alignment: .topLeading)
@@ -77,7 +77,7 @@ struct MediumLiveView: View {
                         Text(plan.title(names: names)).font(.caption).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.75)
                         Spacer(minLength: 2)
                         HStack(alignment: .firstTextBaseline, spacing: 14) {
-                            stat(DayPlan.hours(plan.shootLeft), WidgetSketchWords.shoot, st.ink)
+                            stat(DayPlan.hours(plan.shootLeft), WidgetSketchWords.shoot(plan.shoot.title), st.ink)
                             if let left = plan.pointLeft { stat(DayPlan.short(left), WidgetSketchWords.point, st.amber) }
                         }
                     }
