@@ -36,15 +36,37 @@ import LightPlanDomain
         #expect(!Music.isOpen(shoot(.event), now: at(960)))
     }
 
-    @Test func onlyOnTheShootsOwnDay() {
+    @Test func dayShootStaysInsideItsDay() {
         let s = shoot()
-        #expect(!Music.isOpen(s, now: at(960, day.adding(days: -1))))
-        #expect(!Music.isOpen(s, now: at(960, day.adding(days: 1))))
-        // Веб смотрит на сегодняшнюю дату: свадьба до трёх ночи теряет кнопку в полночь.
-        var night = shoot()
-        night.start = 1140; night.end = 1620      // 19:00 → 03:00
-        #expect(Music.isOpen(night, now: at(1300)))
-        #expect(!Music.isOpen(night, now: at(30, day.adding(days: 1))))
+        #expect(!Music.isOpen(s, now: at(960, day.adding(days: -1))), "съёмка завтра сегодня не показывается")
+        #expect(!Music.isOpen(s, now: at(960, day.adding(days: -3))))
+        #expect(!Music.isOpen(s, now: at(960, day.adding(days: 1))), "на следующий день окно кончилось")
+        #expect(!Music.isOpen(s, now: at(30, day.adding(days: 1))), "за полночь дневная съёмка кнопки не получает")
+    }
+
+    @Test func nightShootKeepsTheButtonPastMidnight() {
+        // Слово Алексея 25.10: до конца съёмки (минус 5 минут), даже после полуночи. Свадьба 19:00–03:00.
+        var wed = shoot()
+        wed.start = 1140; wed.end = 1620
+        let next = day.adding(days: 1)
+        #expect(!Music.isOpen(wed, now: at(1139)), "до начала")
+        #expect(Music.isOpen(wed, now: at(1140)))
+        #expect(Music.isOpen(wed, now: at(1439)), "23:59")
+        #expect(Music.isOpen(wed, now: at(30, next)), "00:30 следующих суток")
+        #expect(Music.isOpen(wed, now: at(174, next)), "02:54 — последняя минута окна")
+        #expect(!Music.isOpen(wed, now: at(175, next)), "02:55 — конец минус пять")
+        #expect(!Music.isOpen(wed, now: at(176, next)), "02:56")
+        #expect(!Music.isOpen(wed, now: at(30, next.adding(days: 1))), "через сутки после конца")
+        #expect(!Music.isOpen(wed, now: at(1200, day.adding(days: -1))), "вчера её ещё нет")
+    }
+
+    @Test func nightShootMarkedDoneEarlyCutsTheWindow() {
+        var wed = shoot()
+        wed.start = 1140; wed.end = 1620
+        wed.doneAt = 1500                         // «Завершить» в 01:00 следующих суток
+        let next = day.adding(days: 1)
+        #expect(Music.isOpen(wed, now: at(50, next)))
+        #expect(!Music.isOpen(wed, now: at(55, next)), "01:00 − 5 минут")
     }
 
     @Test func manualFinishMarkEndsTheWindowThere() {

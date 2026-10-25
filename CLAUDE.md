@@ -230,7 +230,7 @@
 - **Music (step «Музыка», 25.10).** As in the web: default player (`Snapshot.musicApp`: `yandex|spotify|apple|off`, unknown string kept as written) and
   a shared library of ≤ 10 playlists (`Snapshot.playlists`, `{n,u}` as the web writes them) in Settings «Съёмки» (`SettingsMusic.swift`); a shoot remembers
   its playlist **by name** (`Session.playlist`, `EventForm.playlist`). Rules live in `Music` (Domain, `Rules/Music.swift`): `choice` (own playlist by exact name,
-  else the player, else no button — a playlist named «Spotify» keeps its own link), `isOpen` (work only, the shoot's own day, from start to end − 5 min, `doneAt`
+  else the player, else no button — a playlist named «Spotify» keeps its own link), `isOpen` (work only, on the shoot's own time scale from start to end − 5 min — past midnight too, Alexey 25.10; `doneAt`
   ends it earlier), `add/rename/setURL/remove` (empty name → service name «Spotify 2»; rename goes into shoots and the bin; empty/taken name refused; delete leaves
   shoots with a name nobody answers to). Names are compared exactly — «Ёлка»/«Елка», «Сборы»/«сборы» are different playlists (web parity). Card button = `AppModel.musicButton`
   by the **place's wall clock** (same as the phase), `CardScreen.musicPill`. Form row only while the library is non-empty; a form drops a playlist that left it on open

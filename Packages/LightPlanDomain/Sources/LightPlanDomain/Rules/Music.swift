@@ -202,11 +202,13 @@ public enum Music {
     public static func windowEnd(of s: Session) -> Int { s.doneAt ?? s.endMinute }
 
     /// Открыто ли окно кнопки (веб `musicOpen`): только у работы (встреча музыки не получает —
-    /// это разговор), только в день съёмки, от начала до «конец минус пять минут».
-    /// `now` — настенные часы места съёмки, те же, что у фазы карточки.
+    /// это разговор), от начала до «конец минус пять минут». Считается по шкале съёмки (`minute(at:)`),
+    /// поэтому свадьба 19:00–03:00 держит кнопку и после полуночи (слово Алексея 25.10: «до конца съёмки
+    /// (минус 5 минут), даже после полуночи»; веб гасит её в полночь — «в её день»). Съёмка завтра и
+    /// съёмка, уже кончившаяся, вне шкалы — кнопки нет. `now` — настенные часы места съёмки, те же, что у фазы карточки.
     public static func isOpen(_ s: Session, now: WallTime) -> Bool {
-        guard s.kind.isWork, now.day == s.day else { return false }
-        return now.minutes >= s.start && now.minutes < windowEnd(of: s) - tail
+        guard s.kind.isWork, let m = s.minute(at: now) else { return false }
+        return m >= s.start && m < windowEnd(of: s) - tail
     }
 
     /// Кнопка карточки целиком: окно открыто и есть что открывать.
