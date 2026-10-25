@@ -98,25 +98,33 @@ Signed build with `-allowProvisioningUpdates` (registers the 2 ids), `devicectl 
 
 | Кнопка | Заблокирован: открылось без Face ID / спросило Face ID / не сработало | Разблокирован (плашка или остров): работает / нет |
 |---|---|---|
-| Админ (`tel:`) | | |
-| +1 час (фоновое действие) | | |
-| Плейлист (ссылка) | | |
-| Уведомление «Студийный час» (нажатие) | | — |
+| Админ (`tel:`) | opens **the spike app**, not the dialer (Alexey 25.10); Face ID not stated | not checked |
+| +1 час (фоновое действие) | **asks Face ID**: works only once the face is recognised, then the line appears without opening the app | not checked |
+| Плейлист (ссылка) | opens **the spike app**, not the streaming app (Alexey 25.10); Face ID not stated | not checked |
+| Уведомление «Студийный час» (нажатие) | app got the tap: journal «studio via notification tap: mode=studio»; Face ID not stated | — |
 
 Остальное:
 
 | Вопрос | Да / нет | Заметка |
 |---|---|---|
-| Полоса идёт сама (заблокирован) | | |
-| Отсчёт «до …» идёт сам | | |
-| После 0:00 надпись «до …» сама не сменилась (ожидаемо) | | |
-| Нажатие на уведомление переключило плашку на «Студия» | | |
-| Плашка сама не переключилась без нажатия (ожидаемо) | | |
-| «+1 час» поменял вид (строка «✓ запрошено») без открытия приложения | | |
-| Нажатий «+1 час» в плашке = число в журнале приложения | | |
-| Плашка уместилась целиком, ничего не обрезано | | |
-| Что видно в Dynamic Island (компактно, раскрыто; кнопки внутри) | | |
-| Разрешения «Эфир активности» и «Уведомления» спросили один раз | | |
+| Полоса идёт сама (заблокирован) | да | Alexey: «полоса двигается»; screenshots: bar reached «Церемония» |
+| Отсчёт «до …» идёт сам | да | countdown in Dynamic Island ticks |
+| После 0:00 надпись «до …» сама не сменилась (ожидаемо) | не мерено | measured ~20:37–20:40 |
+| Нажатие на уведомление переключило плашку на «Студия» | journal: да; plaque: not stated | |
+| Плашка сама не переключилась без нажатия (ожидаемо) | не мерено | |
+| «+1 час» поменял вид (строка «✓ запрошено») без открытия приложения | да | «✓ запрошено +1 час · 20:37:23 · ×1», later «×7 · 20:38:59» |
+| Нажатий «+1 час» в плашке = число в журнале приложения | не сверено | plaque ×7; journal count not on screenshots |
+| Плашка уместилась целиком, ничего не обрезано | да | screenshots |
+| Что видно в Dynamic Island (компактно, раскрыто; кнопки внутри) | icon (heart) + countdown | the same activity is mirrored on the Mac; expanded view and buttons inside not checked |
+| Разрешения «Эфир активности» и «Уведомления» спросили один раз | notifications: once | iOS later asked on the plaque «Продолжить использование Эфира активности для приложения «LP 30b-3a»? Не разрешать / Разрешать всегда»; choice not stated |
+
+**Unexpected:** at 20:40 the label read «до Прогулка 2:16» — it moved on to the next point by itself. Likely cause (from code, not
+measured): every «+1 час» press pushes a new state, and the label is re-rendered then; a run without presses would show whether it
+changes on its own.
+
+**Admin and Playlist open the app (from documentation, not measured beyond this):** a `Link`/`widgetURL` in a Live Activity always
+goes to its own app; an outside URL (`tel:`, streaming) is not opened directly. For 30б.3 the app must receive the link and pass it
+on (open the dialer / the player) — one extra hop, or an `OpenURLIntent` button (iOS 18+, not measured here).
 
 ## What the result decides (for the cut of 30б.3)
 
