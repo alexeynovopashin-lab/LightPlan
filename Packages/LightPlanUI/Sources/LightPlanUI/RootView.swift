@@ -240,7 +240,7 @@ private struct Shell: View {
         .questSheet(app)
         // Тап по событию в Календаре iPhone (30.2): ссылка `lightplan://shoot/<id>` открывает съёмку; остальные
         // ссылки своей схемы — ответ клиента.
-        .onOpenURL { if !app.openShootLink($0) { app.openQuestLink($0) } }
+        .onOpenURL { if !app.openShootLink($0), !app.openDayLink($0) { app.openQuestLink($0) } }
         // Календарь «Light Plan» удалили в Календаре iPhone (30.3): заново — только когда человек скажет «да».
         .alert(app.lexicon.t("calm.goneT"), isPresented: $app.calendarGoneAsk) {
             Button(app.lexicon.t("calm.goneYes")) { app.answerCalendarGone(yes: true) }

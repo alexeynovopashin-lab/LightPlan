@@ -43,8 +43,44 @@ final class WidgetShare {
 }
 
 extension AppModel {
-    /// Место «Света» — виджету: при запуске (`live()`) и при каждой смене места (`placeChanged`).
+    /// Файл виджета: место «Света» и съёмки ближайших семи дней (30б.2) — при запуске (`live()`), при каждой смене места
+    /// (`placeChanged`) и при каждой записи данных (`persist()`). Пишется только если файл изменился.
     func publishWidget() {
-        widgetShare?.publish(WidgetFeed(place: .init(name: light.locationName, place: place.place)))
+        guard let share = widgetShare else { return }
+        let spot = WidgetFeed.Spot(name: light.locationName, place: place.place)
+        let words = PlannerWords(lexicon: lexicon, orgs: snapshot.orgs)
+        let zones = place.zones
+        let feed = WidgetFeed.make(
+            place: spot, sessions: snapshot.sessions, studios: snapshot.studios, spots: snapshot.spots, now: now(),
+            manualEnd: settings.manualEnd,
+            offset: { point, day in
+                if let point { return zones.utcOffsetHours(latitude: point.latitude, longitude: point.longitude, on: day) }
+                return place.place.zone.utcOffsetHours(on: day)
+            },
+            title: { words.typeName($0) },
+            words: Self.widgetWords(lexicon),
+            lang: language,
+            clock12: ClockText(language: language, preference: Self.clock(settings.clock)).is12)
+        share.publish(feed)
+    }
+
+    /// Слова виджета на языке приложения: у расширения словаря приложения нет (`WidgetFeed.Words`).
+    static func widgetWords(_ lex: Lexicon) -> WidgetFeed.Words {
+        let keys: [WidgetFeed.Words.Key: String] = [
+            .sunrise: "tele.sunrise", .sunset: "tele.sunset", .golden: "tele.golden", .next: "pane.next",
+            .today: "pick.dayToday", .tomorrow: "pick.dayTomorrow", .polarDay: "next.polarDay",
+            .polarNight: "next.polarNight", .studio: "studio.sayT", .shoot: "day.actShoot", .route: "card.route",
+        ]
+        return WidgetFeed.Words(keys.mapValues { lex.t($0) })
+    }
+
+    /// `lightplan://day/ГГГГ-ММ-ДД`: нажатие на виджет свободного дня открывает этот день в «Съёмках».
+    @discardableResult
+    func openDayLink(_ url: URL) -> Bool {
+        guard let day = WidgetFeed.day(in: url) else { return false }
+        closeCard()
+        tab = .planner
+        planner.enterDay(day)
+        return true
     }
 }

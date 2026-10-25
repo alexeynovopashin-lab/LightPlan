@@ -214,6 +214,19 @@
   «Из Контактов» = `CNContactPickerViewController` (no permission): form phone rows (extras land in the client on «Сохранить»,
   `takeFormPicked`) and card person rows. Real book check: `python3 Tools/contacts_sim.py --app <.app>` (`-LPContactsProbe`, `--selftest`).
   Shots: `clients.js --cases contacts-past,contacts-on,contacts-no,contacts-limited,contacts-denied,contacts-test` (`-LPShotContacts`); captions never name the screen's own controls (К7б), the shot checks it.
+- **Widget of the day (30б.2).** `LightPlanWidget/` (extension, links Core + Domain only) shows `WidgetFeed.frame(at:)` (Domain `Rules/WidgetFrame.swift`,
+  pure, tested): no shoots → next dawn, then sunset (3 days ahead, polar → a word); a shoot today/tomorrow by its own place's clock
+  (`WidgetFrame.horizonDays`, Alexey's words 24.10 + orchestrator's variant) → genre (never the client name), start, place, golden hour if the
+  shoot wishes `.sunset`; shoot running → studio-hour countdown (`Rent.deadline`, else to the end; none for a shoot closed by hand), next point,
+  rest of the route. File `widget.json` (`Rules/WidgetFeed.swift`, built by `WidgetFeed.make` from sessions on every `persist()` / place change;
+  `AppModel.publishWidget`, `WidgetShare`): place, shoots of 7 days (moments in ms, per-shoot zone `fixed:<s>`), words in the app's language
+  (`AppModel.widgetWords` from the Lexicon), `lang`, `clock12`. Timeline = `feed.changes(from:)` (starts/ends, stops, deadline, sunrise/golden/sunset,
+  midnights), 36 h, then `.after`; countdown seconds tick by themselves (`CountdownText`: range from the entry's `now`). Families: small, medium,
+  `accessoryInline` («☀︎ 17:02 · съёмка 15:00»). Tap → `lightplan://shoot/<id>` or `lightplan://day/YYYY-MM-DD` (`AppModel.openDayLink`).
+  Brass «α» on every build but `Novopashin.LightPlan` (`WidgetFeed.isMainApp`). **Views are tested from the app's UI suite**:
+  `Packages/LightPlanUI/Tests/LightPlanUITests/WidgetViews` is a symlink to `LightPlanWidget/Views` (the extension is not importable) —
+  `WidgetViewsTests` measures ideal height ≤ plate − 16 pt margins at 158/170 (small) and 338/364 (medium), three text sizes (the views cap Dynamic Type at
+  `.xxxLarge`: a widget does not scroll). Pictures: make `/tmp/lp-widget-shots` and run the suite.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

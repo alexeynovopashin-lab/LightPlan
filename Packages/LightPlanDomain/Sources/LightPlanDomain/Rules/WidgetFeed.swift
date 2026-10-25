@@ -4,10 +4,15 @@ import LightPlanCore
 /// Что приложение оставляет виджету в общей папке (итерация 30б, `docs/30b_widget_cut.md` § «Data»).
 ///
 /// Виджет сам считает свет (`SolarDay` в расширении), а то, чего не вычислит, берёт из одного маленького файла
-/// `widget.json` в `group.<адрес приложения>`. 30б.1: только место «Света»; 30б.2 добавит съёмки ближайших дней.
-/// Правило и формат здесь, в Domain (только Foundation): пишет приложение, читает расширение — одним кодом.
+/// `widget.json` в `group.<адрес приложения>`: место «Света», съёмки ближайших семи дней и несколько слов на языке
+/// приложения. Правило и формат здесь, в Domain (только Foundation): пишет приложение (`make`), читает расширение
+/// (`frame(at:)`) — одним кодом, поэтому тест видит то же, что экран.
+///
+/// Съёмки идут с названием жанра, а не с именем клиента: виджет виден на заблокированном телефоне (Алексей, 24.10).
 public struct WidgetFeed: Codable, Sendable, Equatable {
     public static let fileName = "widget.json"
+    /// На сколько дней вперёд приложение кладёт съёмки: дальше этого виджет без приложения не заглядывает.
+    public static let horizonDays = 7
 
     /// Место «Света»: имя для подписи, координаты и зона IANA (или `fixed:<секунды>` — запасная зона без сети).
     public struct Spot: Codable, Sendable, Equatable {
@@ -28,10 +33,133 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         }
     }
 
-    public var place: Spot
+    /// Точка маршрута дня со временем (точка без часа в виджет не идёт).
+    public struct Stop: Codable, Sendable, Equatable {
+        /// Момент начала, миллисекунды от 1970 (как `Moment`).
+        public var at: Int64
+        public var name: String
+        public var place: String
 
-    public init(place: Spot) {
+        public init(at: Int64, name: String, place: String = "") {
+            self.at = at
+            self.name = name
+            self.place = place
+        }
+
+        public var date: Date { Moment(milliseconds: at).date }
+    }
+
+    /// Окно аренды студии: из него считается студийный час (дедлайн выхода — `RentWindow.deadline`).
+    public struct Rent: Codable, Sendable, Equatable {
+        public var from: Int64
+        public var to: Int64
+        public var deadline: Int64
+        public var studio: String
+
+        public init(from: Int64, to: Int64, deadline: Int64, studio: String) {
+            self.from = from
+            self.to = to
+            self.deadline = deadline
+            self.studio = studio
+        }
+    }
+
+    public struct Shoot: Codable, Sendable, Equatable, Identifiable {
+        public var id: String
+        /// Начало и конец — моменты (миллисекунды от 1970). Конец — записанный, а у закрытой кнопкой — минута закрытия.
+        public var start: Int64
+        public var end: Int64
+        /// Съёмку закрывают руками (настройка «Завершение съёмки»), и она ещё не закрыта: идёт, пока не нажмут.
+        public var open: Bool
+        /// Название жанра («Свадьба», «Фотосъёмка») — не имя клиента.
+        public var title: String
+        /// Место одной строкой.
+        public var place: String
+        /// Откуда смотреть небо и какие у места часы; `nil` — место приложения.
+        public var spot: Spot?
+        /// Съёмке нужен закат: Алексей 24.10 — «свет, если съемке он нужен»; это пожелание «Закат» в карточке.
+        public var wantsSunset: Bool
+        public var rents: [Rent]
+        public var stops: [Stop]
+
+        public init(id: String, start: Int64, end: Int64, open: Bool = false, title: String, place: String = "",
+                    spot: Spot? = nil, wantsSunset: Bool = false, rents: [Rent] = [], stops: [Stop] = []) {
+            self.id = id
+            self.start = start
+            self.end = end
+            self.open = open
+            self.title = title
+            self.place = place
+            self.spot = spot
+            self.wantsSunset = wantsSunset
+            self.rents = rents
+            self.stops = stops
+        }
+
+        public var startDate: Date { Moment(milliseconds: start).date }
+        public var endDate: Date { Moment(milliseconds: end).date }
+    }
+
+    /// Несколько слов виджета на языке приложения: словарь приложения у расширения под рукой не лежит.
+    /// Запасные — русские: файл старого вида или пустое слово не оставляют плашку без подписи.
+    public struct Words: Codable, Sendable, Equatable {
+        public enum Key: String, CaseIterable, Sendable {
+            case sunrise, sunset, golden, next, today, tomorrow, polarDay, polarNight, studio, shoot, route
+        }
+
+        public static let fallback: [Key: String] = [
+            .sunrise: "Рассвет", .sunset: "Закат", .golden: "Золотой час", .next: "Дальше",
+            .today: "Сегодня", .tomorrow: "Завтра", .polarDay: "Полярный день", .polarNight: "Полярная ночь",
+            .studio: "Студийный час", .shoot: "съёмка", .route: "Маршрут дня",
+        ]
+
+        public var table: [String: String]
+
+        public init(_ table: [Key: String] = [:]) {
+            self.table = Dictionary(uniqueKeysWithValues: table.map { ($0.key.rawValue, $0.value) })
+        }
+
+        public subscript(key: Key) -> String {
+            if let w = table[key.rawValue], !w.isEmpty { return w }
+            return Self.fallback[key] ?? key.rawValue
+        }
+
+        public init(from decoder: Decoder) throws {
+            table = (try? decoder.singleValueContainer().decode([String: String].self)) ?? [:]
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var c = encoder.singleValueContainer()
+            try c.encode(table)
+        }
+    }
+
+    public var place: Spot
+    public var shoots: [Shoot]
+    public var words: Words
+    /// Код языка приложения (`ru`, `en-GB`…): им виджет пишет день недели.
+    public var lang: String
+    /// Часы на 12 или 24 — как в приложении (настройка «Часы»).
+    public var clock12: Bool
+
+    public init(place: Spot, shoots: [Shoot] = [], words: Words = Words(), lang: String = "ru", clock12: Bool = false) {
         self.place = place
+        self.shoots = shoots
+        self.words = words
+        self.lang = lang
+        self.clock12 = clock12
+    }
+
+    private enum CodingKeys: String, CodingKey { case place, shoots, words, lang, clock12 }
+
+    /// Файл заглушки 30б.1 (одно `place`) читается: съёмок в нём просто нет.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        place = try c.decode(Spot.self, forKey: .place)
+        shoots = try c.decodeIfPresent([Shoot].self, forKey: .shoots) ?? []
+        words = try c.decodeIfPresent(Words.self, forKey: .words) ?? Words()
+        lang = try c.decodeIfPresent(String.self, forKey: .lang) ?? "ru"
+        clock12 = try c.decodeIfPresent(Bool.self, forKey: .clock12) ?? false
     }
 
     /// Общая папка приложения и его виджета: адрес расширения — адрес приложения + `.Widget` (`Config/Widget.xcconfig`).
@@ -39,6 +167,36 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         let suffix = ".Widget"
         let app = bundleID.hasSuffix(suffix) ? String(bundleID.dropLast(suffix.count)) : bundleID
         return "group." + app
+    }
+
+    /// Основной «Light Plan» (адрес `Novopashin.LightPlan[.Widget]`) — виджет чистый; слот и ветка носят латунную «α»,
+    /// как значок (`Tools/app_icon_alpha.py`): два виджета на одном экране должны различаться.
+    public static func isMainApp(bundleID: String) -> Bool {
+        let suffix = ".Widget"
+        let app = bundleID.hasSuffix(suffix) ? String(bundleID.dropLast(suffix.count)) : bundleID
+        return app == "Novopashin.LightPlan"
+    }
+
+    /// Нажатие на виджет: съёмка — её карточка (та же ссылка, что у события в Календаре), свободный день — этот день.
+    public static func shootURL(_ id: String) -> URL {
+        var c = URLComponents()
+        c.scheme = "lightplan"
+        c.host = "shoot"
+        c.path = "/" + id
+        return c.url ?? URL(string: "lightplan://shoot")!
+    }
+
+    public static func dayURL(_ day: CivilDate) -> URL {
+        URL(string: String(format: "lightplan://day/%04d-%02d-%02d", day.year, day.month, day.day))!
+    }
+
+    /// День из `lightplan://day/ГГГГ-ММ-ДД`; чужая ссылка и несуществующая дата — `nil`.
+    public static func day(in url: URL) -> CivilDate? {
+        guard url.scheme == "lightplan", url.host == "day" else { return nil }
+        let p = url.path.dropFirst().split(separator: "-").compactMap { Int($0) }
+        guard p.count == 3, (1...12).contains(p[1]), (1...31).contains(p[2]) else { return nil }
+        let d = CivilDate(year: p[0], month: p[1], day: p[2])
+        return d.adding(days: 0) == d && CivilDate(daysSince1970: d.daysSince1970) == d ? d : nil
     }
 
     public func encoded() -> Data {
@@ -67,32 +225,56 @@ extension WidgetFeed.Spot {
 
     /// Сегодняшний день по часам места (не телефона): виджет в Москве про Томск показывает томское «сегодня».
     public func today(at now: Date) -> CivilDate? {
-        guard let zone = zoneID, let tz = Self.timeZone(zone) else { return nil }
+        guard let tz = timeZone else { return nil }
+        return Self.day(of: now, in: tz)
+    }
+
+    static func day(of date: Date, in tz: TimeZone) -> CivilDate {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = tz
-        let c = cal.dateComponents([.year, .month, .day], from: now)
+        let c = cal.dateComponents([.year, .month, .day], from: date)
         return CivilDate(year: c.year!, month: c.month!, day: c.day!)
     }
 
-    /// Начало вечернего золотого часа (солнце опускается до 6°) в день `day` по часам места; `nil` — в этот день
-    /// солнце 6° сверху вниз не проходит (полярный день или ночь). Солнце то же, что на экранах (`.iau`).
-    public func goldenStart(on day: CivilDate) -> Date? {
-        guard let place, let minutes = SolarDay(date: day, place: place).goldenB else { return nil }
+    /// Минуты `SolarDay` (от полуночи дня по смещению зоны на начало дня — так их читают экраны) как момент.
+    func moment(minutes: Double, on day: CivilDate, place: Place) -> Date {
         let offset = place.zone.utcOffsetHours(on: day)
         var utc = Calendar(identifier: .gregorian)
         utc.timeZone = TimeZone(identifier: "UTC")!
         let midnight = utc.date(from: DateComponents(year: day.year, month: day.month, day: day.day))!
-        // Минуты `SolarDay` идут от полуночи дня по смещению зоны на начало дня — так их читают экраны.
         return midnight.addingTimeInterval((minutes - offset * 60) * 60)
     }
 
-    /// Пояс для часов на плашке: те же правила, что у `ZoneID`.
-    public var timeZone: TimeZone? { zoneID.flatMap(Self.timeZone) }
+    /// Свет суток `day` в этом месте: восход, начало золотого часа, закат; полярные сутки — без них.
+    /// Солнце то же, что на экранах (`.iau`).
+    public func light(on day: CivilDate) -> WidgetFeed.DayLight? {
+        guard let place else { return nil }
+        let sun = SolarDay(date: day, place: place)
+        func at(_ m: Minutes?) -> Date? { m.map { moment(minutes: $0, on: day, place: place) } }
+        return WidgetFeed.DayLight(day: day, sunrise: at(sun.rise), golden: at(sun.goldenB), sunset: at(sun.set), polar: sun.polar)
+    }
 
-    private static func timeZone(_ zone: ZoneID) -> TimeZone? {
+    /// Начало вечернего золотого часа (солнце опускается до 6°) в день `day` по часам места; `nil` — в этот день
+    /// солнце 6° сверху вниз не проходит (полярный день или ночь).
+    public func goldenStart(on day: CivilDate) -> Date? { light(on: day)?.golden }
+
+    /// Пояс для часов на плашке: те же правила, что у `ZoneID`.
+    public var timeZone: TimeZone? {
+        guard let zone = zoneID else { return nil }
         if zone.identifier.hasPrefix("fixed:"), let s = Int(zone.identifier.dropFirst("fixed:".count)) {
             return TimeZone(secondsFromGMT: s)
         }
         return TimeZone(identifier: zone.identifier)
+    }
+}
+
+extension WidgetFeed {
+    /// Свет одних суток одного места, моментами.
+    public struct DayLight: Equatable, Sendable {
+        public var day: CivilDate
+        public var sunrise: Date?
+        public var golden: Date?
+        public var sunset: Date?
+        public var polar: SolarDay.PolarState
     }
 }

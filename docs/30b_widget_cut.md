@@ -164,3 +164,11 @@ B) to the shoot's start; C) to sunset. My pick: **A**.
 
 The first Live Activity triggers the system question «Разрешить Эфир активности…» (row 6) — no
 choice for us, only where it appears: right after the first start.
+
+## 30б.2 done (2026-10-25, wt/30b-2)
+
+Small, medium, Lock Screen inline; `WidgetFeed.frame/changes/make` in Domain; file format v2 (`widget.json`: place, shoots, words, lang,
+clock12; the 30б.1 file still reads). Measured on `LP wt-30b-2`: the real app writes `widget.json` into `group.<id>` for the main id and for
+`slotA` (473 bytes with no shoots; the seeded slot gives 2 shoots, one wedding with 12 points and one studio window), and both
+`Novopashin.LightPlan.Widget` and `Novopashin.LightPlan.slotA.Widget` are registered with the simulator's widget registry (`pluginkit`). The
+gallery tile itself was not clicked. Not in this step: phone install (Alexey 25.10), Live Activity (30б.3), weather in the widget, buttons.

@@ -61,4 +61,55 @@ struct WidgetShareTests {
         #expect(read(url)?.place.latitude == 56.4846)
         #expect(read(url)?.place.longitude == 84.9476)
     }
+
+    // MARK: 30б.2 — съёмки в файле
+
+    private func model(now: Date) -> AppModel {
+        AppModel(snapshot: Snapshot(), store: nil, language: "ru", locator: NoLocator(),
+                 geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather(), now: { now })
+    }
+
+    /// 24.10.2026 06:00 UTC — в месте приложения («ru» → столица) уже день 24-го.
+    private let morning = Date(timeIntervalSince1970: 1_792_821_600)
+
+    @Test func shootsGoToTheWidgetByGenreNotByClient() throws {
+        let url = file()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let app = model(now: morning)
+        app.widgetShare = WidgetShare(url: url)
+        var shoot = Session(id: "w1", day: app.today, start: 15 * 60, end: 19 * 60, genre: .wedding)
+        shoot.contact = "Иванова Мария +7 913 000-00-00"
+        shoot.wishes = [.sunset]
+        app.snapshot.sessions = [shoot]
+        app.publishWidget()
+
+        let feed = try #require(read(url))
+        let w = try #require(feed.shoots.first)
+        #expect(feed.shoots.count == 1 && w.id == "w1" && w.wantsSunset)
+        #expect(w.title == app.lexicon.t("genre.wedding"), "название жанра на языке приложения: \(w.title)")
+        #expect(!(try Data(contentsOf: url)).contains(Data("Иванова".utf8)), "имя клиента в файл не идёт")
+        #expect(feed.words[.sunset] == app.lexicon.t("tele.sunset") && feed.words[.next] == app.lexicon.t("pane.next"))
+        #expect(feed.lang == "ru" && !feed.clock12)
+    }
+
+    @Test func savingTheDataRewritesTheFile() async throws {
+        let url = file()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let app = model(now: morning)
+        app.widgetShare = WidgetShare(url: url)
+        app.snapshot.sessions = [Session(id: "p1", day: app.today, start: 16 * 60, end: 17 * 60, genre: .portrait)]
+        app.persist()
+        #expect(read(url)?.shoots.map(\.id) == ["p1"])
+        app.snapshot.sessions = []
+        app.persist()
+        #expect(read(url)?.shoots.isEmpty == true)
+    }
+
+    @Test func aDayLinkOpensThatDayInThePlanner() throws {
+        let app = model(now: morning)
+        #expect(!app.openDayLink(URL(string: "lightplan://shoot/abc")!))
+        #expect(app.openDayLink(WidgetFeed.dayURL(CivilDate(year: 2026, month: 10, day: 27))))
+        #expect(app.tab == .planner && app.planner.selected == CivilDate(year: 2026, month: 10, day: 27))
+        #expect(app.planner.scope == .day)
+    }
 }

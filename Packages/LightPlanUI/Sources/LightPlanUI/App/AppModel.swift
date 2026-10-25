@@ -885,6 +885,7 @@ public final class AppModel {
         syncAlerts()      // расписание студийного часа — функция данных (30а)
         syncCalendarMirror()    // и событие в Календаре iPhone — тоже (30.2)
         syncContacts()          // и клиенты в Контактах iPhone (К7)
+        publishWidget()         // и виджет на главном экране: съёмки ближайших дней (30б.2)
         guard let store else { after?(); return }
         let snap = snapshot, prev = saving
         saving = Task {
