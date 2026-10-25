@@ -158,8 +158,12 @@ struct WidgetGenreSign: View {
 /// двоеточие здесь — один `Text`, без своих `baselineOffset` и стилей на двоеточии. Мерено по пикселям: `WidgetSketchTests`.
 /// Цифры статичные: лента виджета меняет запись раз в минуту; системный `Text(timerInterval:)` двоеточие ставит так же (мерено).
 struct ColonCount: View {
-    let seconds: TimeInterval
+    let text: String
     var size: CGFloat = 20
+
+    init(seconds: TimeInterval, size: CGFloat = 20) { self.init(text: Self.text(seconds), size: size) }
+    /// Готовая строка: вид, у которого текст сверяется тестом (`LockCircularView.label`), рисует именно её.
+    init(text: String, size: CGFloat = 20) { self.text = text; self.size = size }
 
     static func text(_ seconds: TimeInterval) -> String {
         let m = Int((seconds / 60).rounded(.up))
@@ -167,7 +171,7 @@ struct ColonCount: View {
     }
 
     var body: some View {
-        Text(Self.text(seconds))
+        Text(text)
             .font(.system(size: size, weight: .semibold, design: .rounded))
             .monospacedDigit()
     }
