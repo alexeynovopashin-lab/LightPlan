@@ -10,6 +10,7 @@ public enum SubGenre: String, CaseIterable, Sendable {
     case newborn, pregnancy, kids, boudoir, business
     case engagement, registry, church
     case birthday, jubilee, newyear, graduation, christening, barmitzvah
+    case bachelorette, bachelor
     case anniversary
     case baby, generations
     case dogs, cats, horses
@@ -18,6 +19,14 @@ public enum SubGenre: String, CaseIterable, Sendable {
     case sport, races, olympics, football, basketball, volleyball, swimming, ski, concert, conference
     case food, macro, cars, moto
     case fashion, lookbook, catalog, beauty
+
+    /// Уточнения жанров, которых нет в таблице `SUBGENRE` веба (поле-1, слова Алексея 25.10): веб заморожен и покажет их
+    /// кодом, как «Фотосъёмку» (30.4). Они стоят в конце списка жанра — плитки веба не сдвигаются. Сверка с вебом
+    /// (`DomainTablesTests.subGenres`) идёт без них; слова лежат в `Tools/lang_native.json`.
+    public static let nativeAdditions: [Genre: [SubGenre]] = [
+        .party: [.bachelorette, .bachelor],
+        .family: [.birthday],
+    ]
 
     /// Имя знака в общей библиотеке (`icons.js`).
     public var iconName: String {
@@ -36,6 +45,8 @@ public enum SubGenre: String, CaseIterable, Sendable {
         case .graduation: "graduation"
         case .christening: "chapel"
         case .barmitzvah: "star_david"
+        case .bachelorette: "toast"
+        case .bachelor: "dj"
         case .anniversary: "rings"
         case .baby: "stroller"
         case .generations: "generations"

@@ -110,9 +110,9 @@ public enum Genre: String, CaseIterable, Sendable {
         switch self {
         case .portrait:     [.newborn, .pregnancy, .kids, .boudoir, .business]
         case .wedding:      [.engagement, .registry, .church]
-        case .party:        [.birthday, .jubilee, .newyear, .graduation, .christening, .barmitzvah]
+        case .party:        [.birthday, .jubilee, .newyear, .graduation, .christening, .barmitzvah, .bachelorette, .bachelor]
         case .lovestory:    [.anniversary]
-        case .family:       [.baby, .pregnancy, .generations]
+        case .family:       [.baby, .pregnancy, .generations, .birthday]
         case .animals:      [.dogs, .cats, .horses]
         case .landscape:    [.stars]
         case .architecture: [.interior, .realty]

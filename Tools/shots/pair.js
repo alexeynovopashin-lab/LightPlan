@@ -857,6 +857,9 @@ function markdown(results) {
     // Лист главы у веба закрывает панель вкладок, но в разметке она «видна»;
     // приложение её прячет — под главой панель не сверяется.
     if (sc.chapter && sc.screen === 'settings') for (const k of Object.keys(web.nodes)) if (/^tab(bar|\.)/.test(k)) delete web.nodes[k];
+    // Поле-1: «Музыка» и «Плейлисты» ушли из «Съёмок» в свою главу (слова Алексея 25.10); у веба они на месте
+    // (sec.4/5, seg.4, note.4/5, pl.*) — это записанный отход, не потеря: в «Съёмках» натива их пары нет.
+    if (sc.chapter === 'shoots' && sc.screen === 'settings') for (const k of Object.keys(web.nodes)) if (/^(sec\.[45]|seg\.4|note\.[45]|pl\.)/.test(k)) delete web.nodes[k];
     const cmp = await compare(page, sc.dir, web, nat, 3);
     // Цвета взяты с кадров как есть, смещение по высоте — от «✕» (см. выше).
     if (lift) { cmp.lift = lift; for (const r of cmp.rows) if (r.d) r.d[1] = +(r.d[1] - lift).toFixed(1); }

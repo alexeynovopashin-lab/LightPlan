@@ -45,6 +45,8 @@ const CASES = [
   { name: 'card-new', sheet: 'clientcard', way: 'new', card: 'person' },
   // К4: мессенджеры людей, кнопка «написать» у телефона, «Пишем».
   { name: 'card-msg', sheet: 'clientcard', way: 'couple+msg', card: 'couple', msg: true },
+  // Поле-1: по одному мессенджеру у человека — выбирать не из чего, звёздочек нет, кнопка у номера — тот самый мессенджер.
+  { name: 'card-msg1', sheet: 'clientcard', way: 'couple+msg1', card: 'couple', msg: 'single' },
   // К6: дни рождения людей, годовщина пары из свадьбы, «Поздравлять».
   { name: 'card-greet', sheet: 'clientcard', way: 'couple+greet', card: 'couple', greet: true },
   { name: 'card-greet-person', sheet: 'clientcard', way: 'person+greet', card: 'person', greet: true },
@@ -136,7 +138,8 @@ function cardVerdict(c, nodes, screen) {
   if (c.msg) {
     // Вставленные ссылками профили стали строками своих видов, внутри группы человека; звёздочка — у первого
     // вписанного; кнопка у телефона открывает основной; «Пишем» — оба человека.
-    const rowsOf = { 0: ['telegram', 'vk'], 1: ['whatsapp', 'instagram'] };
+    const single = c.msg === 'single';
+    const rowsOf = single ? { 0: ['telegram'], 1: ['instagram'] } : { 0: ['telegram', 'vk'], 1: ['whatsapp', 'instagram'] };
     for (const i of [0, 1]) {
       const g = nodes['clc.person.' + i];
       for (const k of rowsOf[i]) {
@@ -144,7 +147,11 @@ function cardVerdict(c, nodes, screen) {
         if (r && g && (r.x < g.x - 0.1 || r.x + r.w > g.x + g.w + 0.1 || r.y < g.y - 0.1 || r.y + r.h > g.y + g.h + 0.1)) bad.push(`строка ${k} вне группы человека ${i + 1}`);
         if (r && Math.abs(r.h - 48) > 0.6) bad.push(`строка ${k}: высота ${r.h.toFixed(1)} ≠ 48`);
       }
-      const star = n(`clc.msgMain.${i}.${rowsOf[i][0]}`);
+      // Поле-1: звёздочки видны только при двух и больше способах и только у заполненных.
+      for (const k of rowsOf[i]) {
+        if (single && nodes[`clc.msgMain.${i}.${k}`]) bad.push(`звёздочка у ${k} при единственном способе`);
+      }
+      const star = single ? null : n(`clc.msgMain.${i}.${rowsOf[i][0]}`);
       if (star && star.text !== 'on') bad.push(`звёздочка не у ${rowsOf[i][0]}`);
       const reach = n('clc.reach.' + i);
       if (reach && reach.text !== rowsOf[i][0]) bad.push(`кнопка человека ${i + 1} открывает «${reach.text}», ждали ${rowsOf[i][0]}`);

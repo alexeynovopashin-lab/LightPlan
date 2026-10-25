@@ -181,6 +181,8 @@ extension AppModel {
                     app.openForm(day: app.planner.selected)
                 }
                 if let g = s.way.flatMap(Genre.init(rawValue:)) { app.pickFormGenre(g) }
+                // Гости (поле-1): `LPShotGuests 7` — число гостей уже в форме (праздник, свадьба).
+                if let n = UserDefaults.standard.string(forKey: "LPShotGuests").flatMap(Int.init) { app.editForm { $0.guests = n } }
                 // Город формы (шаг 4б): `defaults write … LPShotFormCity Москва` — строки выезда и дороги.
                 if let c = UserDefaults.standard.string(forKey: "LPShotFormCity") {
                     app.setFormCity(c)
@@ -268,7 +270,10 @@ extension AppModel {
             let most = app.clients.filter { $0.kind == kind }
                 .max { app.clientShootCount($0.id) < app.clientShootCount($1.id) }
             guard var c = most else { break }
-            if way.hasSuffix("+msg") { Self.seedMessengers(app, c.id); c = app.clientRecord(c.id) ?? c }
+            if way.hasSuffix("+msg") || way.hasSuffix("+msg1") {
+                Self.seedMessengers(app, c.id, single: way.hasSuffix("+msg1"))
+                c = app.clientRecord(c.id) ?? c
+            }
             // К6 `…+greet`: дни рождения людей (у первого с годом — видно возраст, у второго без года), «Поздравлять» включён;
             // годовщина пары — из свадьбы засева.
             if way.hasSuffix("+greet"), let i = app.snapshot.clients.firstIndex(where: { $0.id == c.id }) {
@@ -372,13 +377,16 @@ extension AppModel {
 
     /// Мессенджеры для снимков К4 — вписаны так, как их вставил бы фотограф (ссылкой профиля): у первого человека
     /// Telegram (основной) и VK, у второго — WhatsApp по номеру и Instagram.
-    static func seedMessengers(_ app: AppModel, _ id: String) {
+    /// `single` (поле-1) — по одному мессенджеру у человека: Telegram у первого, Instagram у второго; звёздочек нет.
+    static func seedMessengers(_ app: AppModel, _ id: String, single: Bool = false) {
         app.addClientMessenger(id, at: 0, .telegram)
         app.setClientMessenger(id, at: 0, .telegram, "https://t.me/anna_photo")
-        app.addClientMessenger(id, at: 0, .vk)
-        app.setClientMessenger(id, at: 0, .vk, "https://vk.com/id123456")
+        if !single {
+            app.addClientMessenger(id, at: 0, .vk)
+            app.setClientMessenger(id, at: 0, .vk, "https://vk.com/id123456")
+        }
         guard (app.clientRecord(id)?.people.count ?? 0) > 1 else { return }
-        app.addClientMessenger(id, at: 1, .whatsapp)
+        if !single { app.addClientMessenger(id, at: 1, .whatsapp) }
         app.addClientMessenger(id, at: 1, .instagram)
         app.setClientMessenger(id, at: 1, .instagram, "instagram.com/ivan.p/")
     }

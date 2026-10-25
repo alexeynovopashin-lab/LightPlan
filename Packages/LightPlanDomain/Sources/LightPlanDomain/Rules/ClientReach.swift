@@ -214,6 +214,17 @@ public enum ClientReach {
         return options(of: p, country: country).first { $0.way == .sms }
     }
 
+    /// Звёздочки в строках мессенджеров (поле-1, слова Алексея 25.10: «видны только когда есть выбор»): горят у тех мессенджеров,
+    /// которыми есть чем открыть (вписан профиль или есть номер для Telegram/WhatsApp), и только когда таких два и больше.
+    /// Один способ — выбирать не из чего; пустая строка звёздочки не получает — раньше её нажатие писало `pref` в никуда,
+    /// и кнопка «написать» оставалась на прежнем.
+    public static func starred(in p: ClientPerson, country: TelCountry) -> [MessengerKind] {
+        let ms = messengers(of: p, country: country).compactMap { o -> MessengerKind? in
+            if case .messenger(let k) = o.way { return k } else { return nil }
+        }
+        return ms.count >= 2 ? ms : []
+    }
+
     /// Кому пишем: человек `main`, если с ним есть как связаться, иначе первый, с кем есть; ни с кем — `nil`.
     public static func writer(of c: Client, country: TelCountry) -> Int? {
         if c.people.indices.contains(c.main), primary(of: c.people[c.main], country: country) != nil { return c.main }

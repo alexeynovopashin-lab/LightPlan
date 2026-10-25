@@ -1,7 +1,7 @@
 import SwiftUI
 import LightPlanDomain
 
-/// «Музыка» и «Плейлисты» в «Настройки → Съёмки» (веб `#musicSeg`, `#plList`, `#plAdd`). Плеер по умолчанию —
+/// «Музыка» и «Плейлисты» — своя глава «Плейлисты» (поле-1; у веба обе секции в «Съёмках», `#musicSeg`, `#plList`, `#plAdd`). Плеер по умолчанию —
 /// настройка фотографа, а не съёмки: он отвечает за кнопку у съёмки без плейлиста. Плейлисты живут здесь, а не в
 /// съёмке: их готовят заранее и пользуются весь сезон, съёмка из списка только выбирает.
 
@@ -10,11 +10,13 @@ struct MusicPlayerSection: View {
     @Bindable var app: AppModel
     /// Номера подписи, сегмента и пояснения в главе для пары снимков (`sec.N`, `seg.N`, `note.N`).
     var index: Int? = nil
+    /// Секция стоит первой на странице главы: подпись без верхнего отступа.
+    var first = false
 
     var body: some View {
         let t = app.lexicon
         let app = app
-        SecLabel(text: t.t("set.music"), node: index.map { "sec.\($0)" })
+        SecLabel(text: t.t("set.music"), first: first, node: index.map { "sec.\($0)" })
         WebSeg(options: [(t.t("set.musicOff"), MusicApp?.none), ("Яндекс", .yandex), ("Spotify", .spotify), ("Apple Music", .apple)],
                selection: Binding(get: { app.musicApp }, set: { app.setMusicApp($0) }), lines: 2)
             .shotNode(index.map { "seg.\($0)" } ?? "")

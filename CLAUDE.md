@@ -236,6 +236,12 @@
   by the **place's wall clock** (same as the phase), `CardScreen.musicPill`. Form row only while the library is non-empty; a form drops a playlist that left it on open
   (`refreshPlaylist`). Pairs: `make shots ARGS="--screens settings,card --chapters shoots --forms portrait+music --cards music,musicapp"` (the web tool `tools/shot.js` gained
   `form.music*`, `card.music`, `pl.*`; web «Календарь» sits first in its chapter, so native `sec.4/5` pair with a constant Δy ≈ −134).
+- **Field-1 (25.10, first shoot in the field).** Guests: `Guests` (Domain `Rules/Guests.swift`) — «+» by 1 up to 10, then by 10, ceiling 2000; «−» by 1 from 10 to «—»,
+  above 10 by 10 but never below 10; the number is a text field (digits 0–9 only, ≤ 4, as the web's `fGuestsVal`); the form calls `EventForm.moreGuests/fewerGuests/typeGuests`.
+  Sub-genres the web lacks (`birthday` in «Семья», `bachelorette`, `bachelor` in «Праздник») are listed in `SubGenre.nativeAdditions`, stand last in their list,
+  and their words live in `Tools/lang_native.json`; `DomainTablesTests.subGenres` compares the web table without them. Messenger stars (`ClientReach.starred`): only with
+  two or more reachable ways, only on reachable rows. Settings chapter `Chapter.playlists` (player + library) sits between «Язык и регион» and «О приложении»; the web
+  nodes `sec.4/5`, `seg.4`, `note.4/5`, `pl.*` are dropped from the «Съёмки» shot pair on purpose. Shots: `clients.js --cases card-msg,card-msg1`, form `-LPShotGuests <n>`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

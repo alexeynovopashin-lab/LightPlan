@@ -497,7 +497,9 @@
     "clk.removeYes": "Убрать",
     "clk.removed": "Убрано из Контактов: {n}.",
     "clk.testBuild": "Тестовая сборка в Контакты iPhone не пишет — это делает только обычный «Light Plan». Взять человека из Контактов она может.",
-    "clk.pick": "Из Контактов"
+    "clk.pick": "Из Контактов",
+    "sub.bachelorette": "Девичник",
+    "sub.bachelor": "Мальчишник"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -993,7 +995,9 @@
     "clk.removeYes": "Remove",
     "clk.removed": "Removed from Contacts: {n}.",
     "clk.testBuild": "A test build never writes to iPhone Contacts; only the regular “Light Plan” does. It can still take a person from Contacts.",
-    "clk.pick": "From Contacts"
+    "clk.pick": "From Contacts",
+    "sub.bachelorette": "Bachelorette",
+    "sub.bachelor": "Bachelor"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1489,7 +1493,9 @@
     "clk.removeYes": "Quitar",
     "clk.removed": "Quitado de Contactos: {n}.",
     "clk.testBuild": "Una versión de prueba no escribe en Contactos del iPhone; solo lo hace “Light Plan” normal. Aun así puede tomar a una persona de Contactos.",
-    "clk.pick": "De Contactos"
+    "clk.pick": "De Contactos",
+    "sub.bachelorette": "Despedida soltera",
+    "sub.bachelor": "Despedida soltero"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1981,7 +1987,9 @@
     "clk.removeYes": "削除",
     "clk.removed": "連絡先から削除：{n}。",
     "clk.testBuild": "テスト版はiPhoneの連絡先に書き込みません。書き込むのは通常の「Light Plan」だけです。連絡先から人を取り込むことはできます。",
-    "clk.pick": "連絡先から"
+    "clk.pick": "連絡先から",
+    "sub.bachelorette": "バチェロレッテ",
+    "sub.bachelor": "バチェラー"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2473,6 +2481,8 @@
     "clk.removeYes": "移除",
     "clk.removed": "已从通讯录移除：{n}。",
     "clk.testBuild": "测试版不会写入 iPhone 通讯录，只有正式的“Light Plan”会写入。它仍可以从通讯录取用联系人。",
-    "clk.pick": "从通讯录"
+    "clk.pick": "从通讯录",
+    "sub.bachelorette": "女生单身派对",
+    "sub.bachelor": "男生单身派对"
   }
 }

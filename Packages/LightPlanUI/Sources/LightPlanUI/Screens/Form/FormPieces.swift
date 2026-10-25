@@ -194,22 +194,49 @@ struct GenreTile: View {
     }
 }
 
-/// Шаговый ввод `.stepper`: кнопки 38 × 34 радиус 10 `--press`, поле 58 радиус 9 `--field`.
+/// Шаговый ввод `.stepper`: кнопки 38 × 34 радиус 10 `--press`, поле 58 радиус 9 `--field`. Число — поле: тап открывает
+/// ввод цифрами (веб `fGuestsVal`, поле-1), ноль показан «—». Что делают кнопки и как чистится набранное — решает
+/// форма (`EventForm.moreGuests` / `fewerGuests` / `typeGuests`): здесь только вид.
 struct FormStepper: View {
     let value: Int
-    let step: Int
-    let range: ClosedRange<Int>
-    let onChange: (Int) -> Void
+    let onMinus: () -> Void
+    let onPlus: () -> Void
+    /// Набранное в поле: форма сама отсеивает всё, кроме цифр.
+    let onType: (String) -> Void
+    /// Что поле показывает после набора (форма вернула число — поле берёт его же, а не набранное).
+    let clean: (String) -> String
     @Environment(\.colorScheme) private var scheme
+    @FocusState private var focused: Bool
+    @State private var text = ""
+
+    private var shown: String { value == 0 ? "—" : "\(value)" }
+    private var typed: String { value == 0 ? "" : "\(value)" }
+
     var body: some View {
         let pal = Palette(scheme)
         HStack(spacing: 6) {
-            button("−", pal) { onChange(max(range.lowerBound, value - step)) }
-            Text(value == 0 ? "—" : "\(value)")
+            button("−", pal, onMinus)
+            TextField("", text: $text)
+                .focused($focused)
+                #if os(iOS)
+                .keyboardType(.numberPad)
+                #endif
+                .multilineTextAlignment(.center)
                 .font(.system(size: 16).monospacedDigit()).foregroundStyle(pal.ink)
                 .frame(width: 58, height: 34)
                 .background(pal.field, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-            button("+", pal) { onChange(min(range.upperBound, value + step)) }
+                .accessibilityLabel(shown)
+                .onAppear { text = shown }
+                // Вошли в поле — убрать «—», чтобы цифры шли с чистого места; вышли — вернуть слово пустой клетки.
+                .onChange(of: focused) { _, now in text = now ? typed : shown }
+                .onChange(of: value) { _, _ in text = focused ? typed : shown }
+                .onChange(of: text) { _, now in
+                    guard focused else { return }
+                    let c = clean(now)
+                    if c != now { text = c }
+                    onType(c)
+                }
+            button("+", pal, onPlus)
         }
     }
     private func button(_ s: String, _ pal: Palette, _ act: @escaping () -> Void) -> some View {

@@ -4,7 +4,7 @@ import LightPlanData
 
 /// Экран «Настройки» — порт `#s-set` веба (итерация 19а).
 ///
-/// Корень: переключатель Просто/Астро и десять глав: девять в порядке веба и нативная «Сеть» (28л.6)
+/// Корень: переключатель Просто/Астро и главы: девять в порядке веба, нативная «Сеть» (28л.6) и нативные «Плейлисты» (поле-1)
 /// (Профиль, Вид, Съёмки, Оповещения, Карта и места, Хранилище, Данные и
 /// облако, Язык и регион, О приложении). План называл семь глав — это слепок
 /// 26 августа; веб с тех пор разделил «Хранилище» и «Данные», вынес
@@ -20,7 +20,7 @@ public struct SettingsView: View {
     public init(app: AppModel) { self.app = app }
 
     enum Chapter: String, CaseIterable, Hashable {
-        case profile, view, shoots, calendar, clients, alerts, places, store, data, network, locale, about
+        case profile, view, shoots, calendar, clients, alerts, places, store, data, network, locale, playlists, about
 
         var icon: String {
             switch self {
@@ -35,6 +35,7 @@ public struct SettingsView: View {
             case .data: "cloud"
             case .network: "route"
             case .locale: "chat"
+            case .playlists: "music"
             case .about: "aperture"
             }
         }
@@ -83,6 +84,7 @@ public struct SettingsView: View {
             case .data: "set.grpData"
             case .network: "set.grpNet"
             case .locale: "set.grpLocale"
+            case .playlists: "set.playlists"
             case .about: "set.grpAbout"
             }
         }
@@ -209,6 +211,9 @@ public struct SettingsView: View {
                 + NumberText(language: app.language).currencySign(s.currency.rawValue)
         case .clients:
             return app.clientsValue
+        case .playlists:
+            // Состояние, а не подпись: какой плеер открывает кнопка у съёмки без своего плейлиста.
+            return app.musicApp?.name ?? t.t("set.musicOff")
         case .calendar, .alerts, .store, .about:
             return ""
         }

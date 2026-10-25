@@ -156,8 +156,9 @@ struct ClientCardScreen: View {
                         reachButton(c, i, pal)
                     }
                     birthdayRow(c.people[i], i, pal)
+                    let stars = ClientReach.starred(in: c.people[i], country: app.telCountry)
                     ForEach(c.people[i].messengers.compactMap { MessengerKind(rawValue: $0.kind) }, id: \.self) { k in
-                        messengerRow(c.people[i], i, k, pal)
+                        messengerRow(c.people[i], i, k, star: stars.contains(k), pal)
                     }
                     addMessenger(c.people[i], i, pal)
                     pickRow(i, pal)
@@ -303,8 +304,8 @@ struct ClientCardScreen: View {
         }
     }
 
-    /// Строка мессенджера: название, поле (вставленная ссылка профиля становится именем), звёздочка «основной», ✕.
-    private func messengerRow(_ p: ClientPerson, _ i: Int, _ k: MessengerKind, _ pal: Palette) -> some View {
+    /// Строка мессенджера: название, поле (вставленная ссылка профиля становится именем), звёздочка «основной» (когда есть из чего выбирать), ✕.
+    private func messengerRow(_ p: ClientPerson, _ i: Int, _ k: MessengerKind, star: Bool, _ pal: Palette) -> some View {
         let main = ClientReach.primary(of: p, country: app.telCountry)?.way == .messenger(k)
         return HStack(spacing: 0) {
             Text(k.title).font(.system(size: 15)).foregroundStyle(pal.ink3)
@@ -318,14 +319,17 @@ struct ClientCardScreen: View {
                 #endif
                 .autocorrectionDisabled()
                 .frame(height: 48)
-            Button { app.setClientPreferred(id, at: i, k) } label: {
-                Icon("star", size: 16, line: 1.6).foregroundStyle(main ? pal.brass : pal.ink7)
-                    .frame(width: 40, height: 48).contentShape(Rectangle())
+            // Звёздочка — только при выборе (поле-1): два и больше способов, у заполненных. Без неё поле занимает её место.
+            if star {
+                Button { app.setClientPreferred(id, at: i, k) } label: {
+                    Icon("star", size: 16, line: 1.6).foregroundStyle(main ? pal.brass : pal.ink7)
+                        .frame(width: 40, height: 48).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(t.t("clc.msgMain"))
+                .accessibilityAddTraits(main ? .isSelected : [])
+                .shotNode("clc.msgMain.\(i).\(k.rawValue)", text: main ? "on" : "off")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(t.t("clc.msgMain"))
-            .accessibilityAddTraits(main ? .isSelected : [])
-            .shotNode("clc.msgMain.\(i).\(k.rawValue)", text: main ? "on" : "off")
             Button { app.removeClientMessenger(id, at: i, k) } label: {
                 Icon("close", size: 13, line: 2).foregroundStyle(pal.ink5).frame(width: 36, height: 48).contentShape(Rectangle())
             }

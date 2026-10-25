@@ -34,6 +34,7 @@ struct SettingsChapterView: View {
             case .data: parts(chapter.parts)
             case .network: network
             case .locale: locale
+            case .playlists: playlists
             case .about: about
             }
         }
@@ -235,10 +236,16 @@ struct SettingsChapterView: View {
         WebSeg(options: AppSettings.travelChoices.map { (String($0), $0) }, selection: binding(\.travelMin))
             .padding(.horizontal, 24).padding(.top, 12)
         SetNote(text: t.t("set.travelNote", ["n": t.count("unit.min", s.travelMin)]))
-        // Номера узлов — по главе веба: у него впереди «Календарь» (sec.0), «Сдача» … «Дорога» (1…3).
-        MusicPlayerSection(app: app, index: 4)
-        PlaylistsSection(app: app, index: 5)
         finish
+    }
+
+    // MARK: - Плейлисты
+
+    /// Своя глава между «Языком и регионом» и «О приложении» (поле-1, слова Алексея 25.10: «искать и настраивать было
+    /// не удобно»): плеер по умолчанию и библиотека плейлистов — то, что до этого лежало в конце «Съёмок».
+    @ViewBuilder private var playlists: some View {
+        MusicPlayerSection(app: app, index: 0, first: true)
+        PlaylistsSection(app: app, index: 1)
     }
 
     /// «Завершение съёмки» (`#manualEndToggle`, итерация 25): тумблер и

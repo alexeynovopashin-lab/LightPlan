@@ -323,7 +323,8 @@ struct FormScreen: View {
         HStack {
             Text(t.t("form.guestsAria")).font(.system(size: 15)).foregroundStyle(pal.ink)
             Spacer()
-            FormStepper(value: f.guests, step: 10, range: 0...2000) { v in edit { $0.guests = v } }
+            FormStepper(value: f.guests, onMinus: { edit { $0.fewerGuests() } }, onPlus: { edit { $0.moreGuests() } },
+                        onType: { raw in edit { $0.typeGuests(raw) } }, clean: Guests.sanitize)
         }
         .padding(.vertical, 13).padding(.horizontal, 15).frame(minHeight: 50)
     }

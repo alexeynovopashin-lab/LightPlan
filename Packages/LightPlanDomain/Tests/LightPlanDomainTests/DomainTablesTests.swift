@@ -83,14 +83,22 @@ struct DomainTablesTests {
         for (code, list) in pairs("subGenre") {
             let g = Genre(rawValue: code)!
             let rows = list.array!.map { ($0[0].string!, $0[1].string!) }
-            #expect(g.subGenres.map(\.rawValue) == rows.map(\.0), "SUBGENRE.\(code)")
+            // Поле-1: нативные добавки (`SubGenre.nativeAdditions`) стоят в конце и в таблице веба их нет — веб заморожен.
+            // Всё остальное — слово в слово по вебу, в том же порядке.
+            let ours = g.subGenres.filter { !(SubGenre.nativeAdditions[g] ?? []).contains($0) }
+            #expect(ours.map(\.rawValue) == rows.map(\.0), "SUBGENRE.\(code)")
+            #expect(g.subGenres.suffix((SubGenre.nativeAdditions[g] ?? []).count) == (SubGenre.nativeAdditions[g] ?? [])[...],
+                    "SUBGENRE.\(code): добавки в конце, плитки веба не сдвигаются")
             for (sub, icon) in rows {
                 #expect(SubGenre(rawValue: sub)?.iconName == icon, "SUBGENRE.\(code).\(sub)")
                 seen.insert(SubGenre(rawValue: sub)!)
             }
         }
         #expect(Genre.street.subGenres.isEmpty, "у стрита уточнений нет")
-        #expect(seen == Set(SubGenre.allCases), "в Swift нет лишних уточнений")
+        // У нативных добавок свой код: веб такого кода не знает, поэтому «лишнее» — ровно они и ничего больше.
+        let added = Set(SubGenre.nativeAdditions.values.flatMap { $0 })
+        #expect(Set(SubGenre.allCases).subtracting(seen).isSubset(of: added), "в Swift нет лишних уточнений, кроме записанных")
+        #expect(added.isSubset(of: Set(SubGenre.allCases)))
     }
 
     @Test func persons() {

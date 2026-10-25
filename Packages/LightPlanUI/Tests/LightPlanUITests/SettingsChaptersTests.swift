@@ -12,7 +12,7 @@ struct SettingsChaptersTests {
         let i = try! #require(order.firstIndex(of: .shoots))
         #expect(order[i + 1] == .calendar)
         #expect(order.filter { $0 == .calendar }.count == 1)
-        #expect(order.map(\.rawValue) == ["profile", "view", "shoots", "calendar", "clients", "alerts", "places", "store", "data", "network", "locale", "about"])
+        #expect(order.map(\.rawValue) == ["profile", "view", "shoots", "calendar", "clients", "alerts", "places", "store", "data", "network", "locale", "playlists", "about"])
     }
 
     @Test func calendarChapterHoldsTheMirrorTheGhostsAndTheDimmedIcsImport() {
@@ -66,6 +66,25 @@ struct SettingsChaptersTests {
         for (k, v) in ru { #expect(Lexicon("ru").t(k) == v, Comment(rawValue: k)) }
         for lang in ["ru", "en", "es", "ja", "zh"] {
             for k in keys { #expect(Lexicon(lang).t(k) != k && !Lexicon(lang).t(k).isEmpty, Comment(rawValue: lang + " " + k)) }
+        }
+    }
+
+    // MARK: Поле-1 «Плейлисты»
+
+    @Test func playlistsChapterStandsBetweenLanguageAndAbout() {
+        let order = Chapter.allCases
+        let i = try! #require(order.firstIndex(of: .playlists))
+        #expect(order[i - 1] == .locale && order[i + 1] == .about, "между «Язык и регион» и «О приложении» (слова Алексея 25.10)")
+        #expect(order.filter { $0 == .playlists }.count == 1)
+        #expect(Chapter.playlists.titleKey == "set.playlists" && !Chapter.playlists.opensLayer)
+        #expect(IconLibrary.common[Chapter.playlists.icon] != nil, "значок есть в библиотеке")
+    }
+
+    @Test func playlistsChapterIsNamedInEveryLanguageWithAWordTheWebAlreadyHas() {
+        let names = ["ru": "Плейлисты", "en": "Playlists"]
+        for (lang, name) in names { #expect(Lexicon(lang).t("set.playlists") == name, Comment(rawValue: lang)) }
+        for lang in ["ru", "en", "es", "ja", "zh"] {
+            #expect(Lexicon(lang).t("set.playlists") != "set.playlists" && !Lexicon(lang).t("set.playlists").isEmpty, Comment(rawValue: lang))
         }
     }
 }
