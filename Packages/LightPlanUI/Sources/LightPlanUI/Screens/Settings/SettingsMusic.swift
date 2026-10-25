@@ -57,14 +57,21 @@ struct PlaylistsSection: View {
                 .padding(.horizontal, 24).padding(.top, 10)
                 .shotNode("pl.empty", text: t.t("set.plEmpty"))
         } else {
-            ForEach(list.indices, id: \.self) { i in
-                let key = keys.indices.contains(i) ? keys[i] : nil
-                PlaylistRow(app: app, index: i, playlist: list[i]) { remove(i) }
-                    .id(key)
-                    .shotNode("pl.item")
+            // Идентичность строки — её ключ, а не номер: после удаления соседа строка остаётся той же и держит
+            // свой черновик и фокус; номер для правки плейлиста считается из ключа.
+            ForEach(keys, id: \.self) { key in
+                if let i = keys.firstIndex(of: key), list.indices.contains(i) {
+                    PlaylistRow(app: app, index: i, playlist: list[i]) { remove(i) }
+                        .shotNode("pl.item")
+                }
             }
         }
         newRow(t, pal, full: full)
+            // Ключи идут вровень с библиотекой, даже если её поменяло что-то снаружи (чтение данных, облако).
+            .onChange(of: list.count, initial: true) { _, n in
+                while keys.count < n { keys.append(UUID()) }
+                if keys.count > n { keys.removeLast(keys.count - n) }
+            }
         SetNote(text: t.t(full ? "set.plFull" : "set.plNote"), node: index.map { "note.\($0)" })
     }
 
