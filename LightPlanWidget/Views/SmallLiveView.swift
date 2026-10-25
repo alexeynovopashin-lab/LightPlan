@@ -52,7 +52,7 @@ struct SmallLiveView: View {
                     Text("\(WidgetSketchWords.route) \(plan.frame.clock(n.date, in: plan.zone)) \(n.name)")
                         .font(.footnote).foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.8)
                 }
-                Text("\(WidgetSketchWords.toShoot) · \(DayPlan.long(plan.shootLeft))")
+                Text("\(WidgetSketchWords.toShoot(plan.shoot.title)) · \(DayPlan.long(plan.shootLeft))")
                     .font(.caption2).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.7)
             }
             .padding(16)
@@ -81,7 +81,7 @@ struct SmallLiveView: View {
                         Text(WidgetSketchWords.toPoint).font(.caption2).foregroundStyle(st.ink2).lineLimit(1)
                     }
                     Spacer(minLength: 0)
-                    Text("\(WidgetSketchWords.shoot) · \(DayPlan.hours(plan.shootLeft))")
+                    Text("\(WidgetSketchWords.shoot(plan.shoot.title)) · \(DayPlan.hours(plan.shootLeft))")
                         .font(.caption.weight(.semibold)).foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.7)
                 }
                 .padding(.horizontal, 28).padding(.vertical, 28)

@@ -192,12 +192,23 @@ struct WidgetSketchTests {
         }
     }
 
-    @Test func noNamesOnTheLockScreen() {
-        // Круглый и прямоугольный не принимают имён вовсе: ни параметра, ни слова клиента в кадре (имена идут только на «Домой»).
-        #expect(DayPlan(now)!.title(names: nil) == "Свадьба")
-        let rect = Mirror(reflecting: LockRectangularView(frame: now)).children.map { $0.label ?? "" }
-        let circ = Mirror(reflecting: LockCircularView(frame: now)).children.map { $0.label ?? "" }
-        #expect(!rect.contains("names") && !circ.contains("names"))
+    @Test func theLockScreenSaysOnlyGenrePointTimeAndPlace() {
+        // Текст экрана блокировки сверяется целиком (ревью GPT к 6b15258): имён клиентов нет ни в одной строке, а если вид
+        // заведёт новую строку, этот тест покраснеет.
+        let rect = LockRectangularView(frame: now).lines
+        #expect(rect == ["12:00–13:54", "Свадьба", "Студия «Томсон»"], Comment(rawValue: "\(rect)"))
+        #expect(!rect.joined().contains("Анна") && !rect.joined().contains("Игорь"))
+        #expect(LockCircularView(frame: now).label == "4:10", Comment(rawValue: "\(String(describing: LockCircularView(frame: now).label))"))
+        #expect(LockCircularView(frame: frame(at: tsk(18, 30))).label == nil, "после золотого часа круг без цифр")
+        #expect(LockRectangularView(frame: frame(at: tsk(12, 52), shoots: [])).lines == ["—"])
+    }
+
+    @Test func captionsFollowTheGenre() {
+        let portrait = WidgetFeed.Shoot(id: "p", start: ms(tsk(12)), end: ms(tsk(15)), title: "Портрет", place: "Парк",
+                                        stops: [.init(at: ms(tsk(12)), name: "Парк")])
+        #expect(WidgetSketchWords.toShoot("Свадьба") == "до конца свадьбы" && WidgetSketchWords.shoot("Свадьба") == "свадьба")
+        #expect(WidgetSketchWords.toShoot("Портрет") == "до конца съёмки" && WidgetSketchWords.shoot("Портрет") == "съёмка")
+        #expect(WidgetSketchWords.toShoot(DayPlan(frame(at: tsk(13), shoots: [portrait]))!.shoot.title) == "до конца съёмки")
     }
 
     // MARK: Двоеточие по середине цифр
