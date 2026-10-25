@@ -348,6 +348,20 @@ import LightPlanDomain
         #expect(!ClientBook.viaNumberRetired(ContactVia(name: "Лида", phone: "+7 913 000-00-01"), in: c, country: B.ru))
     }
 
+    @Test func twoCandidatesAreNotGuessedByOrder() {
+        var c = Client(id: "c1")
+        var a = ClientPerson(name: "Алёна", phone: "+7 913 777-00-00"), m = ClientPerson(name: "Мария", phone: "+7 913 888-00-00")
+        a.relation = .girlfriend; m.relation = .friend
+        c.people = [ClientPerson(name: "Ольга"), m, a]
+        // номер из архива принадлежал Алёне, а съёмка названа «Мария»: хозяйка — по архиву, не по порядку в досье
+        c.telLog = [TelLogEntry(field: PhoneBook.Field.via, phone: Self.alyona, name: "Алёна", retiredAt: "x")]
+        #expect(ClientBook.viaPerson(for: ContactVia(name: "Мария", phone: Self.alyona), in: c, country: B.ru)?.name == "Алёна")
+        // в архиве имя, которому подходят двое, — не угадываем
+        c.telLog = [TelLogEntry(field: PhoneBook.Field.via, phone: Self.alyona, name: "Алёна Мария", retiredAt: "x")]
+        #expect(ClientBook.viaPerson(for: ContactVia(name: "Алёна", phone: Self.alyona), in: c, country: B.ru) == nil)
+        #expect(ClientBook.viaNumberRetired(ContactVia(name: "Алёна", phone: Self.alyona), in: c, country: B.ru))
+    }
+
     @Test func aFriendWithoutANumberInTheDossierGetsTheNumberOfTheShoot() {
         var c = Client(id: "c1")
         var friend = ClientPerson(name: "Алёна"); friend.relation = .girlfriend

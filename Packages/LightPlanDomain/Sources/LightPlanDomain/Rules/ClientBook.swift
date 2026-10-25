@@ -272,11 +272,18 @@ public enum ClientBook {
         if real, let p = people.first(where: { TelFormat.full($0.phone, country: country) == k }) { return p }
         // Прежний номер подруги (в архиве с её именем тех времён): съёмку могли успеть назвать по-другому — «Алёна», потом «Аля».
         let archive = real ? c.telLog.filter { $0.field == PhoneBook.Field.via && TelFormat.full($0.phone, country: country) == k } : []
-        let names = [v.name] + archive.compactMap(\.name)
-        let named = people.filter { p in names.contains { !blank($0) && nameFactors(p.name, $0) >= 1 } }
-        // Тёзка с другим живым номером — другая Алёна, пока этот номер не ушёл в архив.
-        guard var p = archive.isEmpty ? (real ? named.first(where: { !TelFormat.isReal($0.phone, country: country) }) : named.first) : named.first
-        else { return nil }
+        func owners(_ names: [String]) -> [ClientPerson] {
+            people.filter { p in names.contains { !blank($0) && nameFactors(p.name, $0) >= 1 } }
+        }
+        // Хозяйка номера — по имени из архива (оно главнее: съёмку могли назвать иначе); не нашлась — по имени съёмки. Двое
+        // подходят сразу — хозяйку не установить, чужой актуальный номер не подставляем (ревью GPT к 1b699bd).
+        var found = archive.isEmpty ? [] : owners(archive.compactMap(\.name))
+        if found.isEmpty { found = owners([v.name]) }
+        if archive.isEmpty && real {
+            // Тёзка с другим живым номером — другая Алёна, пока этот номер не ушёл в архив.
+            found = found.filter { !TelFormat.isReal($0.phone, country: country) }
+        }
+        guard found.count == 1, var p = found.first else { return nil }
         // Номера у человека в досье нет, а съёмка его называет — звонок идёт по нему, мессенджеры остаются из досье.
         if real, archive.isEmpty, !TelFormat.isReal(p.phone, country: country) { p.phone = v.phone }
         return p
