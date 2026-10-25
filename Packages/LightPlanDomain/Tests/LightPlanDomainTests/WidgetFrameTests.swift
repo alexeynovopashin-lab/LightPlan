@@ -175,6 +175,29 @@ struct WidgetFrameTests {
         }
     }
 
+    /// Замечание ревью к 30б.2: лента режется на 60 моментах, а перезагрузка просилась через 36 часов — между ними
+    /// виджет держал бы устаревшую плашку. Насыщенный день (свадьба с точкой каждые 20 минут) — перезагрузка не позже
+    /// последнего показанного момента; обычный день — по-прежнему 36 часов.
+    @Test func aDenseDayReloadsAtTheLastShownMomentNotAfter() {
+        let stops = (0..<90).map { WidgetFeed.Stop(at: ms(tsk(10).addingTimeInterval(Double($0) * 20 * 60)), name: "Точка \($0)") }
+        let f = feed([shoot(from: tsk(10), to: tsk(10).addingTimeInterval(31 * 3600), stops: stops)])
+        let now = tsk(9)
+        let line = f.timeline(from: now)
+        #expect(line.dates.count == 60)
+        #expect(line.dates == f.changes(from: now))
+        #expect(line.reload <= line.dates.last!, "перезагрузка \(line.reload) позже последнего момента \(line.dates.last!)")
+        #expect(line.reload > now)
+    }
+
+    @Test func anOrdinaryDayReloadsAfterThirtySixHours() {
+        let f = feed([studioShoot()])
+        let now = tsk(9)
+        let line = f.timeline(from: now)
+        #expect(line.reload == now.addingTimeInterval(36 * 3600))
+        #expect(line.dates == f.changes(from: now))
+        #expect(feed().timeline(from: now).reload == now.addingTimeInterval(36 * 3600))
+    }
+
     /// Секунды отсчёта идут сами, а кадр от «сейчас» отличается только полем `now`.
     private func strip(_ f: WidgetFrame) -> WidgetFrame { var g = f; g.now = Date(timeIntervalSince1970: 0); return g }
 

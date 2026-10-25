@@ -41,13 +41,12 @@ struct DayProvider: TimelineProvider {
         completion(Self.entry(Self.feed(), at: Date()))
     }
 
-    /// Сейчас и каждый момент, когда плашка меняется сама (`WidgetFeed.changes`) — на 36 часов вперёд; дальше новая лента.
+    /// Сейчас и каждый момент, когда плашка меняется сама (`WidgetFeed.changes`) — на 36 часов вперёд; новая лента — через 36 часов или на последнем моменте, если день так плотен, что лента обрезана.
     func getTimeline(in context: Context, completion: @escaping (Timeline<DayEntry>) -> Void) {
         let now = Date()
         let feed = Self.feed()
-        let dates = feed?.changes(from: now) ?? [now]
-        let policy: TimelineReloadPolicy = .after(now.addingTimeInterval(36 * 3600))
-        completion(Timeline(entries: dates.map { Self.entry(feed, at: $0) }, policy: policy))
+        let line = feed?.timeline(from: now) ?? .init(dates: [now], reload: now.addingTimeInterval(36 * 3600))
+        completion(Timeline(entries: line.dates.map { Self.entry(feed, at: $0) }, policy: .after(line.reload)))
     }
 }
 

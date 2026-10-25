@@ -178,6 +178,17 @@ extension WidgetFeed {
     /// час, свет места и съёмок, полночь. Между ними плашка одна и та же (секунды отсчёта идут через
     /// `Text(timerInterval:)`). `now` первым.
     public func changes(from now: Date, horizon: TimeInterval = 36 * 3600, limit: Int = 60) -> [Date] {
+        timeline(from: now, horizon: horizon, limit: limit).dates
+    }
+
+    /// Лента и когда просить новую. Обычно через `horizon`; если моментов больше `limit` и лента обрезана — на
+    /// последнем показанном моменте, иначе после него виджет держал бы устаревшую плашку до конца горизонта.
+    public struct Schedule: Equatable, Sendable {
+        public var dates: [Date]
+        public var reload: Date
+    }
+
+    public func timeline(from now: Date, horizon: TimeInterval = 36 * 3600, limit: Int = 60) -> Schedule {
         let end = now.addingTimeInterval(horizon)
         var all: [Date] = []
         func add(_ d: Date?) { if let d, d > now, d <= end { all.append(d) } }
@@ -204,7 +215,9 @@ extension WidgetFeed {
         }
         var seen = Set<Date>()
         let sorted = all.sorted().filter { seen.insert($0).inserted }
-        return [now] + Array(sorted.prefix(limit - 1))
+        let shown = Array(sorted.prefix(limit - 1))
+        let truncated = sorted.count > shown.count
+        return Schedule(dates: [now] + shown, reload: truncated ? (shown.last ?? end) : end)
     }
 }
 
