@@ -163,6 +163,38 @@ struct WidgetLiveTests {
         #expect(eve.primary.day == tomsk.light(on: CivilDate(year: 2026, month: 10, day: 25)))
     }
 
+    /// Ревью GPT к 13e6ce2: две аренды студии внутри одной точки (первая до 13:30, вторая с 13:40 до 13:50). Когда начиналась вторая, конец
+    /// точки уходил вперёд на её срок и кольцо откатывалось с 1. Точка кончается самым ранним сроком из начавшихся аренд — вторая её не продлевает.
+    @Test func aSecondStudioRentInTheSamePointDoesNotStretchItBack() throws {
+        var two = wedding
+        two.rents = [.init(from: ms(tsk(12)), to: ms(tsk(13, 36)), deadline: ms(tsk(13, 30)), studio: "Томсон"),
+                     .init(from: ms(tsk(13, 40)), to: ms(tsk(13, 56)), deadline: ms(tsk(13, 50)), studio: "Томсон")]
+        func plan(_ h: Int, _ m: Int, _ shoot: WidgetFeed.Shoot) throws -> DayPlan { try #require(DayPlan(frame(at: tsk(h, m), shoots: [shoot]))) }
+        var last = -1.0
+        for minute in 0..<120 {
+            let p = try #require(DayPlan(frame(at: tsk(12).addingTimeInterval(Double(minute) * 60), shoots: [two])))
+            let v = try #require(p.pointProgress)
+            #expect(v >= last, "12:00 + \(minute) мин: кольцо точки пошло назад, \(last) → \(v)")
+            last = v
+        }
+        for (h, m) in [(13, 20), (13, 35), (13, 40), (13, 45), (13, 55)] {
+            let p = try plan(h, m, two)
+            #expect(p.current?.name == "Пара в студии" && p.pointEnd == tsk(13, 30), "\(h):\(m): конец точки \(String(describing: p.pointEnd))")
+        }
+        let after = try plan(13, 45, two)
+        #expect(after.pointLeft == 0 && after.pointProgress == 1 && after.short(after.pointLeft!) == "0 мин")
+        // Аренды наложились (вторая началась до срока первой): тот же ответ.
+        var overlap = wedding
+        overlap.rents = [.init(from: ms(tsk(12)), to: ms(tsk(13, 36)), deadline: ms(tsk(13, 30)), studio: "Томсон"),
+                         .init(from: ms(tsk(13, 20)), to: ms(tsk(13, 56)), deadline: ms(tsk(13, 50)), studio: "Томсон")]
+        for (h, m) in [(13, 25), (13, 35), (13, 45)] { #expect(try plan(h, m, overlap).pointEnd == tsk(13, 30), "наложение \(h):\(m)") }
+        // Первая аренда кончилась до начала точки («Обед» 14:00), вторая идёт в ней: срок второй, раньше неё ничего не начато.
+        var next = wedding
+        next.rents = [.init(from: ms(tsk(12)), to: ms(tsk(13, 36)), deadline: ms(tsk(13, 30)), studio: "Томсон"),
+                      .init(from: ms(tsk(14, 10)), to: ms(tsk(14, 40)), deadline: ms(tsk(14, 30)), studio: "Томсон")]
+        #expect(try plan(14, 20, next).pointEnd == tsk(14, 30) && (try plan(14, 35, next).pointEnd == tsk(14, 30)))
+    }
+
     /// Ревью GPT к d52f3e3: накануне вечером (суббота 20:00, свадьба в воскресенье в 12:00) большой вид рисует воскресную съёмку, и свет
     /// под ней должен быть воскресным. По пикселям: всё ниже шапки в субботу вечером — то же изображение, что воскресным утром (точки те же,
     /// светила ещё не взошли), а у той же свадьбы в субботу — другое (проверка не пустая).
