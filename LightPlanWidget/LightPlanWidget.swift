@@ -80,7 +80,7 @@ struct DayWidgetView: View {
             .containerBackground(for: .widget) {
                 switch shape {
                 case .circular, .rectangular, .inline: Color.clear
-                case .small, .medium where entry.frame.kind == .live: BraunPalette.container
+                case .small where entry.frame.kind == .live, .medium where entry.frame.kind == .live: Color("WidgetBackgroundBraun")
                 default: Color("WidgetBackground")
                 }
             }

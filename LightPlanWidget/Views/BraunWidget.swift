@@ -47,16 +47,6 @@ struct BraunPalette {
     var winRing: Color? { dark ? Color.white.opacity(0.12) : nil }
     /// Красный флажок Braun над окошком.
     var flag: Color { pick(0xAD0A15, 0xC8102E) }
-
-    /// Подложка плашки «Домой» (`containerBackground`): следует за темой системы сама.
-    static var container: Color {
-        #if canImport(UIKit)
-        Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0x16 / 255, green: 0x16 / 255, blue: 0x16 / 255, alpha: 1)
-                                                        : UIColor(red: 0xE4 / 255, green: 0xE4 / 255, blue: 0xE2 / 255, alpha: 1) })
-        #else
-        hex(0xE4E4E2)
-        #endif
-    }
 }
 
 // MARK: - Замер текста
@@ -211,11 +201,11 @@ struct BraunContent: View {
         let L = layout
         let w = Double(L.size.width), pad = BraunPlate.pad
         ZStack(alignment: .topLeading) {
+            // Фон рисует сам вид: подложку плашки (`containerBackground`) система на «Домой» осветляет — 26.10 на телефоне #161616 вышел
+            // #2e2e2e (а прежний #0f0e0c — #2e2d2a), и пройденные риски #303030 на ней пропадали. Цвета внутри вида доходят точно.
+            Rectangle().fill(pal.bg).frame(width: L.size.width, height: L.size.height)
             ticks
             header.frame(width: L.headerWidth, height: L.headerHeight, alignment: .leading).offset(x: pad, y: pad)
-            if L.medium {
-                window.offset(x: w - pad - L.windowWidth, y: pad)
-            }
             dial.offset(x: L.cx - L.diameter / 2, y: L.cy - L.diameter / 2)
             if plan.current != nil {
                 WidgetIcon(name: plan.current?.sign, size: 20, line: 1.5).foregroundStyle(pal.amber)
@@ -225,8 +215,18 @@ struct BraunContent: View {
             if L.medium {
                 drum.frame(width: L.drum.width, height: L.drum.height, alignment: .topLeading).clipped().offset(x: L.drum.minX, y: L.drum.minY)
             }
+            // Окошко свадьбы — слоями-соседями, живой таймер последним: на телефоне 26.10 после окошка не рисовалось ничего (диагностика).
+            if L.medium {
+                windowPlate(L.windowWidth).offset(x: w - pad - L.windowWidth, y: pad)
+                BraunFlag().fill(pal.flag).frame(width: 6, height: 3.5).offset(x: w - pad - L.windowWidth / 2 - 3, y: pad - 4.5)
+            }
             if alpha {
-                AlphaBadge().frame(width: L.size.width - 2, height: L.size.height - 2, alignment: .bottomTrailing)
+                // 6 от края: при отступе 1 скругление плашки (22) срезало значок на телефоне 26.10.
+                AlphaBadge().frame(width: L.size.width - 12, height: L.size.height - 12, alignment: .bottomTrailing)
+            }
+            if L.medium {
+                timerText(max(0, plan.shoot.endDate.timeIntervalSince(plan.frame.now)))
+                    .frame(width: L.windowWidth, height: 18).offset(x: w - pad - L.windowWidth, y: pad)
             }
         }
         .frame(width: L.size.width, height: L.size.height, alignment: .topLeading)
@@ -270,19 +270,16 @@ struct BraunContent: View {
 
     // MARK: Окошко Braun: сколько осталось свадьбы
 
-    private var window: some View {
+    private func windowPlate(_ width: Double) -> some View {
         let r = RoundedRectangle(cornerRadius: 4, style: .continuous)
-        let remaining = max(0, plan.shoot.endDate.timeIntervalSince(plan.frame.now))
         return ZStack {
-            r.fill(pal.win.shadow(.inner(color: pal.winTopShadow, radius: 2, x: 0, y: 1))
-                          .shadow(.inner(color: pal.winBottomRim, radius: 0, x: 0, y: -0.5)))
+            // Утоплено: тень у верхней кромки и светлая кромка снизу — обычными заливками (`.shadow(.inner)` виджет не рисует).
+            r.fill(pal.win)
+            r.fill(LinearGradient(colors: [pal.winTopShadow, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.22)))
+            r.fill(LinearGradient(colors: [.clear, pal.winBottomRim], startPoint: UnitPoint(x: 0.5, y: 0.9), endPoint: .bottom))
             if let ring = pal.winRing { r.strokeBorder(ring, lineWidth: 0.5) }
-            timerText(remaining)
         }
-        .frame(width: layout.windowWidth, height: 18)
-        .overlay(alignment: .top) {
-            BraunFlag().fill(pal.flag).frame(width: 6, height: 3.5).offset(y: -4.5)
-        }
+        .frame(width: width, height: 18)
     }
 
     /// От часа «10:42:00», меньше часа «42:00»; тикает сама (`Text(timerInterval:)`), без обновления виджета.
@@ -292,8 +289,10 @@ struct BraunContent: View {
             Text(BraunWindow.text(remaining: remaining)).font(font).foregroundStyle(pal.text).lineLimit(1).fixedSize()
         } else {
             let now = plan.frame.now
-            Text(timerInterval: now...max(plan.shoot.endDate, now.addingTimeInterval(1)), pauseTime: nil, countsDown: true, showsHours: BraunWindow.showsHours(remaining: remaining))
-                .font(font).foregroundStyle(pal.text).multilineTextAlignment(.center).lineLimit(1).fixedSize()
+            // Как таймер студии, что на телефоне рисуется (`WidgetStyle`): без `.fixedSize()` и `lineLimit` — с ними 26.10 на телефоне
+            // таймер не рисовался и обрывал всё, что виджет строил после него (значок «α», подложку). Ширину задаёт рамка окошка снаружи.
+            Text(timerInterval: now...max(plan.shoot.endDate, now.addingTimeInterval(1)), countsDown: true, showsHours: BraunWindow.showsHours(remaining: remaining))
+                .font(font).foregroundStyle(pal.text).multilineTextAlignment(.center)
         }
     }
 

@@ -300,11 +300,65 @@ struct WidgetBraunViewTests {
             let neighbour = ink(146 + 10, 38 + 22, 190, 22, ground: bg)
             #expect(near(neighbour, p.muted, 22), "\(tag): текст соседа \(neighbour)")
         }
-        // Подложка плашки «Домой» — тот же цвет, что палитра.
-        for (style, v) in [(UIUserInterfaceStyle.light, 0xE4E4E2 as UInt32), (.dark, 0x161616)] {
-            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-            UIColor(BraunPalette.container).resolvedColor(with: UITraitCollection(userInterfaceStyle: style)).getRed(&r, green: &g, blue: &b, alpha: &a)
-            #expect(near((Double(r) * 255, Double(g) * 255, Double(b) * 255), hex(v), 1), "подложка в теме \(style.rawValue)")
+        // Подложка плашки «Домой» лежит в каталоге цветов расширения (`WidgetBackgroundBraun`) и совпадает с палитрой.
+        let json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: Self.repo.appendingPathComponent("LightPlanWidget/Assets.xcassets/WidgetBackgroundBraun.colorset/Contents.json"))) as? [String: Any])
+        let colors = try #require(json["colors"] as? [[String: Any]])
+        for (dark, want) in [(false, 0xE4E4E2 as UInt32), (true, 0x161616)] {
+            let entry = try #require(colors.first { (($0["appearances"] as? [[String: String]])?.first?["value"] == "dark") == dark })
+            let c = try #require((entry["color"] as? [String: Any])?["components"] as? [String: String])
+            let got = (Double(c["red"]!)! * 255, Double(c["green"]!)! * 255, Double(c["blue"]!)! * 255)
+            #expect(near(got, hex(want), 1), "подложка в \(dark ? "тёмной" : "светлой") теме: \(got)")
+        }
+    }
+
+    // MARK: Живой таймер окошка (телефон 26.10)
+
+    /// Корень репозитория по пути этого файла.
+    static var repo: URL { URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent() }
+
+    /// Вызов живого таймера в тексте вида: от `Text(timerInterval:` до конца цепочки модификаторов (следующая пустая строка или комментарий).
+    static func liveTimerCall(in source: String) -> String? {
+        let lines = source.components(separatedBy: "\n")
+        guard let i = lines.firstIndex(where: { $0.contains("Text(timerInterval:") && !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }) else { return nil }
+        var out = [lines[i]]
+        for l in lines[(i + 1)...] {
+            let t = l.trimmingCharacters(in: .whitespaces)
+            if t.isEmpty || t.hasPrefix("//") || t.hasPrefix("}") { break }
+            out.append(l)
+        }
+        return out.joined(separator: "\n")
+    }
+
+    /// На телефоне 26.10 живой `Text(timerInterval:)` с `.fixedSize()`, `.lineLimit(1)` и `pauseTime:` не рисовался и обрывал всё, что виджет строил после него
+    /// (окошко, круг, барабан, «α», подложку). Работает та же форма, что у студийного таймера (`WidgetStyle`): без этих трёх. В тестах таймер заморожен
+    /// и этого не видит, поэтому форма закреплена по тексту вида.
+    @Test func theLiveTimerHasTheFormThatDrawsOnThePhone() throws {
+        let source = try String(contentsOf: Self.repo.appendingPathComponent("LightPlanWidget/Views/BraunWidget.swift"), encoding: .utf8)
+        let call = try #require(Self.liveTimerCall(in: source), "в виде нет живого таймера")
+        #expect(call.contains("countsDown: true") && call.contains("showsHours:"), "таймер идёт вниз, часы — по правилу окошка: \(call)")
+        for banned in [".fixedSize", ".lineLimit", "pauseTime:"] {
+            #expect(!call.contains(banned), "живой таймер с «\(banned)» на телефоне не рисуется: \(call)")
+        }
+        // Проверка не пустая: прежняя форма (2d763c4) её не проходит.
+        let before = """
+            Text(timerInterval: now...end, pauseTime: nil, countsDown: true, showsHours: true)
+                .font(font).foregroundStyle(pal.text).multilineTextAlignment(.center).lineLimit(1).fixedSize()
+            """
+        let old = try #require(Self.liveTimerCall(in: before))
+        #expect(old.contains(".fixedSize") && old.contains("pauseTime:"))
+    }
+
+    /// Живой (не замороженный) вид рисует всё, что идёт после окошка: «α» в углу и подложку; таймер тоже оставляет чернила в окошке.
+    @Test func everythingAfterTheLiveTimerIsStillDrawn() throws {
+        let f = Self.scenario("lunch")
+        for dark in [true, false] {
+            let size = Plate.pro.size
+            let view = BraunWidgetView(frame: f, alpha: true, medium: true).frame(width: size.width, height: size.height)
+                .environment(\.colorScheme, dark ? .dark : .light)   // без подложки теста: фон рисует сам вид
+            let px = try render(view, scale: 4)
+            #expect(near(px.rgb(139, 85), dark ? hex(0x161616) : hex(0xE4E4E2), 1), "фон рисует сам вид: \(px.rgb(139, 85))")
+            let badge = px.rgb(size.width - 14.5, size.height - 20)   // правее центра значка (в центре буква «α»), 6 от края плашки
+            #expect(near(badge, hex(0xE2A44C), 14), "«α» не нарисована: \(badge)")
         }
     }
 
