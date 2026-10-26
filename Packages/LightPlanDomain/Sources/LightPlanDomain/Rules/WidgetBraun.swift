@@ -155,3 +155,19 @@ public enum BraunFit {
         return chain[chain.count - 1]
     }
 }
+
+/// Окошко Braun со сколько осталось свадьбы. Цифры тикают сами (`Text(timerInterval:)`), а часы в них включаются раз — на записи ленты,
+/// поэтому формат выбирается так, чтобы он держался всю жизнь записи (запись — минута, `WidgetFeed.timeline`): запись, которая начинается,
+/// когда осталось больше часа, кончается не раньше, чем останется час, и «10:42:00» не превращается в «0:59:59» (ревью GPT к 89cc5c1).
+public enum BraunWindow {
+    /// С часами («10:42:00») — только пока осталось больше часа; ровно час и меньше — «60:00», «42:00».
+    public static func showsHours(remaining: TimeInterval) -> Bool { remaining > 3600 }
+
+    /// Та же строка, что рисует система, статично (снимки, тесты).
+    public static func text(remaining: TimeInterval) -> String {
+        let s = Int(max(0, remaining).rounded(.down))
+        return showsHours(remaining: remaining)
+            ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
+            : String(format: "%d:%02d", s / 60, s % 60)
+    }
+}

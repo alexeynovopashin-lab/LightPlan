@@ -369,8 +369,7 @@ struct WidgetBraunViewTests {
         let a = BraunLayout(plan: long, size: Plate.pro.size, medium: true), b = BraunLayout(plan: short, size: Plate.pro.size, medium: true)
         #expect(a.windowWidth == b.windowWidth && a.windowWidth > 40, "рамка не прыгает: \(a.windowWidth) и \(b.windowWidth)")
         #expect(abs(a.windowWidth - (BraunText.width("00:00:00", size: 13, semibold: true, mono: true) + 14)) < 0.001)
-        #expect(BraunContent.timerString(10 * 3600 + 42 * 60) == "10:42:00" && BraunContent.timerString(42 * 60) == "42:00" && BraunContent.timerString(3600) == "1:00:00")
-        #expect(BraunContent.timerString(59 * 60 + 59) == "59:59" && BraunContent.timerString(0) == "0:00")
+        #expect(BraunWindow.text(remaining: 10 * 3600 + 42 * 60) == "10:42:00" && BraunWindow.text(remaining: 42 * 60) == "42:00")
     }
 
     @Test func theSmallWidgetHasNoWindowAndGrowsTheHeaderToTwoLines() throws {

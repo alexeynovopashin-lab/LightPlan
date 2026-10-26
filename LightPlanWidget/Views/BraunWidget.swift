@@ -289,17 +289,12 @@ struct BraunContent: View {
     @ViewBuilder private func timerText(_ remaining: TimeInterval) -> some View {
         let font = Font.system(size: 13, weight: .semibold).monospacedDigit()
         if frozen {
-            Text(Self.timerString(remaining)).font(font).foregroundStyle(pal.text).lineLimit(1).fixedSize()
+            Text(BraunWindow.text(remaining: remaining)).font(font).foregroundStyle(pal.text).lineLimit(1).fixedSize()
         } else {
             let now = plan.frame.now
-            Text(timerInterval: now...max(plan.shoot.endDate, now.addingTimeInterval(1)), pauseTime: nil, countsDown: true, showsHours: remaining >= 3600)
+            Text(timerInterval: now...max(plan.shoot.endDate, now.addingTimeInterval(1)), pauseTime: nil, countsDown: true, showsHours: BraunWindow.showsHours(remaining: remaining))
                 .font(font).foregroundStyle(pal.text).multilineTextAlignment(.center).lineLimit(1).fixedSize()
         }
-    }
-
-    static func timerString(_ remaining: TimeInterval) -> String {
-        let s = Int(remaining.rounded(.down))
-        return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60)
     }
 
     // MARK: Часы точки

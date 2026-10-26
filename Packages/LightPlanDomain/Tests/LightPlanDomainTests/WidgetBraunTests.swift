@@ -115,4 +115,15 @@ struct WidgetBraunTests {
         #expect(pick(BraunFit.nearRow, 125).size == 12 && pick(BraunFit.nearRow, 10).size == 11)
         #expect(pick(BraunFit.farRow, 105).size == 10 && pick(BraunFit.farRow, 115).size == 11)
     }
+
+    // MARK: Окошко свадьбы
+
+    @Test func theWindowShowsHoursOnlyWhileMoreThanAnHourIsLeft() {
+        #expect(BraunWindow.text(remaining: 10 * 3600 + 42 * 60) == "10:42:00" && BraunWindow.text(remaining: 42 * 60) == "42:00")
+        #expect(BraunWindow.text(remaining: 59 * 60 + 59) == "59:59" && BraunWindow.text(remaining: 0) == "0:00" && BraunWindow.text(remaining: -5) == "0:00")
+        #expect(BraunWindow.text(remaining: 3601) == "1:00:01")
+        // Ровно час — уже без часов: запись ленты, что начинается на этой минуте, не покажет «0:59:59» до следующей записи.
+        #expect(!BraunWindow.showsHours(remaining: 3600) && BraunWindow.text(remaining: 3600) == "60:00")
+        #expect(BraunWindow.showsHours(remaining: 3660) && !BraunWindow.showsHours(remaining: 3540))
+    }
 }
