@@ -254,6 +254,8 @@ extension WidgetFeed {
             return []
         case .small, .medium:
             // Кольцо рисуется, пока съёмка идёт: от «сейчас» (или начала) до конца; закрытая руками — до записанного конца.
+            // Незакрытая вручную съёмка после записанного конца минут не просит: остаток и доли кольца у неё зажаты на нуле и
+            // единице (`DayPlan`), по минутам нечему меняться (ревью GPT к 8d3f1c2 — тест `anOpenShootPastItsEnd…`).
             return shoots.flatMap { s -> [Date] in
                 guard s.open || s.endDate > now else { return [] }
                 return Self.marks(max(s.startDate, now), min(s.endDate, end), step: 60)

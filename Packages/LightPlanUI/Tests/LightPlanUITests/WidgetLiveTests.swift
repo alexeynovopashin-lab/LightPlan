@@ -77,6 +77,20 @@ struct WidgetLiveTests {
         #expect(at13.hours(at13.shootLeft) == "11 ч")
     }
 
+    /// Ревью GPT к 8d3f1c2: незакрытая вручную съёмка после записанного конца. Кольцо не застывает — все его числа уже на пределе
+    /// (остаток 0, доли 1) и в любой момент после конца одни и те же, так что минутные записи ленты ничего бы не меняли.
+    @Test func anOpenShootPastItsEndHasNothingLeftToCount() throws {
+        var open = wedding
+        open.open = true
+        let a = try #require(DayPlan(frame(at: tsk(1, 10, day: 25), shoots: [open])))
+        let b = try #require(DayPlan(frame(at: tsk(5, 45, day: 25), shoots: [open])))
+        for p in [a, b] {
+            #expect(p.shootLeft == 0 && p.pointLeft == 0 && p.shootProgress == 1 && p.pointProgress == 1)
+            #expect(p.hours(p.shootLeft) == "0 мин" && p.short(p.pointLeft!) == "0 мин")
+        }
+        #expect(a.shootHourMarks == b.shootHourMarks && a.pointQuarterMarks == b.pointQuarterMarks)
+    }
+
     @Test func theLastPointEndsWithTheShootAndHoursGiveWayToMinutes() throws {
         let late = try #require(DayPlan(frame(at: tsk(23, 50))))
         #expect(late.current?.name == "Танцы")

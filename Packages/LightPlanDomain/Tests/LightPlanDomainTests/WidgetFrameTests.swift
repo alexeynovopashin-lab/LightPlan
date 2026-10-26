@@ -234,6 +234,21 @@ struct WidgetFrameTests {
         #expect(line.reload == tsk(0, 10, day: 25).addingTimeInterval(36 * 3600), "лента не обрезана — перезагрузка через 36 часов")
     }
 
+    /// Ревью GPT к 8d3f1c2: у съёмки, что закрывают руками, минут после записанного конца нет — кольцо не «застывает», а уже стоит
+    /// на нуле (остаток зажат, доля — единица, см. `WidgetLiveTests.anOpenShootPastItsEndHasNothingLeftToCount`). Здесь — что лента
+    /// до конца даёт минуты, а после — только события.
+    @Test func anOpenShootGetsRingMinutesOnlyUpToItsRecordedEnd() {
+        var open = wedding()
+        open.open = true
+        let f = feed([open])
+        let before = f.timeline(from: tsk(0, 10, day: 25), limit: 1000, shape: .medium)
+        #expect(before.dates.contains(tsk(0, 29, day: 25)) && before.dates.contains(tsk(0, 30, day: 25)))
+        #expect(!before.dates.contains(tsk(0, 31, day: 25)), "после записанного конца минут нет")
+        let after = f.timeline(from: tsk(2, day: 25), limit: 1000, shape: .medium)
+        #expect(after.dates == f.timeline(from: tsk(2, day: 25), limit: 1000).dates, "после конца кольцу и кадрам нужны только события")
+        #expect(f.frame(at: tsk(2, day: 25)).kind == .live, "а плашка идёт, пока не нажмут «Завершить»")
+    }
+
     @Test func otherShapesDoNotPayForTheRingsMinutes() {
         let f = feed([wedding()])
         let now = tsk(12, 52)
