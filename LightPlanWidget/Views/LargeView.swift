@@ -1,23 +1,21 @@
 import SwiftUI
 import LightPlanDomain
 
-/// Большой виджет (30б.2в-1, `systemLarge`). Слова Алексея 25.10: «Таймлайн дня» — дата и «12:00–22:00 · жанр · N точек»,
+/// Большой виджет (30б.2в, `systemLarge`; выбор Алексея 26.10: «большой день со съёмкой»). Слова Алексея 25.10: «Таймлайн дня» — дата и «12:00–22:00 · жанр · N точек»,
 /// точки с временем и названием как в блоке маршрута карточки, внизу свет (рассвет, золотой час, закат); в день без съёмок — только свет.
 /// Плашка 364 × 382 на Pro Max, 338 × 354 на iPhone 14.
 struct LargeView: View {
     let frame: WidgetFrame
-    var names: String?
     var alpha = false
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        Inner(frame: frame, names: names, alpha: alpha, st: WidgetStyle(dark: scheme == .dark))
+        Inner(frame: frame, alpha: alpha, st: WidgetStyle(dark: scheme == .dark))
             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     private struct Inner: View {
         let frame: WidgetFrame
-        let names: String?
         let alpha: Bool
         let st: WidgetStyle
         @Environment(\.dynamicTypeSize) private var type
@@ -46,7 +44,7 @@ struct LargeView: View {
                 Spacer(minLength: 0)
                 if alpha { AlphaBadge() }
             }
-            Text("\(plan.shootRange) · \(plan.title(names: names)) · \(plan.stops.count) \(WidgetSketchWords.points)")
+            Text("\(plan.shootRange) · \(plan.title) · \(plan.stops.count) \(plan.words[.points])")
                 .font(.subheadline.weight(.semibold)).foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.7).padding(.top, 2)
             timeline(plan).padding(.top, 10)
             Spacer(minLength: 6)
@@ -73,13 +71,13 @@ struct LargeView: View {
                         StopLine(plan: plan, stop: s, isCurrent: isCurrent, past: past, signSize: 16, withPlace: true, st: st)
                         Spacer(minLength: 0)
                         if isCurrent, let end = plan.pointEnd {
-                            Text("до \(plan.frame.clock(end, in: plan.zone))").font(.caption2.weight(.semibold)).foregroundStyle(st.amber)
+                            Text(plan.words[.until].replacingOccurrences(of: "{t}", with: plan.frame.clock(end, in: plan.zone))).font(.caption2.weight(.semibold)).foregroundStyle(st.amber)
                         }
                     }
                     .frame(maxHeight: .infinity)
                 }
                 if plan.stops.count > first + rows {
-                    Text("и ещё \(plan.stops.count - first - rows)").font(.caption2).foregroundStyle(st.ink2).padding(.leading, 20)
+                    Text(plan.words[.more].replacingOccurrences(of: "{n}", with: "\(plan.stops.count - first - rows)")).font(.caption2).foregroundStyle(st.ink2).padding(.leading, 20)
                 }
             }
         }
@@ -106,7 +104,7 @@ struct LargeView: View {
             let passed = at.map { $0 < frame.now } ?? false
             return VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
-                    WidgetSign(title: sign, size: 13).foregroundStyle(accent ? st.amber : st.ink2)
+                    WidgetIcon(name: sign, size: 13).foregroundStyle(accent ? st.amber : st.ink2)
                     Text(name).font(.caption).foregroundStyle(accent ? st.amber : st.ink2).lineLimit(1).minimumScaleFactor(0.7)
                 }
                 Text(at.map { frame.clock($0, in: frame.zone) } ?? "—")
@@ -131,7 +129,7 @@ struct LargeView: View {
                 SunArc(rise: rise, set: set, golden: d.golden, now: frame.now, st: st)
                     .frame(minHeight: 90, maxHeight: .infinity).padding(.top, 10)
                 Spacer(minLength: 6)
-                Text("\(WidgetSketchWords.dayLength) \(DayPlan.long(set.timeIntervalSince(rise)))")
+                Text("\(frame.words[.dayLength]) \(RemainText(words: frame.words).long(set.timeIntervalSince(rise)))")
                     .font(.footnote).foregroundStyle(st.ink2).lineLimit(1).padding(.bottom, 6)
                 lightStrip(d)
             } else if let d = frame.day {
@@ -180,8 +178,4 @@ struct SunArc: View {
                      with: .color(day ? st.amber : st.ink.opacity(0.4)))
         }
     }
-}
-
-extension WidgetSketchWords {
-    static let dayLength = "День"
 }
