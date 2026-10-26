@@ -203,9 +203,16 @@ release_reservation() {
 on_exit() { release_reservation; unlock_slots; }
 trap on_exit EXIT
 
+# Телефон «available (paired)» читается сразу после uninstall с задержкой: 26.10 дважды exit 3, а через секунды
+# devicectl уже показывал «available». Поэтому до LP_PHONE_WAIT секунд (по умолчанию 10) повторяем проверку раз в секунду.
 need_phone() {
-  if xcrun devicectl list devices 2>/dev/null | grep -E "^$DEVICE_NAME[[:space:]]" | grep -qE '[[:space:]]available \(paired\)'; then return 0; fi
-  echo "phone.sh: $DEVICE_NAME не «available (paired)» — попросить Алексея подключить кабель и разблокировать экран." >&2
+  local i=0 max="${LP_PHONE_WAIT:-10}"
+  while :; do
+    if xcrun devicectl list devices 2>/dev/null | grep -E "^$DEVICE_NAME[[:space:]]" | grep -qE '[[:space:]]available \(paired\)'; then return 0; fi
+    [ "$i" -ge "$max" ] && break
+    i=$((i + 1)); sleep 1
+  done
+  echo "phone.sh: $DEVICE_NAME не «available (paired)» (ждали $max с) — попросить Алексея подключить кабель и разблокировать экран." >&2
   exit 3
 }
 

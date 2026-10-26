@@ -102,6 +102,27 @@ if [[ "$hint" == *"slotA"* && "$hint" != *"slotB"* && "$hint" != *"slotD"* && "$
   echo "да  подсказка при лимите называет только slotA (слита, зарегистрирована)"
 else echo "нет подсказка при лимите: «$hint»"; fail=$((fail + 1)); fi
 
+# Проверка телефона: devicectl не сразу видит «available (paired)» (26.10 после uninstall — exit 3 зря).
+# Подложный xcrun: первые N вызовов пусто, дальше «available (paired)». need_phone не должен падать при N < ожидания.
+mkdir -p "$tmp/bin"
+cat > "$tmp/bin/xcrun" <<'XEOF'
+#!/bin/bash
+c=$(cat "$FAKE_COUNT" 2>/dev/null || echo 0); echo $((c + 1)) > "$FAKE_COUNT"
+[ "$c" -ge "$FAKE_FAILS" ] && echo "iPhone ALno   x   y   available (paired)   iPhone16,2"
+exit 0
+XEOF
+chmod +x "$tmp/bin/xcrun"
+need() {   # <имя> <сколько вызовов пусто> <LP_PHONE_WAIT> <ждём код>
+  local name="$1" fails="$2" wait="$3" want="$4" code
+  n=$((n + 1)); rm -f "$tmp/count"
+  ( PATH="$tmp/bin:$PATH" FAKE_COUNT="$tmp/count" FAKE_FAILS="$fails" LP_PHONE_LIB=1 LP_PHONE_WAIT="$wait" LP_PHONE_RECORD="$tmp/rec.tsv" \
+      T_PHONE="$PHONE" bash -c 'source "$T_PHONE" >/dev/null 2>&1; need_phone' >/dev/null 2>&1 ); code=$?
+  if [ "$code" = "$want" ]; then echo "да  $name → код $code"; else echo "нет $name: ждали код $want, получили $code"; fail=$((fail + 1)); fi
+}
+need "телефон виден сразу" 0 5 0
+need "телефон появился через 2 с — повтор, не exit 3" 2 5 0
+need "телефона нет совсем — exit 3 после ожидания" 99 2 3
+
 echo "---"
 [ $fail -eq 0 ] && { echo "выбор слота: $n из $n — да"; exit 0; }
 echo "выбор слота: нет в $fail из $n"; exit 1
