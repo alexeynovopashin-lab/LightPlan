@@ -5,10 +5,12 @@ import LightPlanDomain
 // виджета: те же файлы собирает и набор UI-тестов (ссылка `WidgetViews`), поэтому снимки в тестах — это то, что видит расширение.
 
 /// День съёмки, разобранный для видов: точки по времени, текущая точка и до какого часа она идёт.
-/// Текущая — последняя точка, начавшаяся не позже «сейчас»; кончается она студийным часом (пока он идёт), иначе началом
-/// следующей точки, иначе концом съёмки.
+/// Текущая — последняя точка, начавшаяся не позже «сейчас»; кончается она началом следующей точки (последняя — концом съёмки), а если
+/// студия началась и её час кончается раньше — студийным часом, и остаётся на нём до начала следующей точки: после студийного часа
+/// точка не «растягивается» до следующей (ревью GPT к d52f3e3: остаток и кольцо прыгали назад).
 struct DayPlan {
     let frame: WidgetFrame
+    let primary: WidgetFrame.ShootFrame
     let shoot: WidgetFeed.Shoot
     let zone: TimeZone
     let stops: [WidgetFeed.Stop]
@@ -18,15 +20,40 @@ struct DayPlan {
     init?(_ frame: WidgetFrame) {
         guard let p = frame.primary else { return nil }
         self.frame = frame
+        primary = p
         shoot = p.shoot
         zone = p.zone
         stops = p.shoot.stops.sorted { $0.at < $1.at }
         let cur = stops.lastIndex { $0.date <= frame.now }
         currentIndex = cur
-        if cur == nil { pointEnd = nil }
-        else if let c = p.countdown, c.kind == .studio { pointEnd = c.to }
-        else if let i = cur, i + 1 < stops.count { pointEnd = stops[i + 1].date }
-        else { pointEnd = p.shoot.endDate }
+        if let i = cur {
+            let next = i + 1 < stops.count ? stops[i + 1].date : p.shoot.endDate
+            if let d = Self.studioDeadline(p.shoot, now: frame.now, pointStart: stops[i].date) { pointEnd = min(d, next) }
+            else { pointEnd = next }
+        } else {
+            pointEnd = nil
+        }
+    }
+
+    /// Студийный час, которым ограничена точка, начавшаяся в `pointStart`: идущий (если их несколько — начавшийся последним из
+    /// идущих), иначе последний из кончившихся, но не раньше начала точки. Ещё не начавшаяся студия точку не сокращает.
+    private static func studioDeadline(_ shoot: WidgetFeed.Shoot, now: Date, pointStart: Date) -> Date? {
+        let started = shoot.rents.filter { $0.fromDate <= now && $0.deadlineDate > pointStart }.sorted { $0.fromDate < $1.fromDate }
+        return (started.last { $0.deadlineDate > now } ?? started.last)?.deadlineDate
+    }
+
+    /// День, который рисует большой вид: у ближайшей съёмки — день её начала, у идущей — сегодня (по часам самой съёмки).
+    var shownAt: Date { max(frame.now, shoot.startDate) }
+
+    /// Строка даты большого вида: «Суббота, 24 октября»; съёмка завтра — «Завтра · воскресенье, 25 октября» (слово то же, что на малом и среднем).
+    var dateLine: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: frame.lang)
+        f.timeZone = zone
+        f.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
+        let text = f.string(from: shownAt)
+        if primary.dayOffset >= 1 { return "\(frame.dayWord(primary)) · \(text)" }
+        return text.prefix(1).uppercased() + text.dropFirst()
     }
 
     var current: WidgetFeed.Stop? { currentIndex.map { stops[$0] } }

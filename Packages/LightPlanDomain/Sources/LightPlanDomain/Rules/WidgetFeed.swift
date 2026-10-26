@@ -61,6 +61,9 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         public var deadline: Int64
         public var studio: String
 
+        public var fromDate: Date { Moment(milliseconds: from).date }
+        public var deadlineDate: Date { Moment(milliseconds: deadline).date }
+
         public init(from: Int64, to: Int64, deadline: Int64, studio: String) {
             self.from = from
             self.to = to

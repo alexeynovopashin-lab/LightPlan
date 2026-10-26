@@ -38,9 +38,10 @@ struct LargeView: View {
             return f.string(from: frame.now).prefix(1).uppercased() + f.string(from: frame.now).dropFirst()
         }
 
+        /// Дата и свет — того дня, который рисует съёмка (`DayPlan.dateLine`, `ShootFrame.day`): накануне это завтрашний день.
         @ViewBuilder private func day(_ plan: DayPlan) -> some View {
             HStack(alignment: .firstTextBaseline) {
-                Text(dateLine(plan.zone)).font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
+                Text(plan.dateLine).font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
                 Spacer(minLength: 0)
                 if alpha { AlphaBadge() }
             }
@@ -48,7 +49,7 @@ struct LargeView: View {
                 .font(.subheadline.weight(.semibold)).foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.7).padding(.top, 2)
             timeline(plan).padding(.top, 10)
             Spacer(minLength: 6)
-            if let d = frame.day { lightStrip(d) }
+            if let d = plan.primary.day { lightStrip(d, in: plan.zone) }
         }
 
         /// Вертикальная линия дня: пройденное тусклое, текущая точка — янтарная, будущее — серое; линия заполнена до «сейчас».
@@ -84,7 +85,7 @@ struct LargeView: View {
 
         // MARK: Свет
 
-        private func lightStrip(_ d: WidgetFeed.DayLight) -> some View {
+        private func lightStrip(_ d: WidgetFeed.DayLight, in zone: TimeZone) -> some View {
             VStack(spacing: 6) {
                 Rectangle().fill(st.ink.opacity(0.12)).frame(height: 1)
                 if d.sunrise == nil && d.sunset == nil {
@@ -92,22 +93,22 @@ struct LargeView: View {
                         .font(.subheadline.weight(.semibold)).foregroundStyle(st.ink).frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     HStack(alignment: .top, spacing: 0) {
-                        lightCell(frame.words[.sunrise], d.sunrise, sign: "sunrise", accent: false)
-                        lightCell(frame.words[.golden], d.golden, sign: "sun", accent: true)
-                        lightCell(frame.words[.sunset], d.sunset, sign: "sunset", accent: false)
+                        lightCell(frame.words[.sunrise], d.sunrise, in: zone, sign: "sunrise", accent: false)
+                        lightCell(frame.words[.golden], d.golden, in: zone, sign: "sun", accent: true)
+                        lightCell(frame.words[.sunset], d.sunset, in: zone, sign: "sunset", accent: false)
                     }
                 }
             }
         }
 
-        private func lightCell(_ name: String, _ at: Date?, sign: String, accent: Bool) -> some View {
+        private func lightCell(_ name: String, _ at: Date?, in zone: TimeZone, sign: String, accent: Bool) -> some View {
             let passed = at.map { $0 < frame.now } ?? false
             return VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
                     WidgetIcon(name: sign, size: 13).foregroundStyle(accent ? st.amber : st.ink2)
                     Text(name).font(.caption).foregroundStyle(accent ? st.amber : st.ink2).lineLimit(1).minimumScaleFactor(0.7)
                 }
-                Text(at.map { frame.clock($0, in: frame.zone) } ?? "—")
+                Text(at.map { frame.clock($0, in: zone) } ?? "—")
                     .font(.system(.subheadline, design: .rounded).weight(.semibold)).monospacedDigit()
                     .foregroundStyle(st.ink.opacity(passed ? 0.5 : 1))
             }
@@ -131,10 +132,10 @@ struct LargeView: View {
                 Spacer(minLength: 6)
                 Text("\(frame.words[.dayLength]) \(RemainText(words: frame.words).long(set.timeIntervalSince(rise)))")
                     .font(.footnote).foregroundStyle(st.ink2).lineLimit(1).padding(.bottom, 6)
-                lightStrip(d)
+                lightStrip(d, in: zone)
             } else if let d = frame.day {
                 Spacer(minLength: 0)
-                lightStrip(d)
+                lightStrip(d, in: zone)
             } else {
                 Spacer(minLength: 0)
                 Text("—").font(.title).foregroundStyle(st.ink)

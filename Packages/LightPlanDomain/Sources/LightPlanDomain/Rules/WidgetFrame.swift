@@ -52,6 +52,9 @@ public struct WidgetFrame: Equatable, Sendable {
         public var zone: TimeZone
         /// Сколько суток от сегодняшнего дня в этом месте до дня начала.
         public var dayOffset: Int
+        /// Свет того дня, который съёмка рисует на плашке: у ещё не начавшейся — день её начала (завтрашняя — завтрашний свет),
+        /// у идущей — сегодня; по часам и месту самой съёмки, как и золотой час.
+        public var day: WidgetFeed.DayLight?
         /// Начало золотого часа, если съёмке нужен закат и этот час ещё не прошёл целиком.
         public var golden: Date?
         public var countdown: Countdown?
@@ -138,7 +141,8 @@ extension WidgetFeed {
             }
         }
         return WidgetFrame.ShootFrame(
-            shoot: s, zone: tz, dayOffset: startDay.days(since: nowDay), golden: golden, countdown: countdown,
+            shoot: s, zone: tz, dayOffset: startDay.days(since: nowDay), day: spot(of: s).light(on: live ? nowDay : startDay),
+            golden: golden, countdown: countdown,
             left: s.stops.sorted { $0.at < $1.at }.filter { $0.date > now })
     }
 

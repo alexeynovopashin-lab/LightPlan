@@ -101,6 +101,87 @@ struct WidgetLiveTests {
         #expect(noRent.current?.name == "Прогулка" && noRent.pointEnd == tsk(17), "без студии точка идёт до следующей")
     }
 
+    /// Ревью GPT к d52f3e3: студийный час кончается в 13:54, следующая точка «Обед» в 14:00. После 13:54 студийного отсчёта нет, и точка
+    /// «Пара в студии» кончалась «Обедом»: остаток прыгал с «1 мин» на «6 мин», внутреннее кольцо шло назад (0,9912 → 0,9500 → 0,9917).
+    /// Раз студия началась, точка кончается меньшим из «студийный час, следующая точка» весь свой отрезок.
+    @Test func theStudioPointStopsAtItsDeadlineAndNeverGoesBack() throws {
+        func plan(_ h: Int, _ m: Int) throws -> DayPlan { try #require(DayPlan(frame(at: tsk(h, m)))) }
+        let before = try plan(13, 53)
+        #expect(before.pointEnd == tsk(13, 54) && before.short(before.pointLeft!) == "1 мин")
+        var last = -1.0
+        for minute in 0..<120 {
+            let p = try #require(DayPlan(frame(at: tsk(12).addingTimeInterval(Double(minute) * 60))))
+            let v = try #require(p.pointProgress)
+            #expect(v >= last, "12:00 + \(minute) мин: кольцо точки пошло назад, \(last) → \(v)")
+            last = v
+        }
+        for (h, m) in [(13, 54), (13, 57), (13, 59)] {
+            let p = try plan(h, m)
+            #expect(p.current?.name == "Пара в студии" && p.pointEnd == tsk(13, 54), "\(h):\(m)")
+            #expect(p.pointLeft == 0 && p.short(p.pointLeft!) == "0 мин", "\(h):\(m): остаток точки \(String(describing: p.pointLeft))")
+            #expect(p.pointProgress == 1, "\(h):\(m): внутреннее кольцо полное, а не \(String(describing: p.pointProgress))")
+        }
+        // Внешнее кольцо (вся съёмка) студийного часа не знает: 13:59 — 119 минут из 12 ч 30 мин.
+        let late = try plan(13, 59)
+        #expect(abs(late.shootProgress - 119.0 / 750.0) < 1e-9 && late.shootLeft == 631 * 60)
+        #expect(late.hours(late.shootLeft) == "10 ч" && late.shootHourMarks.count == 12)
+        // «Обед» в 14:00: студия осталась позади (её час кончился до начала точки) — точка идёт до «Прогулки».
+        let lunch = try plan(14, 30)
+        #expect(lunch.current?.name == "Обед" && lunch.pointEnd == tsk(15) && lunch.short(lunch.pointLeft!) == "30 мин")
+        // Студия, которая ещё не началась, точку не сокращает; началась — сокращает до своего часа.
+        var late13 = wedding
+        late13.rents = [.init(from: ms(tsk(13)), to: ms(tsk(13, 30)), deadline: ms(tsk(13, 24)), studio: "Томсон")]
+        func end(_ h: Int, _ m: Int) throws -> Date? { try #require(DayPlan(frame(at: tsk(h, m), shoots: [late13]))).pointEnd }
+        #expect(try end(12, 30) == tsk(14), "студия впереди")
+        #expect(try end(13, 10) == tsk(13, 24), "студия идёт")
+        #expect(try end(13, 40) == tsk(13, 24), "студия кончилась, точка нет")
+        // Студия кончается позже следующей точки: пока она идёт, точка кончается следующей.
+        var long = wedding
+        long.rents = [.init(from: ms(tsk(12)), to: ms(tsk(15)), deadline: ms(tsk(14, 30)), studio: "Томсон")]
+        #expect(try #require(DayPlan(frame(at: tsk(13), shoots: [long]))).pointEnd == tsk(14))
+    }
+
+    /// Та же свадьба на сутки позже: воскресенье 25.10, точки в те же часы.
+    private var sundayWedding: WidgetFeed.Shoot {
+        var sunday = wedding
+        let day: Int64 = 86_400_000
+        sunday.start += day; sunday.end += day
+        sunday.rents = wedding.rents.map { .init(from: $0.from + day, to: $0.to + day, deadline: $0.deadline + day, studio: $0.studio) }
+        sunday.stops = wedding.stops.map { .init(at: $0.at + day, name: $0.name, place: $0.place, sign: $0.sign) }
+        return sunday
+    }
+
+    /// Шапка большого вида называет день, который рисует: накануне — «Завтра» и дата съёмки (слово то же, что на малом и среднем),
+    /// в тот же день — просто дата; идущая за полночь съёмка — сегодняшняя дата.
+    @Test func theLargeHeaderNamesTheDayOfTheShootItDraws() throws {
+        func line(_ f: WidgetFrame) throws -> String { try #require(DayPlan(f)).dateLine }
+        #expect(try line(frame(at: tsk(20), shoots: [sundayWedding])) == "Завтра · воскресенье, 25 октября")
+        #expect(try line(frame(at: tsk(5, day: 25), shoots: [sundayWedding])) == "Воскресенье, 25 октября")
+        #expect(try line(now) == "Суббота, 24 октября")
+        #expect(try line(frame(at: tsk(0, 20, day: 25))) == "Воскресенье, 25 октября", "идущая за полночь — сегодняшняя дата")
+        let eve = try #require(DayPlan(frame(at: tsk(20), shoots: [sundayWedding])))
+        #expect(eve.primary.day == tomsk.light(on: CivilDate(year: 2026, month: 10, day: 25)))
+    }
+
+    /// Ревью GPT к d52f3e3: накануне вечером (суббота 20:00, свадьба в воскресенье в 12:00) большой вид рисует воскресную съёмку, и свет
+    /// под ней должен быть воскресным. По пикселям: всё ниже шапки в субботу вечером — то же изображение, что воскресным утром (точки те же,
+    /// светила ещё не взошли), а у той же свадьбы в субботу — другое (проверка не пустая).
+    @Test func theLargeViewBeforeTheShootDrawsTheLightOfTheShootsDay() throws {
+        func below(_ f: WidgetFrame) throws -> Data {
+            let r = ImageRenderer(content: LargeView(frame: f).frame(width: 364, height: 382).background(Color.white).environment(\.colorScheme, .light))
+            r.scale = 2
+            let cg = try #require(r.uiImage?.cgImage)
+            let crop = try #require(cg.cropping(to: CGRect(x: 0, y: 120, width: cg.width, height: cg.height - 120)))
+            return try #require(UIImage(cgImage: crop).pngData())
+        }
+        let sunday = sundayWedding
+        let eve = frame(at: tsk(20), shoots: [sunday])
+        #expect(eve.kind == .upcoming && eve.primary?.dayOffset == 1, "накануне вечером на плашке воскресная съёмка")
+        let sundayLight = try below(frame(at: tsk(5, day: 25), shoots: [sunday]))
+        #expect(try below(eve) == sundayLight, "свет под воскресной съёмкой — воскресный")
+        #expect(try below(frame(at: tsk(5), shoots: [wedding])) != sundayLight, "субботний свет от воскресного отличается")
+    }
+
     @Test func aShootWithoutStopsHasNoRingForThePointButDoesNotCrash() throws {
         let bare = WidgetFeed.Shoot(id: "b", start: ms(tsk(12)), end: ms(tsk(15)), title: "Портрет", place: "Парк")
         let f = frame(at: tsk(13), shoots: [bare])
@@ -180,7 +261,8 @@ struct WidgetLiveTests {
     private func largeFrames() -> [(String, WidgetFrame)] {
         let polar = WidgetFeed(place: .init(name: "Tromsø", latitude: 69.6496, longitude: 18.956, zone: "Europe/Oslo"))
             .frame(at: Date(timeIntervalSince1970: 1_782_043_200))
-        return liveFrames() + [("до начала", frame(at: tsk(11))), ("без съёмок", frame(at: tsk(12, 52), shoots: [])),
+        return liveFrames() + [("до начала", frame(at: tsk(11))), ("накануне вечером", frame(at: tsk(20), shoots: [sundayWedding])),
+                               ("без съёмок", frame(at: tsk(12, 52), shoots: [])),
                                ("без съёмок, вечер", frame(at: tsk(20), shoots: [])), ("полярный день", polar)]
     }
 
@@ -435,6 +517,7 @@ struct WidgetLiveTests {
         try write(sheet([two("малый · идёт · 12:52", 170, 170, .small, live) + two("малый · 23:50", 170, 170, .small, tail),
                          two("малый · свет", 170, 170, .small, free) + two("малый · съёмка впереди", 170, 170, .small, soon)], scale: 2.2), dir, "small")
         try write(sheet([two("большой · день со съёмкой · 12:52", 364, 382, .large, live), two("большой · день без съёмок", 364, 382, .large, free)], scale: 1.8), dir, "large")
+        try write(sheet([two("большой · накануне вечером · суббота 20:00, свадьба в воскресенье", 364, 382, .large, frame(at: tsk(20), shoots: [sundayWedding]))], scale: 1.8), dir, "large_eve")
         let night = frame(at: tsk(18, 30))
         func lockCells(_ caption: String, _ f: WidgetFrame) -> [AnyView] {
             [true, false].flatMap { dark -> [AnyView] in

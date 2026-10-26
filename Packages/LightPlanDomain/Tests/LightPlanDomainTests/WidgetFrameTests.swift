@@ -93,6 +93,29 @@ struct WidgetFrameTests {
         #expect(far.url == WidgetFeed.dayURL(day))
     }
 
+    /// Ревью GPT к d52f3e3: суббота 20:00, свадьба в воскресенье в 12:00 — большой вид рисовал воскресную съёмку, а дату и свет брал
+    /// субботние. Свет, что несёт кадр съёмки, — свет того дня, который съёмка рисует: у ближайшей — день её начала, у идущей — сегодня.
+    @Test func theShootCarriesTheLightOfTheDayItIsDrawnOn() throws {
+        let sunday = CivilDate(year: 2026, month: 10, day: 25)
+        let f = feed([shoot(from: tsk(12, day: 25), to: tsk(20, day: 25), sunset: true)])
+        let eve = try #require(f.frame(at: tsk(20)).primary)
+        #expect(eve.dayOffset == 1 && eve.day?.day == sunday, "накануне: свет воскресенья")
+        #expect(eve.day == tomsk.light(on: sunday), "и ровно тот, что считает место")
+        #expect(eve.day != tomsk.light(on: day), "не субботний")
+        let early = try #require(f.frame(at: tsk(5, day: 25)).primary)
+        #expect(early.dayOffset == 0 && early.day == eve.day, "в то же воскресенье с утра — тот же свет")
+        let live = try #require(f.frame(at: tsk(13, day: 25)).primary)
+        #expect(live.day == eve.day, "идущая: свет сегодняшнего дня")
+        // Идущая съёмка за полночь: «сегодня» уже следующее число, свет — его.
+        let night = feed([shoot(from: tsk(22), to: tsk(2, day: 25))]).frame(at: tsk(0, 30, day: 25))
+        #expect(night.primary?.dayOffset == -1 && night.primary?.day?.day == sunday)
+        // Съёмка в чужом поясе: свет её места и её дня, а не места «Света».
+        let msk = WidgetFeed.Spot(name: "", latitude: 55.75, longitude: 37.62, zone: "fixed:10800")
+        let far = try #require(feed([shoot(from: utc(2026, 10, 24, 22), to: utc(2026, 10, 25, 1), spot: msk)])
+            .frame(at: utc(2026, 10, 24, 17)).primary)
+        #expect(far.day == msk.light(on: sunday), "25.10 по Москве, не 24.10 по Томску")
+    }
+
     @Test func aShootInAnotherZoneIsCountedByItsOwnClocks() throws {
         // Москва +3: съёмка 25.10 в 01:00 по Москве — это 24.10 22:00 UTC+0… в Томске уже 05:00 25-го.
         let msk = WidgetFeed.Spot(name: "", latitude: 55.75, longitude: 37.62, zone: "fixed:10800")
