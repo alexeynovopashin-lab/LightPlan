@@ -297,8 +297,15 @@ for every branch meant each install replaced the previous one. So:
   home-screen name `LP <branch>` (`wt/24a` → «LP 24a»; the name comes from the record, not from the id).
   An id made from the branch name spent one of the free team's 10 new App IDs per 7 days on every step
   (limit hit 03.10 and 12.10); four fixed ids are all it ever registers.
-- Slot choice: the branch's own slot → a free slot → the oldest slot whose branch is merged into `main`
-  (its app is replaced) → otherwise the script stops and names the four branches and the `uninstall` to run.
+- Slot choice (26.10): the branch's own slot → a free slot **already registered with Apple** → the oldest registered slot
+  whose branch is merged into `main` (its app is replaced) → a free never-registered slot → a merged slot whose
+  registration lapsed → otherwise the script stops and names the four branches and the `uninstall` to run. A first
+  build under an id costs two of the 10 new App IDs per 7 days (app + `.Widget`), so unregistered goes last (26.10: slot C
+  was picked, the limit was spent, A and B held merged branches). «Registered» = the record shows an install of that id
+  within 7 days of the first install of its current registration (free-team registration lives 7 days and builds do not
+  renew it — read off the record, not measured at Apple; `LP_PHONE_REG_DAYS`). The printed reason names the rule. If the
+  build still hits the limit, the message lists the registered slots of merged branches: `uninstall slotX`, install again.
+  Held by `make phoneslots` (shell only; `ARGS=<old phone.sh>` must fail).
   The record `slot → branch → sha → time` is `~/.light_plan_phone.tsv`.
 - Each copy has its own data: seed it there if the check needs data.
 - Branch merged or dropped → `uninstall` it (commands below); the slot frees up.
