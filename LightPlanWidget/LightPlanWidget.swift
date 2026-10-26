@@ -76,9 +76,11 @@ struct DayWidgetView: View {
         WidgetRoot(frame: entry.frame, shape: shape, alpha: entry.alpha)
             .widgetURL(entry.frame.url)
             // Подложка нужна «Домой»; на экране блокировки система красит содержимое сама, своей плашки там не бывает.
+            // Малый и средний, пока съёмка идёт, — палитра Braun (30б.2в-4); прочие виды и состояния — прежняя.
             .containerBackground(for: .widget) {
                 switch shape {
                 case .circular, .rectangular, .inline: Color.clear
+                case .small, .medium where entry.frame.kind == .live: BraunPalette.container
                 default: Color("WidgetBackground")
                 }
             }

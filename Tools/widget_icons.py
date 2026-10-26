@@ -33,14 +33,24 @@ def build() -> str:
     if missing:
         sys.exit("нет знаков в библиотеке: " + ", ".join(missing))
     body = "\n".join(lines[n] for n in wanted)
+    # Знаки жанров — шапка среднего и малого вида (30б.2в-4): все, что есть в библиотеке, как лежат.
+    genres_text = text[text.index("static let genres"):text.index("static let wishes")]
+    genres = [m.group(0) for m in re.finditer(r'^        "([a-z0-9_]+)": .*$', genres_text, re.M)]
+    if not genres:
+        sys.exit("нет знаков жанров в библиотеке")
+    genre_body = "\n".join(genres)
     return (
         "// GENERATED — не править руками.\n"
         "// Собрано `Tools/widget_icons.py` из `Packages/LightPlanUI/Sources/LightPlanUI/Icons/IconLibrary.generated.swift`.\n"
         "// Пересобрать: `python3 Tools/widget_icons.py`. Строки знаков — те же, что в приложении (формат — там же).\n"
-        f"// Знаков: {len(wanted)} из {len(lines)} (все, что может назвать `PointSign`, и знаки света).\n\n"
+        f"// Знаков: {len(wanted)} из {len(lines)} (все, что может назвать `PointSign`, и знаки света); жанров: {len(genres)}.\n\n"
         "enum WidgetIconTable {\n"
         "    static let common: [String: String] = [\n"
         f"{body}\n"
+        "    ]\n"
+        "    /// Знаки жанров съёмки (`Icon(genre:)` приложения): знак в шапке рядом с именами клиентов.\n"
+        "    static let genres: [String: String] = [\n"
+        f"{genre_body}\n"
         "    ]\n"
         "}\n"
     )

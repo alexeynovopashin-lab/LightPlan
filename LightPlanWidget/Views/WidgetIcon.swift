@@ -12,9 +12,11 @@ struct WidgetIcon: View {
     let name: String?
     var size: CGFloat = 16
     var line: CGFloat = 1.7
+    /// `name` — код жанра (знак шапки среднего и малого вида, 30б.2в-4), а не знак точки; неизвестный код — камера, как `Icon(genre:)`.
+    var genre = false
 
     var body: some View {
-        let parts = WidgetIconArt.parts(name)
+        let parts = genre ? WidgetIconArt.parts(genre: name) : WidgetIconArt.parts(name)
         let k = size / 24
         ZStack {
             ForEach(parts.indices, id: \.self) { i in
@@ -51,6 +53,16 @@ enum WidgetIconArt {
         let key = name.flatMap { WidgetIconTable.common[$0] != nil ? $0 : nil } ?? "dot"
         if let hit = cache.withLock({ $0[key] }) { return hit }
         let decoded = decode(WidgetIconTable.common[key] ?? "")
+        cache.withLock { $0[key] = decoded }
+        return decoded
+    }
+
+    /// Знак жанра по коду (`WidgetIconTable.genres`); нет такого — камера точек.
+    static func parts(genre code: String?) -> [Part] {
+        guard let code, let text = WidgetIconTable.genres[code] else { return parts("camera") }
+        let key = "genre:" + code
+        if let hit = cache.withLock({ $0[key] }) { return hit }
+        let decoded = decode(text)
         cache.withLock { $0[key] = decoded }
         return decoded
     }

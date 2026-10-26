@@ -219,8 +219,11 @@ struct WidgetLiveTests {
         let f = frame(at: tsk(13), shoots: [bare])
         let plan = try #require(DayPlan(f))
         #expect(plan.current == nil && plan.pointLeft == nil && plan.pointProgress == nil && plan.pointQuarterMarks.isEmpty)
-        #expect(ideal(MediumLiveView(frame: f), width: 364, type: .large).height <= 170)
-        #expect(ideal(SmallLiveView(frame: f), width: 170, type: .large).height <= 170)
+        // Без точек круг пуст (нет текущей точки), барабан без центра: вид рисуется и не падает.
+        let L = BraunLayout(plan: plan, size: CGSize(width: 364, height: 170), medium: true)
+        #expect(L.rows.allSatisfy { $0.stop == nil } && L.names == "Портрет")
+        #expect(ImageRenderer(content: MediumLiveView(frame: f).frame(width: 364, height: 170)).uiImage != nil)
+        #expect(ImageRenderer(content: SmallLiveView(frame: f).frame(width: 170, height: 170)).uiImage != nil)
     }
 
     // MARK: Деления по периметру
@@ -258,36 +261,21 @@ struct WidgetLiveTests {
         [("студийный час", now), ("точка без студии", frame(at: tsk(15, 20))), ("последняя точка", frame(at: tsk(23, 50)))]
     }
 
-    @Test func mediumLiveFitsInThreeTextSizes() {
-        var report: [String] = []
-        for (w, h) in [(338.0, 158.0), (364.0, 170.0)] {
+    /// Средний и малый вид живого дня стоят на заданных pt (демка 26.10) и не зависят от размера текста: их раскладку и то, что в плашку всё
+    /// помещается, держит `WidgetBraunViewTests`; здесь остаётся только то, что виды не падают ни в одном состоянии.
+    @Test func theLiveViewsDrawInEveryState() throws {
+        for side in [(364.0, 170.0), (338.0, 158.0)] {
             for (name, f) in liveFrames() {
-                for (tn, t) in Self.types {
-                    for alpha in [false, true] {
-                        let size = ideal(MediumLiveView(frame: f, alpha: alpha), width: w, type: t)
-                        report.append(String(format: "средний %.0f «%@» %@ α=%d: высота %.1f из %.0f", w, name, tn, alpha ? 1 : 0, size.height, h))
-                        #expect(size.height <= h, Comment(rawValue: report.last!))
-                    }
-                }
+                let r = ImageRenderer(content: MediumLiveView(frame: f, alpha: true).frame(width: side.0, height: side.1))
+                #expect(r.uiImage != nil, "средний \(side.0) «\(name)» не отрисован")
             }
         }
-        print(report.joined(separator: "\n"))
-    }
-
-    @Test func smallLiveFitsInThreeTextSizes() {
-        var report: [String] = []
         for side in [158.0, 170.0] {
             for (name, f) in liveFrames() {
-                for (tn, t) in Self.types {
-                    for alpha in [false, true] {
-                        let size = ideal(SmallLiveView(frame: f, alpha: alpha), width: side, type: t)
-                        report.append(String(format: "малый %.0f «%@» %@ α=%d: высота %.1f из %.0f", side, name, tn, alpha ? 1 : 0, size.height, side))
-                        #expect(size.height <= side, Comment(rawValue: report.last!))
-                    }
-                }
+                let r = ImageRenderer(content: SmallLiveView(frame: f, alpha: true).frame(width: side, height: side))
+                #expect(r.uiImage != nil, "малый \(side) «\(name)» не отрисован")
             }
         }
-        print(report.joined(separator: "\n"))
     }
 
     private func largeFrames() -> [(String, WidgetFrame)] {
@@ -409,6 +397,14 @@ struct WidgetLiveTests {
             checked += 1
         }
         #expect(checked >= 100)
+        // Знаки жанров (шапка среднего и малого вида, 30б.2в-4) — тоже строки приложения, пути совпадают.
+        for (name, text) in WidgetIconTable.genres {
+            #expect(IconLibrary.genres[name] == text, "знак жанра \(name) в таблице расширения не тот, что в приложении")
+            let mine = WidgetIconArt.decode(text), theirs = IconArt.decode(text).parts
+            #expect(mine.count == theirs.count, "частей у жанра \(name)")
+            for (a, b) in zip(mine, theirs) { #expect(a.path == b.path && a.width == b.width && a.butt == b.butt, "путь знака жанра \(name)") }
+        }
+        #expect(Set(WidgetIconTable.genres.keys) == Set(IconLibrary.genres.keys), "в таблице расширения все жанры приложения")
     }
 
     /// Какой знак ни назвало бы приложение (`PointSign` по любому правилу), в таблице расширения он есть — иначе точка получила бы кружок.
@@ -536,18 +532,14 @@ struct WidgetLiveTests {
     @Test func writesTheBuiltSheetsWhenAsked() throws {
         let dir = ProcessInfo.processInfo.environment["LP_BUILT_DIR"] ?? "/tmp/lp-built-out"
         guard FileManager.default.fileExists(atPath: dir) else { return }
-        let live = now, at13 = frame(at: tsk(13)), free = frame(at: tsk(12, 52), shoots: []), soon = frame(at: tsk(11))
-        let tail = frame(at: tsk(23, 50))
+        let live = now, free = frame(at: tsk(12, 52), shoots: []), soon = frame(at: tsk(11))
         func two(_ caption: String, _ w: CGFloat, _ h: CGFloat, _ shape: WidgetShape, _ f: WidgetFrame) -> [AnyView] {
             [true, false].map { dark in
                 AnyView(cell("\(caption) · \(dark ? "тёмная" : "светлая")", w, plate(WidgetRoot(frame: f, shape: shape, alpha: true), w, h, dark: dark)))
             }
         }
-        try write(sheet([two("средний · идёт · 12:52", 364, 170, .medium, live), two("средний · идёт · 13:00 (остаток точки 54 мин)", 364, 170, .medium, at13),
-                         two("средний · последняя точка · 23:50", 364, 170, .medium, tail)], scale: 1.5), dir, "medium")
         try write(sheet([two("средний · свет (съёмок нет)", 364, 170, .medium, free), two("средний · съёмка впереди · 11:00", 364, 170, .medium, soon)], scale: 1.5), dir, "medium_no_ring")
-        try write(sheet([two("малый · идёт · 12:52", 170, 170, .small, live) + two("малый · 23:50", 170, 170, .small, tail),
-                         two("малый · свет", 170, 170, .small, free) + two("малый · съёмка впереди", 170, 170, .small, soon)], scale: 2.2), dir, "small")
+        try write(sheet([two("малый · свет", 170, 170, .small, free) + two("малый · съёмка впереди", 170, 170, .small, soon)], scale: 2.2), dir, "small_no_ring")
         try write(sheet([two("большой · день со съёмкой · 12:52", 364, 382, .large, live), two("большой · день без съёмок", 364, 382, .large, free)], scale: 1.8), dir, "large")
         try write(sheet([two("большой · накануне вечером · суббота 20:00, свадьба в воскресенье", 364, 382, .large, frame(at: tsk(20), shoots: [sundayWedding]))], scale: 1.8), dir, "large_eve")
         let night = frame(at: tsk(18, 30))

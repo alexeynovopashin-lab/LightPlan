@@ -1,7 +1,7 @@
 import SwiftUI
 import LightPlanDomain
 
-// 30б.2в — общие кирпичи живого дня (малый и средний с кольцом, большой, экран блокировки). Виды рисуются в настоящем SwiftUI
+// 30б.2в — общие кирпичи живого дня (большой, экран блокировки; малый и средний рисует `BraunWidget.swift`). Виды рисуются в настоящем SwiftUI
 // виджета: те же файлы собирает и набор UI-тестов (ссылка `WidgetViews`), поэтому снимки в тестах — это то, что видит расширение.
 
 /// День съёмки, разобранный для видов: точки по времени, текущая точка и до какого часа она идёт.
@@ -223,66 +223,6 @@ struct PerimeterWalker {
             left -= seg.length
         }
         return (CGPoint(x: 0, y: 0), CGVector(dx: 0, dy: 1))
-    }
-}
-
-/// Деления одного слоя: путь всех делений с нужной яркостью (`on` — пройденные, иначе остаток) и длиной (`major` — «круглые»).
-/// Это `Shape`, а не `Canvas`: путь виджет архивирует как есть, ему не нужно исполнять замыкание рисования.
-struct TicksShape: Shape {
-    let inset: CGFloat
-    let length: CGFloat
-    let corner: CGFloat
-    let spacing: CGFloat
-    let progress: Double
-    let majors: [Double]
-    let on: Bool
-    let major: Bool
-
-    func path(in bounds: CGRect) -> Path {
-        let rect = bounds.insetBy(dx: inset, dy: inset)
-        let walker = PerimeterWalker(rect: rect, radius: max(corner - inset, 3))
-        let n = max(Int((walker.length / spacing).rounded()), 12)
-        var path = Path()
-        for i in 0..<n {
-            let t = Double(i) / Double(n)
-            guard (t < progress) == on, majors.contains(where: { abs($0 - t) < 0.5 / Double(n) }) == major else { continue }
-            let (p, inward) = walker.sample(CGFloat(t) * walker.length)
-            let l = major ? length + 3 : length
-            path.move(to: p)
-            path.addLine(to: CGPoint(x: p.x + inward.dx * l, y: p.y + inward.dy * l))
-        }
-        return path
-    }
-}
-
-/// Один слой делений по периметру плашки (как у виджета «Часы» Apple): пройденная часть горит, остаток тусклый, на «круглых»
-/// отметках деление длиннее. Рисуется поверх всей плашки, в её полях — полезного места не занимает.
-struct PerimeterTicks: View {
-    /// Расстояние от края плашки до внешнего конца деления.
-    let inset: CGFloat
-    let length: CGFloat
-    /// Радиус скругления плашки (виджет iPhone ≈ 22 pt): деления идут по контуру с тем же центром скругления.
-    var corner: CGFloat = 22
-    let progress: Double
-    var majors: [Double] = []
-    let on: Color
-    let off: Color
-    var spacing: CGFloat = 7.5
-    var width: CGFloat = 1.6
-
-    private func layer(on isOn: Bool, major: Bool) -> some View {
-        TicksShape(inset: inset, length: length, corner: corner, spacing: spacing, progress: progress, majors: majors, on: isOn, major: major)
-            .stroke(isOn ? on : off, style: StrokeStyle(lineWidth: major ? width + 0.6 : width, lineCap: .round))
-    }
-
-    var body: some View {
-        ZStack {
-            layer(on: false, major: false)
-            layer(on: false, major: true)
-            layer(on: true, major: false)
-            layer(on: true, major: true)
-        }
-        .allowsHitTesting(false)
     }
 }
 

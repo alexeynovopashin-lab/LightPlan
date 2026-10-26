@@ -70,7 +70,7 @@ struct WidgetViewsTests {
     @Test func smallFitsEveryStateInThreeTextSizes() {
         var report: [String] = []
         for (w, h) in [(158.0, 158.0), (170.0, 170.0)] {
-            for (name, frame) in cases() {
+            for (name, frame) in cases() where frame.kind != .live {   // идущую съёмку рисуют виды на заданных pt (`WidgetBraunViewTests`)
                 for (tn, t) in Self.types {
                     for alpha in [false, true] {
                         let size = ideal(WidgetRoot(frame: frame, shape: .small, alpha: alpha), width: w, type: t)
@@ -87,7 +87,7 @@ struct WidgetViewsTests {
     @Test func mediumFitsEveryStateInThreeTextSizes() {
         var report: [String] = []
         for (w, h) in [(338.0, 158.0), (364.0, 170.0)] {
-            for (name, frame) in cases() {
+            for (name, frame) in cases() where frame.kind != .live {
                 for (tn, t) in Self.types {
                     let size = ideal(WidgetRoot(frame: frame, shape: .medium, alpha: true), width: w, type: t)
                     report.append(String(format: "средний %.0f «%@» %@: высота %.1f из %.0f", w, name, tn, size.height, h))
