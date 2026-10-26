@@ -14,8 +14,12 @@
 # четырёх постоянных идентификаторов — слоты Novopashin.LightPlan.slotA … slotD:
 #   main      → «Light Plan», Novopashin.LightPlan          (только из main, слот не занимает)
 #   wt/29-3g  → «LP 29-3g»,   один из слотов; имя — из записи «слот → ветка → sha → время»
-# Слот выбирается так: тот же, что у этой ветки → свободный → самый старый слот ветки,
-# уже слитой в main (его приложение заменится) → иначе стоп, называем, что снять.
+# Слот выбирается так: тот же, что у этой ветки → свободный и уже зарегистрированный у Apple → самый старый
+# слот ветки, уже слитой в main (зарегистрированный; его приложение заменится) → свободный, ещё не зарегистрированный
+# (его первая установка тратит два App ID: приложение и .Widget) → слот слитой ветки без регистрации → иначе стоп,
+# называем, что снять. «Зарегистрирован» = в записи есть установка этого идентификатора не старше 7 дней от
+# первой установки в текущей регистрации (регистрация бесплатной команды живёт 7 дней и не продлевается сборками;
+# из записи, у Apple не мерено; LP_PHONE_REG_DAYS меняет срок). Проверка: Tools/check_phone_slots.sh (make phoneslots).
 # Запись — `~/.light_plan_phone.tsv` (идентификатор, ветка, sha, время). Старые идентификаторы
 # `Novopashin.LightPlan.wt…` в пул не входят, но `uninstall wt26` и `list` с ними работают.
 # `--main` просит основное приложение явно; из ветки — отказ (код 2).
@@ -83,27 +87,73 @@ branch_closed() {
   return 1
 }
 
+# Регистрация идентификатора у Apple (бесплатная команда): живёт 7 дней с первой сборки и не продлевается — следующая
+# сборка после срока регистрирует идентификатор заново и снова тратит из лимита «10 новых App ID за 7 дней» (и приложение,
+# и .Widget). Срок считаем по записи: установки (не бронь и не «свободен») идут по времени; установка позже конца
+# текущей регистрации открывает новую. Из записи, у Apple не мерено; на 26.10 это объясняет, почему слоты C и D
+# (последняя установка 23.10 и 18.10) стали «новыми» при том, что A и B — действовали.
+REG_DAYS="${LP_PHONE_REG_DAYS:-7}"
+
+# «ГГГГ-ММ-ДД ЧЧ:ММ» → минуты от условной эры (только для разности; без date, одинаково на macOS и Linux).
+ts_min() {
+  local d="${1%% *}" hm="${1##* }" y m dd era yoe mp doy
+  IFS=- read -r y m dd <<<"$d"
+  y=$((10#$y)); m=$((10#$m)); dd=$((10#$dd))
+  [ "$m" -le 2 ] && y=$((y - 1))
+  era=$((y / 400)); yoe=$((y - era * 400)); mp=$(((m + 9) % 12))
+  doy=$(((153 * mp + 2) / 5 + dd - 1))
+  echo $(((era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy) * 1440 + 10#${hm%%:*} * 60 + 10#${hm##*:}))
+}
+now_min() { ts_min "${LP_PHONE_NOW:-$(date '+%Y-%m-%d %H:%M')}"; }
+
+# Идентификатор → сколько минут ещё действует регистрация (пусто — не зарегистрирован или срок вышел).
+reg_left() {
+  local bid="$1" t m start="" span=$((REG_DAYS * 1440)) left
+  while IFS= read -r t; do
+    m="$(ts_min "$t")"
+    if [ -z "$start" ] || [ $((m - start)) -ge "$span" ]; then start="$m"; fi
+  done < <(awk -F'\t' -v b="$bid" '$1==b && $2!="-" && $5!="reserved" {print $4}' "$RECORD" 2>/dev/null | sort -u)
+  [ -n "$start" ] || return 0
+  left=$((start + span - $(now_min)))
+  [ "$left" -gt 0 ] && echo "$left"
+  return 0
+}
+days_word() { echo "$(($1 / 1440)) сут. $((($1 % 1440) / 60)) ч"; }
+
 # Слот для ветки → в stdout «slotX<TAB>почему». Нет слота — отчёт в stderr, код 2.
+# Порядок: свой слот → свободный зарегистрированный → самый старый слот слитой ветки (зарегистрированный) →
+# свободный незарегистрированный → слот слитой ветки без регистрации. Новая регистрация стоит два App ID из десяти,
+# поэтому незарегистрированное идёт последним (инцидент 26.10: слот C, лимит исчерпан, A и B со слитыми ветками стояли).
 pick_slot() {
-  local branch="$1" s bid rec b sh t oldest="" oldest_t="" free=""
+  local branch="$1" s bid rec b sh t left
+  local free_reg="" free_reg_left="" free_new=""
+  local old_reg="" old_reg_t="" old_new="" old_new_t=""
   for s in "${SLOTS[@]}"; do
     bid="$MAIN_BID.$s"; rec="$(rec_last "$bid" all)"
     b="$(cut -f2 <<<"$rec")"
     [ -n "$rec" ] && [ "$b" = "$branch" ] && { printf '%s\tтот же слот, что у этой ветки\n' "$s"; return 0; }
   done
   for s in "${SLOTS[@]}"; do
-    bid="$MAIN_BID.$s"; rec="$(rec_last "$bid" all)"; b="$(cut -f2 <<<"$rec")"
-    if [ -z "$rec" ] || [ "$b" = "-" ]; then free="$s"; break; fi
-  done
-  [ -n "$free" ] && { printf '%s\tсвободный слот\n' "$free"; return 0; }
-  for s in "${SLOTS[@]}"; do
     bid="$MAIN_BID.$s"; rec="$(rec_last "$bid" all)"
     b="$(cut -f2 <<<"$rec")"; sh="$(cut -f3 <<<"$rec")"; t="$(cut -f4 <<<"$rec")"
-    if branch_closed "$b" "$sh"; then
-      if [ -z "$oldest" ] || [[ "$t" < "$oldest_t" ]]; then oldest="$s"; oldest_t="$t"; fi
+    left="$(reg_left "$bid")"
+    if [ -z "$rec" ] || [ "$b" = "-" ]; then
+      if [ -n "$left" ]; then [ -z "$free_reg" ] && { free_reg="$s"; free_reg_left="$left"; }
+      else [ -z "$free_new" ] && free_new="$s"; fi
+    elif branch_closed "$b" "$sh"; then
+      if [ -n "$left" ]; then
+        if [ -z "$old_reg" ] || [[ "$t" < "$old_reg_t" ]]; then old_reg="$s"; old_reg_t="$t"; fi
+      else
+        if [ -z "$old_new" ] || [[ "$t" < "$old_new_t" ]]; then old_new="$s"; old_new_t="$t"; fi
+      fi
     fi
   done
-  [ -n "$oldest" ] && { printf '%s\tсамый старый слот закрытой ветки (%s, слита в main)\n' "$oldest" "$(cut -f2 <<<"$(rec_last "$MAIN_BID.$oldest" all)")"; return 0; }
+  [ -n "$free_reg" ] && { printf '%s\tсвободный слот, уже зарегистрирован у Apple (ещё %s) — новых App ID не тратит\n' "$free_reg" "$(days_word "$free_reg_left")"; return 0; }
+  [ -n "$old_reg" ] && { printf '%s\tсамый старый слот закрытой ветки (%s, слита в main), зарегистрирован у Apple (ещё %s) — новых App ID не тратит\n' \
+    "$old_reg" "$(cut -f2 <<<"$(rec_last "$MAIN_BID.$old_reg" all)")" "$(days_word "$(reg_left "$MAIN_BID.$old_reg")")"; return 0; }
+  [ -n "$free_new" ] && { printf '%s\tсвободный слот, не зарегистрирован у Apple — первая сборка потратит два App ID (приложение и .Widget)\n' "$free_new"; return 0; }
+  [ -n "$old_new" ] && { printf '%s\tслот закрытой ветки (%s, слита в main), регистрация у Apple вышла — сборка потратит два App ID (приложение и .Widget)\n' \
+    "$old_new" "$(cut -f2 <<<"$(rec_last "$MAIN_BID.$old_new" all)")"; return 0; }
   {
     echo "phone.sh: все четыре слота заняты ветками, не слитыми в main. Снять одну (если она закрыта):"
     for s in "${SLOTS[@]}"; do
@@ -112,6 +162,19 @@ pick_slot() {
     done
   } >&2
   return 2
+}
+
+# Слоты слитых веток с действующей регистрацией (кроме $1) — что можно занять вместо незарегистрированного слота.
+# Печатает строки «  slotX — ветка, слита в main, ещё N → Tools/phone.sh uninstall slotX, потом install снова».
+merged_registered_slots() {
+  local skip="$1" s bid rec b sh left
+  for s in "${SLOTS[@]}"; do
+    bid="$MAIN_BID.$s"; [ "$bid" = "$skip" ] && continue
+    rec="$(rec_last "$bid" all)"; b="$(cut -f2 <<<"$rec")"; sh="$(cut -f3 <<<"$rec")"
+    [ -n "$rec" ] && [ "$b" != "-" ] && branch_closed "$b" "$sh" || continue
+    left="$(reg_left "$bid")"; [ -n "$left" ] || continue
+    echo "  $s — $b, слита в main, регистрация ещё $(days_word "$left")   →   Tools/phone.sh uninstall $s, затем install снова"
+  done
 }
 
 # Блокировка на выбор слота: две сессии не берут один слот. Своя — только если mkdir её создал; по тайм-ауту чужую
@@ -146,6 +209,9 @@ need_phone() {
   exit 3
 }
 
+# Подключение как библиотеки (Tools/check_phone_slots.sh): функции есть, команды не выполняются.
+[ -n "${LP_PHONE_LIB:-}" ] && return 0
+
 case "$cmd" in
   install)
     IFS='|' read -r slug name < <(branch_app "$branch")
@@ -178,14 +244,19 @@ case "$cmd" in
     fi
     dd="/tmp/cc-phone-${slug:-main}"
     log="/tmp/cc-phone-${slug:-main}.log"
-    echo "сборка «$name» ($bid) из $branch @ $sha$dirty…"
+    echo "сборка «$name» ($bid${slot:+, слот ${slot#slot} — $why}) из $branch @ $sha$dirty…"
     ( cd "$root" && xcodebuild -project LightPlan.xcodeproj -scheme LightPlan-iOS -configuration Debug \
         -destination "platform=iOS,id=$DEVICE_ID" -derivedDataPath "$dd" -allowProvisioningUpdates \
         LP_APP_ID="$bid" LP_APP_NAME="$name" build ) > "$log" 2>&1
     code=$?
     grep -nE 'error:|BUILD (SUCCEEDED|FAILED)' "$log" | head -10
     if [ $code -ne 0 ] && grep -q "maximum App ID limit" "$log"; then
-      die "сборка не прошла: лимит Apple бесплатной команды (10 новых App ID за 7 дней). Слот $bid ещё не зарегистрирован — подождать, пока окно в 7 дней освободит места, либо поставить ветку под уже зарегистрированным: LP_BRANCH=<старая ветка> (приложение будет носить её имя). Журнал $log" 4
+      alt="$(merged_registered_slots "$bid")"
+      if [ -n "$alt" ]; then alt_msg=" Занять вместо него можно слот слитой ветки, уже зарегистрированный — его приложение заменится:
+$alt"
+      else alt_msg=" Зарегистрированных слотов слитых веток нет — ждать, пока окно в 7 дней освободит места."; fi
+      die "сборка не прошла: лимит Apple бесплатной команды (10 новых App ID за 7 дней). Идентификатор $bid у Apple сейчас не зарегистрирован.$alt_msg
+Журнал $log" 4
     fi
     [ $code -eq 0 ] || die "сборка не прошла (exit=$code), журнал $log" 4
     # Значок (24.10): «LP …» — с «α», основной — чистый; иначе не ставим (два «Light Plan» без различия на экране).
