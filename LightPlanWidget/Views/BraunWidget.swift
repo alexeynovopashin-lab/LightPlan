@@ -115,7 +115,7 @@ struct BraunLayout {
 
         // Окошко: ширина по «00:00:00» (13 semibold, цифры одной ширины), чтобы рамка не прыгала; поля 6, +2 запаса, как `labelW` демки.
         let window = medium ? BraunText.width(Self.windowText, size: 13, semibold: true, mono: true) + 2 + 12 : 0
-        let headW = w - 2 * pad - (medium ? window + 10 : 0)
+        let headW = w - 2 * pad - (medium ? window + 10 + BraunWindow.flagReserve : 0)
         let head = BraunFit.pick(medium ? BraunFit.headerMedium : BraunFit.headerSmall, avail: headW - BraunPlate.signAndGap) {
             BraunText.width(text, size: $0, semibold: true, tracking: -0.1)
         }
@@ -218,7 +218,9 @@ struct BraunContent: View {
             // Окошко свадьбы — слоями-соседями, живой таймер последним: на телефоне 26.10 после окошка не рисовалось ничего (диагностика).
             if L.medium {
                 windowPlate(L.windowWidth).offset(x: w - pad - L.windowWidth, y: pad)
-                BraunFlag().fill(pal.flag).frame(width: 6, height: 3.5).offset(x: w - pad - L.windowWidth / 2 - 3, y: pad - 4.5)
+                let windowX = w - pad - L.windowWidth
+                BraunFlag().fill(pal.flag).frame(width: BraunWindow.flagWidth, height: BraunWindow.flagHeight)
+                    .offset(x: BraunWindow.flagX(windowX: windowX), y: BraunWindow.flagY(windowY: pad))
             }
             if alpha {
                 // 6 от края: при отступе 1 скругление плашки (22) срезало значок на телефоне 26.10.
@@ -408,15 +410,13 @@ struct BraunDotLayer: Shape {
     }
 }
 
-/// Флажок Braun над окошком (красный в обеих темах: #ad0a15 / #c8102e): 6 × 3,5, вырез снизу (`clip-path` демки).
+/// Флажок Braun слева от окошка: красный шеврон (острие вправо, V-вырез слева), красный в обеих темах (#ad0a15 / #c8102e).
 struct BraunFlag: Shape {
     func path(in r: CGRect) -> Path {
         var p = Path()
-        p.move(to: CGPoint(x: r.minX, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
-        p.addLine(to: CGPoint(x: r.midX, y: r.minY + r.height * 0.55))
-        p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+        let pts = BraunWindow.flagPoints(width: Double(r.width), height: Double(r.height))
+        p.move(to: CGPoint(x: r.minX + pts[0].x, y: r.minY + pts[0].y))
+        for q in pts.dropFirst() { p.addLine(to: CGPoint(x: r.minX + q.x, y: r.minY + q.y)) }
         p.closeSubpath()
         return p
     }

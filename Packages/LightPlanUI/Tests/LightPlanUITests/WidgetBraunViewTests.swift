@@ -186,7 +186,9 @@ struct WidgetBraunViewTests {
             report.append("\(tag): D \(L.diameter), шапка \(L.header.size)/\(L.header.lines), горит \(BraunDial.lit(minutesLeft: Int(((plan.pointLeft ?? 0) / 60).rounded(.up))))")
             #expect(L.diameter == e.d, "\(tag): диаметр \(L.diameter) против демки \(e.d)")
             #expect(abs(L.cx - e.cx) < 0.01 && abs(L.cy - e.cy) < 0.01, "\(tag): центр часов (\(L.cx), \(L.cy)) против (\(e.cx), \(e.cy))")
-            #expect(L.header.size == e.head && L.headerHeight == e.headH, "\(tag): шапка \(L.header.size)/\(L.headerHeight) против \(e.head)/\(e.headH)")
+            // Флажок слева от окошка (Алексей 26.10) отнимает у имён ещё 10 pt против демки: «Анна-Мария и Константин» на 338 pt теперь 13, а не 15.
+            let head = (e.scenario == "longNames" && e.plate == .regular) ? 13.0 : e.head
+            #expect(L.header.size == head && L.headerHeight == e.headH, "\(tag): шапка \(L.header.size)/\(L.headerHeight) против \(head)/\(e.headH)")
             let minutes = Int(((plan.pointLeft ?? 0) / 60).rounded(.up))
             #expect(BraunDial.lit(minutesLeft: minutes) == e.lit, "\(tag): горит \(BraunDial.lit(minutesLeft: minutes)) против \(e.lit)")
             let words = plan.words
@@ -287,7 +289,11 @@ struct WidgetBraunViewTests {
             #expect(near(px.rgb(t24.0, t24.1), p.tickHour, 5), "\(tag): часовая риска впереди \(px.rgb(t24.0, t24.1))")
             let wx = 364 - 16 - L.windowWidth
             #expect(near(px.rgb(wx + 3, 25), p.window, 12), "\(tag): окошко \(px.rgb(wx + 3, 25))")
-            #expect(near(px.rgb(wx + L.windowWidth / 2 - 2, 13), p.flag, 8), "\(tag): флажок \(px.rgb(wx + L.windowWidth / 2 - 2, 13))")
+            let fx = BraunWindow.flagX(windowX: wx), fy = BraunWindow.flagY(windowY: 16)
+            #expect(near(px.rgb(fx + 3.5, fy + 3), p.flag, 8), "\(tag): флажок слева от окошка \(px.rgb(fx + 3.5, fy + 3))")
+            #expect(near(px.rgb(wx + L.windowWidth / 2, 13), bg, 2), "\(tag): над окошком флажка больше нет \(px.rgb(wx + L.windowWidth / 2, 13))")
+            #expect(near(px.rgb(fx + 0.8, fy + 6), bg, 4), "\(tag): слева у флажка V-вырез (подложка в вырезе) \(px.rgb(fx + 0.8, fy + 6))")
+            #expect(near(px.rgb(fx + 6.2, fy + 6), p.flag, 12), "\(tag): остриё флажка смотрит в окошко \(px.rgb(fx + 6.2, fy + 6))")
             // Текст центра барабана и соседа: самый далёкий от фона строки пиксель — цвет текста (стебли букв шире пикселя на 4-кратном масштабе).
             func ink(_ x0: Double, _ y0: Double, _ w: Double, _ h: Double, ground: (Double, Double, Double)) -> (Double, Double, Double) {
                 var best = ground, far = 0.0
@@ -423,6 +429,8 @@ struct WidgetBraunViewTests {
         let a = BraunLayout(plan: long, size: Plate.pro.size, medium: true), b = BraunLayout(plan: short, size: Plate.pro.size, medium: true)
         #expect(a.windowWidth == b.windowWidth && a.windowWidth > 40, "рамка не прыгает: \(a.windowWidth) и \(b.windowWidth)")
         #expect(abs(a.windowWidth - (BraunText.width("00:00:00", size: 13, semibold: true, mono: true) + 14)) < 0.001)
+        #expect(abs(a.headerWidth - (364 - 32 - a.windowWidth - 10 - 10)) < 0.001, "шапка уступает окошку, 10 до него и ещё 10 флажку с зазором: \(a.headerWidth)")
+        #expect(BraunLayout(plan: long, size: Plate.small.size, medium: false).headerWidth == 138, "в малом окошка и флажка нет")
         #expect(BraunWindow.text(remaining: 10 * 3600 + 42 * 60) == "10:42:00" && BraunWindow.text(remaining: 42 * 60) == "42:00")
     }
 
@@ -455,12 +463,15 @@ struct WidgetBraunViewTests {
             while y < 30 {
                 var x = left + 2
                 while x < left + L.windowWidth - 2 { inside = max(inside, dist(px.rgb(x, y), hex(0x0A0A0A))); x += 0.5 }
-                x = left - 8
-                while x < left - 2 { outside = max(outside, dist(px.rgb(x, y), hex(0x161616))); x += 0.5 }
+                // Справа от окошка (поле плашки) и в зазоре между окошком и остриём флажка (3 pt) таймер ничего не оставляет.
+                x = left + L.windowWidth + 2
+                while x < left + L.windowWidth + 8 { outside = max(outside, dist(px.rgb(x, y), hex(0x161616))); x += 0.5 }
+                x = left - 2.5
+                while x < left - 0.5 { outside = max(outside, dist(px.rgb(x, y), hex(0x161616))); x += 0.5 }
                 y += 0.5
             }
             #expect(inside > 200, "\(kind): в окошке нет цифр таймера")
-            #expect(outside <= 3, "\(kind): цифры таймера вылезли за левый край окна (\(outside))")
+            #expect(outside <= 3, "\(kind): цифры таймера вылезли за края окна (\(outside))")
         }
     }
 

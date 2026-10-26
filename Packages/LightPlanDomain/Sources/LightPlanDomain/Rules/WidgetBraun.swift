@@ -160,6 +160,22 @@ public enum BraunFit {
 /// поэтому формат выбирается так, чтобы он держался всю жизнь записи (запись — минута, `WidgetFeed.timeline`): запись, которая начинается,
 /// когда осталось больше часа, кончается не раньше, чем останется час, и «10:42:00» не превращается в «0:59:59» (ревью GPT к 89cc5c1).
 public enum BraunWindow {
+    /// Красный флажок Braun — шеврон слева от окошка, как на кварцевых Braun с датой на трёх часах: по центру окошка по высоте, остриём к окошку
+    /// (слова Алексея 26.10; числа — оркестратора). Размер 7 × 12, от острия до левого края окошка 3.
+    public static let flagWidth = 7.0, flagHeight = 12.0, flagGap = 3.0
+    /// Сколько ширины шапки занимают флажок и зазор до него (7 + 3).
+    public static var flagReserve: Double { flagWidth + flagGap }
+
+    /// Левый край флажка при окошке с левым краем `windowX`.
+    public static func flagX(windowX: Double) -> Double { windowX - flagGap - flagWidth }
+    /// Верх флажка при окошке высотой 18 с верхом `windowY`: по центру.
+    public static func flagY(windowY: Double, windowHeight: Double = 18) -> Double { windowY + (windowHeight - flagHeight) / 2 }
+
+    /// Шеврон в прямоугольнике `width × height`: (0,0) → (½w,0) → (w,½h) → (½w,h) → (0,h) → (½w,½h); слева V-вырез.
+    public static func flagPoints(width w: Double, height h: Double) -> [(x: Double, y: Double)] {
+        [(0, 0), (w / 2, 0), (w, h / 2), (w / 2, h), (0, h), (w / 2, h / 2)]
+    }
+
     /// С часами («10:42:00») — только пока осталось больше часа; ровно час и меньше — «60:00», «42:00».
     public static func showsHours(remaining: TimeInterval) -> Bool { remaining > 3600 }
 
