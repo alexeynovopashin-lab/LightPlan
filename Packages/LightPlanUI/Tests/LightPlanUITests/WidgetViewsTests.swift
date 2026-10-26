@@ -6,9 +6,10 @@ import LightPlanCore
 #if os(iOS)
 import UIKit
 
-/// Шаг 30б.2: виды виджета (`LightPlanWidget/Views/`, подключены к этому набору ссылкой `WidgetViews`) отрисованы по числам:
-/// содержимое помещается в плашку 158 × 158 (самый тесный iPhone 14) и 170 × 170 (17 Pro Max), средняя 338 × 158 / 364 × 170,
-/// за полями 16 pt, в трёх размерах шрифта (обычный, крупный, огромный — выше виджет не растёт, `dynamicTypeSize(...xxxLarge)`).
+/// Шаги 30б.2 и 30б.2в: виды виджета (`LightPlanWidget/Views/`, подключены к этому набору ссылкой `WidgetViews`) отрисованы по числам:
+/// плашка «Домой» целиком, как её собирает расширение (`WidgetRoot`), помещается в 158 × 158 (самый тесный iPhone 14) и 170 × 170
+/// (17 Pro Max), средняя 338 × 158 / 364 × 170, в трёх размерах шрифта (обычный, крупный, огромный). Состояния — все: свет, съёмка
+/// впереди, идёт (кольцо) — поля у видов без кольца ставит корень, у кольца они несут деления.
 @MainActor
 struct WidgetViewsTests {
 
@@ -72,10 +73,10 @@ struct WidgetViewsTests {
             for (name, frame) in cases() {
                 for (tn, t) in Self.types {
                     for alpha in [false, true] {
-                        let size = ideal(SmallView(frame: frame, alpha: alpha), width: w - 32, type: t)
-                        report.append(String(format: "малый %.0f «%@» %@ α=%d: высота %.1f из %.0f", w, name, tn, alpha ? 1 : 0, size.height, h - 32))
-                        let why = "малый \(w) «\(name)» \(tn): \(size.height) > \(h - 32)"
-                        #expect(size.height <= h - 32, Comment(rawValue: why))
+                        let size = ideal(WidgetRoot(frame: frame, shape: .small, alpha: alpha), width: w, type: t)
+                        report.append(String(format: "малый %.0f «%@» %@ α=%d: высота %.1f из %.0f", w, name, tn, alpha ? 1 : 0, size.height, h))
+                        let why = "малый \(w) «\(name)» \(tn): \(size.height) > \(h)"
+                        #expect(size.height <= h, Comment(rawValue: why))
                     }
                 }
             }
@@ -88,10 +89,10 @@ struct WidgetViewsTests {
         for (w, h) in [(338.0, 158.0), (364.0, 170.0)] {
             for (name, frame) in cases() {
                 for (tn, t) in Self.types {
-                    let size = ideal(MediumView(frame: frame, alpha: true), width: w - 32, type: t)
-                    report.append(String(format: "средний %.0f «%@» %@: высота %.1f из %.0f", w, name, tn, size.height, h - 32))
-                    let why = "средний \(w) «\(name)» \(tn): \(size.height) > \(h - 32)"
-                    #expect(size.height <= h - 32, Comment(rawValue: why))
+                    let size = ideal(WidgetRoot(frame: frame, shape: .medium, alpha: true), width: w, type: t)
+                    report.append(String(format: "средний %.0f «%@» %@: высота %.1f из %.0f", w, name, tn, size.height, h))
+                    let why = "средний \(w) «\(name)» \(tn): \(size.height) > \(h)"
+                    #expect(size.height <= h, Comment(rawValue: why))
                 }
             }
         }
@@ -123,8 +124,8 @@ struct WidgetViewsTests {
         for (i, (name, frame)) in cases().enumerated() {
             for scheme in [ColorScheme.dark, .light] {
                 let bg = scheme == .dark ? Color(red: 0.059, green: 0.055, blue: 0.047) : Color(red: 0.98, green: 0.973, blue: 0.953)
-                let small = SmallView(frame: frame, alpha: i % 2 == 1).padding(16).frame(width: 170, height: 170).background(bg).environment(\.colorScheme, scheme)
-                let medium = MediumView(frame: frame, alpha: i % 2 == 1).padding(16).frame(width: 364, height: 170).background(bg).environment(\.colorScheme, scheme)
+                let small = WidgetRoot(frame: frame, shape: .small, alpha: i % 2 == 1).frame(width: 170, height: 170).background(bg).environment(\.colorScheme, scheme)
+                let medium = WidgetRoot(frame: frame, shape: .medium, alpha: i % 2 == 1).frame(width: 364, height: 170).background(bg).environment(\.colorScheme, scheme)
                 for (tag, v) in [("s", AnyView(small)), ("m", AnyView(medium))] {
                     let r = ImageRenderer(content: v)
                     r.scale = 2

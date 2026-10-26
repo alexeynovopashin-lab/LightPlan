@@ -58,6 +58,8 @@ extension AppModel {
                 return place.place.zone.utcOffsetHours(on: day)
             },
             title: { words.typeName($0) },
+            names: { words.clientName($0) },
+            sign: { PointSign.name(for: $0, place: $1, studio: $2) },
             words: Self.widgetWords(lexicon),
             lang: language,
             clock12: ClockText(language: language, preference: Self.clock(settings.clock)).is12)
@@ -70,6 +72,9 @@ extension AppModel {
             .sunrise: "tele.sunrise", .sunset: "tele.sunset", .golden: "tele.golden", .next: "pane.next",
             .today: "pick.dayToday", .tomorrow: "pick.dayTomorrow", .polarDay: "next.polarDay",
             .polarNight: "next.polarNight", .studio: "studio.sayT", .shoot: "day.actShoot", .route: "card.route",
+            .untilPoint: "widget.untilPoint", .untilShoot: "widget.untilShoot", .untilWedding: "widget.untilWedding",
+            .wedding: "widget.wedding", .point: "widget.point", .points: "widget.points", .hourShort: "widget.hourShort",
+            .minShort: "widget.minShort", .dayLength: "widget.dayLength", .more: "widget.more", .until: "widget.until",
         ]
         return WidgetFeed.Words(keys.mapValues { lex.t($0) })
     }

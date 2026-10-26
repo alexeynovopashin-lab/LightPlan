@@ -1,31 +1,8 @@
 import SwiftUI
 import LightPlanDomain
-#if canImport(LightPlanUI) && !LP_WIDGET_EXTENSION
-import LightPlanUI
-#endif
 
-// 30б.2в-1 — общие кирпичи новых видов (живой день: средний, малый, большой, экран блокировки). Виды рисуются в
-// настоящем SwiftUI виджета, чтобы вторая часть достроила выбранный вариант, а не рисовала заново; в ленту и в
-// `supportedFamilies` они пока не подключены (слово Алексея: «Сначала картинки»).
-
-/// Вариант оформления отсчётов на выбор Алексею: «простой» (отсчёты текстом) или «кольцо» (два слоя делений по периметру).
-enum WidgetLook: Equatable { case plain, ring }
-
-/// Слова новых видов. Русские, как запасные слова ленты: во второй части они переедут в `WidgetFeed.Words` (с языком приложения);
-/// «до конца свадьбы» — родительный падеж жанра, для других жанров вторая часть берёт «съёмки», если словарь приложения не знает формы.
-enum WidgetSketchWords {
-    static let toPoint = "до конца точки"
-    /// «до конца свадьбы» / «свадьба» — по жанру съёмки; жанру без своей формы — нейтральное «съёмки» / «съёмка»
-    /// (ревью GPT к 6b15258: подпись «свадьба» не должна появиться у портрета). Во второй части формы берутся из словаря приложения.
-    static func toShoot(_ title: String) -> String { isWedding(title) ? "до конца свадьбы" : "до конца съёмки" }
-    static func shoot(_ title: String) -> String { isWedding(title) ? "свадьба" : "съёмка" }
-    private static func isWedding(_ title: String) -> Bool { title.lowercased().hasPrefix("свадьб") }
-    static let point = "точка"
-    static let route = "Дальше"
-    static let points = "точек"
-    static let hourShort = "ч"
-    static let minShort = "мин"
-}
+// 30б.2в — общие кирпичи живого дня (малый и средний с кольцом, большой, экран блокировки). Виды рисуются в настоящем SwiftUI
+// виджета: те же файлы собирает и набор UI-тестов (ссылка `WidgetViews`), поэтому снимки в тестах — это то, что видит расширение.
 
 /// День съёмки, разобранный для видов: точки по времени, текущая точка и до какого часа она идёт.
 /// Текущая — последняя точка, начавшаяся не позже «сейчас»; кончается она студийным часом (пока он идёт), иначе началом
@@ -82,9 +59,10 @@ struct DayPlan {
     func range(_ from: Date, _ to: Date) -> String { "\(frame.clock(from, in: zone))–\(frame.clock(to, in: zone))" }
     var shootRange: String { range(shoot.startDate, shoot.endDate) }
 
-    /// Заголовок съёмки на домашнем экране: жанр и имена («Свадьба Анна+Игорь»); имён нет — один жанр.
-    func title(names: String?) -> String {
-        guard let n = names, !n.isEmpty else { return shoot.title }
+    /// Заголовок съёмки на домашнем экране: жанр и имена («Свадьба Анна+Игорь»); имён нет — один жанр. Имена берут только виды
+    /// «Домой» (малый, средний, большой); виды экрана блокировки это свойство не читают.
+    var title: String {
+        guard let n = shoot.names, !n.isEmpty else { return shoot.title }
         return "\(shoot.title) \(n)"
     }
 
@@ -96,57 +74,44 @@ struct DayPlan {
 
     // MARK: Слова об остатке
 
+    var words: WidgetFeed.Words { frame.words }
+    private var text: RemainText { RemainText(words: words) }
+    private var isWedding: Bool { shoot.genre == "wedding" }
+    /// «до конца свадьбы» — у свадьбы, у остальных жанров «до конца съёмки» (родительных падежей жанров в словаре нет).
+    var untilShoot: String { words[isWedding ? .untilWedding : .untilShoot] }
+    /// «свадьба» / «съёмка».
+    var shootNoun: String { words[isWedding ? .wedding : .shoot] }
+
+    func short(_ s: TimeInterval) -> String { text.short(s) }
+    func long(_ s: TimeInterval) -> String { text.long(s) }
+    func hours(_ s: TimeInterval) -> String { text.hours(s) }
+}
+
+/// Остаток времени словами на языке приложения (единицы «ч» и «мин» — из слов файла).
+struct RemainText {
+    let words: WidgetFeed.Words
+    private var h: String { words[.hourShort] }
+    private var m: String { words[.minShort] }
+
     /// «62 мин» до ста минут, дальше «2 ч 05 мин» (минуты вверх, чтобы 0 не показывался, пока идёт точка).
-    static func short(_ s: TimeInterval) -> String {
-        let m = Int((s / 60).rounded(.up))
-        if m < 100 { return "\(m) \(WidgetSketchWords.minShort)" }
-        return String(format: "%d %@ %02d %@", m / 60, WidgetSketchWords.hourShort, m % 60, WidgetSketchWords.minShort)
+    func short(_ s: TimeInterval) -> String {
+        let n = Int((s / 60).rounded(.up))
+        if n < 100 { return "\(n) \(m)" }
+        return String(format: "%d %@ %02d %@", n / 60, h, n % 60, m)
     }
 
     /// «11 ч 38 мин», в последний час — «54 мин».
-    static func long(_ s: TimeInterval) -> String {
-        let m = Int((s / 60).rounded(.up))
-        if m < 60 { return "\(m) \(WidgetSketchWords.minShort)" }
-        if m % 60 == 0 { return "\(m / 60) \(WidgetSketchWords.hourShort)" }
-        return String(format: "%d %@ %02d %@", m / 60, WidgetSketchWords.hourShort, m % 60, WidgetSketchWords.minShort)
+    func long(_ s: TimeInterval) -> String {
+        let n = Int((s / 60).rounded(.up))
+        if n < 60 { return "\(n) \(m)" }
+        if n % 60 == 0 { return "\(n / 60) \(h)" }
+        return String(format: "%d %@ %02d %@", n / 60, h, n % 60, m)
     }
 
     /// Внешний слой кольца: целые часы вниз («12 ч, 11 ч, 10 ч…», слово Алексея 25.10), в последний час — минуты.
-    static func hours(_ s: TimeInterval) -> String {
-        if s < 3600 { return "\(Int((s / 60).rounded(.up))) \(WidgetSketchWords.minShort)" }
-        return "\(Int(s / 3600)) \(WidgetSketchWords.hourShort)"
-    }
-}
-
-// MARK: - Знак точки
-
-/// Знак точки из библиотеки приложения (`Icon(point:)`, `ICONS.forPoint`). Расширение виджета `LightPlanUI` не подключает,
-/// поэтому там стоит кружок-заглушка: во второй части нужные пути знаков переезжают в расширение (генератор, см. DECISIONS).
-struct WidgetSign: View {
-    let title: String
-    var place: String = ""
-    var studio = false
-    var size: CGFloat = 16
-
-    var body: some View {
-        #if canImport(LightPlanUI) && !LP_WIDGET_EXTENSION
-        Icon(point: title, place: place, studio: studio, size: size, line: 1.7)
-        #else
-        Circle().strokeBorder(lineWidth: 1.4).frame(width: size * 0.5, height: size * 0.5).frame(width: size, height: size)
-        #endif
-    }
-}
-
-/// Знак жанра съёмки («Свадьба» → кольца) из той же библиотеки.
-struct WidgetGenreSign: View {
-    let code: String
-    var size: CGFloat = 16
-    var body: some View {
-        #if canImport(LightPlanUI) && !LP_WIDGET_EXTENSION
-        Icon(genre: code, size: size, line: 1.7)
-        #else
-        Circle().strokeBorder(lineWidth: 1.4).frame(width: size * 0.5, height: size * 0.5).frame(width: size, height: size)
-        #endif
+    func hours(_ s: TimeInterval) -> String {
+        if s < 3600 { return "\(Int((s / 60).rounded(.up))) \(m)" }
+        return "\(Int(s / 3600)) \(h)"
     }
 }
 
@@ -234,6 +199,35 @@ struct PerimeterWalker {
     }
 }
 
+/// Деления одного слоя: путь всех делений с нужной яркостью (`on` — пройденные, иначе остаток) и длиной (`major` — «круглые»).
+/// Это `Shape`, а не `Canvas`: путь виджет архивирует как есть, ему не нужно исполнять замыкание рисования.
+struct TicksShape: Shape {
+    let inset: CGFloat
+    let length: CGFloat
+    let corner: CGFloat
+    let spacing: CGFloat
+    let progress: Double
+    let majors: [Double]
+    let on: Bool
+    let major: Bool
+
+    func path(in bounds: CGRect) -> Path {
+        let rect = bounds.insetBy(dx: inset, dy: inset)
+        let walker = PerimeterWalker(rect: rect, radius: max(corner - inset, 3))
+        let n = max(Int((walker.length / spacing).rounded()), 12)
+        var path = Path()
+        for i in 0..<n {
+            let t = Double(i) / Double(n)
+            guard (t < progress) == on, majors.contains(where: { abs($0 - t) < 0.5 / Double(n) }) == major else { continue }
+            let (p, inward) = walker.sample(CGFloat(t) * walker.length)
+            let l = major ? length + 3 : length
+            path.move(to: p)
+            path.addLine(to: CGPoint(x: p.x + inward.dx * l, y: p.y + inward.dy * l))
+        }
+        return path
+    }
+}
+
 /// Один слой делений по периметру плашки (как у виджета «Часы» Apple): пройденная часть горит, остаток тусклый, на «круглых»
 /// отметках деление длиннее. Рисуется поверх всей плашки, в её полях — полезного места не занимает.
 struct PerimeterTicks: View {
@@ -249,21 +243,17 @@ struct PerimeterTicks: View {
     var spacing: CGFloat = 7.5
     var width: CGFloat = 1.6
 
+    private func layer(on isOn: Bool, major: Bool) -> some View {
+        TicksShape(inset: inset, length: length, corner: corner, spacing: spacing, progress: progress, majors: majors, on: isOn, major: major)
+            .stroke(isOn ? on : off, style: StrokeStyle(lineWidth: major ? width + 0.6 : width, lineCap: .round))
+    }
+
     var body: some View {
-        Canvas { ctx, size in
-            let rect = CGRect(origin: .zero, size: size).insetBy(dx: inset, dy: inset)
-            let walker = PerimeterWalker(rect: rect, radius: max(corner - inset, 3))
-            let n = max(Int((walker.length / spacing).rounded()), 12)
-            for i in 0..<n {
-                let t = Double(i) / Double(n)
-                let major = majors.contains { abs($0 - t) < 0.5 / Double(n) }
-                let (p, inward) = walker.sample(CGFloat(t) * walker.length)
-                let l = major ? length + 3 : length
-                var path = Path()
-                path.move(to: p)
-                path.addLine(to: CGPoint(x: p.x + inward.dx * l, y: p.y + inward.dy * l))
-                ctx.stroke(path, with: .color(t < progress ? on : off), style: StrokeStyle(lineWidth: major ? width + 0.6 : width, lineCap: .round))
-            }
+        ZStack {
+            layer(on: false, major: false)
+            layer(on: false, major: true)
+            layer(on: true, major: false)
+            layer(on: true, major: true)
         }
         .allowsHitTesting(false)
     }
@@ -283,7 +273,7 @@ struct StopLine: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 6) {
-            WidgetSign(title: stop.name, place: stop.place, size: signSize)
+            WidgetIcon(name: stop.sign, size: signSize)
                 .foregroundStyle(isCurrent ? st.amber : (past ? st.ink.opacity(0.35) : st.ink2))
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {

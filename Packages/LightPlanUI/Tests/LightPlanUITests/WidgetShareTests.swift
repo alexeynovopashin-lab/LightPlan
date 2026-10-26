@@ -72,13 +72,15 @@ struct WidgetShareTests {
     /// 24.10.2026 06:00 UTC — в месте приложения («ru» → столица) уже день 24-го.
     private let morning = Date(timeIntervalSince1970: 1_792_821_600)
 
-    @Test func shootsGoToTheWidgetByGenreNotByClient() throws {
+    @Test func shootsGoToTheWidgetByGenreAndFirstNamesButNoPhones() throws {
         let url = file()
         defer { try? FileManager.default.removeItem(at: url) }
         let app = model(now: morning)
         app.widgetShare = WidgetShare(url: url)
         var shoot = Session(id: "w1", day: app.today, start: 15 * 60, end: 19 * 60, genre: .wedding)
         shoot.contact = "Иванова Мария +7 913 000-00-00"
+        shoot.persons = [Person(name: "Анна Иванова", phone: "+7 913 111-22-33"), Person(name: "Игорь Петров", phone: "")]
+        shoot.route = [RoutePoint(start: 15 * 60, name: "Церемония", placeText: "ЗАГС №1")]
         shoot.wishes = [.sunset]
         app.snapshot.sessions = [shoot]
         app.publishWidget()
@@ -87,7 +89,13 @@ struct WidgetShareTests {
         let w = try #require(feed.shoots.first)
         #expect(feed.shoots.count == 1 && w.id == "w1" && w.wantsSunset)
         #expect(w.title == app.lexicon.t("genre.wedding"), "название жанра на языке приложения: \(w.title)")
-        #expect(!(try Data(contentsOf: url)).contains(Data("Иванова".utf8)), "имя клиента в файл не идёт")
+        // Имена пары — как в шапке карточки, по именам без фамилий (их показывают только виды «Домой»); ни фамилий, ни телефона в файле нет.
+        #expect(w.names == ["Анна", "Игорь"].joined(separator: app.lexicon.t("card.and")), "имена: \(String(describing: w.names))")
+        #expect(w.genre == "wedding")
+        let raw = try Data(contentsOf: url)
+        #expect(!raw.contains(Data("Иванова".utf8)) && !raw.contains(Data("Петров".utf8)) && !raw.contains(Data("913".utf8)), "ни фамилий, ни телефона в файл не идёт")
+        #expect(w.stops.first?.sign == PointSign.name(for: "Церемония", place: "ЗАГС №1"), "знак точки считает приложение: \(String(describing: w.stops.first?.sign))")
+        #expect(feed.words[.untilWedding] == app.lexicon.t("widget.untilWedding") && feed.words[.minShort] == app.lexicon.t("widget.minShort"))
         #expect(feed.words[.sunset] == app.lexicon.t("tele.sunset") && feed.words[.next] == app.lexicon.t("pane.next"))
         #expect(feed.lang == "ru" && !feed.clock12)
     }

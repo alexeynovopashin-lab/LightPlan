@@ -5,13 +5,24 @@ import LightPlanDomain
 
 // Виджет дня (30б.2, `docs/30b_widget_cut.md`). Свет расширение считает само (`SolarDay`, `.iau`), поэтому лента идёт и при
 // закрытом приложении; съёмки, место и слова берёт из `widget.json` общей папки (пишет приложение, `WidgetShare`).
-// Что показать в данный момент — решает `WidgetFeed.frame(at:)` (Domain, под тестами); здесь только лента и вид.
+// Что показать в данный момент — решает `WidgetFeed.frame(at:)` (Domain, под тестами), какой вид на какой форме — `WidgetRoot`;
+// здесь только лента и сборка. Лента зависит от формы (`WidgetFeed.timeline(shape:)`): кольцу нужна запись на каждую минуту.
 
 struct DayEntry: TimelineEntry {
     let date: Date
     let frame: WidgetFrame
     /// Слот или ветка носит латунную «α», основной «Light Plan» — чистый (`WidgetFeed.isMainApp`).
     let alpha: Bool
+    static func shape(_ family: WidgetFamily) -> WidgetShape {
+        switch family {
+        case .systemMedium: return .medium
+        case .systemLarge: return .large
+        case .accessoryCircular: return .circular
+        case .accessoryRectangular: return .rectangular
+        case .accessoryInline: return .inline
+        default: return .small
+        }
+    }
 }
 
 struct DayProvider: TimelineProvider {
@@ -41,11 +52,13 @@ struct DayProvider: TimelineProvider {
         completion(Self.entry(Self.feed(), at: Date()))
     }
 
-    /// Сейчас и каждый момент, когда плашка меняется сама (`WidgetFeed.changes`) — на 36 часов вперёд; новая лента — через 36 часов или на последнем моменте, если день так плотен, что лента обрезана.
+    /// Сейчас и каждый момент, когда плашка меняется сама (`WidgetFeed.timeline`) — на 36 часов вперёд, а кольцу и кругу блокировки ещё
+    /// и каждую минуту; новая лента — через 36 часов или на последнем моменте, если лента обрезана (`WidgetFeed.entryLimit` записей).
     func getTimeline(in context: Context, completion: @escaping (Timeline<DayEntry>) -> Void) {
         let now = Date()
         let feed = Self.feed()
-        let line = feed?.timeline(from: now) ?? .init(dates: [now], reload: now.addingTimeInterval(36 * 3600))
+        let line = feed?.timeline(from: now, shape: DayEntry.shape(context.family))
+            ?? .init(dates: [now], reload: now.addingTimeInterval(36 * 3600))
         completion(Timeline(entries: line.dates.map { Self.entry(feed, at: $0) }, policy: .after(line.reload)))
     }
 }
@@ -59,14 +72,16 @@ struct DayWidgetView: View {
     let entry: DayEntry
 
     var body: some View {
-        switch family {
-        case .systemMedium:
-            MediumView(frame: entry.frame, alpha: entry.alpha).widgetURL(entry.frame.url)
-        case .accessoryInline:
-            LockInlineView(frame: entry.frame, alpha: entry.alpha).widgetURL(entry.frame.url)
-        default:
-            SmallView(frame: entry.frame, alpha: entry.alpha).widgetURL(entry.frame.url)
-        }
+        let shape = DayEntry.shape(family)
+        WidgetRoot(frame: entry.frame, shape: shape, alpha: entry.alpha)
+            .widgetURL(entry.frame.url)
+            // Подложка нужна «Домой»; на экране блокировки система красит содержимое сама, своей плашки там не бывает.
+            .containerBackground(for: .widget) {
+                switch shape {
+                case .circular, .rectangular, .inline: Color.clear
+                default: Color("WidgetBackground")
+                }
+            }
     }
 }
 
@@ -77,10 +92,10 @@ struct LightPlanWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "LightPlanWidget", provider: DayProvider()) { entry in
             DayWidgetView(entry: entry)
-                .containerBackground(for: .widget) { Color("WidgetBackground") }
         }
         .configurationDisplayName(Self.name)
         .description("Рассвет и закат, ближайшая съёмка, студийный час")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryCircular, .accessoryRectangular, .accessoryInline])
+        .contentMarginsDisabled()   // кольцу деления лежат в полях плашки; прочим видам поля ставит `WidgetRoot`
     }
 }

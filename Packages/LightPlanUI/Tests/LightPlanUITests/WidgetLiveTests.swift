@@ -3,15 +3,17 @@ import SwiftUI
 import Foundation
 import LightPlanDomain
 import LightPlanCore
+@testable import LightPlanUI
 #if os(iOS)
 import UIKit
 
-/// Шаг 30б.2в-1: новые виды виджета (`LightPlanWidget/Views/`: `MediumLiveView`, `SmallLiveView`, `LargeView`,
-/// `LockCircularView`, `LockRectangularView`, их разбор дня `DayPlan`) отрисованы по числам, как в `WidgetViewsTests`: содержимое
-/// плашки (с её собственными полями — у колец они несут деления) помещается в плашку 158 / 170 (малый), 338 × 158 / 364 × 170 (средний),
-/// 338 × 354 / 364 × 382 (большой) в трёх размерах текста; двоеточие отсчёта стоит по середине цифр (мерено по пикселям).
+/// Шаги 30б.2в-1 и 30б.2в-2: живые виды виджета (`LightPlanWidget/Views/`: `MediumLiveView`, `SmallLiveView`, `LargeView`,
+/// `LockCircularView`, `LockRectangularView`, их разбор дня `DayPlan`, корень `WidgetRoot`) отрисованы по числам, как в
+/// `WidgetViewsTests`: содержимое плашки (с её собственными полями — у колец они несут деления) помещается в плашку 158 / 170
+/// (малый), 338 × 158 / 364 × 170 (средний), 338 × 354 / 364 × 382 (большой) в трёх размерах текста; двоеточие отсчёта стоит по
+/// середине цифр (мерено по пикселям); имена клиентов есть только на «Домой»; знаки точек расширения совпадают со знаками приложения.
 @MainActor
-struct WidgetSketchTests {
+struct WidgetLiveTests {
 
     private let tomsk = WidgetFeed.Spot(name: "Томск", latitude: 56.4977, longitude: 84.9744, zone: "Asia/Tomsk")
     /// Часы Томска (UTC+7) 24.10.2026 плюс `day`.
@@ -22,16 +24,22 @@ struct WidgetSketchTests {
     }
     private func ms(_ d: Date) -> Int64 { Moment(d).milliseconds }
 
+    /// Знак точки так, как его кладёт в файл приложение (`PointSign.name`, студия — по ссылке на неё).
+    private func stop(_ at: Date, _ name: String, _ place: String = "", studio: Bool = false) -> WidgetFeed.Stop {
+        .init(at: ms(at), name: name, place: place, sign: PointSign.name(for: name, place: place, studio: studio))
+    }
+
     /// Сценарий Алексея: свадьба 12:00–00:30, «Пара в студии» до 13:54 (студийный час), дальше «Обед 14:00», «Прогулка 15:00».
     private var wedding: WidgetFeed.Shoot {
         .init(id: "w", start: ms(tsk(12)), end: ms(tsk(0, 30, day: 25)), title: "Свадьба", place: "Томск", wantsSunset: true,
               rents: [.init(from: ms(tsk(12)), to: ms(tsk(14)), deadline: ms(tsk(13, 54)), studio: "Томсон")],
-              stops: [.init(at: ms(tsk(12)), name: "Пара в студии", place: "Студия «Томсон»"),
-                      .init(at: ms(tsk(14)), name: "Обед", place: "Кафе «Вилка»"),
-                      .init(at: ms(tsk(15)), name: "Прогулка", place: "Набережная реки Ушайки"),
-                      .init(at: ms(tsk(17)), name: "Церемония", place: "Дворец бракосочетания"),
-                      .init(at: ms(tsk(19)), name: "Банкет", place: "Ресторан «Дом»"),
-                      .init(at: ms(tsk(22)), name: "Танцы", place: "Ресторан «Дом»")])
+              stops: [stop(tsk(12), "Пара в студии", "Студия «Томсон»", studio: true),
+                      stop(tsk(14), "Обед", "Кафе «Вилка»"),
+                      stop(tsk(15), "Прогулка", "Набережная реки Ушайки"),
+                      stop(tsk(17), "Церемония", "Дворец бракосочетания"),
+                      stop(tsk(19), "Банкет", "Ресторан «Дом»"),
+                      stop(tsk(22), "Танцы", "Ресторан «Дом»")],
+              genre: "wedding", names: "Анна+Игорь")
     }
 
     private func frame(at: Date, shoots: [WidgetFeed.Shoot]? = nil) -> WidgetFrame {
@@ -39,7 +47,6 @@ struct WidgetSketchTests {
     }
 
     private var now: WidgetFrame { frame(at: tsk(12, 52)) }
-    private let names = "Анна+Игорь"
 
     // MARK: Разбор дня
 
@@ -51,18 +58,23 @@ struct WidgetSketchTests {
         #expect(abs(plan.pointLeft! - 62 * 60) < 0.01, "12:52 → 13:54")
         #expect(abs(plan.shootLeft - (11 * 60 + 38) * 60) < 0.01, "12:52 → 00:30")
         #expect(plan.upcomingStops.map(\.name).prefix(2) == ["Обед", "Прогулка"])
-        #expect(DayPlan.short(plan.pointLeft!) == "62 мин")
-        #expect(DayPlan.hours(plan.shootLeft) == "11 ч", "целые часы вниз")
-        #expect(DayPlan.long(plan.shootLeft) == "11 ч 38 мин")
-        #expect(plan.title(names: names) == "Свадьба Анна+Игорь" && plan.title(names: nil) == "Свадьба" && plan.title(names: "") == "Свадьба")
+        #expect(plan.short(plan.pointLeft!) == "62 мин")
+        #expect(plan.hours(plan.shootLeft) == "11 ч", "целые часы вниз")
+        #expect(plan.long(plan.shootLeft) == "11 ч 38 мин")
+        var bare = wedding
+        bare.names = nil
+        var blank = wedding
+        blank.names = ""
+        #expect(plan.title == "Свадьба Анна+Игорь" && DayPlan(frame(at: tsk(12, 52), shoots: [bare]))?.title == "Свадьба"
+                && DayPlan(frame(at: tsk(12, 52), shoots: [blank]))?.title == "Свадьба")
         #expect(abs(plan.shootProgress - (52.0 / 750.0)) < 1e-9, "52 минуты из 12 ч 30 мин")
         #expect(abs((plan.pointProgress ?? -1) - 52.0 / 114.0) < 1e-9)
         #expect(plan.shootHourMarks.count == 12, "12 часовых отметок на 12,5 часа")
         #expect(plan.pointQuarterMarks.count == 7, "114 минут: 15, 30 … 105")
         // В 13:00 остаток точки — «54 мин», как в словах Алексея.
         let at13 = try #require(DayPlan(frame(at: tsk(13))))
-        #expect(DayPlan.short(at13.pointLeft!) == "54 мин")
-        #expect(DayPlan.hours(at13.shootLeft) == "11 ч")
+        #expect(at13.short(at13.pointLeft!) == "54 мин")
+        #expect(at13.hours(at13.shootLeft) == "11 ч")
     }
 
     @Test func theLastPointEndsWithTheShootAndHoursGiveWayToMinutes() throws {
@@ -70,7 +82,7 @@ struct WidgetSketchTests {
         #expect(late.current?.name == "Танцы")
         #expect(late.pointEnd == tsk(0, 30, day: 25), "последняя точка кончается с съёмкой")
         #expect(late.upcomingStops.isEmpty)
-        #expect(DayPlan.hours(late.shootLeft) == "40 мин", "в последний час — минуты")
+        #expect(late.hours(late.shootLeft) == "40 мин", "в последний час — минуты")
         let noRent = try #require(DayPlan(frame(at: tsk(15, 20))))
         #expect(noRent.current?.name == "Прогулка" && noRent.pointEnd == tsk(17), "без студии точка идёт до следующей")
     }
@@ -80,10 +92,8 @@ struct WidgetSketchTests {
         let f = frame(at: tsk(13), shoots: [bare])
         let plan = try #require(DayPlan(f))
         #expect(plan.current == nil && plan.pointLeft == nil && plan.pointProgress == nil && plan.pointQuarterMarks.isEmpty)
-        for look in [WidgetLook.plain, .ring] {
-            #expect(ideal(MediumLiveView(frame: f, look: look), width: 364, type: .large).height <= 170)
-            #expect(ideal(SmallLiveView(frame: f, look: look), width: 170, type: .large).height <= 170)
-        }
+        #expect(ideal(MediumLiveView(frame: f), width: 364, type: .large).height <= 170)
+        #expect(ideal(SmallLiveView(frame: f), width: 170, type: .large).height <= 170)
     }
 
     // MARK: Деления по периметру
@@ -124,14 +134,12 @@ struct WidgetSketchTests {
     @Test func mediumLiveFitsInThreeTextSizes() {
         var report: [String] = []
         for (w, h) in [(338.0, 158.0), (364.0, 170.0)] {
-            for look in [WidgetLook.plain, .ring] {
-                for (name, f) in liveFrames() {
-                    for (tn, t) in Self.types {
-                        for alpha in [false, true] {
-                            let size = ideal(MediumLiveView(frame: f, look: look, names: names, alpha: alpha), width: w, type: t)
-                            report.append(String(format: "средний %.0f %@ «%@» %@ α=%d: высота %.1f из %.0f", w, look == .plain ? "простой" : "кольцо", name, tn, alpha ? 1 : 0, size.height, h))
-                            #expect(size.height <= h, Comment(rawValue: report.last!))
-                        }
+            for (name, f) in liveFrames() {
+                for (tn, t) in Self.types {
+                    for alpha in [false, true] {
+                        let size = ideal(MediumLiveView(frame: f, alpha: alpha), width: w, type: t)
+                        report.append(String(format: "средний %.0f «%@» %@ α=%d: высота %.1f из %.0f", w, name, tn, alpha ? 1 : 0, size.height, h))
+                        #expect(size.height <= h, Comment(rawValue: report.last!))
                     }
                 }
             }
@@ -142,14 +150,12 @@ struct WidgetSketchTests {
     @Test func smallLiveFitsInThreeTextSizes() {
         var report: [String] = []
         for side in [158.0, 170.0] {
-            for look in [WidgetLook.plain, .ring] {
-                for (name, f) in liveFrames() {
-                    for (tn, t) in Self.types {
-                        for alpha in [false, true] {
-                            let size = ideal(SmallLiveView(frame: f, look: look, names: names, alpha: alpha), width: side, type: t)
-                            report.append(String(format: "малый %.0f %@ «%@» %@ α=%d: высота %.1f из %.0f", side, look == .plain ? "простой" : "кольцо", name, tn, alpha ? 1 : 0, size.height, side))
-                            #expect(size.height <= side, Comment(rawValue: report.last!))
-                        }
+            for (name, f) in liveFrames() {
+                for (tn, t) in Self.types {
+                    for alpha in [false, true] {
+                        let size = ideal(SmallLiveView(frame: f, alpha: alpha), width: side, type: t)
+                        report.append(String(format: "малый %.0f «%@» %@ α=%d: высота %.1f из %.0f", side, name, tn, alpha ? 1 : 0, size.height, side))
+                        #expect(size.height <= side, Comment(rawValue: report.last!))
                     }
                 }
             }
@@ -169,7 +175,7 @@ struct WidgetSketchTests {
         for (w, h) in [(338.0, 354.0), (364.0, 382.0)] {
             for (name, f) in largeFrames() {
                 for (tn, t) in Self.types {
-                    let size = ideal(LargeView(frame: f, names: names, alpha: true), width: w, type: t)
+                    let size = ideal(LargeView(frame: f, alpha: true), width: w, type: t)
                     report.append(String(format: "большой %.0f «%@» %@: высота %.1f из %.0f", w, name, tn, size.height, h))
                     #expect(size.height <= h, Comment(rawValue: report.last!))
                 }
@@ -181,7 +187,7 @@ struct WidgetSketchTests {
     @Test func lockWidgetsFitTheirPlates() {
         // Экран блокировки: круглый 76 × 76, прямоугольный 172 × 76 (iPhone 15 Pro Max; на 14 — 72 и 160).
         for (w, h) in [(160.0, 72.0), (172.0, 76.0)] {
-            for (name, f) in liveFrames() + [("без съёмок", frame(at: tsk(12, 52), shoots: []))] {
+            for (name, f) in liveFrames() + [("без съёмок", frame(at: tsk(12, 52), shoots: [])), ("до начала", frame(at: tsk(11)))] {
                 for (tn, t) in Self.types {
                     let size = ideal(LockRectangularView(frame: f), width: w, type: t)
                     #expect(size.height <= h, Comment(rawValue: "прямоугольный \(w) «\(name)» \(tn): \(size.height) > \(h)"))
@@ -189,6 +195,46 @@ struct WidgetSketchTests {
                     #expect(c.height <= h, Comment(rawValue: "круглый \(h) «\(name)» \(tn): \(c.height) > \(h)"))
                 }
             }
+        }
+    }
+
+    // MARK: Что где стоит и чего нет на экране блокировки
+
+    @Test func theRingStandsOnlyWhileTheShootGoes() {
+        // Смотреть можно только на кадр: выбор вида — `frame.kind == .live`.
+        #expect(now.kind == .live && frame(at: tsk(11)).kind == .upcoming && frame(at: tsk(12, 52), shoots: []).kind == .light)
+    }
+
+    /// Имена клиентов — только на «Домой» (Алексей, 25.10): на экране блокировки их нет ни в одной строке ни одного вида.
+    @Test func clientNamesAreOnlyOnTheHomeScreen() throws {
+        // Текст «Домой» читается из тех же данных, что и подписи: заголовок плашки несёт имена.
+        let plan = try #require(DayPlan(now))
+        #expect(plan.title == "Свадьба Анна+Игорь")
+        // Экран блокировки: строки видов и текст круга — целиком, без «Анна» и «Игорь».
+        let lock = LockRectangularView(frame: now).lines + [LockCircularView(frame: now).label ?? ""] + [LockInlineView(frame: now, alpha: false).line]
+        #expect(!lock.joined(separator: "|").contains("Анна") && !lock.joined(separator: "|").contains("Игорь"), Comment(rawValue: "\(lock)"))
+        #expect(LockRectangularView(frame: now).lines == ["12:00–13:54", "Свадьба", "Студия «Томсон»"])
+        // Тот же кадр, но жанра нет в словаре и имена длинные: ничего нового в строках не появляется.
+        var long = wedding
+        long.names = "Анна-Мария+Игорь-Александр"
+        let f = frame(at: tsk(12, 52), shoots: [long])
+        #expect(LockRectangularView(frame: f).lines == ["12:00–13:54", "Свадьба", "Студия «Томсон»"])
+        // По пикселям: тот же кадр без имён рисуется на блокировке тем же изображением, на «Домой» — другим (проверка не пустая).
+        var bare = wedding
+        bare.names = nil
+        let nameless = frame(at: tsk(12, 52), shoots: [bare])
+        func png(_ shape: WidgetShape, _ f: WidgetFrame, _ w: CGFloat, _ h: CGFloat) -> Data? {
+            let r = ImageRenderer(content: WidgetRoot(frame: f, shape: shape, alpha: false).frame(width: w, height: h)
+                .background(Color.black).environment(\.colorScheme, .dark))
+            r.scale = 2
+            return r.uiImage?.pngData()
+        }
+        for (shape, w, h) in [(WidgetShape.circular, 76.0, 76.0), (.rectangular, 172, 76), (.inline, 172, 24)] {
+            let a = png(shape, now, w, h), b = png(shape, nameless, w, h)
+            #expect(a != nil && a == b, "\(shape): имена изменили картинку экрана блокировки")
+        }
+        for (shape, w, h) in [(WidgetShape.small, 170.0, 170.0), (.medium, 364, 170), (.large, 364, 382)] {
+            #expect(png(shape, now, w, h) != png(shape, nameless, w, h), "\(shape): «Домой» имён не показывает")
         }
     }
 
@@ -200,15 +246,51 @@ struct WidgetSketchTests {
         #expect(!rect.joined().contains("Анна") && !rect.joined().contains("Игорь"))
         #expect(LockCircularView(frame: now).label == "4:10", Comment(rawValue: "\(String(describing: LockCircularView(frame: now).label))"))
         #expect(LockCircularView(frame: frame(at: tsk(18, 30))).label == nil, "после золотого часа круг без цифр")
-        #expect(LockRectangularView(frame: frame(at: tsk(12, 52), shoots: [])).lines == ["—"])
+        // Без съёмок прямоугольник — ближайший свет тем же рисунком, а не прочерк.
+        let free = frame(at: tsk(12, 52), shoots: [])
+        #expect(LockRectangularView(frame: free).lines.count == 3 && LockRectangularView(frame: free).lines[1] == "Закат", Comment(rawValue: "\(LockRectangularView(frame: free).lines)"))
     }
 
-    @Test func captionsFollowTheGenre() {
+    @Test func captionsFollowTheGenre() throws {
         let portrait = WidgetFeed.Shoot(id: "p", start: ms(tsk(12)), end: ms(tsk(15)), title: "Портрет", place: "Парк",
-                                        stops: [.init(at: ms(tsk(12)), name: "Парк")])
-        #expect(WidgetSketchWords.toShoot("Свадьба") == "до конца свадьбы" && WidgetSketchWords.shoot("Свадьба") == "свадьба")
-        #expect(WidgetSketchWords.toShoot("Портрет") == "до конца съёмки" && WidgetSketchWords.shoot("Портрет") == "съёмка")
-        #expect(WidgetSketchWords.toShoot(DayPlan(frame(at: tsk(13), shoots: [portrait]))!.shoot.title) == "до конца съёмки")
+                                        stops: [.init(at: ms(tsk(12)), name: "Парк")], genre: "portrait")
+        let w = try #require(DayPlan(now)), p = try #require(DayPlan(frame(at: tsk(13), shoots: [portrait])))
+        #expect(w.untilShoot == "до конца свадьбы" && w.shootNoun == "свадьба")
+        #expect(p.untilShoot == "до конца съёмки" && p.shootNoun == "съёмка")
+        // Жанра в файле старого вида нет — общее слово, не «свадьба».
+        var old = wedding
+        old.genre = nil
+        let o = try #require(DayPlan(frame(at: tsk(12, 52), shoots: [old])))
+        #expect(o.untilShoot == "до конца съёмки")
+    }
+
+    // MARK: Знаки точек в расширении
+
+    /// Знаки расширения (`WidgetIcons.generated.swift`) — строки библиотеки приложения, а их разбор — копия `IconArt`; чтобы копия не
+    /// ушла, пути обоих сравниваются знак за знаком по всей таблице.
+    @Test func theWidgetIconsAreTheAppsIcons() {
+        var checked = 0
+        for (name, text) in WidgetIconTable.common {
+            #expect(IconLibrary.common[name] == text, "знак \(name) в таблице расширения не тот, что в приложении")
+            let mine = WidgetIconArt.decode(text), theirs = IconArt.decode(text).parts
+            #expect(mine.count == theirs.count, "частей у \(name)")
+            for (a, b) in zip(mine, theirs) {
+                let same: Bool = a.path == b.path && a.width == b.width && a.butt == b.butt
+                #expect(same, "путь знака \(name)")
+            }
+            checked += 1
+        }
+        #expect(checked >= 100)
+    }
+
+    /// Какой знак ни назвало бы приложение (`PointSign` по любому правилу), в таблице расширения он есть — иначе точка получила бы кружок.
+    @Test func everySignThePointRulesCanNameIsInTheWidgetTable() {
+        let named = Set(IconLibrary.pointWords.map(\.sign)).filter { IconLibrary.common[$0] != nil }
+        let missing = named.filter { WidgetIconTable.common[$0] == nil }
+        #expect(missing.isEmpty, Comment(rawValue: "нет в расширении: \(missing.sorted())"))
+        for n in ["dot", "studio", "sun", "sunrise", "sunset"] { #expect(WidgetIconTable.common[n] != nil, "нет \(n)") }
+        // Неизвестное имя и отсутствие имени — кружок, не пустота.
+        #expect(WidgetIconArt.parts("нет такого").count == WidgetIconArt.parts("dot").count && !WidgetIconArt.parts(nil).isEmpty)
     }
 
     // MARK: Двоеточие по середине цифр
@@ -274,7 +356,7 @@ struct WidgetSketchTests {
         }
     }
 
-    // MARK: Картинки для Алексея
+    // MARK: Снимки построенных видов
 
     private let darkPlate = Color(red: 0.059, green: 0.055, blue: 0.047)
     private let lightPlate = Color(red: 0.98, green: 0.973, blue: 0.953)
@@ -321,49 +403,33 @@ struct WidgetSketchTests {
         #expect(png.count <= 300 * 1024, "\(name).png: \(png.count / 1024) КБ, предел 300")
     }
 
-    /// Картинки для выбора «простой / кольцо»: в `$LP_SKETCH_DIR` или `/tmp/lp-sketch-out`, если папка есть (обычный прогон ничего не пишет).
-    @Test func writesTheSketchSheetsWhenAsked() throws {
-        let dir = ProcessInfo.processInfo.environment["LP_SKETCH_DIR"] ?? "/tmp/lp-sketch-out"
+    /// Снимки построенных видов — тем же корнем, что стоит в расширении (`WidgetRoot`): в `$LP_BUILT_DIR` или `/tmp/lp-built-out`,
+    /// если папка заведена (обычный прогон ничего не пишет). Лежат в `docs/30b2v_sketches/built/`.
+    @Test func writesTheBuiltSheetsWhenAsked() throws {
+        let dir = ProcessInfo.processInfo.environment["LP_BUILT_DIR"] ?? "/tmp/lp-built-out"
         guard FileManager.default.fileExists(atPath: dir) else { return }
-        let f = now, n = names
-        func looks(_ look: WidgetLook) -> String { look == .plain ? "простой" : "кольцо" }
-
-        let medium: [[AnyView]] = [WidgetLook.plain, .ring].map { look in
+        let live = now, at13 = frame(at: tsk(13)), free = frame(at: tsk(12, 52), shoots: []), soon = frame(at: tsk(11))
+        let tail = frame(at: tsk(23, 50))
+        func two(_ caption: String, _ w: CGFloat, _ h: CGFloat, _ shape: WidgetShape, _ f: WidgetFrame) -> [AnyView] {
             [true, false].map { dark in
-                AnyView(cell("средний · \(looks(look)) · \(dark ? "тёмная" : "светлая")", 364,
-                             plate(MediumLiveView(frame: f, look: look, names: n, alpha: true), 364, 170, dark: dark)))
+                AnyView(cell("\(caption) · \(dark ? "тёмная" : "светлая")", w, plate(WidgetRoot(frame: f, shape: shape, alpha: true), w, h, dark: dark)))
             }
         }
-        try write(sheet(medium, scale: 2), dir, "medium")
-
-        let small: [[AnyView]] = [[WidgetLook.plain, .ring].flatMap { look in
-            [true, false].map { dark in
-                AnyView(cell("малый · \(looks(look)) · \(dark ? "тёмная" : "светлая")", 170,
-                             plate(SmallLiveView(frame: f, look: look, names: n, alpha: true), 170, 170, dark: dark)))
+        try write(sheet([two("средний · идёт · 12:52", 364, 170, .medium, live), two("средний · идёт · 13:00 (остаток точки 54 мин)", 364, 170, .medium, at13),
+                         two("средний · последняя точка · 23:50", 364, 170, .medium, tail)], scale: 1.5), dir, "medium")
+        try write(sheet([two("средний · свет (съёмок нет)", 364, 170, .medium, free), two("средний · съёмка впереди · 11:00", 364, 170, .medium, soon)], scale: 1.5), dir, "medium_no_ring")
+        try write(sheet([two("малый · идёт · 12:52", 170, 170, .small, live) + two("малый · 23:50", 170, 170, .small, tail),
+                         two("малый · свет", 170, 170, .small, free) + two("малый · съёмка впереди", 170, 170, .small, soon)], scale: 2.2), dir, "small")
+        try write(sheet([two("большой · день со съёмкой · 12:52", 364, 382, .large, live), two("большой · день без съёмок", 364, 382, .large, free)], scale: 1.8), dir, "large")
+        let night = frame(at: tsk(18, 30))
+        func lockCells(_ caption: String, _ f: WidgetFrame) -> [AnyView] {
+            [true, false].flatMap { dark -> [AnyView] in
+                let tone = dark ? "тёмные обои" : "светлые обои"
+                return [AnyView(cell("\(caption) · круглый · \(tone)", 108, lockPlate(WidgetRoot(frame: f, shape: .circular, alpha: false), 76, 76, dark: dark))),
+                        AnyView(cell("\(caption) · прямоугольный · \(tone)", 204, lockPlate(WidgetRoot(frame: f, shape: .rectangular, alpha: false), 172, 76, dark: dark)))]
             }
-        }]
-        try write(sheet(small, scale: 2.5), dir, "small")
-
-        let free = frame(at: tsk(12, 52), shoots: [])
-        let large: [[AnyView]] = [
-            [true, false].map { dark in AnyView(cell("большой · день со съёмкой · \(dark ? "тёмная" : "светлая")", 364, plate(LargeView(frame: f, names: n, alpha: true), 364, 382, dark: dark))) },
-            [true, false].map { dark in AnyView(cell("большой · день без съёмок · \(dark ? "тёмная" : "светлая")", 364, plate(LargeView(frame: free, alpha: true), 364, 382, dark: dark))) },
-        ]
-        try write(sheet(large, scale: 1.8), dir, "large")
-
-        let lock: [[AnyView]] = [
-            [true, false].map { dark in AnyView(cell("блокировка · круглый · \(dark ? "тёмные обои" : "светлые обои")", 108, lockPlate(LockCircularView(frame: f), 76, 76, dark: dark))) }
-            + [true, false].map { dark in AnyView(cell("блокировка · прямоугольный · \(dark ? "тёмные обои" : "светлые обои")", 204, lockPlate(LockRectangularView(frame: f), 172, 76, dark: dark))) },
-        ]
-        try write(sheet(lock, scale: 3), dir, "lock")
-
-        // Тот же средний «кольцо» в 13:00: остаток точки — «54 мин», как в словах Алексея.
-        let at13 = frame(at: tsk(13))
-        let at13Row: [[AnyView]] = [[true, false].map { dark in
-            AnyView(cell("средний · кольцо · 13:00 (остаток точки 54 мин) · \(dark ? "тёмная" : "светлая")", 364,
-                         plate(MediumLiveView(frame: at13, look: .ring, names: n, alpha: true), 364, 170, dark: dark)))
-        }]
-        try write(sheet(at13Row, scale: 2), dir, "medium_ring_1300")
+        }
+        try write(sheet([lockCells("идёт · 12:52", live), lockCells("свет · 12:52", free), lockCells("после золотого часа · 18:30", night)], scale: 1.4), dir, "lock")
     }
 }
 #endif

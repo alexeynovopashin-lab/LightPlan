@@ -500,7 +500,18 @@
     "clk.pick": "Из Контактов",
     "sub.bachelorette": "Девичник",
     "sub.bachelor": "Мальчишник",
-    "studio.callAdmin": "Позвонить админу"
+    "studio.callAdmin": "Позвонить админу",
+    "widget.untilPoint": "до конца точки",
+    "widget.untilShoot": "до конца съёмки",
+    "widget.untilWedding": "до конца свадьбы",
+    "widget.wedding": "свадьба",
+    "widget.point": "точка",
+    "widget.points": "точек",
+    "widget.hourShort": "ч",
+    "widget.minShort": "мин",
+    "widget.dayLength": "День",
+    "widget.more": "и ещё {n}",
+    "widget.until": "до {t}"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -999,7 +1010,18 @@
     "clk.pick": "From Contacts",
     "sub.bachelorette": "Bachelorette",
     "sub.bachelor": "Bachelor",
-    "studio.callAdmin": "Call the admin"
+    "studio.callAdmin": "Call the admin",
+    "widget.untilPoint": "until stop ends",
+    "widget.untilShoot": "until shoot ends",
+    "widget.untilWedding": "until wedding ends",
+    "widget.wedding": "wedding",
+    "widget.point": "stop",
+    "widget.points": "stops",
+    "widget.hourShort": "h",
+    "widget.minShort": "min",
+    "widget.dayLength": "Daylight",
+    "widget.more": "{n} more",
+    "widget.until": "until {t}"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1498,7 +1520,18 @@
     "clk.pick": "De Contactos",
     "sub.bachelorette": "Despedida soltera",
     "sub.bachelor": "Despedida soltero",
-    "studio.callAdmin": "Llamar al administrador"
+    "studio.callAdmin": "Llamar al administrador",
+    "widget.untilPoint": "hasta fin del punto",
+    "widget.untilShoot": "hasta fin de la sesión",
+    "widget.untilWedding": "hasta fin de la boda",
+    "widget.wedding": "boda",
+    "widget.point": "punto",
+    "widget.points": "puntos",
+    "widget.hourShort": "h",
+    "widget.minShort": "min",
+    "widget.dayLength": "Luz del día",
+    "widget.more": "{n} más",
+    "widget.until": "hasta {t}"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -1993,7 +2026,18 @@
     "clk.pick": "連絡先から",
     "sub.bachelorette": "バチェロレッテ",
     "sub.bachelor": "バチェラー",
-    "studio.callAdmin": "管理者に電話"
+    "studio.callAdmin": "管理者に電話",
+    "widget.untilPoint": "この地点の終了まで",
+    "widget.untilShoot": "撮影終了まで",
+    "widget.untilWedding": "結婚式終了まで",
+    "widget.wedding": "結婚式",
+    "widget.point": "地点",
+    "widget.points": "地点",
+    "widget.hourShort": "時間",
+    "widget.minShort": "分",
+    "widget.dayLength": "日照",
+    "widget.more": "他 {n}",
+    "widget.until": "{t}まで"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2488,6 +2532,17 @@
     "clk.pick": "从通讯录",
     "sub.bachelorette": "女生单身派对",
     "sub.bachelor": "男生单身派对",
-    "studio.callAdmin": "致电管理员"
+    "studio.callAdmin": "致电管理员",
+    "widget.untilPoint": "距本点结束",
+    "widget.untilShoot": "距拍摄结束",
+    "widget.untilWedding": "距婚礼结束",
+    "widget.wedding": "婚礼",
+    "widget.point": "点",
+    "widget.points": "个点",
+    "widget.hourShort": "小时",
+    "widget.minShort": "分钟",
+    "widget.dayLength": "日照",
+    "widget.more": "还有 {n}",
+    "widget.until": "至 {t}"
   }
 }

@@ -1,8 +1,9 @@
 import SwiftUI
 import LightPlanDomain
 
-/// Средний виджет (30б.2, вариант оркестратора 24.10): слева сегодняшний свет, справа две ближайшие съёмки; пока
-/// съёмка идёт — отсчёт студийного часа слева и оставшийся маршрут справа.
+/// Средний виджет без идущей съёмки (30б.2, вариант оркестратора 24.10): слева сегодняшний свет, справа две ближайшие съёмки.
+/// Идущую съёмку показывает кольцо (`MediumLiveView`, 30б.2в). Кольцу без съёмки нечего считать, поэтому свет и ближайшие съёмки
+/// остались как были; вид получает поля сам (`WidgetRoot`).
 struct MediumView: View {
     let frame: WidgetFrame
     let alpha: Bool
@@ -20,33 +21,14 @@ struct MediumView: View {
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)   // виджет не прокручивается: крупнее не влезает
     }
 
-    // MARK: Слева: свет сегодня или отсчёт
+    // MARK: Слева: свет сегодня
 
-    @ViewBuilder private var left: some View {
-        if frame.kind == .live, let p = frame.primary {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(p.countdown?.kind == .studio ? frame.words[.studio] : p.shoot.title)
-                    .font(.caption.weight(.semibold)).foregroundStyle(st.amber).lineLimit(1)
-                Spacer(minLength: 0)
-                if let c = p.countdown {
-                    CountdownText(from: frame.now, to: c.to)
-                        .font(.system(size: 34, weight: .semibold, design: .rounded))
-                        .foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.6)
-                    if !c.studio.isEmpty {
-                        Text(c.studio).font(.footnote).foregroundStyle(st.ink2).lineLimit(1)
-                    }
-                } else {
-                    Text(frame.clock(p.shoot.startDate, in: p.zone))
-                        .font(.system(size: 34, weight: .semibold, design: .rounded)).foregroundStyle(st.ink)
-                }
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(frame.place.name.isEmpty ? "Light Plan" : frame.place.name)
-                    .font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
-                Spacer(minLength: 0)
-                if let d = frame.day { dayRows(d) } else { Text("—").font(.title2).foregroundStyle(st.ink) }
-            }
+    private var left: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(frame.place.name.isEmpty ? "Light Plan" : frame.place.name)
+                .font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
+            Spacer(minLength: 0)
+            if let d = frame.day { dayRows(d) } else { Text("—").font(.title2).foregroundStyle(st.ink) }
         }
     }
 
@@ -71,38 +53,16 @@ struct MediumView: View {
         }
     }
 
-    // MARK: Справа: съёмки или маршрут
+    // MARK: Справа: ближайшие съёмки
 
-    @ViewBuilder private var right: some View {
-        if frame.kind == .live, let p = frame.primary {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(frame.words[.route]).font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
-                Spacer(minLength: 0)
-                if p.left.isEmpty {
-                    Text(p.shoot.place).font(.footnote).foregroundStyle(st.ink).lineLimit(2)
-                } else {
-                    ForEach(Array(p.left.prefix(3).enumerated()), id: \.offset) { i, s in
-                        stopRow(s, zone: p.zone, first: i == 0)
-                    }
-                }
+    private var right: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(frame.words[.shoot].capitalizedFirst).font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
+            Spacer(minLength: 0)
+            if frame.shoots.isEmpty {
+                Text("—").font(.title3).foregroundStyle(st.ink2)
             }
-        } else {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(frame.words[.shoot].capitalizedFirst).font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
-                Spacer(minLength: 0)
-                if frame.shoots.isEmpty {
-                    Text("—").font(.title3).foregroundStyle(st.ink2)
-                }
-                ForEach(frame.shoots) { shootRow($0) }
-            }
-        }
-    }
-
-    private func stopRow(_ s: WidgetFeed.Stop, zone: TimeZone, first: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(frame.clock(s.date, in: zone)).font(.caption.weight(.semibold)).monospacedDigit()
-                .foregroundStyle(first ? st.amber : st.ink2)
-            Text(s.name).font(.footnote).foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.8)
+            ForEach(frame.shoots) { shootRow($0) }
         }
     }
 

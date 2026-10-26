@@ -13,7 +13,7 @@ help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
 	@echo "make blocks   показать, что вырезается из беты (дешёвая проверка якорей)"
 	@echo "make lang     пересобрать каталог строк и фикстуры текста, доказать повторяемость"
-	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium и доказать, что прогон повторяем"
+	@echo "make icons    пересобрать знаки Swift из beta/icons.js, эталон Chromium, знаки точек виджета и доказать, что прогон повторяем"
 	@echo "make appicon  значок «LP …» с биркой «α» из основного AppIcon (ARGS=--check — собран ли из нынешнего), и проверка выбора значка по идентификатору"
 	@echo "make widgetid адреса и имя: основной и слоты slotA…D дают <адрес>.Widget и group.<адрес>; перевод имени не перекрывает «LP <ветка>» (30б.1)"
 	@echo "make brightstars яркие звёзды AR (V ≤ 2,5): JSON из снимков каталогов, Swift из JSON, проверка числами; без сети (снимки — node Tools/bright_stars/fetch.js)"
@@ -92,6 +92,8 @@ icons:
 	@node Tools/icons2assets.js
 	@node Tools/icons_ref.js
 	@node Tools/icons2assets.js --check
+	@python3 Tools/widget_icons.py
+	@python3 Tools/widget_icons.py --check
 
 # Яркие звёзды для слоя звёзд AR. Сеть нужна только fetch.js (снимки в
 # Tools/bright_stars/sources/); здесь — сборка и проверка по снимкам.

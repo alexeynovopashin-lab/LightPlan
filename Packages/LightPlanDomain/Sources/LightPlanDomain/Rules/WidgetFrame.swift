@@ -1,6 +1,11 @@
 import Foundation
 import LightPlanCore
 
+/// Форма виджета (WidgetKit `WidgetFamily` без WidgetKit — Domain его не знает): от формы зависит, какие моменты нужны ленте.
+public enum WidgetShape: Sendable, CaseIterable {
+    case small, medium, large, inline, circular, rectangular
+}
+
 /// Что виджет показывает в данный момент (30б.2): одно правило для малого, среднего и строки экрана блокировки.
 ///
 /// Слова Алексея (24.10): «Нет съемок — время рассвета, затем время заката. Есть съемки, ближайшая съемка и свет
@@ -175,11 +180,15 @@ extension WidgetFeed {
     }
 
     /// Моменты, в которые плашка меняется сама, пока приложение закрыто: начала и концы съёмок и точек, студийный
-    /// час, свет места и съёмок, полночь. Между ними плашка одна и та же (секунды отсчёта идут через
-    /// `Text(timerInterval:)`). `now` первым.
-    public func changes(from now: Date, horizon: TimeInterval = 36 * 3600, limit: Int = 60) -> [Date] {
+    /// час, свет места и съёмок, полночь. Между ними плашка одна и та же. `now` первым.
+    public func changes(from now: Date, horizon: TimeInterval = 36 * 3600, limit: Int = Self.entryLimit) -> [Date] {
         timeline(from: now, horizon: horizon, limit: limit).dates
     }
+
+    /// Записей в одной ленте не больше стольки (по минуте — три часа). Предел записей WidgetKit не называет, лимит у него —
+    /// на перезагрузки ленты (40–70 в сутки на виджет, Apple, «Keeping a widget up to date»), поэтому лента длиннее, а
+    /// перезагрузок меньше: день свадьбы в 12,5 часа с минутным кольцом — пять-шесть перезагрузок.
+    public static let entryLimit = 180
 
     /// Лента и когда просить новую. Обычно через `horizon`; если моментов больше `limit` и лента обрезана — на
     /// последнем показанном моменте, иначе после него виджет держал бы устаревшую плашку до конца горизонта.
@@ -189,7 +198,11 @@ extension WidgetFeed {
         public init(dates: [Date], reload: Date) { self.dates = dates; self.reload = reload }
     }
 
-    public func timeline(from now: Date, horizon: TimeInterval = 36 * 3600, limit: Int = 60) -> Schedule {
+    /// - Parameter shape: форма виджета. `nil` — только события; кольцо (малый, средний) добавляет каждую минуту идущей
+    ///   съёмки, круг блокировки — каждую минуту до золотого часа, большой с дугой солнца — каждые 10 минут светового дня:
+    ///   цифры там статичные (системный `Text(timerInterval:)` пишет «62:00», а не «62 мин»), значит, меняет их лента.
+    public func timeline(from now: Date, horizon: TimeInterval = 36 * 3600, limit: Int = Self.entryLimit,
+                         shape: WidgetShape? = nil) -> Schedule {
         let end = now.addingTimeInterval(horizon)
         var all: [Date] = []
         func add(_ d: Date?) { if let d, d > now, d <= end { all.append(d) } }
@@ -214,11 +227,56 @@ extension WidgetFeed {
             }
             if let own = s.spot { spotMoments(own) }
         }
+        if let shape { all += paceMoments(shape, from: now, to: end).filter { $0 > now } }
         var seen = Set<Date>()
         let sorted = all.sorted().filter { seen.insert($0).inserted }
-        let shown = Array(sorted.prefix(limit - 1))
+        let shown = Array(sorted.prefix(max(limit - 1, 0)))
         let truncated = sorted.count > shown.count
         return Schedule(dates: [now] + shown, reload: truncated ? (shown.last ?? end) : end)
+    }
+
+    /// Целые минуты от `a` (не раньше) до `b` включительно с шагом `step` секунд: ровно в :00, как идут часы.
+    private static func marks(_ a: Date, _ b: Date, step: TimeInterval) -> [Date] {
+        guard b >= a else { return [] }
+        var t = (a.timeIntervalSince1970 / step).rounded(.up) * step
+        var out: [Date] = []
+        while t <= b.timeIntervalSince1970 {
+            out.append(Date(timeIntervalSince1970: t))
+            t += step
+        }
+        return out
+    }
+
+    /// Поминутные (и подесятиминутные) моменты формы: по ним меняются статичные цифры и ход кольца.
+    private func paceMoments(_ shape: WidgetShape, from now: Date, to end: Date) -> [Date] {
+        switch shape {
+        case .inline, .rectangular:
+            return []
+        case .small, .medium:
+            // Кольцо рисуется, пока съёмка идёт: от «сейчас» (или начала) до конца; закрытая руками — до записанного конца.
+            return shoots.flatMap { s -> [Date] in
+                guard s.open || s.endDate > now else { return [] }
+                return Self.marks(max(s.startDate, now), min(s.endDate, end), step: 60)
+            }
+        case .circular:
+            guard let tz = place.timeZone, let today = place.today(at: now) else { return [] }
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = tz
+            return (0...2).flatMap { off -> [Date] in
+                let day = today.adding(days: off)
+                guard let g = place.light(on: day)?.golden,
+                      let midnight = cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day))
+                else { return [] }
+                return Self.marks(max(midnight, now), min(g, end), step: 60)
+            }
+        case .large:
+            // Точка «сейчас» на дуге солнца ходит от восхода к закату; без съёмок это весь вид (со съёмкой дуги нет).
+            guard let today = place.today(at: now) else { return [] }
+            return (0...2).flatMap { off -> [Date] in
+                guard let l = place.light(on: today.adding(days: off)), let r = l.sunrise, let s = l.sunset else { return [] }
+                return Self.marks(max(r, now), min(s, end), step: 600).filter { frame(at: $0).kind == .light }
+            }
+        }
     }
 }
 
