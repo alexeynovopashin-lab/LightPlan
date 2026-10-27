@@ -11,10 +11,10 @@ struct IconLibraryTests {
 
     /// Знаков в общем словаре после слияния (первый набор побеждает), жанров, пожеланий.
     @Test func libraryCounts() {
-        #expect(IconLibrary.common.count == 196)
+        #expect(IconLibrary.common.count == 197)
         #expect(IconLibrary.genres.count == 12)
         #expect(IconLibrary.wishes.count == 8)
-        #expect(IconLibrary.sheet.map(\.names.count) == [3, 78, 31, 10, 59, 15, 12, 8, 1])
+        #expect(IconLibrary.sheet.map(\.names.count) == [3, 78, 31, 10, 59, 16, 12, 8, 1])
     }
 
     /// Каждое имя из каждого набора разбирается в непустой знак.
