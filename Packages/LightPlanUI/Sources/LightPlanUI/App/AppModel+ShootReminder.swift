@@ -12,28 +12,25 @@ extension AppModel {
     // MARK: - Настройка
 
     /// За сколько минут напоминать: `notif.remind` снимка (число; веб ключа не знает и при пересохранении теряет — тогда
-    /// снова 15). Значение не из списка — как по умолчанию.
+    /// снова 15). Значение не из списка — как по умолчанию; сравнение числом, без `Int(v)`: огромное или `nan` из
+    /// импорта обрушило бы приложение.
     public var remindMinutes: Int {
         if case .object(let o)? = snapshot.extra["notif"], case .number(let v)? = o["remind"],
-           ReminderSchedule.choices.contains(Int(v)) { return Int(v) }
+           let m = ReminderSchedule.choices.first(where: { Double($0) == v }) { return m }
         return ReminderSchedule.defaultMinutes
     }
 
-    /// Напоминать ли: выбрано не «выкл» и главное «Разрешить все» веба (`notif.all`) не выключено.
-    var remindWanted: Bool {
-        guard remindMinutes > 0 else { return false }
-        if case .object(let o)? = snapshot.extra["notif"], case .bool(false)? = o["all"] { return false }
-        return true
-    }
+    /// Напоминать ли: только свой выбор, не «выкл». Главное «Разрешить все» веба (`notif.all`) напоминание не трогает и
+    /// от него не зависит: веб напоминаний не знает, а своего главного переключателя у натива нет — выключенное на вебе
+    /// «все» не глушит напоминание, и выбор напоминания не включает обратно погоду и студийный час.
+    var remindWanted: Bool { remindMinutes > 0 }
 
     /// Выбор в настройках. Не «выкл» — момент спросить у системы право уведомлять, если ещё не спрашивали; отказ
-    /// ничего не ломает: выбор стоит, строка под ним ведёт в настройки iPhone.
+    /// ничего не ломает: выбор стоит, строка под ним ведёт в настройки iPhone. Другие ключи `notif` не трогаются.
     public func setRemindMinutes(_ m: Int) {
         var o: [String: JSONValue] = [:]
         if case .object(let cur)? = snapshot.extra["notif"] { o = cur }
         o["remind"] = .number(Double(m))
-        // Своего «Разрешить все» у натива нет: выбирая напоминание, человек разрешает (как тумблеры студии и погоды).
-        if m > 0 { o["all"] = .bool(true) }
         snapshot.extra["notif"] = .object(o)
         persist()
         guard m > 0, let center = alertCenter else { return }
@@ -48,13 +45,13 @@ extension AppModel {
 
     // MARK: - Расписание
 
-    /// Напоминания с готовым текстом: 16 ближайших съёмок и встреч.
-    func reminderAlertPlan() -> [ScheduledAlert] {
+    /// Напоминания с готовым текстом: 16 ближайших съёмок и встреч. `urgent` — дала ли система неотложные.
+    func reminderAlertPlan(urgent: Bool = false) -> [ScheduledAlert] {
         guard remindWanted else { return [] }
         let notices = ReminderSchedule.plan(sessions: snapshot.sessions, minutes: remindMinutes, now: Moment(now()),
                                             offsetHours: { alertOffsetHours(of: $0) })
         let byId = Dictionary(snapshot.sessions.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        return notices.compactMap { n in byId[n.sessionId].map { ReminderAlertText.alert(n, $0, app: self) } }
+        return notices.compactMap { n in byId[n.sessionId].map { ReminderAlertText.alert(n, $0, app: self, urgent: urgent) } }
     }
 }
 
@@ -64,7 +61,7 @@ enum ReminderAlertText {
     /// Заголовок: «Кирилл · 12:00» — имя из шапки карточки (нет клиента — жанр) и начало по часам места съёмки.
     /// Текст: «Портрет · Томсон» и строкой ниже телефон, как в карточке («+7 961 887-80-78»); тот, кто на связи, —
     /// «на связи: Алёна, подруга · +7 …».
-    static func alert(_ n: ReminderSchedule.Notice, _ s: Session, app: AppModel) -> ScheduledAlert {
+    static func alert(_ n: ReminderSchedule.Notice, _ s: Session, app: AppModel, urgent: Bool) -> ScheduledAlert {
         let t = app.lexicon
         let head = CardHeadText(s, phase: .before, app: app)
         let words = PlannerWords(lexicon: t, orgs: app.orgs)
@@ -85,7 +82,7 @@ enum ReminderAlertText {
 
         var alert = ScheduledAlert(id: n.id, sessionId: n.sessionId, fire: n.fire, offsetHours: n.offsetHours,
                                    title: title, body: body)
-        alert.urgent = true
+        alert.urgent = urgent
         return alert
     }
 }

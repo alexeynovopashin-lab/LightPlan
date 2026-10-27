@@ -149,8 +149,10 @@ extension AppModel {
             let auth = await center.authorization()
             alertAuth = auth
             let scheduler = NotificationScheduler(center: center)
+            // Неотложные — по тому, что система дала сейчас: выдали право позже — отпечаток другой, запросы перепишутся.
+            let urgent = auth == .allowed ? await center.timeSensitiveAllowed() : false
             let plan = auth == .allowed
-                ? reminderAlertPlan() + (studioAlertsWanted ? studioAlertPlan() : []) + greetAlertPlan() : []
+                ? reminderAlertPlan(urgent: urgent) + (studioAlertsWanted ? studioAlertPlan() : []) + greetAlertPlan() : []
             guard !plan.isEmpty else {
                 if alertApplied != nil || force { await scheduler.clear() }
                 alertApplied = nil

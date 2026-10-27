@@ -13,7 +13,11 @@ struct ShootReminderTests {
     private actor Fake: NotificationCentering {
         var status: NotificationAuthorization
         var table: [String: ScheduledAlert] = [:]
+        /// Дала ли «система» неотложные.
+        var timeSensitive = false
         init(_ status: NotificationAuthorization = .allowed) { self.status = status }
+        func timeSensitiveAllowed() -> Bool { timeSensitive }
+        func setTimeSensitive(_ on: Bool) { timeSensitive = on }
         func authorization() -> NotificationAuthorization { status }
         func requestAuthorization() -> Bool { status = .allowed; return true }
         func pending() -> [PendingAlert] { table.values.map { PendingAlert(id: $0.id, signature: $0.signature) } }
@@ -81,7 +85,8 @@ struct ShootReminderTests {
         #expect(a?.body == "Портрет · Студия Томсон\n+7 961 887-80-78")
         // 12:00 в Москве минус 15 минут.
         #expect(a?.fire == Moment(ISO8601DateFormatter().date(from: "2026-10-20T11:45:00+03:00")!))
-        #expect(a?.urgent == true)
+        // Бесплатная подпись неотложных не даёт — запрос обычный.
+        #expect(a?.urgent == false)
     }
 
     @Test func meetingSaysMeetingAndTheFriendsNumberWins() async {
@@ -122,12 +127,46 @@ struct ShootReminderTests {
         #expect(o["remind"] == .number(0))
     }
 
-    @Test func webMasterSwitchOffMeansNoReminder() async {
+    /// Ревью GPT к 00ea8b8, п. 1: выбор напоминания не включает обратно главное «Разрешить все» (а с ним погоду и
+    /// студийный час), и выключенное на вебе «все» напоминание не глушит — они независимы.
+    @Test func reminderChoiceLeavesTheMasterSwitchAlone() async {
         let fake = Fake()
-        let app = model([Self.shoot()], notif: ["all": .bool(false)], center: fake)
+        let app = model([Self.shoot()], notif: ["all": .bool(false), "studio": .bool(true), "wx": .bool(true)], center: fake)
+        #expect(!app.studioAlertsWanted && !app.weatherAlertsWanted)
+        app.setRemindMinutes(30)
+        await settle(app)
+        guard case .object(let o)? = app.snapshotForTests.extra["notif"] else { Issue.record("notif пропал"); return }
+        #expect(o["all"] == .bool(false), "главный переключатель не тронут")
+        #expect(!app.studioAlertsWanted && !app.weatherAlertsWanted, "погода и студийный час не вернулись")
+        #expect(await fake.table.keys.sorted() == ["lp.remind.s1"], "напоминание пришло само по себе")
+    }
+
+    /// Ревью GPT к 00ea8b8, п. 2: неотложность в отпечатке — та, что система дала. Право выдали позже — следующая
+    /// сверка переписывает уже стоящий обычный запрос неотложным, а забрали — обратно.
+    @Test func grantedTimeSensitiveRewritesTheStandingRequest() async {
+        let fake = Fake()
+        let app = model([Self.shoot()], center: fake)
         app.syncAlerts(force: true)
         await settle(app)
-        #expect(await fake.table.isEmpty)
+        #expect(await fake.table["lp.remind.s1"]?.urgent == false)
+        await fake.setTimeSensitive(true)
+        app.syncAlerts(force: true)
+        await settle(app)
+        #expect(await fake.table["lp.remind.s1"]?.urgent == true)
+        await fake.setTimeSensitive(false)
+        app.syncAlerts(force: true)
+        await settle(app)
+        #expect(await fake.table["lp.remind.s1"]?.urgent == false)
+    }
+
+    /// Ревью GPT к 00ea8b8, п. 3: число не из списка — огромное, дробное, отрицательное, `nan` из импорта — значит
+    /// «по умолчанию», а не падение.
+    @Test func strangeStoredNumberFallsBackToFifteen() {
+        for v in [1e300, -1e300, .nan, .infinity, 14.5, -15] as [Double] {
+            let app = model([], notif: ["remind": .number(v)], center: Fake())
+            #expect(app.remindMinutes == 15, "\(v)")
+        }
+        #expect(model([], notif: ["remind": .number(30)], center: Fake()).remindMinutes == 30)
     }
 
     @Test func trashingTheShootCancelsItsReminder() async {

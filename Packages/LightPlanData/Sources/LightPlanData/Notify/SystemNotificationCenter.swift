@@ -89,12 +89,8 @@ public struct SystemNotificationCenter: NotificationCentering {
             content.threadIdentifier = alert.id.hasPrefix(ReminderSchedule.idPrefix) ? "lp.remind" : "lp.studio"
             trigger = Self.trigger(fire: alert.fire.date, offsetHours: alert.offsetHours)
         }
-        // Неотложное — только если система это право приложению дала (`timeSensitiveSetting`): бесплатная подпись его не
-        // даёт (замер 27.10: «Personal development teams … do not support the Time Sensitive Notifications capability»),
-        // и напоминание идёт обычным. Появится право в `Config/LightPlan-iOS.entitlements` — уровень включится сам.
-        if alert.urgent, await center.notificationSettings().timeSensitiveSetting == .enabled {
-            content.interruptionLevel = .timeSensitive
-        }
+        // Неотложное решено до постановки (`timeSensitiveAllowed`) и лежит в отпечатке запроса.
+        if alert.urgent { content.interruptionLevel = .timeSensitive }
         content.userInfo = info
         #if DEBUG
         if Self.debugShift != 0 {
@@ -144,6 +140,13 @@ public struct SystemNotificationCenter: NotificationCentering {
 
     public func remove(ids: [String]) async {
         center.removePendingNotificationRequests(withIdentifiers: ids)
+    }
+
+    /// Бесплатная подпись права не даёт (замер 27.10: «Personal development teams … do not support the Time Sensitive
+    /// Notifications capability»), и напоминание идёт обычным. Появится право в `Config/LightPlan-iOS.entitlements` —
+    /// здесь станет `true`, и сверка перепишет стоящие напоминания неотложными.
+    public func timeSensitiveAllowed() async -> Bool {
+        await center.notificationSettings().timeSensitiveSetting == .enabled
     }
 }
 

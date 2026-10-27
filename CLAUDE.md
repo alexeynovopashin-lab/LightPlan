@@ -262,13 +262,15 @@
   (Alexey 29.09; the web does not blink at all — `paintStudio` repaints every 20 s, per second only in the last 15 min), so a screenshot can catch it off: shoot several frames. The admin's number is no
   longer shown: a button «Позвонить админу» (`studio.callAdmin`, `Tools/lang_native.json`) dials the same number; no number — no button. Node `card.studioTel` is kept for the web pair (frame differs now).
 - **Shoot reminder (Напоминание-1, decision 27.10).** N minutes before every shoot and meeting (`ReminderSchedule`, Data `Notify/`): Settings
-  «Уведомления» → «Напоминать о съёмке», `notif.remind` (minutes, choices 0/5/10/15/30/60, default 15; the web drops the key on re-save → 15 again).
+  «Уведомления» → «Напоминать о съёмке», `notif.remind` (minutes, choices 0/5/10/15/30/60, default 15; the web drops the key on re-save → 15 again;
+  independent of the web's master `notif.all` both ways: choosing never writes `all`, `all = false` does not silence it).
   Fire = start on the **place's** clock − N (a moment); none for calendar drafts (the Calendar reminds of its own events), `.event`, closed-by-hand,
   or a moment already past. One request per record `lp.remind.<id>`, text from `CardHeadText` (`ReminderAlertText`: «name · 12:00» / «genre · place»
   + the number the card head calls); tap → `.card(id)`. Lanes (`NotificationScheduler.lanes`): remind 16, greet 40, studio the rest (≥ 8), remind
   first so foreign requests squeeze greetings, not tomorrow's reminder. **Time Sensitive is refused by the free team** (measured 27.10: «Personal
-  development teams … do not support the Time Sensitive Notifications capability») — the entitlement is NOT in `Config/`; `add` asks for
-  `.timeSensitive` only when `timeSensitiveSetting == .enabled`, so adding the entitlement on a paid team turns it on with no code change.
+  development teams … do not support the Time Sensitive Notifications capability») — the entitlement is NOT in `Config/`. `syncAlerts` asks
+  `NotificationCentering.timeSensitiveAllowed()` and puts the granted level into the request (and its signature), so adding the entitlement on a
+  paid team rewrites standing reminders on the next sync with no code change.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

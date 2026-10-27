@@ -16,8 +16,9 @@ public struct ScheduledAlert: Sendable, Hashable {
     public let wall: WallTime?
     /// Клиент, чью карточку открывает нажатие на поздравление; `nil` — праздники разных клиентов, открыть «Клиенты».
     public let clientId: String?
-    /// Просится неотложным (`timeSensitive`): напоминание о съёмке пробивает «Фокусирование», как «Неотложные» Календаря.
-    /// Ставится таким, только если у приложения есть это право (`SystemNotificationCenter.add`); иначе — обычным.
+    /// Неотложное (`timeSensitive`): напоминание о съёмке пробивает «Фокусирование», как «Неотложные» Календаря.
+    /// Это уровень, который система **дала** (`NotificationCentering.timeSensitiveAllowed`), а не желаемый: он входит в
+    /// отпечаток, и право, выданное позже, переписывает уже стоящие обычные запросы на следующей сверке.
     public var urgent = false
 
     public init(id: String, sessionId: String, fire: Moment, offsetHours: Double, title: String, body: String) {
@@ -88,6 +89,13 @@ public protocol NotificationCentering: Sendable {
     /// Поставить запрос; тот же идентификатор заменяет ожидающий. `false` — система отказала.
     func add(_ alert: ScheduledAlert) async -> Bool
     func remove(ids: [String]) async
+    /// Дала ли система приложению неотложные уведомления (право в entitlements и согласие человека).
+    func timeSensitiveAllowed() async -> Bool
+}
+
+extension NotificationCentering {
+    /// Пустышкам тестов неотложное не выдано, если они не скажут иначе.
+    public func timeSensitiveAllowed() async -> Bool { false }
 }
 
 /// Сверка расписания с системой (шаг 30а): после неё в системе лежит ровно то,
