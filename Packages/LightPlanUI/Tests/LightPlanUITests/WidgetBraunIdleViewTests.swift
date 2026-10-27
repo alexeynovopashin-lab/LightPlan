@@ -30,25 +30,29 @@ struct WidgetBraunIdleViewTests {
     private static let wedding = shoot("w", tsk(12), tsk(24, 30), "Анна и Игорь", "wedding", "Свадьба")
     private static let rating = [WidgetFeed.Rating(day: "2026-10-25", score: 62, quality: .good)]
 
-    static func frame(_ s: Scenario) -> WidgetFrame {
-        switch s {
-        case .b: WidgetFeed(place: tomsk, shoots: [wedding], forecast: rating).frame(at: tsk(15, 18))
-        case .g: WidgetFeed(place: tomsk, shoots: [wedding, ivanov, masha], forecast: rating).frame(at: tsk(9, 30))
-        case .d: WidgetFeed(place: tomsk, shoots: [ivanov, masha], forecast: rating).frame(at: tsk(14))
-        case .e: WidgetFeed(place: tomsk, shoots: [ivanov, masha]).frame(at: tsk(21))
-        case .z: WidgetFeed(place: tomsk, forecast: rating).frame(at: tsk(14))
+    /// `clock12` — 12-часовые часы («5:56 PM», язык en): так в приложении при настройке «Часы» 12.
+    static func frame(_ s: Scenario, clock12: Bool = false) -> WidgetFrame {
+        func feed(_ shoots: [WidgetFeed.Shoot], _ forecast: [WidgetFeed.Rating] = rating) -> WidgetFeed {
+            WidgetFeed(place: tomsk, shoots: shoots, forecast: forecast, lang: clock12 ? "en" : "ru", clock12: clock12)
         }
+        switch s {
+        case .b: return feed([wedding]).frame(at: tsk(15, 18))
+        case .g: return feed([wedding, ivanov, masha]).frame(at: tsk(9, 30))
+        case .d: return feed([ivanov, masha]).frame(at: tsk(14))
+        case .e: return feed([ivanov, masha], []).frame(at: tsk(21))
+        case .z: return feed([]).frame(at: tsk(14))
+        }
+    }
+
+    @ViewBuilder static func widget(_ s: Scenario, alpha: Bool, clock12: Bool) -> some View {
+        let f = frame(s, clock12: clock12)
+        if s == .b { BraunWidgetView(frame: f, alpha: alpha, medium: true) } else { BraunIdleView(frame: f, alpha: alpha) }
     }
 
     struct Plate { var size: CGSize; static let pro = Plate(size: CGSize(width: 364, height: 170)), regular = Plate(size: CGSize(width: 338, height: 158)) }
 
-    @ViewBuilder static func widget(_ s: Scenario, alpha: Bool) -> some View {
-        let f = frame(s)
-        if s == .b { BraunWidgetView(frame: f, alpha: alpha, medium: true) } else { BraunIdleView(frame: f, alpha: alpha) }
-    }
-
-    private func plate(_ s: Scenario, _ p: Plate, dark: Bool, alpha: Bool = false) -> some View {
-        Self.widget(s, alpha: alpha)
+    private func plate(_ s: Scenario, _ p: Plate, dark: Bool, alpha: Bool = false, clock12: Bool = false) -> some View {
+        Self.widget(s, alpha: alpha, clock12: clock12)
             .frame(width: p.size.width, height: p.size.height)
             .background(BraunPalette(dark: dark).bg)
             .clipShape(RoundedRectangle(cornerRadius: BraunPlate.cornerRadius(plateHeight: p.size.height), style: .continuous))
@@ -295,7 +299,7 @@ struct WidgetBraunIdleViewTests {
         #expect(reg.rows[3].step.size <= 13)
         #expect(pro.rows[3].extraIcon, "Pro Max: знак оценки на месте")
         for L in [pro, reg] {
-            let avail = BraunDrum.nameWidth(column: Double(L.drum.width)) - BraunLayout.lightSignWidth(offset: 1) - BraunLayout.ratingWidth("хороший", icon: L.rows[3].extraIcon)
+            let avail = L.drumNameWidth - BraunLayout.lightSignWidth(offset: 1) - BraunLayout.ratingWidth("хороший", icon: L.rows[3].extraIcon)
             #expect(BraunText.width("Закат", size: L.rows[3].step.size, semibold: false) <= avail, "строка заката влезла целиком, кегль \(L.rows[3].step.size)")
         }
     }
@@ -333,6 +337,48 @@ struct WidgetBraunIdleViewTests {
         #expect(b.x1 <= 348, "и не выходит за поле 16")
     }
 
+    // MARK: 12-часовые часы (ревью GPT к bd4357e)
+
+    /// «12:56 PM» не режется: время делится на «ч:мм» и AM / PM, двоеточие стоит в своём поле, суффикс — в поле, которое раскладка отдаёт самым
+    /// широким на барабане; название сдвигается на ту же ширину.
+    @Test func twelveHourTimesKeepTheirSuffixAndTheColonColumn() throws {
+        let a = try #require(ColonTime.split("12:56 PM"))
+        #expect(a.prefix == "" && a.h == "12" && a.m == "56" && a.suffix == "PM")
+        let b = try #require(ColonTime.split("5:56\u{202F}PM"))
+        #expect(b.h == "5" && b.suffix == "PM", "узкий неразрывный пробел новых ICU — тоже разделитель")
+        let c = try #require(ColonTime.split("午後5:56"))
+        #expect(c.prefix == "午後" && c.h == "5" && c.suffix == "")
+        let d = try #require(ColonTime.split("13:48"))
+        #expect(d.prefix == "" && d.suffix == "" && d.h == "13" && d.m == "48")
+        #expect(ColonTime.split("нет времени") == nil)
+        let r = ColonTime.reserves(["4:58 AM", "12:01 PM"])
+        #expect(r.before == 0 && r.after > 10 && r.after < 26, "поле суффикса \(r.after)")
+        #expect(ColonTime.reserves(["16:58", "08:12"]) == (0, 0), "24 часа — поля нет")
+        #expect(ColonTime.reserves(["午後5:56"]).before > 10)
+
+        let f12 = Self.frame(.b, clock12: true), f24 = Self.frame(.b)
+        let L12 = BraunLayout(plan: try #require(DayPlan(f12)), size: Plate.pro.size, medium: true, bare: true)
+        let L24 = BraunLayout(plan: try #require(DayPlan(f24)), size: Plate.pro.size, medium: true, bare: true)
+        #expect(L12.timeAfter > 10 && L12.timeBefore == 0 && L24.timeAfter == 0)
+        // Название влезает и при суффиксе: место под него отдано.
+        for p in [Plate.pro, .regular] {
+            let L = BraunLayout(plan: try #require(DayPlan(f12)), size: p.size, medium: true, bare: true)
+            let avail = L.drumNameWidth - BraunLayout.lightSignWidth(offset: 0)
+            let step = L.rows[2].step
+            #expect(step.lines > 1 || BraunText.width(f12.words[.golden], size: step.size, semibold: true) <= avail + 0.01, "\(Int(p.size.width)): «Золотой час» влезает при суффиксе или переносится, шаг \(step)")
+        }
+        // На картинке суффикс нарисован: чернила в поле суффикса центральной строки (x 202…), а при 24 часах там пусто (подложка).
+        func suffixInk(_ clock12: Bool) throws -> Bool {
+            let px = try render(plate(.b, .pro, dark: true, clock12: clock12), scale: 4)
+            let pill = over(0xFFFFFF, 0.07, 0x161616)
+            var y = 88.0
+            while y < 104 { var x = 203.0; while x < 209.5 { if dist(px.rgb(x, y), pill) > 60 { return true }; x += 0.25 }; y += 0.25 }
+            return false
+        }
+        #expect(try suffixInk(true), "12 часов: «PM» рядом с временем")
+        #expect(try !suffixInk(false), "24 часа: на том месте пусто")
+    }
+
     // MARK: Снимки
 
     private func cell(_ caption: String, _ w: CGFloat, _ content: some View) -> some View {
@@ -368,6 +414,26 @@ struct WidgetBraunIdleViewTests {
             try png.write(to: URL(fileURLWithPath: "\(dir)/medium_idle_\(tag).png"))
             #expect(png.count <= 300 * 1024, "medium_idle_\(tag).png: \(png.count / 1024) КБ, предел 300")
         }
+    }
+
+    /// `medium_clock12.png`: те же состояния при 12-часовых часах — Pro Max чёрная и 338 pt белая.
+    @Test func writesThe12HourSheetWhenAsked() throws {
+        let dir = ProcessInfo.processInfo.environment["LP_BUILT_DIR"] ?? "/tmp/lp-built-out"
+        guard FileManager.default.fileExists(atPath: dir) else { return }
+        let rows: [[AnyView]] = [(Plate.pro, true), (Plate.regular, false)].map { p, dark in
+            [Scenario.b, .g, .d].map { sc in
+                AnyView(cell("\(sc) · 12 ч · \(Int(p.size.width)) · \(dark ? "чёрный" : "белый")", p.size.width, plate(sc, p, dark: dark, alpha: true, clock12: true)))
+            }
+        }
+        let grid = VStack(spacing: 14) {
+            ForEach(rows.indices, id: \.self) { r in HStack(alignment: .top, spacing: 14) { ForEach(rows[r].indices, id: \.self) { rows[r][$0] } } }
+        }
+        .padding(14).background(Color(red: 0.36, green: 0.35, blue: 0.33))
+        let r = ImageRenderer(content: grid)
+        r.scale = 1.0
+        let png = try #require(r.uiImage?.pngData())
+        try png.write(to: URL(fileURLWithPath: "\(dir)/medium_clock12.png"))
+        #expect(png.count <= 300 * 1024, "medium_clock12.png: \(png.count / 1024) КБ")
     }
 }
 #endif

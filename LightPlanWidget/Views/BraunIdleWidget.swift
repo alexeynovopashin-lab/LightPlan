@@ -35,32 +35,61 @@ extension BraunPalette {
 // MARK: - Время по двоеточию
 
 /// «13:48»: двоеточия всех строк стоят на одной вертикали, хотя центр крупнее (Спецификация 27.10): часы прижаты вправо в поле 21, двоеточие по
-/// центру поля 4, минуты влево в поле 21. Часы 12-часовые («5:56 PM») так не делятся — тогда строка выравнивается вправо целиком.
+/// центру поля 4, минуты влево в поле 21. 12-часовое время («5:56 PM», в японском и китайском «午後5:56») делится так же, а приставка
+/// и суффикс (AM / PM) стоят мелко по краям своих полей: ширину полей даёт раскладка (`reserves` — самые широкие на барабане), поэтому
+/// двоеточия по-прежнему на одной вертикали, а название начинается с одного x (ревью GPT к bd4357e: «12:56 PM» в колонке 46 резалось).
 struct ColonTime: View {
     let text: String
     let size: CGFloat
     let weight: Font.Weight
+    /// Ширина поля приставки слева и суффикса справа (0 — 24-часовые часы).
+    var before: Double = 0
+    var after: Double = 0
 
-    private var parts: (String, String)? {
-        let p = text.split(separator: ":", omittingEmptySubsequences: false)
-        guard p.count == 2, (1...2).contains(p[0].count), p[1].count == 2, p.allSatisfy({ $0.allSatisfy(\.isNumber) }) else { return nil }
-        return (String(p[0]), String(p[1]))
+    /// Размер приставки и суффикса.
+    static let affixSize = 8.0
+
+    /// «5:56 PM» → ("", "5", "56", "PM"); «午後5:56» → ("午後", "5", "56", ""); нет «ч:мм» — `nil`.
+    static func split(_ text: String) -> (prefix: String, h: String, m: String, suffix: String)? {
+        let chars = Array(text)
+        guard let colon = chars.firstIndex(of: ":"), colon >= 1, colon + 2 < chars.count else { return nil }
+        var a = colon
+        while a > 0, chars[a - 1].isNumber, colon - a < 2 { a -= 1 }
+        let mm = chars[(colon + 1)...(colon + 2)]
+        guard a < colon, mm.allSatisfy(\.isNumber) else { return nil }
+        func trim(_ x: ArraySlice<Character>) -> String { String(x).trimmingCharacters(in: .whitespacesAndNewlines) }
+        return (trim(chars[0..<a]), String(chars[a..<colon]), String(mm), trim(chars[(colon + 3)...]))
+    }
+
+    /// Поля под приставки и суффиксы всех строк барабана: самые широкие плюс зазор 2; нет приставок — 0.
+    static func reserves(_ texts: [String]) -> (before: Double, after: Double) {
+        var b = 0.0, a = 0.0
+        for t in texts {
+            guard let p = split(t) else { continue }
+            if !p.prefix.isEmpty { b = max(b, BraunText.width(p.prefix, size: affixSize, semibold: false) + 2) }
+            if !p.suffix.isEmpty { a = max(a, BraunText.width(p.suffix, size: affixSize, semibold: false) + 2) }
+        }
+        return (b, a)
     }
 
     var body: some View {
         let font = Font.system(size: size, weight: weight).monospacedDigit()
-        Group {
-            if let (h, m) = parts {
-                HStack(spacing: 0) {
-                    Text(h).frame(width: 21, alignment: .trailing)
+        let affix = Font.system(size: Self.affixSize, weight: .medium)
+        HStack(spacing: 0) {
+            if let p = Self.split(text) {
+                Text(p.prefix).font(affix).lineLimit(1).frame(width: before, alignment: .trailing)
+                Group {
+                    Text(p.h).frame(width: 21, alignment: .trailing)
                     Text(":").frame(width: 4)
-                    Text(m).frame(width: 21, alignment: .leading)
+                    Text(p.m).frame(width: 21, alignment: .leading)
                 }
+                .font(font)
+                Text(p.suffix).font(affix).lineLimit(1).padding(.leading, after > 0 ? 2 : 0).frame(width: after, alignment: .leading)
             } else {
-                Text(text).frame(width: 46, alignment: .trailing)
+                Text(text).font(font).lineLimit(1).minimumScaleFactor(0.6).frame(width: BraunDrum.timeColumn + before + after, alignment: .trailing)
             }
         }
-        .font(font).lineLimit(1).frame(width: BraunDrum.timeColumn)
+        .lineLimit(1).frame(width: BraunDrum.timeColumn + before + after)
     }
 }
 
@@ -153,8 +182,8 @@ struct BraunLightDrum: View {
             }
             .foregroundStyle(pal.muted).fixedSize()
         }
-        return HStack(spacing: BraunDrum.gap) {
-            ColonTime(text: plan.frame.clock(item.at, in: plan.frame.zone), size: centre ? 16 : 13, weight: weight)
+        return HStack(spacing: layout.timeGap) {
+            ColonTime(text: plan.frame.clock(item.at, in: plan.frame.zone), size: centre ? 16 : 13, weight: weight, before: layout.timeBefore, after: layout.timeAfter)
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 5) {
                     WidgetIcon(name: BraunSign.light(item.kind), size: signSize, line: 1.5)
@@ -169,7 +198,7 @@ struct BraunLightDrum: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .foregroundStyle(centre ? pal.amber : pal.muted)
-        .padding(.horizontal, BraunDrum.rowPadding)
+        .padding(.horizontal, layout.rowPadding)
         .frame(width: layout.drum.width, height: row.slot.height)
         .background { if centre { RoundedRectangle(cornerRadius: BraunDrum.pillRadius, style: .continuous).fill(pal.pill) } }
     }

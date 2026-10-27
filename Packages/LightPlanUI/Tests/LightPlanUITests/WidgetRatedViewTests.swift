@@ -27,7 +27,7 @@ struct WidgetRatedViewTests {
     static let ratings = [WidgetFeed.Rating(day: "2026-10-25", score: 62, quality: .good, sunrise: 81),
                           WidgetFeed.Rating(day: "2026-10-26", score: 30, quality: .plain, sunrise: 44)]
 
-    static func frame(_ k: Kind, hour: Int) -> WidgetFrame {
+    static func frame(_ k: Kind, hour: Int, clock12: Bool = false) -> WidgetFrame {
         let iv = shoot("iv", tsk(11, day: 28), tsk(13, day: 28), "Семья Ивановых", "family", "Семья")
         let md = shoot("md", tsk(13, day: 30), tsk(15, day: 30), "Мария и Дмитрий", "wedding", "Свадьба")
         let shoots: [WidgetFeed.Shoot]
@@ -37,7 +37,7 @@ struct WidgetRatedViewTests {
         case .free: shoots = [iv, md]
         case .empty: shoots = []
         }
-        return WidgetFeed(place: tomsk, shoots: shoots, forecast: ratings).frame(at: tsk(hour))
+        return WidgetFeed(place: tomsk, shoots: shoots, forecast: ratings, lang: clock12 ? "en" : "ru", clock12: clock12).frame(at: tsk(hour))
     }
 
     @ViewBuilder static func widget(_ k: Kind, hour: Int, alpha: Bool) -> some View {
@@ -119,21 +119,24 @@ struct WidgetRatedViewTests {
 
     /// Название центра барабана света с оценкой не рвётся на две строки: оценка рядом с ним, а не влезла — второй строкой под ним (подложка 42).
     @Test func theCentreNameNeverWrapsWhenItCarriesTheRating() throws {
-        for p in [Plate.pro, .regular] {
-            for h in [5, 9, 14, 21] {
-                let L = BraunLayout(plan: try #require(DayPlan(Self.frame(.bare, hour: h))), size: p.size, medium: true, bare: true)
-                let c = L.rows[2]
-                let tag = "\(Int(p.size.width)) \(h):00 центр «\(String(describing: c.light?.kind))»"
-                #expect(c.step.lines == 1, "\(tag): название в одну строку, шаг \(c.step)")
-                #expect(c.slot.height == (c.extraStacked ? 42 : 28), "\(tag): подложка \(c.slot.height), оценка внизу: \(c.extraStacked)")
-                let avail = BraunDrum.nameWidth(column: Double(L.drum.width)) - BraunLayout.lightSignWidth(offset: 0)
-                    - (c.extra != nil && !c.extraStacked ? BraunLayout.ratingWidth(c.extra ?? "", icon: c.extraIcon) : 0)
-                #expect(BraunText.width(plan(c).name, size: c.step.size, semibold: true) <= avail, "\(tag): название влезло, шаг \(c.step.size)")
-                for r in L.rows where r.light != nil && r.extra != nil && r.slot.offset != 0 {
-                    let a = BraunDrum.nameWidth(column: Double(L.drum.width)) - BraunLayout.lightSignWidth(offset: r.slot.offset) - BraunLayout.ratingWidth(r.extra ?? "", icon: r.extraIcon, size: r.extraSize)
-                    #expect(BraunText.width(plan(r).name, size: r.step.size, semibold: false) <= a, "\(tag): соседняя строка с оценкой влезла целиком (знак \(r.extraIcon), слово \(r.extraSize), название \(r.step.size), место \(a))")
+        for clock12 in [false, true] {
+            for p in [Plate.pro, .regular] {
+                for h in [5, 9, 14, 21] {
+                    let L = BraunLayout(plan: try #require(DayPlan(Self.frame(.bare, hour: h, clock12: clock12))), size: p.size, medium: true, bare: true)
+                    let c = L.rows[2]
+                    let tag = "\(clock12 ? "12 ч" : "24 ч") \(Int(p.size.width)) \(h):00 центр «\(String(describing: c.light?.kind))»"
+                    let colWidth = L.drumNameWidth
+                    #expect(c.step.lines == 1, "\(tag): название в одну строку, шаг \(c.step)")
+                    #expect(c.slot.height == (c.extraStacked ? 42 : 28), "\(tag): подложка \(c.slot.height), оценка внизу: \(c.extraStacked)")
+                    let avail = colWidth - BraunLayout.lightSignWidth(offset: 0)
+                        - (c.extra != nil && !c.extraStacked ? BraunLayout.ratingWidth(c.extra ?? "", icon: c.extraIcon) : 0)
+                    #expect(BraunText.width(plan(c).name, size: c.step.size, semibold: true) <= avail, "\(tag): название влезло, шаг \(c.step.size)")
+                    for r in L.rows where r.light != nil && r.extra != nil && r.slot.offset != 0 {
+                        let a = colWidth - BraunLayout.lightSignWidth(offset: r.slot.offset) - BraunLayout.ratingWidth(r.extra ?? "", icon: r.extraIcon, size: r.extraSize)
+                        #expect(BraunText.width(plan(r).name, size: r.step.size, semibold: false) <= a, "\(tag): соседняя строка с оценкой влезла целиком (знак \(r.extraIcon), слово \(r.extraSize), название \(r.step.size), место \(a))")
+                    }
+                    for r in L.rows where r.light != nil { #expect(r.slot.y >= 0 && r.slot.y + r.slot.height <= L.diameter + 0.01, "\(tag): строка внутри колонки") }
                 }
-                for r in L.rows where r.light != nil { #expect(r.slot.y >= 0 && r.slot.y + r.slot.height <= L.diameter + 0.01, "\(tag): строка внутри колонки") }
             }
         }
     }

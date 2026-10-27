@@ -115,6 +115,12 @@ struct BraunLayout {
     let drum: CGRect
     let centerStep: BraunFit.Step
     let rows: [Row]
+    /// Поля под приставку и суффикс времени барабана света (AM / PM при 12-часовых часах), 0 — при 24-часовых.
+    let timeBefore: Double, timeAfter: Double
+    /// Поля строки и зазор до названия на барабане света: 10 / 8; при 12-часовых часах (AM / PM занимает место) — 6 / 5.
+    let rowPadding: Double, timeGap: Double
+    /// Ширина под название в строке барабана света с учётом полей, зазора и суффикса времени.
+    let drumNameWidth: Double
     /// Состояние Б «Семьи виджетов» (30б.2в-5): маршрута нет — круг считает всю съёмку, справа свет, окошко с вырезом-флажком.
     let bare: Bool
 
@@ -142,10 +148,13 @@ struct BraunLayout {
 
         let dx = pad + d + BraunDrum.columnGap
         let column = CGRect(x: dx, y: centreY - d / 2, width: w - pad - dx, height: d)
-        let nameAvail = BraunDrum.nameWidth(column: Double(column.width))
+        let lights = bare ? BraunIdle.lightDrum(plan.frame) : []
+        let timeReserve = ColonTime.reserves(lights.compactMap { $0 }.map { plan.frame.clock($0.at, in: plan.frame.zone) })
+        let tight = timeReserve.before + timeReserve.after > 0
+        let rowPad = tight ? 6.0 : BraunDrum.rowPadding, gap = tight ? 5.0 : BraunDrum.gap
+        let nameAvail = Double(column.width) - 2 * rowPad - BraunDrum.timeColumn - gap - timeReserve.before - timeReserve.after
         let items = bare ? [] : BraunDrum.neighbours(plan.stops, current: plan.currentIndex)
         let currentName = items.isEmpty ? "" : (items[2]?.name ?? "")
-        let lights = bare ? BraunIdle.lightDrum(plan.frame) : []
         // Оценка стоит в строке того события, которое виджет оценивает сейчас (30б.2в-6): рассвет до конца золотого часа, потом закат, после — завтрашний рассвет.
         let rated = bare ? BraunIdle.ratedEvent(plan.frame) : nil
         let ratingWord = bare ? BraunIdle.ratingWord(plan.frame) : nil
@@ -195,13 +204,18 @@ struct BraunLayout {
         drum = column
         centerStep = centre
         self.bare = bare
+        timeBefore = timeReserve.before
+        timeAfter = timeReserve.after
+        rowPadding = bare ? rowPad : BraunDrum.rowPadding
+        timeGap = bare ? gap : BraunDrum.gap
+        drumNameWidth = nameAvail
         rows = bare ? slots.map { slot in
             let light = lights[slot.offset + 2]
             let name = lightName(light)
             func pick(_ icon: Bool, _ word: Double) -> BraunFit.Step {
-                slot.offset == 0 ? centre : BraunFit.pick(BraunFit.nearRow + (word < 11 ? [BraunFit.Step(10, lineHeight: 18)] : []), avail: lightAvail(slot.offset, icon: icon, word: word)) { BraunText.width(name, size: $0, semibold: false) }
+                slot.offset == 0 ? centre : BraunFit.pick(BraunFit.nearRow + (word < 11 ? [BraunFit.Step(10, lineHeight: 18), BraunFit.Step(9, lineHeight: 18)] : []), avail: lightAvail(slot.offset, icon: icon, word: word)) { BraunText.width(name, size: $0, semibold: false) }
             }
-            // Название мельчает до 11; не влезло и так — из хвоста уходит знак оценки, потом слово мельчает до 10, а при нужде до 9, и название до 10: оба остаются целыми.
+            // Название мельчает до 11; не влезло и так — из хвоста уходит знак оценки, потом слово мельчает до 10, а при нужде до 9, и название до 10 или 9: оба остаются целыми.
             var icon = slot.offset == 0 ? centreIcon : true
             var wordSize = 11.0
             var step = pick(icon, wordSize)

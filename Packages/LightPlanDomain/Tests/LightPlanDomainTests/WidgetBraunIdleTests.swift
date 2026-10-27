@@ -9,10 +9,10 @@ struct WidgetBraunIdleTests {
 
     private let tomsk = WidgetFeed.Spot(name: "Томск", latitude: 56.4977, longitude: 84.9744, zone: "Asia/Tomsk")
     /// Часы Томска (+7) 25.10.2026 (воскресенье, как «сегодня» на доске) плюс `day − 25` суток.
-    private func tsk(_ h: Int, _ m: Int = 0, day d: Int = 25) -> Date {
+    private func tsk(_ h: Int, _ m: Int = 0, day d: Int = 25, month mo: Int = 10) -> Date {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: "UTC")!
-        return c.date(from: DateComponents(year: 2026, month: 10, day: d, hour: h, minute: m))!.addingTimeInterval(-7 * 3600)
+        return c.date(from: DateComponents(year: 2026, month: mo, day: d, hour: h, minute: m))!.addingTimeInterval(-7 * 3600)
     }
     private func ms(_ d: Date) -> Int64 { Moment(d).milliseconds }
     private func shoot(_ id: String, from: Date, to: Date, names: String? = nil, genre: String? = "wedding",
@@ -173,13 +173,28 @@ struct WidgetBraunIdleTests {
             shoot("a", from: tsk(11, day: 28), to: tsk(13, day: 28), names: "Семья Ивановых", genre: "family", title: "Семья"),
             shoot("b", from: tsk(13, day: 30), to: tsk(15, day: 30), names: "Мария и Дмитрий"),
             shoot("c", from: tsk(10, day: 31), to: tsk(12, day: 31)),
-            shoot("d", from: tsk(10, day: 1), to: tsk(12, day: 1)),
-            shoot("late", from: tsk(10, day: 2), to: tsk(12, day: 2)),   // 8-е сутки: за неделей
+            shoot("d", from: tsk(10, day: 26), to: tsk(12, day: 26)),
+            shoot("e", from: tsk(10, day: 27), to: tsk(12, day: 27)),
         ]
         let f = feed(shoots).frame(at: tsk(14))
-        #expect(f.week.map(\.id) == ["a", "b", "c"], "три строки; четвёртая и восьмые сутки в список не идут")
-        let week = feed([shoots[3], shoots[4]]).frame(at: tsk(14))
-        #expect(week.week.isEmpty && BraunIdle.weekRows(week).isEmpty, "съёмка на восьмые сутки — недели без съёмок")
+        #expect(f.week.map(\.id) == ["d", "e", "a"], "по началу, три строки: четвёртая и дальше в список не идут")
+    }
+
+    /// Граница недели — сегодня + 6 суток: сегодня 25.10, последний день — суббота 31.10 («до сб 31»); 1.11 уже за неделей.
+    /// (Ревью GPT к bd4357e: прежний тест брал «1» и «2» октября — они в прошлом, и граница не проверялась.)
+    @Test func theWeekEndsOnTheSixthDayAfterTodayAndNotOnTheSeventh() {
+        let last = shoot("last", from: tsk(10, day: 31), to: tsk(12, day: 31))
+        let beyond = shoot("beyond", from: tsk(10, day: 1, month: 11), to: tsk(12, day: 1, month: 11))
+        let beyondToo = shoot("beyond2", from: tsk(10, day: 2, month: 11), to: tsk(12, day: 2, month: 11))
+        #expect(feed([last]).frame(at: tsk(14)).week.map(\.id) == ["last"], "31.10 — шестые сутки после сегодняшних, в неделе")
+        #expect(feed([last]).frame(at: tsk(14)).week.first?.dayOffset == 6)
+        #expect(feed([beyond]).frame(at: tsk(14)).week.isEmpty, "1.11 — седьмые сутки, за неделей")
+        #expect(feed([beyondToo]).frame(at: tsk(14)).week.isEmpty)
+        #expect(feed([last, beyond, beyondToo]).frame(at: tsk(14)).week.map(\.id) == ["last"], "рядом: в список идёт только то, что в неделе")
+        #expect(BraunIdle.emptyWeekLine(feed([beyond]).frame(at: tsk(14))) == "до сб 31 съёмок нет", "съёмка за границей — «съёмок нет» до субботы")
+        // Завтрашний день недели меняется с полуночью: 26.10 в 14:00 последний день — воскресенье 1.11.
+        let next = feed([beyond]).frame(at: tsk(14, day: 26))
+        #expect(next.week.map(\.id) == ["beyond"] && BraunIdle.emptyWeekLine(next) == nil)
     }
 
     @Test func weekRowsSayTheDayOnTheSecondLine() {
@@ -233,5 +248,24 @@ struct WidgetBraunIdleTests {
         #expect(none == plain, "без съёмки сегодня периметр чист — лишних записей нет")
         // Лента не длиннее предела.
         #expect(medium.count <= WidgetFeed.entryLimit)
+    }
+
+    // MARK: Граница часа в окошке (ревью GPT к bd4357e)
+
+    /// Окошко Braun показывает «1:00:00», пока осталось больше часа, и «60:00» дальше (`BraunWindow.showsHours`). Живой таймер идёт сам, а формат
+    /// выбирается на записи ленты, поэтому запись «ровно за час до конца» нужна: иначе запись с часами дожила бы до «0:59:xx».
+    /// Минутные записи попадают в границу, только если конец съёмки на целой минуте эпохи; запись границы ставится отдельно и от секунд не зависит.
+    @Test func theTimelineHasAnEntryExactlyAnHourBeforeTheEnd() {
+        let start = tsk(12), wholeEnd = tsk(24, 30), now = tsk(21, 30)
+        for end in [wholeEnd, wholeEnd.addingTimeInterval(20), wholeEnd.addingTimeInterval(59)] {
+            let f = feed([WidgetFeed.Shoot(id: "w", start: ms(start), end: ms(end), title: "Свадьба", genre: "wedding")])
+            for shape in [WidgetShape.small, .medium] {
+                let line = f.timeline(from: now, shape: shape).dates
+                #expect(line.contains(end.addingTimeInterval(-3600)), "\(shape): запись ровно за час до конца \(end) в ленте: нет")
+            }
+        }
+        // Граница позади «сейчас» — записи нет (ничего не откатывается в прошлое).
+        let late = feed([WidgetFeed.Shoot(id: "w", start: ms(start), end: ms(wholeEnd), title: "Свадьба", genre: "wedding")])
+        #expect(!late.timeline(from: tsk(24, 0), shape: .medium).dates.contains(wholeEnd.addingTimeInterval(-3600)))
     }
 }

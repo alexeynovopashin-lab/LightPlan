@@ -288,7 +288,13 @@ extension WidgetFeed {
             // единице (`DayPlan`), по минутам нечему меняться (ревью GPT к 8d3f1c2 — тест `anOpenShootPastItsEnd…`).
             let running = shoots.flatMap { s -> [Date] in
                 guard s.open || s.endDate > now else { return [] }
-                return Self.marks(max(s.startDate, now), min(s.endDate, end), step: 60)
+                var moments = Self.marks(max(s.startDate, now), min(s.endDate, end), step: 60)
+                // Окошко Braun меняет формат на границе часа (`BraunWindow.showsHours`: «1:00:00» → «60:00»). Минутные записи лежат на целых минутах
+                // эпохи и попадают в границу, только если конец съёмки на целой минуте; запись ровно «за час до конца» ставится отдельно, чтобы
+                // формат не зависел от секунд конца (ревью GPT к bd4357e).
+                let boundary = s.endDate.addingTimeInterval(-3600)
+                if !s.open, boundary > now, boundary >= s.startDate, boundary <= end { moments.append(boundary) }
+                return moments
             }
             // 30б.2в-5: средний в день съёмки впереди рисует риски по световому дню (150 на ~10 ч, риска — 4 минуты): пока он идёт,
             // кольцо двигает лента, раз в 10 минут. Без съёмки сегодня периметр чист, и записи не нужны.
