@@ -18,8 +18,8 @@ enum BraunSign {
         }
     }
 
-    /// Знак оценки заката. Доска рисует «закат с отражением» (`sunset_glow`), его в библиотеке главной ветки ещё нет (он на `wt/icons-golden`):
-    /// пока рисуется «закат». Когда знак появится в библиотеке и в таблице виджета, подхватится сам.
+    /// Знак оценки заката — «закат с отражением» (`sunset_glow`, коммит `0760049` с `wt/icons-golden`, взят в эту ветку по слову Алексея 27.10).
+    /// Нет в таблице (расширение собрано из библиотеки без него) — рисуется «закат».
     static var rating: String { WidgetIconTable.common["sunset_glow"] != nil ? "sunset_glow" : "sunset" }
 }
 
@@ -370,8 +370,12 @@ struct BraunWeekRow: View {
                 Text(row.names).font(.system(size: nameSize, weight: row.near ? .semibold : .medium)).lineLimit(1)
             }
             .frame(height: 16).foregroundStyle(row.near ? pal.amber : pal.muted)
-            Text(row.line2).font(.system(size: lineSize, weight: .medium)).monospacedDigit().lineLimit(1)
-                .frame(height: 14, alignment: .leading).foregroundStyle(row.near ? pal.muted : pal.dim)
+            // Влезла (с правом на 6 pt правого поля, как у доски) — рисуется как есть, без обрезки; не влезла и в 9 — режется «…».
+            Group {
+                if fit.lineFits { Text(row.line2).fixedSize(horizontal: true, vertical: false) } else { Text(row.line2) }
+            }
+            .font(.system(size: lineSize, weight: .medium)).monospacedDigit().lineLimit(1)
+            .frame(height: 14, alignment: .leading).foregroundStyle(row.near ? pal.muted : pal.dim)
         }
         .padding(.horizontal, 10)
         .frame(width: width, height: height, alignment: .leading)

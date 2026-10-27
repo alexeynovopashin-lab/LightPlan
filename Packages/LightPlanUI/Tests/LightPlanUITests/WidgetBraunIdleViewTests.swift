@@ -315,6 +315,24 @@ struct WidgetBraunIdleViewTests {
         }
     }
 
+    /// Знаки света на строках доски — свои, не запасные: рассвет, золотой час (солнце с циферблатом), закат и оценка заката (закат с отражением)
+    /// стоят в таблице расширения и различаются между собой.
+    @Test func theLightRowsHaveTheirOwnSignsInTheWidgetTable() {
+        let names = [BraunSign.light(.sunrise), BraunSign.light(.golden), BraunSign.light(.sunset), BraunSign.rating]
+        #expect(names == ["sunrise", "golden", "sunset", "sunset_glow"], "оценка заката — свой знак, не запасной «закат»")
+        for n in names { #expect(WidgetIconTable.common[n] != nil, "знака «\(n)» нет в таблице расширения") }
+        #expect(Set(names.compactMap { WidgetIconTable.common[$0] }).count == 4, "четыре знака света разные")
+    }
+
+    /// «ср 28 · 11:00 · через 3 дня» у ближайшей строки доходит до конца целиком (доска: 148 pt текста в рамке 146, x 192…340) — без «…».
+    @Test func theNearRowSecondLineIsNotCut() throws {
+        let px = try render(plate(.d, .pro, dark: true), scale: 4)
+        let t: BoardText = ("ср 28 · 11:00 · через 3 дня", 192, 40.5, 160, 14, 11, 500, 0x9B9B9B, false)
+        let b = try #require(ink(px, t, pad: 0))
+        #expect(b.x1 >= 336, "вторая строка ближайшей кончается на \(b.x1), на доске около 340: обрезана")
+        #expect(b.x1 <= 348, "и не выходит за поле 16")
+    }
+
     // MARK: Снимки
 
     private func cell(_ caption: String, _ w: CGFloat, _ content: some View) -> some View {
