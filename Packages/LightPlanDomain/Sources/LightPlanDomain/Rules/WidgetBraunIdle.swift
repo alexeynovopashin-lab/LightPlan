@@ -1,0 +1,162 @@
+import Foundation
+import LightPlanCore
+
+// 30б.2в-5 — средний виджет «Braun» без маршрута: числа и правила «Семьи виджетов» Алексея (27.10)
+// (`light_plan:Light_Plan/docs/widget_design_2026-10-26/`: `FamilySizes.dc.html` — числа, `_gen/family.js` — раскладка).
+// Как и `WidgetBraun.swift`: только то, что не зависит от шрифта и SwiftUI, чтобы `swift test` проверял на любом хосте.
+//
+// Состояния доски: Б — съёмка идёт, маршрута нет (круг считает всю съёмку, справа свет); Г — съёмка сегодня впереди;
+// Д — день без съёмок; Е — вечер после заката. В Г, Д, Е слева свет, справа неделя съёмок.
+
+public enum BraunIdle {
+
+    // MARK: Какое состояние
+
+    /// Левая колонка и риски: Г — съёмка сегодня впереди, Д — день без съёмок, Е — после заката (ближайшее — завтрашний рассвет).
+    public enum Form: Equatable, Sendable { case shootAhead, noShoots, evening }
+
+    /// Ближайшая съёмка ещё не началась и стоит сегодня (по часам её места): единственный случай с рисками по периметру
+    /// («риски есть только в день со съёмкой», Алексей 27.10). Завтрашняя съёмка день не делает съёмочным: периметр чист.
+    public static func shootToday(_ f: WidgetFrame) -> Bool {
+        guard f.kind == .upcoming, let p = f.primary else { return false }
+        return p.dayOffset <= 0
+    }
+
+    /// Закат сегодня уже был: столбика оценки нет (заката сегодня больше не будет), ближайшее — завтрашний рассвет.
+    public static func isNight(_ f: WidgetFrame) -> Bool {
+        guard let set = f.day?.sunset else { return false }
+        return f.now >= set
+    }
+
+    public static func form(_ f: WidgetFrame) -> Form {
+        if shootToday(f) { return .shootAhead }
+        return isNight(f) ? .evening : .noShoots
+    }
+
+    /// Съёмка идёт, а маршрута у неё нет: состояние Б (круг считает всю съёмку).
+    public static func isBare(_ f: WidgetFrame) -> Bool {
+        f.kind == .live && f.primary?.shoot.stops.isEmpty == true
+    }
+
+    // MARK: Б — круг на всю съёмку
+
+    /// Сколько точек горит: `round(60 × осталось / вся съёмка)`. Точки гаснут с верха по часовой (горят последние перед верхней).
+    public static func wholeShootLit(left: TimeInterval, total: TimeInterval) -> Int {
+        guard total > 0 else { return 0 }
+        return min(BraunDial.dots, max(0, Int((Double(BraunDial.dots) * left / total).rounded())))
+    }
+
+    /// Размер числа и единицы в круге по частям отсчёта: если в обеих частях «ч» и «мин» по две цифры и больше («10 ч 12 мин»), на
+    /// больших часах 20 / 12 вместо 22 / 13 (`dial()` генератора доски); одна часть или однозначные часы — как у `BraunDial`.
+    public static func countdownSizes(diameter d: Double, parts: [BraunDial.Part]) -> (number: Double, unit: Double) {
+        let wide = parts.count > 1 && parts.allSatisfy { $0.value >= 10 }
+        return BraunDial.isBig(diameter: d) && !wide ? (22, 13) : (20, 12)
+    }
+
+    // MARK: Свет слева (Г, Д, Е)
+
+    public enum Role: Equatable, Sendable {
+        /// Прошло — тусклый.
+        case past
+        /// Ближайшее — цвет текущей точки (янтарь / чёрный).
+        case next
+        /// Дальнее — основной текст.
+        case far
+    }
+
+    /// Роль каждого из трёх времён света: прошедшее тусклое, ближайшее янтарное, дальнее основным цветом. Все прошли — все тусклые.
+    /// Времени нет (полярные сутки) — оно считается прошедшим: «—» тусклым.
+    public static func roles(now: Date, _ times: [Date?]) -> [Role] {
+        let next = times.firstIndex { ($0 ?? .distantPast) > now }
+        return times.indices.map { i in
+            guard let next else { return .past }
+            return i < next ? .past : (i == next ? .next : .far)
+        }
+    }
+
+    /// Балл на столбике: доля заливки 0…1 от низа; чёрточки 6 × 0,5 на 20 / 40 / 60 / 80.
+    public static func gaugeLevel(score: Int) -> Double { Double(min(100, max(0, score))) / 100 }
+    public static let gaugeMarks = [20, 40, 60, 80]
+
+    // MARK: Барабан света (Б)
+
+    public enum LightKind: Equatable, Sendable { case sunrise, golden, sunset }
+
+    public struct LightItem: Equatable, Sendable {
+        public var kind: LightKind
+        public var at: Date
+        /// Завтрашний рассвет после заката: подпись «завтра».
+        public var tomorrow: Bool
+    }
+
+    /// Барабан света: события суток по порядку — рассвет, золотой час, закат, завтрашний рассвет; в центре ближайшее к «сейчас»
+    /// (на доске в 15:18 — золотой час), по сторонам предыдущее и следующее, ещё по одному дальше. После заката в центре завтрашний
+    /// рассвет, до рассвета — сегодняшний. Полярные сутки: событий нет, барабан пуст.
+    /// Возвращает пять мест −2 … +2; нет события — `nil`, остальные стоят на своих местах (как у барабана маршрута).
+    public static func lightDrum(_ f: WidgetFrame) -> [LightItem?] {
+        var items: [LightItem] = []
+        if let d = f.day {
+            if let r = d.sunrise { items.append(LightItem(kind: .sunrise, at: r, tomorrow: false)) }
+            if let g = d.golden { items.append(LightItem(kind: .golden, at: g, tomorrow: false)) }
+            if let s = d.sunset { items.append(LightItem(kind: .sunset, at: s, tomorrow: false)) }
+        }
+        if let r = f.tomorrow?.sunrise { items.append(LightItem(kind: .sunrise, at: r, tomorrow: true)) }
+        let centre = items.firstIndex { $0.at > f.now } ?? max(0, items.count - 1)
+        return BraunDrum.neighbours(items, current: items.isEmpty ? nil : centre)
+    }
+
+    // MARK: Неделя справа (Г, Д, Е)
+
+    /// Строка списка недели: знак жанра, имена, и вторая строка «ср 28 · 11:00» (+ «· через 3 дня» у ближайшей).
+    public struct WeekRow: Equatable, Sendable {
+        public var id: String
+        public var genre: String?
+        public var names: String
+        public var day: String
+        public var time: String
+        /// «через 3 дня» — только у ближайшей строки и только если съёмка не сегодня и не завтра (там день уже сказан словом).
+        public var relative: String?
+        public var near: Bool
+
+        /// Вторая строка: «ср 28 · 11:00 · через 3 дня».
+        public var line2: String { ([day, time] + (relative.map { [$0] } ?? [])).joined(separator: " · ") }
+    }
+
+    public static func weekRows(_ f: WidgetFrame) -> [WeekRow] {
+        f.week.enumerated().map { i, s in
+            let named = (s.shoot.names ?? "").trimmingCharacters(in: .whitespaces)
+            let day: String
+            switch s.dayOffset {
+            case ..<1: day = f.words[.today].lowercased()
+            case 1: day = f.words[.tomorrow].lowercased()
+            default: day = dayAndNumber(s.shoot.startDate, in: s.zone, f)
+            }
+            return WeekRow(id: s.id, genre: s.shoot.genre, names: named.isEmpty ? s.shoot.title : named, day: day,
+                           time: f.clock(s.shoot.startDate, in: s.zone), relative: i == 0 && s.dayOffset >= 2 ? f.words.inDays(s.dayOffset) : nil,
+                           near: i == 0)
+        }
+    }
+
+    /// «сб 31»: короткий день недели (строчными, как на доске) и число по часам места.
+    public static func dayAndNumber(_ date: Date, in tz: TimeZone, _ f: WidgetFrame) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = tz
+        return "\(f.weekday(date, in: tz).lowercased()) \(cal.component(.day, from: date))"
+    }
+
+    /// Строка вместо списка, если съёмок на неделе нет: «до сб 31 съёмок нет». Съёмки есть — `nil`; места нет — `nil`.
+    public static func emptyWeekLine(_ f: WidgetFrame) -> String? {
+        guard f.week.isEmpty, let end = f.weekEnd else { return nil }
+        return f.words[.noShootsUntil].replacingOccurrences(of: "{d}", with: dayAndNumber(end, in: f.zone, f))
+    }
+
+    /// Оценка заката в строке: слово. Нет прогноза на сегодня — `nil`, строки нет.
+    public static func ratingWord(_ f: WidgetFrame) -> String? {
+        f.rating?.category.map { f.words.rating($0) }
+    }
+
+    /// Высоты строк списка: ближайшая и остальные, зазор 2 (на 170 pt — 46 / 40, три строки = 130; на 158 pt — 44 / 38, чтобы три строки
+    /// остались в 126 pt между полями: числа доски на 158 pt не заданы).
+    public static func weekRowHeights(plateHeight h: Double) -> (near: Double, other: Double) { h >= 170 ? (46, 40) : (44, 38) }
+    public static let weekRowGap = 2.0
+}

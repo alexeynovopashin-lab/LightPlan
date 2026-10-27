@@ -245,8 +245,11 @@ struct WidgetFrameTests {
             for (a, b) in zip(first, first.dropFirst()) { #expect(b.timeIntervalSince(a) <= 60, "дырка между \(a) и \(b)") }
         }
         // До начала съёмки минут нет: плашка до того не кольцо.
+        // Средний с 30б.2в-5 в день съёмки впереди рисует риски по световому дню и просит записи раз в 10 минут (`WidgetBraunIdleTests`),
+        // но не по минуте; малый до начала съёмки не просит ничего.
         let early = f.timeline(from: tsk(9), shape: .medium)
-        #expect(!early.dates.contains(tsk(9, 1)) && !early.dates.contains(tsk(11, 30)))
+        #expect(!early.dates.contains(tsk(9, 1)) && !early.dates.contains(tsk(11, 31)))
+        #expect(!f.timeline(from: tsk(9), shape: .small).dates.contains(tsk(11, 30)))
         #expect(early.dates.contains(tsk(12)) && early.dates.contains(tsk(12, 1)), "с начала съёмки — по минуте")
     }
 

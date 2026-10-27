@@ -79,6 +79,18 @@ public struct WidgetFrame: Equatable, Sendable {
     public var url: URL
     public var lang: String
     public var clock12: Bool
+    /// 30б.2в-5. Оценка заката сегодняшнего дня места «Света»; `nil` — прогноза нет (виджет молчит, числа не выдумываются).
+    public var rating: WidgetFeed.Rating? = nil
+    /// Свет завтрашнего дня места «Света»: вечером ближайшее событие — завтрашний рассвет.
+    public var tomorrow: WidgetFeed.DayLight? = nil
+    /// Список съёмок недели среднего вида: до `weekRows` ближайших нерозданных съёмок, что начинаются в ближайшие `weekDays` суток
+    /// (сегодня и дальше по часам места съёмки), с идущей, если она есть.
+    public var week: [ShootFrame] = []
+    /// Последний день недели («до сб 31»): сегодня плюс `weekDays − 1`. `nil` — места ещё нет.
+    public var weekEnd: Date? = nil
+
+    /// Сколько суток и строк занимает неделя среднего вида: семь суток от сегодняшних, три строки (больше в высоту не влезает).
+    public static let weekDays = 7, weekRows = 3
 
     /// Время на плашке в часах `tz`, по привычке приложения (24 или 12 часов, язык приложения).
     public func clock(_ date: Date, in tz: TimeZone) -> String {
@@ -155,6 +167,10 @@ extension WidgetFeed {
                             lang: lang, clock12: clock12)
         guard let today = spot.today(at: now) else { return f }
         f.day = spot.light(on: today)
+        f.tomorrow = spot.light(on: today.adding(days: 1))
+        f.rating = rating(on: today)
+        f.week = Array(unfinished(at: now).map { shootFrame($0, at: now) }.filter { $0.dayOffset < WidgetFrame.weekDays }.prefix(WidgetFrame.weekRows))
+        f.weekEnd = Self.noon(of: today.adding(days: WidgetFrame.weekDays - 1), in: tz)
         f.url = Self.dayURL(today)
 
         if let live = unfinished(at: now).first(where: { $0.startDate <= now }) {
@@ -170,6 +186,13 @@ extension WidgetFeed {
         }
         f.url = Self.shootURL(f.primary!.id)
         return f
+    }
+
+    /// Полдень дня `day` в поясе `tz`: от него берут день недели и число («сб 31»), не рискуя сдвинуть сутки.
+    static func noon(of day: CivilDate, in tz: TimeZone) -> Date? {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = tz
+        return cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day, hour: 12))
     }
 
     /// Следующая точка света, три дня вперёд: восход до восхода, закат после него, после заката — завтрашний восход.
@@ -260,10 +283,18 @@ extension WidgetFeed {
             // Кольцо рисуется, пока съёмка идёт: от «сейчас» (или начала) до конца; закрытая руками — до записанного конца.
             // Незакрытая вручную съёмка после записанного конца минут не просит: остаток и доли кольца у неё зажаты на нуле и
             // единице (`DayPlan`), по минутам нечему меняться (ревью GPT к 8d3f1c2 — тест `anOpenShootPastItsEnd…`).
-            return shoots.flatMap { s -> [Date] in
+            let running = shoots.flatMap { s -> [Date] in
                 guard s.open || s.endDate > now else { return [] }
                 return Self.marks(max(s.startDate, now), min(s.endDate, end), step: 60)
             }
+            // 30б.2в-5: средний в день съёмки впереди рисует риски по световому дню (150 на ~10 ч, риска — 4 минуты): пока он идёт,
+            // кольцо двигает лента, раз в 10 минут. Без съёмки сегодня периметр чист, и записи не нужны.
+            guard shape == .medium, let today = place.today(at: now) else { return running }
+            let day = (0...1).flatMap { off -> [Date] in
+                guard let l = place.light(on: today.adding(days: off)), let r = l.sunrise, let s = l.sunset else { return [] }
+                return Self.marks(max(r, now), min(s, end), step: 600).filter { BraunIdle.shootToday(frame(at: $0)) }
+            }
+            return running + day
         case .circular:
             guard let tz = place.timeZone, let today = place.today(at: now) else { return [] }
             var cal = Calendar(identifier: .gregorian)

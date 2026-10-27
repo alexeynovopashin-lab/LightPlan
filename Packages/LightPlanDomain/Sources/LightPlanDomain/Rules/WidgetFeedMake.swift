@@ -13,12 +13,13 @@ extension WidgetFeed {
     ///   - place: место «Света».
     ///   - manualEnd: настройка «Завершение съёмки»: незакрытая съёмка идёт, пока не нажмут.
     ///   - offset: смещение пояса точки в часах на день; `nil` — место приложения.
+    ///   - forecast: оценки заката дней места «Света» из настоящего прогноза (30б.2в-5); пусто — прогноза нет.
     public static func make(
         place: Spot, sessions: [Session], studios: [Studio], spots: [LightPlanDomain.Spot], now: Date,
         manualEnd: Bool, offset: (GeoPoint?, CivilDate) -> Double, title: (Session) -> String,
         names: (Session) -> String = { _ in "" },
         sign: (_ name: String, _ place: String, _ studio: Bool) -> String = { _, _, _ in "dot" },
-        words: Words, lang: String, clock12: Bool
+        words: Words, forecast: [Rating] = [], lang: String, clock12: Bool
     ) -> WidgetFeed {
         let today = place.today(at: now) ?? Self.civil(now)
         let from = today.adding(days: -1), to = today.adding(days: horizonDays)
@@ -59,7 +60,7 @@ extension WidgetFeed {
                 genre: s.genre?.rawValue, names: who.isEmpty ? nil : who))
         }
         out.sort { ($0.start, $0.id) < ($1.start, $1.id) }
-        return WidgetFeed(place: place, shoots: Array(out.prefix(40)), words: words, lang: lang, clock12: clock12)
+        return WidgetFeed(place: place, shoots: Array(out.prefix(40)), words: words, forecast: forecast, lang: lang, clock12: clock12)
     }
 
     private static func civil(_ d: Date) -> CivilDate {
