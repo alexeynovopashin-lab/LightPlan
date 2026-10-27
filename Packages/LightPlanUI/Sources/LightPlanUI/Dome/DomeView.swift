@@ -351,8 +351,6 @@ public struct DomeView: View {
     private func paintBody(_ context: inout GraphicsContext, at pos: CGPoint, eD: Degrees, weight k: Double,
                             color: SkyColor, deepColor: SkyColor) {
         let g = DomeGeometry.self
-        let v = (eD < 0 ? max(0, 1 - (-eD / 3)) : 1) * k
-        let ink = Color(color)
 
         // Свет ушедшего светила: просвечивающее пятно без кромки.
         let deepFactor = g.deepOf(eD) * k
@@ -369,18 +367,72 @@ public struct DomeView: View {
                     ]), center: pos, startRadius: 0, endRadius: r))
             }
         }
-        guard v > 0.002 || k > 0.002 else { return }
+        guard k > 0.002 else { return }
 
-        // Диск: заливка держит массу, кромка её очерчивает, обе гаснут со
-        // светилом. Свечение вокруг ослабевает отдельно от диска (`k`, не `v`
-        // — у портала двойник светится ещё до того, как диск проступит).
-        if k > 0.002 {
-            let glowRect = CGRect(x: pos.x - 16, y: pos.y - 16, width: 32, height: 32)
-            context.fill(Path(ellipseIn: glowRect), with: .color(ink.opacity(0.18 * v)))
-            context.stroke(Path(ellipseIn: glowRect), with: .color(ink.opacity(0.34 * v)), lineWidth: 1)
+        // Закат (DECISIONS 27.10): над линией горизонта светило чёткое и в
+        // полную силу — его режет сама линия, а не спад по высоте; под линией
+        // та же форма, размытая и тусклее. Сначала размытие (вложенный слой),
+        // потом обрезка внешним слоем — иначе размытие смазало бы и саму линию.
+        let halo = g.haloOf(eD) * k
+        let under = g.underOf(eD) * k
+        let horizon = CGFloat(g.horizonY)
+        if Double(pos.y) - g.haloRadius < g.horizonY {
+            context.drawLayer { layer in
+                layer.clip(to: Path(CGRect(x: 0, y: 0, width: CGFloat(g.viewWidth), height: horizon)))
+                paintSunParts(&layer, at: pos, color: color, halo: halo,
+                              ring: g.ringAbove(pos) ? k : 0, core: k)
+            }
+        }
+        if Double(pos.y) + g.haloRadius > g.horizonY, max(halo, under) > 0.002 {
+            context.drawLayer { layer in
+                layer.clip(to: Path(CGRect(x: 0, y: horizon, width: CGFloat(g.viewWidth),
+                                           height: CGFloat(g.viewHeight) + Self.overflow)))
+                layer.opacity = g.underDim
+                layer.drawLayer { blurred in
+                    blurred.addFilter(.blur(radius: g.underBlur))
+                    paintSunParts(&blurred, at: pos, color: color, halo: halo, ring: under, core: under)
+                }
+            }
+        }
+    }
+
+    /// Пиковая непрозрачность ореола заката на своей теме. Светлая тема берёт
+    /// гуще: светло-жёлтая середина на `#FAF8F3` иначе не читается.
+    private var haloPeak: Double { colorScheme == .light ? 0.62 : 0.5 }
+
+    /// Светило одной стороны линии: ореол под кольцом, кольцо, тень диска
+    /// (светлая тема), диск. Сила каждой части — своя доля 0…1.
+    private func paintSunParts(_ context: inout GraphicsContext, at pos: CGPoint, color: SkyColor,
+                               halo: Double, ring: Double, core: Double) {
+        let g = DomeGeometry.self
+        let ink = Color(color)
+
+        // Ореол — новый слой заката: тёплый и мягкий, светло-жёлтый в
+        // середине, оранжевый к краю, из семьи цвета состояния.
+        if halo > 0.002 {
+            let r = CGFloat(g.haloRadius)
+            let light = colorScheme == .light
+            let mid = LightPalette.lerp(color, SkyColor(255, 238, 186), light ? 0.25 : 0.55)
+            let edge = LightPalette.lerp(color, LightPalette.scarlet, light ? 0.5 : 0.35)
+            let a = haloPeak * halo
+            context.fill(Path(ellipseIn: CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)),
+                         with: .radialGradient(Gradient(stops: [
+                            .init(color: Color(mid).opacity(a), location: 0),
+                            .init(color: Color(edge).opacity(a * 0.55), location: 0.5),
+                            .init(color: Color(edge).opacity(0), location: 1),
+                         ]), center: pos, startRadius: 0, endRadius: r))
         }
 
-        guard v > 0.002 else { return }
+        // Внешнее кольцо: свечение вокруг диска со своей кромкой.
+        if ring > 0.002 {
+            let r = CGFloat(g.ringRadius)
+            let glowRect = CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)
+            context.fill(Path(ellipseIn: glowRect), with: .color(ink.opacity(0.18 * ring)))
+            context.stroke(Path(ellipseIn: glowRect), with: .color(ink.opacity(0.34 * ring)), lineWidth: 1)
+        }
+
+        guard core > 0.002 else { return }
+        let v = core
         let coreRect = CGRect(x: pos.x - 6.5, y: pos.y - 6.5, width: 13, height: 13)
         let corePath = Path(ellipseIn: coreRect)
         // Тень светила — нарисованная, как у веба (`#sunShade`, `.lit-shade`):
