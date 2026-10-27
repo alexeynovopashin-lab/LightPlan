@@ -86,8 +86,14 @@ public struct SystemNotificationCenter: NotificationCentering {
             if let cid = alert.clientId { info["client"] = cid }
             trigger = Self.trigger(wall: wall)
         } else {
-            content.threadIdentifier = "lp.studio"
+            content.threadIdentifier = alert.id.hasPrefix(ReminderSchedule.idPrefix) ? "lp.remind" : "lp.studio"
             trigger = Self.trigger(fire: alert.fire.date, offsetHours: alert.offsetHours)
+        }
+        // Неотложное — только если система это право приложению дала (`timeSensitiveSetting`): бесплатная подпись его не
+        // даёт (замер 27.10: «Personal development teams … do not support the Time Sensitive Notifications capability»),
+        // и напоминание идёт обычным. Появится право в `Config/LightPlan-iOS.entitlements` — уровень включится сам.
+        if alert.urgent, await center.notificationSettings().timeSensitiveSetting == .enabled {
+            content.interruptionLevel = .timeSensitive
         }
         content.userInfo = info
         #if DEBUG
@@ -113,6 +119,7 @@ public struct SystemNotificationCenter: NotificationCentering {
         let requests = await center.pendingNotificationRequests()
         let delivered = await center.deliveredNotifications().map { n in
             "delivered \(n.request.identifier) | \(iso.string(from: n.date)) | \(n.request.content.title) | \(n.request.content.body)"
+                + Self.level(n.request.content)
         }
         return delivered.sorted() + requests.map { r in
             let t = r.trigger as? UNCalendarNotificationTrigger
@@ -120,8 +127,19 @@ public struct SystemNotificationCenter: NotificationCentering {
                 .map { iso.string(from: $0) } ?? "—"
             let c = t?.dateComponents
             let fields = c.map { "\($0.year ?? 0)-\($0.month ?? 0)-\($0.day ?? 0) \($0.hour ?? 0):\($0.minute ?? 0) tz=\($0.timeZone?.secondsFromGMT() ?? 0)" } ?? "—"
-            return "\(r.identifier) | \(next) | \(fields) | \(r.content.title) | \(r.content.body)"
+            return "\(r.identifier) | \(next) | \(fields) | \(r.content.title) | \(r.content.body)" + Self.level(r.content)
         }.sorted()
+    }
+
+    /// Уровень, с которым система держит запрос, — только не обычный: ` | level=timeSensitive`.
+    private static func level(_ c: UNNotificationContent) -> String {
+        switch c.interruptionLevel {
+        case .active: return ""
+        case .timeSensitive: return " | level=timeSensitive"
+        case .passive: return " | level=passive"
+        case .critical: return " | level=critical"
+        @unknown default: return " | level=\(c.interruptionLevel.rawValue)"
+        }
     }
 
     public func remove(ids: [String]) async {
@@ -162,7 +180,7 @@ public final class NotificationPresenter: NSObject, UNUserNotificationCenterDele
 
     /// Куда ведёт нажатие на уведомление.
     public enum Tap: Sendable, Equatable {
-        /// Прогноз переменился (30.6): карточка этой записи.
+        /// Прогноз переменился (30.6) или напоминание о съёмке: карточка этой записи.
         case card(String)
         /// Поздравление (К6): карточка клиента, если праздники дня у одного клиента; `nil` — список «Клиенты».
         case client(String?)
@@ -196,6 +214,8 @@ public final class NotificationPresenter: NSObject, UNUserNotificationCenterDele
     public static func tap(id: String, info: [AnyHashable: Any]) -> Tap? {
         if id.hasPrefix(InstantAlert.weatherPrefix), let sid = info["session"] as? String { return .card(sid) }
         if id.hasPrefix(GreetSchedule.idPrefix) { return .client(info["client"] as? String) }
+        // Напоминание о съёмке: её карточка.
+        if id.hasPrefix(ReminderSchedule.idPrefix), let sid = info["session"] as? String { return .card(sid) }
         return nil
     }
 
@@ -215,7 +235,9 @@ public final class NotificationPresenter: NSObject, UNUserNotificationCenterDele
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter,
                                        willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        guard notification.request.identifier.hasPrefix(StudioSchedule.idPrefix),
+        // Студийный час и напоминание молчат над открытой карточкой своей записи: она и так перед глазами.
+        let id = notification.request.identifier
+        guard id.hasPrefix(StudioSchedule.idPrefix) || id.hasPrefix(ReminderSchedule.idPrefix),
               let sid = notification.request.content.userInfo["session"] as? String else {
             return [.banner, .list, .sound]
         }

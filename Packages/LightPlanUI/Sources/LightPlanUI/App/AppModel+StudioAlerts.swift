@@ -129,7 +129,7 @@ extension AppModel {
         return notices.map { StudioAlertText.alert($0, lexicon: lexicon, clock: clock) }
     }
 
-    /// Привести систему к данным — студийный час и поздравления (К6) одной сверкой: 64 места делятся по таблице
+    /// Привести систему к данным — напоминания о съёмке, студийный час и поздравления (К6) одной сверкой: 64 места делятся по таблице
     /// (`NotificationScheduler.lanes`), а не по тому, кто сверился последним. Правки идут пачками — запрос откладывается
     /// на треть секунды и склеивается; `force` (запуск, возврат в приложение, смена тумблера) опрашивает систему даже при
     /// тех же данных: разрешение могли выдать или отнять в настройках iPhone, а у поздравлений сменился «сегодня».
@@ -149,11 +149,12 @@ extension AppModel {
             let auth = await center.authorization()
             alertAuth = auth
             let scheduler = NotificationScheduler(center: center)
-            let plan = auth == .allowed ? (studioAlertsWanted ? studioAlertPlan() : []) + greetAlertPlan() : []
+            let plan = auth == .allowed
+                ? reminderAlertPlan() + (studioAlertsWanted ? studioAlertPlan() : []) + greetAlertPlan() : []
             guard !plan.isEmpty else {
                 if alertApplied != nil || force { await scheduler.clear() }
                 alertApplied = nil
-                await alertLog("idle wanted=\(studioAlertsWanted) auth=\(auth)")
+                await alertLog("idle wanted=\(studioAlertsWanted) remind=\(remindWanted ? remindMinutes : 0) auth=\(auth)")
                 return
             }
             let sig = plan.map { $0.id + "=" + $0.signature }
@@ -190,7 +191,7 @@ extension AppModel {
         alertPresenter = .shared
         alertPresenter.setCardCheck { [weak self] sid in self?.cardId == sid }
         SystemNotificationCenter.install(delegate: alertPresenter)
-        // Нажали на уведомление: «прогноз переменился» — его карточка (30.6), поздравление — клиент или «Клиенты» (К6).
+        // Нажали на уведомление: «прогноз переменился» и напоминание — карточка записи (30.6), поздравление — клиент или «Клиенты» (К6).
         alertPresenter.setOpen { [weak self] tap in
             switch tap {
             case .card(let sid): self?.openFromNotice(sid)

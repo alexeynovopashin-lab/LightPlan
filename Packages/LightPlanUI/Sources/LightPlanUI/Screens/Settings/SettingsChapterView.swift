@@ -176,6 +176,31 @@ struct SettingsChapterView: View {
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
         SetNote(text: t.t(app.studioAlertsNeedSettings ? "set.studioAlertDenied" : "set.studioAlertNote"), node: "note.1")
         weatherAlerts
+        shootReminder
+    }
+
+    /// «Напоминать о съёмке» (шаг «Напоминание-1»): `notif.remind`, минуты до начала съёмки или встречи. Выбор не «выкл»
+    /// спрашивает у системы право уведомлять, если ещё не спрашивали; отказ — пояснение ведёт в настройки iPhone.
+    @ViewBuilder private var shootReminder: some View {
+        let on = app.remindMinutes > 0
+        let ask = on && app.alertAuth == .notDetermined
+        let denied = on && app.alertAuth == .denied
+        VStack(alignment: .leading, spacing: 0) {
+            SecLabel(text: t.t("set.remind"), node: "sec.remind")
+            WebSeg(options: ReminderSchedule.choices.map { ($0 == 0 ? t.t("set.off") : t.count("unit.minute", $0), $0) },
+                   selection: Binding(get: { app.remindMinutes }, set: { app.setRemindMinutes($0) }))
+                .shotNode("remind.seg", text: "\(app.remindMinutes)")
+                .padding(.horizontal, 24).padding(.top, 12)
+            SetNote(text: t.t(ask ? "set.remindAsk" : denied ? "set.remindDenied" : "set.remindNote"), node: "remind.note")
+            if ask {
+                Button { app.setRemindMinutes(app.remindMinutes) } label: { Text(t.t("set.wxAlertAllow")) }
+                    .buttonStyle(DataButtonStyle())
+                    .shotNode("remind.allow", text: t.t("set.wxAlertAllow"))
+            } else if denied {
+                Button { openSystemSettings() } label: { Text(t.t("set.remindSettings")) }
+                    .buttonStyle(DataButtonStyle())
+            }
+        }
     }
 
     /// «Предупреждения о смене погоды» (30.6, веб `#notifWxRow`): `notif.wx`. Тумблер — желание; баннер при открытии
