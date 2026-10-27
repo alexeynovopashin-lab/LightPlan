@@ -89,9 +89,9 @@ public enum BraunIdle {
         public var tomorrow: Bool
     }
 
-    /// Барабан света: события суток по порядку — рассвет, золотой час, закат, завтрашний рассвет; в центре ближайшее к «сейчас»
-    /// (на доске в 15:18 — золотой час), по сторонам предыдущее и следующее, ещё по одному дальше. После заката в центре завтрашний
-    /// рассвет, до рассвета — сегодняшний. Полярные сутки: событий нет, барабан пуст.
+    /// Барабан света: события сегодняшних суток по порядку — рассвет, золотой час, закат; в центре ближайшее к «сейчас» (на доске в 15:18 —
+    /// золотой час), по сторонам предыдущее и следующее. После заката к ним добавляется завтрашний рассвет и встаёт в центр (на доске Е он
+    /// ближайший). До рассвета в центре сегодняшний рассвет. Полярные сутки: событий нет, барабан пуст.
     /// Возвращает пять мест −2 … +2; нет события — `nil`, остальные стоят на своих местах (как у барабана маршрута).
     public static func lightDrum(_ f: WidgetFrame) -> [LightItem?] {
         var items: [LightItem] = []
@@ -100,9 +100,24 @@ public enum BraunIdle {
             if let g = d.golden { items.append(LightItem(kind: .golden, at: g, tomorrow: false)) }
             if let s = d.sunset { items.append(LightItem(kind: .sunset, at: s, tomorrow: false)) }
         }
-        if let r = f.tomorrow?.sunrise { items.append(LightItem(kind: .sunrise, at: r, tomorrow: true)) }
+        if isNight(f), let r = f.tomorrow?.sunrise { items.append(LightItem(kind: .sunrise, at: r, tomorrow: true)) }
         let centre = items.firstIndex { $0.at > f.now } ?? max(0, items.count - 1)
         return BraunDrum.neighbours(items, current: items.isEmpty ? nil : centre)
+    }
+
+    /// Пять строк барабана света: центр 28 (две строки — 42) на середине колонки, остальные четыре — одной высоты `(D − центр) / 4`
+    /// (22 на круге 116; правило 27.10: дальние строки не мельчают, их гасит маска прозрачности по краям колонки).
+    public static func drumSlots(diameter d: Double, centerLines: Int) -> [BraunDrum.Slot] {
+        let hc = BraunDrum.centerHeight(lines: centerLines), hs = (d - hc) / 4, top = d / 2 - hc / 2
+        return [BraunDrum.Slot(offset: -2, y: top - 2 * hs, height: hs), BraunDrum.Slot(offset: -1, y: top - hs, height: hs),
+                BraunDrum.Slot(offset: 0, y: top, height: hc),
+                BraunDrum.Slot(offset: 1, y: top + hc, height: hs), BraunDrum.Slot(offset: 2, y: top + hc + hs, height: hs)]
+    }
+
+    /// Маска прозрачности колонки высотой `d`: 0 / 0,3 / 0,55 / 0,8 / 0,95 / 1 на 0 / 4 / 9 / 15 / 20 / 26 от верхнего и нижнего края.
+    public static func drumFade(height d: Double) -> [(at: Double, opacity: Double)] {
+        let head: [(Double, Double)] = [(0, 0), (4, 0.3), (9, 0.55), (15, 0.8), (20, 0.95), (26, 1)]
+        return head.map { (at: $0.0, opacity: $0.1) } + head.reversed().map { (at: d - $0.0, opacity: $0.1) }
     }
 
     // MARK: Неделя справа (Г, Д, Е)
@@ -117,6 +132,10 @@ public enum BraunIdle {
         /// «через 3 дня» — только у ближайшей строки и только если съёмка не сегодня и не завтра (там день уже сказан словом).
         public var relative: String?
         public var near: Bool
+
+        public init(id: String, genre: String?, names: String, day: String, time: String, relative: String?, near: Bool) {
+            self.id = id; self.genre = genre; self.names = names; self.day = day; self.time = time; self.relative = relative; self.near = near
+        }
 
         /// Вторая строка: «ср 28 · 11:00 · через 3 дня».
         public var line2: String { ([day, time] + (relative.map { [$0] } ?? [])).joined(separator: " · ") }

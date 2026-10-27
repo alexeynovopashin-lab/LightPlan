@@ -86,7 +86,13 @@ struct BraunLayout {
     struct Row {
         var slot: BraunDrum.Slot
         var stop: WidgetFeed.Stop?
+        /// Состояние Б (30б.2в-5): строка барабана света вместо точки маршрута.
+        var light: BraunIdle.LightItem? = nil
         var step: BraunFit.Step
+        /// Оценка заката в конце строки заката («хороший»); только у сегодняшнего заката и только если прогноз есть.
+        var extra: String? = nil
+        /// Знак оценки в хвосте: на узкой плашке (338) для слова не хватает места, и знак уходит первым — слово остаётся целым.
+        var extraIcon = true
     }
 
     let size: CGSize
@@ -105,17 +111,24 @@ struct BraunLayout {
     let drum: CGRect
     let centerStep: BraunFit.Step
     let rows: [Row]
+    /// Состояние Б «Семьи виджетов» (30б.2в-5): маршрута нет — круг считает всю съёмку, справа свет, окошко с вырезом-флажком.
+    let bare: Bool
 
     static let windowText = "00:00:00"
+    /// Знак и зазор до названия в строке барабана света: центр 16 + 5, остальные 13 + 5.
+    static func lightSignWidth(offset: Int) -> Double { (offset == 0 ? 16 : 13) + 5 }
+    /// Хвост строки заката: зазор строки 5 + поле 3, знак 12, зазор 3, слово оценки 11 medium (как у доски: слово начинается через 8 после «Закат»).
+    static func ratingWidth(_ word: String, icon: Bool = true) -> Double { 5 + 3 + (icon ? 12 + 3 : 0) + BraunText.width(word, size: 11, semibold: false) }
 
-    init(plan: DayPlan, size: CGSize, medium: Bool) {
+    init(plan: DayPlan, size: CGSize, medium: Bool, bare wantsBare: Bool = false) {
+        let bare = wantsBare && medium
         let w = Double(size.width), h = Double(size.height), pad = BraunPlate.pad
         let named = (plan.shoot.names ?? "").trimmingCharacters(in: .whitespaces)
         let text = named.isEmpty ? plan.shoot.title : named
 
         // Окошко: ширина по «00:00:00» (13 semibold, цифры одной ширины), чтобы рамка не прыгала; поля 6, +2 запаса, как `labelW` демки.
-        let window = medium ? BraunText.width(Self.windowText, size: 13, semibold: true, mono: true) + 2 + 12 : 0
-        let headW = w - 2 * pad - (medium ? window + 10 + BraunWindow.flagReserve : 0)
+        let window = medium ? BraunText.width(Self.windowText, size: 13, semibold: true, mono: true) + 2 + 12 + (bare ? BraunWindow.notchExtra : 0) : 0
+        let headW = w - 2 * pad - (medium ? window + 10 + (bare ? 0 : BraunWindow.flagReserve) : 0)
         let head = BraunFit.pick(medium ? BraunFit.headerMedium : BraunFit.headerSmall, avail: headW - BraunPlate.signAndGap) {
             BraunText.width(text, size: $0, semibold: true, tracking: -0.1)
         }
@@ -126,10 +139,22 @@ struct BraunLayout {
         let dx = pad + d + BraunDrum.columnGap
         let column = CGRect(x: dx, y: centreY - d / 2, width: w - pad - dx, height: d)
         let nameAvail = BraunDrum.nameWidth(column: Double(column.width))
-        let items = BraunDrum.neighbours(plan.stops, current: plan.currentIndex)
-        let currentName = items[2]?.name ?? ""
-        let centre = BraunFit.pick(BraunFit.centerRow, avail: nameAvail) { BraunText.width(currentName, size: $0, semibold: true) }
-        let slots = BraunDrum.slots(diameter: d, centerLines: centre.lines)
+        let items = bare ? [] : BraunDrum.neighbours(plan.stops, current: plan.currentIndex)
+        let currentName = items.isEmpty ? "" : (items[2]?.name ?? "")
+        let lights = bare ? BraunIdle.lightDrum(plan.frame) : []
+        let ratingWord = bare ? BraunIdle.ratingWord(plan.frame) : nil
+        func lightName(_ it: BraunIdle.LightItem?) -> String {
+            guard let it else { return "" }
+            return plan.words[it.kind == .sunrise ? .sunrise : (it.kind == .golden ? .golden : .sunset)]
+        }
+        func lightExtra(_ it: BraunIdle.LightItem?) -> String? { it?.kind == .sunset && it?.tomorrow == false ? ratingWord : nil }
+        func lightAvail(_ offset: Int, icon: Bool = true) -> Double {
+            nameAvail - Self.lightSignWidth(offset: offset) - (lightExtra(lights[offset + 2]).map { Self.ratingWidth($0, icon: icon) } ?? 0)
+        }
+        let centre = bare
+            ? BraunFit.pick(BraunFit.centerRow, avail: lightAvail(0)) { BraunText.width(lightName(lights[2]), size: $0, semibold: true) }
+            : BraunFit.pick(BraunFit.centerRow, avail: nameAvail) { BraunText.width(currentName, size: $0, semibold: true) }
+        let slots = bare ? BraunIdle.drumSlots(diameter: d, centerLines: centre.lines) : BraunDrum.slots(diameter: d, centerLines: centre.lines)
 
         self.size = size
         self.medium = medium
@@ -144,7 +169,19 @@ struct BraunLayout {
         cy = centreY
         drum = column
         centerStep = centre
-        rows = medium ? slots.map { slot in
+        self.bare = bare
+        rows = bare ? slots.map { slot in
+            let light = lights[slot.offset + 2]
+            let name = lightName(light)
+            func pick(_ icon: Bool) -> BraunFit.Step {
+                slot.offset == 0 ? centre : BraunFit.pick(BraunFit.nearRow, avail: lightAvail(slot.offset, icon: icon)) { BraunText.width(name, size: $0, semibold: false) }
+            }
+            // Название мельчает до 11; не влезло и так — из хвоста уходит знак оценки, слово остаётся.
+            var icon = true
+            var step = pick(true)
+            if lightExtra(light) != nil, slot.offset != 0, BraunText.width(name, size: step.size, semibold: false) > lightAvail(slot.offset) { icon = false; step = pick(false) }
+            return Row(slot: slot, stop: nil, light: light, step: step, extra: lightExtra(light), extraIcon: icon)
+        } : medium ? slots.map { slot in
             let stop = items[slot.offset + 2]
             let name = stop?.name ?? ""
             let step: BraunFit.Step
@@ -183,7 +220,7 @@ struct BraunWidgetView: View {
     var body: some View {
         GeometryReader { g in
             if let plan = DayPlan(frame), g.size.width > 0, g.size.height > 0 {
-                BraunContent(plan: plan, layout: BraunLayout(plan: plan, size: g.size, medium: medium), alpha: alpha,
+                BraunContent(plan: plan, layout: BraunLayout(plan: plan, size: g.size, medium: medium, bare: BraunIdle.isBare(frame)), alpha: alpha,
                              pal: BraunPalette(dark: scheme == .dark))
             }
         }
@@ -207,16 +244,26 @@ struct BraunContent: View {
             ticks
             header.frame(width: L.headerWidth, height: L.headerHeight, alignment: .leading).offset(x: pad, y: pad)
             dial.offset(x: L.cx - L.diameter / 2, y: L.cy - L.diameter / 2)
-            if plan.current != nil {
+            if L.bare {
+                // Б: в центре знак жанра и сколько осталось всей съёмки.
+                WidgetIcon(name: plan.shoot.genre, size: 20, line: 1.5, genre: true).foregroundStyle(pal.amber)
+                    .frame(width: 20, height: 20).offset(x: L.cx - 10, y: L.cy - 25)
+                countdown.offset(x: L.cx - BraunDial.dotRadius(diameter: L.diameter), y: L.cy - 1)
+            } else if plan.current != nil {
                 WidgetIcon(name: plan.current?.sign, size: 20, line: 1.5).foregroundStyle(pal.amber)
                     .frame(width: 20, height: 20).offset(x: L.cx - 10, y: L.cy - 25)
                 countdown.offset(x: L.cx - BraunDial.dotRadius(diameter: L.diameter), y: L.cy - 1)
             }
-            if L.medium {
+            if L.bare {
+                BraunLightDrum(layout: L, plan: plan, pal: pal).offset(x: L.drum.minX, y: L.drum.minY)
+            } else if L.medium {
                 drum.frame(width: L.drum.width, height: L.drum.height, alignment: .topLeading).clipped().offset(x: L.drum.minX, y: L.drum.minY)
             }
             // Окошко свадьбы — слоями-соседями, живой таймер последним: на телефоне 26.10 после окошка не рисовалось ничего (диагностика).
-            if L.medium {
+            if L.bare {
+                // Флажок «Семьи виджетов» — сам левый край окошка (Алексей 27.10).
+                BraunNotchWindow(pal: pal).frame(width: L.windowWidth, height: 18).offset(x: w - pad - L.windowWidth, y: pad)
+            } else if L.medium {
                 windowPlate(L.windowWidth).offset(x: w - pad - L.windowWidth, y: pad)
                 let windowX = w - pad - L.windowWidth
                 BraunFlag().fill(pal.flag).frame(width: BraunWindow.flagWidth, height: BraunWindow.flagHeight)
@@ -227,8 +274,10 @@ struct BraunContent: View {
                 AlphaBadge().frame(width: L.size.width - 12, height: L.size.height - 12, alignment: .bottomTrailing)
             }
             if L.medium {
+                // С вырезом (Б) текст стоит после полосы флажка: рамка таймера уже на 9 слева.
+                let inset = L.bare ? BraunWindow.notchExtra : 0
                 timerText(max(0, plan.shoot.endDate.timeIntervalSince(plan.frame.now)))
-                    .frame(width: L.windowWidth, height: 18).offset(x: w - pad - L.windowWidth, y: pad)
+                    .frame(width: L.windowWidth - inset, height: 18).offset(x: w - pad - L.windowWidth + inset, y: pad)
             }
         }
         .frame(width: L.size.width, height: L.size.height, alignment: .topLeading)
@@ -302,7 +351,10 @@ struct BraunContent: View {
 
     private var dial: some View {
         let d = layout.diameter
-        let minutes = Int(((plan.pointLeft ?? 0) / 60).rounded(.up))
+        // Б: горят `round(60 × осталось / вся съёмка)` точек; иначе — минуты точки, как в А.
+        let minutes = layout.bare
+            ? BraunIdle.wholeShootLit(left: plan.shootLeft, total: plan.shoot.endDate.timeIntervalSince(plan.shoot.startDate))
+            : Int(((plan.pointLeft ?? 0) / 60).rounded(.up))
         return ZStack {
             Circle().fill(pal.dial)
             Circle().strokeBorder(pal.dialEdge, lineWidth: 0.5)
@@ -315,15 +367,16 @@ struct BraunContent: View {
     /// «12 мин» / «1 ч 42 мин»; ноль приглушён.
     private var countdown: some View {
         let d = layout.diameter
-        let minutes = Int(((plan.pointLeft ?? 0) / 60).rounded(.up))
+        let minutes = Int(((layout.bare ? plan.shootLeft : (plan.pointLeft ?? 0)) / 60).rounded(.up))
         let parts = BraunDial.countdown(minutes: minutes)
+        let sizes = layout.bare ? BraunIdle.countdownSizes(diameter: d, parts: parts) : (BraunDial.numberSize(diameter: d), BraunDial.unitSize(diameter: d))
         return HStack(alignment: .firstTextBaseline, spacing: 4) {
             ForEach(parts.indices, id: \.self) { i in
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(parts[i].value)").font(.system(size: BraunDial.numberSize(diameter: d), weight: .semibold)).monospacedDigit().tracking(-0.3)
+                    Text("\(parts[i].value)").font(.system(size: sizes.0, weight: .semibold)).monospacedDigit().tracking(-0.3)
                         .foregroundStyle(minutes == 0 ? pal.muted : pal.text)
                     Text(plan.words[parts[i].unit == .hour ? .hourShort : .minShort])
-                        .font(.system(size: BraunDial.unitSize(diameter: d), weight: .medium)).foregroundStyle(pal.muted)
+                        .font(.system(size: sizes.1, weight: .medium)).foregroundStyle(pal.muted)
                 }
             }
         }

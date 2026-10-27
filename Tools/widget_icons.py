@@ -18,7 +18,10 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "Packages/LightPlanUI/Sources/LightPlanUI/Icons/IconLibrary.generated.swift"
 OUT = ROOT / "LightPlanWidget/Views/WidgetIcons.generated.swift"
 # Кроме знаков точек виды рисуют солнце (рассвет, золотой час, закат, круг блокировки) и запасной «кружок».
-EXTRA = ["dot", "studio", "sun", "sunrise", "sunset"]
+EXTRA = ["dot", "studio", "sun", "sunrise", "sunset", "golden"]
+# Знак оценки заката «закат с отражением» (30б.2в-5): есть на `wt/icons-golden`, в библиотеке главной ветки его ещё нет. Берётся, когда появится
+# (виды спрашивают `WidgetIconTable.common["sunset_glow"]` и пока рисуют «закат»); нет в библиотеке — не ошибка.
+EXTRA_IF_PRESENT = ["sunset_glow"]
 
 
 def build() -> str:
@@ -26,7 +29,7 @@ def build() -> str:
     common = text[text.index("static let common"):text.index("static let genres")]
     lines = {m.group(1): m.group(0) for m in re.finditer(r'^        "([a-z0-9_]+)": .*$', common, re.M)}
     words = text[text.index("static let pointWords"):]
-    signs = set(re.findall(r'", "([a-z0-9_]+)", \d+\),$', words, re.M)) | set(EXTRA)
+    signs = set(re.findall(r'", "([a-z0-9_]+)", \d+\),$', words, re.M)) | set(EXTRA) | {n for n in EXTRA_IF_PRESENT if n in lines}
     # Как `PointSign.pick`: правило, чей знак не нарисован, пропускается; здесь тоже берём только нарисованные.
     wanted = sorted(s for s in signs if s in lines)
     missing = sorted(s for s in EXTRA if s not in lines)

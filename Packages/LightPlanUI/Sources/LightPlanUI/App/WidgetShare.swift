@@ -50,8 +50,9 @@ extension AppModel {
         let spot = WidgetFeed.Spot(name: light.locationName, place: place.place)
         let words = PlannerWords(lexicon: lexicon, orgs: snapshot.orgs)
         let zones = place.zones
+        let nowDate = now()
         let feed = WidgetFeed.make(
-            place: spot, sessions: snapshot.sessions, studios: snapshot.studios, spots: snapshot.spots, now: now(),
+            place: spot, sessions: snapshot.sessions, studios: snapshot.studios, spots: snapshot.spots, now: nowDate,
             manualEnd: settings.manualEnd,
             offset: { point, day in
                 if let point { return zones.utcOffsetHours(latitude: point.latitude, longitude: point.longitude, on: day) }
@@ -61,9 +62,36 @@ extension AppModel {
             names: { words.clientName($0) },
             sign: { PointSign.name(for: $0, place: $1, studio: $2) },
             words: Self.widgetWords(lexicon),
+            forecast: widgetForecast(spot, now: nowDate),
             lang: language,
             clock12: ClockText(language: language, preference: Self.clock(settings.clock)).is12)
         share.publish(feed)
+    }
+
+    /// Оценки заката ближайших дней места «Света» из настоящего прогноза (30б.2в-5). Прогноза на день нет — оценки нет: числа не выдумываются.
+    func widgetForecast(_ spot: WidgetFeed.Spot, now: Date) -> [WidgetFeed.Rating] {
+        guard let today = spot.today(at: now) else { return [] }
+        return (0..<WidgetFeed.ratingDays).compactMap { off in
+            let day = today.adding(days: off)
+            guard let w = light.weather.day(for: day), w.real else { return nil }
+            return WidgetFeed.Rating(day: WidgetFeed.Rating.key(day), score: w.sunset, quality: w.quality)
+        }
+    }
+
+    /// Прогноз приходит позже файла (сеть): когда он обновился, файл виджета переписывается (пишется, только если изменился).
+    func watchWidgetForecast() {
+        withObservationTracking {
+            let spot = WidgetFeed.Spot(name: "", place: place.place)
+            if let today = spot.today(at: now()) {
+                for off in 0..<WidgetFeed.ratingDays { _ = light.weather.day(for: today.adding(days: off)) }
+            }
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.publishWidget()
+                self.watchWidgetForecast()
+            }
+        }
     }
 
     /// Слова виджета на языке приложения: у расширения словаря приложения нет (`WidgetFeed.Words`).
@@ -75,8 +103,13 @@ extension AppModel {
             .untilPoint: "widget.untilPoint", .untilShoot: "widget.untilShoot", .untilWedding: "widget.untilWedding",
             .wedding: "widget.wedding", .point: "widget.point", .points: "widget.points", .hourShort: "widget.hourShort",
             .minShort: "widget.minShort", .dayLength: "widget.dayLength", .more: "widget.more", .until: "widget.until",
+            .rateExcellent: "widget.rateExcellent", .rateGood: "widget.rateGood", .ratePlain: "widget.ratePlain",
+            .ratePoor: "widget.ratePoor", .rateFog: "widget.rateFog", .noShootsUntil: "widget.noShootsUntil",
         ]
-        return WidgetFeed.Words(keys.mapValues { lex.t($0) })
+        var words = WidgetFeed.Words(keys.mapValues { lex.t($0) })
+        // «через 3 дня»: падеж зависит от числа, у расширения склонений нет — фразы на каждое число готовит приложение.
+        for n in 2..<WidgetFrame.weekDays { words.table["inDays.\(n)"] = lex.t("when.inDays", ["n": lex.count("unit.day", n)]) }
+        return words
     }
 
     /// `lightplan://day/ГГГГ-ММ-ДД`: нажатие на виджет свободного дня открывает этот день в «Съёмках».

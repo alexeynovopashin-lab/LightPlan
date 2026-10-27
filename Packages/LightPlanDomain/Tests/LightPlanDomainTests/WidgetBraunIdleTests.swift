@@ -131,13 +131,22 @@ struct WidgetBraunIdleTests {
         let f = feed()
         let at = f.frame(at: tsk(15, 18))
         let d = BraunIdle.lightDrum(at)
-        #expect(d.map { $0?.kind } == [nil, .sunrise, .golden, .sunset, .sunrise], "доска, 15:18: рассвет, золотой час в центре, закат, ниже завтрашний рассвет")
-        #expect(d[4]?.tomorrow == true && d[1]?.tomorrow == false)
+        #expect(d.map { $0?.kind } == [nil, .sunrise, .golden, .sunset, nil], "доска, 15:18: рассвет, золотой час в центре, закат; завтрашний рассвет днём не лезет")
+        #expect(d.allSatisfy { $0?.tomorrow != true })
         let dawn = f.frame(at: tsk(5))
         #expect(BraunIdle.lightDrum(dawn).map { $0?.kind } == [nil, nil, .sunrise, .golden, .sunset], "до рассвета в центре сегодняшний рассвет")
         let set = try #require(at.day?.sunset)
         let night = BraunIdle.lightDrum(f.frame(at: set.addingTimeInterval(300)))
         #expect(night.map { $0?.kind } == [.golden, .sunset, .sunrise, nil, nil] && night[2]?.tomorrow == true, "после заката в центре завтрашний рассвет")
+    }
+
+    @Test func theDrumRowsAreOfOneHeightAndTheEdgesFade() {
+        let s = BraunIdle.drumSlots(diameter: 116, centerLines: 1)
+        #expect(s.map(\.y) == [0, 22, 44, 72, 94] && s.map(\.height) == [22, 22, 28, 22, 22], "круг 116: строки по 22, центр 28 на середине")
+        let two = BraunIdle.drumSlots(diameter: 104, centerLines: 2)
+        #expect(two.map(\.height) == [15.5, 15.5, 42, 15.5, 15.5] && two[2].y == 31, "круг 104 и центр в две строки: (104 − 42) / 4 = 15,5")
+        let fade = BraunIdle.drumFade(height: 116)
+        #expect(fade.map(\.at) == [0, 4, 9, 15, 20, 26, 90, 96, 101, 107, 112, 116] && fade.map(\.opacity) == [0, 0.3, 0.55, 0.8, 0.95, 1, 1, 0.95, 0.8, 0.55, 0.3, 0])
     }
 
     // MARK: Левая колонка: цвет времени

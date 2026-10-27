@@ -176,6 +176,20 @@ public enum BraunWindow {
         [(0, 0), (w / 2, 0), (w, h / 2), (w / 2, h), (0, h), (w / 2, h / 2)]
     }
 
+    /// Флажок «Семьи виджетов» (Алексей 27.10): сам левый край окошка — треугольный вырез глубиной 5 на всю высоту, красная полоса 4 вдоль
+    /// выреза, остриё в окно; окошко шире на 9. Заменяет шеврон слева от окошка (`flag*`) в состояниях доски; в тёмной и светлой тема одна.
+    public static let notchDepth = 5.0, notchBand = 4.0, notchExtra = 9.0
+
+    /// Контур окошка с вырезом слева (правые углы скругляет вид): (0,0) → (w,0) → (w,h) → (0,h) → (5, h/2).
+    public static func notchWindowPoints(width w: Double, height h: Double) -> [(x: Double, y: Double)] {
+        [(0, 0), (w, 0), (w, h), (0, h), (notchDepth, h / 2)]
+    }
+
+    /// Красная полоса флажка в прямоугольнике 9 × h: (0,0) → (4,0) → (9,h/2) → (4,h) → (0,h) → (5,h/2).
+    public static func notchBandPoints(height h: Double) -> [(x: Double, y: Double)] {
+        [(0, 0), (notchBand, 0), (notchBand + notchDepth, h / 2), (notchBand, h), (0, h), (notchDepth, h / 2)]
+    }
+
     /// С часами («10:42:00») — только пока осталось больше часа; ровно час и меньше — «60:00», «42:00».
     public static func showsHours(remaining: TimeInterval) -> Bool { remaining > 3600 }
 

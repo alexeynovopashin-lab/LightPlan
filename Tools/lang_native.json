@@ -519,7 +519,13 @@
     "widget.minShort": "мин",
     "widget.dayLength": "День",
     "widget.more": "и ещё {n}",
-    "widget.until": "до {t}"
+    "widget.until": "до {t}",
+    "widget.rateExcellent": "отличный",
+    "widget.rateGood": "хороший",
+    "widget.ratePlain": "обычный",
+    "widget.ratePoor": "плохой",
+    "widget.rateFog": "туман",
+    "widget.noShootsUntil": "до {d} съёмок нет"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1037,7 +1043,13 @@
     "widget.minShort": "min",
     "widget.dayLength": "Daylight",
     "widget.more": "{n} more",
-    "widget.until": "until {t}"
+    "widget.until": "until {t}",
+    "widget.rateExcellent": "excellent",
+    "widget.rateGood": "good",
+    "widget.ratePlain": "ordinary",
+    "widget.ratePoor": "poor",
+    "widget.rateFog": "fog",
+    "widget.noShootsUntil": "no shoots until {d}"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1555,7 +1567,13 @@
     "widget.minShort": "min",
     "widget.dayLength": "Luz del día",
     "widget.more": "{n} más",
-    "widget.until": "hasta {t}"
+    "widget.until": "hasta {t}",
+    "widget.rateExcellent": "excelente",
+    "widget.rateGood": "bueno",
+    "widget.ratePlain": "común",
+    "widget.ratePoor": "malo",
+    "widget.rateFog": "niebla",
+    "widget.noShootsUntil": "sin sesiones hasta {d}"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2069,7 +2087,13 @@
     "widget.minShort": "分",
     "widget.dayLength": "日照",
     "widget.more": "他 {n}",
-    "widget.until": "{t}まで"
+    "widget.until": "{t}まで",
+    "widget.rateExcellent": "最高",
+    "widget.rateGood": "良い",
+    "widget.ratePlain": "普通",
+    "widget.ratePoor": "悪い",
+    "widget.rateFog": "霧",
+    "widget.noShootsUntil": "{d}まで撮影なし"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2583,6 +2607,12 @@
     "widget.minShort": "分钟",
     "widget.dayLength": "日照",
     "widget.more": "还有 {n}",
-    "widget.until": "至 {t}"
+    "widget.until": "至 {t}",
+    "widget.rateExcellent": "极好",
+    "widget.rateGood": "好",
+    "widget.ratePlain": "普通",
+    "widget.ratePoor": "差",
+    "widget.rateFog": "雾",
+    "widget.noShootsUntil": "至 {d} 无拍摄"
   }
 }
