@@ -81,6 +81,8 @@ public struct WidgetFrame: Equatable, Sendable {
     public var clock12: Bool
     /// 30б.2в-5. Оценка заката сегодняшнего дня места «Света»; `nil` — прогноза нет (виджет молчит, числа не выдумываются).
     public var rating: WidgetFeed.Rating? = nil
+    /// Оценка завтрашнего дня: после заката виджет оценивает завтрашний рассвет (30б.2в-6).
+    public var tomorrowRating: WidgetFeed.Rating? = nil
     /// Свет завтрашнего дня места «Света»: вечером ближайшее событие — завтрашний рассвет.
     public var tomorrow: WidgetFeed.DayLight? = nil
     /// Список съёмок недели среднего вида: до `weekRows` ближайших нерозданных съёмок, что начинаются в ближайшие `weekDays` суток
@@ -169,6 +171,7 @@ extension WidgetFeed {
         f.day = spot.light(on: today)
         f.tomorrow = spot.light(on: today.adding(days: 1))
         f.rating = rating(on: today)
+        f.tomorrowRating = rating(on: today.adding(days: 1))
         f.week = Array(unfinished(at: now).map { shootFrame($0, at: now) }.filter { $0.dayOffset < WidgetFrame.weekDays }.prefix(WidgetFrame.weekRows))
         f.weekEnd = Self.noon(of: today.adding(days: WidgetFrame.weekDays - 1), in: tz)
         f.url = Self.dayURL(today)
@@ -239,7 +242,7 @@ extension WidgetFeed {
             cal.timeZone = tz
             for off in 0...2 {
                 let day = today.adding(days: off)
-                if let l = spot.light(on: day) { add(l.sunrise); add(l.sunset); add(l.golden) }
+                if let l = spot.light(on: day) { add(l.sunrise); add(l.sunset); add(l.golden); add(l.goldenEnd) }
                 add(cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day)))
             }
         }

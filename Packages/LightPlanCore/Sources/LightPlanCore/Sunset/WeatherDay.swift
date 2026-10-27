@@ -96,9 +96,14 @@ public struct WeatherDay: Sendable, Equatable {
     public let trend: [Double]
     /// `false` — это выдумка (`MockWeather`), не настоящий прогноз.
     public let real: Bool
+    /// Рассветный балл (30б.2в-6, слова Алексея 27.10: «та же формула в час рассвета»): ярусы облаков и влажность в час восхода и аэрозоль
+    /// того часа, та же `SunsetScore.score`, что у заката. `nil` — рассвета нет (полярные сутки, ночь) или часа восхода в прогнозе нет:
+    /// число не выдумывается. Только средний виджет; на «Свете» оценки рассвета пока нет (ждёт рисунка Claude Design).
+    public let sunrise: Int?
 
     public init(quality: DayQuality, cloud: Int, sunset: Int?, layers: HourRecord?, temperatureBase: Int,
-                wind: Int, windDirection: Double?, gust: Int, trend: [Double], real: Bool) {
+                wind: Int, windDirection: Double?, gust: Int, trend: [Double], real: Bool, sunrise: Int? = nil) {
+        self.sunrise = sunrise
         self.quality = quality
         self.cloud = cloud
         self.sunset = sunset
@@ -199,6 +204,16 @@ extension WeatherDay {
                 }
             }
 
+            // Рассвет — та же формула в час восхода (`Weather.nearHour` на округлённом часе, как у заката), воздух того же часа.
+            var sunrise: Int?
+            if let riseMinutes = sun.rise {
+                let riseHour = Int(min(23, max(0, Sky.jsRound(riseMinutes / 60))))
+                if let lay = Weather.nearHour(bucket.byHour, riseHour) {
+                    sunrise = SunsetScore.score(low: lay.low, mid: lay.mid, high: lay.high, humidity: lay.humidity,
+                                                 air: Weather.nearHour(air[date] ?? [:], riseHour))
+                }
+            }
+
             // Дождь и туман перебивают категорию дня; иначе категория из балла.
             let quality: DayQuality
             if bucket.fogMorning {
@@ -224,7 +239,7 @@ extension WeatherDay {
             days[date] = WeatherDay(
                 quality: quality, cloud: Int(cloud), sunset: sunset, layers: layers,
                 temperatureBase: Int(Sky.jsRound(meanTemp)), wind: Int(Sky.jsRound(meanWind)),
-                windDirection: windDirection, gust: Int(Sky.jsRound(bucket.gust)), trend: trend, real: true)
+                windDirection: windDirection, gust: Int(Sky.jsRound(bucket.gust)), trend: trend, real: true, sunrise: sunrise)
         }
         return (days, hourlyOut)
     }

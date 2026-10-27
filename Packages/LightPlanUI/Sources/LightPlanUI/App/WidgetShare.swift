@@ -74,7 +74,7 @@ extension AppModel {
         return (0..<WidgetFeed.ratingDays).compactMap { off in
             let day = today.adding(days: off)
             guard let w = light.weather.day(for: day), w.real else { return nil }
-            return WidgetFeed.Rating(day: WidgetFeed.Rating.key(day), score: w.sunset, quality: w.quality)
+            return WidgetFeed.Rating(day: WidgetFeed.Rating.key(day), score: w.sunset, quality: w.quality, sunrise: w.sunrise)
         }
     }
 

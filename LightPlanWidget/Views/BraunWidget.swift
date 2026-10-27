@@ -91,6 +91,10 @@ struct BraunLayout {
         var step: BraunFit.Step
         /// Оценка заката в конце строки заката («хороший»); только у сегодняшнего заката и только если прогноз есть.
         var extra: String? = nil
+        /// Оценка не влезла рядом с названием центра даже без знака — она второй строкой под названием (подложка в две строки, 42 pt).
+        var extraStacked = false
+        /// Кегль слова оценки: 11; на самой узкой строке (338, ±1 рядом с оценкой) — 10 или 9.
+        var extraSize = 11.0
         /// Знак оценки в хвосте: на узкой плашке (338) для слова не хватает места, и знак уходит первым — слово остаётся целым.
         var extraIcon = true
     }
@@ -118,7 +122,7 @@ struct BraunLayout {
     /// Знак и зазор до названия в строке барабана света: центр 16 + 5, остальные 13 + 5.
     static func lightSignWidth(offset: Int) -> Double { (offset == 0 ? 16 : 13) + 5 }
     /// Хвост строки заката: зазор строки 5 + поле 3, знак 12, зазор 3, слово оценки 11 medium (как у доски: слово начинается через 8 после «Закат»).
-    static func ratingWidth(_ word: String, icon: Bool = true) -> Double { 5 + 3 + (icon ? 12 + 3 : 0) + BraunText.width(word, size: 11, semibold: false) }
+    static func ratingWidth(_ word: String, icon: Bool = true, size: Double = 11) -> Double { 5 + 3 + (icon ? 12 + 3 : 0) + BraunText.width(word, size: size, semibold: false) }
 
     init(plan: DayPlan, size: CGSize, medium: Bool, bare wantsBare: Bool = false) {
         let bare = wantsBare && medium
@@ -142,19 +146,40 @@ struct BraunLayout {
         let items = bare ? [] : BraunDrum.neighbours(plan.stops, current: plan.currentIndex)
         let currentName = items.isEmpty ? "" : (items[2]?.name ?? "")
         let lights = bare ? BraunIdle.lightDrum(plan.frame) : []
+        // Оценка стоит в строке того события, которое виджет оценивает сейчас (30б.2в-6): рассвет до конца золотого часа, потом закат, после — завтрашний рассвет.
+        let rated = bare ? BraunIdle.ratedEvent(plan.frame) : nil
         let ratingWord = bare ? BraunIdle.ratingWord(plan.frame) : nil
         func lightName(_ it: BraunIdle.LightItem?) -> String {
             guard let it else { return "" }
             return plan.words[it.kind == .sunrise ? .sunrise : (it.kind == .golden ? .golden : .sunset)]
         }
-        func lightExtra(_ it: BraunIdle.LightItem?) -> String? { it?.kind == .sunset && it?.tomorrow == false ? ratingWord : nil }
-        func lightAvail(_ offset: Int, icon: Bool = true) -> Double {
-            nameAvail - Self.lightSignWidth(offset: offset) - (lightExtra(lights[offset + 2]).map { Self.ratingWidth($0, icon: icon) } ?? 0)
+        func lightExtra(_ it: BraunIdle.LightItem?) -> String? { it != nil && it?.kind == rated?.kind && it?.tomorrow == rated?.tomorrow ? ratingWord : nil }
+        func lightAvail(_ offset: Int, icon: Bool = true, word: Double = 11) -> Double {
+            nameAvail - Self.lightSignWidth(offset: offset) - (lightExtra(lights[offset + 2]).map { Self.ratingWidth($0, icon: icon, size: word) } ?? 0)
         }
-        let centre = bare
-            ? BraunFit.pick(BraunFit.centerRow, avail: lightAvail(0)) { BraunText.width(lightName(lights[2]), size: $0, semibold: true) }
-            : BraunFit.pick(BraunFit.centerRow, avail: nameAvail) { BraunText.width(currentName, size: $0, semibold: true) }
-        let slots = bare ? BraunIdle.drumSlots(diameter: d, centerLines: centre.lines) : BraunDrum.slots(diameter: d, centerLines: centre.lines)
+        // Центр барабана света с оценкой: оценка рядом с названием, если влезает (со знаком, потом без), иначе второй строкой под ним.
+        var centreStacked = false, centreIcon = true
+        let centre: BraunFit.Step
+        if bare {
+            let name0 = lightName(lights[2])
+            func single(_ avail: Double) -> BraunFit.Step? {
+                BraunFit.centerRow.first { $0.lines == 1 && BraunText.width(name0, size: $0.size, semibold: true) <= avail }
+            }
+            if lightExtra(lights[2]) == nil {
+                centre = BraunFit.pick(BraunFit.centerRow, avail: lightAvail(0)) { BraunText.width(name0, size: $0, semibold: true) }
+            } else if let s = single(lightAvail(0, icon: true)) {
+                centre = s
+            } else if let s = single(lightAvail(0, icon: false)) {
+                centre = s
+                centreIcon = false
+            } else {
+                centreStacked = true
+                centre = single(nameAvail - Self.lightSignWidth(offset: 0)) ?? BraunFit.centerRow[1]
+            }
+        } else {
+            centre = BraunFit.pick(BraunFit.centerRow, avail: nameAvail) { BraunText.width(currentName, size: $0, semibold: true) }
+        }
+        let slots = bare ? BraunIdle.drumSlots(diameter: d, centerLines: centreStacked ? 2 : centre.lines) : BraunDrum.slots(diameter: d, centerLines: centre.lines)
 
         self.size = size
         self.medium = medium
@@ -173,14 +198,20 @@ struct BraunLayout {
         rows = bare ? slots.map { slot in
             let light = lights[slot.offset + 2]
             let name = lightName(light)
-            func pick(_ icon: Bool) -> BraunFit.Step {
-                slot.offset == 0 ? centre : BraunFit.pick(BraunFit.nearRow, avail: lightAvail(slot.offset, icon: icon)) { BraunText.width(name, size: $0, semibold: false) }
+            func pick(_ icon: Bool, _ word: Double) -> BraunFit.Step {
+                slot.offset == 0 ? centre : BraunFit.pick(BraunFit.nearRow + (word < 11 ? [BraunFit.Step(10, lineHeight: 18)] : []), avail: lightAvail(slot.offset, icon: icon, word: word)) { BraunText.width(name, size: $0, semibold: false) }
             }
-            // Название мельчает до 11; не влезло и так — из хвоста уходит знак оценки, слово остаётся.
-            var icon = true
-            var step = pick(true)
-            if lightExtra(light) != nil, slot.offset != 0, BraunText.width(name, size: step.size, semibold: false) > lightAvail(slot.offset) { icon = false; step = pick(false) }
-            return Row(slot: slot, stop: nil, light: light, step: step, extra: lightExtra(light), extraIcon: icon)
+            // Название мельчает до 11; не влезло и так — из хвоста уходит знак оценки, потом слово мельчает до 10, а при нужде до 9, и название до 10: оба остаются целыми.
+            var icon = slot.offset == 0 ? centreIcon : true
+            var wordSize = 11.0
+            var step = pick(icon, wordSize)
+            if lightExtra(light) != nil, slot.offset != 0 {
+                func fits() -> Bool { BraunText.width(name, size: step.size, semibold: false) <= lightAvail(slot.offset, icon: icon, word: wordSize) }
+                if !fits() { icon = false; step = pick(icon, wordSize) }
+                if !fits() { wordSize = 10; step = pick(icon, wordSize) }
+                if !fits() { wordSize = 9; step = pick(icon, wordSize) }
+            }
+            return Row(slot: slot, stop: nil, light: light, step: step, extra: lightExtra(light), extraStacked: slot.offset == 0 && centreStacked, extraSize: wordSize, extraIcon: icon)
         } : medium ? slots.map { slot in
             let stop = items[slot.offset + 2]
             let name = stop?.name ?? ""

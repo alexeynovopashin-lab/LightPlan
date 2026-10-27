@@ -169,10 +169,55 @@ public enum BraunIdle {
         return f.words[.noShootsUntil].replacingOccurrences(of: "{d}", with: dayAndNumber(end, in: f.zone, f))
     }
 
-    /// Оценка заката в строке: слово. Нет прогноза на сегодня — `nil`, строки нет.
-    public static func ratingWord(_ f: WidgetFrame) -> String? {
-        f.rating?.category.map { f.words.rating($0) }
+    // MARK: Что оценивает виджет (30б.2в-6)
+
+    /// Событие, которое оценивает средний вид, и его оценка. Слова Алексея 27.10: «виджет до конца утреннего золотого часа показывает
+    /// рассвет, потом закат, после заката — завтрашний рассвет».
+    public struct RatedEvent: Equatable, Sendable {
+        public var kind: LightKind
+        /// Завтрашний рассвет после заката.
+        public var tomorrow: Bool
+        public var at: Date
+        /// Балл 0…100 того события; `nil` — часа в прогнозе нет (нет столбика).
+        public var score: Int?
+        /// Категория того события; `nil` — прогноза нет (нет слова).
+        public var quality: DayQuality?
     }
+
+    /// Какое событие виджет оценивает в момент `f.now` (место «Света», его сутки):
+    /// - после заката — рассвет завтра;
+    /// - до конца утреннего золотого часа (солнце ниже 6°; нет такого — до самого восхода) — рассвет сегодня, и ночью до рассвета тоже;
+    /// - иначе, до заката, — закат сегодня.
+    /// В полночь «сегодня» сменяется, а событие нет: вчерашнее «завтра» становится сегодняшним рассветом. Нет события (полярные сутки:
+    /// ни восхода, ни заката) — `nil`.
+    /// Слово: у заката — категория дня (как было); у рассвета — «туман», если утром туман, иначе категория рассветного балла.
+    public static func ratedEvent(_ f: WidgetFrame) -> RatedEvent? {
+        guard let today = f.day else { return nil }
+        if let set = today.sunset, f.now >= set {
+            guard let rise = f.tomorrow?.sunrise else { return nil }
+            return event(.sunrise, tomorrow: true, at: rise, rating: f.tomorrowRating)
+        }
+        if let rise = today.sunrise, f.now < (today.goldenEnd ?? rise) {
+            return event(.sunrise, tomorrow: false, at: rise, rating: f.rating)
+        }
+        if let set = today.sunset { return event(.sunset, tomorrow: false, at: set, rating: f.rating) }
+        return nil
+    }
+
+    private static func event(_ kind: LightKind, tomorrow: Bool, at: Date, rating: WidgetFeed.Rating?) -> RatedEvent {
+        guard let rating else { return RatedEvent(kind: kind, tomorrow: tomorrow, at: at, score: nil, quality: nil) }
+        if kind == .sunset { return RatedEvent(kind: kind, tomorrow: tomorrow, at: at, score: rating.score, quality: rating.category) }
+        let q: DayQuality? = rating.category == .fog ? .fog : rating.sunrise.map(SunsetScore.category)
+        return RatedEvent(kind: kind, tomorrow: tomorrow, at: at, score: rating.sunrise, quality: q)
+    }
+
+    /// Слово оценки; нет прогноза на это событие — `nil`, строки нет.
+    public static func ratingWord(_ f: WidgetFrame) -> String? {
+        ratedEvent(f)?.quality.map { f.words.rating($0) }
+    }
+
+    /// «Рассвет» / «Закат» — подпись оценки (слова виджета, не новые).
+    public static func ratingLabel(_ e: RatedEvent, _ words: WidgetFeed.Words) -> String { words[e.kind == .sunrise ? .sunrise : .sunset] }
 
     /// Высоты строк списка: ближайшая и остальные, зазор 2 (на 170 pt — 46 / 40, три строки = 130; на 158 pt — 44 / 38, чтобы три строки
     /// остались в 126 pt между полями: числа доски на 158 pt не заданы).

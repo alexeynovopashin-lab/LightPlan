@@ -146,20 +146,25 @@ struct BraunLightDrum: View {
         let signSize: CGFloat = centre ? 16 : 13
         let name = plan.words[item.kind == .sunrise ? .sunrise : (item.kind == .golden ? .golden : .sunset)]
         let natural = BraunText.naturalLineHeight(size: row.step.size, semibold: centre)
+        func extraView(_ word: String) -> some View {
+            HStack(spacing: 3) {
+                if row.extraIcon { WidgetIcon(name: BraunSign.rating, size: 12, line: 1.5) }
+                Text(word).font(.system(size: row.extraSize, weight: .medium)).lineLimit(1)
+            }
+            .foregroundStyle(pal.muted).fixedSize()
+        }
         return HStack(spacing: BraunDrum.gap) {
             ColonTime(text: plan.frame.clock(item.at, in: plan.frame.zone), size: centre ? 16 : 13, weight: weight)
-            HStack(spacing: 5) {
-                WidgetIcon(name: BraunSign.light(item.kind), size: signSize, line: 1.5)
-                Text(name)
-                    .font(.system(size: row.step.size, weight: weight)).lineSpacing(max(0, row.step.lineHeight - natural))
-                    .lineLimit(row.step.lines).multilineTextAlignment(.leading)
-                if let word = row.extra {
-                    HStack(spacing: 3) {
-                        if row.extraIcon { WidgetIcon(name: BraunSign.rating, size: 12, line: 1.5) }
-                        Text(word).font(.system(size: 11, weight: .medium)).lineLimit(1)
-                    }
-                    .foregroundStyle(pal.muted).padding(.leading, 3).fixedSize()
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 5) {
+                    WidgetIcon(name: BraunSign.light(item.kind), size: signSize, line: 1.5)
+                    Text(name)
+                        .font(.system(size: row.step.size, weight: weight)).lineSpacing(max(0, row.step.lineHeight - natural))
+                        .lineLimit(row.step.lines).multilineTextAlignment(.leading)
+                    // Рядом с названием; не влезла — ниже, под названием (центр барабана).
+                    if let word = row.extra, !row.extraStacked { extraView(word).padding(.leading, 3) }
                 }
+                if let word = row.extra, row.extraStacked { extraView(word).padding(.leading, signSize + 5) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -272,8 +277,10 @@ struct BraunIdleContent: View {
     private func dayRows(_ d: WidgetFeed.DayLight) -> some View {
         let roles = BraunIdle.roles(now: frame.now, [d.sunrise, d.golden, d.sunset])
         let rise = timeText(d.sunrise), golden = timeText(d.golden), set = timeText(d.sunset)
-        let rating = BraunIdle.ratingWord(frame)
-        let gauge = frame.rating?.score
+        // Что оценивается — рассвет (до конца утреннего золотого часа) или закат; подпись и столбик идут за ним.
+        let rated = BraunIdle.ratedEvent(frame)
+        let rating = ratingLine(rated)
+        let gauge = rated?.score
         // Столбик стоит на x 136…154: время заката 22 уступает ему место.
         let setSize = fitted(set, [22, 20, 18, 16], semibold: true, avail: (gauge != nil ? 134 : 160) - 50)
         return ZStack(alignment: .topLeading) {
@@ -282,11 +289,18 @@ struct BraunIdleContent: View {
             row(sign: BraunSign.light(.sunset), signSize: 26, signY: y(96, 90), text: set, size: setSize, textY: y(94, 88), textH: 30, role: roles[2], x: 50, tracking: -0.3)
             if let rating {
                 WidgetIcon(name: BraunSign.rating, size: 14, line: 1.5).foregroundStyle(pal.muted).frame(width: 14, height: 14).offset(x: 16, y: y(129, 123))
-                Text(rating).font(.system(size: 12, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
-                    .frame(width: 96, height: 16, alignment: .leading).offset(x: 36, y: y(128, 122))
+                Text(rating.text).font(.system(size: rating.size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
+                    .frame(width: 99, height: 16, alignment: .leading).offset(x: 36, y: y(128, 122))
             }
             if let gauge { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: 136, y: 38) }
         }
+    }
+
+    /// Строка оценки: «Рассвет · хороший» / «Закат · хороший»; не влезла в 99 pt — мельчает 12 → 11 → 10 → 9, и только потом «…».
+    private func ratingLine(_ e: BraunIdle.RatedEvent?) -> (text: String, size: Double)? {
+        guard let e, let word = BraunIdle.ratingWord(frame) else { return nil }
+        let text = "\(BraunIdle.ratingLabel(e, words)) · \(word)"
+        return (text, fitted(text, [12, 11, 10, 9], semibold: false, mono: false, avail: 99))
     }
 
     private func row(sign: String, signSize: Double, signY: Double, text: String, size: Double, textY: Double, textH: Double, role: BraunIdle.Role,
@@ -303,10 +317,14 @@ struct BraunIdleContent: View {
         let rise = timeText(frame.tomorrow?.sunrise), golden = timeText(frame.day?.golden), set = timeText(frame.day?.sunset)
         return ZStack(alignment: .topLeading) {
             WidgetIcon(name: BraunSign.light(.sunrise), size: 26, line: 1.5).foregroundStyle(pal.amber).frame(width: 26, height: 26).offset(x: 16, y: 44)
-            Text(rise).font(.system(size: 22, weight: .semibold)).monospacedDigit().tracking(-0.3).foregroundStyle(pal.amber).lineLimit(1)
+            Text(rise).font(.system(size: fitted(rise, [22, 20, 18, 16], semibold: true, avail: (BraunIdle.ratedEvent(frame)?.score != nil ? 134 : 160) - 50), weight: .semibold))
+                .monospacedDigit().tracking(-0.3).foregroundStyle(pal.amber).lineLimit(1)
                 .frame(width: 100, height: 30, alignment: .leading).offset(x: 50, y: 42)
-            Text(words[.tomorrow].lowercased()).font(.system(size: 12, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
-                .frame(width: 120, height: 14, alignment: .leading).offset(x: 16, y: 76)
+            // Завтрашний рассвет — с оценкой (30б.2в-6): «завтра · хороший» и столбик, как днём; нет прогноза — одно «завтра».
+            Text([words[.tomorrow].lowercased(), BraunIdle.ratingWord(frame)].compactMap { $0 }.joined(separator: " · "))
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
+                .frame(width: 116, height: 14, alignment: .leading).offset(x: 16, y: 76)
+            if let gauge = BraunIdle.ratedEvent(frame)?.score { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: 136, y: 38) }
             dim(BraunSign.light(.golden), golden, signY: y(106, 102), textY: y(104, 100))
             dim(BraunSign.light(.sunset), set, signY: y(128, 122), textY: y(126, 120))
         }

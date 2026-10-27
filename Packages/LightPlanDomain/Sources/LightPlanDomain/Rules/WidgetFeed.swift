@@ -125,12 +125,16 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         public var day: String
         /// Закатный балл 0…100 (`SunsetScore`); `nil` — часа заката в прогнозе нет, есть только категория дня.
         public var score: Int?
+        /// Рассветный балл 0…100 той же формулы в час восхода (30б.2в-6); `nil` — часа восхода в прогнозе нет или восхода нет (полярные сутки).
+        /// Нет в файле старого вида — `nil`: оценка рассвета тогда не показывается, а не выдумывается.
+        public var sunrise: Int?
         /// Код `DayQuality`. Строкой: незнакомый код из будущего файла не должен ронять весь файл.
         public var quality: String
 
-        public init(day: String, score: Int?, quality: DayQuality) {
+        public init(day: String, score: Int?, quality: DayQuality, sunrise: Int? = nil) {
             self.day = day
             self.score = score
+            self.sunrise = sunrise
             self.quality = quality.rawValue
         }
 
@@ -330,7 +334,7 @@ extension WidgetFeed.Spot {
         guard let place else { return nil }
         let sun = SolarDay(date: day, place: place)
         func at(_ m: Minutes?) -> Date? { m.map { moment(minutes: $0, on: day, place: place) } }
-        return WidgetFeed.DayLight(day: day, sunrise: at(sun.rise), golden: at(sun.goldenB), sunset: at(sun.set), polar: sun.polar)
+        return WidgetFeed.DayLight(day: day, sunrise: at(sun.rise), golden: at(sun.goldenB), sunset: at(sun.set), polar: sun.polar, goldenEnd: at(sun.goldenA))
     }
 
     /// Начало вечернего золотого часа (солнце опускается до 6°) в день `day` по часам места; `nil` — в этот день
@@ -355,5 +359,7 @@ extension WidgetFeed {
         public var golden: Date?
         public var sunset: Date?
         public var polar: SolarDay.PolarState
+        /// Конец утреннего золотого часа (солнце поднялось на 6°); `nil` — солнце до 6° не поднимается. До него виджет оценивает рассвет, после — закат.
+        public var goldenEnd: Date? = nil
     }
 }
