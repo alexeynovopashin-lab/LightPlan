@@ -239,7 +239,7 @@ struct ActivityFrameTests {
     @Test func aNameWithoutSpacesStaysShortOnTheLane() {
         let huge = String(repeating: "Ы", count: 5000)
         let f = make(wedding(stops: [stop(12, 0, huge, sign: "camera"), stop(14, 0, huge + "2", sign: "camera")]), at: tsk(13))
-        #expect(f.points.allSatisfy { $0.word.count <= 11 }, "слово ленты ограничено")
+        #expect(f.points.count == 2 && f.points.allSatisfy { $0.word.count <= 11 }, "обе точки на месте, слово ленты ограничено")
         #expect(f.encodedSize + ActivityFrame.propertiesReserve <= ActivityFrame.limit, Comment(rawValue: "кадр \(f.encodedSize) Б"))
     }
 
