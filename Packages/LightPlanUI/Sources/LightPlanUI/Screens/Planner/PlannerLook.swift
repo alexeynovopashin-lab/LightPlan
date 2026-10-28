@@ -114,6 +114,11 @@ struct PlannerFacts {
 
     func blockLabel(_ b: Block) -> String { b.note.isEmpty ? t.t("blkKind." + b.kind.rawValue) : b.note }
 
+    /// Подпись занятости в клетке месяца: первое слово заметки, без заметки — слово вида (Алексей 28.10).
+    func blockMonthLabel(_ b: Block) -> String {
+        BlockMonthLabel.text(note: b.note, kindWord: t.t("blkKind." + b.kind.rawValue), language: app.language)
+    }
+
     /// Самая тяжёлая ступень сдачи дня (веб `dayMark`).
     func mark(_ d: CivilDate) -> DeliveryStatus? {
         Urgency.dayMark(d, sessions: app.sessions, status: app.deliveryStatus)

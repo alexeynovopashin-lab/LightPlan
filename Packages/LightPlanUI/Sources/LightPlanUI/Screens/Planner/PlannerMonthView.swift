@@ -264,7 +264,7 @@ struct MonthCell: View {
             let dot = f.weather(s.day)?.quality.dot
             return Label(text: f.words.shortType(s), color: dot ?? Color(hex: 0xA8B49B), busy: false)
         }
-        if !out { out1 += f.blocks(on: day).map { Label(text: f.blockLabel($0), color: pal.ink4, busy: true) } }
+        if !out { out1 += f.blocks(on: day).map { Label(text: f.blockMonthLabel($0), color: pal.ink4, busy: true) } }
         return out1.map { out ? Label(text: $0.text, color: $0.color.opacity(0.45), busy: $0.busy) : $0 }
     }
 
