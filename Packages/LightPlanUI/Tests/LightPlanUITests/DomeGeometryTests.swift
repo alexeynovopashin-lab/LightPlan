@@ -55,6 +55,45 @@ struct DomeGeometryTests {
         #expect(abs(DomeGeometry.deepOf(-1) - (1.0 / 3)) < 1e-9)
     }
 
+    // MARK: - Закат: ореол, размытое светило под линией, внешнее кольцо (DECISIONS 27.10)
+
+    @Test func haloLivesFromPlusSixToMinusSix() {
+        #expect(DomeGeometry.haloOf(DomeGeometry.haloTop) == 0)
+        #expect(DomeGeometry.haloOf(8) == 0)
+        #expect(DomeGeometry.haloOf(0) == 1)
+        #expect(abs(DomeGeometry.haloOf(3) - 0.5) < 1e-9)
+        #expect(abs(DomeGeometry.haloOf(-3) - 0.5) < 1e-9)
+        #expect(abs(DomeGeometry.haloOf(4) - 1.0 / 3) < 1e-9)
+        #expect(abs(DomeGeometry.haloOf(-2) - 2.0 / 3) < 1e-9)
+        #expect(DomeGeometry.haloOf(DomeGeometry.haloBottom) == 0)
+        #expect(DomeGeometry.haloOf(-10) == 0)
+        #expect(DomeGeometry.haloTop == 6 && DomeGeometry.haloBottom == -6)
+    }
+
+    @Test func underCopyFadesOnlyBelowTheHorizon() {
+        // Пока солнце над горизонтом, размытая часть под линией в полную силу
+        // (её яркость держит `underDim`, а не высота).
+        #expect(DomeGeometry.underOf(4) == 1)
+        #expect(DomeGeometry.underOf(0) == 1)
+        #expect(abs(DomeGeometry.underOf(-3) - 0.5) < 1e-9)
+        #expect(DomeGeometry.underOf(-6) == 0)
+        #expect(DomeGeometry.underOf(-10) == 0)
+        #expect(DomeGeometry.underBlur == 2.5 && DomeGeometry.underDim == 0.55)
+    }
+
+    @Test func ringHoldsWhileAnyOfItIsAboveTheLine() {
+        let x = CGFloat(DomeGeometry.cx), h = CGFloat(DomeGeometry.horizonY)
+        let r = CGFloat(DomeGeometry.ringRadius)
+        #expect(DomeGeometry.ringAbove(CGPoint(x: x, y: h - 40)))
+        // Центр уже под линией (солнце −2…−4°), верх кольца ещё над ней — держится.
+        #expect(DomeGeometry.ringAbove(CGPoint(x: x, y: h + 5)))
+        #expect(DomeGeometry.ringAbove(CGPoint(x: x, y: h + r - 0.1)))
+        // Верх кольца лёг на линию — над ней кольца больше нет.
+        #expect(!DomeGeometry.ringAbove(CGPoint(x: x, y: h + r)))
+        #expect(!DomeGeometry.ringAbove(CGPoint(x: x, y: h + 40)))
+        #expect(DomeGeometry.haloRadius == 2 * DomeGeometry.ringRadius)
+    }
+
     // MARK: - shadeNeed: числа из комментария веба (0,11 в полдень, 0,51 в золотой час)
 
     @Test func shadeNeedAtNoonIsFull() {

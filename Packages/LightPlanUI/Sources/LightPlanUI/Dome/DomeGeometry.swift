@@ -3,7 +3,7 @@ import CoreGraphics
 import LightPlanCore
 
 /// Геометрия купола: положение светила на дуге дня и ночи, портал полярных
-/// суток, глубина просвечивающего пятна, нужда в тени под диском.
+/// суток, глубина просвечивающего пятна, нужда в тени под диском, ореол заката.
 ///
 /// Порт `posOn`, `nightAmp`, `polarAt`, `posAt`, `deepOf`, `shadeNeed` из
 /// `light_plan:Light_Plan/beta/index.html`. Холст 390×240, та же сетка, что у
@@ -97,6 +97,40 @@ enum DomeGeometry {
     /// Плотность просвечивающего пятна ушедшего светила по его высоте.
     static func deepOf(_ e: Degrees) -> Double {
         clamp(-e / 3, 0, 1) * max(ghostFloor, clamp((12 + e) / 9, 0, 1))
+    }
+
+    // MARK: Закат (DECISIONS 27.10 «Купол «Света»: солнце уходит за горизонт с ореолом»)
+
+    /// Радиусы светила: диск (без кромки 2,5), внешнее кольцо и ореол — вдвое шире кольца.
+    static let coreRadius: Double = 6.5
+    static let ringRadius: Double = 16
+    static let haloRadius: Double = 32
+    /// Ореол живёт от `haloTop` до `haloBottom` высоты солнца, ярче всего на горизонте.
+    /// Числа оркестратора, не мерены — правятся по снимкам и телефону.
+    static let haloTop: Degrees = 6
+    static let haloBottom: Degrees = -6
+    /// Под линией горизонта всё светило — та же форма, размытая на `underBlur`
+    /// pt и тусклее в `underDim` раз. Тоже числа оркестратора, не мерены.
+    static let underBlur: Double = 2.5
+    static let underDim: Double = 0.55
+
+    /// Сила ореола по высоте солнца: 0 на `haloTop`, 1 на горизонте, 0 на `haloBottom`.
+    static func haloOf(_ e: Degrees) -> Double {
+        e >= 0 ? clamp(1 - e / haloTop, 0, 1) : clamp(1 - e / haloBottom, 0, 1)
+    }
+
+    /// Сила размытого диска и кольца под линией: полная, пока солнце над
+    /// горизонтом, и гаснет к `haloBottom` вместе с ореолом — дальше светило
+    /// держит только просвечивающее пятно (`deepOf`). Над линией диск и кольцо
+    /// от высоты не гаснут вовсе: их режет сама линия.
+    static func underOf(_ e: Degrees) -> Double {
+        e >= 0 ? 1 : clamp(1 - e / haloBottom, 0, 1)
+    }
+
+    /// Внешнее кольцо над линией держится в полную силу, пока хоть часть его
+    /// выше горизонта, — от высоты солнца не зависит, только от места на куполе.
+    static func ringAbove(_ pos: CGPoint) -> Bool {
+        Double(pos.y) - ringRadius < horizonY
     }
 
     /// Относительная светлота по WCAG, нужна для `shadeNeed`.
