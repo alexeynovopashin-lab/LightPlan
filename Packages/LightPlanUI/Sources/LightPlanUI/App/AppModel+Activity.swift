@@ -136,7 +136,7 @@ extension AppModel {
 
 #if DEBUG
 extension AppModel {
-    /// Снимки и замеры (`-LPActivityDemo wedding|rent|studio|many`, `-LPActivityStyle full|icons|compact`): настоящая плашка на экране
+    /// Снимки и замеры (`-LPActivityDemo wedding|rent|studio|many`, `-LPActivityStyle full|icons|compact`, итог запроса — в файл `-LPActivityLog`): настоящая плашка на экране
     /// блокировки с кадром, собранным вне данных — съёмка «шла три часа назад»: Сборы, Церемония, Прогулка, Банкет; у `rent`/`studio`
     /// ещё идёт аренда студии с администратором и плейлистом. Сверка с данными, пока демонстрация включена, плашку не трогает.
     func debugActivityDemo() {
@@ -166,7 +166,11 @@ extension AppModel {
         Task { [weak self] in
             await host.end()
             guard self != nil else { return }
-            try? host.start(frame, startedAt: nowDate)
+            var note = "demo start ok"
+            do { try host.start(frame, startedAt: nowDate) } catch { note = "demo start FAILED \(error)" }
+            if let path = d.string(forKey: "LPActivityLog") {
+                try? "\(note) allowed=\(host.allowed) shown=\(host.shown != nil)\n".write(toFile: path, atomically: true, encoding: .utf8)
+            }
         }
     }
 }
