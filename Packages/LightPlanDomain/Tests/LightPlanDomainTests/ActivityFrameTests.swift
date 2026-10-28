@@ -236,6 +236,13 @@ struct ActivityFrameTests {
         #expect(f.points.count >= 2 && f.mode == .studio && f.call != nil, "кнопки и лента на месте")
     }
 
+    @Test func aNameWithoutSpacesStaysShortOnTheLane() {
+        let huge = String(repeating: "Ы", count: 5000)
+        let f = make(wedding(stops: [stop(12, 0, huge, sign: "camera"), stop(14, 0, huge + "2", sign: "camera")]), at: tsk(13))
+        #expect(f.points.allSatisfy { $0.word.count <= 11 }, "слово ленты ограничено")
+        #expect(f.encodedSize + ActivityFrame.propertiesReserve <= ActivityFrame.limit, Comment(rawValue: "кадр \(f.encodedSize) Б"))
+    }
+
     @Test func frameSurvivesTheRoundTripTheSystemDoesOnItsOwn() throws {
         let f = make(wedding(sunset: true, rents: [rent(14, 0, 16, 0)]), at: tsk(15, 0), mode: .studio)
         let back = try JSONDecoder().decode(ActivityFrame.self, from: JSONEncoder().encode(f))

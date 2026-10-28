@@ -153,6 +153,18 @@ struct ActivityAppTests {
         #expect(host2.log.isEmpty, "после перезапуска плашка не возвращается: \(host2.log)")
     }
 
+    @Test func aSwipeWhileTheAppWasClosedIsRecognisedAfterTheRestart() async {
+        let defaults = UserDefaults(suiteName: "lp-activity-test-\(UUID().uuidString)")
+        let (app, host, clock) = make("2026-09-23T13:00:00+07:00", defaults: defaults)
+        await sync(app)
+        #expect(host.log == ["start"])
+        host.shown = nil   // приложение закрыто, плашку смахнули, события нет
+        let (again, host2, _) = make("2026-09-23T13:10:00+07:00", defaults: defaults, clock: clock)
+        #expect(again.activityMarks[id] != nil, "метки пережили загрузку памяти")
+        await sync(again, .foreground)
+        #expect(host2.log.isEmpty, "после перезапуска плашка не возвращается: \(host2.log)")
+    }
+
     @Test func theStudioModeSurvivesARestartBecauseThePlateItselfRemembersIt() async {
         let (app, host, _) = make("2026-09-23T13:00:00+07:00")
         app.switchActivityToStudio(sessionId: id)

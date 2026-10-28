@@ -41,8 +41,14 @@ extension AppModel {
     func loadActivityMemory() {
         guard let d = activityDefaults else { return }
         let cut = now().timeIntervalSince1970 - Self.memorySpan
-        activityDismissed = (d.dictionary(forKey: Self.dismissedKey) as? [String: Double] ?? [:]).filter { $0.value > cut }
-        activityMarks = (d.dictionary(forKey: Self.marksKey) as? [String: Double] ?? [:]).filter { $0.value > cut }
+        let dismissed = (d.dictionary(forKey: Self.dismissedKey) as? [String: Double] ?? [:]).filter { $0.value > cut }
+        let marks = (d.dictionary(forKey: Self.marksKey) as? [String: Double] ?? [:]).filter { $0.value > cut }
+        // Присвоение одного словаря не должно записать поверх сохранённого другой, ещё пустой (ревью GPT к 8580014): пока читаем, записи нет.
+        activityDefaults = nil
+        activityDismissed = dismissed
+        activityMarks = marks
+        activityDefaults = d
+        saveActivityMemory()
     }
 
     func saveActivityMemory() {
