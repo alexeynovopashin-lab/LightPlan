@@ -54,6 +54,7 @@ struct WidgetRatedViewTests {
             .clipShape(RoundedRectangle(cornerRadius: BraunPlate.cornerRadius(plateHeight: p.size.height), style: .continuous))
             .environment(\.colorScheme, dark ? .dark : .light)
             .environment(\.widgetFrozenTimer, true)
+            .environment(\.widgetFlatGlass, true)
     }
 
     private struct Pixels {
@@ -93,16 +94,18 @@ struct WidgetRatedViewTests {
         }
     }
 
-    /// Уровень на столбике (светлая полоска) стоит на баллах события: 81 утром, 62 днём, 44 вечером (завтрашний рассвет).
+    /// Уровень на столбике (линза с числом, 28.10) стоит на баллах события: 81 утром, 62 днём, 44 вечером (завтрашний рассвет). Столбик теперь
+    /// 25 pt: x 129…154, центр 141,5; линза 14 pt высотой, верх её кромки — на 7 pt выше середины, там под пиксели число не заходит.
     @Test func theGaugeLevelFollowsTheRatedEvent() throws {
+        let lens = (246.0, 243.0, 236.0), cx = BraunGauge.x + BraunGauge.width / 2
+        func lensTop(_ score: Int) -> Double { 38 + BraunGauge.lensCenterY(score: score, height: 116) - BraunGauge.lensHeight / 2 + 1.5 }
         for (h, score) in [(5, 81), (9, 81), (14, 62), (21, 44)] {
             let px = try render(plate(.free, h, .pro, dark: true), scale: 4)
-            let fill = 116 * Double(score) / 100
-            let y = 38 + 116 - fill
-            #expect(dist(px.rgb(145, y), (246, 243, 236)) <= 45, "\(h):00: полоска уровня должна стоять на \(score) (y \(y)), там \(px.rgb(145, y))")
+            let y = lensTop(score)
+            #expect(dist(px.rgb(cx, y), lens) <= 45, "\(h):00: линза должна стоять на \(score) (y \(y)), там \(px.rgb(cx, y))")
             // И не на соседнем балле другого события.
-            let other = 38 + 116 - 116 * Double(score == 62 ? 81 : 62) / 100
-            #expect(dist(px.rgb(145, other), (246, 243, 236)) > 45, "\(h):00: полоски на чужом баллу быть не должно")
+            let other = lensTop(score == 62 ? 81 : 62)
+            #expect(dist(px.rgb(cx, other), lens) > 45, "\(h):00: линзы на чужом баллу быть не должно")
         }
     }
 
@@ -147,13 +150,13 @@ struct WidgetRatedViewTests {
         return (words[k == .sunrise ? .sunrise : (k == .golden ? .golden : .sunset)], ())
     }
 
-    /// Строка оценки слева («Рассвет · отличный») влезает в 99 pt хотя бы в 9 pt на всех моментах и всех словах.
+    /// Строка оценки слева («Рассвет · отличный») влезает в `ratingWidth` (92: до столбика 25 pt; было 99 при столбике 18) хотя бы в 9 pt на всех словах.
     @Test func theRatingLineFitsTheLeftColumnInTheSmallestStep() {
         let words = WidgetFeed.Words()
         for e in [BraunIdle.LightKind.sunrise, .sunset] {
             for q in DayQuality.allCases {
                 let text = "\(words[e == .sunrise ? .sunrise : .sunset]) · \(words.rating(q))"
-                #expect(BraunText.width(text, size: 9, semibold: false) <= 99, "«\(text)» не влезает даже в 9")
+                #expect(BraunText.width(text, size: 9, semibold: false) <= BraunIdleContent.ratingWidth, "«\(text)» не влезает даже в 9")
             }
         }
     }

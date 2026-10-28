@@ -310,8 +310,8 @@ struct BraunIdleContent: View {
         let rated = BraunIdle.ratedEvent(frame)
         let rating = ratingLine(rated)
         let gauge = rated?.score
-        // Столбик стоит на x 136…154: время заката 22 уступает ему место.
-        let setSize = fitted(set, [22, 20, 18, 16], semibold: true, avail: (gauge != nil ? 134 : 160) - 50)
+        // Столбик стоит на x 129…154 (25 pt): время заката 22 уступает ему место.
+        let setSize = fitted(set, [22, 20, 18, 16], semibold: true, avail: (gauge != nil ? BraunGauge.x - 2 : 160) - 50)
         return ZStack(alignment: .topLeading) {
             row(sign: BraunSign.light(.sunrise), signSize: 18, signY: 42, text: rise, size: 14, textY: 40, textH: 22, role: roles[0])
             row(sign: BraunSign.light(.golden), signSize: 18, signY: y(68, 66), text: golden, size: 14, textY: y(66, 64), textH: 22, role: roles[1])
@@ -319,17 +319,19 @@ struct BraunIdleContent: View {
             if let rating {
                 WidgetIcon(name: BraunSign.rating, size: 14, line: 1.5).foregroundStyle(pal.muted).frame(width: 14, height: 14).offset(x: 16, y: y(129, 123))
                 Text(rating.text).font(.system(size: rating.size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
-                    .frame(width: 99, height: 16, alignment: .leading).offset(x: 36, y: y(128, 122))
+                    .frame(width: Self.ratingWidth, height: 16, alignment: .leading).offset(x: 36, y: y(128, 122))
             }
-            if let gauge { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: 136, y: 38) }
+            if let gauge { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: BraunGauge.x, y: 38) }
         }
     }
 
-    /// Строка оценки: «Рассвет · хороший» / «Закат · хороший»; не влезла в 99 pt — мельчает 12 → 11 → 10 → 9, и только потом «…».
+    /// Строка оценки: «Рассвет · хороший» / «Закат · хороший»; не влезла в `ratingWidth` (92 pt: до столбика 1 pt; было 99, пока столбик был 18 шириной) — мельчает 12 → 11 → 10 → 9, и только потом «…».
+    /// От x 36 до столбика минус 1.
+    static let ratingWidth = BraunGauge.x - 1 - 36
     private func ratingLine(_ e: BraunIdle.RatedEvent?) -> (text: String, size: Double)? {
         guard let e, let word = BraunIdle.ratingWord(frame) else { return nil }
         let text = "\(BraunIdle.ratingLabel(e, words)) · \(word)"
-        return (text, fitted(text, [12, 11, 10, 9], semibold: false, mono: false, avail: 99))
+        return (text, fitted(text, [12, 11, 10, 9], semibold: false, mono: false, avail: Self.ratingWidth))
     }
 
     private func row(sign: String, signSize: Double, signY: Double, text: String, size: Double, textY: Double, textH: Double, role: BraunIdle.Role,
@@ -346,14 +348,14 @@ struct BraunIdleContent: View {
         let rise = timeText(frame.tomorrow?.sunrise), golden = timeText(frame.day?.golden), set = timeText(frame.day?.sunset)
         return ZStack(alignment: .topLeading) {
             WidgetIcon(name: BraunSign.light(.sunrise), size: 26, line: 1.5).foregroundStyle(pal.amber).frame(width: 26, height: 26).offset(x: 16, y: 44)
-            Text(rise).font(.system(size: fitted(rise, [22, 20, 18, 16], semibold: true, avail: (BraunIdle.ratedEvent(frame)?.score != nil ? 134 : 160) - 50), weight: .semibold))
+            Text(rise).font(.system(size: fitted(rise, [22, 20, 18, 16], semibold: true, avail: (BraunIdle.ratedEvent(frame)?.score != nil ? BraunGauge.x - 2 : 160) - 50), weight: .semibold))
                 .monospacedDigit().tracking(-0.3).foregroundStyle(pal.amber).lineLimit(1)
                 .frame(width: 100, height: 30, alignment: .leading).offset(x: 50, y: 42)
             // Завтрашний рассвет — с оценкой (30б.2в-6): «завтра · хороший» и столбик, как днём; нет прогноза — одно «завтра».
             Text([words[.tomorrow].lowercased(), BraunIdle.ratingWord(frame)].compactMap { $0 }.joined(separator: " · "))
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
                 .frame(width: 116, height: 14, alignment: .leading).offset(x: 16, y: 76)
-            if let gauge = BraunIdle.ratedEvent(frame)?.score { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: 136, y: 38) }
+            if let gauge = BraunIdle.ratedEvent(frame)?.score { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: BraunGauge.x, y: 38) }
             dim(BraunSign.light(.golden), golden, signY: y(106, 102), textY: y(104, 100))
             dim(BraunSign.light(.sunset), set, signY: y(128, 122), textY: y(126, 120))
         }
@@ -432,21 +434,63 @@ struct BraunWeekRow: View {
 
 // MARK: - Столбик балла заката
 
-/// Балл заката 0…100 столбиком (Алексей 27.10): капсула 18 × `height`, дорожка — чернила × 0,10, снизу до балла заливка цветами рейки света
-/// (синий час → сирень → золото → янтарь), чёрточки 6 × 0,5 на 20 / 40 / 60 / 80, уровень — светлая полоска 22 × 2,5, число 12 semibold сверху.
+/// Балл заката 0…100 столбиком (Алексей 27.10; число внутрь — 28.10, «при нуле шкала похожа на презерватив»): капсула 25 × `height`, дорожка —
+/// чернила × 0,10, снизу до балла заливка цветами рейки света (синий час → сирень → золото → янтарь), чёрточки 6 × 0,5 на 20 / 40 / 60 / 80.
+/// Число 10 semibold стоит внутри трубки в стеклянной линзе (светлая пластинка, тонкая кромка, как на образце Алексея) по центру уровня заливки;
+/// линза всегда целиком в капсуле: при 0 она у дна, при 100 — у верха. Отдельной полоски уровня и числа над трубкой больше нет.
 struct BraunGauge: View {
     let pal: BraunPalette
     let score: Int
     let height: Double
-    static let width = 18.0
+    /// Ширину задаёт самое широкое число: «100» 10 semibold = 20,04 pt (замер `BraunText`) → линза 22 → трубка 25 (была 18). Шире нельзя: строка
+    /// оценки слева («Рассвет · отличный», 9 pt = 91,73 на UIFont) и без того стоит впритык — место ей остаётся 154 − 25 − 1 − 36 = 92.
+    static let width = 25.0
+    /// Левый край столбика на плашке (правый — 154, как был: на 338 до волоска остаётся 5); колонка слева считает место от него.
+    static let x = 154.0 - width
+    static let numberSize = 10.0
+    static let lensHeight = 14.0
+    static let lensCorner = 6.0
+    /// Зазор линзы до стенки трубки и самая узкая линза (для «0»…«9»).
+    static let lensInset = 1.5
+    static let lensMinWidth = 16.0
+
+    static func lensWidth(score: Int) -> Double {
+        min(width - 2 * lensInset, max(lensMinWidth, BraunText.width("\(score)", size: numberSize, semibold: true, mono: true) + 2))
+    }
+
+    /// Центр линзы по высоте, от верха трубки: на уровне заливки, но линза целиком в капсуле.
+    static func lensCenterY(score: Int, height h: Double) -> Double {
+        let level = h - h * BraunIdle.gaugeLevel(score: score)
+        return min(h - lensInset - lensHeight / 2, max(lensInset + lensHeight / 2, level))
+    }
 
     private static func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double) -> Color { Color(.sRGB, red: r / 255, green: g / 255, blue: b / 255, opacity: a) }
 
+    @Environment(\.widgetFlatGlass) private var flatGlass
+
+    /// Линза: на телефоне — системное стекло (`.glassEffect`, Алексей 28.10: «на телефоне нативное стекло»), подкрашенное в светлое, чтобы тёмное число
+    /// читалось на любой теме. `ImageRenderer` стекло не рисует, поэтому тесты и снимки (`widgetFlatGlass`) берут плоскую плашку того же размера и цвета.
+    @ViewBuilder
+    private func lens(width lw: Double, height lh: Double) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Self.lensCorner, style: .continuous)
+        let number = Text("\(score)").font(.system(size: Self.numberSize, weight: .semibold)).monospacedDigit().foregroundStyle(pal.lensText)
+            .fixedSize().frame(width: lw, height: lh)
+        if flatGlass {
+            ZStack {
+                shape.fill(pal.lens)
+                shape.strokeBorder(pal.lensEdge, lineWidth: 0.5)
+                number
+            }
+            .frame(width: lw, height: lh)
+        } else {
+            number.frame(width: lw, height: lh).glassEffect(.regular.tint(pal.lens), in: shape)
+        }
+    }
+
     var body: some View {
         let w = Self.width, h = height, fill = h * BraunIdle.gaugeLevel(score: score)
+        let lw = Self.lensWidth(score: score), lh = Self.lensHeight, cy = Self.lensCenterY(score: score, height: h)
         ZStack(alignment: .topLeading) {
-            Text("\(score)").font(.system(size: 12, weight: .semibold)).monospacedDigit().foregroundStyle(pal.text)
-                .frame(width: w + 12, height: 14).offset(x: -6, y: -18)
             ZStack(alignment: .bottom) {
                 Capsule().fill(pal.ink(0.10))
                 LinearGradient(stops: [
@@ -460,12 +504,16 @@ struct BraunGauge: View {
             ForEach(BraunIdle.gaugeMarks, id: \.self) { k in
                 Rectangle().fill(pal.ink(0.35)).frame(width: 6, height: 0.5).offset(x: w / 2 - 3, y: h - h * Double(k) / 100 - 0.25)
             }
-            RoundedRectangle(cornerRadius: 1.25)
-                .fill(Color(.sRGB, red: 246 / 255, green: 243 / 255, blue: 236 / 255))
-                .overlay { RoundedRectangle(cornerRadius: 1.25).strokeBorder(Color.black.opacity(0.6), lineWidth: 0.5) }
-                .shadow(color: .black.opacity(0.4), radius: 1, y: 1)
-                .frame(width: w + 4, height: 2.5).offset(x: -2, y: h - fill - 1.25)
+            lens(width: lw, height: lh)
+                .offset(x: (w - lw) / 2, y: cy - lh / 2)
         }
         .frame(width: w, height: h, alignment: .topLeading)
     }
+}
+
+extension BraunPalette {
+    /// Линза столбика: матовое стекло чуть светлее заливки и дорожки; число на ней — всегда тёмные чернила (замер контраста в `WidgetGaugeTests`).
+    var lens: Color { Color(.sRGB, red: 246 / 255, green: 243 / 255, blue: 236 / 255, opacity: dark ? 0.94 : 0.92) }
+    var lensEdge: Color { Color.black.opacity(dark ? 0.55 : 0.30) }
+    var lensText: Color { Color(.sRGB, red: 17 / 255, green: 17 / 255, blue: 17 / 255) }
 }
