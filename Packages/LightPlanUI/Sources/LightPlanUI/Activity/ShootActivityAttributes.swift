@@ -1,0 +1,1 @@
+../../../../../LightPlanWidget/ShootActivityAttributes.swift

@@ -231,6 +231,46 @@ import UserNotifications
         #expect(zip(a, b).allSatisfy { $1.fire.milliseconds - $0.fire.milliseconds == 3_600_000 })
     }
 
+    // MARK: - Начало аренды (30б.3)
+
+    static func starts(_ s: Session, offset: Double = 3, now: Moment = longAgo, finished: Bool = false) -> [StudioSchedule.Notice] {
+        StudioSchedule.starts(for: s, studios: [studio], offsetHours: offset, now: now, finished: finished)
+    }
+
+    @Test func rentStartCallsOnceAtTheMinuteTheRentBegins() {
+        // 12:00–13:00: «Студийный час» в 12:00, до выхода 55 минут.
+        let n = Self.starts(Self.session(cells: [(720, 780)]))
+        #expect(n.map(\.stage) == [0] && n.map(\.fire) == [Self.at(720)])
+        #expect(n.map(\.id) == ["lp.studio.s1.0.0"] && n.map(\.minutesLeft) == [55] && n.map(\.deadline) == [775])
+        #expect(n.first?.studioName == "Томсон" && n.first?.hallName == "Эдисон")
+    }
+
+    @Test func rentStartHasOneCallPerCell() {
+        let n = Self.starts(Self.session(cells: [(600, 660), (840, 900)]))
+        #expect(n.map(\.id) == ["lp.studio.s1.0.0", "lp.studio.s1.1.0"])
+        #expect(n.map(\.fire) == [Self.at(600), Self.at(840)])
+    }
+
+    @Test func aRentThatAlreadyBeganOrAFinishedShootGetsNoStartCall() {
+        let s = Self.session(cells: [(720, 780)])
+        #expect(Self.starts(s, now: Self.at(720)).isEmpty, "момент прошёл")
+        #expect(Self.starts(s, now: Self.at(721)).isEmpty)
+        #expect(Self.starts(s, finished: true).isEmpty)
+        #expect(Self.starts(Self.session(cells: [(720, 780)], kind: .event)).isEmpty)
+    }
+
+    @Test func aVeryShortRentIsCalledByTheExitStageAlone() {
+        // 12:00–12:08: ступени выхода стоят на 12:00 — второй сигнал в ту же минуту лишний.
+        #expect(Self.starts(Self.session(cells: [(720, 728)])).isEmpty)
+        #expect(Self.notices(Self.session(cells: [(720, 728)])).first?.fire == Self.at(720))
+    }
+
+    @Test func theStartCallIsPartOfThePlanAndSharesTheNameSpaceOfTheStudioLane() {
+        let plan = StudioSchedule.plan(sessions: [Self.session(cells: [(720, 780)])], studios: [Self.studio], now: Self.longAgo,
+                                       offsetHours: { _ in 3 }, finished: { _ in false })
+        #expect(plan.map(\.stage) == [0, 1, 2] && plan.allSatisfy { $0.id.hasPrefix(StudioSchedule.idPrefix) })
+    }
+
     // MARK: - Потолок
 
     @Test func planKeepsTheNearestSixtyFour() {
@@ -241,8 +281,8 @@ import UserNotifications
         let plan = StudioSchedule.plan(sessions: sessions, studios: [Self.studio], now: Self.longAgo,
                                        offsetHours: { _ in 3 }, finished: { _ in false })
         #expect(plan.count == 64)
-        // 80 сигналов, остались первые 32 дня.
-        #expect(plan.last?.sessionId == "s31")
+        // 120 сигналов (начало аренды и две ступени выхода на день), остались первые 21 день и начало 22-го.
+        #expect(plan.last?.sessionId == "s21")
         #expect(plan == plan.sorted { ($0.fire, $0.id) < ($1.fire, $1.id) })
     }
 
@@ -501,7 +541,9 @@ actor FakeCenter: NotificationCentering {
         #expect(NotificationPresenter.tap(id: "lp.greet.2026-10-25", info: ["client": "c1"]) == .client("c1"))
         #expect(NotificationPresenter.tap(id: "lp.greet.2026-10-25", info: [:]) == .client(nil))
         #expect(NotificationPresenter.tap(id: "lp.wx.s1", info: ["session": "s1"]) == .card("s1"))
-        #expect(NotificationPresenter.tap(id: "lp.studio.s1.0.1", info: ["session": "s1"]) == nil)
+        // Студийный час (30б.3): нажатие включает студийный режим экрана активности, карточку не открывает.
+        #expect(NotificationPresenter.tap(id: "lp.studio.s1.0.1", info: ["session": "s1"]) == .studio("s1"))
+        #expect(NotificationPresenter.tap(id: "lp.studio.s1.0.1", info: [:]) == nil)
     }
 
     @Test func openCardSuppressesTheBannerOtherwiseItIsShown() {

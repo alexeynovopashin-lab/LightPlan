@@ -19,6 +19,9 @@
 	<array>
 		<string>Novopashin.LightPlan.wx</string>
 	</array>
+	<!-- Экран активности (30б.3): плашка на экране блокировки и в Dynamic Island, пока идёт съёмка. Ключ Info.plist, не возможность подписи; Push не нужен (замер спайка 30б). -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

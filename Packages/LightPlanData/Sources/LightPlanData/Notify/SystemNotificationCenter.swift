@@ -187,6 +187,8 @@ public final class NotificationPresenter: NSObject, UNUserNotificationCenterDele
         case card(String)
         /// Поздравление (К6): карточка клиента, если праздники дня у одного клиента; `nil` — список «Клиенты».
         case client(String?)
+        /// Студийный час (30б.3): экран активности переходит в студийный режим; сама карточка не открывается (как было).
+        case studio(String)
     }
 
     /// Что делать с нажатием. Вызывается на главном потоке.
@@ -217,6 +219,7 @@ public final class NotificationPresenter: NSObject, UNUserNotificationCenterDele
     public static func tap(id: String, info: [AnyHashable: Any]) -> Tap? {
         if id.hasPrefix(InstantAlert.weatherPrefix), let sid = info["session"] as? String { return .card(sid) }
         if id.hasPrefix(GreetSchedule.idPrefix) { return .client(info["client"] as? String) }
+        if id.hasPrefix(StudioSchedule.idPrefix), let sid = info["session"] as? String { return .studio(sid) }
         // Напоминание о съёмке: её карточка.
         if id.hasPrefix(ReminderSchedule.idPrefix), let sid = info["session"] as? String { return .card(sid) }
         return nil

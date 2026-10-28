@@ -198,6 +198,7 @@ extension AppModel {
             switch tap {
             case .card(let sid): self?.openFromNotice(sid)
             case .client(let cid): self?.openGreetClient(cid)
+            case .studio(let sid): self?.switchActivityToStudio(sessionId: sid)
             }
         }
         #if DEBUG
@@ -216,6 +217,12 @@ enum StudioAlertText {
     /// Томсон, Эдисон.» — по остатку минут, не по номеру ступени. Дошло до нуля — «Пора выходить из зала».
     static func alert(_ n: StudioSchedule.Notice, lexicon t: Lexicon, clock: ClockText) -> ScheduledAlert {
         let where_ = [n.studioName, n.hallName ?? ""].filter { !$0.isEmpty }.joined(separator: ", ")
+        // Начало аренды (30б.3): «Студийный час» — и когда выходить; нажатие включает студийный режим экрана активности.
+        if n.stage == 0 {
+            return ScheduledAlert(id: n.id, sessionId: n.sessionId, fire: n.fire, offsetHours: n.offsetHours,
+                                  title: t.t("studio.sayT"),
+                                  body: t.t("studio.rentStart", ["t": clock.fmt(Double(n.deadline)), "where": where_]))
+        }
         let body = n.minutesLeft > 0
             ? t.t("studio.leaveIn", ["left": t.count("unit.min", n.minutesLeft), "where": where_])
             : t.t("studio.leaveNow", ["where": where_])

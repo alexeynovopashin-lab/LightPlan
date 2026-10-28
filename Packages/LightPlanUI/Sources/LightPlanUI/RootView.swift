@@ -52,6 +52,8 @@ public struct RootView: View {
             if phase == .active, let app { app.light.weather.resume(); app.sweepMbBins() }
             // И расписание студийного часа сверяется с данными и с разрешением (его могли дать в настройках iPhone).
             if phase == .active, let app { app.syncAlerts(force: true) }
+            // И плашка на экране блокировки: съёмка могла начаться или кончиться, пока нас не было; длинный день продлевается (30б.3).
+            if phase == .active, let app { app.syncActivity(.foreground) }
             // И Календарь iPhone сверяется с данными: событие могли удалить руками, право — выдать или отнять (30.3).
             if phase == .active, let app { app.syncCalendarMirror(force: true); app.syncContacts(force: true); if app.ghostWanted { app.scheduleGhostReload() } }
             // Доступ к геопозиции могли дать или отнять в настройках iPhone; слежение берёт свежую точку (29.8в.12).
@@ -244,7 +246,8 @@ private struct Shell: View {
         .questSheet(app)
         // Тап по событию в Календаре iPhone (30.2): ссылка `lightplan://shoot/<id>` открывает съёмку; остальные
         // ссылки своей схемы — ответ клиента.
-        .onOpenURL { if !app.openShootLink($0), !app.openDayLink($0) { app.openQuestLink($0) } }
+        // Кнопки экрана активности (30б.3) — `lightplan://activity/admin|playlist`: звонок и плеер открывает приложение.
+        .onOpenURL { if !app.openShootLink($0), !app.openDayLink($0), !app.openActivityLink($0) { app.openQuestLink($0) } }
         // Календарь «Light Plan» удалили в Календаре iPhone (30.3): заново — только когда человек скажет «да».
         .alert(app.lexicon.t("calm.goneT"), isPresented: $app.calendarGoneAsk) {
             Button(app.lexicon.t("calm.goneYes")) { app.answerCalendarGone(yes: true) }

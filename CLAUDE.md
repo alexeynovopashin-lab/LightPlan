@@ -252,6 +252,23 @@
   `entryLimit = 180` entries per timeline, reload on the last shown moment when cut; WidgetKit names no entry cap, only the reload
   budget (40–70 a day per widget), so the cap is ours — a 12.5 h wedding with the ring is ~5 reloads. Views are `Shape`s, not `Canvas`.
   Pictures: `docs/30b2v_sketches/built/` (`WidgetLiveTests.writesTheBuiltSheetsWhenAsked`, folder `/tmp/lp-built-out` must exist).
+- **Activity screen (30б.3).** Live Activity on the lock screen and in Dynamic Island while a shoot runs (words of Alexey 25–26.10). Rules in Domain:
+  `ActivityFrame` (the state the system keeps — ≤ 4 KB, ≤ 16 points, short coding keys; `ActivityFrame.make(feed:shoot:now:mode:words:reach:)` from the same
+  `WidgetFeed` the widget reads) and `ActivityRules` (`wanted` = the widget's `.live` shoot, `decide` start / update / restart / end; a day > 8 h is restarted on every
+  return to the app, not twice within 60 s). View = the card's day tile without the date column (`LightPlanWidget/Views/ActivityViews.swift`, also built by the UI
+  suite through the `WidgetViews` link): status, range, lane (sign, rail, time, word). **Only two things move without the app:** `Text(timerInterval:)` («до <точки>»,
+  exit from the hall) and one `ProgressView(timerInterval:)` per segment between two points; the highlighted point, the status line and the mode change when the
+  app is open (no paid Push on the free team, cut 30б row 7/9) — a plate left alone shows `0:00` after its point until the next open. Extension `ShootActivity.swift`;
+  attributes `ShootActivityAttributes.swift` are **one file** in `LightPlanWidget/`, symlinked into `LightPlanUI/Sources/LightPlanUI/Activity/` (no pbxproj edit; the system
+  matches by type name). App: `AppModel+Activity.swift` — `syncActivity(.foreground|.change)` from RootView (scene active) and `persist()`, seam `ActivityHosting`
+  (`ActivityKitHost` is the only ActivityKit user; fake in `ActivityAppTests`), a plate the person swiped away is not started again for that shoot, `NSSupportsLiveActivities`
+  in `Config/Info-iOS.plist`. Buttons are links `lightplan://activity/admin|playlist`: a Link on the plate opens the app itself (spike 30б.3а), so the app dials / opens
+  the player (`openActivityLink`). Studio: notification stage 0 «Студийный час» at rent start (`StudioSchedule.starts`, id `lp.studio.<id>.<cell>.0`, studio lane); a tap
+  (any `lp.studio.` notice) → `Tap.studio(sid)` → `switchActivityToStudio` — buttons appear only in this mode. Island: collapsed = `frame.island` (next point; within
+  `goldenLead` = 1 h of the golden hour — the golden hour). **Plate height** (SwiftUI ideal height, same at 330 / 358 / 361 / 408 pt wide; the 160 pt cap is from
+  documentation, **not measured on a real lock screen** — the simulator panel was not granted): wedding 143.3, with rent 143.3, studio `full` 181.3 (over), `icons` 155.0,
+  `compact` 150.3. `ActivityStudioStyle.current` picks (`.icons` until Alexey chooses). Debug: `-LPActivityDemo wedding|rent|studio|many`, `-LPActivityStyle full|icons|compact`.
+  Not here: «+30 минут» (needs the BroniOS link), a Settings switch, push updates.
 - **Music (step «Музыка», 25.10).** As in the web: default player (`Snapshot.musicApp`: `yandex|spotify|apple|off`, unknown string kept as written) and
   a shared library of ≤ 10 playlists (`Snapshot.playlists`, `{n,u}` as the web writes them) in Settings «Съёмки» (`SettingsMusic.swift`); a shoot remembers
   its playlist **by name** (`Session.playlist`, `EventForm.playlist`). Rules live in `Music` (Domain, `Rules/Music.swift`): `choice` (own playlist by exact name,
