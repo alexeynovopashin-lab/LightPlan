@@ -176,16 +176,13 @@ extension AppModel {
 
 #if DEBUG
 extension AppModel {
-    /// Снимки и замеры (`-LPActivityDemo wedding|rent|studio|many`, `-LPActivityStyle full|icons|compact`, итог запроса — в файл `-LPActivityLog`): настоящая плашка на экране
+    /// Снимки и замеры (`-LPActivityDemo wedding|rent|studio|many`, итог запроса — в файл `-LPActivityLog`): настоящая плашка на экране
     /// блокировки с кадром, собранным вне данных — съёмка «шла три часа назад»: Сборы, Церемония, Прогулка, Банкет; у `rent`/`studio`
     /// ещё идёт аренда студии с администратором и плейлистом. Сверка с данными, пока демонстрация включена, плашку не трогает.
     func debugActivityDemo() {
         let d = UserDefaults.standard
         guard let kind = d.string(forKey: "LPActivityDemo"), let host = activityHost else { return }
         Self.activityDemoOn = true
-        if let style = d.string(forKey: "LPActivityStyle"), let id = Bundle.main.bundleIdentifier {
-            UserDefaults(suiteName: WidgetFeed.groupID(bundleID: id))?.set(style, forKey: "lp.activity.studioStyle")
-        }
         let nowDate = now()
         func at(_ minutes: Double) -> Int64 { Moment(nowDate.addingTimeInterval(minutes * 60)).milliseconds }
         let signs = ["makeup", "rings", "park", "feast"]

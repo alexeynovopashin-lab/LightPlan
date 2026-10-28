@@ -266,8 +266,8 @@
   the player (`openActivityLink`). Studio: notification stage 0 «Студийный час» at rent start (`StudioSchedule.starts`, id `lp.studio.<id>.<cell>.0`, studio lane); a tap
   (any `lp.studio.` notice) → `Tap.studio(sid)` → `switchActivityToStudio` — buttons appear only in this mode. Island: collapsed = `frame.island` (next point; within
   `goldenLead` = 1 h of the golden hour — the golden hour). **Plate height** (SwiftUI ideal height, same at 330 / 358 / 361 / 408 pt wide; the 160 pt cap is from
-  documentation, **not measured on a real lock screen** — the simulator panel was not granted): wedding 143.3, with rent 143.3, studio `full` 181.3 (over), `icons` 155.0,
-  `compact` 150.3. `ActivityStudioStyle.current` picks (`.icons` until Alexey chooses). Debug: `-LPActivityDemo wedding|rent|studio|many`, `-LPActivityStyle full|icons|compact`.
+  documentation, **not measured on a real lock screen** — the simulator panel was not granted): wedding 143.3, with rent 143.3, studio 150.3 (labelled buttons «Позвонить админу» / «Плейлист», lane without words under points, no second line — Alexey 28.10;
+  the full layout was 181.3, the icon-button variant 155.0, both removed). Debug: `-LPActivityDemo wedding|rent|studio|many` (result in `-LPActivityLog`).
   Not here: «+30 минут» (needs the BroniOS link), a Settings switch, push updates.
 - **Music (step «Музыка», 25.10).** As in the web: default player (`Snapshot.musicApp`: `yandex|spotify|apple|off`, unknown string kept as written) and
   a shared library of ≤ 10 playlists (`Snapshot.playlists`, `{n,u}` as the web writes them) in Settings «Съёмки» (`SettingsMusic.swift`); a shoot remembers

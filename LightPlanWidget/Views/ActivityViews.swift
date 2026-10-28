@@ -20,27 +20,6 @@ enum ActivityMetrics {
     static let button: CGFloat = 30
 }
 
-/// Как студия укладывается в плашку (30б.3). Студия с лентой, часами выхода и двумя подписанными кнопками выше потолка в 160 pt
-/// (замер: 181 pt) — развилку Алексею показали эскизом, пока ответа нет, стоит `icons` (обратимо, одна строка `current`).
-enum ActivityStudioStyle: String {
-    /// Всё как есть: диапазон, лента со словами, кнопки с подписями. Выше потолка — только для замера.
-    case full
-    /// Лента целиком, кнопки — круглые значки (трубка, нота) справа в верхней строке.
-    case icons
-    /// Кнопки с подписями «Позвонить админу» и «Плейлист»; лента без слов под точками, строки диапазона нет.
-    case compact
-
-    static var current: ActivityStudioStyle {
-        #if DEBUG
-        // Замер и эскизы: приложение кладёт стиль в общие настройки группы, расширение читает (`-LPActivityStyle`).
-        if let id = Bundle.main.bundleIdentifier,
-           let raw = UserDefaults(suiteName: WidgetFeed.groupID(bundleID: id))?.string(forKey: "lp.activity.studioStyle"),
-           let s = ActivityStudioStyle(rawValue: raw) { return s }
-        #endif
-        return .icons
-    }
-}
-
 /// Часы до `to`, идущие сами. Один `now` на сборку, и цель проверяется: прошедшая — перевёрнутый диапазон, а он валит расширение
 /// при следующей перерисовке (разбор GPT спайка 30б).
 struct ActivityTimer: View {
@@ -158,7 +137,6 @@ struct ActivityLane: View {
 /// Плашка экрана блокировки.
 struct ActivityLockView: View {
     let frame: ActivityFrame
-    var studio: ActivityStudioStyle = .current
     private let st = WidgetStyle(dark: true)
 
     var body: some View {
@@ -166,7 +144,7 @@ struct ActivityLockView: View {
             top
             if hasSecond { second.padding(.top, 2) }
             if !frame.points.isEmpty { ActivityLane(frame: frame, st: st, words: !compact).padding(.top, 8) }
-            if inStudio, studio != .icons { buttons.padding(.top, 8) }
+            if inStudio, frame.call != nil || frame.playlist != nil { buttons.padding(.top, 8) }
         }
         .padding(.horizontal, ActivityMetrics.side)
         .padding(.vertical, ActivityMetrics.vertical)
@@ -174,10 +152,12 @@ struct ActivityLockView: View {
     }
 
     private var inStudio: Bool { frame.mode == .studio }
-    private var compact: Bool { inStudio && studio == .compact }
+    /// Студия (слово Алексея 28.10, «кнопки с подписями»): с лентой, часами выхода и подписанными кнопками плашка 181 pt — выше потолка в 160 pt
+    /// (по документации), поэтому лента без слов под точками, а второй строки (диапазон, студия) нет: подпись часов стоит перед ними.
+    private var compact: Bool { inStudio }
     private var hasSecond: Bool { !compact }
 
-    /// Состояние слева, главные часы справа: в ленте — до следующей точки, в студии — до выхода из зала (при значках справа кнопки).
+    /// Состояние слева, главные часы справа: в ленте — до следующей точки, в студии — до выхода из зала.
     private var top: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             HStack(spacing: 7) {
@@ -187,9 +167,7 @@ struct ActivityLockView: View {
                 Text(frame.status).font(.system(size: 15)).foregroundStyle(st.ink).lineLimit(1).truncationMode(.tail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if inStudio, studio == .icons {
-                iconButtons.alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 5 }
-            } else if compact, let exit = frame.exit {
+            if compact, let exit = frame.exit {
                 // Без второй строки подпись часов стоит перед ними.
                 Text(exit.label).font(.system(size: 12.5)).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.7)
                 ActivityTimer(to: exit.date).font(.system(size: 15, weight: .semibold)).foregroundStyle(st.amber)
@@ -205,12 +183,11 @@ struct ActivityLockView: View {
     private var isDone: Bool { frame.endsAt.map { $0 <= frame.asOf } ?? false }
     private var main: ActivityFrame.Countdown? { inStudio ? frame.exit : frame.next }
 
-    /// Вторая строка. Лента: слева диапазон времени (а у съёмки со студией — выход из зала, часы аренды стоят на ленте с самого
-    /// начала), справа подпись главных часов («до Прогулка»). Студия: студия и диапазон слева, подпись часов справа (при значках
-    /// сами часы тоже — им не хватает верхней строки).
+    /// Вторая строка (только в ленте). Слева диапазон времени (а у съёмки со студией — выход из зала, часы аренды стоят на ленте с самого
+    /// начала), справа подпись главных часов («до Прогулка»).
     private var second: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            if !inStudio, let exit = frame.exit {
+            if let exit = frame.exit {
                 HStack(spacing: 6) {
                     Text(exit.label).font(.system(size: 12.5)).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.7)
                     ActivityTimer(to: exit.date).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(st.amber)
@@ -218,15 +195,10 @@ struct ActivityLockView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                Text(inStudio && !frame.studio.isEmpty ? "\(frame.studio) · \(frame.range)" : frame.range)
-                    .font(.system(size: 12.5)).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.8)
+                Text(frame.range).font(.system(size: 12.5)).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if inStudio, studio == .icons, let exit = frame.exit {
-                Text(exit.label).font(.system(size: 12.5)).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.7)
-                ActivityTimer(to: exit.date).font(.system(size: 15, weight: .semibold)).foregroundStyle(st.amber)
-                    .frame(width: 70, alignment: .trailing)
-            } else if let main {
+            if let main {
                 Text(main.label).font(.system(size: 12.5)).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.7)
                     .frame(maxWidth: 150, alignment: .trailing)
             }
@@ -247,23 +219,6 @@ struct ActivityLockView: View {
                 .frame(maxWidth: .infinity, minHeight: ActivityMetrics.button)
                 .background(Capsule().fill(st.ink.opacity(0.14)))
         }
-    }
-
-    /// Круглые кнопки без надписей (стиль `icons`): надпись — в подписи для чтения вслух.
-    private var iconButtons: some View {
-        HStack(spacing: 8) {
-            if let call = frame.call { iconButton(call, "phone.fill", .admin) }
-            if let list = frame.playlist { iconButton(list, "music.note", .playlist) }
-        }
-    }
-
-    private func iconButton(_ title: String, _ icon: String, _ link: ActivityLink) -> some View {
-        Link(destination: link.url) {
-            Image(systemName: icon).font(.system(size: 14, weight: .semibold)).foregroundStyle(st.ink)
-                .frame(width: ActivityMetrics.button, height: ActivityMetrics.button)
-                .background(Circle().fill(st.ink.opacity(0.14)))
-        }
-        .accessibilityLabel(title)
     }
 }
 

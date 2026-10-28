@@ -45,8 +45,8 @@ struct ActivityViewsTests {
     /// Потолок высоты плашки (документация, не мерено; меряет прогон симулятора).
     static let ceiling: CGFloat = 160
 
-    private func height(_ f: ActivityFrame, width: CGFloat, _ style: ActivityStudioStyle = .icons) -> CGFloat {
-        let host = UIHostingController(rootView: ActivityLockView(frame: f, studio: style).frame(width: width).fixedSize(horizontal: false, vertical: true))
+    private func height(_ f: ActivityFrame, width: CGFloat) -> CGFloat {
+        let host = UIHostingController(rootView: ActivityLockView(frame: f).frame(width: width).fixedSize(horizontal: false, vertical: true))
         return host.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
     }
 
@@ -65,29 +65,30 @@ struct ActivityViewsTests {
     @Test func printsTheHeightOfEveryState() {
         var report: [String] = []
         for (name, f) in cases() {
-            for style in f.mode == .studio ? [ActivityStudioStyle.full, .icons, .compact] : [.icons] {
-                let row = Self.widths.map { String(format: "%.0f→%.1f", $0, height(f, width: $0, style)) }.joined(separator: "  ")
-                report.append("ВЫСОТА «\(name)» \(f.mode == .studio ? style.rawValue : "-"): \(row)")
-            }
+            let row = Self.widths.map { String(format: "%.0f→%.1f", $0, height(f, width: $0)) }.joined(separator: "  ")
+            report.append("ВЫСОТА «\(name)»: \(row)")
         }
         print(report.joined(separator: "\n"))
     }
 
-    /// Лента и студия в выбранных стилях (`icons`, `compact`) под потолком; `full` — выше, ради него эскизы Алексею.
-    @Test func everyShippedStateFitsUnderTheCeiling() {
+    /// Лента, лента с арендой и студия (слово Алексея 28.10: кнопки с подписями, лента без слов) под потолком.
+    @Test func everyStateFitsUnderTheCeiling() {
         for (name, f) in cases() {
-            for style in f.mode == .studio ? [ActivityStudioStyle.icons, .compact] : [.icons] {
-                for w in Self.widths {
-                    let h = height(f, width: w, style)
-                    #expect(h <= Self.ceiling, Comment(rawValue: "«\(name)» \(style.rawValue) \(w): \(h) > \(Self.ceiling)"))
-                }
+            for w in Self.widths {
+                let h = height(f, width: w)
+                #expect(h <= Self.ceiling, Comment(rawValue: "«\(name)» \(w): \(h) > \(Self.ceiling)"))
             }
         }
     }
 
-    @Test func fullStudioDoesNotFitAndThatIsWhySketchesExist() {
+    @Test func studioKeepsLabelledButtonsAndDropsTheSecondLine() {
         let f = frame(wedding, rents: rent, mode: .studio, at: tsk(15))
-        #expect(height(f, width: 361, .full) > Self.ceiling)
+        #expect(f.call == "Позвонить админу" && f.playlist == "Плейлист" && f.mode == .studio)
+        // Без номера администратора и плейлиста кнопок нет и места под них нет: плашка ниже.
+        let bare = ActivityFrame.make(feed: WidgetFeed(place: tomsk, shoots: []), shoot: .init(id: "w", start: ms(tsk(12)), end: ms(tsk(22)), title: "Свадьба",
+                                      rents: rent, stops: wedding), now: tsk(15), mode: .studio)
+        #expect(bare.call == nil && bare.playlist == nil)
+        #expect(height(bare, width: 361) < height(f, width: 361))
     }
 
     @Test func theSignsAreThereForEveryPointTheSystemCanName() {
@@ -109,17 +110,22 @@ struct ActivityViewsTests {
     @Test func writesPicturesWhenAsked() throws {
         let dir = ProcessInfo.processInfo.environment["LP_ACTIVITY_SHOTS"] ?? "/tmp/lp-activity-shots"
         guard FileManager.default.fileExists(atPath: dir) else { return }
+        func write(_ f: ActivityFrame, _ tag: String) throws {
+            let v = ActivityLockView(frame: f).frame(width: 361).background(Color(red: 0.059, green: 0.055, blue: 0.047))
+                .environment(\.colorScheme, .dark).environment(\.activityStill, f.asOfDate)
+            let r = ImageRenderer(content: v)
+            r.scale = 3
+            if let png = r.uiImage?.pngData() { try png.write(to: URL(fileURLWithPath: "\(dir)/\(tag).png")) }
+        }
         for (i, (name, f)) in cases().enumerated() {
-            for style in f.mode == .studio ? [ActivityStudioStyle.full, .icons, .compact] : [.icons] {
-                let v = ActivityLockView(frame: f, studio: style).frame(width: 361).background(Color(red: 0.059, green: 0.055, blue: 0.047))
-                    .environment(\.colorScheme, .dark).environment(\.activityStill, f.asOfDate)
-                let r = ImageRenderer(content: v)
-                r.scale = 3
-                if let png = r.uiImage?.pngData() {
-                    let tag = name.replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: ",", with: "")
-                    try png.write(to: URL(fileURLWithPath: "\(dir)/\(i)-\(tag)-\(style.rawValue).png"))
-                }
-            }
+            try write(f, "\(i)-" + name.replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: ",", with: ""))
+        }
+        // Подпись часов с названием точки без склонения (предложение оркестратора 28.10, не включено): две формы, читающиеся с любым именем.
+        let s = WidgetFeed.Shoot(id: "w", start: ms(tsk(12)), end: ms(tsk(22)), title: "Свадьба", place: "Томск", stops: wedding, genre: "wedding")
+        for (tag, template) in [("words-a", "до точки «{name}»"), ("words-b", "Далее: {name}"), ("words-now", "до {name}")] {
+            var w = ActivityWords()
+            w.untilName = template
+            try write(ActivityFrame.make(feed: WidgetFeed(place: tomsk, shoots: [s]), shoot: s, now: tsk(15), words: w), tag)
         }
     }
 }
