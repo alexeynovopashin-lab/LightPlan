@@ -133,6 +133,8 @@ struct WidgetBraunIdleViewTests {
                 let px = try render(plate(s, .pro, dark: dark), scale: 4)
                 let (texts, _) = board(s, dark: dark)
                 for t in texts {
+                    // Число балла над трубкой доски (28.10 ушло в линзу внутри трубки, `WidgetGaugeTests`) — места на доске больше нет.
+                    if s != .b, t.t == "62" { continue }
                     // Окошко свадьбы рисует живой таймер, в снимке он заморожен: строки из окошка — те же цифры, но место проверяем по рамке.
                     guard let b = ink(px, t) else {
                         // Цвет совпал нигде: свет у вида настоящий, у доски — заданный; роли цветов те же, а вот пустого места быть не должно.
@@ -186,6 +188,8 @@ struct WidgetBraunIdleViewTests {
                     case "track":
                         #expect(dist(px.rgb(f.x + f.w / 2, f.y + 6), over(f.c, f.a, bg)) <= 6, "\(tag): дорожка столбика пуста сверху")
                     case "level":
+                        // Полоски уровня больше нет (28.10): уровень показывает линза с числом, её место и цвет проверяет `WidgetGaugeTests`.
+                        break
                         // Мерено: полоска вида на 5 % темнее доски (233, 230, 223 против 246, 243, 236) — допуск 20 на канал, расхождение в отчёте.
                         #expect(dist(px.rgb(f.x + f.w / 2, f.y + f.h / 2), hex(f.c)) <= 45, "\(tag): полоска уровня \(px.rgb(f.x + f.w / 2, f.y + f.h / 2))")
                     default: break
