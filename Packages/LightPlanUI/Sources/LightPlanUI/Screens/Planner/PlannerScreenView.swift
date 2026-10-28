@@ -309,12 +309,21 @@ private struct OutsideTouch: ViewModifier {
 
 // MARK: - Шапка
 
-/// Поле заголовка по бокам: слово не заходит на кнопки (слева 44, справа n×34 через 8) и симметрично относительно оси.
+/// Поле заголовка по бокам: слово не заходит на кнопки (слева 44, справа n×44 впритык) и симметрично относительно оси.
+/// Кнопки шапки крупнее на четверть (слово Алексея 28.10: «кнопки над календарём сделаем крупнее»): значки справа 22 → 28 pt,
+/// значок вида 21 → 26 pt, у каждой нажимается квадрат 44 × 44, квадраты не перекрываются.
 enum PlanTitleLayout {
     static let minScale: CGFloat = 0.5
     static let chevronReach: CGFloat = 17   // ширина шеврона 16 + 1 зазор
     static let gap: CGFloat = 8
-    static func rightWidth(buttons n: Int) -> CGFloat { CGFloat(n) * 34 + CGFloat(max(0, n - 1)) * 8 }
+    /// Сторона нажимаемого квадрата кнопки шапки (было 34 справа).
+    static let buttonSide: CGFloat = 44
+    /// Значки действий справа и значок вида слева; линия значков справа — тот же 1,7/22 от стороны (было 22 pt).
+    static let actionGlyph: CGFloat = 28, scopeGlyph: CGFloat = 26
+    static let actionStroke: CGFloat = 1.7 * actionGlyph / 22
+    /// Между квадратами нажатия зазора нет: они касаются, но не перекрываются (между значками остаётся 16 pt).
+    static let buttonGap: CGFloat = 0
+    static func rightWidth(buttons n: Int) -> CGFloat { CGFloat(n) * buttonSide + CGFloat(max(0, n - 1)) * buttonGap }
     static let leftWidth: CGFloat = 44
     /// Поля слова внутри строки шапки (она уже без полей 16). Три кнопки справа — поля равны, слово на оси.
     /// Четвёртая (значок ответа клиента, редкий случай) оси не оставляет места — тогда слово сидит по центру
@@ -322,6 +331,18 @@ enum PlanTitleLayout {
     static func insets(rightButtons n: Int) -> (leading: CGFloat, trailing: CGFloat) {
         let l = leftWidth + 6 + gap, r = rightWidth(buttons: n) + 6 + gap
         return n <= 3 ? (max(l, r), max(l, r)) : (l + chevronReach, r)
+    }
+    /// Ширина, что остаётся слову заголовка на экране шириной `screenWidth` (строка шапки уже без полей 16 по бокам):
+    /// слово сжимается до неё, но не меньше `minScale`.
+    static func room(screenWidth: CGFloat, rightButtons n: Int) -> CGFloat {
+        let i = insets(rightButtons: n)
+        return screenWidth - 32 - i.leading - i.trailing
+    }
+
+    /// Во сколько раз слово шириной `title` сожмётся на экране `screenWidth` (1 — не сжимается).
+    static func scale(title: CGFloat, screenWidth: CGFloat, rightButtons n: Int) -> CGFloat {
+        guard title > 0 else { return 1 }
+        return max(minScale, min(1, room(screenWidth: screenWidth, rightButtons: n) / title))
     }
 }
 
@@ -345,7 +366,7 @@ private struct PlanTop: View {
                 Haptics.play(.scopeButton)
                 withAnimation(Self.fanToggle) { scopeOpen.toggle() }
             } label: {
-                Icon(Self.icon(st.scope), size: 21, line: 1.6)
+                Icon(Self.icon(st.scope), size: PlanTitleLayout.scopeGlyph, line: 1.6)
                     .foregroundStyle(pal.brass)
                     .frame(width: 44, height: 44)
                     .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(pal.sheet))
@@ -356,7 +377,7 @@ private struct PlanTop: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 8) {
+            HStack(spacing: PlanTitleLayout.buttonGap) {
                 let waiting = app.questWaiting.count
                 if waiting > 0 {
                     Button { app.openWaitingQuest() } label: { questBadge(waiting, pal) }
@@ -417,12 +438,13 @@ private struct PlanTop: View {
 
     /// Значок «пришёл ответ клиента» (знак `chat` из библиотеки, латунь); число — сколько ответов ждёт. Нет ответов — нет значка.
     private func questBadge(_ n: Int, _ pal: Palette) -> some View {
-        Icon("chat", size: 22, line: 1.7).foregroundStyle(pal.brass)
-            .frame(width: 34, height: 34)
+        Icon("chat", size: 27, line: 1.7).foregroundStyle(pal.brass)
+            .frame(width: PlanTitleLayout.buttonSide, height: PlanTitleLayout.buttonSide)
             .overlay(alignment: .topTrailing) {
                 Text("\(n)").font(webFont(10, 700)).foregroundStyle(pal.onBrass)
                     .padding(.horizontal, 4).frame(minWidth: 15, minHeight: 15)
                     .background(Capsule().fill(pal.brass))
+                    .offset(x: -2.5, y: 2.5)   // значок крупнее и стоит в квадрате 44: число держится на его углу
             }
             .contentShape(Rectangle())
             .shotNode("plan.quest")
@@ -430,9 +452,9 @@ private struct PlanTop: View {
 
     private func action(_ k: PlanGlyph.Kind, _ c: Color, _ node: String) -> some View {
         PlanGlyph(kind: k)
-            .stroke(c, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
-            .frame(width: 22, height: 22)
-            .frame(width: 34, height: 34)
+            .stroke(c, style: StrokeStyle(lineWidth: PlanTitleLayout.actionStroke, lineCap: .round, lineJoin: .round))
+            .frame(width: PlanTitleLayout.actionGlyph, height: PlanTitleLayout.actionGlyph)
+            .frame(width: PlanTitleLayout.buttonSide, height: PlanTitleLayout.buttonSide)
             .contentShape(Rectangle())
             .shotNode(node)
     }
