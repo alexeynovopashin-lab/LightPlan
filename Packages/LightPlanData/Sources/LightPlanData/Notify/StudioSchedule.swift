@@ -32,7 +32,7 @@ public enum StudioSchedule {
         /// правка часов и продление переписывают тот же запрос, а не множат.
         public let id: String
         public let sessionId: String
-        /// 1 — за десять минут, 2 — за пять.
+        /// 0 — начало аренды (30б.3), 1 — за десять минут, 2 — за пять.
         public let stage: Int
         public let fire: Moment
         /// Минут до дедлайна в момент сигнала: 10, 5 или меньше, если аренда
@@ -91,6 +91,26 @@ public enum StudioSchedule {
         return out
     }
 
+    /// Начало аренды (30б.3, слова Алексея 25.10: «в начале аренды уведомление «Студийный час», нажатие на него включает полный
+    /// режим студии»): ступень `0`, на минуте `from`. Нажатие переводит экран активности в студийный режим (`NotificationPresenter.Tap.studio`).
+    /// Молчит, если в ту же минуту и так зовёт ступень выхода (аренда короче десяти минут): два сигнала подряд — лишнее.
+    public static func starts(for s: Session, studios: [Studio], offsetHours: Double,
+                              now: Moment, finished: Bool) -> [Notice] {
+        guard s.kind.isWork, !finished else { return [] }
+        var out: [Notice] = []
+        for cell in RentWindow.cells(of: s, studios: studios) {
+            let w = cell.window
+            guard w.deadline >= w.from, max(w.deadline - say[0], w.from) > w.from, max(w.deadline - say[1], w.from) > w.from else { continue }
+            let fire = WallTime(day: s.day, minutes: w.from).moment(utcOffsetHours: offsetHours)
+            guard fire > now else { continue }
+            let key = cell.index.map(String.init) ?? "r"
+            out.append(Notice(id: "\(idPrefix)\(s.id).\(key).0", sessionId: s.id, stage: 0, fire: fire,
+                              minutesLeft: w.deadline - w.from, deadline: w.deadline, offsetHours: offsetHours,
+                              studioName: w.studio.name, hallName: w.hallName))
+        }
+        return out
+    }
+
     /// Расписание по всем записям: ближайшие `limit`, по времени. Равные
     /// моменты — по идентификатору, чтобы порядок не зависел от обхода.
     public static func plan(sessions: [Session], studios: [Studio], now: Moment,
@@ -99,6 +119,7 @@ public enum StudioSchedule {
         var all: [Notice] = []
         for s in sessions {
             all += notices(for: s, studios: studios, offsetHours: offsetHours(s), now: now, finished: finished(s))
+            all += starts(for: s, studios: studios, offsetHours: offsetHours(s), now: now, finished: finished(s))
         }
         all.sort { ($0.fire, $0.id) < ($1.fire, $1.id) }
         return Array(all.prefix(limit))

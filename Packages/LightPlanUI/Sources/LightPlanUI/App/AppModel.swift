@@ -366,6 +366,18 @@ public final class AppModel {
     var netHub: NetworkPolicyHub?
     /// Файл виджета в общей папке (30б.1); `nil` — в тестах, снимках и на Mac.
     var widgetShare: WidgetShare?
+    /// Экран активности на заблокированном телефоне (30б.3); `nil` — в тестах, снимках и на Mac. Что запрошено, помнит только память:
+    /// «студийный режим» и «убрали с экрана блокировки» — на съёмку, а не на установку (`AppModel+Activity.swift`).
+    @ObservationIgnored var activityHost: (any ActivityHosting)?
+    @ObservationIgnored var activityChain: Task<Void, Never>?
+    @ObservationIgnored var activityStudioFor: String?
+    /// Съёмки, плашку которых человек убрал сам (id → когда), и съёмки, под которые мы плашку запускали (id → когда): память между запусками
+    /// приложения в `activityDefaults` (на установку, не в снимок) — без неё перезапуск возвращал бы смахнутую плашку (ревью GPT к eedfc41).
+    @ObservationIgnored var activityDismissed: [String: Double] = [:] { didSet { saveActivityMemory() } }
+    @ObservationIgnored var activityMarks: [String: Double] = [:] { didSet { saveActivityMemory() } }
+    @ObservationIgnored var activityDefaults: UserDefaults?
+    @ObservationIgnored var activityLast: ActivityFrame?
+    @ObservationIgnored var activityOpen: (URL) -> Void = { _ in }
     /// Режим «Авто» / «Только напрямую»: ключ `netMode` лежит в снимке среди чужих (`extra`), веб его не знает.
     public internal(set) var netMode: NetworkMode
     /// Что детектор думает о зарубежных адресах; экран «Сеть» пишет это словом.
@@ -710,6 +722,7 @@ public final class AppModel {
         model.debugCalendarProbe()  // замер на настоящем календаре симулятора (`-LPCalendarProbe`, Debug)
         model.attachContacts()      // клиенты в Контактах iPhone — пишет только обычный «Light Plan» (К7)
         model.widgetShare = WidgetShare.live()
+        model.attachActivity()      // экран активности: плашка на экране блокировки, пока идёт съёмка (30б.3)
         model.publishWidget()       // место «Света» — виджету на главном экране (30б.1)
         model.watchWidgetForecast() // и оценка заката, когда придёт прогноз (30б.2в-5)
         model.debugContactsProbe()  // замер на настоящей книге симулятора (`-LPContactsProbe`, Debug)
@@ -887,6 +900,7 @@ public final class AppModel {
         syncCalendarMirror()    // и событие в Календаре iPhone — тоже (30.2)
         syncContacts()          // и клиенты в Контактах iPhone (К7)
         publishWidget()         // и виджет на главном экране: съёмки ближайших дней (30б.2)
+        syncActivity()          // и плашка на экране блокировки: идёт ли съёмка, на какой она точке (30б.3)
         guard let store else { after?(); return }
         let snap = snapshot, prev = saving
         saving = Task {

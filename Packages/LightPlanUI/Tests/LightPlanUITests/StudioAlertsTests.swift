@@ -120,7 +120,7 @@ struct StudioAlertsTests {
         await settle(app)
         #expect(await fake.asked == 1)
         #expect(app.studioAlertsOn)
-        #expect(await fake.table.count == 2)
+        #expect(await fake.table.count == 3)   // начало аренды и две ступени выхода (30б.3)
     }
 
     @Test func refusalBreaksNothing() async {
@@ -160,7 +160,7 @@ struct StudioAlertsTests {
         await fake.foreignOne()
         app.syncAlerts(force: true)
         await settle(app)
-        #expect(await fake.table.count == 3)
+        #expect(await fake.table.count == 4)
         app.setStudioAlerts(false)
         await settle(app)
         #expect(await fake.table.keys.sorted() == ["lp.other.1"])
@@ -175,10 +175,14 @@ struct StudioAlertsTests {
         app.syncAlerts(force: true)
         await settle(app)
         let t = await fake.table
-        #expect(t.keys.sorted() == ["lp.studio.s1.0.1", "lp.studio.s1.0.2"])
+        #expect(t.keys.sorted() == ["lp.studio.s1.0.0", "lp.studio.s1.0.1", "lp.studio.s1.0.2"])
         // 12:00–13:00 по Москве: дедлайн 12:55, сигналы 12:45 и 12:50.
+        #expect(t["lp.studio.s1.0.0"]?.fire == iso("2026-10-20T12:00:00+03:00"))
         #expect(t["lp.studio.s1.0.1"]?.fire == iso("2026-10-20T12:45:00+03:00"))
         #expect(t["lp.studio.s1.0.2"]?.fire == iso("2026-10-20T12:50:00+03:00"))
+        // Начало аренды (30б.3): «Студийный час» и когда выходить; нажатие включает студийный режим экрана активности.
+        #expect(t["lp.studio.s1.0.0"]?.title == "Студийный час")
+        #expect(t["lp.studio.s1.0.0"]?.body == "Аренда началась. Выйти из зала в 12:55. Томсон, Эдисон.", "\(String(describing: t["lp.studio.s1.0.0"]?.body))")
         #expect(t["lp.studio.s1.0.1"]?.body == "Выйти из зала через 10 минут. Томсон, Эдисон.")
         #expect(t["lp.studio.s1.0.2"]?.body == "Выйти из зала через 5 минут. Томсон, Эдисон.")
     }
@@ -193,7 +197,8 @@ struct StudioAlertsTests {
         app.persist()
         await settle(app)
         var t = await fake.table
-        #expect(t.count == 2)
+        #expect(t.count == 3)
+        #expect(t["lp.studio.s1.0.0"]?.fire == iso("2026-10-20T12:00:00+03:00"))
         #expect(t["lp.studio.s1.0.1"]?.fire == iso("2026-10-20T13:45:00+03:00"))
         #expect(t["lp.studio.s1.0.2"]?.fire == iso("2026-10-20T13:50:00+03:00"))
         // Правка часов: ячейка уехала на вечер целиком.
@@ -202,7 +207,8 @@ struct StudioAlertsTests {
         app.persist()
         await settle(app)
         t = await fake.table
-        #expect(t.count == 2)
+        #expect(t.count == 3)
+        #expect(t["lp.studio.s1.0.0"]?.fire == iso("2026-10-20T18:00:00+03:00"))
         #expect(t["lp.studio.s1.0.1"]?.fire == iso("2026-10-20T18:45:00+03:00"))
     }
 
@@ -211,7 +217,7 @@ struct StudioAlertsTests {
         let app = model(Self.snapshot(), center: fake)
         app.syncAlerts(force: true)
         await settle(app)
-        #expect(await fake.table.count == 2)
+        #expect(await fake.table.count == 3)
         app.snapshot.sessions[0].route = []
         app.persist()
         await settle(app)
@@ -220,7 +226,7 @@ struct StudioAlertsTests {
         let app2 = model(Self.snapshot(), center: fake)
         app2.syncAlerts(force: true)
         await settle(app2)
-        #expect(await fake.table.count == 2)
+        #expect(await fake.table.count == 3)
         app2.trashSession(id: "s1")
         await settle(app2)
         #expect(await fake.table.isEmpty)
@@ -233,10 +239,10 @@ struct StudioAlertsTests {
         await settle(app)
         // Расписание разошлось с данными (запрос потерян): возврат в приложение чинит.
         await fake.remove(ids: ["lp.studio.s1.0.2"])
-        #expect(await fake.table.count == 1)
+        #expect(await fake.table.count == 2)
         app.syncAlerts(force: true)
         await settle(app)
-        #expect(await fake.table.count == 2)
+        #expect(await fake.table.count == 3)
     }
 
     @Test func passedStagesAreNotScheduled() async {
@@ -262,8 +268,9 @@ struct StudioAlertsTests {
         app.syncAlerts(force: true)
         await settle(app)
         #expect(await fake.table.count == 64)
-        #expect(await fake.table["lp.studio.s31.0.2"] != nil)
-        #expect(await fake.table["lp.studio.s32.0.1"] == nil)
+        // Три запроса на день (начало аренды и две ступени): 21 день целиком и начало 22-го.
+        #expect(await fake.table["lp.studio.s21.0.0"] != nil)
+        #expect(await fake.table["lp.studio.s21.0.1"] == nil)
     }
 
     @Test func notifFlagsAreTheWebsKeysAndOtherKeysSurvive() async {
@@ -280,7 +287,7 @@ struct StudioAlertsTests {
         guard case .object(let o)? = app.snapshotForTests.extra["notif"] else { Issue.record("notif пропал"); return }
         #expect(o["studio"] == .bool(true) && o["all"] == .bool(true))
         #expect(o["wx"] == .bool(false), "чужие ключи не тронуты")
-        #expect(await fake.table.count == 2)
+        #expect(await fake.table.count == 3)
     }
 
     @Test func scheduleDoesNotDependOnThePhonesZone() async {
@@ -300,6 +307,6 @@ struct StudioAlertsTests {
             return await fake.table.mapValues(\.fire)
         }
         let a = await table(zone: "Asia/Tokyo"), b = await table(zone: "America/New_York")
-        #expect(a.count == 2 && a == b)
+        #expect(a.count == 3 && a == b)
     }
 }

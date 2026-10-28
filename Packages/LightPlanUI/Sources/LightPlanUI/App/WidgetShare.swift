@@ -47,11 +47,16 @@ extension AppModel {
     /// (`placeChanged`) и при каждой записи данных (`persist()`). Пишется только если файл изменился.
     func publishWidget() {
         guard let share = widgetShare else { return }
+        share.publish(makeWidgetFeed())
+    }
+
+    /// Файл виджета из данных приложения на сейчас: его читают виджет и экран активности (30б.3) — одним правилом.
+    func makeWidgetFeed() -> WidgetFeed {
         let spot = WidgetFeed.Spot(name: light.locationName, place: place.place)
         let words = PlannerWords(lexicon: lexicon, orgs: snapshot.orgs)
         let zones = place.zones
         let nowDate = now()
-        let feed = WidgetFeed.make(
+        return WidgetFeed.make(
             place: spot, sessions: snapshot.sessions, studios: snapshot.studios, spots: snapshot.spots, now: nowDate,
             manualEnd: settings.manualEnd,
             offset: { point, day in
@@ -65,7 +70,6 @@ extension AppModel {
             forecast: widgetForecast(spot, now: nowDate),
             lang: language,
             clock12: ClockText(language: language, preference: Self.clock(settings.clock)).is12)
-        share.publish(feed)
     }
 
     /// Оценки заката ближайших дней места «Света» из настоящего прогноза (30б.2в-5). Прогноза на день нет — оценки нет: числа не выдумываются.
