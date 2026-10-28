@@ -371,7 +371,11 @@ public final class AppModel {
     @ObservationIgnored var activityHost: (any ActivityHosting)?
     @ObservationIgnored var activityChain: Task<Void, Never>?
     @ObservationIgnored var activityStudioFor: String?
-    @ObservationIgnored var activityDismissed: Set<String> = []
+    /// Съёмки, плашку которых человек убрал сам (id → когда), и съёмки, под которые мы плашку запускали (id → когда): память между запусками
+    /// приложения в `activityDefaults` (на установку, не в снимок) — без неё перезапуск возвращал бы смахнутую плашку (ревью GPT к eedfc41).
+    @ObservationIgnored var activityDismissed: [String: Double] = [:] { didSet { saveActivityMemory() } }
+    @ObservationIgnored var activityMarks: [String: Double] = [:] { didSet { saveActivityMemory() } }
+    @ObservationIgnored var activityDefaults: UserDefaults?
     @ObservationIgnored var activityLast: ActivityFrame?
     @ObservationIgnored var activityOpen: (URL) -> Void = { _ in }
     /// Режим «Авто» / «Только напрямую»: ключ `netMode` лежит в снимке среди чужих (`extra`), веб его не знает.

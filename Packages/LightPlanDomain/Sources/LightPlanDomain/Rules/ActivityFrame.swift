@@ -200,16 +200,20 @@ extension ActivityFrame {
                 names.insert(feed.words[.golden], at: i)
             }
         }
-        if points.count > maxPoints {
-            // Лишнее отбрасывается с конца: система обрежет состояние сама и неизвестно где (из документации, не мерено).
-            points = Array(points.prefix(maxPoints))
-            names = Array(names.prefix(maxPoints))
-        }
-
         let nowMs = Moment(now).milliseconds
-        let current = points.lastIndex { !$0.gold && $0.at <= nowMs } ?? -1
+        var current = points.lastIndex { !$0.gold && $0.at <= nowMs } ?? -1
+        if points.count > maxPoints {
+            // Окно в `maxPoints` вокруг «сейчас»: система обрежет состояние сама и неизвестно где (из документации, не мерено), а лента,
+            // что кончается раньше съёмки, молчала бы про остаток дня (ревью GPT к eedfc41). Подсвеченная точка и ближайшие вперёд — внутри.
+            let lo = max(0, min(max(current, 0) - 4, points.count - maxPoints))
+            points = Array(points[lo..<lo + maxPoints])
+            names = Array(names[lo..<lo + maxPoints])
+            current = current >= 0 ? current - lo : -1
+            if current >= maxPoints { current = maxPoints - 1 }
+        }
         let nextIndex = points.firstIndex { $0.at > nowMs }
         let finished = !s.open && s.endDate <= now
+        names = names.map { clip($0) }
 
         let status: String
         if finished { status = w.done }
@@ -237,13 +241,25 @@ extension ActivityFrame {
             island = Countdown(label: w.untilGolden, to: g.at)
         }
 
-        return ActivityFrame(
+        var frame = ActivityFrame(
             mode: studioOn ? .studio : .route, shootId: s.id, status: status,
             range: range(s, tz: tz, clock: clock, words: w), points: points, current: current, next: next, exit: exit,
-            rentActive: active != nil, studio: rent?.studio ?? "",
+            rentActive: active != nil, studio: clip(rent?.studio ?? ""),
             call: studioOn && reach.admin ? w.callAdmin : nil, playlist: studioOn && reach.playlist ? w.playlist : nil,
             island: island, endsAt: s.open ? nil : s.end, asOf: nowMs)
+        // Потолок системы на состояние: длинные слова клиента не должны молча лишить съёмку плашки — лента худеет с дальнего края.
+        while frame.encodedSize + propertiesReserve > limit, frame.points.count > 2 {
+            let dropFirst = frame.current > frame.points.count / 2
+            if dropFirst { frame.points.removeFirst(); frame.current -= 1 } else { frame.points.removeLast(); frame.current = min(frame.current, frame.points.count - 1) }
+        }
+        return frame
     }
+
+    /// Запас на свойства активности (id съёмки и момент запуска) и служебное системы.
+    static let propertiesReserve = 300
+
+    /// Имя в строке состояния и подписи часов: длинное название точки или студии режется (одна строка на плашке всё равно не больше).
+    static func clip(_ s: String, _ n: Int = 40) -> String { s.count > n ? String(s.prefix(n - 1)) + "…" : s }
 
     /// «12:00 – 22:00 · 10 ч».
     static func range(_ s: WidgetFeed.Shoot, tz: TimeZone, clock: (Date) -> String, words w: ActivityWords) -> String {

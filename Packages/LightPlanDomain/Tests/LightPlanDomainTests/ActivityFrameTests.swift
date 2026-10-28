@@ -206,7 +206,34 @@ struct ActivityFrameTests {
         let f = make(s, at: tsk(15, 0), mode: .studio)
         #expect(f.points.count == ActivityFrame.maxPoints)
         // Свойства активности (id съёмки, момент запуска) — ещё около 100 байт; запас до 4 КБ остаётся.
-        #expect(f.encodedSize + 200 < ActivityFrame.limit, "кадр \(f.encodedSize) Б")
+        #expect(f.encodedSize + 200 < ActivityFrame.limit, Comment(rawValue: "кадр \(f.encodedSize) Б"))
+    }
+
+    @Test func aLongRouteKeepsTheWindowAroundNowNotTheStartOfTheDay() {
+        let names = (0..<20).map { "Точка \($0)" }
+        // По точке каждые 20 минут с 12:00: «сейчас» 18:20 — это точка 19 (последняя), окно должно её содержать.
+        let stops = names.enumerated().map { stop(12 + $0.offset / 3, ($0.offset % 3) * 20, $0.element, sign: "camera") }
+        let s = wedding(stops: stops)
+        let late = make(s, at: tsk(18, 25))
+        #expect(late.points.count == ActivityFrame.maxPoints)
+        #expect(late.points.last?.word == "Точка" && late.status == "Сейчас: Точка 19", Comment(rawValue: late.status))
+        #expect(late.current == late.points.count - 1 && late.points[late.current].time == "18:20")
+        // Утром окно начинается с первой точки.
+        let early = make(s, at: tsk(12, 5))
+        #expect(early.points.first?.time == "12:00" && early.current == 0)
+        // Посередине: подсвеченная точка внутри окна, и впереди есть что считать.
+        let mid = make(s, at: tsk(15, 5))
+        #expect(mid.current >= 0 && mid.points[mid.current].time == "15:00" && mid.next != nil)
+        for f in [late, early, mid] { #expect(f.points.map(\.at) == f.points.map(\.at).sorted()) }
+    }
+
+    @Test func longNamesCannotPushTheFrameOverTheSystemLimit() {
+        let long = String(repeating: "Очень длинное название точки ", count: 6)
+        let stops = (0..<16).map { stop(12 + $0 / 2, ($0 % 2) * 30, long + "\($0)", sign: "camera") }
+        let f = make(wedding(sunset: true, rents: [rent(14, 0, 16, 0)], stops: stops), at: tsk(15), mode: .studio)
+        #expect(f.encodedSize + ActivityFrame.propertiesReserve <= ActivityFrame.limit, Comment(rawValue: "кадр \(f.encodedSize) Б"))
+        #expect(f.status.count <= 60 + 10 && f.next?.label.count ?? 0 <= 60)
+        #expect(f.points.count >= 2 && f.mode == .studio && f.call != nil, "кнопки и лента на месте")
     }
 
     @Test func frameSurvivesTheRoundTripTheSystemDoesOnItsOwn() throws {

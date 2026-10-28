@@ -46,19 +46,22 @@ struct ActivityAppTests {
 
     private let id = "sd_sep_now"
 
-    private func make(_ iso: String, edit: (inout Snapshot) -> Void = { _ in }) -> (AppModel, FakeHost, Clock) {
+    private func make(_ iso: String, defaults: UserDefaults? = nil, clock shared: Clock? = nil,
+                      edit: (inout Snapshot) -> Void = { _ in }) -> (AppModel, FakeHost, Clock) {
         var snap = CardPhaseTests.seed
         if case .object(var z)? = snap.extra["zones"] {
             z["56.5,85.0"] = JSONValue.string("Asia/Tomsk")
             snap.extra["zones"] = .object(z)
         }
         edit(&snap)
-        let clock = Clock(ISO8601DateFormatter().date(from: iso)!)
+        let clock = shared ?? Clock(ISO8601DateFormatter().date(from: iso)!)
         let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
                            locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
                            weatherSource: NoWeather(), now: { clock.date })
         let host = FakeHost()
-        app.activityHost = host
+        // Память плашки — в своих настройках теста, чтобы не трогать настройки самого приложения и чтобы «перезапуск» делил их с прежним.
+        app.activityDefaults = defaults ?? UserDefaults(suiteName: "lp-activity-test-\(UUID().uuidString)")
+        app.useActivityHost(host)
         return (app, host, clock)
     }
     private func at(_ clock: Clock, _ iso: String) { clock.date = ISO8601DateFormatter().date(from: iso)! }
@@ -116,10 +119,48 @@ struct ActivityAppTests {
         let (app, host, _) = make("2026-09-23T13:00:00+07:00")
         await sync(app)
         host.shown = nil
-        host.onDismissed?(id)   // так сообщает настоящая система: плашку смахнули
-        app.activityDismissed.insert(id)
+        host.onDismissed?(id)   // так сообщает настоящая система: плашку смахнули; обработчик ставит приложение
+        #expect(app.activityDismissed[id] != nil)
         await sync(app, .foreground)
         #expect(host.log == ["start"] && host.shown == nil)
+    }
+
+    @Test func aSwipeThatTheSystemNeverReportedIsRecognisedByTheMissingPlate() async {
+        let (app, host, _) = make("2026-09-23T13:00:00+07:00")
+        await sync(app)
+        host.shown = nil   // события не было (приложение было закрыто), плашки нет, а мы её не закрывали
+        await sync(app, .foreground)
+        #expect(host.log == ["start"] && host.shown == nil)
+    }
+
+    @Test func aPlateTheSystemEndedAfterItsEightHoursComesBack() async {
+        let (app, host, clock) = make("2026-09-23T13:00:00+07:00") { $0.manualEnd = true }
+        await sync(app)
+        host.shown = nil
+        at(clock, "2026-09-23T21:30:00+07:00")   // больше восьми часов: плашку убрала система, а не человек
+        await sync(app, .foreground)
+        #expect(host.log == ["start", "start"], "\(host.log)")
+    }
+
+    @Test func theSwipeIsRememberedAcrossARestartOfTheApp() async {
+        let defaults = UserDefaults(suiteName: "lp-activity-test-\(UUID().uuidString)")
+        let (app, host, clock) = make("2026-09-23T13:00:00+07:00", defaults: defaults)
+        await sync(app)
+        host.shown = nil
+        host.onDismissed?(id)
+        let (again, host2, _) = make("2026-09-23T13:10:00+07:00", defaults: defaults, clock: clock)
+        await sync(again, .foreground)
+        #expect(host2.log.isEmpty, "после перезапуска плашка не возвращается: \(host2.log)")
+    }
+
+    @Test func theStudioModeSurvivesARestartBecauseThePlateItselfRemembersIt() async {
+        let (app, host, _) = make("2026-09-23T13:00:00+07:00")
+        app.switchActivityToStudio(sessionId: id)
+        await app.settleActivity()
+        #expect(host.shown?.frame.mode == .studio)
+        app.activityStudioFor = nil   // перезапуск: в памяти приложения режима нет, плашка стоит с ним
+        await sync(app, .foreground)
+        #expect(host.shown?.frame.mode == .studio && app.activityStudioFor == id)
     }
 
     @Test func noPermissionNoRequest() async {

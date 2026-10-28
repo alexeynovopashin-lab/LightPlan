@@ -261,7 +261,7 @@
   app is open (no paid Push on the free team, cut 30б row 7/9) — a plate left alone shows `0:00` after its point until the next open. Extension `ShootActivity.swift`;
   attributes `ShootActivityAttributes.swift` are **one file** in `LightPlanWidget/`, symlinked into `LightPlanUI/Sources/LightPlanUI/Activity/` (no pbxproj edit; the system
   matches by type name). App: `AppModel+Activity.swift` — `syncActivity(.foreground|.change)` from RootView (scene active) and `persist()`, seam `ActivityHosting`
-  (`ActivityKitHost` is the only ActivityKit user; fake in `ActivityAppTests`), a plate the person swiped away is not started again for that shoot, `NSSupportsLiveActivities`
+  (`ActivityKitHost` is the only ActivityKit user; fake in `ActivityAppTests`), a plate the person swiped away is not started again for that shoot (`activityDismissed` + `activityMarks` in UserDefaults, 3 days; a plate that vanished without our `end` within 8 h counts as swiped, after 8 h — as ended by the system), the studio mode is read back from the shown plate after a restart, a route over 16 points keeps the window around «now», names are clipped and the frame is trimmed to the 4 KB limit (`ActivityFrame.propertiesReserve`), `NSSupportsLiveActivities`
   in `Config/Info-iOS.plist`. Buttons are links `lightplan://activity/admin|playlist`: a Link on the plate opens the app itself (spike 30б.3а), so the app dials / opens
   the player (`openActivityLink`). Studio: notification stage 0 «Студийный час» at rent start (`StudioSchedule.starts`, id `lp.studio.<id>.<cell>.0`, studio lane); a tap
   (any `lp.studio.` notice) → `Tap.studio(sid)` → `switchActivityToStudio` — buttons appear only in this mode. Island: collapsed = `frame.island` (next point; within

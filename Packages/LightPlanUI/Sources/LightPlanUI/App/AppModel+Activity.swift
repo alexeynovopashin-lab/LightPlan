@@ -20,12 +20,34 @@ extension AppModel {
     /// Живое приложение: система экрана активности и открытие ссылок (звонок, плеер).
     func attachActivity() {
         #if os(iOS)
-        let host = ActivityKitHost()
-        host.onDismissed = { [weak self] id in self?.activityDismissed.insert(id) }
-        activityHost = host
+        activityDefaults = .standard
+        useActivityHost(ActivityKitHost())
         activityOpen = { url in UIApplication.shared.open(url) }
         debugActivityDemo()
         #endif
+    }
+
+    /// Система экрана активности и память: смахнули плашку — это записывается и переживает перезапуск приложения.
+    func useActivityHost(_ host: any ActivityHosting) {
+        host.onDismissed = { [weak self] id in self?.activityDismissed[id] = self?.now().timeIntervalSince1970 }
+        activityHost = host
+        loadActivityMemory()
+    }
+
+    private static let dismissedKey = "lp.activity.dismissed", marksKey = "lp.activity.marks"
+    /// Память держится трое суток: съёмка дольше не идёт.
+    private static let memorySpan: Double = 3 * 86400
+
+    func loadActivityMemory() {
+        guard let d = activityDefaults else { return }
+        let cut = now().timeIntervalSince1970 - Self.memorySpan
+        activityDismissed = (d.dictionary(forKey: Self.dismissedKey) as? [String: Double] ?? [:]).filter { $0.value > cut }
+        activityMarks = (d.dictionary(forKey: Self.marksKey) as? [String: Double] ?? [:]).filter { $0.value > cut }
+    }
+
+    func saveActivityMemory() {
+        activityDefaults?.set(activityDismissed, forKey: Self.dismissedKey)
+        activityDefaults?.set(activityMarks, forKey: Self.marksKey)
     }
 
     /// Привести плашку к данным. Сверки идут по очереди: перезапуск — «закрыть, потом запросить» — не должен наложиться на соседнюю.
@@ -48,8 +70,16 @@ extension AppModel {
         guard let host = activityHost else { return }
         let nowDate = now()
         let feed = makeWidgetFeed()
-        let wanted = ActivityRules.wanted(in: feed, at: nowDate, dismissed: activityDismissed)
         let shown = host.shown
+        var dismissed = Set(activityDismissed.keys)
+        // Плашки нет, хотя мы её запускали, сами не закрывали и срок системы не вышел, — человек смахнул её (событие системы могло
+        // прийти позже этой сверки или не прийти вовсе, пока приложение было закрыто).
+        if shown == nil {
+            for (id, at) in activityMarks where nowDate.timeIntervalSince1970 - at < ActivityRules.systemLimit { dismissed.insert(id) }
+        }
+        let wanted = ActivityRules.wanted(in: feed, at: nowDate, dismissed: dismissed)
+        // После перезапуска приложения студийный режим помнит сама плашка: в памяти он пуст, а аренда ещё идёт.
+        if activityStudioFor == nil, let shown, shown.frame.mode == .studio, shown.shootId == wanted?.id { activityStudioFor = shown.shootId }
         let run = shown.map { ActivityRules.Run(shootId: $0.shootId, startedAt: $0.startedAt) }
         // Студийный режим держится за одну съёмку: другая плашка или конец съёмки сбрасывают его.
         if activityStudioFor != nil, activityStudioFor != wanted?.id { activityStudioFor = nil }
@@ -64,16 +94,20 @@ extension AppModel {
             if let frame, !Self.sameFrame(frame, shown?.frame) { await host.update(frame) }
         case .restart:
             await host.end()
+            activityMarks = [:]
             if let frame { begin(host, frame, at: nowDate) }
         case .end:
             await host.end()
+            activityMarks = [:]
             activityStudioFor = nil
         }
     }
 
     private func begin(_ host: any ActivityHosting, _ frame: ActivityFrame, at date: Date) {
         guard host.allowed else { return }
-        try? host.start(frame, startedAt: date)
+        // Отказ системы (нет места под активность, слишком большое состояние) молчит: съёмка идёт и без плашки; метки тогда нет.
+        guard (try? host.start(frame, startedAt: date)) != nil else { return }
+        activityMarks[frame.shootId] = date.timeIntervalSince1970
     }
 
     /// Кадры равны, если отличаются только моментом сборки.
