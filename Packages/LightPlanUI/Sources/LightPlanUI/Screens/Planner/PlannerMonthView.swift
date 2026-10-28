@@ -299,8 +299,8 @@ struct PlannerDayPanel: View {
         let shut = app.dayFold
         // Четыре части кладёт `FoldPanel` по доле пути `t` (0 раскрыта, 1 свёрнута); у каждой части своя кривая беты.
         FoldPanel(t: shut ? 1 : 0,
-                  line: Rectangle().fill(pal.brass.opacity(0.35)),
-                  frame: barFrame(pal, shut: shut),
+                  line: { LightLineRule(color: pal.brass.opacity(0.35), t: $0) },
+                  frame: barFrame(),
                   main: main(pal, shut: shut),
                   chevron: chevron(pal, open: !shut))
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { panelW = $0 }
@@ -309,15 +309,12 @@ struct PlannerDayPanel: View {
             .padding(.top, 6)
     }
 
-    /// Рамка плашки (`.dp-bar`): волосок всегда, фон `--bar` у свёрнутой ручки — иначе черта просвечивает сквозь знак.
-    private func barFrame(_ pal: Palette, shut: Bool) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.bar).opacity(shut ? 1 : 0)
-            RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1)
-        }
-        .animation(still ? nil : Motion.foldFrame, value: shut)
-        .shotNode("dp.bar")
-        .motionGeo("dp.bar")
+    /// Рамка строки (`.dp-bar`): подложки нет (28.10, слово Алексея) — рамка остаётся пустой, чтобы пара сверяла её числами
+    /// и чтобы по ней сжималась основная часть.
+    private func barFrame() -> some View {
+        Color.clear
+            .shotNode("dp.bar")
+            .motionGeo("dp.bar")
     }
 
     /// Основная часть (`.dp-bar-main`): показания в строку без переноса, ширина её сжимается вместе с плашкой,
@@ -331,30 +328,13 @@ struct PlannerDayPanel: View {
             : sky.set.flatMap { s in sky.goldenB.map { s - $0 } }
         let sc = wx?.sunset
         let setColor: Color = sc.map { $0 >= 75 ? pal.brass : $0 >= 50 ? pal.green : $0 >= 28 ? pal.ink : pal.blue } ?? pal.brass
-        return HStack(spacing: 8) {
-            item("sunrise", f.fmt(sky.rise), pal.ink2, node: "dp.rise", pal: pal)
-            item("sunset", f.fmt(sky.set), setColor, node: "dp.set", pal: pal)
-            if let g = goldenMin, g > 0 {
-                item("golden", f.durShort(Int(g.rounded())), pal.ink4, weight: 500, node: "dp.gold", pal: pal)
-            }
-            Rectangle().fill(pal.hairline).frame(width: 1, height: 12).fixedSize()
-            if let wx, let deg = f.temp(d) {
-                HStack(spacing: 3) {
-                    Icon(wx.quality.signIconName, size: 17, line: 1.5).foregroundStyle(pal.ink)
-                        .padding(.trailing, 8)
-                    let temp = "\(deg)°"
-                    Text(temp).font(webFont(13, 600)).monospacedDigit().foregroundStyle(pal.ink)
-                        .shotNode("dp.temp", text: temp)
-                }
-                .fixedSize()
-            } else {
-                // Прогноза нет — надпись на месте знака и градусов; выдумки нет (28ж).
-                Text(f.forecastNote).font(webFont(12)).foregroundStyle(pal.ink4)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                    .shotNode("dp.wxnone", text: f.forecastNote)
-            }
+        let golden = goldenMin.flatMap { $0 > 0 ? f.durShort(Int($0.rounded())) : nil }
+        let weather = wx.flatMap { w in f.temp(d).map { LightLineRow.Weather(icon: w.quality.signIconName, temp: "\($0)°") } }
+        // Показания стоят серединой на оси экрана, не на левом краю рамки: без капсулы справа от них пусто (28.10).
+        return LightLineCentre(axis: panelW > 0 ? panelW / 2 - FoldGeometry.inset : nil) {
+            LightLineRow(rise: f.fmt(sky.rise), set: f.fmt(sky.set), setColor: setColor, golden: golden,
+                         weather: weather, note: f.forecastNote, pal: pal)
         }
-        .padding(.leading, 12)
         // Показания остаются полной ширины (`fixedSize`), сжимается одна надпись «прогноза нет» (`lineLimit(1)` +
         // `minimumScaleFactor(0.7)`, как в бете) — в ширине раскрытой основной части; пока панель не измерена, как было.
         .modifier(OpenWidth(width: panelW > 0 ? panelW - 2 * FoldGeometry.inset - FoldGeometry.chevronWidth : nil))
@@ -366,17 +346,8 @@ struct PlannerDayPanel: View {
         .allowsHitTesting(false)
     }
 
-    private func item(_ icon: String, _ text: String, _ color: Color, weight: Int = 600, node: String, pal: Palette) -> some View {
-        HStack(spacing: 3) {
-            Icon(icon, size: 17, line: 1.6).foregroundStyle(pal.brass).offset(y: 17 * 0.073)
-            Text(text).font(webFont(13, weight)).monospacedDigit().foregroundStyle(color)
-                .shotNode(node, text: text)
-        }
-        .fixedSize()
-        .frame(height: 20)
-    }
-
-    /// Шеврон: раскрыто — остриём вверх, свёрнуто — вниз, и тогда он висит капсулой на черте (`.dp-bar.shut`).
+    /// Шеврон: раскрыто — остриём вверх, свёрнуто — вниз, и тогда он сидит на черте в её выемке (`LightLineRule`), без плашки (28.10).
+    /// Нажимается рамка 44 × 44 вокруг ручки (`FoldLayout` кладёт её больше самой ручки 40 × 38 / 40 × 22).
     private func chevron(_ pal: Palette, open: Bool) -> some View {
         Button {
             Self.fold(app, still: still)

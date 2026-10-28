@@ -310,12 +310,21 @@ private struct OutsideTouch: ViewModifier {
 
 // MARK: - Шапка
 
-/// Поле заголовка по бокам: слово не заходит на кнопки (слева 44, справа n×34 через 8) и симметрично относительно оси.
+/// Поле заголовка по бокам: слово не заходит на кнопки (слева 44, справа n×44 впритык) и симметрично относительно оси.
+/// Кнопки шапки крупнее на четверть (слово Алексея 28.10: «кнопки над календарём сделаем крупнее»): значки справа 22 → 28 pt,
+/// значок вида 21 → 26 pt, у каждой нажимается квадрат 44 × 44, квадраты не перекрываются.
 enum PlanTitleLayout {
     static let minScale: CGFloat = 0.5
     static let chevronReach: CGFloat = 17   // ширина шеврона 16 + 1 зазор
     static let gap: CGFloat = 8
-    static func rightWidth(buttons n: Int) -> CGFloat { CGFloat(n) * 34 + CGFloat(max(0, n - 1)) * 8 }
+    /// Сторона нажимаемого квадрата кнопки шапки (было 34 справа).
+    static let buttonSide: CGFloat = 44
+    /// Значки действий справа и значок вида слева; линия значков справа — тот же 1,7/22 от стороны (было 22 pt).
+    static let actionGlyph: CGFloat = 28, scopeGlyph: CGFloat = 26
+    static let actionStroke: CGFloat = 1.7 * actionGlyph / 22
+    /// Между квадратами нажатия зазора нет: они касаются, но не перекрываются (между значками остаётся 16 pt).
+    static let buttonGap: CGFloat = 0
+    static func rightWidth(buttons n: Int) -> CGFloat { CGFloat(n) * buttonSide + CGFloat(max(0, n - 1)) * buttonGap }
     static let leftWidth: CGFloat = 44
     /// Поля слова внутри строки шапки (она уже без полей 16). Три кнопки справа — поля равны, слово на оси.
     /// Четвёртая (значок ответа клиента, редкий случай) оси не оставляет места — тогда слово сидит по центру
@@ -323,6 +332,54 @@ enum PlanTitleLayout {
     static func insets(rightButtons n: Int) -> (leading: CGFloat, trailing: CGFloat) {
         let l = leftWidth + 6 + gap, r = rightWidth(buttons: n) + 6 + gap
         return n <= 3 ? (max(l, r), max(l, r)) : (l + chevronReach, r)
+    }
+    /// Ширина, что остаётся слову заголовка на экране шириной `screenWidth` (строка шапки уже без полей 16 по бокам):
+    /// слово сжимается до неё, но не меньше `minScale`.
+    static func room(screenWidth: CGFloat, rightButtons n: Int) -> CGFloat {
+        let i = insets(rightButtons: n)
+        return screenWidth - 32 - i.leading - i.trailing
+    }
+
+    /// Во сколько раз слово шириной `title` сожмётся на экране `screenWidth` (1 — не сжимается).
+    static func scale(title: CGFloat, screenWidth: CGFloat, rightButtons n: Int) -> CGFloat {
+        guard title > 0 else { return 1 }
+        return max(minScale, min(1, room(screenWidth: screenWidth, rightButtons: n) / title))
+    }
+    /// Что показано в заголовке: слово целиком, слово с коротким месяцем, и поля вокруг (слово стоит на оси или, когда на оси
+    /// места нет, посреди свободного места между кнопками).
+    struct TitleStep: Equatable {
+        var short: Bool
+        /// Во сколько раз слово сожмётся в своём месте (1 — не сжимается); сжимает его сам `Text` по `minScale`.
+        var scale: CGFloat
+        var leading: CGFloat, trailing: CGFloat
+    }
+
+    /// Ширина слова заголовка: шрифт и разрядка те же, что у `Text` в шапке (кегль фиксирован — от Dynamic Type не зависит).
+    static func width(_ s: String) -> CGFloat {
+        ceil((s as NSString).size(withAttributes: [.font: webPlatformFont(18, 650), .kern: -0.3]).width)
+    }
+
+    /// Сжатие слова до 3 % глазом не видно: такое слово считается вошедшим (его сожмёт сам `Text`).
+    static let invisibleSqueeze: CGFloat = 0.97
+    /// Ниже этого сжатие на оси не идёт (12,6 pt вместо 18): дальше слово уходит в свободное место между кнопками.
+    static let squeezeFloor: CGFloat = 0.7
+
+    /// Лесенка заголовка (слово Алексея 28.10: «проще сокращать месяц на мелких экранах»): слово целиком на оси → короткий месяц на оси
+    /// → короткое слово сжато на оси (до `squeezeFloor`) → короткое слово посреди свободного места между кнопками, сжато при нужде
+    /// (не меньше `minScale`). Слово не пропадает ни на каком экране. Сжатие — последнее средство, а не первое.
+    static func choose(full: String, short: String, screenWidth: CGFloat, rightButtons n: Int,
+                       width measure: (String) -> CGFloat = PlanTitleLayout.width) -> TitleStep {
+        let i = insets(rightButtons: n)
+        let room = screenWidth - 32 - i.leading - i.trailing
+        let wF = measure(full)
+        if wF * invisibleSqueeze <= room { return TitleStep(short: false, scale: min(1, room / wF), leading: i.leading, trailing: i.trailing) }
+        let w = measure(short)
+        if short != full, w * invisibleSqueeze <= room { return TitleStep(short: true, scale: min(1, room / w), leading: i.leading, trailing: i.trailing) }
+        if room > 0, room / w >= squeezeFloor { return TitleStep(short: true, scale: room / w, leading: i.leading, trailing: i.trailing) }
+        // На оси места не осталось даже для сжатого слова: оно уходит в свободное место между кнопками (шеврон слева от слова).
+        let l = leftWidth + 6 + gap + chevronReach, r = rightWidth(buttons: n) + 6 + gap
+        let free = max(0, screenWidth - 32 - l - r)
+        return TitleStep(short: true, scale: max(minScale, min(1, free / w)), leading: l, trailing: r)
     }
 }
 
@@ -334,6 +391,8 @@ private struct PlanTop: View {
     @Binding var scopeOpen: Bool
     let nav: PlannerNav
     @Environment(\.colorScheme) private var scheme
+    /// Ширина строки шапки (весь экран): по ней заголовок выбирает ступень лесенки (`PlanTitleLayout.choose`); пока не измерена — слово целиком.
+    @State private var topW: CGFloat = 0
 
     /// Открытие и закрытие веера видов (кнопка вида и стенд движений).
     static var fanToggle: Animation? { PlanMotion.pick(PlanMotion.fan) }
@@ -346,7 +405,7 @@ private struct PlanTop: View {
                 Haptics.play(.scopeButton)
                 withAnimation(Self.fanToggle) { scopeOpen.toggle() }
             } label: {
-                Icon(Self.icon(st.scope), size: 21, line: 1.6)
+                Icon(Self.icon(st.scope), size: PlanTitleLayout.scopeGlyph, line: 1.6)
                     .foregroundStyle(pal.brass)
                     .frame(width: 44, height: 44)
                     .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(pal.sheet))
@@ -357,7 +416,7 @@ private struct PlanTop: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 8) {
+            HStack(spacing: PlanTitleLayout.buttonGap) {
                 let waiting = app.questWaiting.count
                 if waiting > 0 {
                     Button { app.openWaitingQuest() } label: { questBadge(waiting, pal) }
@@ -381,12 +440,19 @@ private struct PlanTop: View {
         .overlay { titleButton(pal, rightButtons: app.questWaiting.count > 0 ? 4 : 3) }
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topW = $0 }
     }
 
     /// Заголовок стоит на оси экрана независимо от кнопок (28и.3): слово — по центру, шеврон висит слева от него,
-    /// не сдвигая слово. Не помещается — сжимается, с оси не уходит (`PlanTitleLayout`).
+    /// не сдвигая слово. Не помещается — сперва месяц сокращается («23 сент.»), потом слово сжимается, и лишь когда на оси места
+    /// нет совсем, уходит в свободное место между кнопками (`PlanTitleLayout.choose`, слово Алексея 28.10).
     private func titleButton(_ pal: Palette, rightButtons: Int) -> some View {
-        Button {
+        let t = titles
+        let ins = PlanTitleLayout.insets(rightButtons: rightButtons)
+        let step = topW > 0 ? PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: topW, rightButtons: rightButtons)
+            : PlanTitleLayout.TitleStep(short: false, scale: 1, leading: ins.leading, trailing: ins.trailing)
+        let title = step.short ? t.short : t.full
+        return Button {
             PlanMotion.lenta(app, nav, open: true)
         } label: {
             Text(title)
@@ -409,8 +475,8 @@ private struct PlanTop: View {
                         .offset(x: -PlanTitleLayout.chevronReach)
                 }
                 .contentShape(Rectangle())   // нажимается слово со шевроном, не вся строка: кнопки рядом живы
-                .padding(.leading, PlanTitleLayout.insets(rightButtons: rightButtons).leading)
-                .padding(.trailing, PlanTitleLayout.insets(rightButtons: rightButtons).trailing)
+                .padding(.leading, step.leading)
+                .padding(.trailing, step.trailing)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
@@ -418,12 +484,13 @@ private struct PlanTop: View {
 
     /// Значок «пришёл ответ клиента» (знак `chat` из библиотеки, латунь); число — сколько ответов ждёт. Нет ответов — нет значка.
     private func questBadge(_ n: Int, _ pal: Palette) -> some View {
-        Icon("chat", size: 22, line: 1.7).foregroundStyle(pal.brass)
-            .frame(width: 34, height: 34)
+        Icon("chat", size: 27, line: 1.7).foregroundStyle(pal.brass)
+            .frame(width: PlanTitleLayout.buttonSide, height: PlanTitleLayout.buttonSide)
             .overlay(alignment: .topTrailing) {
                 Text("\(n)").font(webFont(10, 700)).foregroundStyle(pal.onBrass)
                     .padding(.horizontal, 4).frame(minWidth: 15, minHeight: 15)
                     .background(Capsule().fill(pal.brass))
+                    .offset(x: -2.5, y: 2.5)   // значок крупнее и стоит в квадрате 44: число держится на его углу
             }
             .contentShape(Rectangle())
             .shotNode("plan.quest")
@@ -431,26 +498,29 @@ private struct PlanTop: View {
 
     private func action(_ k: PlanGlyph.Kind, _ c: Color, _ node: String) -> some View {
         PlanGlyph(kind: k)
-            .stroke(c, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
-            .frame(width: 22, height: 22)
-            .frame(width: 34, height: 34)
+            .stroke(c, style: StrokeStyle(lineWidth: PlanTitleLayout.actionStroke, lineCap: .round, lineJoin: .round))
+            .frame(width: PlanTitleLayout.actionGlyph, height: PlanTitleLayout.actionGlyph)
+            .frame(width: PlanTitleLayout.buttonSide, height: PlanTitleLayout.buttonSide)
             .contentShape(Rectangle())
             .shotNode(node)
     }
 
-    /// Заголовок по виду (веб `setPlanTitle`): год — только чужой.
-    private var title: String {
+    /// Заголовок по виду (веб `setPlanTitle`): год — только чужой. `short` — тот же заголовок с месяцем в сокращении языка
+    /// («23 сент.», «Сент. 2027»); где сокращать нечего (японский, китайский, «Сен – Окт», «23 мая») он равен `full`.
+    private var titles: (full: String, short: String) {
         let st = app.planner, d = f.dates, now = f.today
         func yr(_ c: CivilDate) -> String { c.year == now.year ? "" : " \(c.year)" }
         switch st.scope {
         case .day:
-            return d.dMon(f.date(st.selected)) + yr(st.selected)
+            let day = f.date(st.selected)
+            return (d.dMon(day) + yr(st.selected), d.dMonAbbr(day) + yr(st.selected))
         case .week:
             let a = app.weekStart.start(of: st.selected), b = a.adding(days: 6)
-            if a.month == b.month { return d.monthTitle(f.date(a)) + yr(a) }
-            return Self.abbr3(d.monthTitle(f.date(a))) + " – " + Self.abbr3(d.monthTitle(f.date(b))) + yr(a)
+            if a.month == b.month { return (d.monthTitle(f.date(a)) + yr(a), d.monthAbbr(f.date(a)) + yr(a)) }
+            let two = Self.abbr3(d.monthTitle(f.date(a))) + " – " + Self.abbr3(d.monthTitle(f.date(b))) + yr(a)
+            return (two, two)
         case .month:
-            return d.monthTitle(f.date(st.month)) + yr(st.month)
+            return (d.monthTitle(f.date(st.month)) + yr(st.month), d.monthAbbr(f.date(st.month)) + yr(st.month))
         }
     }
 

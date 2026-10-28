@@ -105,12 +105,18 @@ public struct DateText: Sendable {
     public func dMon(_ d: Date) -> String { Self.tidy(dm.format(d)) }
     /// «21 авг» — короткий месяц для плотных мест
     public func dMonShort(_ d: Date) -> String { Self.tidy(fromParts(dmS, d, month: Self.abbr3)) }
+    /// «21 авг.» · «Sep 21» · «21 sept» · «8月21日» — месяц в сокращении самого языка, с точкой там, где её ставит язык
+    /// (у японского и китайского сокращения нет: тот же вид, что `dMon`). Для заголовка, когда полный месяц не помещается.
+    public func dMonAbbr(_ d: Date) -> String { Self.tidy(dmS.format(d)) }
     /// «21 августа 2026»
     public func dMonYear(_ d: Date) -> String { Self.tidy(dmy.format(d)) }
     /// «21 авг 2026»
     public func dMonShortYear(_ d: Date) -> String { Self.tidy(fromParts(dmyS, d, month: Self.abbr3)) }
     /// «Август» — имя месяца само по себе, заголовком
     public func monthTitle(_ d: Date) -> String { Self.cap(Self.tidy(monthOnly.format(d))) }
+
+    /// «Сент.» · «Sep» · «Sept» · «9月» — имя месяца самостоятельно, в сокращении языка, с прописной
+    public func monthAbbr(_ d: Date) -> String { Self.cap(Self.tidy(style().month(.abbreviated).format(d))) }
 
     /// «августа» — месяц внутри даты, набранный отдельной строкой. В японском
     /// и китайском месяц в дате — число без знака 月, и «8» месяцем не читается:
