@@ -58,6 +58,7 @@ struct WidgetBraunIdleViewTests {
             .clipShape(RoundedRectangle(cornerRadius: BraunPlate.cornerRadius(plateHeight: p.size.height), style: .continuous))
             .environment(\.colorScheme, dark ? .dark : .light)
             .environment(\.widgetFrozenTimer, true)
+            .environment(\.widgetFlatGlass, true)
     }
 
     // MARK: Пиксели

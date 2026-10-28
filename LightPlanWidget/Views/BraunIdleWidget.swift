@@ -466,6 +466,27 @@ struct BraunGauge: View {
 
     private static func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double) -> Color { Color(.sRGB, red: r / 255, green: g / 255, blue: b / 255, opacity: a) }
 
+    @Environment(\.widgetFlatGlass) private var flatGlass
+
+    /// Линза: на телефоне — системное стекло (`.glassEffect`, Алексей 28.10: «на телефоне нативное стекло»), подкрашенное в светлое, чтобы тёмное число
+    /// читалось на любой теме. `ImageRenderer` стекло не рисует, поэтому тесты и снимки (`widgetFlatGlass`) берут плоскую плашку того же размера и цвета.
+    @ViewBuilder
+    private func lens(width lw: Double, height lh: Double) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Self.lensCorner, style: .continuous)
+        let number = Text("\(score)").font(.system(size: Self.numberSize, weight: .semibold)).monospacedDigit().foregroundStyle(pal.lensText)
+            .fixedSize().frame(width: lw, height: lh)
+        if flatGlass {
+            ZStack {
+                shape.fill(pal.lens)
+                shape.strokeBorder(pal.lensEdge, lineWidth: 0.5)
+                number
+            }
+            .frame(width: lw, height: lh)
+        } else {
+            number.frame(width: lw, height: lh).glassEffect(.regular.tint(pal.lens), in: shape)
+        }
+    }
+
     var body: some View {
         let w = Self.width, h = height, fill = h * BraunIdle.gaugeLevel(score: score)
         let lw = Self.lensWidth(score: score), lh = Self.lensHeight, cy = Self.lensCenterY(score: score, height: h)
@@ -483,13 +504,8 @@ struct BraunGauge: View {
             ForEach(BraunIdle.gaugeMarks, id: \.self) { k in
                 Rectangle().fill(pal.ink(0.35)).frame(width: 6, height: 0.5).offset(x: w / 2 - 3, y: h - h * Double(k) / 100 - 0.25)
             }
-            ZStack {
-                RoundedRectangle(cornerRadius: Self.lensCorner, style: .continuous).fill(pal.lens)
-                RoundedRectangle(cornerRadius: Self.lensCorner, style: .continuous).strokeBorder(pal.lensEdge, lineWidth: 0.5)
-                Text("\(score)").font(.system(size: Self.numberSize, weight: .semibold)).monospacedDigit().foregroundStyle(pal.lensText)
-                    .fixedSize().frame(width: lw, height: lh)
-            }
-            .frame(width: lw, height: lh).offset(x: (w - lw) / 2, y: cy - lh / 2)
+            lens(width: lw, height: lh)
+                .offset(x: (w - lw) / 2, y: cy - lh / 2)
         }
         .frame(width: w, height: h, alignment: .topLeading)
     }

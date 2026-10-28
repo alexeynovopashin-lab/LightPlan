@@ -44,6 +44,7 @@ struct WidgetGaugeTests {
             .frame(width: 40, height: 130, alignment: .topLeading)
             .background(pal.bg)
             .environment(\.colorScheme, dark ? .dark : .light)
+            .environment(\.widgetFlatGlass, true)
     }
 
     private func dist(_ a: (Double, Double, Double), _ b: (Double, Double, Double)) -> Double { abs(a.0 - b.0) + abs(a.1 - b.1) + abs(a.2 - b.2) }
@@ -163,7 +164,9 @@ struct WidgetGaugeTests {
             .background(BraunPalette(dark: dark).bg)
             .clipShape(RoundedRectangle(cornerRadius: BraunPlate.cornerRadius(plateHeight: p.height), style: .continuous))
             .environment(\.colorScheme, dark ? .dark : .light)
+            .environment(\.widgetFlatGlass, true)
             .environment(\.widgetFrozenTimer, true)
+            .environment(\.widgetFlatGlass, true)
     }
 
     /// Каталог `$LP_GAUGE_DIR` (по умолчанию `light_plan:Light_Plan/docs/widget_gauge_2026-10-28`, если папка заведена): `gauge_states_<тема>.png` —

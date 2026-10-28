@@ -244,7 +244,15 @@ struct BraunLayout {
 
 private struct FrozenTimerKey: EnvironmentKey { static let defaultValue = false }
 
+private struct FlatGlassKey: EnvironmentKey { static let defaultValue = false }
+
 extension EnvironmentValues {
+    /// Линза столбика оценки на телефоне — системное стекло; `ImageRenderer` (тесты, снимки) его не рисует, там вид берёт плоскую плашку.
+    var widgetFlatGlass: Bool {
+        get { self[FlatGlassKey.self] }
+        set { self[FlatGlassKey.self] = newValue }
+    }
+
     /// Окошко свадьбы рисует `Text(timerInterval:)`, а он идёт по часам телефона, не по часам кадра. Для снимков и тестов, где кадр стоит на
     /// заданном моменте, вид рисует вместо него ту же строку статично.
     var widgetFrozenTimer: Bool {
