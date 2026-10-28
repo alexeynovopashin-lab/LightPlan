@@ -1,8 +1,8 @@
 import SwiftUI
 import LightPlanDomain
 
-/// Малый виджет (30б.2). Слова Алексея 24.10: нет съёмок — рассвет, затем закат; есть — ближайшая съёмка и свет, если он
-/// ей нужен; идёт — отсчёт студийного времени, следующая точка.
+/// Малый виджет без идущей съёмки (30б.2). Слова Алексея 24.10: нет съёмок — рассвет, затем закат; есть — ближайшая съёмка и свет,
+/// если он ей нужен. Идущую съёмку показывает кольцо (`SmallLiveView`, 30б.2в); поля вид получает сам (`WidgetRoot`).
 struct SmallView: View {
     let frame: WidgetFrame
     let alpha: Bool
@@ -17,8 +17,7 @@ struct SmallView: View {
             switch frame.kind {
             case .blank: blank
             case .light: light
-            case .upcoming: upcoming
-            case .live: live
+            case .upcoming, .live: upcoming   // идущую съёмку в виджет несёт `WidgetRoot`, не этот вид
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -54,13 +53,11 @@ struct SmallView: View {
             guard let p = frame.primary else { return "" }
             return "\(frame.dayWord(p)) · \(p.shoot.title)"
         case .live:
-            guard let p = frame.primary else { return "" }
-            if p.countdown?.kind == .studio { return frame.words[.studio] }
-            return p.shoot.title
+            return frame.primary?.shoot.title ?? ""
         }
     }
 
-    private var captionColor: Color { frame.kind == .live ? st.amber : st.ink2 }
+    private var captionColor: Color { st.ink2 }
 
     // MARK: Состояния
 
@@ -105,28 +102,6 @@ struct SmallView: View {
             if let g = p.golden {
                 Text("\(frame.words[.golden]) \(frame.clock(g, in: p.zone))")
                     .font(.caption2.weight(.semibold)).foregroundStyle(st.amber).lineLimit(1).minimumScaleFactor(0.8)
-            }
-        }
-    }
-
-    @ViewBuilder private var live: some View {
-        if let p = frame.primary {
-            if let c = p.countdown {
-                CountdownText(from: frame.now, to: c.to)
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                    .foregroundStyle(st.ink)
-                    .lineLimit(1).minimumScaleFactor(0.6)
-            } else {
-                big(frame.clock(p.shoot.startDate, in: p.zone))
-            }
-            if let n = p.next {
-                Text("\(frame.words[.next]) \(frame.clock(n.date, in: p.zone)) \(n.name)")
-                    .font(.footnote).foregroundStyle(st.ink2).lineLimit(n.place.isEmpty ? 2 : 1).minimumScaleFactor(0.85)
-                if !n.place.isEmpty {
-                    Text(n.place).font(.caption2).foregroundStyle(st.ink2).lineLimit(1)
-                }
-            } else if !p.shoot.place.isEmpty {
-                Text(p.shoot.place).font(.footnote).foregroundStyle(st.ink2).lineLimit(2)
             }
         }
     }

@@ -233,6 +233,25 @@
   `Packages/LightPlanUI/Tests/LightPlanUITests/WidgetViews` is a symlink to `LightPlanWidget/Views` (the extension is not importable) —
   `WidgetViewsTests` measures ideal height ≤ plate − 16 pt margins at 158/170 (small) and 338/364 (medium), three text sizes (the views cap Dynamic Type at
   `.xxxLarge`: a widget does not scroll). Pictures: make `/tmp/lp-widget-shots` and run the suite.
+- **Widget sizes (30б.2в).** Six forms, one provider, one root: `WidgetRoot` (`LightPlanWidget/Views/`) picks the view by `WidgetShape`
+  (Domain `WidgetFrame.swift`; the extension maps `WidgetFamily` in `DayEntry.shape`). Small/medium: shoot running → **ring**
+  (`SmallLiveView`/`MediumLiveView`: two tick layers along the perimeter, whole shoot + current point; Alexey 26.10 chose it over
+  «plain», which was removed), otherwise the 30б.2 light/next-shoot views with `WidgetRoot` giving them the 16 pt margin (the widget
+  runs `.contentMarginsDisabled()` because the ticks live in the margin). Large: day timeline with a shoot, sun arc without
+  (`LargeView`). Lock screen: `LockCircularView` (time to the golden hour, `4:10`), `LockRectangularView` (Calendar style; no shoot →
+  next sunrise/sunset in the same drawing), inline unchanged; they paint with `Color.primary` (the system tints them), the container
+  background is clear there. **Client names (`Shoot.names`, as the card head) only on Home** — lock views never read them
+  (`WidgetLiveTests.clientNamesAreOnlyOnTheHomeScreen` compares pixels with and without names). The file also carries `Shoot.genre`
+  (`wedding` → «до конца свадьбы», else «съёмки») and `Stop.sign` (the point sign name, `PointSign.name` computed by the app). **The
+  extension has no `LightPlanUI`**: its signs are `WidgetIcons.generated.swift` (`python3 Tools/widget_icons.py`, part of `make icons`:
+  the app's own icon lines, only those `PointSign` can name) drawn by `WidgetIcon.swift` (a copy of the `IconArt` parser; the
+  `WidgetLiveTests` icon tests compare paths sign by sign — drift = red). New words are `widget.*` in `Tools/lang_native.json`
+  (`{n}`/`{t}` templates, word order differs by language). **Feed:** `WidgetFeed.timeline(from:shape:)` adds a moment every minute
+  while a shoot runs (small/medium), every minute to the golden hour (circular), every 10 minutes of daylight when the large view is
+  the sun arc; the digits are static («62 мин» — system `Text(timerInterval:)` can only print «62:00»), so the feed changes them.
+  `entryLimit = 180` entries per timeline, reload on the last shown moment when cut; WidgetKit names no entry cap, only the reload
+  budget (40–70 a day per widget), so the cap is ours — a 12.5 h wedding with the ring is ~5 reloads. Views are `Shape`s, not `Canvas`.
+  Pictures: `docs/30b2v_sketches/built/` (`WidgetLiveTests.writesTheBuiltSheetsWhenAsked`, folder `/tmp/lp-built-out` must exist).
 - **Music (step «Музыка», 25.10).** As in the web: default player (`Snapshot.musicApp`: `yandex|spotify|apple|off`, unknown string kept as written) and
   a shared library of ≤ 10 playlists (`Snapshot.playlists`, `{n,u}` as the web writes them) in Settings «Съёмки» (`SettingsMusic.swift`); a shoot remembers
   its playlist **by name** (`Session.playlist`, `EventForm.playlist`). Rules live in `Music` (Domain, `Rules/Music.swift`): `choice` (own playlist by exact name,

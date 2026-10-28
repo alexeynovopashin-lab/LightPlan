@@ -8,11 +8,14 @@ import LightPlanCore
 /// приложения. Правило и формат здесь, в Domain (только Foundation): пишет приложение (`make`), читает расширение
 /// (`frame(at:)`) — одним кодом, поэтому тест видит то же, что экран.
 ///
-/// Съёмки идут с названием жанра, а не с именем клиента: виджет виден на заблокированном телефоне (Алексей, 24.10).
+/// Съёмки идут с названием жанра; имена клиентов («Анна+Игорь») в файле есть, но показывают их только малый, средний и большой
+/// виджеты «Домой», на экране блокировки имён нет (Алексей, 25.10; раньше, 24.10, их не было нигде — виджет виден на заблокированном телефоне).
 public struct WidgetFeed: Codable, Sendable, Equatable {
     public static let fileName = "widget.json"
     /// На сколько дней вперёд приложение кладёт съёмки: дальше этого виджет без приложения не заглядывает.
     public static let horizonDays = 7
+    /// Сколько дней (сегодня и дальше) получают оценку заката: средний показывает сегодняшнюю, большой дальше.
+    public static let ratingDays = 3
 
     /// Место «Света»: имя для подписи, координаты и зона IANA (или `fixed:<секунды>` — запасная зона без сети).
     public struct Spot: Codable, Sendable, Equatable {
@@ -39,11 +42,15 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         public var at: Int64
         public var name: String
         public var place: String
+        /// Имя знака точки в библиотеке (`PointSign.name`, считает приложение): у расширения правил подбора нет, у него
+        /// только нарисованные знаки. Нет в файле старого вида — кружок.
+        public var sign: String?
 
-        public init(at: Int64, name: String, place: String = "") {
+        public init(at: Int64, name: String, place: String = "", sign: String? = nil) {
             self.at = at
             self.name = name
             self.place = place
+            self.sign = sign
         }
 
         public var date: Date { Moment(milliseconds: at).date }
@@ -55,6 +62,9 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         public var to: Int64
         public var deadline: Int64
         public var studio: String
+
+        public var fromDate: Date { Moment(milliseconds: from).date }
+        public var deadlineDate: Date { Moment(milliseconds: deadline).date }
 
         public init(from: Int64, to: Int64, deadline: Int64, studio: String) {
             self.from = from
@@ -81,9 +91,15 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         public var wantsSunset: Bool
         public var rents: [Rent]
         public var stops: [Stop]
+        /// Код жанра (`wedding`): по нему подписи берут «до конца свадьбы», а не «съёмки». Нет в файле старого вида — общее слово.
+        public var genre: String?
+        /// Кого снимаем, как в шапке карточки («Анна+Игорь»); виджет показывает имена только на «Домой» (малый, средний,
+        /// большой), на экране блокировки их нет (Алексей, 25.10). Номеров и прочего из записи клиента в файле нет.
+        public var names: String?
 
         public init(id: String, start: Int64, end: Int64, open: Bool = false, title: String, place: String = "",
-                    spot: Spot? = nil, wantsSunset: Bool = false, rents: [Rent] = [], stops: [Stop] = []) {
+                    spot: Spot? = nil, wantsSunset: Bool = false, rents: [Rent] = [], stops: [Stop] = [],
+                    genre: String? = nil, names: String? = nil) {
             self.id = id
             self.start = start
             self.end = end
@@ -94,10 +110,38 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
             self.wantsSunset = wantsSunset
             self.rents = rents
             self.stops = stops
+            self.genre = genre
+            self.names = names
         }
 
         public var startDate: Date { Moment(milliseconds: start).date }
         public var endDate: Date { Moment(milliseconds: end).date }
+    }
+
+    /// Оценка заката одного дня (30б.2в-5): то, что приложение знает из настоящего прогноза и чего не вычислит расширение.
+    /// Прогноза на день нет — записи нет, и виджет молчит: числа не выдумываются (слово Алексея 02.10, 28ж).
+    public struct Rating: Codable, Sendable, Equatable {
+        /// День места «Света» (`ГГГГ-ММ-ДД`).
+        public var day: String
+        /// Закатный балл 0…100 (`SunsetScore`); `nil` — часа заката в прогнозе нет, есть только категория дня.
+        public var score: Int?
+        /// Рассветный балл 0…100 той же формулы в час восхода (30б.2в-6); `nil` — часа восхода в прогнозе нет или восхода нет (полярные сутки).
+        /// Нет в файле старого вида — `nil`: оценка рассвета тогда не показывается, а не выдумывается.
+        public var sunrise: Int?
+        /// Код `DayQuality`. Строкой: незнакомый код из будущего файла не должен ронять весь файл.
+        public var quality: String
+
+        public init(day: String, score: Int?, quality: DayQuality, sunrise: Int? = nil) {
+            self.day = day
+            self.score = score
+            self.sunrise = sunrise
+            self.quality = quality.rawValue
+        }
+
+        public var category: DayQuality? { DayQuality(rawValue: quality) }
+
+        /// Ключ дня, как его пишет приложение и читает виджет.
+        public static func key(_ d: CivilDate) -> String { String(format: "%04d-%02d-%02d", d.year, d.month, d.day) }
     }
 
     /// Несколько слов виджета на языке приложения: словарь приложения у расширения под рукой не лежит.
@@ -105,12 +149,21 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
     public struct Words: Codable, Sendable, Equatable {
         public enum Key: String, CaseIterable, Sendable {
             case sunrise, sunset, golden, next, today, tomorrow, polarDay, polarNight, studio, shoot, route
+            // 30б.2в: подписи колец и большого; `more` и `until` — шаблоны с `{n}` и `{t}`: порядок слов у языков разный.
+            case untilPoint, untilShoot, untilWedding, wedding, point, points, hourShort, minShort, dayLength, more, until
+            // 30б.2в-5: оценка заката словом (по `DayQuality`) и строка пустой недели; `noShootsUntil` — шаблон с `{d}` («сб 31»).
+            case rateExcellent, rateGood, ratePlain, ratePoor, rateFog, noShootsUntil
         }
 
         public static let fallback: [Key: String] = [
             .sunrise: "Рассвет", .sunset: "Закат", .golden: "Золотой час", .next: "Дальше",
             .today: "Сегодня", .tomorrow: "Завтра", .polarDay: "Полярный день", .polarNight: "Полярная ночь",
             .studio: "Студийный час", .shoot: "съёмка", .route: "Маршрут дня",
+            .untilPoint: "до конца точки", .untilShoot: "до конца съёмки", .untilWedding: "до конца свадьбы",
+            .wedding: "свадьба", .point: "точка", .points: "точек", .hourShort: "ч", .minShort: "мин",
+            .dayLength: "День", .more: "и ещё {n}", .until: "до {t}",
+            .rateExcellent: "отличный", .rateGood: "хороший", .ratePlain: "обычный", .ratePoor: "плохой", .rateFog: "туман",
+            .noShootsUntil: "до {d} съёмок нет",
         ]
 
         public var table: [String: String]
@@ -122,6 +175,26 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         public subscript(key: Key) -> String {
             if let w = table[key.rawValue], !w.isEmpty { return w }
             return Self.fallback[key] ?? key.rawValue
+        }
+
+        /// «через 3 дня»: падеж зависит от числа и языка, а у расширения словаря нет, поэтому приложение кладёт готовые фразы
+        /// на 2…`horizonDays` дней (ключи `inDays.N`). Нет фразы (файл старого вида) — русская с правильным падежом.
+        public func inDays(_ n: Int) -> String {
+            if let w = table["inDays.\(n)"], !w.isEmpty { return w }
+            let last = n % 10, teen = n % 100 / 10 == 1
+            let word = (last == 1 && !teen) ? "день" : ((2...4).contains(last) && !teen) ? "дня" : "дней"
+            return "через \(n) \(word)"
+        }
+
+        /// Слово оценки заката по категории дня (`DayQuality`).
+        public func rating(_ q: DayQuality) -> String {
+            switch q {
+            case .excellent: self[.rateExcellent]
+            case .good: self[.rateGood]
+            case .plain: self[.ratePlain]
+            case .poor: self[.ratePoor]
+            case .fog: self[.rateFog]
+            }
         }
 
         public init(from decoder: Decoder) throws {
@@ -137,20 +210,23 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
     public var place: Spot
     public var shoots: [Shoot]
     public var words: Words
+    /// Оценки заката ближайших дней места «Света» (`horizonRatingDays`); пусто — прогноза нет.
+    public var forecast: [Rating]
     /// Код языка приложения (`ru`, `en-GB`…): им виджет пишет день недели.
     public var lang: String
     /// Часы на 12 или 24 — как в приложении (настройка «Часы»).
     public var clock12: Bool
 
-    public init(place: Spot, shoots: [Shoot] = [], words: Words = Words(), lang: String = "ru", clock12: Bool = false) {
+    public init(place: Spot, shoots: [Shoot] = [], words: Words = Words(), forecast: [Rating] = [], lang: String = "ru", clock12: Bool = false) {
         self.place = place
         self.shoots = shoots
         self.words = words
+        self.forecast = forecast
         self.lang = lang
         self.clock12 = clock12
     }
 
-    private enum CodingKeys: String, CodingKey { case place, shoots, words, lang, clock12 }
+    private enum CodingKeys: String, CodingKey { case place, shoots, words, forecast, lang, clock12 }
 
     /// Файл заглушки 30б.1 (одно `place`) читается: съёмок в нём просто нет.
     public init(from decoder: Decoder) throws {
@@ -158,6 +234,7 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         place = try c.decode(Spot.self, forKey: .place)
         shoots = try c.decodeIfPresent([Shoot].self, forKey: .shoots) ?? []
         words = try c.decodeIfPresent(Words.self, forKey: .words) ?? Words()
+        forecast = try c.decodeIfPresent([Rating].self, forKey: .forecast) ?? []
         lang = try c.decodeIfPresent(String.self, forKey: .lang) ?? "ru"
         clock12 = try c.decodeIfPresent(Bool.self, forKey: .clock12) ?? false
     }
@@ -197,6 +274,12 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         guard p.count == 3, (1...12).contains(p[1]), (1...31).contains(p[2]) else { return nil }
         let d = CivilDate(year: p[0], month: p[1], day: p[2])
         return d.adding(days: 0) == d && CivilDate(daysSince1970: d.daysSince1970) == d ? d : nil
+    }
+
+    /// Оценка заката дня `day`; `nil` — прогноза на этот день в файле нет.
+    public func rating(on day: CivilDate) -> Rating? {
+        let key = Rating.key(day)
+        return forecast.first { $0.day == key }
     }
 
     public func encoded() -> Data {
@@ -251,7 +334,7 @@ extension WidgetFeed.Spot {
         guard let place else { return nil }
         let sun = SolarDay(date: day, place: place)
         func at(_ m: Minutes?) -> Date? { m.map { moment(minutes: $0, on: day, place: place) } }
-        return WidgetFeed.DayLight(day: day, sunrise: at(sun.rise), golden: at(sun.goldenB), sunset: at(sun.set), polar: sun.polar)
+        return WidgetFeed.DayLight(day: day, sunrise: at(sun.rise), golden: at(sun.goldenB), sunset: at(sun.set), polar: sun.polar, goldenEnd: at(sun.goldenA))
     }
 
     /// Начало вечернего золотого часа (солнце опускается до 6°) в день `day` по часам места; `nil` — в этот день
@@ -276,5 +359,7 @@ extension WidgetFeed {
         public var golden: Date?
         public var sunset: Date?
         public var polar: SolarDay.PolarState
+        /// Конец утреннего золотого часа (солнце поднялось на 6°); `nil` — солнце до 6° не поднимается. До него виджет оценивает рассвет, после — закат.
+        public var goldenEnd: Date? = nil
     }
 }

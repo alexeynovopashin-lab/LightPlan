@@ -26,18 +26,3 @@ struct AlphaBadge: View {
             .accessibilityLabel("alpha")
     }
 }
-
-/// Отсчёт до `to`, который идёт сам (без обновлений виджета). Промежуток строится от `from` — момента кадра, а
-/// `from ≤ to` кадр гарантирует; прошедшая цель — прочерк, а не перевёрнутый диапазон (он ронял расширение в спайке).
-struct CountdownText: View {
-    let from: Date
-    let to: Date
-    var body: some View {
-        if to > from {
-            Text(timerInterval: from...to, countsDown: true, showsHours: to.timeIntervalSince(from) >= 3600)
-                .monospacedDigit()
-        } else {
-            Text("0:00").monospacedDigit()
-        }
-    }
-}

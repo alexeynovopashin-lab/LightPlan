@@ -148,7 +148,7 @@ struct IconPixelParityTests {
         print("ЗНАКИ: клеток \(cells.count); IoU min \(cells.map(\.iou).min()!), среднее \(cells.map(\.iou).reduce(0, +) / Double(cells.count)); "
             + "чернил \(cells.map(\.inkRatio).min()!)…\(cells.map(\.inkRatio).max()!); дальше 2 px до пары max \(cells.map(\.farMiss).max()!)")
         for c in worst { print("  худшие: IoU \(String(format: "%.4f", c.iou)) чернил \(String(format: "%.4f", c.inkRatio)) далёких \(String(format: "%.4f", c.farMiss)) \(c.key)") }
-        #expect(cells.count == 216)
+        #expect(cells.count == 217)
         let bad = cells.filter { $0.iou < 0.90 || abs($0.inkRatio - 1) > 0.05 || $0.farMiss > 0.01 }
         #expect(bad.isEmpty, "не сошлись с Chromium: \(bad.map { "\($0.key) IoU \(String(format: "%.3f", $0.iou)) чернил \(String(format: "%.3f", $0.inkRatio)) далёких \(String(format: "%.4f", $0.farMiss))" })")
     }

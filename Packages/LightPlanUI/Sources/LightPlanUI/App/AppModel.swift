@@ -711,6 +711,7 @@ public final class AppModel {
         model.attachContacts()      // клиенты в Контактах iPhone — пишет только обычный «Light Plan» (К7)
         model.widgetShare = WidgetShare.live()
         model.publishWidget()       // место «Света» — виджету на главном экране (30б.1)
+        model.watchWidgetForecast() // и оценка заката, когда придёт прогноз (30б.2в-5)
         model.debugContactsProbe()  // замер на настоящей книге симулятора (`-LPContactsProbe`, Debug)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {

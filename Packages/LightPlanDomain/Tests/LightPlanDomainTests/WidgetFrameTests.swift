@@ -93,6 +93,29 @@ struct WidgetFrameTests {
         #expect(far.url == WidgetFeed.dayURL(day))
     }
 
+    /// Ревью GPT к d52f3e3: суббота 20:00, свадьба в воскресенье в 12:00 — большой вид рисовал воскресную съёмку, а дату и свет брал
+    /// субботние. Свет, что несёт кадр съёмки, — свет того дня, который съёмка рисует: у ближайшей — день её начала, у идущей — сегодня.
+    @Test func theShootCarriesTheLightOfTheDayItIsDrawnOn() throws {
+        let sunday = CivilDate(year: 2026, month: 10, day: 25)
+        let f = feed([shoot(from: tsk(12, day: 25), to: tsk(20, day: 25), sunset: true)])
+        let eve = try #require(f.frame(at: tsk(20)).primary)
+        #expect(eve.dayOffset == 1 && eve.day?.day == sunday, "накануне: свет воскресенья")
+        #expect(eve.day == tomsk.light(on: sunday), "и ровно тот, что считает место")
+        #expect(eve.day != tomsk.light(on: day), "не субботний")
+        let early = try #require(f.frame(at: tsk(5, day: 25)).primary)
+        #expect(early.dayOffset == 0 && early.day == eve.day, "в то же воскресенье с утра — тот же свет")
+        let live = try #require(f.frame(at: tsk(13, day: 25)).primary)
+        #expect(live.day == eve.day, "идущая: свет сегодняшнего дня")
+        // Идущая съёмка за полночь: «сегодня» уже следующее число, свет — его.
+        let night = feed([shoot(from: tsk(22), to: tsk(2, day: 25))]).frame(at: tsk(0, 30, day: 25))
+        #expect(night.primary?.dayOffset == -1 && night.primary?.day?.day == sunday)
+        // Съёмка в чужом поясе: свет её места и её дня, а не места «Света».
+        let msk = WidgetFeed.Spot(name: "", latitude: 55.75, longitude: 37.62, zone: "fixed:10800")
+        let far = try #require(feed([shoot(from: utc(2026, 10, 24, 22), to: utc(2026, 10, 25, 1), spot: msk)])
+            .frame(at: utc(2026, 10, 24, 17)).primary)
+        #expect(far.day == msk.light(on: sunday), "25.10 по Москве, не 24.10 по Томску")
+    }
+
     @Test func aShootInAnotherZoneIsCountedByItsOwnClocks() throws {
         // Москва +3: съёмка 25.10 в 01:00 по Москве — это 24.10 22:00 UTC+0… в Томске уже 05:00 25-го.
         let msk = WidgetFeed.Spot(name: "", latitude: 55.75, longitude: 37.62, zone: "fixed:10800")
@@ -163,7 +186,7 @@ struct WidgetFrameTests {
         let set = try #require(l.sunset)
         let nextRise = try #require(tomsk.light(on: day.adding(days: 1))?.sunrise)
         #expect(c.contains(set) && c.contains(nextRise))
-        #expect(c.count <= 60)
+        #expect(c.count <= WidgetFeed.entryLimit)
     }
 
     @Test func nothingChangesInsideAnInterval() {
@@ -182,9 +205,9 @@ struct WidgetFrameTests {
         let stops = (0..<90).map { WidgetFeed.Stop(at: ms(tsk(10).addingTimeInterval(Double($0) * 20 * 60)), name: "Точка \($0)") }
         let f = feed([shoot(from: tsk(10), to: tsk(10).addingTimeInterval(31 * 3600), stops: stops)])
         let now = tsk(9)
-        let line = f.timeline(from: now)
+        let line = f.timeline(from: now, limit: 60)
         #expect(line.dates.count == 60)
-        #expect(line.dates == f.changes(from: now))
+        #expect(line.dates == f.changes(from: now, limit: 60))
         #expect(line.reload <= line.dates.last!, "перезагрузка \(line.reload) позже последнего момента \(line.dates.last!)")
         #expect(line.reload > now)
     }
@@ -198,7 +221,131 @@ struct WidgetFrameTests {
         #expect(feed().timeline(from: now).reload == now.addingTimeInterval(36 * 3600))
     }
 
-    /// Секунды отсчёта идут сами, а кадр от «сейчас» отличается только полем `now`.
+
+    // MARK: Лента по формам (30б.2в-2)
+
+    /// Свадьба Алексея: 12:00–00:30, на кольцо в 12:52 нужны минуты, чтобы «62 мин» не замерзло.
+    private func wedding() -> WidgetFeed.Shoot {
+        shoot(from: tsk(12), to: tsk(0, 30, day: 25), sunset: true,
+              rents: [.init(from: ms(tsk(12)), to: ms(tsk(14)), deadline: ms(tsk(13, 54)), studio: "Томсон")],
+              stops: [.init(at: ms(tsk(12)), name: "Пара в студии"), .init(at: ms(tsk(14)), name: "Обед")])
+    }
+
+    @Test func theRingGetsAMomentEveryMinuteWhileTheShootGoesAndNotBefore() {
+        let f = feed([wedding()])
+        let now = tsk(12, 52, day: 24).addingTimeInterval(20)
+        for shape in [WidgetShape.small, .medium] {
+            let line = f.timeline(from: now, shape: shape)
+            #expect(line.dates.count == WidgetFeed.entryLimit, "обрезана на \(WidgetFeed.entryLimit) записях: свадьба в 12,5 часа")
+            #expect(line.reload == line.dates.last, "и новая лента просится на последнем показанном моменте")
+            let minutes = line.dates.dropFirst().prefix(60)
+            #expect(minutes.first == tsk(12, 53) && minutes.last != nil)
+            // Первые часы — ровно по минуте, кроме событий (13:54 — выход из студии, 14:00 — «Обед»).
+            let first = Array(line.dates.dropFirst().prefix(60))
+            for (a, b) in zip(first, first.dropFirst()) { #expect(b.timeIntervalSince(a) <= 60, "дырка между \(a) и \(b)") }
+        }
+        // До начала съёмки минут нет: плашка до того не кольцо.
+        // Средний с 30б.2в-5 в день съёмки впереди рисует риски по световому дню и просит записи раз в 10 минут (`WidgetBraunIdleTests`),
+        // но не по минуте; малый до начала съёмки не просит ничего.
+        let early = f.timeline(from: tsk(9), shape: .medium)
+        #expect(!early.dates.contains(tsk(9, 1)) && !early.dates.contains(tsk(11, 31)))
+        #expect(!f.timeline(from: tsk(9), shape: .small).dates.contains(tsk(11, 30)))
+        #expect(early.dates.contains(tsk(12)) && early.dates.contains(tsk(12, 1)), "с начала съёмки — по минуте")
+    }
+
+    @Test func theRingStopsCountingWhenTheShootEnds() {
+        let f = feed([wedding()])
+        let line = f.timeline(from: tsk(0, 10, day: 25), limit: 1000, shape: .small)
+        #expect(line.dates.contains(tsk(0, 30, day: 25)) && !line.dates.contains(tsk(0, 31, day: 25)), "после конца минут нет")
+        #expect(line.reload == tsk(0, 10, day: 25).addingTimeInterval(36 * 3600), "лента не обрезана — перезагрузка через 36 часов")
+    }
+
+    /// Ревью GPT к 8d3f1c2: у съёмки, что закрывают руками, минут после записанного конца нет — кольцо не «застывает», а уже стоит
+    /// на нуле (остаток зажат, доля — единица, см. `WidgetLiveTests.anOpenShootPastItsEndHasNothingLeftToCount`). Здесь — что лента
+    /// до конца даёт минуты, а после — только события.
+    @Test func anOpenShootGetsRingMinutesOnlyUpToItsRecordedEnd() {
+        var open = wedding()
+        open.open = true
+        let f = feed([open])
+        let before = f.timeline(from: tsk(0, 10, day: 25), limit: 1000, shape: .medium)
+        #expect(before.dates.contains(tsk(0, 29, day: 25)) && before.dates.contains(tsk(0, 30, day: 25)))
+        #expect(!before.dates.contains(tsk(0, 31, day: 25)), "после записанного конца минут нет")
+        let after = f.timeline(from: tsk(2, day: 25), limit: 1000, shape: .medium)
+        #expect(after.dates == f.timeline(from: tsk(2, day: 25), limit: 1000).dates, "после конца кольцу и кадрам нужны только события")
+        #expect(f.frame(at: tsk(2, day: 25)).kind == .live, "а плашка идёт, пока не нажмут «Завершить»")
+    }
+
+    @Test func otherShapesDoNotPayForTheRingsMinutes() {
+        let f = feed([wedding()])
+        let now = tsk(12, 52)
+        let events = f.timeline(from: now).dates
+        for shape in [WidgetShape.inline, .rectangular] {
+            #expect(f.timeline(from: now, shape: shape).dates == events, "строка и прямоугольник меняются только на событиях")
+        }
+        #expect(events.count < 30)
+    }
+
+    @Test func theCircleCountsMinutesUpToTheGoldenHourAndStopsThere() throws {
+        let f = feed()
+        let golden = try #require(tomsk.light(on: day)?.golden)
+        let now = golden.addingTimeInterval(-3 * 3600 + 5)
+        let line = f.timeline(from: now, limit: 1000, shape: .circular)
+        let minutes = line.dates.filter { $0 > now && $0 <= golden }
+        #expect(minutes.count >= 178, "три часа по минуте: \(minutes.count)")
+        #expect(line.dates.contains(golden), "в золотой час круг гаснет — это событие")
+        let after = line.dates.filter { $0 > golden && $0 < tsk(0, day: 25) }
+        #expect(after.count <= 1, "после золотого часа и до полуночи минут нет: \(after.count)")
+        #expect(Set(line.dates.filter { $0 > tsk(0, day: 25) }.prefix(3)).contains(tsk(0, 1, day: 25)), "с полуночи считается завтрашний")
+    }
+
+    @Test func theLargeDayArcMovesEveryTenMinutesOnlyWithoutAShoot() throws {
+        let l = try #require(tomsk.light(on: day))
+        let rise = try #require(l.sunrise), set = try #require(l.sunset)
+        let free = feed().timeline(from: rise.addingTimeInterval(-60), limit: 1000, shape: .large)
+        let arc = free.dates.filter { $0 > rise && $0 < set }
+        #expect(arc.count >= Int(set.timeIntervalSince(rise) / 600) - 1, "десять минут между восходом и закатом: \(arc.count)")
+        // Съёмка занимает вид — дуги нет, её минуты не нужны.
+        let busy = feed([shoot(from: tsk(9), to: tsk(17))]).timeline(from: tsk(8), limit: 1000, shape: .large)
+        let plain = feed([shoot(from: tsk(9), to: tsk(17))]).timeline(from: tsk(8), limit: 1000)
+        #expect(busy.dates.filter { $0 > tsk(9) && $0 < tsk(17) } == plain.dates.filter { $0 > tsk(9) && $0 < tsk(17) },
+                "пока съёмка идёт, большой виджет меняется только на событиях")
+    }
+
+    /// Бюджет: день свадьбы с минутным кольцом — сколько раз виджет просит новую ленту, если каждый раз перезагружается ровно в срок.
+    /// У WidgetKit лимит на перезагрузки (40–70 в сутки на виджет), а не на записи, поэтому лента длинная и просьб мало.
+    @Test func aWeddingDayWithTheRingAsksForAFewReloadsNotForOnePerMinute() {
+        let f = feed([wedding()])
+        for (shape, from, to, most) in [(WidgetShape.medium, tsk(12), tsk(0, 30, day: 25), 6), (.small, tsk(12), tsk(0, 30, day: 25), 6),
+                                        (.circular, tsk(0), tsk(17), 8)] {
+            var at = from, reloads = 0, entries = 0
+            while at < to && reloads < 100 {
+                let line = f.timeline(from: at, shape: shape)
+                entries += line.dates.count
+                #expect(line.reload > at)
+                at = line.reload
+                reloads += 1
+            }
+            #expect(reloads <= most, "\(shape): \(reloads) просьб о новой ленте, записей \(entries)")
+            print("лента \(shape): \(reloads) перезагрузок, \(entries) записей за \(Int(to.timeIntervalSince(from) / 3600)) ч")
+        }
+    }
+
+    @Test func noShapeEverEndsItsStripBeforeTheReload() {
+        // Условие 30б.2-ленты для каждой формы: лента обрезана — перезагрузка на последнем показанном моменте; нет — через 36 часов.
+        let f = feed([wedding()])
+        for shape in WidgetShape.allCases {
+            for now in [tsk(9), tsk(12, 52), tsk(23, 50), tsk(3, day: 25)] {
+                let line = f.timeline(from: now, shape: shape)
+                #expect(line.dates.first == now && line.dates == line.dates.sorted() && Set(line.dates).count == line.dates.count)
+                #expect(line.dates.count <= WidgetFeed.entryLimit)
+                let cut = line.dates.count == WidgetFeed.entryLimit
+                #expect(line.reload == (cut ? line.dates.last! : now.addingTimeInterval(36 * 3600)), "\(shape) с \(now)")
+                #expect(line.reload > now)
+            }
+        }
+    }
+
+    /// Кадр от «сейчас» отличается только полем `now`.
     private func strip(_ f: WidgetFrame) -> WidgetFrame { var g = f; g.now = Date(timeIntervalSince1970: 0); return g }
 
     // MARK: Файл
@@ -212,6 +359,14 @@ struct WidgetFrameTests {
         #expect(WidgetFeed.decode(withWords.encoded()) == withWords)
         #expect(withWords.words[.sunrise] == "Dawn" && withWords.words[.sunset] == "Закат")
 
+        // Файл с именами, знаками и жанром читается, а файл 30б.2 (без них) читается тоже.
+        let named = WidgetFeed.Shoot(id: "n", start: 1, end: 2, title: "Свадьба", stops: [.init(at: 1, name: "ЗАГС", sign: "rings")],
+                                     genre: "wedding", names: "Анна+Игорь")
+        let withNames = WidgetFeed(place: tomsk, shoots: [named])
+        #expect(WidgetFeed.decode(withNames.encoded()) == withNames)
+        let stub = Data(#"{"place":{"name":"Т","latitude":1,"longitude":2,"zone":"UTC"},"shoots":[{"id":"x","start":1,"end":2,"open":false,"title":"С","place":"","wantsSunset":false,"rents":[],"stops":[{"at":1,"name":"А","place":""}]}]}"#.utf8)
+        let old30 = try #require(WidgetFeed.decode(stub))
+        #expect(old30.shoots[0].names == nil && old30.shoots[0].genre == nil && old30.shoots[0].stops[0].sign == nil)
         let old = Data(#"{"place":{"name":"Томск","latitude":56.5,"longitude":84.97,"zone":"Asia/Tomsk"}}"#.utf8)
         let decoded = try #require(WidgetFeed.decode(old))
         #expect(decoded.shoots.isEmpty && decoded.lang == "ru" && !decoded.clock12)
@@ -259,12 +414,16 @@ struct WidgetFrameTests {
 
         let feed = WidgetFeed.make(
             place: tomsk, sessions: [a, past, later, meet], studios: [studio], spots: [], now: tsk(9), manualEnd: false,
-            offset: { _, _ in 7 }, title: { $0.genre?.rawValue ?? "?" }, words: .init(), lang: "ru", clock12: false)
+            offset: { _, _ in 7 }, title: { $0.genre?.rawValue ?? "?" }, names: { _ in "Мария" },
+            sign: { n, _, studio in studio ? "studio" : "sign:" + n }, words: .init(), lang: "ru", clock12: false)
         #expect(feed.shoots.map(\.id) == ["a"], "прошедшая, дальняя неделя и встреча не идут")
         let s = try #require(feed.shoots.first)
-        #expect(s.title == "wedding" && !feed.encoded().contains(Data("Иванова".utf8)), "клиента в файле нет")
+        // В файле имена (их показывают «Домой»), но ни фамилии, ни номера из записи клиента.
+        #expect(s.title == "wedding" && s.genre == "wedding" && s.names == "Мария")
+        #expect(!feed.encoded().contains(Data("Иванова".utf8)) && !feed.encoded().contains(Data("913".utf8)), "ни фамилии, ни телефона")
         #expect(s.start == ms(tsk(15)) && s.end == ms(tsk(19)) && s.wantsSunset && !s.open)
         #expect(s.stops.map(\.name) == ["ЗАГС"] && s.stops.first?.place == "ЗАГС №1")
+        #expect(s.stops.first?.sign == "sign:ЗАГС", "знак точки считает приложение и кладёт в файл")
         // Студия на 14:00–16:00 с часом в 55 минут: выйти в 15:55.
         #expect(s.rents.first?.deadline == ms(tsk(15, 55)) && s.rents.first?.studio == "Томсон")
         #expect(s.spot?.zone == "fixed:25200" && s.spot?.latitude == 56.49)
