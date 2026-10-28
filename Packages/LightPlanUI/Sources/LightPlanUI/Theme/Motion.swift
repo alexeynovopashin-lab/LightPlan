@@ -198,6 +198,8 @@ struct BreathDisc: View {
 enum FoldGeometry {
     static let barHeight: CGFloat = 38, shutHeight: CGFloat = 22, gap: CGFloat = 8
     static let chevronWidth: CGFloat = 40, inset: CGFloat = 4, bleed: CGFloat = 20
+    /// Сторона нажимаемой рамки ручки-шеврона (не меньше 44 pt).
+    static let tapSide: CGFloat = 44
 
     struct Frames: Equatable {
         var line, bar, main, chevron: CGRect
@@ -236,7 +238,9 @@ private struct FoldLayout: Layout {
         guard subviews.count == 4 else { return }
         let f = FoldGeometry.frames(t: t, width: bounds.width)
         // Порядок: черта, рамка, основная часть, шеврон.
-        for (view, r) in zip(subviews, [f.line, f.bar, f.main, f.chevron]) {
+        for (k, (view, r)) in zip(subviews, [f.line, f.bar, f.main, f.chevron]).enumerated() {
+            // Ручка нажимается квадратом не меньше 44 × 44 (28.10): та же середина, рамка вокруг неё больше самой ручки.
+            let r = k == 3 ? r.insetBy(dx: min(0, (r.width - FoldGeometry.tapSide) / 2), dy: min(0, (r.height - FoldGeometry.tapSide) / 2)) : r
             view.place(at: CGPoint(x: bounds.minX + r.minX, y: bounds.minY + r.minY), proposal: ProposedViewSize(r.size))
         }
     }

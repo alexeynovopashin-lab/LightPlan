@@ -83,4 +83,5 @@ if __name__ == '__main__':
     else:
         print('ось строки (середина цифр): y =', r['axis'])
         for k, v in r['rows'].items():
-            print(f"{k:10s} y {v['top']:.2f}…{v['bottom']:.2f}  середина {v['mid']:.2f}  от оси {v['dy']:+.2f}  x {v['left']:.2f}…{v['right']:.2f}")
+            dy = '—' if v['dy'] is None else f"{v['dy']:+.2f}"
+            print(f"{k:10s} y {v['top']:.2f}…{v['bottom']:.2f}  середина {v['mid']:.2f}  от оси {dy}  x {v['left']:.2f}…{v['right']:.2f}")

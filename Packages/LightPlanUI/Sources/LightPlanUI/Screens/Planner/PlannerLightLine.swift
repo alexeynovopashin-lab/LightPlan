@@ -17,8 +17,6 @@ enum LightLine {
     static let iconGap: CGFloat = 3
     /// Зазор между знаком погоды и градусами сверх `iconGap` (веб `.dp-wx i { margin-right: 8px }`).
     static let weatherGap: CGFloat = 8
-    /// Сторона нажимаемого квадрата шеврона (не меньше 44 pt).
-    static let tapSide: CGFloat = 44
     /// Слева показания не ближе, чем на 12 pt от края рамки: так было и в капсуле.
     static let leadingMin: CGFloat = 12
 

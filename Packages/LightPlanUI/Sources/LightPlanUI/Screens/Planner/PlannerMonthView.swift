@@ -343,7 +343,7 @@ struct PlannerDayPanel: View {
     }
 
     /// Шеврон: раскрыто — остриём вверх, свёрнуто — вниз, и тогда он сидит на черте в её выемке (`LightLineRule`), без плашки (28.10).
-    /// Нажимается квадрат 44 × 44 (`LightLine.tapSide`) вокруг ручки: сама ручка 40 × 38 (раскрыта) и 40 × 22 (свёрнута).
+    /// Нажимается рамка 44 × 44 вокруг ручки (`FoldLayout` кладёт её больше самой ручки 40 × 38 / 40 × 22).
     private func chevron(_ pal: Palette, open: Bool) -> some View {
         Button {
             Self.fold(app, still: still)
@@ -353,7 +353,6 @@ struct PlannerDayPanel: View {
                 .animation(still ? nil : Motion.foldChevron, value: open)
                 .foregroundStyle(pal.ink4)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background { Color.clear.frame(width: LightLine.tapSide, height: LightLine.tapSide).contentShape(Rectangle()) }
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

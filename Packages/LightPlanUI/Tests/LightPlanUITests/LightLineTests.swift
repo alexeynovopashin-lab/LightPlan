@@ -83,7 +83,7 @@ struct LightLineTests {
     }
 
     @Test func chevronTapSquareIsAtLeast44() {
-        #expect(LightLine.tapSide >= 44)
+        #expect(FoldGeometry.tapSide >= 44)
     }
 
     // MARK: ширина на узких экранах
