@@ -2,7 +2,7 @@ import SwiftUI
 import LightPlanCore
 import LightPlanDomain
 
-/// Сетка выбора даты `#fwSDate` / `#fwEDate` веба: месяц с понедельника, заголовок
+/// Сетка выбора даты `#fwSDate` / `#fwEDate` веба: месяц с выбранного дня недели (понедельник — умолчание), заголовок
 /// «Месяц ГГГГ» и стрелки; дни вне предела не убираются, а гаснут.
 struct FormDateGrid: View {
     let selected: CivilDate
@@ -10,18 +10,20 @@ struct FormDateGrid: View {
     var range: ClosedRange<Int>?
     let dates: DateText
     let date: (CivilDate) -> Date
+    let weekStart: WeekStart
     let weekdays: [String]
     let onPick: (CivilDate) -> Void
     @State private var month: CivilDate
     @Environment(\.colorScheme) private var scheme
 
     init(selected: CivilDate, range: ClosedRange<Int>? = nil, dates: DateText, date: @escaping (CivilDate) -> Date,
-         onPick: @escaping (CivilDate) -> Void) {
+         weekStart: WeekStart, onPick: @escaping (CivilDate) -> Void) {
         self.selected = selected
         self.range = range
         self.dates = dates
         self.date = date
-        self.weekdays = dates.weekdayRow()
+        self.weekStart = weekStart
+        self.weekdays = dates.weekdayRow(weekStart)
         self.onPick = onPick
         _month = State(initialValue: PlannerState.first(of: selected))
     }
@@ -29,10 +31,8 @@ struct FormDateGrid: View {
     var body: some View {
         let pal = Palette(scheme)
         let first = month
-        let start = PlannerState.weekStart(first)
-        let last = PlannerState.addMonths(first, 1).adding(days: -1)
-        let end = PlannerState.weekStart(last).adding(days: 6)
-        let days = (0...end.days(since: start)).map { start.adding(days: $0) }
+        let start = weekStart.start(of: first)
+        let days = weekStart.grid(of: first)
         VStack(spacing: 6) {
             HStack {
                 arrow("chevron", flip: true, pal) { month = PlannerState.addMonths(month, -1) }
@@ -45,7 +45,7 @@ struct FormDateGrid: View {
             HStack(spacing: 0) {
                 ForEach(weekdays.indices, id: \.self) { i in
                     Text(weekdays[i]).font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(PlannerState.isWeekend(start.adding(days: i)) ? pal.weekend : pal.ink6)
+                        .foregroundStyle(WeekStart.isWeekend(start.adding(days: i)) ? pal.weekend : pal.ink6)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -56,7 +56,7 @@ struct FormDateGrid: View {
                     let on = d == selected
                     Button { onPick(d) } label: {
                         Text(String(d.day)).font(.system(size: 16).monospacedDigit())
-                            .foregroundStyle(on ? pal.onBrass : inMonth ? (PlannerState.isWeekend(d) ? pal.weekend : pal.ink) : pal.ink7)
+                            .foregroundStyle(on ? pal.onBrass : inMonth ? (WeekStart.isWeekend(d) ? pal.weekend : pal.ink) : pal.ink7)
                             .frame(maxWidth: .infinity).frame(height: 38)
                             .background(on ? pal.brass : .clear, in: Circle())
                             .opacity(ok ? 1 : 0.3)

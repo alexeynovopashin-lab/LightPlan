@@ -1,6 +1,7 @@
 import Testing
 import CoreGraphics
 import LightPlanCore
+import LightPlanDomain
 @testable import LightPlanUI
 
 private func d(_ y: Int, _ m: Int, _ day: Int) -> CivilDate { CivilDate(year: y, month: m, day: day) }
@@ -165,6 +166,15 @@ private func d(_ y: Int, _ m: Int, _ day: Int) -> CivilDate { CivilDate(year: y,
         #expect(last.days == [d(2026, 10, 26), d(2026, 10, 27), d(2026, 10, 28), d(2026, 10, 29), d(2026, 10, 30), d(2026, 10, 31), nil])
         let cells = PartDayGeometry.cells(row: mid.row, gap: 0)       // колонки ленты — без зазора
         #expect(abs(cells[0].width - 56) < 1e-9 && cells[1].minX == cells[0].maxX && abs(cells[6].maxX - 416) < 1e-9)
+    }
+
+    /// Неделя с воскресенья (28.10): октябрь 2026 — четыре пустых клетки (1-е — четверг), строка берётся с воскресенья.
+    @Test func yearRowFollowsSundayStart() {
+        let grid = CGRect(x: 24, y: 300, width: 392, height: 5 * 56 + 4 * 3)
+        let first = PartDayGeometry.yearRow(grid: grid, day: d(2026, 10, 2), weekStart: .sunday)
+        #expect(first.days == [nil, nil, nil, nil, d(2026, 10, 1), d(2026, 10, 2), d(2026, 10, 3)])
+        let mid = PartDayGeometry.yearRow(grid: grid, day: d(2026, 10, 14), weekStart: .sunday)
+        #expect(mid.days.first == d(2026, 10, 11) && mid.days.last == d(2026, 10, 17))
     }
 
     @Test func yearDayTapEntersDayWithoutSideSlide() {

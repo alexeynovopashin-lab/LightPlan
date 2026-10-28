@@ -16,8 +16,8 @@ struct PlannerWeekBody: View {
 
     var body: some View {
         // Листание недели едет сбоку (29.2в): две недели рядом, пока позиция между ними.
-        FlipStage(pos: Double(FlipTrack.weekIndex(app.planner.selected)), height: { heights[$0] }) { idx, lead in
-            page(FlipTrack.weekStart(idx), lead: lead)
+        FlipStage(pos: Double(app.weekStart.index(of: app.planner.selected)), height: { heights[$0] }) { idx, lead in
+            page(app.weekStart.start(index: idx), lead: lead)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[idx] = $0 }
         }
         .shotNode("week")
@@ -26,7 +26,7 @@ struct PlannerWeekBody: View {
 
     private func page(_ start: CivilDate, lead: Bool) -> some View {
         VStack(spacing: 4) {
-            ForEach(Array(PlannerState.week(of: start).enumerated()), id: \.element) { i, d in
+            ForEach(Array(app.weekStart.week(of: start).enumerated()), id: \.element) { i, d in
                 WeekRow(app: app, f: f, day: d).shotNode(lead ? "wk.\(i)" : "wk.out.\(i)")
             }
         }
@@ -52,7 +52,7 @@ private struct WeekRow: View {
         let today = f.today
         let isToday = day == today, sel = day == st.selected, open = st.weekOpen == day
         let wx = f.weather(day)
-        let weekend = PlannerState.isWeekend(day)
+        let weekend = WeekStart.isWeekend(day)
         HStack(alignment: .top, spacing: 10) {
             Button {
                 PlanMotion.tapWeekRow(app, day)

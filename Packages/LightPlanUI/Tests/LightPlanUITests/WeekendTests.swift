@@ -5,6 +5,7 @@ import SwiftUI
 import UIKit
 #endif
 import LightPlanCore
+import LightPlanDomain
 @testable import LightPlanUI
 
 /// Выходные в календаре (Алексей 28.10): суббота и воскресенье янтарные в месяце, неделе, дне и сетке формы.
@@ -13,10 +14,10 @@ import LightPlanCore
 
     @Test func weekendIsSaturdayAndSunday() {
         // 21–27 сентября 2026: пн … вс.
-        let flags = (21...27).map { PlannerState.isWeekend(d(2026, 9, $0)) }
+        let flags = (21...27).map { WeekStart.isWeekend(d(2026, 9, $0)) }
         #expect(flags == [false, false, false, false, false, true, true])
-        #expect(PlannerState.isWeekend(d(1970, 1, 3)) && PlannerState.isWeekend(d(1970, 1, 4)))   // сб, вс
-        #expect(!PlannerState.isWeekend(d(1969, 12, 31)))
+        #expect(WeekStart.isWeekend(d(1970, 1, 3)) && WeekStart.isWeekend(d(1970, 1, 4)))   // сб, вс
+        #expect(!WeekStart.isWeekend(d(1969, 12, 31)))
     }
 
     private func lin(_ c: Double) -> Double { c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }

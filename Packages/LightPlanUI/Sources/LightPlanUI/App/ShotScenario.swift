@@ -117,7 +117,7 @@ extension AppModel {
         }
         if let scope = s.scope { app.planner.setScope(scope) }
         if let k = s.pick, (0..<7).contains(k) {
-            app.planner.pickInStrip(app.planner.week[k])
+            app.planner.pickInStrip(app.planner.week(app.weekStart)[k])
             _ = app.planner.consumeDayShift()
         }
         #if DEBUG

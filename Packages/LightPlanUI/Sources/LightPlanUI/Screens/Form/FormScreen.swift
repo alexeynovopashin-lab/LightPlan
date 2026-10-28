@@ -384,7 +384,7 @@ struct FormScreen: View {
                         openDate: picker == .startDate, openTime: picker == .startTime,
                         pickDate: { toggle(.startDate) }, pickTime: { toggle(.startTime) }, pal)
                 if picker == .startDate {
-                    FormDateGrid(selected: f.day, dates: dates, date: carrier) { d in
+                    FormDateGrid(selected: f.day, dates: dates, date: carrier, weekStart: app.weekStart) { d in
                         app.pickFormDay(d); picker = nil
                     }
                 }
@@ -400,7 +400,7 @@ struct FormScreen: View {
                         pickDate: { toggle(.endDate) }, pickTime: { toggle(.endTime) }, pal)
                 if picker == .endDate {
                     FormDateGrid(selected: f.endDay, range: f.day.ordinal...(f.day.ordinal + EventForm.maxDuration / 1440),
-                                 dates: dates, date: carrier) { d in
+                                 dates: dates, date: carrier, weekStart: app.weekStart) { d in
                         app.setFormEnd(dayOffset: d.days(since: f.day), minuteOfDay: f.endMinuteOfDay); picker = nil
                     }
                 }

@@ -445,7 +445,7 @@ private struct PlanTop: View {
         case .day:
             return d.dMon(f.date(st.selected)) + yr(st.selected)
         case .week:
-            let a = PlannerState.weekStart(st.selected), b = a.adding(days: 6)
+            let a = app.weekStart.start(of: st.selected), b = a.adding(days: 6)
             if a.month == b.month { return d.monthTitle(f.date(a)) + yr(a) }
             return Self.abbr3(d.monthTitle(f.date(a))) + " – " + Self.abbr3(d.monthTitle(f.date(b))) + yr(a)
         case .month:

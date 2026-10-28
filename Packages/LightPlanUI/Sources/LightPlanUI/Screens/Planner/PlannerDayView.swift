@@ -18,7 +18,7 @@ struct PlannerDaySticky: View {
         let pal = Palette(scheme)
         VStack(spacing: 0) {
             HStack(spacing: Self.dateGap) {
-                ForEach(Array(app.planner.week.enumerated()), id: \.element) { i, d in
+                ForEach(Array(app.planner.week(app.weekStart).enumerated()), id: \.element) { i, d in
                     date(d, pal).shotNode("dd.\(i)")
                 }
             }
@@ -35,7 +35,7 @@ struct PlannerDaySticky: View {
     /// записей и счётчик; день только с занятостью — замок.
     private func date(_ d: CivilDate, _ pal: Palette) -> some View {
         let sel = d == app.planner.selected, today = d == f.today
-        let weekend = PlannerState.isWeekend(d)
+        let weekend = WeekStart.isWeekend(d)
         let marks = f.shown(on: d)
         return Button {
             // Бета на iPhone тикает на каждое касание даты (`hapticize`), в том числе по выбранной.

@@ -1,4 +1,5 @@
 import LightPlanCore
+import LightPlanDomain
 
 /// Масштаб календаря (веб `calScope`). Год и год-12 — не масштабы, а слои
 /// поверх «Съёмок» (веб `#yearOverlay`, `#year12Overlay`; итерация 22).
@@ -164,44 +165,14 @@ public struct PlannerState: Hashable, Sendable {
         }
     }
 
-    /// Неделя выбранного дня, с понедельника (веб `weekStart`).
-    public var week: [CivilDate] { Self.week(of: selected) }
+    /// Неделя выбранного дня при выбранном начале недели (веб `weekStart` — всегда понедельник).
+    public func week(_ ws: WeekStart) -> [CivilDate] { ws.week(of: selected) }
 
-    /// Сетка месяца: дни с понедельника первой недели до воскресенья последней
-    /// (веб `renderCal`: хвост прошлого месяца, месяц, голова следующего).
-    public var monthGrid: [CivilDate] { Self.grid(of: month) }
-
-    /// Сетка любого месяца (листание сбоку держит рядом сетки двух соседних).
-    public static func grid(of month: CivilDate) -> [CivilDate] {
-        let start = weekStart(month)
-        let last = addMonths(month, 1).adding(days: -1)
-        let end = weekStart(last).adding(days: 6)
-        return (0...end.days(since: start)).map { start.adding(days: $0) }
-    }
+    /// Сетка месяца: целые недели от дня, с которого начинается неделя первого числа (веб `renderCal`: хвост прошлого
+    /// месяца, месяц, голова следующего).
+    public func monthGrid(_ ws: WeekStart) -> [CivilDate] { ws.grid(of: month) }
 
     // MARK: - Календарная арифметика
-
-    /// Понедельник недели дня.
-    public static func weekStart(_ d: CivilDate) -> CivilDate {
-        d.adding(days: -((weekday(d) + 6) % 7))
-    }
-
-    public static func week(of d: CivilDate) -> [CivilDate] {
-        let m = weekStart(d)
-        return (0..<7).map { m.adding(days: $0) }
-    }
-
-    /// День недели как `Date.getDay()` веба: 0 — воскресенье.
-    public static func weekday(_ d: CivilDate) -> Int {
-        // 1970-01-01 — четверг (4).
-        ((d.daysSince1970 % 7) + 7 + 4) % 7
-    }
-
-    /// Суббота и воскресенье — всегда, с какого бы дня ни начиналась неделя (Алексей 28.10, «выходные»).
-    public static func isWeekend(_ d: CivilDate) -> Bool {
-        let w = weekday(d)
-        return w == 0 || w == 6
-    }
 
     public static func first(of d: CivilDate) -> CivilDate {
         CivilDate(year: d.year, month: d.month, day: 1)

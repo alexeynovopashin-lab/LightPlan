@@ -71,7 +71,7 @@ struct FormatParityTests {
                 t.check("\(code) monthTitleN", d.monthTitleN(m), months.title[m], "\(m)")
                 t.check("\(code) monAbbrUpperN", d.monAbbrUpperN(m), months.abbr[m], "\(m)")
             }
-            let row = d.weekdayRow().map { "<span>\($0)</span>" }.joined()
+            let row = d.weekdayRow(.monday).map { "<span>\($0)</span>" }.joined()
             t.check("\(code) wdRow", row, try #require(f.langs[code]).wdRow, "шапка")
         }
         print(t.report)

@@ -41,17 +41,19 @@ public struct AppSettings: Sendable, Equatable {
     public var manualEnd: Bool
     /// Плеер по умолчанию (веб `musicApp`); `nil` — «Выкл». Незнакомое значение снимка читается как «Выкл».
     public var musicApp: MusicApp?
+    /// С какого дня неделя (`WeekStartChoice`; нет в снимке — понедельник, как у веба).
+    public var weekStart: WeekStartChoice
 
     public init(pro: Bool = false, theme: Theme = .dark, ribbonMode: RibbonMode = .drum,
                 drumSlot: DrumSlot = .paper, timeStep: Int = 5, travelMin: Int = 40,
                 tempUnit: TempUnit = .c, clock: Clock = .auto, currency: Currency = .rub,
                 practice: Practice = .ru, practicePicked: Bool = false, home: HomeCity = HomeCity(),
-                manualEnd: Bool = false, musicApp: MusicApp? = nil) {
+                manualEnd: Bool = false, musicApp: MusicApp? = nil, weekStart: WeekStartChoice = .standard) {
         self.pro = pro; self.theme = theme; self.ribbonMode = ribbonMode; self.drumSlot = drumSlot
         self.timeStep = timeStep; self.travelMin = travelMin; self.tempUnit = tempUnit
         self.clock = clock; self.currency = currency; self.practice = practice
         self.practicePicked = practicePicked; self.home = home
-        self.manualEnd = manualEnd; self.musicApp = musicApp
+        self.manualEnd = manualEnd; self.musicApp = musicApp; self.weekStart = weekStart
     }
 
     /// Прочитать из снимка по правилам веба. `zone` — пояс телефона, по
@@ -76,6 +78,7 @@ public struct AppSettings: Sendable, Equatable {
         home = HomeCity(me: s.extra["me"])
         manualEnd = s.manualEnd
         musicApp = s.musicApp.flatMap(MusicApp.init(rawValue:))
+        weekStart = s.weekStart.flatMap(WeekStartChoice.init(rawValue:)) ?? .standard
     }
 
     /// Записать в снимок. Прочие поля снимка и прочие ключи `me` (номер,
@@ -99,6 +102,10 @@ public struct AppSettings: Sendable, Equatable {
         // Строку снимка трогаем, только когда выбор изменился: незнакомое значение веб держит
         // «как записано», и безобидное сохранение настроек не должно его переписать в «off».
         if s.musicApp.flatMap(MusicApp.init(rawValue:)) != musicApp { s.musicApp = musicApp?.rawValue ?? "off" }
+        // Так же и неделя: умолчание — нет ключа (файл прежних версий не меняется), незнакомая строка не переписывается.
+        if (s.weekStart.flatMap(WeekStartChoice.init(rawValue:)) ?? .standard) != weekStart {
+            s.weekStart = weekStart == .standard ? nil : weekStart.rawValue
+        }
     }
 
     /// Практика по часовому поясу — порт `guessPractice` веба: пояс — это

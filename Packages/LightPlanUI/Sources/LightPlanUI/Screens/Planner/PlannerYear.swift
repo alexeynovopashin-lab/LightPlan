@@ -10,12 +10,12 @@ enum YearMath {
 
     // MARK: - Сетка месяца
 
-    /// Пустых клеток перед первым числом (неделя с понедельника) и дней в месяце.
+    /// Пустых клеток перед первым числом (неделя с выбранного дня, понедельник — умолчание) и дней в месяце.
     /// Хвоста после последнего числа у веба нет — строка обрывается.
-    static func monthShape(year: Int, month: Int) -> (lead: Int, days: Int) {
+    static func monthShape(year: Int, month: Int, _ ws: WeekStart) -> (lead: Int, days: Int) {
         let first = CivilDate(year: year, month: month, day: 1)
         let next = PlannerState.addMonths(first, 1)
-        return ((PlannerState.weekday(first) + 6) % 7, next.days(since: first))
+        return (ws.leadingBlanks(year: year, month: month), next.days(since: first))
     }
 
     // MARK: - Год

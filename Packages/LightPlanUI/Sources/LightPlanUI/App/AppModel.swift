@@ -742,6 +742,9 @@ public final class AppModel {
     /// Одна правка — одна запись на диск (дебаунс у `Store`) и одна раздача
     /// экранам. Город меняет место «Света» только с координатами из
     /// справочника: набранное руками имя свет не двигает.
+    /// Начало недели в сетках и шапках: выбор из настроек, «как в системе» читает неделю телефона (`Calendar.firstWeekday`).
+    public var weekStart: WeekStart { settings.weekStart.resolved(systemFirstWeekday: Calendar.current.firstWeekday) }
+
     public func update(_ change: (inout AppSettings) -> Void) {
         let before = settings
         change(&settings)
