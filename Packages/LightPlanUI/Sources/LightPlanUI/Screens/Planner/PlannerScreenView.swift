@@ -52,6 +52,7 @@ public struct PlannerScreenView: View {
             // Содержимое под шапкой проявляется при смене вкладки (S1); шапка (`PlanTop`) не мигает.
             .tabRise()
         }
+        .scrollJump(app.lexicon, node: "sj.planner", enabled: app.planner.scope != .day)
         .scrollPosition($position)
         // Чужие календари на выбранный день с запасом (30.5): пока окно прочитано, база не опрашивается.
         .task(id: st.selected) { app.ghostsEnsure(around: st.selected) }

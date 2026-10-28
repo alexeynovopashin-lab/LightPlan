@@ -101,6 +101,16 @@ add('form_meet', 'Form', m28, ['-LPShotScreen', 'planner', '-LPShotScope', 'mont
 // Мудборд, организации, документы
 for (const [n, way] of [['mbgallery', null], ['mbshelf', 'wedding'], ['mbfolder', 'bd_m28_wed']])
   add('mb_' + n.slice(2), 'Moodboard', m28, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', n, ...(way ? ['-LPShotWay', way] : [])]);
+// Длинные мудборды (кнопка прыжка видна): сорок кадров в папке, восемнадцать лишних подборок в галерее.
+const mLong = th => { const s = m28(th); const extra = Array.from({ length: 40 }, (_, i) => link('sh_long' + i, 300 + i, [WED[i % 7]]));
+  s.shots = [...M28_SHOTS, ...extra];
+  s.boards = [...M28_BOARDS.map(b => b.id === 'bd_m28_wed' ? { ...b, items: [...b.items, ...extra.map(e => e.id)] } : b),
+    ...Array.from({ length: 18 }, (_, i) => ({ id: 'bd_long' + i, kind: 'tpl', genre: 'wedding', items: ['sh_m28_w0'], name: 'Подборка ' + (i + 1), cover: null })),
+    ...s.sessions.slice(0, 14).filter(x => x.id !== 'sd_sep_wed').map((x, i) => ({ id: 'bd_ownx' + i, kind: 'shoot', sid: x.id, genre: x.genre, items: ['sh_m28_w' + (i % 10)], name: null, cover: null }))];
+  return s; };
+add('mb_gallery_long', 'Moodboard', mLong, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'mbgallery']);
+add('mb_gallery_tag', 'Moodboard', mLong, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'mbgallery', '-LPShotWay', 'tag:couple']);
+add('mb_folder_long', 'Moodboard', mLong, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'mbfolder', '-LPShotWay', 'bd_m28_wed']);
 add('org_list', 'Org', m28, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'orgs']);
 add('org_card', 'Org', m28, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'orgcard', '-LPShotWay', 'sd_org_agency']);
 add('org_contacts', 'Org', m28, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'contacts']);
@@ -136,7 +146,7 @@ async function shoot(model, udid, sc, theme) {
   run('xcrun', ['simctl', 'launch', udid, BUNDLE, '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
     '-LPShotNow', at, '-LPShotZone', zone, '-LPShotSeed', sf, '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'),
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
-    ...sc.launch, '-LPShotReport', report], { env: { ...process.env, SIMCTL_CHILD_TZ: zone } });
+    ...sc.launch, ...(args.sjlog ? ['-LPScrollJumpLog', path.join(dir, 'scrolljump.log')] : []), '-LPShotReport', report], { env: { ...process.env, SIMCTL_CHILD_TZ: zone } });
   for (let i = 0; i < 160 && !fs.existsSync(report); i++) await sleep(250);
   const ok = fs.existsSync(report);
   await sleep(sc.after || 500);
@@ -150,7 +160,7 @@ async function shoot(model, udid, sc, theme) {
   const sims = JSON.parse(run('xcrun', ['simctl', 'list', 'devices', '-j'])).devices;
   const all = Object.values(sims).flat();
   for (const model of MODELS) {
-    const dev = all.find(d => d.name === 'Audit-' + model);
+    const dev = all.find(d => d.name === (args.sim || 'Audit-' + model));
     if (!dev) { console.error('нет симулятора Audit-' + model); continue; }
     const boot = async () => {
       for (let t = 0; t < 40; t++) {      // симулятор может ещё гаснуть после прошлого прогона или падения службы

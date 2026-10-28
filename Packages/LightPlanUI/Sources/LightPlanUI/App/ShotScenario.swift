@@ -220,7 +220,10 @@ extension AppModel {
         // Итерация 28: мудборды, организации, «Контакты», опросник, встреча. `LPShotWay` — жанр полки,
         // код подборки, код организации или записи; без него — первая из засева.
         switch s.sheet {
-        case "mbgallery": app.openMbGallery(backKey: "nav.settings")   // дверь веба: строка «Мудборды» в «Настройках»
+        case "mbgallery":
+            app.openMbGallery(backKey: "nav.settings")   // дверь веба: строка «Мудборды» в «Настройках»
+            // `LPShotWay tag:couple` — выбран тег: вместо плиток подборок плоский список найденных кадров, он длинный.
+            if let w = s.way, w.hasPrefix("tag:") { app.mb.tag = String(w.dropFirst(4)) }
         case "mbshelf": app.openMbShelf(s.way ?? "wedding")
         case "mbfolder": if let id = s.way { app.openMbFolder(boardId: id) }
         // Корзина мудборда съёмки (29б): папка подборки и лист корзины поверх неё.

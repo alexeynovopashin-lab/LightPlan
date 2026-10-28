@@ -35,6 +35,7 @@ struct DocsSectionView: View {
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
         }
+        .scrollJump(app.lexicon, node: "sj.docsection")
         .scrollIndicators(.hidden)
         .background(pal.surface.ignoresSafeArea())
         .shotNode("docs.section", text: section.rawValue)

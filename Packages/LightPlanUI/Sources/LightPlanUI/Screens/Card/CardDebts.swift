@@ -127,6 +127,7 @@ struct DebtsListScreen: View {
                 .padding(.bottom, 40)
                 .shotNode("debts.list", text: "\(list.count)")
             }
+            .scrollJump(app.lexicon, node: "sj.debts")
         }
         .background(pal.surface.ignoresSafeArea())
     }

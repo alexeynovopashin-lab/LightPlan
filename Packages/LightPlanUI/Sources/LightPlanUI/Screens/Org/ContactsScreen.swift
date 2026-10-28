@@ -34,6 +34,7 @@ struct ContactsScreen: View {
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
         }
+        .scrollJump(app.lexicon, node: "sj.contacts")
         .scrollIndicators(.hidden)
         .background(pal.surface.ignoresSafeArea())
         .shotNode("contacts.list", text: "\(list.count)")
