@@ -65,7 +65,7 @@ struct BlockSheet: View {
                     allDayRow(t, pal)
                     fromRow(f, pal)
                     if open == .fromDate {
-                        FormDateGrid(selected: b.from, dates: f.dates, date: f.date) { d in b.from = d; open = nil }
+                        FormDateGrid(selected: b.from, dates: f.dates, date: f.date, weekStart: app.weekStart) { d in b.from = d; open = nil }
                     }
                     if open == .fromTime {
                         wheel(b.start ?? 600) { m in b.start = m }
@@ -73,7 +73,7 @@ struct BlockSheet: View {
                     toRow(f, pal)
                     if open == .toDate {
                         FormDateGrid(selected: b.lastDay, range: b.from.ordinal...(b.from.ordinal + Self.maxSpan),
-                                     dates: f.dates, date: f.date) { d in
+                                     dates: f.dates, date: f.date, weekStart: app.weekStart) { d in
                             b.days = max(1, d.days(since: b.from) + 1); open = nil
                         }
                     }

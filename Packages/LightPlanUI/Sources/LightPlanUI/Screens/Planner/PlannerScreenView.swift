@@ -52,6 +52,7 @@ public struct PlannerScreenView: View {
             // Содержимое под шапкой проявляется при смене вкладки (S1); шапка (`PlanTop`) не мигает.
             .tabRise()
         }
+        .scrollJump(app.lexicon, node: "sj.planner", enabled: app.planner.scope != .day)
         .scrollPosition($position)
         // Чужие календари на выбранный день с запасом (30.5): пока окно прочитано, база не опрашивается.
         .task(id: st.selected) { app.ghostsEnsure(around: st.selected) }
@@ -445,7 +446,7 @@ private struct PlanTop: View {
         case .day:
             return d.dMon(f.date(st.selected)) + yr(st.selected)
         case .week:
-            let a = PlannerState.weekStart(st.selected), b = a.adding(days: 6)
+            let a = app.weekStart.start(of: st.selected), b = a.adding(days: 6)
             if a.month == b.month { return d.monthTitle(f.date(a)) + yr(a) }
             return Self.abbr3(d.monthTitle(f.date(a))) + " – " + Self.abbr3(d.monthTitle(f.date(b))) + yr(a)
         case .month:

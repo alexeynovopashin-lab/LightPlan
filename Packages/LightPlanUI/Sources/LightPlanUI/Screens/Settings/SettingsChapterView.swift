@@ -332,6 +332,12 @@ struct SettingsChapterView: View {
                           ["sample": ClockText(language: app.language, preference: AppModel.clock(s.clock)).fmt(19 * 60 + 52)]),
                 index: 1, segIndex: 0, segTop: 4)
 
+        // Начало недели (Алексей 28.10): только натив, узлы свои — номера `sec.N` пары с вебом не сдвигаются.
+        SecLabel(text: t.t("set.weekStart"), node: "sec.ws")
+        Chips(options: WeekStartChoice.allCases.map { (t.t("set.weekStart" + $0.word), $0) },
+              selection: binding(\.weekStart), node: "chips.ws")
+        SetNote(text: t.t("set.weekStartNote"), node: "note.ws")
+
         SecLabel(text: t.t("set.units"), node: "sec.2")
         WebSeg(options: [("°C", AppSettings.TempUnit.c), ("°F", AppSettings.TempUnit.f)], selection: binding(\.tempUnit))
             .shotNode("seg.1")
@@ -503,5 +509,12 @@ private struct SoundClicksRow: View {
                 .frame(height: 31)
                 .shotNode("clicks.toggle", text: on ? "on" : "off")
         }
+    }
+}
+
+private extension WeekStartChoice {
+    /// Хвост ключа слова: `set.weekStartMon` …
+    var word: String {
+        switch self { case .mon: "Mon"; case .sun: "Sun"; case .sat: "Sat"; case .auto: "Auto" }
     }
 }

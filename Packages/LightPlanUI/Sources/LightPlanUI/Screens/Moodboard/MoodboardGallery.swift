@@ -12,10 +12,6 @@ struct MoodboardGallery: View {
     @Bindable var app: AppModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.openURL) private var openURL
-    @State private var scrollable: CGFloat = 0
-    @State private var offset: CGFloat = 0
-    @State private var window: CGFloat = 800
-    @State private var position = ScrollPosition(edge: .top)
     @State private var tiles: [String: CGRect] = [:]
     @FocusState private var focused: Bool
 
@@ -41,13 +37,8 @@ struct MoodboardGallery: View {
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
         }
-        .scrollPosition($position)
         .scrollDismissesKeyboard(.interactively)
-        .onScrollGeometryChange(for: Metrics.self) {
-            Metrics(offset: $0.contentOffset.y, scrollable: max(0, $0.contentSize.height - $0.containerSize.height),
-                    window: $0.containerSize.height)
-        } action: { _, m in offset = m.offset; scrollable = m.scrollable; window = m.window }
-        .overlay(alignment: .bottomTrailing) { jump(pal) }
+        .scrollJump(t, node: "mb.jump", placement: .floating)
         .overlay {
             // Просмотрщик найденных кадров; пока поверх лежит папка, она держит свой (общее состояние `mb.pager`).
             if app.mb.pager != nil, app.mb.folder == nil { RefViewerLayer(app: app, source: viewerSource(lib), tiles: tiles) }
@@ -57,7 +48,6 @@ struct MoodboardGallery: View {
         .shotNode("mb.gallery", text: "\(lib.boards.count)")
     }
 
-    private struct Metrics: Equatable { var offset: CGFloat; var scrollable: CGFloat; var window: CGFloat }
 
     // MARK: поле и чипы
 
@@ -199,26 +189,5 @@ struct MoodboardGallery: View {
         }
         .opacity(hidden ? 0 : 1)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("mbg")) } action: { tiles[fr.id] = $0 }
-    }
-
-    // MARK: прыжок
-
-    /// Одна кнопка на оба конца: ведёт туда, где вы не находитесь (веб `jumpAttach`).
-    @ViewBuilder private func jump(_ pal: Palette) -> some View {
-        if Moodboard.jumpVisible(scrollable: scrollable, screen: window) {
-            let down = Moodboard.jumpGoesDown(offset: offset, scrollable: scrollable)
-            Button {
-                withAnimation(.easeInOut(duration: 0.35)) { position.scrollTo(edge: down ? .bottom : .top) }
-            } label: {
-                Icon("chevron", size: 18, line: 2.2).rotationEffect(.degrees(down ? 90 : -90))
-                    .foregroundStyle(pal.ink4)
-                    .frame(width: 40, height: 40)
-                    .glassEffect(.regular, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(t.t(down ? "mb.jumpEnd" : "mb.jumpTop"))
-            .padding(.trailing, 20).padding(.bottom, 24)
-            .shotNode("mb.jump", text: down ? "down" : "up")
-        }
     }
 }

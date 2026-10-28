@@ -16,22 +16,33 @@ private func d(_ y: Int, _ m: Int, _ day: Int) -> CivilDate { CivilDate(year: y,
     }
 
     @Test func weekStartsOnMonday() {
-        #expect(PlannerState.weekday(d(2026, 9, 24)) == 4)          // четверг
-        #expect(PlannerState.weekStart(d(2026, 9, 24)) == d(2026, 9, 21))
-        #expect(PlannerState.weekStart(d(2026, 9, 27)) == d(2026, 9, 21)) // воскресенье — конец недели
-        #expect(PlannerState.weekStart(d(2026, 9, 21)) == d(2026, 9, 21))
-        #expect(PlannerState.weekStart(d(1969, 12, 31)) == d(1969, 12, 29))
+        let ws = WeekStart.monday
+        #expect(WeekStart.weekday(d(2026, 9, 24)) == 4)          // четверг
+        #expect(ws.start(of: d(2026, 9, 24)) == d(2026, 9, 21))
+        #expect(ws.start(of: d(2026, 9, 27)) == d(2026, 9, 21)) // воскресенье — конец недели
+        #expect(ws.start(of: d(2026, 9, 21)) == d(2026, 9, 21))
+        #expect(ws.start(of: d(1969, 12, 31)) == d(1969, 12, 29))
+    }
+
+    /// Начало недели — настройка (28.10): тот же месяц, три начала; недели выбранного дня и сетка идут за ней.
+    @Test func weekAndGridFollowTheStartOfWeek() {
+        let s = PlannerState(today: d(2026, 9, 24))
+        #expect(s.week(.monday).first == d(2026, 9, 21) && s.week(.monday).last == d(2026, 9, 27))
+        #expect(s.week(.sunday).first == d(2026, 9, 20) && s.week(.sunday).last == d(2026, 9, 26))
+        #expect(s.week(.saturday).first == d(2026, 9, 19) && s.week(.saturday).last == d(2026, 9, 25))
+        #expect(s.monthGrid(.sunday).first == d(2026, 8, 30) && s.monthGrid(.sunday).last == d(2026, 10, 3))
+        #expect(s.monthGrid(.saturday).first == d(2026, 8, 29) && s.monthGrid(.saturday).count == 35)
     }
 
     @Test func monthGridIsWholeWeeks() {
         var s = PlannerState(today: d(2026, 9, 24))
-        #expect(s.monthGrid.first == d(2026, 8, 31))
-        #expect(s.monthGrid.last == d(2026, 10, 4))
-        #expect(s.monthGrid.count == 35)
+        #expect(s.monthGrid(.monday).first == d(2026, 8, 31))
+        #expect(s.monthGrid(.monday).last == d(2026, 10, 4))
+        #expect(s.monthGrid(.monday).count == 35)
         s.step(-7)                                                   // февраль 2026: с 1-го по 28-е, с понедельника
         #expect(s.month == d(2026, 2, 1))
-        #expect(s.monthGrid.first == d(2026, 1, 26))
-        #expect(s.monthGrid.count == 35)
+        #expect(s.monthGrid(.monday).first == d(2026, 1, 26))
+        #expect(s.monthGrid(.monday).count == 35)
         #expect(PlannerState.addMonths(d(2026, 1, 1), -1) == d(2025, 12, 1))
         #expect(PlannerState.addMonths(d(2026, 12, 1), 1) == d(2027, 1, 1))
     }

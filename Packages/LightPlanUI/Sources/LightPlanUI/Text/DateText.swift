@@ -1,4 +1,5 @@
 import Foundation
+import LightPlanDomain
 
 /// Даты: то, что в вебе собирает `Intl` (`dMon`, `dMonShort`, `monthTitle`…).
 ///
@@ -135,12 +136,12 @@ public struct DateText: Sendable {
     /// «МАЙ» для сетки выбора месяца: именительный, не родительный.
     public func monAbbrUpperN(_ m: Int) -> String { Self.abbr3(monthTitleN(m)).uppercased() }
 
-    /// Шапка календаря: семь дней с понедельника. Неделя у нас начинается с
-    /// понедельника во всех языках — это свойство наших сеток, а не языка.
-    /// 2001-01-01 — понедельник.
-    public func weekdayRow() -> [String] {
-        (0..<7).map { i in
-            Self.cap(Self.abbr3(weekdayShort.format(Self.carrier(year: 2001, month: 0, day: 1 + i, in: timeZone))))
+    /// Шапка календаря: семь дней с первого дня недели `ws`. Начало недели — свойство наших сеток и настройки, а не
+    /// языка: умолчание — понедельник во всех языках. 2001-01-01 — понедельник.
+    public func weekdayRow(_ ws: WeekStart) -> [String] {
+        let shift = (ws.first + 6) % 7   // понедельник 0, воскресенье 6, суббота 5
+        return (0..<7).map { i in
+            Self.cap(Self.abbr3(weekdayShort.format(Self.carrier(year: 2001, month: 0, day: 1 + shift + i, in: timeZone))))
         }
     }
 

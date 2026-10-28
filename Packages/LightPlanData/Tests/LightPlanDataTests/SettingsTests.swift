@@ -57,6 +57,47 @@ struct SettingsTests {
         #expect(me["cityAt"] == .string("Томск"))
     }
 
+    // MARK: - Начало недели (Алексей 28.10)
+
+    @Test func weekStartDefaultsToMondayAndWritesNothing() {
+        var snap = Snapshot()
+        var s = AppSettings(snapshot: snap)
+        #expect(s.weekStart == .mon)
+        s.apply(to: &snap)
+        #expect(snap.weekStart == nil)                 // файл прежних версий не меняется
+        let json = String(decoding: (try? JSONEncoder().encode(snap)) ?? Data(), as: UTF8.self)
+        #expect(!json.contains("weekStart"))
+    }
+
+    @Test func weekStartRoundTripsAndStrangeValuesAreMonday() throws {
+        for choice in WeekStartChoice.allCases {
+            var snap = Snapshot()
+            var s = AppSettings(snapshot: snap)
+            s.weekStart = choice
+            s.apply(to: &snap)
+            let reread = try JSONDecoder().decode(Snapshot.self, from: try JSONEncoder().encode(snap))
+            #expect(AppSettings(snapshot: reread).weekStart == choice)
+        }
+        var odd = Snapshot()
+        odd.weekStart = "fri"
+        #expect(AppSettings(snapshot: odd).weekStart == .mon)
+        var same = AppSettings(snapshot: odd)
+        same.apply(to: &odd)
+        #expect(odd.weekStart == "fri")                // безобидное сохранение настроек чужую строку не переписывает
+    }
+
+    /// Веб ключа не знает: пересохранив снимок, он его теряет — неделя снова с понедельника.
+    @Test func webReSaveDropsWeekStartBackToMonday() throws {
+        var snap = Snapshot()
+        var s = AppSettings(snapshot: snap)
+        s.weekStart = .sun
+        s.apply(to: &snap)
+        var webObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(snap)) as! [String: Any]
+        webObject.removeValue(forKey: "weekStart")     // что сделает `saveAll` веба
+        let back = try JSONDecoder().decode(Snapshot.self, from: JSONSerialization.data(withJSONObject: webObject))
+        #expect(AppSettings(snapshot: back).weekStart == .mon)
+    }
+
     @Test func guessedPracticeIsNotWrittenAsAChoice() {
         var snap = Snapshot()
         AppSettings(snapshot: snap, zone: TimeZone(identifier: "Europe/Berlin")!).apply(to: &snap)

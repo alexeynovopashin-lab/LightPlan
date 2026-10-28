@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import SwiftUI
 import LightPlanCore
+import LightPlanDomain
 @testable import LightPlanUI
 
 /// Малые движения «Съёмок» (29.2в): числа беты и направление листания — без экрана.
@@ -53,11 +54,11 @@ import LightPlanCore
         #expect(FlipTrack.monthIndex(CivilDate(year: 2026, month: 10, day: 1)) - FlipTrack.monthIndex(CivilDate(year: 2026, month: 9, day: 1)) == 1)
         // Неделя: любой день недели даёт номер понедельника; следующая неделя — на единицу больше.
         let wed = CivilDate(year: 2026, month: 9, day: 23)
-        let w = FlipTrack.weekIndex(wed)
-        #expect(FlipTrack.weekStart(w) == CivilDate(year: 2026, month: 9, day: 21))
-        #expect(FlipTrack.weekIndex(wed.adding(days: 7)) == w + 1)
-        #expect(FlipTrack.weekIndex(wed.adding(days: -2)) == w)
-        #expect(PlannerState.grid(of: CivilDate(year: 2026, month: 10, day: 1)).count == 35)
+        let w = WeekStart.monday.index(of: wed)
+        #expect(WeekStart.monday.start(index: w) == CivilDate(year: 2026, month: 9, day: 21))
+        #expect(WeekStart.monday.index(of: wed.adding(days: 7)) == w + 1)
+        #expect(WeekStart.monday.index(of: wed.adding(days: -2)) == w)
+        #expect(WeekStart.monday.grid(of: CivilDate(year: 2026, month: 10, day: 1)).count == 35)
     }
 
     // MARK: дыхание кольца

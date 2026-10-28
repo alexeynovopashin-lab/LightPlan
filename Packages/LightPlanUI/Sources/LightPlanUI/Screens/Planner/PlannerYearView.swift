@@ -162,6 +162,7 @@ struct NowPill: View {
 /// день разрезом месяца (29.2б, `PartDay`), по имени месяца — в месяц, по году — «Год целиком».
 struct YearLentaView: View {
     @Bindable var app: AppModel
+    private var ws: WeekStart { app.weekStart }
     let f: PlannerFacts
     @Bindable var nav: PlannerNav
     /// Разрез при входе в день: ему — рамки сеток месяцев и видимой части ленты, через него — тап по числу.
@@ -196,6 +197,7 @@ struct YearLentaView: View {
             .padding(.bottom, 16)
             .coordinateSpace(name: "lenta")
         }
+        .scrollJump(app.lexicon, node: "sj.year")
         .scrollPosition($position)
         .scrollIndicators(.hidden)
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in
@@ -283,7 +285,7 @@ struct YearLentaView: View {
     }
 
     private func month(_ first: CivilDate, today: CivilDate, pal: Palette) -> some View {
-        let (lead, days) = YearMath.monthShape(year: first.year, month: first.month)
+        let (lead, days) = YearMath.monthShape(year: first.year, month: first.month, ws)
         let now = PlannerState.sameMonth(first, today)
         let first1 = first.year == nav.year
         return VStack(alignment: .leading, spacing: 0) {
@@ -301,7 +303,7 @@ struct YearLentaView: View {
             .buttonStyle(.plain)
             .shotNode(first1 ? "ym.name.\(first.month - 1)" : "")
             HStack(spacing: 0) {
-                ForEach(Array(f.dates.weekdayRow().enumerated()), id: \.offset) { _, w in
+                ForEach(Array(f.dates.weekdayRow(ws).enumerated()), id: \.offset) { _, w in
                     Text(w.uppercased()).font(webFont(10)).tracking(0.5).foregroundStyle(pal.ink7)
                         .frame(maxWidth: .infinity)
                 }
@@ -400,6 +402,7 @@ private struct YearDayPress: ButtonStyle {
 /// Тап по месяцу — зум в ленту на этот месяц; свайп — соседний год.
 struct Year12View: View {
     @Bindable var app: AppModel
+    private var ws: WeekStart { app.weekStart }
     let f: PlannerFacts
     @Bindable var nav: PlannerNav
     @Environment(\.colorScheme) private var scheme
@@ -470,7 +473,7 @@ struct Year12View: View {
     }
 
     private func tile(_ first: CivilDate, today: CivilDate, pal: Palette) -> some View {
-        let (lead, days) = YearMath.monthShape(year: first.year, month: first.month)
+        let (lead, days) = YearMath.monthShape(year: first.year, month: first.month, ws)
         let counts = YearMath.dayCounts(app.sessions, year: first.year, month: first.month)
         let now = PlannerState.sameMonth(first, today)
         let i = first.month - 1
@@ -525,7 +528,7 @@ struct Year12View: View {
                 return
             }
             let k = dst.width / max(1, src.width)
-            let (lead, _) = YearMath.monthShape(year: first.year, month: first.month)
+            let (lead, _) = YearMath.monthShape(year: first.year, month: first.month, ws)
             let from = day > 0 ? Self.cell(src, index: lead + day - 1, rowH: 16.15, gap: 2) : src
             let to = day > 0 ? Self.cell(dst, index: lead + day - 1, rowH: dst.width / 7, gap: 3) : dst
             let t = CGSize(width: to.midX - k * from.midX, height: to.midY - k * from.midY)

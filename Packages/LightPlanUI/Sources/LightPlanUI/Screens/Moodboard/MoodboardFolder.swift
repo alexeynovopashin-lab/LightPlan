@@ -20,10 +20,6 @@ struct MoodboardFolder: View {
     @State private var tiles: [String: CGRect] = [:]
     /// Ширина сетки: экран минус поля 24 и отступ сетки 15 с каждой стороны (`.mb-grid`, `padding 12 15 0`).
     @State private var gridW: CGFloat = 324
-    @State private var scrollable: CGFloat = 0
-    @State private var offset: CGFloat = 0
-    @State private var window: CGFloat = 800
-    @State private var position = ScrollPosition(edge: .top)
     @State private var confirmRemove = false
     @State private var picked: [PhotosPickerItem] = []
     /// Перестановка кадров пальцем (29.3в).
@@ -75,13 +71,8 @@ struct MoodboardFolder: View {
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
             .onGeometryChange(for: CGFloat.self) { $0.size.width - 48 - 30 } action: { gridW = $0 }
         }
-        .scrollPosition($position)
         .scrollDismissesKeyboard(.interactively)
-        .onScrollGeometryChange(for: Metrics.self) {
-            Metrics(offset: $0.contentOffset.y, scrollable: max(0, $0.contentSize.height - $0.containerSize.height),
-                    window: $0.containerSize.height)
-        } action: { _, m in offset = m.offset; scrollable = m.scrollable; window = m.window }
-        .overlay(alignment: .bottomTrailing) { jump(pal) }
+        .scrollJump(t, node: "mb.fjump", look: .folder, placement: .floating)
         .photosPicker(isPresented: Binding(get: { app.mb.photoPicker }, set: { app.mb.photoPicker = $0 }),
                       selection: $picked, matching: .images, photoLibrary: .shared())
         .onChange(of: picked) { _, items in
@@ -101,8 +92,6 @@ struct MoodboardFolder: View {
             Button(t.t("mb.selDelOk"), role: .destructive) { app.mbConfirmRemovePicked() }
         } message: { Text(app.mbBinGoText(board: app.mb.folder, fallback: t.t("mb.selDelSub"))) }
     }
-
-    private struct Metrics: Equatable { var offset: CGFloat; var scrollable: CGFloat; var window: CGFloat }
 
     // MARK: верхняя строка и шапка
 
@@ -474,23 +463,6 @@ struct MoodboardFolder: View {
             button(t.t("mb.selDel") + (n > 0 ? " \(n)" : ""), node: "mb.selDel", color: Color(hex: 0xB9603D)) { confirmRemove = true }
         }
         .padding(.top, 12).padding(.horizontal, 15)
-    }
-
-    // MARK: прыжок
-
-    @ViewBuilder private func jump(_ pal: Palette) -> some View {
-        if Moodboard.jumpVisible(scrollable: scrollable, screen: window) {
-            let down = Moodboard.jumpGoesDown(offset: offset, scrollable: scrollable)
-            Button {
-                withAnimation(.easeInOut(duration: 0.35)) { position.scrollTo(edge: down ? .bottom : .top) }
-            } label: {
-                Icon("chevron", size: 18, line: 2.2).rotationEffect(.degrees(down ? 90 : -90)).foregroundStyle(pal.ink3)
-                    .frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
-            }
-            .buttonStyle(.plain).accessibilityLabel(t.t(down ? "mb.jumpEnd" : "mb.jumpTop"))
-            .shotNode("mb.fjump", text: down ? "down" : "up")
-            .padding(.trailing, 24).padding(.bottom, 24)
-        }
     }
 }
 

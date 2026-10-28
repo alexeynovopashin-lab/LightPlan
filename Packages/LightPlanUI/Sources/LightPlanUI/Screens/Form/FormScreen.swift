@@ -56,7 +56,6 @@ struct FormScreen: View {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    bar(pal, t).padding(.top, 46).padding(.bottom, 8)
                     title(f, pal, t)
                     if app.formIsDraft { draftStrip(pal, t) }
                     // Порядок (28о, Алексей): жанр, дата и время, затем имена. Предупреждение — сразу
@@ -76,6 +75,7 @@ struct FormScreen: View {
                 }
                 .padding(.horizontal, 24)
             }
+            .scrollJump(app.lexicon, node: "sj.form")
             // Призраки чужих календарей на день формы: плашка наложения читает готовый список (30.5).
             .task(id: f.day) { app.ghostsEnsure(around: f.day) }
             .onAppear { Self.launchScroll.map { id in DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { proxy.scrollTo(id, anchor: .top) } } }
@@ -94,6 +94,9 @@ struct FormScreen: View {
             .background(KeyboardDismissOnTap())
             #endif
             .onGeometryChange(for: CGFloat.self) { $0.size.height + $0.safeAreaInsets.top + $0.safeAreaInsets.bottom } action: { screenHeight = $0 }
+            // Шапка закреплена (Алексей 28.10): ✕ и ✓ стоят на месте, пока форма прокручивается. Вставка, а не наложение:
+            // прокрутка к полю и к якорю знает о её высоте, в покое заголовок лежит там же, где лежал под шапкой в потоке.
+            .safeAreaInset(edge: .top, spacing: 0) { pinnedBar(pal, t) }
             .ignoresSafeArea(.container, edges: .top)
             .background(pal.surface.ignoresSafeArea())
             .overlayPreferenceValue(RepeatAnchorKey.self) { anchor in repFan(anchor, f, t) }
@@ -114,6 +117,23 @@ struct FormScreen: View {
     }
 
     // MARK: - Шапка
+
+    /// Высота шапки: поле 46 + кнопка 40 + поле 8 — на столько содержимое сидит ниже верха экрана в покое.
+    static let barHeight: CGFloat = 94
+    /// Под шапкой содержимое гаснет в цвет страницы: сплошной до низа кнопок, за 14 pt — прозрачный (в покое там пусто:
+    /// заголовок начинается ниже).
+    static let scrimFade: CGFloat = 14
+
+    private func pinnedBar(_ pal: Palette, _ t: Lexicon) -> some View {
+        bar(pal, t)
+            .padding(.horizontal, 24).padding(.top, 46).padding(.bottom, 8)
+            .background(alignment: .top) {
+                LinearGradient(stops: [.init(color: pal.surface, location: 0), .init(color: pal.surface, location: Self.barHeight / (Self.barHeight + Self.scrimFade)),
+                                       .init(color: pal.surface.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: Self.barHeight + Self.scrimFade)
+                    .allowsHitTesting(false)
+            }
+    }
 
     private func bar(_ pal: Palette, _ t: Lexicon) -> some View {
         HStack {
@@ -384,7 +404,7 @@ struct FormScreen: View {
                         openDate: picker == .startDate, openTime: picker == .startTime,
                         pickDate: { toggle(.startDate) }, pickTime: { toggle(.startTime) }, pal)
                 if picker == .startDate {
-                    FormDateGrid(selected: f.day, dates: dates, date: carrier) { d in
+                    FormDateGrid(selected: f.day, dates: dates, date: carrier, weekStart: app.weekStart) { d in
                         app.pickFormDay(d); picker = nil
                     }
                 }
@@ -400,7 +420,7 @@ struct FormScreen: View {
                         pickDate: { toggle(.endDate) }, pickTime: { toggle(.endTime) }, pal)
                 if picker == .endDate {
                     FormDateGrid(selected: f.endDay, range: f.day.ordinal...(f.day.ordinal + EventForm.maxDuration / 1440),
-                                 dates: dates, date: carrier) { d in
+                                 dates: dates, date: carrier, weekStart: app.weekStart) { d in
                         app.setFormEnd(dayOffset: d.days(since: f.day), minuteOfDay: f.endMinuteOfDay); picker = nil
                     }
                 }

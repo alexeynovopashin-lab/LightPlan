@@ -47,6 +47,7 @@ struct OrgCardScreen: View {
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 40)
         }
+        .scrollJump(app.lexicon, node: "sj.orgcard")
         .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .background(pal.surface.ignoresSafeArea())

@@ -1,5 +1,6 @@
 import SwiftUI
 import LightPlanCore
+import LightPlanDomain
 #if os(iOS)
 import UIKit
 #endif
@@ -91,8 +92,8 @@ enum PartDayGeometry {
 
     /// Строка ленты года с числом `day` по рамке сетки его месяца (веб `.year-cal-grid`: `repeat(7, 1fr)`, `row-gap: 3px`,
     /// клетка — квадрат). Дни семи колонок; `nil` — пусто: до первого числа и после последнего (хвоста у сетки нет).
-    static func yearRow(grid: CGRect, day: CivilDate) -> (row: CGRect, days: [CivilDate?]) {
-        let (lead, n) = YearMath.monthShape(year: day.year, month: day.month)
+    static func yearRow(grid: CGRect, day: CivilDate, weekStart ws: WeekStart = .monday) -> (row: CGRect, days: [CivilDate?]) {
+        let (lead, n) = YearMath.monthShape(year: day.year, month: day.month, ws)
         let i = lead + day.day - 1
         let side = grid.width / 7
         let row = CGRect(x: grid.minX, y: grid.minY + CGFloat(i / 7) * (side + YearLentaView.rowGap), width: grid.width, height: side)
@@ -236,7 +237,7 @@ final class PartDay {
     /// движения» — вход без разреза.
     func enter(_ app: AppModel, still: Bool, frozenAt: Double? = nil) {
         #if os(iOS)
-        let grid = app.planner.monthGrid
+        let grid = app.planner.monthGrid(app.weekStart)
         let i = grid.firstIndex(of: app.planner.selected)
         split(app, from: .month, row: i.flatMap { rows[$0 / 7] }, days: i.map { i in grid[(i / 7 * 7)..<(i / 7 * 7 + 7)].map { $0 } } ?? [],
               gap: MonthMetrics.colGap, view: screen, still: still, frozenAt: frozenAt) { app.planner.enterSelectedDay() }
@@ -255,7 +256,7 @@ final class PartDay {
         }
         #if os(iOS)
         let grid = nav.zoom == nil ? yearGrids[PlannerState.first(of: day)] : nil
-        let at = grid.map { PartDayGeometry.yearRow(grid: $0, day: day) }
+        let at = grid.map { PartDayGeometry.yearRow(grid: $0, day: day, weekStart: app.weekStart) }
         let view = CGRect(x: 0, y: yearTop, width: screen.width, height: max(0, min(yearBottom, screen.maxY) - yearTop))
         split(app, from: .year, row: at?.row, days: at?.days ?? [], gap: 0, view: view, still: still, frozenAt: frozenAt, commit: commit)
         #else

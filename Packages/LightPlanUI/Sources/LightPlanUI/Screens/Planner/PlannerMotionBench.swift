@@ -52,7 +52,7 @@ enum MotionBench {
         case "ring":
             // Дни месяца с рангом «просрочено» — кольцо дышит только у них.
             let st = app.planner
-            let lit = st.monthGrid.filter {
+            let lit = st.monthGrid(app.weekStart).filter {
                 PlannerState.sameMonth($0, st.month) && (Urgency.dayMark($0, sessions: app.sessions, status: app.deliveryStatus)?.rank ?? 0) >= 3
             }
             mark("lit " + lit.map { String($0.day) }.joined(separator: ","))
@@ -68,7 +68,7 @@ enum MotionBench {
         let nav = rig.nav
         let sid = app.sessions.first?.id ?? ""
         let st = app.planner
-        let days = st.monthGrid.filter { PlannerState.sameMonth($0, st.month) }
+        let days = st.monthGrid(app.weekStart).filter { PlannerState.sameMonth($0, st.month) }
         let d1 = days.first { $0.day == 10 } ?? days[0], d2 = days.first { $0.day == 17 } ?? days[1]
         // Разминка: первое открытие тянет за собой содержимое, замеру нужно чистое движение.
         func pair(_ n: Int, _ on: () -> Void, _ off: () -> Void, _ a: String, _ b: String) async {

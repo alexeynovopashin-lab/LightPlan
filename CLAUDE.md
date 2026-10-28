@@ -307,6 +307,19 @@
   development teams … do not support the Time Sensitive Notifications capability») — the entitlement is NOT in `Config/`. `syncAlerts` asks
   `NotificationCentering.timeSensitiveAllowed()` and puts the granted level into the request (and its signature), so adding the entitlement on a
   paid team rewrites standing reminders on the next sync with no code change.
+- **Week start (28.10, Alexey: «с какого дня начинается неделя»).** Domain `WeekStart` (`monday|sunday|saturday`, `Rules/WeekStart.swift`, pure): `start(of:)`, `week(of:)`,
+  `grid(of:)`, `leadingBlanks`, `weekdayOrder`, week index for the flip track; `WeekStartChoice` (`mon|sun|sat|auto`, default `.mon` = the web's Monday; `auto` reads
+  `Calendar.firstWeekday`, a phone with another first day gives Monday) lives in `AppSettings.weekStart`, Snapshot key `weekStart` (no key = Monday, so old files do not change; the web
+  does not know it and drops it on re-save → Monday again). `AppModel.weekStart` is the one reader: month grid + header, week strip/rows, day strip, year strips, form/block date grid
+  (`FormDateGrid(weekStart:)`), `DateText.weekdayRow(_:)` — every call takes the start explicitly, **never default to Monday in new code** (`PlannerState` no longer owns a week).
+  Weekend = Saturday + Sunday always (`WeekStart.isWeekend`), amber `Palette.weekend` (= `brassDeep`, ≥ 4.5:1 on bg/sheet/plate in both themes; measured 6.0 dark / 5.8–5.9 light). Repeat «каждую
+  неделю» is +7 days and ignores the start. Settings row: chapter «Язык и регион», chips (`chips.ws`, nodes `sec.ws/note.ws` are native-only, pair indexes unchanged). Proofs: `WeekStartTests`
+  (Domain), `PlannerStateTests.weekAndGridFollowTheStartOfWeek`, Monday path = old numbers (`FormatParityTests` header row, `PlannerStateTests`, `MotionTests`).
+- **Pinned form bar and the to-top button (28.10).** Form ✕/✓ are a `safeAreaInset(.top)` of `FormScreen` (`barHeight` 94 = the old in-flow 46+40+8; resting layout pixel-identical to before),
+  content scrolls under it and fades to the page colour over 14 pt. **One jump button for every long page:** `.scrollJump(app.lexicon, node: "sj.<screen>")` (`Screens/ScrollJump.swift`, the
+  extracted Moodboard button: glass circle with a rotated chevron, shows when the scroll is ≥ 0.6 of the window — `Moodboard.jumpVisible` — and goes down from the top, up past the middle,
+  `mb.jumpEnd/mb.jumpTop` words). A new long vertical `ScrollView` takes this one line; do not copy the button. `Look.folder` keeps the Moodboard folder's 38 pt / `ink3`. **Placement:** `.strip` (default) puts the button in its own 56 pt strip under the scroll while the page is long, so the list ends above it and nothing tappable is hidden (phone icon in «Контакты», chevrons in «Клиенты»); `.floating` is the old over-the-content spot, kept only by the two Moodboard screens (pixel-identical to before; Debug `-LPScrollJumpFloating YES` forces it for before/after frames). The strip rule reads the window **without** the strip (`stripVisible`) so it never flickers at the threshold. The simulator tool drops a repeated tap at identical coordinates — tap-test the button with slightly different points. Debug
+  `-LPScrollJumpLog <file>` writes «node, scrollable, window, screens» on every metric change; `node Tools/audit_heights/run.js --sim "<sim>" --sjlog 1 …` collects it per scene.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

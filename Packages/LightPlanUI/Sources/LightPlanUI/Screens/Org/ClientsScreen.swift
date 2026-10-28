@@ -40,6 +40,7 @@ struct ClientsScreen: View {
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
         }
+        .scrollJump(app.lexicon, node: "sj.clients")
         .scrollIndicators(.hidden)
         .background(pal.surface.ignoresSafeArea())
         // «Компании» держат прежний узел `org.list` на весь экран — пара с вебом остаётся как была.

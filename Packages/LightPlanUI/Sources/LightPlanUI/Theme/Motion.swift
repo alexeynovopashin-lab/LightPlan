@@ -79,12 +79,7 @@ enum FlipTrack {
         let y = index >= 0 ? index / 12 : (index - 11) / 12
         return CivilDate(year: y, month: index - y * 12 + 1, day: 1)
     }
-    private static let epochMonday = CivilDate(year: 1970, month: 1, day: 5)
-    static func weekIndex(_ d: CivilDate) -> Int {
-        let n = PlannerState.weekStart(d).days(since: epochMonday)
-        return n >= 0 ? n / 7 : (n - 6) / 7
-    }
-    static func weekStart(_ index: Int) -> CivilDate { epochMonday.adding(days: index * 7) }
+    // Номера недель — `WeekStart.index(of:)` / `start(index:)` (Domain): точка отсчёта у каждого начала недели своя.
 }
 
 /// Стойка листания: держит страницы рядом и подгоняет высоту. Прыжок дальше соседней страницы и «Уменьшение

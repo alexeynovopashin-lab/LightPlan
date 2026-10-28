@@ -61,6 +61,9 @@ public struct Snapshot: Sendable, Hashable {
     /// Плеер по умолчанию (веб `musicApp`: `"yandex"`, `"spotify"`, `"apple"`, `"off"`). Строка как записана:
     /// незнакомое значение веб читает как «выкл», но пишет обратно как есть — и мы тоже.
     public var musicApp: String?
+    /// С какого дня начинается неделя (только у нас, Алексей 28.10): `"sun"`, `"sat"`, `"auto"` (как в системе); нет ключа — понедельник,
+    /// как у веба. Веб ключа не знает и при пересохранении выбрасывает — неделя снова с понедельника.
+    public var weekStart: String?
     /// Библиотека плейлистов (веб `playlists`, до десяти). Пустой список в файл не пишется.
     public var playlists: [Playlist] = []
     public var cardOrder: [GenreGroup: [CardBlock]] = [:]
@@ -95,7 +98,7 @@ extension Snapshot: Codable {
         case sessions, orgs, clients, clientsAssembled, blocks, spots, studios, trashed, myDocs, trashedDocs
         case loc, theme, clock, tempUnit, currency, timeStep, travelMin
         case pro, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold, manualEnd
-        case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment, musicApp, playlists
+        case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment, musicApp, playlists, weekStart
         case cardOrder, cardOff, sync
     }
 
@@ -151,6 +154,7 @@ extension Snapshot: Codable {
         delivery = try c.decodeIfPresent(DeliverySetting.self, forKey: .delivery) ?? .standard
         equipment = try c.decodeIfPresent([String].self, forKey: .equipment) ?? []
         musicApp = try? c.decodeIfPresent(String.self, forKey: .musicApp)
+        weekStart = try? c.decodeIfPresent(String.self, forKey: .weekStart)
         // Запись без имени или без адреса веб при чтении отбрасывает молча; не массив — как пусто.
         let lossy = (try? c.decodeIfPresent([LossyPlaylist].self, forKey: .playlists)).flatMap { $0 } ?? []
         playlists = Music.clean(lossy.compactMap(\.value))
@@ -208,6 +212,7 @@ extension Snapshot: Codable {
         try c.encode(delivery, forKey: .delivery)
         try c.encode(equipment, forKey: .equipment)
         try c.encodeIfPresent(musicApp, forKey: .musicApp)
+        try c.encodeIfPresent(weekStart, forKey: .weekStart)
         if !playlists.isEmpty { try c.encode(playlists, forKey: .playlists) }
         try c.encodeLenientDictionaryOfArrays(cardOrder, forKey: .cardOrder)
         try c.encodeLenientDictionaryOfArrays(cardOff, forKey: .cardOff)

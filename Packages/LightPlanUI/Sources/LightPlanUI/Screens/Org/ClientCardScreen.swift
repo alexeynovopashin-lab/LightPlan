@@ -75,6 +75,7 @@ struct ClientCardScreen: View {
             }
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 40)
         }
+        .scrollJump(app.lexicon, node: "sj.clientcard")
         .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .background(pal.surface.ignoresSafeArea())

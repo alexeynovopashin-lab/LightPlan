@@ -64,9 +64,10 @@ import LightPlanDomain
 
     @Test func monthShapeIsMondayFirstWithoutTail() {
         // Сентябрь 2026 начинается во вторник: одна пустая клетка, 30 дней.
-        #expect(YearMath.monthShape(year: 2026, month: 9) == (1, 30))
+        #expect(YearMath.monthShape(year: 2026, month: 9, .monday) == (1, 30))
+        #expect(YearMath.monthShape(year: 2026, month: 9, .sunday) == (2, 30))     // начало недели — настройка (28.10)
         // Февраль 2027 — с понедельника, 28 дней.
-        #expect(YearMath.monthShape(year: 2027, month: 2) == (0, 28))
+        #expect(YearMath.monthShape(year: 2027, month: 2, .monday) == (0, 28))
     }
 
     @Test func year12DotsCountWorkByStartDay() {

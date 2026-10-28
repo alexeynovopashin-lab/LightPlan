@@ -2,7 +2,7 @@ import SwiftUI
 import LightPlanCore
 import LightPlanDomain
 
-/// Месяц (веб `renderCal`): строка дней недели, сетка с понедельника,
+/// Месяц (веб `renderCal`): строка дней недели, сетка с выбранного дня недели (понедельник — умолчание),
 /// легенда, под ней — панель выбранного дня: сводка, загрузка, список и три
 /// действия.
 struct PlannerMonthBody: View {
@@ -16,7 +16,8 @@ struct PlannerMonthBody: View {
     var body: some View {
         let pal = Palette(scheme)
         let st = app.planner
-        let grid = st.monthGrid
+        let ws = app.weekStart
+        let grid = st.monthGrid(ws)
         let hasShoots = grid.contains { PlannerState.sameMonth($0, st.month) && !f.shown(on: $0).isEmpty }
         VStack(spacing: 0) {
             // Календарь стоит на стеклянной подложке (28и, макет C со стеклом): шапка недели и сетка.
@@ -24,7 +25,7 @@ struct PlannerMonthBody: View {
                 head(pal)
                 // Листание месяца едет сбоку (29.2в): подложка и шапка стоят, сетка двух месяцев скользит внутри.
                 FlipStage(pos: Double(FlipTrack.monthIndex(st.month)), height: { idx in
-                    MonthMetrics.gridHeight(rows: PlannerState.grid(of: FlipTrack.monthStart(idx)).count / 7)
+                    MonthMetrics.gridHeight(rows: ws.grid(of: FlipTrack.monthStart(idx)).count / 7)
                 }) { idx, lead in
                     rows(FlipTrack.monthStart(idx), lead: lead)
                 }
@@ -44,7 +45,7 @@ struct PlannerMonthBody: View {
 
     /// Ряды одного месяца. Рамки узлов и строк для разреза даёт только страница, к которой идём (`lead`).
     private func rows(_ month: CivilDate, lead: Bool) -> some View {
-        let grid = PlannerState.grid(of: month)
+        let grid = app.weekStart.grid(of: month)
         return VStack(spacing: MonthMetrics.rowGap) {
             ForEach(0..<(grid.count / 7), id: \.self) { r in
                 HStack(alignment: .top, spacing: MonthMetrics.colGap) {
@@ -59,15 +60,15 @@ struct PlannerMonthBody: View {
         }
     }
 
-    /// `.cal-head`: слова недели от понедельника, выходные светлее.
+    /// `.cal-head`: слова недели от выбранного дня, суббота и воскресенье — янтарные (`Palette.weekend`).
     private func head(_ pal: Palette) -> some View {
-        let week = PlannerState.week(of: app.planner.month)
+        let week = app.weekStart.week(of: app.planner.month)
         return HStack(spacing: 0) {
             ForEach(0..<7, id: \.self) { i in
                 let w = f.dates.wdShort(f.date(week[i]))
                 Text(w)
                     .font(webFont(12.5, 600)).tracking(0.6)
-                    .foregroundStyle(i >= 5 ? pal.ink4 : pal.ink7)
+                    .foregroundStyle(WeekStart.isWeekend(week[i]) ? pal.weekend : pal.ink7)
                     .shotNode("head.\(i)", text: w)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 8)
@@ -204,7 +205,11 @@ struct MonthCell: View {
         let show = Array(labels.prefix(MonthMetrics.visibleLabels(labels.count).shown))
         let mark = out ? nil : f.mark(day)
         let lit = mark.map { $0.rank >= 3 } ?? false
-        let ink: Color = isToday ? pal.brass : out ? pal.ink10 : past ? pal.ink5 : pal.ink
+        // Выходной — янтарный; прошедший гаснет до 0,75 (контраст 3,9 / 3,5 к подложке в тёмной / светлой — рядом с прошедшими
+        // буднями `ink5`: 3,15 / 3,97); сегодня и дни вне месяца — свои цвета.
+        let weekend = WeekStart.isWeekend(day)
+        let ink: Color = isToday ? pal.brass : out ? pal.ink10
+            : weekend ? pal.weekend.opacity(past ? 0.75 : 1) : past ? pal.ink5 : pal.ink
 
         Button {
             // Второй тап по выбранному числу — вход в день разрезом месяца (29.2а), первый — только выбор.
@@ -259,14 +264,13 @@ struct MonthCell: View {
             let dot = f.weather(s.day)?.quality.dot
             return Label(text: f.words.shortType(s), color: dot ?? Color(hex: 0xA8B49B), busy: false)
         }
-        if !out { out1 += f.blocks(on: day).map { Label(text: f.blockLabel($0), color: pal.ink4, busy: true) } }
+        if !out { out1 += f.blocks(on: day).map { Label(text: f.blockMonthLabel($0), color: pal.ink4, busy: true) } }
         return out1.map { out ? Label(text: $0.text, color: $0.color.opacity(0.45), busy: $0.busy) : $0 }
     }
 
     private func label(_ l: Label, _ pal: Palette) -> some View {
         Text(l.text)
             .font(webFont(MonthMetrics.labelSize, 500)).tracking(-0.1)
-            .italic(l.busy)
             .foregroundStyle(l.color)
             .lineLimit(1).truncationMode(.tail)
             .frame(height: MonthMetrics.labelLine)
