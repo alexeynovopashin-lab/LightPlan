@@ -271,7 +271,6 @@ struct MonthCell: View {
     private func label(_ l: Label, _ pal: Palette) -> some View {
         Text(l.text)
             .font(webFont(MonthMetrics.labelSize, 500)).tracking(-0.1)
-            .italic(l.busy)
             .foregroundStyle(l.color)
             .lineLimit(1).truncationMode(.tail)
             .frame(height: MonthMetrics.labelLine)
