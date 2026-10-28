@@ -52,16 +52,17 @@ private struct WeekRow: View {
         let today = f.today
         let isToday = day == today, sel = day == st.selected, open = st.weekOpen == day
         let wx = f.weather(day)
+        let weekend = PlannerState.isWeekend(day)
         HStack(alignment: .top, spacing: 10) {
             Button {
                 PlanMotion.tapWeekRow(app, day)
             } label: {
                 VStack(spacing: 1) {
                     Text("\(day.day)").font(webFont(19, isToday ? 650 : 400)).monospacedDigit()
-                        .foregroundStyle(isToday ? pal.brass : pal.ink)
+                        .foregroundStyle(isToday ? pal.brass : weekend ? pal.weekend : pal.ink)
                         .frame(height: 22)
                     Text(f.dates.wdShort(f.date(day))).font(webFont(10)).tracking(0.6)
-                        .foregroundStyle(isToday ? pal.brass : pal.ink7)
+                        .foregroundStyle(isToday ? pal.brass : weekend ? pal.weekend : pal.ink7)
                         .frame(height: 12)
                     // Знак и градусы — из прогноза; без него колонка пуста (надпись — в раскрытом дне).
                     if let wx, let deg = f.temp(day) {

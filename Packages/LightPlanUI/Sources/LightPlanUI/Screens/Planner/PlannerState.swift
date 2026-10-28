@@ -197,6 +197,12 @@ public struct PlannerState: Hashable, Sendable {
         ((d.daysSince1970 % 7) + 7 + 4) % 7
     }
 
+    /// Суббота и воскресенье — всегда, с какого бы дня ни начиналась неделя (Алексей 28.10, «выходные»).
+    public static func isWeekend(_ d: CivilDate) -> Bool {
+        let w = weekday(d)
+        return w == 0 || w == 6
+    }
+
     public static func first(of d: CivilDate) -> CivilDate {
         CivilDate(year: d.year, month: d.month, day: 1)
     }

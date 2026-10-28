@@ -59,7 +59,7 @@ struct PlannerMonthBody: View {
         }
     }
 
-    /// `.cal-head`: слова недели от понедельника, выходные светлее.
+    /// `.cal-head`: слова недели от понедельника, суббота и воскресенье — янтарные (`Palette.weekend`).
     private func head(_ pal: Palette) -> some View {
         let week = PlannerState.week(of: app.planner.month)
         return HStack(spacing: 0) {
@@ -67,7 +67,7 @@ struct PlannerMonthBody: View {
                 let w = f.dates.wdShort(f.date(week[i]))
                 Text(w)
                     .font(webFont(12.5, 600)).tracking(0.6)
-                    .foregroundStyle(i >= 5 ? pal.ink4 : pal.ink7)
+                    .foregroundStyle(PlannerState.isWeekend(week[i]) ? pal.weekend : pal.ink7)
                     .shotNode("head.\(i)", text: w)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 8)
@@ -204,7 +204,11 @@ struct MonthCell: View {
         let show = Array(labels.prefix(MonthMetrics.visibleLabels(labels.count).shown))
         let mark = out ? nil : f.mark(day)
         let lit = mark.map { $0.rank >= 3 } ?? false
-        let ink: Color = isToday ? pal.brass : out ? pal.ink10 : past ? pal.ink5 : pal.ink
+        // Выходной — янтарный; прошедший гаснет до 0,75 (контраст 3,9 / 3,5 к подложке в тёмной / светлой — рядом с прошедшими
+        // буднями `ink5`: 3,15 / 3,97); сегодня и дни вне месяца — свои цвета.
+        let weekend = PlannerState.isWeekend(day)
+        let ink: Color = isToday ? pal.brass : out ? pal.ink10
+            : weekend ? pal.weekend.opacity(past ? 0.75 : 1) : past ? pal.ink5 : pal.ink
 
         Button {
             // Второй тап по выбранному числу — вход в день разрезом месяца (29.2а), первый — только выбор.

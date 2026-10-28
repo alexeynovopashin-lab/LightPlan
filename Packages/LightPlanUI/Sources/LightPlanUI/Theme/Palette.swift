@@ -174,6 +174,10 @@ public struct Palette: Sendable {
     public var brassSoft: Color { dark ? Color(hex: 0xD9AC6B) : Color(hex: 0x9B6A22) }
     /// `--brass-deep` веба: тёмная #C9853F, светлая #8A5A18.
     public var brassDeep: Color { dark ? Color(hex: 0xC9853F) : Color(hex: 0x8A5A18) }
+    /// Числа и подписи субботы и воскресенья (только натив, Алексей 28.10: «выделить выходные»). Не новый цвет, а
+    /// `brassDeep`: из янтарных токенов только он держит контраст ≥ 4,5:1 к фону, листу и подложке месяца в обеих
+    /// темах (тёмная 6,2–6,7, светлая 4,9–5,7; `brass` в светлой — 3,4–3,9, `brassSoft` — 3,9–4,5).
+    public var weekend: Color { brassDeep }
     /// `--brass-dark` веба: тёмная #8A4B22, светлая #6E3C15.
     public var brassDark: Color { dark ? Color(hex: 0x8A4B22) : Color(hex: 0x6E3C15) }
     /// `--green` веба: тёмная #A8B49B, светлая #5F6B4E.

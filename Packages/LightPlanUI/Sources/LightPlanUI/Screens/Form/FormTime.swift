@@ -44,7 +44,8 @@ struct FormDateGrid: View {
             }
             HStack(spacing: 0) {
                 ForEach(weekdays.indices, id: \.self) { i in
-                    Text(weekdays[i]).font(.system(size: 10, weight: .semibold)).foregroundStyle(pal.ink6)
+                    Text(weekdays[i]).font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(PlannerState.isWeekend(start.adding(days: i)) ? pal.weekend : pal.ink6)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -55,7 +56,7 @@ struct FormDateGrid: View {
                     let on = d == selected
                     Button { onPick(d) } label: {
                         Text(String(d.day)).font(.system(size: 16).monospacedDigit())
-                            .foregroundStyle(on ? pal.onBrass : (inMonth ? pal.ink : pal.ink7))
+                            .foregroundStyle(on ? pal.onBrass : inMonth ? (PlannerState.isWeekend(d) ? pal.weekend : pal.ink) : pal.ink7)
                             .frame(maxWidth: .infinity).frame(height: 38)
                             .background(on ? pal.brass : .clear, in: Circle())
                             .opacity(ok ? 1 : 0.3)

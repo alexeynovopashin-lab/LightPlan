@@ -35,6 +35,7 @@ struct PlannerDaySticky: View {
     /// записей и счётчик; день только с занятостью — замок.
     private func date(_ d: CivilDate, _ pal: Palette) -> some View {
         let sel = d == app.planner.selected, today = d == f.today
+        let weekend = PlannerState.isWeekend(d)
         let marks = f.shown(on: d)
         return Button {
             // Бета на iPhone тикает на каждое касание даты (`hapticize`), в том числе по выбранной.
@@ -43,11 +44,11 @@ struct PlannerDaySticky: View {
             withAnimation(PlannerDayBody.flipMotion(day: true, still: still)) { _ = app.planner.pickInStrip(d) }
         } label: {
             VStack(spacing: 4) {
-                Text(f.dates.wdShort(f.date(d))).font(webFont(10)).tracking(0.5).foregroundStyle(pal.ink7)
+                Text(f.dates.wdShort(f.date(d))).font(webFont(10)).tracking(0.5).foregroundStyle(weekend ? pal.weekend : pal.ink7)
                     .frame(height: 12)
                 Text("\(d.day)")
                     .font(webFont(15, sel || today ? 650 : 400)).monospacedDigit()
-                    .foregroundStyle(sel ? pal.onBrass : today ? pal.brass : pal.ink2)
+                    .foregroundStyle(sel ? pal.onBrass : today ? pal.brass : weekend ? pal.weekend : pal.ink2)
                     .frame(width: 30, height: 30)
                     .background(Circle().fill(sel ? pal.brass : .clear))
                 HStack(spacing: 3) {
