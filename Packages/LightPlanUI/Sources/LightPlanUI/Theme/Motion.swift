@@ -245,7 +245,9 @@ private struct FoldLayout: Layout {
 /// Панель сводки: четыре части кладутся раскладкой `FoldLayout`, `t` ведёт SwiftUI по кривой переключения.
 struct FoldPanel<Line: View, Frame: View, Main: View, Chevron: View>: View, @preconcurrency Animatable {
     var t: Double
-    let line: Line, frame: Frame, main: Main, chevron: Chevron
+    /// Черта получает долю пути: свёрнутая сводка вырезает в ней место под шеврон (`LightLineRule`).
+    let line: (Double) -> Line
+    let frame: Frame, main: Main, chevron: Chevron
     var animatableData: Double {
         get { t }
         set { t = newValue }
@@ -253,7 +255,7 @@ struct FoldPanel<Line: View, Frame: View, Main: View, Chevron: View>: View, @pre
 
     var body: some View {
         FoldLayout(t: t) {
-            line
+            line(t)
             frame
             main
             chevron
