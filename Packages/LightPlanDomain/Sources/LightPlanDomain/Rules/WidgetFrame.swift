@@ -96,6 +96,11 @@ public struct WidgetFrame: Equatable, Sendable {
 
     /// Время на плашке в часах `tz`, по привычке приложения (24 или 12 часов, язык приложения).
     public func clock(_ date: Date, in tz: TimeZone) -> String {
+        Self.clock(date, in: tz, lang: lang, clock12: clock12)
+    }
+
+    /// То же без плашки: экран активности (30б.3) пишет часы точек сам и кадра виджета не строит.
+    public static func clock(_ date: Date, in tz: TimeZone, lang: String, clock12: Bool) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: lang)
         f.timeZone = tz
