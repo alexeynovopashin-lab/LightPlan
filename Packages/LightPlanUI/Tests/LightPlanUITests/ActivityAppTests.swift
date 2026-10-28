@@ -293,6 +293,6 @@ struct ActivityAppTests {
         let f = host.shown?.frame
         #expect(f?.exit?.label == app.lexicon.t("activity.exit"))
         #expect(f?.status.hasPrefix(app.lexicon.t("day.nowAt").replacingOccurrences(of: "{name}", with: "")) == true || f?.status == app.lexicon.t("day.running"))
-        #expect(app.activityWords().untilName == "до {name}")
+        #expect(app.activityWords().untilName == "Далее: {name}")
     }
 }

@@ -55,7 +55,7 @@ struct ActivityFrameTests {
         #expect(f.points.map(\.word) == ["Сборы", "Церемония", "Прогулка", "Банкет"])
         #expect(f.points.map(\.sign) == ["home", "ring", "walk", "cutlery"])
         #expect(f.current == 1)
-        #expect(f.next == .init(label: "до Прогулка", to: ms(tsk(16, 0))))
+        #expect(f.next == .init(label: "Далее: Прогулка", to: ms(tsk(16, 0))))
         #expect(f.call == nil && f.playlist == nil, "лента кнопок не несёт")
     }
 
@@ -63,7 +63,7 @@ struct ActivityFrameTests {
         let f = make(wedding(), at: tsk(11, 50))
         #expect(f.status == "Скоро: Сборы жениха")
         #expect(f.current == -1)
-        #expect(f.next?.label == "до Сборы жениха" && f.next?.to == ms(tsk(12, 0)))
+        #expect(f.next?.label == "Далее: Сборы жениха" && f.next?.to == ms(tsk(12, 0)))
     }
 
     @Test func afterTheLastPointTheTimerCountsToTheEndOfTheShoot() {
@@ -123,7 +123,7 @@ struct ActivityFrameTests {
         // Подсвечена точка маршрута, а не золотой час.
         #expect(make(s, at: tsk(17, 30)).current == 2)
         // После «Прогулки» следующий — золотой час, и его часы называются своим словом.
-        #expect(f.next?.label == "до Прогулка")
+        #expect(f.next?.label == "Далее: Прогулка")
         #expect(make(s, at: tsk(16, 30)).next == .init(label: "до золотого часа", to: ms(golden)))
     }
 
@@ -136,15 +136,15 @@ struct ActivityFrameTests {
         let golden = try #require(tomsk.goldenStart(on: CivilDate(year: 2026, month: 10, day: 24)))
         // За полтора часа до золотого: следующая точка.
         let early = make(s, at: golden.addingTimeInterval(-90 * 60))
-        #expect(early.island?.label == "до Прогулка")
+        #expect(early.island?.label == "Далее: Прогулка")
         let farOut = make(s, at: tsk(14, 45))
-        #expect(farOut.island == .init(label: "до Прогулка", to: ms(tsk(16, 0))))
+        #expect(farOut.island == .init(label: "Далее: Прогулка", to: ms(tsk(16, 0))))
         // За 59 минут — до золотого часа, хотя точка «Прогулка» уже прошла, а «Банкет» ещё не скоро.
         let inside = make(s, at: golden.addingTimeInterval(-59 * 60))
         #expect(inside.island == .init(label: "до золотого часа", to: ms(golden)))
         // Золотой час начался — снова следующая точка.
         let after = make(s, at: golden.addingTimeInterval(60))
-        #expect(after.island == .init(label: "до Банкет", to: ms(tsk(19, 0))))
+        #expect(after.island == .init(label: "Далее: Банкет", to: ms(tsk(19, 0))))
     }
 
     @Test func withoutAGoldenPointTheIslandIsTheNextPoint() {

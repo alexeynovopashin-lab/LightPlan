@@ -184,7 +184,7 @@ struct ActivityLockView: View {
     private var main: ActivityFrame.Countdown? { inStudio ? frame.exit : frame.next }
 
     /// Вторая строка (только в ленте). Слева диапазон времени (а у съёмки со студией — выход из зала, часы аренды стоят на ленте с самого
-    /// начала), справа подпись главных часов («до Прогулка»).
+    /// начала), справа подпись главных часов («Далее: Прогулка»).
     private var second: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             if let exit = frame.exit {

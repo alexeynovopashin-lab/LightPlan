@@ -147,7 +147,7 @@ public struct ActivityWords: Codable, Equatable, Sendable {
     public var soonAt = "Скоро: {name}"
     public var running = "Идёт съёмка"
     public var done = "Съёмка закончена"
-    public var untilName = "до {name}"
+    public var untilName = "Далее: {name}"
     public var untilGolden = "до золотого часа"
     public var exit = "Выход из зала"
     public var callAdmin = "Позвонить админу"

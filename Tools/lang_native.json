@@ -501,7 +501,7 @@
     "sub.bachelorette": "Девичник",
     "sub.bachelor": "Мальчишник",
     "studio.callAdmin": "Позвонить админу",
-    "activity.untilName": "до {name}",
+    "activity.untilName": "Далее: {name}",
     "activity.untilGolden": "до золотого часа",
     "activity.exit": "Выход из зала",
     "activity.playlist": "Плейлист",

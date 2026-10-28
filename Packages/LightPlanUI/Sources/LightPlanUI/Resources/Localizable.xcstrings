@@ -112,7 +112,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "до {name}"
+            "value" : "Далее: {name}"
           }
         },
         "en" : {
