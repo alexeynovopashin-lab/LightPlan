@@ -61,6 +61,11 @@ struct StudioAlertsTests {
         s.route = [RoutePoint(start: cell.0, end: cell.1, name: "Студия", studioId: "st1", hallId: "h1")]
         snap.sessions = [s]
         snap.extra = extra
+        // Напоминание о съёмке — своя полоса со своими тестами (`ShootReminderTests`); здесь мерим студийный час.
+        var notif: [String: JSONValue] = [:]
+        if case .object(let o)? = extra["notif"] { notif = o }
+        notif["remind"] = .number(0)
+        snap.extra["notif"] = .object(notif)
         return snap
     }
 

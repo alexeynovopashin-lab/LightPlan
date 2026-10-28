@@ -525,7 +525,13 @@
     "widget.ratePlain": "обычный",
     "widget.ratePoor": "плохой",
     "widget.rateFog": "туман",
-    "widget.noShootsUntil": "до {d} съёмок нет"
+    "widget.noShootsUntil": "до {d} съёмок нет",
+    "set.remind": "Напоминать о съёмке",
+    "set.remindNote": "За столько минут до начала съёмки или встречи придёт уведомление: имя клиента, время, место и телефон. Нажмите — откроется карточка.",
+    "set.remindAsk": "Чтобы напоминание пришло, нужно разрешение на уведомления.",
+    "set.remindDenied": "Уведомления запрещены в настройках iPhone — напоминание не придёт.",
+    "set.remindSettings": "Открыть настройки iPhone",
+    "remind.title": "{name} · {time}"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1049,7 +1055,13 @@
     "widget.ratePlain": "ordinary",
     "widget.ratePoor": "poor",
     "widget.rateFog": "fog",
-    "widget.noShootsUntil": "no shoots until {d}"
+    "widget.noShootsUntil": "no shoots until {d}",
+    "set.remind": "Remind me of a shoot",
+    "set.remindNote": "This many minutes before a shoot or meeting starts, a notification arrives: the client’s name, time, place and phone. Tap it to open the card.",
+    "set.remindAsk": "For the reminder to arrive, the app needs permission to send notifications.",
+    "set.remindDenied": "Notifications are turned off in iPhone Settings — the reminder will not arrive.",
+    "set.remindSettings": "Open iPhone Settings",
+    "remind.title": "{name} · {time}"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1573,7 +1585,13 @@
     "widget.ratePlain": "común",
     "widget.ratePoor": "malo",
     "widget.rateFog": "niebla",
-    "widget.noShootsUntil": "sin sesiones hasta {d}"
+    "widget.noShootsUntil": "sin sesiones hasta {d}",
+    "set.remind": "Recordar la sesión",
+    "set.remindNote": "Esos minutos antes de que empiece una sesión o una reunión llegará una notificación: nombre del cliente, hora, lugar y teléfono. Tócala para abrir la ficha.",
+    "set.remindAsk": "Para que llegue el recordatorio, la app necesita permiso para enviar notificaciones.",
+    "set.remindDenied": "Las notificaciones están desactivadas en los Ajustes del iPhone: el recordatorio no llegará.",
+    "set.remindSettings": "Abrir Ajustes del iPhone",
+    "remind.title": "{name} · {time}"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2093,7 +2111,13 @@
     "widget.ratePlain": "普通",
     "widget.ratePoor": "悪い",
     "widget.rateFog": "霧",
-    "widget.noShootsUntil": "{d}まで撮影なし"
+    "widget.noShootsUntil": "{d}まで撮影なし",
+    "set.remind": "撮影のリマインダー",
+    "set.remindNote": "撮影や打ち合わせの開始この分数前に通知が届きます：クライアント名、時刻、場所、電話番号。タップするとカードが開きます。",
+    "set.remindAsk": "リマインダーを受け取るには通知の許可が必要です。",
+    "set.remindDenied": "iPhoneの設定で通知がオフになっているため、リマインダーは届きません。",
+    "set.remindSettings": "iPhoneの設定を開く",
+    "remind.title": "{name}・{time}"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2613,6 +2637,12 @@
     "widget.ratePlain": "普通",
     "widget.ratePoor": "差",
     "widget.rateFog": "雾",
-    "widget.noShootsUntil": "至 {d} 无拍摄"
+    "widget.noShootsUntil": "至 {d} 无拍摄",
+    "set.remind": "拍摄提醒",
+    "set.remindNote": "拍摄或会面开始前这么多分钟会收到通知：客户姓名、时间、地点和电话。轻点即可打开卡片。",
+    "set.remindAsk": "需要允许通知，提醒才能送达。",
+    "set.remindDenied": "iPhone 设置中已关闭通知，提醒不会送达。",
+    "set.remindSettings": "打开 iPhone 设置",
+    "remind.title": "{name} · {time}"
   }
 }

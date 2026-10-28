@@ -149,13 +149,16 @@ struct GreetAlertsTests {
         app.syncAlerts(force: true)
         await settle(app)
         let t = await fake.table
+        // Три полосы (Напоминание-1): 16 напоминаний о 16 ближайших съёмках, 40 поздравлений, студийному часу — 8.
+        #expect(t.keys.filter { $0.hasPrefix("lp.remind.") }.count == 16)
         #expect(t.keys.filter { $0.hasPrefix("lp.greet.") }.count == 40)
-        #expect(t.keys.filter { $0.hasPrefix("lp.studio.") }.count == 24)
+        #expect(t.keys.filter { $0.hasPrefix("lp.studio.") }.count == 8)
         // Поздравления выключили у всех — студийный час забирает места обратно.
         for c in app.snapshot.clients { app.setClientGreet(c.id, false) }
         await settle(app)
         let t2 = await fake.table
         #expect(t2.keys.filter { $0.hasPrefix("lp.greet.") }.isEmpty && t2.count == 64)
+        #expect(t2.keys.filter { $0.hasPrefix("lp.studio.") }.count == 48)
     }
 
     // MARK: - Карточка

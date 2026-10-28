@@ -16,6 +16,10 @@ public struct ScheduledAlert: Sendable, Hashable {
     public let wall: WallTime?
     /// Клиент, чью карточку открывает нажатие на поздравление; `nil` — праздники разных клиентов, открыть «Клиенты».
     public let clientId: String?
+    /// Неотложное (`timeSensitive`): напоминание о съёмке пробивает «Фокусирование», как «Неотложные» Календаря.
+    /// Это уровень, который система **дала** (`NotificationCentering.timeSensitiveAllowed`), а не желаемый: он входит в
+    /// отпечаток, и право, выданное позже, переписывает уже стоящие обычные запросы на следующей сверке.
+    public var urgent = false
 
     public init(id: String, sessionId: String, fire: Moment, offsetHours: Double, title: String, body: String) {
         self.id = id
@@ -50,7 +54,7 @@ public struct ScheduledAlert: Sendable, Hashable {
         if SystemNotificationCenter.debugShift != 0 { travel = "|travel \(Int(SystemNotificationCenter.debugShift))" }
         #endif
         if let wall { return "wall \(wall.day.daysSince1970) \(wall.minutes)|\(clientId ?? "")|\(title)|\(body)" + travel }
-        return "\(fire.milliseconds)|\(offsetHours)|\(title)|\(body)" + travel
+        return "\(fire.milliseconds)|\(offsetHours)|\(title)|\(body)" + (urgent ? "|urgent" : "") + travel
     }
 }
 
@@ -85,6 +89,13 @@ public protocol NotificationCentering: Sendable {
     /// Поставить запрос; тот же идентификатор заменяет ожидающий. `false` — система отказала.
     func add(_ alert: ScheduledAlert) async -> Bool
     func remove(ids: [String]) async
+    /// Дала ли система приложению неотложные уведомления (право в entitlements и согласие человека).
+    func timeSensitiveAllowed() async -> Bool
+}
+
+extension NotificationCentering {
+    /// Пустышкам тестов неотложное не выдано, если они не скажут иначе.
+    public func timeSensitiveAllowed() async -> Bool { false }
 }
 
 /// Сверка расписания с системой (шаг 30а): после неё в системе лежит ровно то,
@@ -92,7 +103,7 @@ public protocol NotificationCentering: Sendable {
 ///
 /// Наших расписаний несколько, и 64 места iOS делятся между ними **по таблице** (`lanes`, справка
 /// `docs/clients_reference.md` § 6), а не по тому, кто сверился последним: сверка всегда видит все расписания сразу.
-/// Полоса с долей (поздравления, 40) берёт не больше доли; полоса без доли (студийный час) — всё, что осталось.
+/// Полоса с долей (напоминания 16, поздравления 40) берёт не больше доли; полоса без доли (студийный час) — всё, что осталось.
 /// Чужие запросы (ни одной нашей приставки) не трогаются и занимают место.
 public struct NotificationScheduler: Sendable {
     public struct Report: Sendable, Equatable {
@@ -119,12 +130,16 @@ public struct NotificationScheduler: Sendable {
         }
     }
 
-    /// Студийный час: ближайшие аренды важнее — всё, что осталось (≥ 24).
+    /// Студийный час: всё, что осталось, — 64 − 16 − 40 = 8 и больше (четыре ближайшие аренды по два сигнала); пока
+    /// напоминаний и поздравлений меньше доли, берёт и их места.
     public static let studio = Lane(prefix: StudioSchedule.idPrefix, cap: nil)
     /// Поздравления: одно на день, не больше 40 дней.
     public static let greet = Lane(prefix: GreetSchedule.idPrefix, cap: GreetSchedule.cap)
+    /// Напоминания о съёмке: одно на запись, 16 ближайших съёмок и встреч. Стоит первой: чужие запросы теснят
+    /// поздравления на месяц вперёд раньше, чем напоминание о завтрашней съёмке.
+    public static let remind = Lane(prefix: ReminderSchedule.idPrefix, cap: ReminderSchedule.cap)
     /// Таблица мест (§ 6). «Прогноз переменился» (`lp.wx.`) говорит сразу и в очереди не стоит — полосы у него нет.
-    public static let lanes = [greet, studio]
+    public static let lanes = [remind, greet, studio]
 
     public let center: any NotificationCentering
     public let lanes: [Lane]
