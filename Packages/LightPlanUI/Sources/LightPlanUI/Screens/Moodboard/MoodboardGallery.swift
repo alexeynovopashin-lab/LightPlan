@@ -38,7 +38,7 @@ struct MoodboardGallery: View {
             .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 34)
         }
         .scrollDismissesKeyboard(.interactively)
-        .scrollJump(t, node: "mb.jump")
+        .scrollJump(t, node: "mb.jump", placement: .floating)
         .overlay {
             // Просмотрщик найденных кадров; пока поверх лежит папка, она держит свой (общее состояние `mb.pager`).
             if app.mb.pager != nil, app.mb.folder == nil { RefViewerLayer(app: app, source: viewerSource(lib), tiles: tiles) }

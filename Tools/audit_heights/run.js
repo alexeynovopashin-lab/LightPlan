@@ -111,6 +111,11 @@ const mLong = th => { const s = m28(th); const extra = Array.from({ length: 40 }
 add('mb_gallery_long', 'Moodboard', mLong, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'mbgallery']);
 add('mb_gallery_tag', 'Moodboard', mLong, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'mbgallery', '-LPShotWay', 'tag:couple']);
 add('mb_folder_long', 'Moodboard', mLong, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'mbfolder', '-LPShotWay', 'bd_m28_wed']);
+// Длинный список «Клиентов»: сессии засева размножены с новыми номерами (клиент собирается по телефону).
+const mClients = th => { const s = m28(th); const base = s.sessions.filter(x => x.kind !== 'meet').slice(0, 6); const extra = [];
+  for (let k = 0; k < 10; k++) base.forEach((x, i) => extra.push({ ...x, id: 'cl_long_' + k + '_' + i, contact: 'Клиент ' + (k * 6 + i + 1), phone: '', persons: [{ n: 'Клиент ' + (k * 6 + i + 1), tel: '+7 900 ' + String(100 + k * 6 + i) + '-00-00' }] }));
+  s.sessions = [...s.sessions, ...extra]; return s; };
+add('clients_long', 'Org', mClients, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'clients']);
 add('org_list', 'Org', m28, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'orgs']);
 add('org_card', 'Org', m28, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'orgcard', '-LPShotWay', 'sd_org_agency']);
 add('org_contacts', 'Org', m28, ['-LPShotScreen', 'planner', '-LPShotScope', 'month', '-LPShotSheet', 'contacts']);
@@ -146,7 +151,7 @@ async function shoot(model, udid, sc, theme) {
   run('xcrun', ['simctl', 'launch', udid, BUNDLE, '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
     '-LPShotNow', at, '-LPShotZone', zone, '-LPShotSeed', sf, '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'),
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
-    ...sc.launch, ...(args.sjlog ? ['-LPScrollJumpLog', path.join(dir, 'scrolljump.log')] : []), '-LPShotReport', report], { env: { ...process.env, SIMCTL_CHILD_TZ: zone } });
+    ...sc.launch, ...(args.extra ? String(args.extra).split(' ') : []), ...(args.sjlog ? ['-LPScrollJumpLog', path.join(dir, 'scrolljump.log')] : []), '-LPShotReport', report], { env: { ...process.env, SIMCTL_CHILD_TZ: zone } });
   for (let i = 0; i < 160 && !fs.existsSync(report); i++) await sleep(250);
   const ok = fs.existsSync(report);
   await sleep(sc.after || 500);

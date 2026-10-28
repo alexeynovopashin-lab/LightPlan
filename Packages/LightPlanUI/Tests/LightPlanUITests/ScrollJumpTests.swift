@@ -19,4 +19,17 @@ struct ScrollJumpTests {
         #expect(Moodboard.jumpGoesDown(offset: 0, scrollable: 1000))
         #expect(!Moodboard.jumpGoesDown(offset: 600, scrollable: 1000))
     }
+
+    /// Полоса под прокруткой съедает 56 pt окна, но правило считается по окну без неё: на пороге полоса не мигает,
+    /// кнопка не прячется и не появляется от того, что сама сжала окно.
+    @Test func stripDoesNotFlickerAtTheThreshold() {
+        #expect(ScrollJump.stripHeight == 56)
+        for content in stride(from: 1200 as CGFloat, through: 1500, by: 1) {
+            // Без полосы окно 860; с полосой то же окно показано как 804 — ответ тот же.
+            #expect(ScrollJump.stripVisible(content: content, container: 860, shown: false)
+                    == ScrollJump.stripVisible(content: content, container: 860 - ScrollJump.stripHeight, shown: true))
+        }
+        #expect(!ScrollJump.stripVisible(content: 1375, container: 860, shown: false))   // 515 < 0,6 · 860
+        #expect(ScrollJump.stripVisible(content: 1376, container: 860, shown: false))
+    }
 }
