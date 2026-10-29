@@ -58,7 +58,7 @@ async function scenario(dev, name) {
   run('xcrun', ['simctl', 'ui', dev.udid, 'appearance', THEME]);
   const rec = spawn('xcrun', ['simctl', 'io', dev.udid, 'recordVideo', '--codec=h264', '--force', video], { stdio: 'ignore' });
   await sleep(2500);
-  const open = name === 'chain' ? [] : ['-LPShotSheet', 'year'];
+  const open = name === 'chain' ? [] : name === 'zoom' ? ['-LPShotSheet', 'year12'] : ['-LPShotSheet', 'year'];
   run('xcrun', ['simctl', 'launch', dev.udid, BUNDLE, '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
     '-LPShotNow', '2026-10-29T13:00:00+07:00', '-LPShotZone', 'Asia/Barnaul', '-LPShotSeed', seedFile,
     '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'), '-LPShotAir', path.join(FX, 'air_barnaul.json'),
@@ -91,8 +91,16 @@ function report(name, r) {
     for (const x of sc) { if (x.pinned !== prev) { ch.push(`${x.pinned}@${x.s.toFixed(0)}`); prev = x.pinned; } }
     let md = 0, big = 0; for (let i = 1; i < sc.length; i++) { const d = Math.abs(sc[i].s - sc[i - 1].s); md = Math.max(md, d); }
     L.push(`кадров прокрутки ${sc.length}; смена названия: ${ch.join(' → ')}; самый большой шаг прокрутки между кадрами ${md.toFixed(1)} pt`);
+  } else if (name === 'zoom') {
+    const t0 = rows.find(x => x.kind === 'mark' && /zoom start/.test(x.text)).t;
+    const g = rows.filter(x => x.kind === 'geo' && x.key === 'head' && x.t >= t0);
+    L.push(`рамка шапки ленты по кадрам зума (x, y, ширина, высота): ` + g.map(x => `${x.x.toFixed(0)},${x.y.toFixed(0)},${x.w.toFixed(0)},${x.h.toFixed(0)}`).join(' | '));
+    let m = 0; for (let i = 1; i < g.length; i++) m = Math.max(m, Math.abs(g[i].y - g[i - 1].y));
+    L.push(`кадров ${g.length}, самый большой скачок y шапки между кадрами ${m.toFixed(1)} pt`);
+    for (const k of ['month', 'ruler']) { const a = rows.filter(x => x.kind === 'geo' && x.key === k && x.t >= t0); L.push(`${k}: y по кадрам ${a.map(x => x.y.toFixed(0)).join(' ')}`); }
+    const sc = rows.filter(x => x.kind === 'scroll' && x.t >= t0); L.push(`прокрутка/название: ${sc.map(x => x.pinned + '@' + x.s.toFixed(0)).join(' ')}`);
   } else {
-    for (const m of rows.filter(x => x.kind === 'mark')) L.push(`метка ${m.t} мс: ${m.text}`);
+    for (const m of rows.filter(x => x.kind === 'mark') .filter(x => name === 'chain' || true)) L.push(`метка ${m.t} мс: ${m.text}`);
     const g = rows.filter(x => x.kind === 'geo' && x.key === 'head');
     const lastOpen = rows.filter(x => x.kind === 'mark' && /year open/.test(x.text));
     L.push(`рамок шапки ленты ${g.length}; y по кадрам: ${g.map(x => x.y.toFixed(0)).join(' ')}`);

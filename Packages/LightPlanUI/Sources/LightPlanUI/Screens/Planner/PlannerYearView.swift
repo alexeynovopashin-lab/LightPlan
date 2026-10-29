@@ -226,7 +226,7 @@ struct YearLentaView: View {
     #if DEBUG && os(iOS)
     /// Сценарии стенда: `scroll` — от октября в ноябрь и обратно линейно по 3 с; `today` — из 2027 кнопкой «сегодня» (как `NowPill`).
     private func pinScript() async {
-        guard let name = PinBench.script, name != "chain" else { return }   // цепочку ведёт «Съёмки» (`PinBench.chain`)
+        guard let name = PinBench.script, name != "chain", name != "zoom" else { return }   // цепочку ведёт «Съёмки» (`PinBench.chain`)
         let today = f.today
         func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
         await wait(2.5)
@@ -526,6 +526,17 @@ struct Year12View: View {
             }
         }
         .simultaneousGesture(swipe)
+        #if DEBUG && os(iOS)
+        .task {
+            // Стенд: тап по 29 октября в «Годе целиком» → зум в ленту (`-LPPinScript zoom`), кадры шапки — в журнале.
+            guard PinBench.script == "zoom" else { return }
+            try? await Task.sleep(for: .seconds(2.5))
+            PinBench.note("script zoom start")
+            zoom(CivilDate(year: today.year, month: 10, day: 1), day: 29)
+            try? await Task.sleep(for: .seconds(1.8))
+            PinBench.note("script zoom done")
+        }
+        #endif
     }
 
     private func arrow(_ dir: Int, _ pal: Palette) -> some View {
