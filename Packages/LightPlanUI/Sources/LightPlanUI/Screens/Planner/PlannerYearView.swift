@@ -18,6 +18,8 @@ final class PlannerNav {
     /// Лента должна встать на этот месяц (первое число): имя месяца — на 8 ниже
     /// верха прокрутки (веб `scrollYearTo`).
     var lentaTarget: CivilDate?
+    /// Месяц, названный в закреплённой шапке ленты (`YearPin.month`); читают тесты и стенд.
+    var lentaPinned: CivilDate?
     /// Зум «Год целиком» → лента (веб `zoomYear12ToMonth`), пока идёт.
     var zoom: YearZoom?
     /// Рамки сеток дней в общем пространстве слоёв года: у «Года целиком» —
@@ -114,7 +116,7 @@ struct OverlayBack: View {
     }
 }
 
-/// `.icon-btn` шапки года: знак 22 линией 1,6 и поле 6.
+/// `.icon-btn` шапки года: тот же значок, что в шапке «Съёмок» (`PlanActionGlyph`: 28 pt, зона 44 × 44; 30.1б).
 struct OverlayIconButton: View {
     let kind: PlanGlyph.Kind
     let color: Color
@@ -123,16 +125,9 @@ struct OverlayIconButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            PlanGlyph(kind: kind)
-                .stroke(color, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-                .frame(width: 22, height: 22)
-                .padding(6)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .shotNode(node)
+        Button(action: action) { PlanActionGlyph(kind: kind, color: color, node: node) }
+            .buttonStyle(.plain)
+            .accessibilityLabel(label)
     }
 }
 
@@ -174,10 +169,11 @@ struct YearLentaView: View {
     @State private var position = ScrollPosition(idType: String.self)
     /// Верх каждого месяца в координатах содержимого ленты.
     @State private var tops: [CivilDate: CGFloat] = [:]
-    /// Год, до которого долистали (веб `#yTitle` по прокрутке).
-    @State private var seenYear: Int?
-    /// Верх блока второго года (его разделителя) в координатах содержимого.
-    @State private var dividerTop: CGFloat?
+    /// Верх сетки каждого месяца (под именем) в тех же координатах: сюда встаёт лента, чтобы первый ряд лёг под линейку.
+    @State private var gridTops: [CivilDate: CGFloat] = [:]
+    /// На сколько прокручена лента (0 в покое) и месяц, названный в закреплённой шапке (`YearPin.month`).
+    @State private var scrolled: CGFloat = 0
+    @State private var pinned: CivilDate?
 
     var body: some View {
         let pal = Palette(scheme)
@@ -200,8 +196,11 @@ struct YearLentaView: View {
         .scrollJump(app.lexicon, node: "sj.year", position: $position)
         .scrollIndicators(.hidden)
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in
-            // Заголовок — год последнего блока, чей верх уже у края (веб: ≤ 4).
-            seenYear = dividerTop.map { $0 - y <= 4 ? nav.year + 1 : nav.year } ?? nav.year
+            scrolled = y
+            repin()
+            #if DEBUG && os(iOS)
+            PinBench.frame(scrolled: y, pinned: pinned)
+            #endif
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             head(pal).onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { part.yearTop = $0 }
@@ -217,26 +216,84 @@ struct YearLentaView: View {
         }
         .background(nav.zoom == nil ? pal.surface : .clear)
         .onChange(of: nav.lentaTarget, initial: true) { _, _ in jump() }
-        .onChange(of: tops) { _, _ in if nav.lentaTarget != nil { jump() } }
+        .onChange(of: gridTops) { _, _ in if nav.lentaTarget != nil { jump() } }
+        .onChange(of: tops) { _, _ in repin() }
+        #if DEBUG && os(iOS)
+        .task { await pinScript() }
+        #endif
     }
 
-    /// Встать на месяц цели: имя месяца на 8 ниже верха прокрутки. Рамки
-    /// месяцев приходят после раскладки — цель ждёт их.
+    #if DEBUG && os(iOS)
+    /// Сценарии стенда: `scroll` — от октября в ноябрь и обратно линейно по 3 с; `today` — из 2027 кнопкой «сегодня» (как `NowPill`).
+    private func pinScript() async {
+        guard let name = PinBench.script, name != "chain" else { return }   // цепочку ведёт «Съёмки» (`PinBench.chain`)
+        let today = f.today
+        func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
+        await wait(2.5)
+        switch name {
+        case "scroll":
+            let from = scrolled
+            let nov = YearPin.restOffset(gridTop: gridTops[CivilDate(year: today.year, month: 11, day: 1)] ?? from + 360) + 140
+            PinBench.note("script scroll down")
+            withAnimation(.linear(duration: 3)) { position.scrollTo(y: nov) }
+            await wait(3.6)
+            PinBench.note("script scroll up")
+            withAnimation(.linear(duration: 3)) { position.scrollTo(y: from) }
+            await wait(3.4)
+        case "cross-before", "cross-after":
+            // Неподвижные кадры у границы октября и ноября: имя ноября под линейкой, но ещё не у линии / уже у линии.
+            let nov = tops[CivilDate(year: today.year, month: 11, day: 1)] ?? 0
+            position.scrollTo(y: name == "cross-before" ? nov - 60 : nov + 30)
+            await wait(1)
+        case "today":
+            nav.year = today.year + 1
+            nav.lentaTarget = CivilDate(year: today.year + 1, month: 12, day: 1)
+            await wait(1.5)
+            PinBench.note("script today")
+            nav.year = today.year
+            nav.lentaTarget = PlannerState.first(of: today)
+            await wait(2)
+        default: break
+        }
+        PinBench.note("script \(name) done")
+    }
+    #endif
+
+    /// Встать на месяц цели: первый ряд — сразу под линейкой, имя месяца уже названо закреплённой шапкой и ушло под неё
+    /// (как в Календаре iOS; 30.1б — раньше имя стояло на 8 ниже верха прокрутки, веб `scrollYearTo`). Рамки месяцев приходят
+    /// после раскладки — цель ждёт их.
     private func jump() {
-        guard let m = nav.lentaTarget, let top = tops[m] else { return }
-        position.scrollTo(y: max(0, top - 8))
+        guard let m = nav.lentaTarget, let grid = gridTops[m] else { return }
+        position.scrollTo(y: YearPin.restOffset(gridTop: grid))
         nav.lentaTarget = nil
     }
 
+    /// Месяц шапки по прокрутке. Название меняется сразу, без перехода: два названия разом не рисуются ни в одном кадре.
+    private func repin() {
+        let live = tops.filter { $0.key.year == nav.year || $0.key.year == nav.year + 1 }
+        let m = YearPin.month(scrolled: scrolled, tops: live, first: CivilDate(year: nav.year, month: 1, day: 1))
+        guard m != pinned else { return }
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t) { pinned = m; nav.lentaPinned = m }
+    }
+
+    /// Шапка ленты стоит на месте (30.1б, слово Алексея 29.10 по Календарю iOS): строка кнопок — те же 44 × 44 и значки 28 pt, что у
+    /// «Съёмок» (`PlanActionGlyph`, поле 16: значки не сдвигаются при входе в ленту); ниже название месяца, что сейчас наверху
+    /// (`YearPin`; год рядом серым — по нему «Год целиком»), и линейка дней недели с волоском. Лента едет под ними.
     private func head(_ pal: Palette) -> some View {
-        let shown = seenYear ?? nav.year
+        // До первой раскладки месяцы неизвестны: называем месяц, на который лента идёт, а не январь.
+        let m = pinned ?? nav.lentaTarget.map(PlannerState.first(of:)) ?? CivilDate(year: nav.year, month: 1, day: 1)
+        let now = PlannerState.sameMonth(m, f.today)
+        let week = ws.week(of: f.today)
         return VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 0) {
                 OverlayBack(title: f.t.t("nav.shoots"), node: "year.back") {
                     PlanMotion.lenta(app, nav, open: false)
                 }
-                Spacer()
-                HStack(spacing: 2) {
+                .padding(.leading, 8)
+                Spacer(minLength: 0)
+                HStack(spacing: PlanTitleLayout.buttonGap) {
                     OverlayIconButton(kind: .add, color: pal.brass, label: f.t.t("plan.newShoot"), node: "year.add") {
                         // Веб закрывает ленту и открывает форму на выбранном дне
                         // календаря, с начала его окна света.
@@ -253,21 +310,51 @@ struct YearLentaView: View {
                     }
                 }
             }
-            Button {
-                PlanMotion.year12(nav, open: true)
-            } label: {
-                Text(String(shown))
-                    .font(webFont(30, 650)).tracking(-0.5).monospacedDigit()
-                    .foregroundStyle(pal.ink)
-                    .shotNode("year.title", text: String(shown))
+            .padding(.horizontal, 16)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Button {
+                    app.planner.enterMonth(m, today: f.today)
+                    PlanMotion.lenta(app, nav, open: false)
+                } label: {
+                    Text(f.dates.monthTitleN(m.month - 1))
+                        .font(webFont(30, 650)).tracking(-0.5)
+                        .foregroundStyle(now ? pal.brass : pal.ink)
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                        .shotNode("year.month", text: f.dates.monthTitleN(m.month - 1))
+                }
+                .buttonStyle(.plain)
+                Button {
+                    PlanMotion.year12(nav, open: true)
+                } label: {
+                    Text(String(m.year))
+                        .font(webFont(30, 650)).tracking(-0.5).monospacedDigit()
+                        .foregroundStyle(pal.ink4)
+                        .shotNode("year.title", text: String(m.year))
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(f.t.t("year.one"))
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .padding(.top, 10)
-            .accessibilityHint(f.t.t("year.one"))
+            .padding(.horizontal, 24)
+            .padding(.top, 2)
+            .transaction { $0.animation = nil }
+            .pinGeo("month")
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { i in
+                    Text(f.dates.wdShort(f.date(week[i])))
+                        .font(webFont(12.5, 600)).tracking(0.6)
+                        .foregroundStyle(WeekStart.isWeekend(week[i]) ? pal.weekend : pal.ink7)
+                        .frame(maxWidth: .infinity)
+                        .shotNode("year.ruler.\(i)")
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 10).padding(.bottom, 8)
+            .shotNode("year.ruler")
+            .pinGeo("ruler")
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 14)
-        .padding(.bottom, 4)
+        .pinGeo("head")
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair4).frame(height: 1) }
         .background(nav.zoom == nil ? pal.surface : .clear)
     }
 
@@ -280,7 +367,6 @@ struct YearLentaView: View {
             .overlay(alignment: .top) { Rectangle().fill(pal.hair).frame(height: 1) }
             .padding(.top, 6).padding(.bottom, 24)
             .shotNode("year.divider", text: String(y))
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("lenta")).minY - 6 } action: { dividerTop = $0 }
     }
 
     private func month(_ first: CivilDate, today: CivilDate, pal: Palette) -> some View {
@@ -301,13 +387,6 @@ struct YearLentaView: View {
             }
             .buttonStyle(.plain)
             .shotNode(first1 ? "ym.name.\(first.month - 1)" : "")
-            HStack(spacing: 0) {
-                ForEach(Array(f.dates.weekdayRow(ws).enumerated()), id: \.offset) { _, w in
-                    Text(w.uppercased()).font(webFont(10)).tracking(0.5).foregroundStyle(pal.ink7)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .padding(.bottom, 4)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: Self.rowGap) {
                 ForEach(0..<lead, id: \.self) { i in Color.clear.aspectRatio(1, contentMode: .fit).id("pad\(i)") }
                 ForEach(1...days, id: \.self) { d in
@@ -324,6 +403,7 @@ struct YearLentaView: View {
             }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(yearStageSpace)) } action: { nav.lentaGrids[first] = $0 }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.yearGrids[first] = $0 }
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("lenta")).minY } action: { gridTops[first] = $0 }
             .shotNode(first1 ? "ym.grid.\(first.month - 1)" : "")
         }
         .padding(.bottom, 26)

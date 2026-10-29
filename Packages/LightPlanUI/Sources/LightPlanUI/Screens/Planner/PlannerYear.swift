@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import LightPlanCore
 import LightPlanDomain
 
@@ -6,6 +7,24 @@ import LightPlanDomain
 /// `renderMonthBars`, `renderOverloadSignal`, `renderDeliveryStats`,
 /// `renderSearch`). Чистые функции: экран подаёт записи, сегодня и ступень
 /// сдачи, получает числа. Справка по вебу — `docs/native_22_planner_web_spec.md`.
+/// Закреплённая шапка ленты года (30.1б): какой месяц назван сверху. Чистое правило — экран подаёт смещение и верхи блоков.
+enum YearPin {
+    /// Название сверху — месяц того, что лежит у верхнего края прокрутки (под линейкой): последний месяц, чей блок (имя, сетка)
+    /// начался на линии или выше. Следующий месяц берёт название, когда его имя доехало до линии; прежний к этому времени
+    /// уже целиком ушёл вверх (между последним рядом месяца и именем следующего 26 pt). Выше первого блока — первый месяц.
+    /// `scrolled` — на сколько прокручена лента (0 в покое), `tops` — верхи блоков в координатах содержимого.
+    static func month(scrolled: CGFloat, tops: [CivilDate: CGFloat], first: CivilDate) -> CivilDate {
+        var best = first
+        var bestTop = -CGFloat.infinity
+        for (m, top) in tops where top <= scrolled + 0.5 && top > bestTop { best = m; bestTop = top }
+        return best
+    }
+
+    /// Куда встать, чтобы месяц стоял «как в Календаре iOS»: имя ушло под шапку (оно уже названо там), первый ряд — сразу под
+    /// линейкой, `air` pt воздуха.
+    static func restOffset(gridTop: CGFloat, air: CGFloat = 4) -> CGFloat { max(0, gridTop - air) }
+}
+
 enum YearMath {
 
     // MARK: - Сетка месяца

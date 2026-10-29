@@ -92,6 +92,7 @@ public struct PlannerScreenView: View {
         .overlay { PlannerLayers(app: app, f: f, nav: nav, part: part) }
         .onAppear { openStartLayer() }
         #if DEBUG && os(iOS)
+        .task { if PinBench.script == "chain" { await PinBench.chain(app, nav: nav) } }
         .task { if PartDayBench.on { await PartDayBench.run(app, part: part, nav: nav, fan: enterFromFan) } }
         .task {
             if MotionBench.on {
@@ -382,6 +383,24 @@ enum PlanTitleLayout {
     }
 }
 
+/// Значок действия шапки («новая съёмка», статистика, поиск): 28 pt линией 1,7/22, нажимается квадрат 44 × 44 (слово Алексея
+/// 28.10). Одна вёрстка на шапку «Съёмок» и на ленту года (30.1б: «на других экранах месяца продублировать правку») —
+/// значки обоих экранов не расходятся ни размером, ни зоной нажатия.
+struct PlanActionGlyph: View {
+    let kind: PlanGlyph.Kind
+    let color: Color
+    var node = ""
+
+    var body: some View {
+        PlanGlyph(kind: kind)
+            .stroke(color, style: StrokeStyle(lineWidth: PlanTitleLayout.actionStroke, lineCap: .round, lineJoin: .round))
+            .frame(width: PlanTitleLayout.actionGlyph, height: PlanTitleLayout.actionGlyph)
+            .frame(width: PlanTitleLayout.buttonSide, height: PlanTitleLayout.buttonSide)
+            .contentShape(Rectangle())
+            .shotNode(node)
+    }
+}
+
 /// `.plan-top`: вид слева (44), заголовок по оси экрана (поверх, 28и.3), три действия справа
 /// (по 34 через 8). Сверху — сразу под безопасной зоной (29.2г: у веба +12), снизу 6.
 private struct PlanTop: View {
@@ -496,12 +515,7 @@ private struct PlanTop: View {
     }
 
     private func action(_ k: PlanGlyph.Kind, _ c: Color, _ node: String) -> some View {
-        PlanGlyph(kind: k)
-            .stroke(c, style: StrokeStyle(lineWidth: PlanTitleLayout.actionStroke, lineCap: .round, lineJoin: .round))
-            .frame(width: PlanTitleLayout.actionGlyph, height: PlanTitleLayout.actionGlyph)
-            .frame(width: PlanTitleLayout.buttonSide, height: PlanTitleLayout.buttonSide)
-            .contentShape(Rectangle())
-            .shotNode(node)
+        PlanActionGlyph(kind: k, color: c, node: node)
     }
 
     /// Заголовок по виду (веб `setPlanTitle`): год — только чужой. `short` — тот же заголовок с месяцем в сокращении языка
