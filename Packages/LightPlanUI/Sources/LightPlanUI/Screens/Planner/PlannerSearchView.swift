@@ -44,8 +44,7 @@ struct PlannerSearchView: View {
             .padding(.top, 14)
             .padding(.bottom, 40)
         }
-        .scrollJump(app.lexicon, node: "sj.search")
-        .scrollPosition($position)
+        .scrollJump(app.lexicon, node: "sj.search", position: $position)
         .scrollDismissesKeyboard(.interactively)
         .onScrollGeometryChange(for: [CGFloat].self) {
             [$0.contentOffset.y, max(0, $0.contentSize.height - $0.containerSize.height), $0.containerSize.height]

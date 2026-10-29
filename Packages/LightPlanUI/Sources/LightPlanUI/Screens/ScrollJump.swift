@@ -33,6 +33,10 @@ struct ScrollJump: ViewModifier {
     var placement: Placement = .strip
     /// `false` — кнопки нет (вид, где прокрутка не страница: лента дня).
     var enabled = true
+    /// Позиция прокрутки самого экрана. Если экран листает программно (`scrollTo`), он отдаёт её сюда: два `.scrollPosition` на одной
+    /// прокрутке не уживаются — внутренний, этот, перекрывал внешнюю, и экранный `scrollTo` молча не доходил (30.1: лента года
+    /// открывалась на январе, лента дня — на 00:00).
+    var screenPosition: Binding<ScrollPosition>?
     @Environment(\.colorScheme) private var scheme
     @State private var scrollable: CGFloat = 0
     @State private var offset: CGFloat = 0
@@ -40,9 +44,11 @@ struct ScrollJump: ViewModifier {
     /// Крайние смещения прокрутки — только для журнала нажатий (Debug).
     @State private var topY: CGFloat = 0
     @State private var bottomY: CGFloat = 0
-    @State private var position = ScrollPosition(edge: .top)
+    @State private var ownPosition = ScrollPosition(edge: .top)
     /// Полоса показана. Решает она сама по высоте окна **без** полосы, иначе окно, сжатое полосой, мигало бы на пороге.
     @State private var stripShown = false
+
+    private var position: Binding<ScrollPosition> { screenPosition ?? $ownPosition }
 
     private struct Metrics: Equatable { var offset: CGFloat; var content: CGFloat; var container: CGFloat; var top: CGFloat; var bottom: CGFloat }
 
@@ -57,7 +63,7 @@ struct ScrollJump: ViewModifier {
     @ViewBuilder func body(content: Content) -> some View {
         let placement = place
         let tracked = content
-            .scrollPosition($position)
+            .scrollPosition(position)
             .onScrollGeometryChange(for: Metrics.self) {
                 Metrics(offset: $0.contentOffset.y, content: $0.contentSize.height, container: $0.containerSize.height,
                         top: -$0.contentInsets.top, bottom: $0.contentSize.height - $0.containerSize.height + $0.contentInsets.bottom)
@@ -88,7 +94,7 @@ struct ScrollJump: ViewModifier {
             let down = Moodboard.jumpGoesDown(offset: offset, scrollable: scrollable)
             Button {
                 Self.logTap(node, down: down, offset: offset, topY: topY, bottomY: bottomY)
-                withAnimation(.easeInOut(duration: 0.35)) { position.scrollTo(edge: down ? .bottom : .top) }
+                withAnimation(.easeInOut(duration: 0.35)) { position.wrappedValue.scrollTo(edge: down ? .bottom : .top) }
             } label: {
                 Icon("chevron", size: 18, line: 2.2).rotationEffect(.degrees(down ? 90 : -90))
                     .foregroundStyle(look.strong ? pal.ink3 : pal.ink4)
@@ -129,9 +135,10 @@ struct ScrollJump: ViewModifier {
 }
 
 extension View {
-    /// Кнопка прыжка на длинную прокрутку; `node` — имя узла для снимков и отчёта высот.
+    /// Кнопка прыжка на длинную прокрутку; `node` — имя узла для снимков и отчёта высот. Экран со своим `scrollTo` отдаёт позицию
+    /// сюда (`position:`), а не вешает свой `.scrollPosition` рядом.
     func scrollJump(_ lexicon: Lexicon, node: String, look: ScrollJump.Look = .standard, placement: ScrollJump.Placement = .strip,
-                    enabled: Bool = true) -> some View {
-        modifier(ScrollJump(lexicon: lexicon, node: node, look: look, placement: placement, enabled: enabled))
+                    enabled: Bool = true, position: Binding<ScrollPosition>? = nil) -> some View {
+        modifier(ScrollJump(lexicon: lexicon, node: node, look: look, placement: placement, enabled: enabled, screenPosition: position))
     }
 }

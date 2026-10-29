@@ -54,7 +54,7 @@ struct CardScreen: View {
                     .padding(.top, 18)
                     .padding(.bottom, 40)
                 }
-                .scrollJump(app.lexicon, node: "sj.card")
+                .scrollJump(app.lexicon, node: "sj.card", position: $scrollPos)
                 // Карточка долга (К5): остальные долги — стопкой внизу экрана, как в Wallet; лист листается над ней.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if app.cardStackMode == .debts { DebtPile(app: app, s: s, pal: pal) }
@@ -65,7 +65,6 @@ struct CardScreen: View {
                 // Лист, который улетает в корзину (`.card-sheet.to-bin`): бар с «✕» остаётся на месте.
                 .binSubject(app, "card." + s.id)
                 // Лист отдаёт списку порядка, где он стоит: строка в руке у края гонит его сама (27а.3).
-                .scrollPosition($scrollPos)
                 .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in scrollBridge.offset = y }
                 // Дальний край: содержимое минус окно (замер: на конце лист стоит на 201,67 при 1013,67 и 812;
                 // нижний отступ 34 в окно не входит — с ним зона уезжала бы на 34 за край).

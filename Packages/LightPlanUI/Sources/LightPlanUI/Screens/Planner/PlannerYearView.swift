@@ -197,8 +197,7 @@ struct YearLentaView: View {
             .padding(.bottom, 16)
             .coordinateSpace(name: "lenta")
         }
-        .scrollJump(app.lexicon, node: "sj.year")
-        .scrollPosition($position)
+        .scrollJump(app.lexicon, node: "sj.year", position: $position)
         .scrollIndicators(.hidden)
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in
             // Заголовок — год последнего блока, чей верх уже у края (веб: ≤ 4).
