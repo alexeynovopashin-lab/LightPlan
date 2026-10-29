@@ -235,10 +235,10 @@ struct YearLentaView: View {
             let from = scrolled
             let nov = YearPin.restOffset(gridTop: gridTops[CivilDate(year: today.year, month: 11, day: 1)] ?? from + 360) + 140
             PinBench.note("script scroll down")
-            withAnimation(.linear(duration: 3)) { position.scrollTo(y: nov) }
+            withAnimation(PlanMotion.pick(.linear(duration: 3))) { position.scrollTo(y: nov) }
             await wait(3.6)
             PinBench.note("script scroll up")
-            withAnimation(.linear(duration: 3)) { position.scrollTo(y: from) }
+            withAnimation(PlanMotion.pick(.linear(duration: 3))) { position.scrollTo(y: from) }
             await wait(3.4)
         case "cross-before", "cross-after":
             // Неподвижные кадры у границы октября и ноября: имя ноября под линейкой, но ещё не у линии / уже у линии.
