@@ -362,9 +362,12 @@ enum PlanTitleLayout {
     }
 
     /// Ширина слова заголовка: шрифт и разрядка те же, что у `Text` в шапке (кегль фиксирован — от Dynamic Type не зависит).
-    static func width(_ s: String) -> CGFloat {
-        ceil((s as NSString).size(withAttributes: [.font: webPlatformFont(18, 650), .kern: -0.3]).width)
+    static func width(_ s: String, size: CGFloat = titleFont) -> CGFloat {
+        ceil((s as NSString).size(withAttributes: [.font: webPlatformFont(size, 650), .kern: -0.3]).width)
     }
+    /// Кегль заголовка «месяца» и «недели» и крупный кегль заголовка дня (слово Алексея 30.10: «я бы ещё увеличил шрифт»; 18 → 22, +22 %).
+    static let titleFont: CGFloat = 18, dayFont: CGFloat = 22
+    static func font(for scope: CalScope) -> CGFloat { scope == .day ? dayFont : titleFont }
 
     /// Заголовок экрана дня (слово Алексея 30.10: «не надо писать сверху 29 октября, только Октябрь»): только месяц, как в Календаре iOS.
     /// Выбранный день и так виден кружком в ленте недели. Имя месяца — именительное самого языка (`monthTitle`, не «октября»);
@@ -381,12 +384,19 @@ enum PlanTitleLayout {
     /// Лесенка заголовка (слово Алексея 28.10: «проще сокращать месяц на мелких экранах»): слово целиком на оси → короткий месяц на оси
     /// → короткое слово сжато на оси (до `squeezeFloor`) → короткое слово посреди свободного места между кнопками, сжато при нужде
     /// (не меньше `minScale`). Слово не пропадает ни на каком экране. Сжатие — последнее средство, а не первое.
-    static func choose(full: String, short: String, screenWidth: CGFloat, rightButtons n: Int,
-                       width measure: (String) -> CGFloat = PlanTitleLayout.width) -> TitleStep {
+    /// `wholeFirst` (экран дня, слово Алексея 30.10: «Октябрь целиком»): целый месяц важнее оси — не влез на оси, но влезает в свободное
+    /// место между кнопками → стоит там целиком (сдвиг от оси), а не сокращается; сокращение только когда не влезает и там.
+    static func choose(full: String, short: String, screenWidth: CGFloat, rightButtons n: Int, wholeFirst: Bool = false,
+                       width measure: (String) -> CGFloat = { PlanTitleLayout.width($0) }) -> TitleStep {
         let i = insets(rightButtons: n)
         let room = screenWidth - 32 - i.leading - i.trailing
         let wF = measure(full)
         if wF * invisibleSqueeze <= room { return TitleStep(short: false, scale: min(1, room / wF), leading: i.leading, trailing: i.trailing) }
+        if wholeFirst {
+            let l = leftWidth + 6 + gap + chevronReach, r = rightWidth(buttons: n) + 6 + gap
+            let free = screenWidth - 32 - l - r
+            if wF * invisibleSqueeze <= free { return TitleStep(short: false, scale: min(1, free / wF), leading: l, trailing: r) }
+        }
         let w = measure(short)
         if short != full, w * invisibleSqueeze <= room { return TitleStep(short: true, scale: min(1, room / w), leading: i.leading, trailing: i.trailing) }
         if room > 0, room / w >= squeezeFloor { return TitleStep(short: true, scale: room / w, leading: i.leading, trailing: i.trailing) }
@@ -481,14 +491,16 @@ private struct PlanTop: View {
     private func titleButton(_ pal: Palette, rightButtons: Int) -> some View {
         let t = titles
         let ins = PlanTitleLayout.insets(rightButtons: rightButtons)
-        let step = topW > 0 ? PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: topW, rightButtons: rightButtons)
+        let size = PlanTitleLayout.font(for: app.planner.scope)
+        let step = topW > 0 ? PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: topW, rightButtons: rightButtons,
+                                                    wholeFirst: app.planner.scope == .day, width: { PlanTitleLayout.width($0, size: size) })
             : PlanTitleLayout.TitleStep(short: false, scale: 1, leading: ins.leading, trailing: ins.trailing)
         let title = step.short ? t.short : t.full
         return Button {
             PlanMotion.lenta(app, nav, open: true)
         } label: {
             Text(title)
-                .font(webFont(18, 650)).tracking(-0.3)
+                .font(webFont(size, 650)).tracking(-0.3)
                 .foregroundStyle(pal.ink)
                 .lineLimit(1).minimumScaleFactor(PlanTitleLayout.minScale)
                 .shotNode("plan.title", text: title)
