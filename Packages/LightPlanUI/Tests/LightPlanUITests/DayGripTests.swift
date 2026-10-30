@@ -176,9 +176,94 @@ struct DayGripTests {
         #expect(PlannerDayBody.slotAt(y: 15 * h + h * 0.75) == (15, 930))
         #expect(PlannerDayBody.slotAt(y: 25 * h + 40) == (24, 1470))
         #expect(PlannerDayBody.slotAt(y: -5) == (0, 0))
-        let m = PlannerDayBody.menuFrame(hour: 15, width: 440)
-        #expect(m == CGRect(x: 88, y: 16 * h, width: 328, height: 66))
-        // У последнего часа меню встаёт над ним.
-        #expect(PlannerDayBody.menuFrame(hour: 24, width: 440).maxY == 24 * h)
+        // Меню едет вместе с чертой заготовки: полчаса под ней, у последних часов — над ней.
+        let m = PlannerDayBody.menuFrame(at: 900, width: 440)
+        #expect(m == CGRect(x: 88, y: 15 * h + h / 2, width: 328, height: 66))
+        #expect(PlannerDayBody.menuFrame(at: 930, width: 440).minY == 15 * h + h)
+        #expect(PlannerDayBody.menuFrame(at: 945, width: 440).minY == 15 * h + h * 0.75 + h / 2)
+        // У последнего часа меню встаёт над чертой.
+        #expect(PlannerDayBody.menuFrame(at: 1440, width: 440).maxY == 24 * h)
+    }
+
+    /// Заготовка (меню часа) в руке: кнопки остаются кнопками, время и щели между ними берёт жест. Полоса у черты — лишь
+    /// рамка: берёт она палец или нет, решает порядок в `gripDown` (после записей и призраков), здесь — её размер.
+    @Test func draftGrabZones() {
+        let w: CGFloat = 440, at = 990
+        let btns = PlannerDayBody.menuButtons(at: at, width: w)
+        let m = PlannerDayBody.menuFrame(at: at, width: w)
+        #expect(btns.count == 3)
+        for b in btns {
+            #expect(m.insetBy(dx: -0.01, dy: -0.01).contains(b)
+                    && PlannerDayBody.draftMenuGrab(CGPoint(x: b.midX, y: b.midY), at: at, width: w) == .button)
+        }
+        // Кнопки лежат подряд слева направо, не накрывая друг друга и время.
+        #expect(btns[0].minX >= m.minX + PlannerDayBody.menuTimeW)
+        #expect(btns[0].maxX < btns[1].minX && btns[1].maxX < btns[2].minX && abs(btns[2].maxX - m.maxX) < 0.01)
+        // Время и щель между кнопками — заготовка; мимо меню — ничего.
+        #expect(PlannerDayBody.draftMenuGrab(CGPoint(x: m.minX + 10, y: m.midY), at: at, width: w) == .body)
+        #expect(PlannerDayBody.draftMenuGrab(CGPoint(x: (btns[0].maxX + btns[1].minX) / 2, y: m.midY), at: at, width: w) == .body)
+        #expect(PlannerDayBody.draftMenuGrab(CGPoint(x: 200, y: m.maxY + 10), at: at, width: w) == nil)
+        // Полоса: 14 pt над чертой и полчаса под ней, от оси до края ленты; саму черту не выше и не ниже.
+        let y = PlannerDayBody.top(Double(at))
+        let band = PlannerDayBody.draftBand(at: at, width: w)
+        #expect(band == CGRect(x: 70, y: y - 14, width: w - 70, height: 14 + PlannerDayBody.hourH / 2))
+        #expect(band.contains(CGPoint(x: 200, y: y - 10)) && band.contains(CGPoint(x: 200, y: y + 5)))
+        #expect(!band.contains(CGPoint(x: 200, y: y - 20)) && !band.contains(CGPoint(x: 30, y: y)))
+        // Верх меню не заходит в полосу: пересечения нет, касание однозначно — кнопки или полоса.
+        #expect(m.minY >= band.maxY - 0.01)
+    }
+
+    /// Заготовка у полуночи: счёт не зависит от длины, которую ему подкладывают (у переноса она не нужна), последний
+    /// шаг суток — 23:45, первое движение не скачет — у заготовки на получасе и на самом конце суток.
+    @Test func draftNearMidnight() {
+        let h = PlannerDayBody.hourH
+        // Открыта в 23:30 — дотягивается до 23:45 и не дальше; вверх едет как обычно.
+        let late = DayGrip.Draft(a0: 1410, y0: 0, step: 15)
+        #expect(late.at(y: 0, hourHeight: h) == 1410)
+        #expect(late.at(y: 3, hourHeight: h) == 1410)                    // мёртвая зона — без скачка
+        #expect(late.at(y: h / 4, hourHeight: h) == 1425)
+        #expect(late.at(y: 5 * h, hourHeight: h) == 1425)
+        #expect(late.at(y: -h / 4, hourHeight: h) == 1395)
+        // Открыта в 23:00 — те же 60 минут «длины» ей не мешают: ровно до 23:45 и обратно до 23:00.
+        let eleven = DayGrip.Draft(a0: 1380, y0: 0, step: 15)
+        #expect(eleven.at(y: 2 * h, hourHeight: h) == 1425)
+        #expect(eleven.at(y: -h / 4, hourHeight: h) == 1365)
+        // Любая длина записи — тот же результат: заготовке нужен только старт.
+        for len in [15, 60, 120, 600] {
+            let r = DayDrag.track(.move, a0: 1380, b0: 1380 + len, minutes: 90, step: 15, nest: nil)
+            #expect(r.start == 1425)
+        }
+        // Последний ряд сетки (24:00 и 24:30, завтра): не двигается вниз, вверх — по сетке; скачка нет.
+        let tomorrow = DayGrip.Draft(a0: 1440, y0: 0, step: 15)
+        #expect(tomorrow.at(y: 0, hourHeight: h) == 1440 && tomorrow.at(y: 3, hourHeight: h) == 1440)
+        #expect(tomorrow.at(y: 2 * h, hourHeight: h) == 1440)
+        #expect(tomorrow.at(y: -h / 4, hourHeight: h) == 1425)
+        // Шаг 30: последний шаг суток — 23:30.
+        let coarse = DayGrip.Draft(a0: 1380, y0: 0, step: 30)
+        #expect(coarse.at(y: 3 * h, hourHeight: h) == 1410)
+    }
+
+    /// Заготовку ведёт тот же счёт, что запись на ленте: шаг 15 (30 при шаге 30), мёртвая зона в полшага, привязка к сетке,
+    /// пределы суток. Путь — pt ленты, 38 pt на час.
+    @Test func draftFollowsTheFingerLikeARecord() {
+        let h = PlannerDayBody.hourH
+        let d = DayGrip.Draft(a0: 990, y0: 500, step: 15)
+        #expect(d.at(y: 500, hourHeight: h) == 990)
+        #expect(d.at(y: 500 + 3, hourHeight: h) == 990)                  // < 7,5 мин — мёртвая зона
+        #expect(d.at(y: 500 + h / 4, hourHeight: h) == 1005)             // 15 мин = 9,5 pt
+        #expect(d.at(y: 500 + h * 0.3, hourHeight: h) == 1005)           // 18 мин → ближайший шаг, 15
+        #expect(d.at(y: 500 + h * 0.4, hourHeight: h) == 1020)           // 24 мин → 30 от 16:30
+        #expect(d.at(y: 500 + h * 0.5, hourHeight: h) == 1020)
+        #expect(d.at(y: 500 - h, hourHeight: h) == 930)
+        #expect(d.at(y: 500 - 99 * h, hourHeight: h) == 0)               // выше полуночи не уходит
+        #expect(d.at(y: 500 + 99 * h, hourHeight: h) == 1440 - 15)       // последний шаг суток
+        let coarse = DayGrip.Draft(a0: 990, y0: 0, step: 30)
+        #expect(coarse.at(y: h / 4, hourHeight: h) == 1020)              // шаг 30: 15 мин — уже полшага
+        #expect(coarse.at(y: h / 8, hourHeight: h) == 990)
+        // Тот же ответ, что у записи (`DayDrag.track`): один счёт на двоих.
+        for k in [0.05, 0.3, 0.4, 0.9, -0.3, -0.6] {
+            let rec = DayDrag.track(.move, a0: 990, b0: 1050, minutes: k * 60, step: 15, nest: nil)
+            #expect(rec.start == d.at(y: 500 + h * CGFloat(k), hourHeight: h))
+        }
     }
 }

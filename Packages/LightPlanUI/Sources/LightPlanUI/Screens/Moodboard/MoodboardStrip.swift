@@ -11,6 +11,8 @@ import LightPlanDomain
 struct MoodboardStrip: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
+    /// Выбранный день на виде «день»: подборки его съёмок идут впереди. `nil` — неделя и месяц, как раньше.
+    var day: CivilDate? = nil
     @Environment(\.colorScheme) private var scheme
 
     private static let fold = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.45)
@@ -91,14 +93,22 @@ struct MoodboardStrip: View {
 
     @ViewBuilder private func tiles(_ pal: Palette, _ folders: [MbFolder], _ lib: RefLibrary) -> some View {
         let t = f.t
-        let shoots = Moodboard.stripShoots(folders, sessions: app.sessions, today: f.today)
+        let (onDay, shoots) = day.map { d -> ([MbFolder], [MbFolder]) in
+            let g = Moodboard.stripShoots(folders, sessions: app.sessions, today: f.today, day: d)
+            return (g.day, g.rest)
+        } ?? ([], Moodboard.stripShoots(folders, sessions: app.sessions, today: f.today))
         let sets = folders.filter { $0.kind == .genre }
         VStack(alignment: .leading, spacing: 0) {
+            // Адресные подборки съёмок выбранного дня — первыми, по времени начала (30.10, слово Алексея).
+            if !onDay.isEmpty {
+                MbSectionLabel(text: t.t("mb.dayShoots"))
+                row(onDay, withAdd: false, all: onDay, lib, node: "mb.d")
+            }
             if !shoots.isEmpty {
-                MbSectionLabel(text: t.t("nav.shoots"))
+                MbSectionLabel(text: t.t("nav.shoots"), top: onDay.isEmpty ? 0 : 18)
                 row(shoots, withAdd: false, all: shoots, lib, node: "mb.s")
             }
-            MbSectionLabel(text: t.t("mb.sets"), top: shoots.isEmpty ? 0 : 18)
+            MbSectionLabel(text: t.t("mb.sets"), top: shoots.isEmpty && onDay.isEmpty ? 0 : 18)
             row(sets, withAdd: true, all: sets, lib, node: "mb.g")
             if sets.count > 1 { MbSortHint(app: app) }
         }

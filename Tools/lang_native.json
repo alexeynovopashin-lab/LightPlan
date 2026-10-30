@@ -542,7 +542,8 @@
     "set.weekStartSun": "Воскресенье",
     "set.weekStartSat": "Суббота",
     "set.weekStartAuto": "Как в системе",
-    "set.weekStartNote": "С этого дня считаются недели в месяце, неделе и выборе даты. Суббота и воскресенье в цвете всегда."
+    "set.weekStartNote": "С этого дня считаются недели в месяце, неделе и выборе даты. Суббота и воскресенье в цвете всегда.",
+    "mb.dayShoots": "В этот день"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1083,7 +1084,8 @@
     "set.weekStartSun": "Sunday",
     "set.weekStartSat": "Saturday",
     "set.weekStartAuto": "System default",
-    "set.weekStartNote": "Weeks in the month, the week view and the date picker begin on this day. Saturday and Sunday are always in colour."
+    "set.weekStartNote": "Weeks in the month, the week view and the date picker begin on this day. Saturday and Sunday are always in colour.",
+    "mb.dayShoots": "This day"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1624,7 +1626,8 @@
     "set.weekStartSun": "Domingo",
     "set.weekStartSat": "Sábado",
     "set.weekStartAuto": "Según el sistema",
-    "set.weekStartNote": "Las semanas del mes, de la semana y del selector de fecha empiezan en este día. El sábado y el domingo siempre van en color."
+    "set.weekStartNote": "Las semanas del mes, de la semana y del selector de fecha empiezan en este día. El sábado y el domingo siempre van en color.",
+    "mb.dayShoots": "Este día"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2161,7 +2164,8 @@
     "set.weekStartSun": "日曜日",
     "set.weekStartSat": "土曜日",
     "set.weekStartAuto": "システムに合わせる",
-    "set.weekStartNote": "月表示・週表示・日付選択の週はこの曜日から始まります。土曜日と日曜日は常に色付きで表示されます。"
+    "set.weekStartNote": "月表示・週表示・日付選択の週はこの曜日から始まります。土曜日と日曜日は常に色付きで表示されます。",
+    "mb.dayShoots": "この日"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2698,6 +2702,7 @@
     "set.weekStartSun": "星期日",
     "set.weekStartSat": "星期六",
     "set.weekStartAuto": "跟随系统",
-    "set.weekStartNote": "月视图、周视图和日期选择中的每一周从这一天开始。周六和周日始终以彩色显示。"
+    "set.weekStartNote": "月视图、周视图和日期选择中的每一周从这一天开始。周六和周日始终以彩色显示。",
+    "mb.dayShoots": "这一天"
   }
 }
