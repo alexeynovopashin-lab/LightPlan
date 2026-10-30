@@ -42,6 +42,70 @@ struct PlanTitleLadderTests {
         }
     }
 
+    /// Экран дня (слово Алексея 30.10: «не надо писать сверху 29 октября, только Октябрь»): заголовок — название месяца в именительном
+    /// падеже языка, без числа; чужой год дописывается; короткая ступень — сокращение месяца. Месяц, а не «дата»: день недели и число
+    /// в заголовке не появляются ни на одном языке.
+    @Test func dayTitleIsTheMonthNameOnly() {
+        let ru = DateText(language: "ru", timeZone: Self.utc)
+        let oct29 = Self.day(2026, 10, 29)
+        let t = PlanTitleLayout.dayTitles(dates: ru, day: oct29, year: "")
+        #expect(t.full == "Октябрь", "именительный, без «а» на конце: «\(t.full)»")
+        #expect(t.short == "Окт.")
+        #expect(PlanTitleLayout.dayTitles(dates: ru, day: oct29, year: " 2027").full == "Октябрь 2027")
+        // Март и август: падеж именительный, не родительный («Март», не «марта»).
+        #expect(PlanTitleLayout.dayTitles(dates: ru, day: Self.day(2026, 3, 8), year: "").full == "Март")
+        #expect(PlanTitleLayout.dayTitles(dates: ru, day: Self.day(2026, 8, 31), year: "").full == "Август")
+        let us = DateText(language: "en-US", timeZone: Self.utc)
+        #expect(PlanTitleLayout.dayTitles(dates: us, day: oct29, year: "").full == "October")
+        // Любой день месяца даёт один и тот же заголовок, на всех языках: число из него исключено.
+        for code in Self.langs {
+            let d = DateText(language: code, timeZone: Self.utc)
+            for m in 1...12 {
+                let first = PlanTitleLayout.dayTitles(dates: d, day: Self.day(2027, m, 1), year: "")
+                let last = PlanTitleLayout.dayTitles(dates: d, day: Self.day(2027, m, 28), year: "")
+                #expect(first.full == last.full && first.short == last.short, "\(code) \(m): заголовок зависит от числа («\(first.full)» / «\(last.full)»)")
+                #expect(first.full == d.monthTitle(Self.day(2027, m, 1)), "\(code) \(m): не тот же месяц, что в заголовке «месяца»")
+                #expect(!first.full.contains("28") && !first.short.contains("28"))
+            }
+        }
+    }
+
+    /// Экран дня (слово Алексея 30.10: «Октябрь целиком», «увеличил шрифт»): кегль 22, месяц на 440 / 430 / 393 / 375 pt стоит целиком
+    /// (на оси, а если на оси не влез — в свободном месте между кнопками), не сокращается ни у одного месяца ru и en; «месяц» и «неделя»
+    /// остаются на 18 и прежней лесенке.
+    @Test func dayTitleKeepsTheWholeMonthAtSize22() {
+        #expect(PlanTitleLayout.font(for: .day) == 22 && PlanTitleLayout.font(for: .week) == 18 && PlanTitleLayout.font(for: .month) == 18)
+        let axis = PlanTitleLayout.insets(rightButtons: 3).leading
+        for code in ["ru", "en-US"] {
+            let d = DateText(language: code, timeZone: Self.utc)
+            for m in 1...12 {
+                let t = PlanTitleLayout.dayTitles(dates: d, day: Self.day(2026, m, 15), year: "")
+                for w: CGFloat in [440, 430, 393, 375] {
+                    let st = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: w, rightButtons: 3, wholeFirst: true,
+                                                    width: { PlanTitleLayout.width($0, size: 22) })
+                    let shown = PlanTitleLayout.width(t.full, size: 22) * st.scale
+                    let room = w - 32 - st.leading - st.trailing
+                    #expect(!st.short, "\(code) \(t.full) \(Int(w)): сократился")
+                    #expect(st.scale >= PlanTitleLayout.invisibleSqueeze, "\(code) \(t.full) \(Int(w)): сжат до \(st.scale)")
+                    #expect(shown <= room + 0.5, "\(code) \(t.full) \(Int(w)): \(shown) не влезает в \(room)")
+                    if w >= 440 { #expect(st.leading == axis, "\(code) \(t.full) \(Int(w)): ушёл с оси, хотя места на оси хватает") }
+                }
+            }
+        }
+        // Октябрь: на 440 на оси, на 393 целиком между кнопками (на оси места 69 pt, слову на 22 pt нужно 89), прежняя лесенка на 18 pt даёт «Окт.».
+        let ru = DateText(language: "ru", timeZone: Self.utc)
+        let t = PlanTitleLayout.dayTitles(dates: ru, day: Self.day(2026, 10, 29), year: "")
+        let measure22: (String) -> CGFloat = { PlanTitleLayout.width($0, size: 22) }
+        let s440 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 440, rightButtons: 3, wholeFirst: true, width: measure22)
+        let s393 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 393, rightButtons: 3, wholeFirst: true, width: measure22)
+        #expect(s440.leading == axis && !s440.short)
+        #expect(s393.leading > axis - 100 && s393.leading < axis && !s393.short, "393 pt: целиком между кнопками, сдвиг влево от оси")
+        let old393 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 393, rightButtons: 3)
+        #expect(old393.short, "без wholeFirst (неделя, месяц) на 393 pt по-прежнему «Окт.»")
+        // Слово 22 pt шире 18 pt ровно в пропорции кегля: мера честная.
+        #expect(abs(PlanTitleLayout.width(t.full, size: 22) / PlanTitleLayout.width(t.full, size: 18) - 22.0 / 18) < 0.03)
+    }
+
     private struct Case { let label: String; let full: String; let short: String }
 
     private func cases() -> [Case] {
@@ -49,8 +113,10 @@ struct PlanTitleLadderTests {
         for code in Self.langs {
             let d = DateText(language: code, timeZone: Self.utc)
             let a = Self.day(2026, 9, 23), m = Self.day(2027, 9, 1)
-            out.append(Case(label: "\(code) день", full: d.dMon(a), short: d.dMonAbbr(a)))
-            out.append(Case(label: "\(code) день другого года", full: d.dMon(a) + " 2027", short: d.dMonAbbr(a) + " 2027"))
+            let t = PlanTitleLayout.dayTitles(dates: d, day: a, year: "")
+            let t27 = PlanTitleLayout.dayTitles(dates: d, day: a, year: " 2027")
+            out.append(Case(label: "\(code) день", full: t.full, short: t.short))
+            out.append(Case(label: "\(code) день другого года", full: t27.full, short: t27.short))
             out.append(Case(label: "\(code) месяц", full: d.monthTitle(m) + " 2027", short: d.monthAbbr(m) + " 2027"))
         }
         return out
@@ -87,8 +153,12 @@ struct PlanTitleLadderTests {
             table.append(row)
         }
         print(table.joined(separator: "\n"))
-        // 440 pt: «23 сентября» целиком; 393 pt: короткий месяц, без сжатия.
+        // Лесенка на длинном слове («23 сентября»): 440 pt целиком; 393 pt: короткий месяц, без сжатия (месяц один — короче).
         let ru = DateText(language: "ru", timeZone: Self.utc), a = Self.day(2026, 9, 23)
+        // День теперь «Сентябрь»: на 320 pt слово не пропадает и без сокращения не сжимается глубже пола.
+        let day = PlanTitleLayout.dayTitles(dates: ru, day: a, year: "")
+        let s320 = PlanTitleLayout.choose(full: day.full, short: day.short, screenWidth: 320, rightButtons: 3)
+        #expect(s320.scale >= PlanTitleLayout.squeezeFloor)
         let s440 = PlanTitleLayout.choose(full: ru.dMon(a), short: ru.dMonAbbr(a), screenWidth: 440, rightButtons: 3)
         #expect(!s440.short && s440.scale >= PlanTitleLayout.invisibleSqueeze)
         let s393 = PlanTitleLayout.choose(full: ru.dMon(a), short: ru.dMonAbbr(a), screenWidth: 393, rightButtons: 3)
@@ -101,6 +171,11 @@ struct PlanTitleLadderTests {
             let v = Text(t).font(webFont(18, 650)).tracking(-0.3).lineLimit(1).fixedSize()
             let host = UIHostingController(rootView: v).sizeThatFits(in: CGSize(width: 2000, height: 100)).width
             #expect(abs(host - PlanTitleLayout.width(t)) <= 1.5, "«\(t)»: Text \(host), мера \(PlanTitleLayout.width(t))")
+        }
+        for t in ["Октябрь", "Сентябрь", "October", "September"] {
+            let v = Text(t).font(webFont(22, 650)).tracking(-0.3).lineLimit(1).fixedSize()
+            let host = UIHostingController(rootView: v).sizeThatFits(in: CGSize(width: 2000, height: 100)).width
+            #expect(abs(host - PlanTitleLayout.width(t, size: 22)) <= 1.5, "22 pt «\(t)»: Text \(host), мера \(PlanTitleLayout.width(t, size: 22))")
         }
     }
 
