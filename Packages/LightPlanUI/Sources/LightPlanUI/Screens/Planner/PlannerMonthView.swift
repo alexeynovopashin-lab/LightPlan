@@ -20,9 +20,9 @@ struct PlannerMonthBody: View {
         let grid = st.monthGrid(ws)
         let hasShoots = grid.contains { PlannerState.sameMonth($0, st.month) && !f.shown(on: $0).isEmpty }
         VStack(spacing: 0) {
-            // Календарь стоит на стеклянной подложке (28и, макет C со стеклом): шапка недели и сетка.
+            // Календарь стоит на стеклянной подложке (28и, макет C со стеклом): сетка дат. Линейка дней недели закреплена
+            // в шапке экрана (`MonthRuler`, 30.2): список дня под сеткой листается, а линейка стоит.
             VStack(spacing: 0) {
-                head(pal)
                 // Листание месяца едет сбоку (29.2в): подложка и шапка стоят, сетка двух месяцев скользит внутри.
                 FlipStage(pos: Double(FlipTrack.monthIndex(st.month)), height: { idx in
                     MonthMetrics.gridHeight(rows: ws.grid(of: FlipTrack.monthStart(idx)).count / 7)
@@ -30,6 +30,7 @@ struct PlannerMonthBody: View {
                     rows(FlipTrack.monthStart(idx), lead: lead)
                 }
                 .shotNode("cal")
+                .pinGeo("mgrid")
             }
             .padding(EdgeInsets(top: MonthMetrics.plateTop, leading: MonthMetrics.plateInner, bottom: MonthMetrics.plateBottom, trailing: MonthMetrics.plateInner))
             .background { MonthPlate(pal: pal) }
@@ -37,7 +38,7 @@ struct PlannerMonthBody: View {
             .padding(.top, MonthMetrics.plateGap)
             .shotNode("cal.plate")
             if hasShoots { legend(pal) }
-            PlannerDayPanel(app: app, f: f)
+            PlannerDayPanel(app: app, f: f).pinGeo("mpanel")
             PlannerDayList(app: app, f: f, fan: $fan)
             PlannerDayStates(f: f)
         }
@@ -60,24 +61,6 @@ struct PlannerMonthBody: View {
         }
     }
 
-    /// `.cal-head`: слова недели от выбранного дня, суббота и воскресенье — янтарные (`Palette.weekend`).
-    private func head(_ pal: Palette) -> some View {
-        let week = app.weekStart.week(of: app.planner.month)
-        return HStack(spacing: 0) {
-            ForEach(0..<7, id: \.self) { i in
-                let w = f.dates.wdShort(f.date(week[i]))
-                Text(w)
-                    .font(webFont(12.5, 600)).tracking(0.6)
-                    .foregroundStyle(WeekStart.isWeekend(week[i]) ? pal.weekend : pal.ink7)
-                    .shotNode("head.\(i)", text: w)
-                    .frame(maxWidth: .infinity)
-                    .padding(.bottom, 8)
-            }
-        }
-        .padding(.top, MonthMetrics.headTop)
-        .shotNode("cal.head")
-    }
-
     /// Легенда объясняет цвет подписей — только когда в месяце есть съёмки.
     private func legend(_ pal: Palette) -> some View {
         HStack(spacing: 16) {
@@ -91,6 +74,36 @@ struct PlannerMonthBody: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 14)
         .shotNode("legend")
+    }
+}
+
+/// `.cal-head`: слова недели от выбранного дня, суббота и воскресенье — янтарные (`Palette.weekend`). Стоит в шапке «Съёмок»
+/// под заголовком, пока вид — месяц (30.2, слово Алексея 29.10 по Календарю iOS: «закрепим… линейку дней недели»): прокрутка
+/// списка дня её не уносит. Столбцы те же, что у сетки (поле 20, зазор `colGap`), поэтому слова стоят точно над числами.
+/// Тот же вид, что у линейки ленты года (12,5 pt, `ink7`, волосок снизу).
+struct MonthRuler: View {
+    @Bindable var app: AppModel
+    let f: PlannerFacts
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let pal = Palette(scheme)
+        let week = app.weekStart.week(of: app.planner.month)
+        HStack(spacing: MonthMetrics.colGap) {
+            ForEach(0..<7, id: \.self) { i in
+                let w = f.dates.wdShort(f.date(week[i]))
+                Text(w)
+                    .font(webFont(12.5, 600)).tracking(0.6)
+                    .foregroundStyle(WeekStart.isWeekend(week[i]) ? pal.weekend : pal.ink7)
+                    .shotNode("head.\(i)", text: w)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, MonthMetrics.plateMargin + MonthMetrics.plateInner)
+        .padding(.top, MonthMetrics.rulerTop).padding(.bottom, MonthMetrics.rulerBottom)
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair4).frame(height: 1) }
+        .shotNode("cal.head")
+        .pinGeo("mruler")
     }
 }
 
@@ -114,7 +127,9 @@ enum MonthMetrics {
     static let plateRadius: CGFloat = 22
     static let plateMargin: CGFloat = 12
     static let plateInner: CGFloat = 8
-    static let plateTop: CGFloat = 2
+    /// Над сеткой в подложке 8 pt: до 30.2 над ней стояли 35 pt (2 + линейка 10 + 15 + 8), теперь линейка с полями — 27 pt в шапке
+    /// и 8 pt здесь, так что сетка и всё под ней остались на тех же местах.
+    static let plateTop: CGFloat = 8
     static let plateBottom: CGFloat = 6
     static let shadowRadius: CGFloat = 10   // `0 6 20` макета: blur 20 = радиус 10
     static let shadowY: CGFloat = 6
@@ -122,7 +137,8 @@ enum MonthMetrics {
     /// её держат поля `plateGap` и `plateMargin`, чтобы контейнер не срезал видимую часть (хвост за 1 радиус бледнее 4 %).
     static var shadowReachTop: CGFloat { shadowRadius - shadowY }
     static let plateGap: CGFloat = 8   // от верхней панели экрана до подложки
-    static let headTop: CGFloat = 10
+    /// Поля линейки в шапке: сверху и снизу по 6 pt + волосок 1 pt.
+    static let rulerTop: CGFloat = 6, rulerBottom: CGFloat = 6
 
     /// Центр цифры от верха сетки: зависит только от номера ряда, не от подписей.
     static func digitCenterY(row: Int) -> CGFloat {
