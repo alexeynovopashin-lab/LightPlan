@@ -53,6 +53,10 @@ public struct PlannerScreenView: View {
             .tabRise()
         }
         .scrollJump(app.lexicon, node: "sj.planner", enabled: app.planner.scope != .day, position: $position)
+        #if DEBUG && os(iOS)
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in MonthPinBench.scroll(y) }
+        .task { await MonthPinBench.run(app, nav: nav, scrollTo: { position.scrollTo(y: $0) }, scrollEdge: { position.scrollTo(edge: $0) }) }
+        #endif
         // Чужие календари на выбранный день с запасом (30.5): пока окно прочитано, база не опрашивается.
         .task(id: st.selected) { app.ghostsEnsure(around: st.selected) }
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.screen = $0 }
@@ -61,7 +65,10 @@ public struct PlannerScreenView: View {
                 PlanTop(app: app, f: f, scopeOpen: $scopeOpen, nav: nav)
                 if st.scope == .day { PlannerDaySticky(app: app, f: f, part: part) }
                 if st.scope != .day, st.isAway(from: f.today) { nowBack(pal, f) }
+                // Линейка дней недели месяца стоит в шапке, пока вид — месяц (30.2).
+                if st.scope == .month { MonthRuler(app: app, f: f) }
             }
+            .pinGeo("mhead")
             .background {
                 Rectangle().fill(pal.bar).glassEffect(.regular, in: Rectangle())
                     .padding(.horizontal, -4).padding(.top, -4)
@@ -478,6 +485,7 @@ private struct PlanTop: View {
                 .foregroundStyle(pal.ink)
                 .lineLimit(1).minimumScaleFactor(PlanTitleLayout.minScale)
                 .shotNode("plan.title", text: title)
+                .pinGeo("mtitle")
                 .overlay(alignment: .leading) {
                     Icon("chevron", size: 16, line: 1.6)
                         .rotationEffect(.degrees(180))

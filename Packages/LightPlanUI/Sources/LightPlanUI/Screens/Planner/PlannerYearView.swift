@@ -305,7 +305,7 @@ struct YearLentaView: View {
                             PlanMotion.stats(nav, open: true)
                         }
                     }
-                    OverlayIconButton(kind: .search, color: pal.brass, label: f.t.t("plan.search"), node: "year.search") {
+                    OverlayIconButton(kind: .search, color: pal.ink, label: f.t.t("plan.search"), node: "year.search") {
                         PlanMotion.search(nav, open: true)
                     }
                 }
