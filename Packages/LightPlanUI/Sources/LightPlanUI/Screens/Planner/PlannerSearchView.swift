@@ -13,8 +13,6 @@ struct PlannerSearchView: View {
     @State private var query = ""
     @FocusState private var focused: Bool
     @State private var position = ScrollPosition(edge: .top)
-    /// Прокрутка: сколько прокручено, сколько всего лишнего, высота окна.
-    @State private var scroll = (offset: CGFloat(0), overflow: CGFloat(0), visible: CGFloat(1))
 
     var body: some View {
         let pal = Palette(scheme)
@@ -46,14 +44,14 @@ struct PlannerSearchView: View {
         }
         .scrollJump(app.lexicon, node: "sj.search", position: $position)
         .scrollDismissesKeyboard(.interactively)
-        .onScrollGeometryChange(for: [CGFloat].self) {
-            [$0.contentOffset.y, max(0, $0.contentSize.height - $0.containerSize.height), $0.containerSize.height]
-        } action: { _, v in scroll = (v[0], v[1], max(1, v[2])) }
-        .overlay(alignment: .bottomTrailing) { jump(pal) }
         .background(pal.surface.ignoresSafeArea())
         #if os(iOS)
         // Касание мимо строк закрывает открытую кнопку «Удалить» (29.3г), как в «Съёмках».
         .gesture(TouchProbe { stamp in Task { @MainActor in app.rowSwipe.outsideTouch(stamp: stamp) } })
+        #endif
+        #if DEBUG
+        // Стенд и тесты (30.2): `-LPSearchQuery <слово>` вводит запрос без клавиатуры — длинный список для кадров кнопки прыжка.
+        .onAppear { if let q = UserDefaults.standard.string(forKey: "LPSearchQuery") { query = q } }
         #endif
         .task {
             // Клавиатура — когда слой почти доехал (веб: 350 мс).
@@ -102,28 +100,5 @@ struct PlannerSearchView: View {
         .buttonStyle(.plain)
         // Свайп влево «Удалить» (29.3г).
         .rowSwipe(app, key: "s." + s.id, id: s.id, corner: 10, word: f.t.t("swipe.del"))
-    }
-
-    /// Кнопка «в конец / в начало» (веб `jumpAttach`): видна, когда лишнего не
-    /// меньше 0,6 окна; до середины ведёт вниз, дальше — вверх.
-    @ViewBuilder private func jump(_ pal: Palette) -> some View {
-        if scroll.overflow >= 0.6 * scroll.visible {
-            let down = scroll.offset < scroll.overflow / 2
-            Button {
-                withAnimation(PlanMotion.pick(PlanMotion.jump)) {
-                    if down { position.scrollTo(edge: .bottom) } else { position.scrollTo(edge: .top) }
-                }
-            } label: {
-                Icon("chevron", size: 16, line: 2.4)
-                    .rotationEffect(.degrees(down ? 90 : -90))
-                    .foregroundStyle(pal.ink3)
-                    .frame(width: 38, height: 38)
-                    .glassEffect(.regular, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(f.t.t(down ? "mb.jumpEnd" : "mb.jumpTop"))
-            .padding(.trailing, 24).padding(.bottom, 10)
-            .shotNode("se.jump")
-        }
     }
 }
