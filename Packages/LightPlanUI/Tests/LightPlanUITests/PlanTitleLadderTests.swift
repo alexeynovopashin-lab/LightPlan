@@ -42,6 +42,54 @@ struct PlanTitleLadderTests {
         }
     }
 
+    /// Экран дня (слово Алексея 30.10: «не надо писать сверху 29 октября, только Октябрь»): заголовок — название месяца в именительном
+    /// падеже языка, без числа; чужой год дописывается; короткая ступень — сокращение месяца. Месяц, а не «дата»: день недели и число
+    /// в заголовке не появляются ни на одном языке.
+    @Test func dayTitleIsTheMonthNameOnly() {
+        let ru = DateText(language: "ru", timeZone: Self.utc)
+        let oct29 = Self.day(2026, 10, 29)
+        let t = PlanTitleLayout.dayTitles(dates: ru, day: oct29, year: "")
+        #expect(t.full == "Октябрь", "именительный, без «а» на конце: «\(t.full)»")
+        #expect(t.short == "Окт.")
+        #expect(PlanTitleLayout.dayTitles(dates: ru, day: oct29, year: " 2027").full == "Октябрь 2027")
+        // Март и август: падеж именительный, не родительный («Март», не «марта»).
+        #expect(PlanTitleLayout.dayTitles(dates: ru, day: Self.day(2026, 3, 8), year: "").full == "Март")
+        #expect(PlanTitleLayout.dayTitles(dates: ru, day: Self.day(2026, 8, 31), year: "").full == "Август")
+        let us = DateText(language: "en-US", timeZone: Self.utc)
+        #expect(PlanTitleLayout.dayTitles(dates: us, day: oct29, year: "").full == "October")
+        // Любой день месяца даёт один и тот же заголовок, на всех языках: число из него исключено.
+        for code in Self.langs {
+            let d = DateText(language: code, timeZone: Self.utc)
+            for m in 1...12 {
+                let first = PlanTitleLayout.dayTitles(dates: d, day: Self.day(2027, m, 1), year: "")
+                let last = PlanTitleLayout.dayTitles(dates: d, day: Self.day(2027, m, 28), year: "")
+                #expect(first.full == last.full && first.short == last.short, "\(code) \(m): заголовок зависит от числа («\(first.full)» / «\(last.full)»)")
+                #expect(first.full == d.monthTitle(Self.day(2027, m, 1)), "\(code) \(m): не тот же месяц, что в заголовке «месяца»")
+                #expect(!first.full.contains("28") && !first.short.contains("28"))
+            }
+        }
+    }
+
+    /// Какой месяц на какой ступени стоит на 393 и 375 pt (печатается для отчёта «DAYMONTHS»): целиком / короткий / сжат / между кнопками.
+    @Test func printsWhichMonthsFitWhole() {
+        for code in ["ru", "en-US"] {
+            let d = DateText(language: code, timeZone: Self.utc)
+            var rows = ["DAYMONTHS \(code) ширина → ступень (1 целиком · 2 короткий · 3 сжат · 4 между кнопками)"]
+            for m in 1...12 {
+                let t = PlanTitleLayout.dayTitles(dates: d, day: Self.day(2026, m, 15), year: "")
+                var row = "\(t.full) (\(String(format: "%.1f", PlanTitleLayout.width(t.full))) pt)".padding(toLength: 22, withPad: " ", startingAt: 0)
+                for w: CGFloat in [440, 393, 375, 320] {
+                    let st = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: w, rightButtons: 3)
+                    let axis = PlanTitleLayout.insets(rightButtons: 3).leading
+                    let rank = st.leading != axis ? 4 : st.scale < PlanTitleLayout.invisibleSqueeze ? 3 : st.short ? 2 : 1
+                    row += " | \(Int(w)): \(rank)"
+                }
+                rows.append(row)
+            }
+            print(rows.joined(separator: "\n"))
+        }
+    }
+
     private struct Case { let label: String; let full: String; let short: String }
 
     private func cases() -> [Case] {
@@ -49,8 +97,10 @@ struct PlanTitleLadderTests {
         for code in Self.langs {
             let d = DateText(language: code, timeZone: Self.utc)
             let a = Self.day(2026, 9, 23), m = Self.day(2027, 9, 1)
-            out.append(Case(label: "\(code) день", full: d.dMon(a), short: d.dMonAbbr(a)))
-            out.append(Case(label: "\(code) день другого года", full: d.dMon(a) + " 2027", short: d.dMonAbbr(a) + " 2027"))
+            let t = PlanTitleLayout.dayTitles(dates: d, day: a, year: "")
+            let t27 = PlanTitleLayout.dayTitles(dates: d, day: a, year: " 2027")
+            out.append(Case(label: "\(code) день", full: t.full, short: t.short))
+            out.append(Case(label: "\(code) день другого года", full: t27.full, short: t27.short))
             out.append(Case(label: "\(code) месяц", full: d.monthTitle(m) + " 2027", short: d.monthAbbr(m) + " 2027"))
         }
         return out
@@ -87,8 +137,12 @@ struct PlanTitleLadderTests {
             table.append(row)
         }
         print(table.joined(separator: "\n"))
-        // 440 pt: «23 сентября» целиком; 393 pt: короткий месяц, без сжатия.
+        // Лесенка на длинном слове («23 сентября»): 440 pt целиком; 393 pt: короткий месяц, без сжатия (месяц один — короче).
         let ru = DateText(language: "ru", timeZone: Self.utc), a = Self.day(2026, 9, 23)
+        // День теперь «Сентябрь»: на 320 pt слово не пропадает и без сокращения не сжимается глубже пола.
+        let day = PlanTitleLayout.dayTitles(dates: ru, day: a, year: "")
+        let s320 = PlanTitleLayout.choose(full: day.full, short: day.short, screenWidth: 320, rightButtons: 3)
+        #expect(s320.scale >= PlanTitleLayout.squeezeFloor)
         let s440 = PlanTitleLayout.choose(full: ru.dMon(a), short: ru.dMonAbbr(a), screenWidth: 440, rightButtons: 3)
         #expect(!s440.short && s440.scale >= PlanTitleLayout.invisibleSqueeze)
         let s393 = PlanTitleLayout.choose(full: ru.dMon(a), short: ru.dMonAbbr(a), screenWidth: 393, rightButtons: 3)

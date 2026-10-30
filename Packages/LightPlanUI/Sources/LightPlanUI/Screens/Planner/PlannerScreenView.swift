@@ -366,6 +366,13 @@ enum PlanTitleLayout {
         ceil((s as NSString).size(withAttributes: [.font: webPlatformFont(18, 650), .kern: -0.3]).width)
     }
 
+    /// Заголовок экрана дня (слово Алексея 30.10: «не надо писать сверху 29 октября, только Октябрь»): только месяц, как в Календаре iOS.
+    /// Выбранный день и так виден кружком в ленте недели. Имя месяца — именительное самого языка (`monthTitle`, не «октября»);
+    /// `year` — « 2027» для чужого года, иначе пусто.
+    static func dayTitles(dates d: DateText, day: Date, year: String) -> (full: String, short: String) {
+        (d.monthTitle(day) + year, d.monthAbbr(day) + year)
+    }
+
     /// Сжатие слова до 3 % глазом не видно: такое слово считается вошедшим (его сожмёт сам `Text`).
     static let invisibleSqueeze: CGFloat = 0.97
     /// Ниже этого сжатие на оси не идёт (12,6 pt вместо 18): дальше слово уходит в свободное место между кнопками.
@@ -469,7 +476,7 @@ private struct PlanTop: View {
     }
 
     /// Заголовок стоит на оси экрана независимо от кнопок (28и.3): слово — по центру, шеврон висит слева от него,
-    /// не сдвигая слово. Не помещается — сперва месяц сокращается («23 сент.»), потом слово сжимается, и лишь когда на оси места
+    /// не сдвигая слово. Не помещается — сперва месяц сокращается («Окт.»), потом слово сжимается, и лишь когда на оси места
     /// нет совсем, уходит в свободное место между кнопками (`PlanTitleLayout.choose`, слово Алексея 28.10).
     private func titleButton(_ pal: Palette, rightButtons: Int) -> some View {
         let t = titles
@@ -533,8 +540,7 @@ private struct PlanTop: View {
         func yr(_ c: CivilDate) -> String { c.year == now.year ? "" : " \(c.year)" }
         switch st.scope {
         case .day:
-            let day = f.date(st.selected)
-            return (d.dMon(day) + yr(st.selected), d.dMonAbbr(day) + yr(st.selected))
+            return PlanTitleLayout.dayTitles(dates: d, day: f.date(st.selected), year: yr(st.selected))
         case .week:
             let a = app.weekStart.start(of: st.selected), b = a.adding(days: 6)
             if a.month == b.month { return (d.monthTitle(f.date(a)) + yr(a), d.monthAbbr(f.date(a)) + yr(a)) }
