@@ -45,7 +45,7 @@ public struct PlannerScreenView: View {
                 case .day: PlannerDayBody(app: app, f: f, fan: $fan, grip: grip)
                 }
                 // Полоса мудборда — внизу «Съёмок», под лентой дня и кнопками (28); под ней — «Документы» (28д).
-                MoodboardStrip(app: app, f: f)
+                MoodboardStrip(app: app, f: f, day: st.scope == .day ? st.selected : nil)
                 DocsStrip(app: app).padding(.bottom, 30)
             }
             .frame(maxWidth: .infinity, alignment: .top)
