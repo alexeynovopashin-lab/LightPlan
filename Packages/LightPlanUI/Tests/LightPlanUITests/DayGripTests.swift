@@ -243,6 +243,31 @@ struct DayGripTests {
         #expect(coarse.at(y: 3 * h, hourHeight: h) == 1410)
     }
 
+    /// Тап по нижней половине последнего ряда «24:00» (лента на 25 часов) открывает заготовку на 24:30 — это завтра 00:30,
+    /// как в вебе (`data-at=0` + `data-next`, день +1). Заготовка с таким стартом не прыгает на 23:45: предел суток для неё
+    /// — «не меньше собственного старта», вверх едет по сетке, вниз стоит. Кнопки открывают форму на завтра 00:30.
+    @Test func draftOpenedOnTheLastRow() throws {
+        let h = PlannerDayBody.hourH
+        let (hour, at) = PlannerDayBody.slotAt(y: 24 * h + h * 0.75)
+        #expect(hour == 24 && at == 1470)
+        let d = DayGrip.Draft(a0: at, y0: 0, step: 15)
+        #expect(d.at(y: 0, hourHeight: h) == 1470)
+        #expect(d.at(y: 3, hourHeight: h) == 1470)                   // мёртвая зона — без скачка
+        #expect(d.at(y: 5 * h, hourHeight: h) == 1470)               // вниз — стоит, а не уезжает на 23:45
+        #expect(d.at(y: -h / 4, hourHeight: h) == 1455)              // вверх — по шагу
+        #expect(d.at(y: -h / 2, hourHeight: h) == 1440)
+        #expect(d.at(y: -3 * h / 4, hourHeight: h) == 1425)          // 23:45 — только когда человек сам довёл
+        #expect(d.at(y: -99 * h, hourHeight: h) == 0)
+        // Меню заготовки на 24:30 встаёт над чертой и целиком в ленте.
+        let m = PlannerDayBody.menuFrame(at: at, width: 440)
+        #expect(m.maxY <= PlannerDayBody.top(Double(at)) && m.minY >= 0)
+        // Кнопка без движения — форма на завтра 00:30.
+        let app = model([])
+        app.openFromSlot(.shoot, day: Self.day, at: at)
+        let f = try #require(app.form)
+        #expect(f.day == Self.day.adding(days: 1) && f.start == 30)
+    }
+
     /// Заготовку ведёт тот же счёт, что запись на ленте: шаг 15 (30 при шаге 30), мёртвая зона в полшага, привязка к сетке,
     /// пределы суток. Путь — pt ленты, 38 pt на час.
     @Test func draftFollowsTheFingerLikeARecord() {
