@@ -45,7 +45,7 @@ struct BraunPalette {
     var winBottomRim: Color { Color.white.opacity(dark ? 0.08 : 0.8) }
     /// Обводка окошка только в тёмной.
     var winRing: Color? { dark ? Color.white.opacity(0.12) : nil }
-    /// Красный флажок Braun над окошком.
+    /// Красный флажок Braun — левый край окошка.
     var flag: Color { pick(0xAD0A15, 0xC8102E) }
 }
 
@@ -137,8 +137,8 @@ struct BraunLayout {
         let text = named.isEmpty ? plan.shoot.title : named
 
         // Окошко: ширина по «00:00:00» (13 semibold, цифры одной ширины), чтобы рамка не прыгала; поля 6, +2 запаса, как `labelW` демки.
-        let window = medium ? BraunText.width(Self.windowText, size: 13, semibold: true, mono: true) + 2 + 12 + (bare ? BraunWindow.notchExtra : 0) : 0
-        let headW = w - 2 * pad - (medium ? window + 10 + (bare ? 0 : BraunWindow.flagReserve) : 0)
+        let window = medium ? BraunText.width(Self.windowText, size: 13, semibold: true, mono: true) + 2 + 12 + BraunWindow.notchExtra : 0
+        let headW = w - 2 * pad - (medium ? window + 10 : 0)
         let head = BraunFit.pick(medium ? BraunFit.headerMedium : BraunFit.headerSmall, avail: headW - BraunPlate.signAndGap) {
             BraunText.width(text, size: $0, semibold: true, tracking: -0.1)
         }
@@ -313,22 +313,17 @@ struct BraunContent: View {
                 drum.frame(width: L.drum.width, height: L.drum.height, alignment: .topLeading).clipped().offset(x: L.drum.minX, y: L.drum.minY)
             }
             // Окошко свадьбы — слоями-соседями, живой таймер последним: на телефоне 26.10 после окошка не рисовалось ничего (диагностика).
-            if L.bare {
-                // Флажок «Семьи виджетов» — сам левый край окошка (Алексей 27.10).
+            if L.medium {
+                // Флажок — сам левый край окошка, и у маршрута, и у Б (Алексей 27.10 «Семья виджетов», 30.10: «он должен быть краем окошка»).
                 BraunNotchWindow(pal: pal).frame(width: L.windowWidth, height: 18).offset(x: w - pad - L.windowWidth, y: pad)
-            } else if L.medium {
-                windowPlate(L.windowWidth).offset(x: w - pad - L.windowWidth, y: pad)
-                let windowX = w - pad - L.windowWidth
-                BraunFlag().fill(pal.flag).frame(width: BraunWindow.flagWidth, height: BraunWindow.flagHeight)
-                    .offset(x: BraunWindow.flagX(windowX: windowX), y: BraunWindow.flagY(windowY: pad))
             }
             if alpha {
                 // 6 от края: при отступе 1 скругление плашки (22) срезало значок на телефоне 26.10.
                 AlphaBadge().frame(width: L.size.width - 12, height: L.size.height - 12, alignment: .bottomTrailing)
             }
             if L.medium {
-                // С вырезом (Б) текст стоит после полосы флажка: рамка таймера уже на 9 слева.
-                let inset = L.bare ? BraunWindow.notchExtra : 0
+                // Текст стоит после полосы флажка: рамка таймера уже на 9 слева.
+                let inset = BraunWindow.notchExtra
                 timerText(max(0, plan.shoot.endDate.timeIntervalSince(plan.frame.now)))
                     .frame(width: L.windowWidth - inset, height: 18).offset(x: w - pad - L.windowWidth + inset, y: pad)
             }
@@ -373,18 +368,6 @@ struct BraunContent: View {
     }
 
     // MARK: Окошко Braun: сколько осталось свадьбы
-
-    private func windowPlate(_ width: Double) -> some View {
-        let r = RoundedRectangle(cornerRadius: 4, style: .continuous)
-        return ZStack {
-            // Утоплено: тень у верхней кромки и светлая кромка снизу — обычными заливками (`.shadow(.inner)` виджет не рисует).
-            r.fill(pal.win)
-            r.fill(LinearGradient(colors: [pal.winTopShadow, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.22)))
-            r.fill(LinearGradient(colors: [.clear, pal.winBottomRim], startPoint: UnitPoint(x: 0.5, y: 0.9), endPoint: .bottom))
-            if let ring = pal.winRing { r.strokeBorder(ring, lineWidth: 0.5) }
-        }
-        .frame(width: width, height: 18)
-    }
 
     /// От часа «10:42:00», меньше часа «42:00»; тикает сама (`Text(timerInterval:)`), без обновления виджета.
     @ViewBuilder private func timerText(_ remaining: TimeInterval) -> some View {
@@ -513,17 +496,5 @@ struct BraunDotLayer: Shape {
             path.addEllipse(in: CGRect(x: c.x + p.x - s / 2, y: c.y + p.y - s / 2, width: s, height: s))
         }
         return path
-    }
-}
-
-/// Флажок Braun слева от окошка: красный шеврон (острие вправо, V-вырез слева), красный в обеих темах (#ad0a15 / #c8102e).
-struct BraunFlag: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        let pts = BraunWindow.flagPoints(width: Double(r.width), height: Double(r.height))
-        p.move(to: CGPoint(x: r.minX + pts[0].x, y: r.minY + pts[0].y))
-        for q in pts.dropFirst() { p.addLine(to: CGPoint(x: r.minX + q.x, y: r.minY + q.y)) }
-        p.closeSubpath()
-        return p
     }
 }

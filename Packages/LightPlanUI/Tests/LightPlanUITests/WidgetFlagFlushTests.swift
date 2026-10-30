@@ -114,6 +114,14 @@ struct WidgetFlagFlushTests {
         } } } }
     }
 
+    /// Формы с маршрутом (А, В): тот же флажок — левый край окошка, а не шеврон 7 × 12 в 3 pt от него (30.10). «long» — «9:12:00», «first» — «12:xx:xx», «last» — «40:00».
+    @Test func theRouteFlagIsTheWindowsLeftEdgeToo() throws {
+        for (name, size) in Self.sizes { for dark in [true, false] { for scale in [2.0, 3.0, 4.0] { for key in ["long", "first", "last"] {
+            let px = try render(BraunWidgetView(frame: WidgetBraunViewTests.scenario(key), alpha: false, medium: true), size: size, dark: dark, scale: scale)
+            check(find(px, width: Double(size.width), dark: dark), "маршрут \(name) \(dark ? "тёмная" : "светлая") \(Int(scale))× \(key)", scale: scale)
+        } } } }
+    }
+
     /// Снимки Б и А/В для сверки «до / после» по пикселям (`tools`: python по папке) — пишутся, если папка заведена (`$LP_FLAG_DIR`, `/tmp/lp-flag-out/after`).
     @Test func writesThePicturesWhenAsked() throws {
         let dir = ProcessInfo.processInfo.environment["LP_FLAG_DIR"] ?? "/tmp/lp-flag-out/after"
