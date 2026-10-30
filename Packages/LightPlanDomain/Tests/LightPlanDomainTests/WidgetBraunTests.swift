@@ -135,4 +135,9 @@ struct WidgetBraunTests {
         let p = BraunWindow.flagPoints(width: 7, height: 12)
         #expect(p.count == 6 && p[0] == (0, 0) && p[1] == (3.5, 0) && p[2] == (7, 6) && p[3] == (3.5, 12) && p[4] == (0, 12) && p[5] == (3.5, 6), "\(p)")
     }
+
+    @Test func theNotchBandLosesTheRingWidthAtTheTopOnlyInTheDarkWindow() {
+        #expect(BraunWindow.ringWidth == 0.5)
+        #expect(BraunWindow.notchBandInsetTop(ringed: true) == 0.5 && BraunWindow.notchBandInsetTop(ringed: false) == 0)
+    }
 }

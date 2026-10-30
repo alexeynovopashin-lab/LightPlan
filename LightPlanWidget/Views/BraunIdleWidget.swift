@@ -139,7 +139,10 @@ struct BraunNotchWindow: View {
                 if let ring = pal.winRing { box.strokeBorder(ring, lineWidth: 0.5) }
             }
             .clipShape(NotchOutline())
+            // Полоса — левый край окошка по всей высоте, но не выше его видимого тела: в тёмной обводка 0,5 сверху срезана.
+            let inset = BraunWindow.notchBandInsetTop(ringed: pal.winRing != nil)
             NotchBand().fill(pal.flag).frame(width: BraunWindow.notchExtra, height: 18)
+                .mask(alignment: .bottom) { Rectangle().frame(width: BraunWindow.notchExtra, height: 18 - inset) }
         }
     }
 }
