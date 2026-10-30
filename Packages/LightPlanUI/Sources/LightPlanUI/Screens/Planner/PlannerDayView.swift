@@ -346,15 +346,18 @@ struct PlannerDayBody: View {
         }
     }
 
-    /// Что под пальцем у открытой заготовки (меню и черта). Кнопки — кнопкам; остальное меню (время, щели между
-    /// кнопками) и полоса вокруг черты — заготовку берём сразу, без удержания, как выделенное тело записи.
+    /// Что под пальцем у меню открытой заготовки. Меню лежит над записями и непрозрачно: кнопки — кнопкам, остальное
+    /// меню (время, щели между кнопками) — заготовку берём сразу, без удержания, как выделенное тело записи.
     enum DraftGrab: Equatable { case button, body }
-    nonisolated static func draftGrab(_ p: CGPoint, at: Int, width: CGFloat) -> DraftGrab? {
+    nonisolated static func draftMenuGrab(_ p: CGPoint, at: Int, width: CGFloat) -> DraftGrab? {
         if menuButtons(at: at, width: width).contains(where: { $0.contains(p) }) { return .button }
-        if menuFrame(at: at, width: width).contains(p) { return .body }
-        let y = top(Double(at))
-        let band = CGRect(x: 70, y: y - 14, width: max(0, width - 70), height: 14 + menuGap)
-        return band.contains(p) ? .body : nil
+        return menuFrame(at: at, width: width).contains(p) ? .body : nil
+    }
+
+    /// Полоса у черты заготовки: 14 pt над чертой и полчаса под ней. Она лишь подсвечена и лежит под записями, поэтому
+    /// берёт палец только там, где под ним нет ни записи, ни призрака (`gripDown` спрашивает её последней).
+    nonisolated static func draftBand(at: Int, width: CGFloat) -> CGRect {
+        CGRect(x: 70, y: top(Double(at)) - 14, width: max(0, width - 70), height: 14 + menuGap)
     }
 
     /// Час и получас под точкой ленты — как у тапа: верх часа «:00», низ «:30».
@@ -575,15 +578,13 @@ struct PlannerDayBody: View {
         grip.draft = nil
         closeLaneFan()
         let w = laneWidth
-        // Заготовка (меню часа) лежит над лентой: кнопки жест ленты не трогает, остальное меню и черта — берём сразу.
-        if let a = armed, let g = Self.draftGrab(p, at: a.at, width: w) {
+        // Меню заготовки лежит над лентой и над записями: кнопки жест ленты не трогает, остальное меню берём сразу.
+        if let a = armed, let g = Self.draftMenuGrab(p, at: a.at, width: w) {
             if g == .button {
                 DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) menu")
                 return .none
             }
-            grip.draft = DayGrip.Draft(a0: a.at, y0: p.y, step: app.dayDragStep)
-            DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) draft \(a.at)")
-            return .now
+            return takeDraft(a.at, p)
         }
         var deselected = false
         if let k = selectedIndex(items) {
@@ -616,11 +617,19 @@ struct PlannerDayBody: View {
         // Пустой час: удержание открывает меню часа, как тап (багфикс 10.10 — раньше
         // удержание не делало ничего). Касание, снявшее выделение, — нет.
         if deselected { DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) none"); return .none }
+        // Полоса у черты заготовки — после записей и призраков: под ней они видны, и палец отдаётся им.
+        if let a = armed, Self.draftBand(at: a.at, width: w).contains(p) { return takeDraft(a.at, p) }
         grip.slotHold = Self.slotAt(y: p.y)
         // Удержание откроет заготовку, и тот же палец её поведёт — как в Календаре iPhone.
         grip.draft = DayGrip.Draft(a0: grip.slotHold!.at, y0: p.y, step: app.dayDragStep)
         DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) slot \(grip.slotHold!.at)")
         return .slot
+    }
+
+    private func takeDraft(_ at: Int, _ p: CGPoint) -> DayGripStart {
+        grip.draft = DayGrip.Draft(a0: at, y0: p.y, step: app.dayDragStep)
+        DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) draft \(at)")
+        return .now
     }
 
     private func take(_ it: DayItem, _ mode: DayDrag.Mode, hold: Bool, _ p: CGPoint) -> DayGripStart {
