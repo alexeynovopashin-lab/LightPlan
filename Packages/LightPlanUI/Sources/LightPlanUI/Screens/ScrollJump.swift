@@ -7,12 +7,15 @@ import UIKit
 
 /// Прыжок по длинной странице (Алексей, 28.10: «кнопка наверх… договорились добавить на все длинные страницы»). Одна тихая
 /// стеклянная кнопка с шевроном на оба конца (веб `jumpAttach`): у начала ведёт вниз, за серединой — вверх. Нужна, только
-/// пока есть что листать: `Moodboard.jumpVisible` (прокрутка не короче 0,6 высоты окна). Стоит поверх содержимого справа
-/// внизу, прокрутку держит сама — экрану нужен лишь `ScrollView`: `.scrollJump(app.lexicon, node: "…")`.
+/// пока есть что листать: `Moodboard.jumpVisible` (прокрутка не короче 0,6 высоты окна). Парит поверх содержимого справа
+/// внизу, как в мудборде (галерея 40 pt и `ink4` — `.standard`, папка 38 pt и `ink3` — `.folder`), прокрутку держит сама —
+/// экрану нужен лишь `ScrollView`: `.scrollJump(app.lexicon, node: "…")`.
 ///
-/// Два места кнопки. `.floating` — поверх содержимого справа внизу (мудборд, вид сохранён как был: у галереи 40 pt и `ink4`
-/// (`.standard`), у папки 38 pt и `ink3` (`.folder`)). `.strip` — своя полоса 56 pt под прокруткой, пока кнопка нужна:
-/// содержимое кончается над полосой и ничего под кнопкой не прячет (значок звонка в «Контактах», шеврон в карточке).
+/// Своей полосы под прокруткой нет (Алексей, 30.10: «у Apple полно парящих кнопок… удаляй черную плашку»). Чтобы кнопка не
+/// закрыла нижнее (значок звонка в «Контактах», шеврон в «Клиентах»), низ прокрутки получает запас `reserve` — кнопка с её
+/// отступом снизу: последняя строка доезжает выше кнопки. Запас стоит всегда, а не с порогом кнопки: порог считается по окну
+/// вместе с запасом и по содержимому без него, так что запас его не трогает, и низ страницы не прыгает, когда кнопка
+/// появляется или гаснет. Мудборд запаса не берёт (`reserve: false`) — его вид сохранён пиксель в пиксель.
 struct ScrollJump: ViewModifier {
     struct Look {
         var size: CGFloat = 40
@@ -23,14 +26,14 @@ struct ScrollJump: ViewModifier {
         static let folder = Look(size: 38, strong: true, trailing: 24)
     }
 
-    enum Placement { case floating, strip }
-    /// Высота полосы под прокруткой.
-    static let stripHeight: CGFloat = 56
+    /// Запас низа прокрутки под кнопку: сама кнопка и её отступ снизу (64 pt у `.standard`).
+    static func reserve(_ look: Look) -> CGFloat { look.size + look.bottom }
 
     let lexicon: Lexicon
     let node: String
     var look: Look = .standard
-    var placement: Placement = .strip
+    /// Низ прокрутки получает запас `reserve` (все страницы, кроме мудборда).
+    var reserves = true
     /// `false` — кнопки нет (вид, где прокрутка не страница: лента дня).
     var enabled = true
     /// Позиция прокрутки самого экрана. Если экран листает программно (`scrollTo`), он отдаёт её сюда: два `.scrollPosition` на одной
@@ -45,52 +48,32 @@ struct ScrollJump: ViewModifier {
     @State private var topY: CGFloat = 0
     @State private var bottomY: CGFloat = 0
     @State private var ownPosition = ScrollPosition(edge: .top)
-    /// Полоса показана. Решает она сама по высоте окна **без** полосы, иначе окно, сжатое полосой, мигало бы на пороге.
-    @State private var stripShown = false
 
     private var position: Binding<ScrollPosition> { screenPosition ?? $ownPosition }
 
     private struct Metrics: Equatable { var offset: CGFloat; var content: CGFloat; var container: CGFloat; var top: CGFloat; var bottom: CGFloat }
 
-    /// Debug `-LPScrollJumpFloating YES` ставит кнопку поверх содержимого (прежнее место) — кадр «до» для сравнения с полосой.
-    private var place: Placement {
-        #if DEBUG
-        if UserDefaults.standard.bool(forKey: "LPScrollJumpFloating") { return .floating }
-        #endif
-        return placement
-    }
-
-    @ViewBuilder func body(content: Content) -> some View {
-        let placement = place
-        let tracked = content
+    func body(content: Content) -> some View {
+        // Запас — отступом безопасной области самой прокрутки (её `contentInsets`), а не полями содержимого: вложенные прокрутки
+        // его не наследуют, высота содержимого не меняется. Кнопка висит снаружи и запаса не видит.
+        let reserve = enabled && reserves ? Self.reserve(look) : 0
+        return content
+            .safeAreaPadding(.bottom, reserve)
             .scrollPosition(position)
             .onScrollGeometryChange(for: Metrics.self) {
                 Metrics(offset: $0.contentOffset.y, content: $0.contentSize.height, container: $0.containerSize.height,
                         top: -$0.contentInsets.top, bottom: $0.contentSize.height - $0.containerSize.height + $0.contentInsets.bottom)
             } action: { _, m in
-                let full = m.container + (placement == .strip && stripShown ? Self.stripHeight : 0)
                 topY = m.top; bottomY = m.bottom
-                offset = m.offset; window = full; scrollable = max(0, m.content - full)
-                if placement == .strip { stripShown = enabled && Self.stripVisible(content: m.content, container: m.container, shown: stripShown) }
-                Self.log(node, scrollable, full)
+                offset = m.offset
+                (scrollable, window) = Self.measure(content: m.content, container: m.container, reserve: reserve)
+                Self.log(node, scrollable, window)
             }
-        switch placement {
-        case .floating:
-            tracked.overlay(alignment: .bottomTrailing) { jump(Palette(scheme)) }
-        case .strip:
-            VStack(spacing: 0) {
-                tracked
-                if stripShown {
-                    HStack(spacing: 0) { Spacer(minLength: 0); jump(Palette(scheme)) }
-                        .frame(height: Self.stripHeight)
-                }
-            }
-        }
+            .overlay(alignment: .bottomTrailing) { jump(Palette(scheme)) }
     }
 
     @ViewBuilder private func jump(_ pal: Palette) -> some View {
-        let placement = place
-        if enabled, placement == .strip || Moodboard.jumpVisible(scrollable: scrollable, screen: window) {
+        if enabled, Moodboard.jumpVisible(scrollable: scrollable, screen: window) {
             let down = Moodboard.jumpGoesDown(offset: offset, scrollable: scrollable)
             Button {
                 Self.logTap(node, down: down, offset: offset, topY: topY, bottomY: bottomY)
@@ -100,10 +83,13 @@ struct ScrollJump: ViewModifier {
                     .foregroundStyle(look.strong ? pal.ink3 : pal.ink4)
                     .frame(width: look.size, height: look.size)
                     .glassEffect(.regular, in: Circle())
+                    // У `.plain` нажимается только нарисованное — штрих шеврона, а стекло нет: парящий круг пропускал тап в
+                    // плитку или строку под собой (замер 30.10 в симуляторе, и у мудборда до правки). Нажимается весь круг.
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(lexicon.t(down ? "mb.jumpEnd" : "mb.jumpTop"))
-            .padding(.trailing, look.trailing).padding(.bottom, placement == .floating ? look.bottom : 0)
+            .padding(.trailing, look.trailing).padding(.bottom, look.bottom)
             .shotNode(node, text: down ? "down" : "up")
         }
     }
@@ -116,11 +102,11 @@ struct ScrollJump: ViewModifier {
         #endif
     }
 
-    /// Нужна ли полоса: правило мудборда по окну **без** полосы (`container` — окно как оно сейчас, `shown` — полоса уже стоит и
-    /// съела `stripHeight`), поэтому при любых `shown` ответ один и тот же и на пороге ничего не мигает.
-    static func stripVisible(content: CGFloat, container: CGFloat, shown: Bool) -> Bool {
-        let full = container + (shown ? stripHeight : 0)
-        return Moodboard.jumpVisible(scrollable: max(0, content - full), screen: full)
+    /// Прокрутка и окно для порога кнопки. Окно прокрутки приходит уже без запаса (замер 30.10: 783 → 719 pt у «Съёмок») —
+    /// запас возвращаем, иначе порог сдвинулся бы на 64 pt против мудборда и прежней полосы.
+    static func measure(content: CGFloat, container: CGFloat, reserve: CGFloat) -> (scrollable: CGFloat, window: CGFloat) {
+        let full = container + reserve
+        return (max(0, content - full), full)
     }
 
     /// Стенд высот (Debug): `-LPScrollJumpLog <файл>` дописывает «узел  прокрутка  окно  во скольких окнах».
@@ -135,10 +121,10 @@ struct ScrollJump: ViewModifier {
 }
 
 extension View {
-    /// Кнопка прыжка на длинную прокрутку; `node` — имя узла для снимков и отчёта высот. Экран со своим `scrollTo` отдаёт позицию
-    /// сюда (`position:`), а не вешает свой `.scrollPosition` рядом.
-    func scrollJump(_ lexicon: Lexicon, node: String, look: ScrollJump.Look = .standard, placement: ScrollJump.Placement = .strip,
+    /// Кнопка прыжка на длинную прокрутку; `node` — имя узла для снимков и отчёта высот; `reserve: false` — без запаса низа
+    /// (мудборд). Экран со своим `scrollTo` отдаёт позицию сюда (`position:`), а не вешает свой `.scrollPosition` рядом.
+    func scrollJump(_ lexicon: Lexicon, node: String, look: ScrollJump.Look = .standard, reserve: Bool = true,
                     enabled: Bool = true, position: Binding<ScrollPosition>? = nil) -> some View {
-        modifier(ScrollJump(lexicon: lexicon, node: node, look: look, placement: placement, enabled: enabled, screenPosition: position))
+        modifier(ScrollJump(lexicon: lexicon, node: node, look: look, reserves: reserve, enabled: enabled, screenPosition: position))
     }
 }

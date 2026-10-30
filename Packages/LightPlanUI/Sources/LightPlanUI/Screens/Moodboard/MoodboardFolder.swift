@@ -72,7 +72,7 @@ struct MoodboardFolder: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.width - 48 - 30 } action: { gridW = $0 }
         }
         .scrollDismissesKeyboard(.interactively)
-        .scrollJump(t, node: "mb.fjump", look: .folder, placement: .floating)
+        .scrollJump(t, node: "mb.fjump", look: .folder, reserve: false)
         .photosPicker(isPresented: Binding(get: { app.mb.photoPicker }, set: { app.mb.photoPicker = $0 }),
                       selection: $picked, matching: .images, photoLibrary: .shared())
         .onChange(of: picked) { _, items in
