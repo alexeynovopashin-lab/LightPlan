@@ -25,7 +25,7 @@ struct PlanHeaderTests {
     }
 
     private func titleWidth(_ text: String, size: DynamicTypeSize = .large) -> CGFloat {
-        let v = Text(text).font(webFont(18, 650)).tracking(-0.3).lineLimit(1).fixedSize().dynamicTypeSize(size)
+        let v = Text(text).font(webFont(PlanTitleLayout.titleFont, 650)).tracking(-0.3).lineLimit(1).fixedSize().dynamicTypeSize(size)
         return UIHostingController(rootView: v).sizeThatFits(in: CGSize(width: 2000, height: 100)).width
     }
 
@@ -44,8 +44,8 @@ struct PlanHeaderTests {
             line += String(format: "  w%.0f: место %.0f масштаб %@", w, room, sc.joined(separator: "/"))
         }
         print(line + "  слова: " + titles.map { String(format: "%.1f", titleWidth($0)) }.joined(separator: "/"))
-        // На самом широком экране слово «23 сентября» помещается целиком.
-        #expect(PlanTitleLayout.scale(title: titleWidth("23 сентября"), screenWidth: 440, rightButtons: 3) == 1)
+        // На самом широком экране слово «Сентябрь» (22 pt) помещается на оси целиком.
+        #expect(PlanTitleLayout.scale(title: titleWidth("Сентябрь"), screenWidth: 440, rightButtons: 3) == 1)
     }
 
     /// Слово шапки не уходит под кнопки: место, что ему отдано, не заходит на зоны слева и справа (по 6 + 8 pt запаса).
@@ -78,7 +78,7 @@ struct PlanHeaderTests {
             }
         }
         .overlay {
-            Text(title).font(webFont(18, 650)).tracking(-0.3).foregroundStyle(pal.ink)
+            Text(title).font(webFont(PlanTitleLayout.titleFont, 650)).tracking(-0.3).foregroundStyle(pal.ink)
                 .lineLimit(1).minimumScaleFactor(PlanTitleLayout.minScale)
                 .padding(.horizontal, inset).frame(maxWidth: .infinity)
         }

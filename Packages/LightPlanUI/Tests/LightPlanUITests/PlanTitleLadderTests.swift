@@ -70,40 +70,40 @@ struct PlanTitleLadderTests {
         }
     }
 
-    /// Экран дня (слово Алексея 30.10: «Октябрь целиком», «увеличил шрифт»): кегль 22, месяц на 440 / 430 / 393 / 375 pt стоит целиком
-    /// (на оси, а если на оси не влез — в свободном месте между кнопками), не сокращается ни у одного месяца ru и en; «месяц» и «неделя»
-    /// остаются на 18 и прежней лесенке.
-    @Test func dayTitleKeepsTheWholeMonthAtSize22() {
-        #expect(PlanTitleLayout.font(for: .day) == 22 && PlanTitleLayout.font(for: .week) == 18 && PlanTitleLayout.font(for: .month) == 18)
+    /// Заголовок шапки во всех трёх видах (слова Алексея 30.10: «Октябрь целиком», «увеличил шрифт», «все три вида»): кегль 22; слово на
+    /// 440 / 430 / 393 / 375 pt стоит целиком — на оси, а если на оси не влез, в свободном месте между кнопками, — и не сокращается.
+    /// Названия месяцев ru и en-US (день, неделя, месяц) и недели из двух месяцев («Окт – Ноя»).
+    @Test func headerTitleKeepsTheWholeWordAtSize22() {
+        #expect(PlanTitleLayout.titleFont == 22)
         let axis = PlanTitleLayout.insets(rightButtons: 3).leading
+        var words: [String] = []
         for code in ["ru", "en-US"] {
             let d = DateText(language: code, timeZone: Self.utc)
-            for m in 1...12 {
-                let t = PlanTitleLayout.dayTitles(dates: d, day: Self.day(2026, m, 15), year: "")
-                for w: CGFloat in [440, 430, 393, 375] {
-                    let st = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: w, rightButtons: 3, wholeFirst: true,
-                                                    width: { PlanTitleLayout.width($0, size: 22) })
-                    let shown = PlanTitleLayout.width(t.full, size: 22) * st.scale
-                    let room = w - 32 - st.leading - st.trailing
-                    #expect(!st.short, "\(code) \(t.full) \(Int(w)): сократился")
-                    #expect(st.scale >= PlanTitleLayout.invisibleSqueeze, "\(code) \(t.full) \(Int(w)): сжат до \(st.scale)")
-                    #expect(shown <= room + 0.5, "\(code) \(t.full) \(Int(w)): \(shown) не влезает в \(room)")
-                    if w >= 440 { #expect(st.leading == axis, "\(code) \(t.full) \(Int(w)): ушёл с оси, хотя места на оси хватает") }
-                }
+            for m in 1...12 { words.append(PlanTitleLayout.dayTitles(dates: d, day: Self.day(2026, m, 15), year: "").full) }
+        }
+        words += ["Сен – Окт", "Окт – Ноя", "Дек – Янв", "Sep – Oct", "Nov – Dec"]
+        for word in words {
+            for w: CGFloat in [440, 430, 393, 375] {
+                let st = PlanTitleLayout.choose(full: word, short: word, screenWidth: w, rightButtons: 3)
+                let shown = PlanTitleLayout.width(word) * st.scale
+                let room = w - 32 - st.leading - st.trailing
+                #expect(!st.short, "\(word) \(Int(w)): сократился")
+                #expect(st.scale >= PlanTitleLayout.invisibleSqueeze, "\(word) \(Int(w)): сжат до \(st.scale)")
+                #expect(shown <= room + 0.5, "\(word) \(Int(w)): \(shown) не влезает в \(room)")
+                if w >= 440 && PlanTitleLayout.width(word) < 112 { #expect(st.leading == axis, "\(word) \(Int(w)): ушёл с оси, хотя места на оси хватает") }
             }
         }
-        // Октябрь: на 440 на оси, на 393 целиком между кнопками (на оси места 69 pt, слову на 22 pt нужно 89), прежняя лесенка на 18 pt даёт «Окт.».
+        // Октябрь: на 440 на оси, на 393 целиком между кнопками (на оси места 69 pt, слову на 22 pt нужно 89); без этого шага — «Окт.».
         let ru = DateText(language: "ru", timeZone: Self.utc)
         let t = PlanTitleLayout.dayTitles(dates: ru, day: Self.day(2026, 10, 29), year: "")
-        let measure22: (String) -> CGFloat = { PlanTitleLayout.width($0, size: 22) }
-        let s440 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 440, rightButtons: 3, wholeFirst: true, width: measure22)
-        let s393 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 393, rightButtons: 3, wholeFirst: true, width: measure22)
+        let s440 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 440, rightButtons: 3)
+        let s393 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 393, rightButtons: 3)
         #expect(s440.leading == axis && !s440.short)
         #expect(s393.leading > axis - 100 && s393.leading < axis && !s393.short, "393 pt: целиком между кнопками, сдвиг влево от оси")
-        let old393 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 393, rightButtons: 3)
-        #expect(old393.short, "без wholeFirst (неделя, месяц) на 393 pt по-прежнему «Окт.»")
+        let old393 = PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 393, rightButtons: 3, wholeFirst: false)
+        #expect(old393.short, "без шага «целиком» на 393 pt «Окт.»")
         // Слово 22 pt шире 18 pt ровно в пропорции кегля: мера честная.
-        #expect(abs(PlanTitleLayout.width(t.full, size: 22) / PlanTitleLayout.width(t.full, size: 18) - 22.0 / 18) < 0.03)
+        #expect(abs(PlanTitleLayout.width(t.full) / PlanTitleLayout.width(t.full, size: 18) - 22.0 / 18) < 0.03)
     }
 
     private struct Case { let label: String; let full: String; let short: String }
@@ -137,7 +137,7 @@ struct PlanTitleLadderTests {
             var prev = 0
             for w in Self.widths.reversed() {
                 let axis = PlanTitleLayout.insets(rightButtons: 3).leading
-                let s = PlanTitleLayout.choose(full: c.full, short: c.short, screenWidth: w, rightButtons: 3)
+                let s = PlanTitleLayout.choose(full: c.full, short: c.short, screenWidth: w, rightButtons: 3, wholeFirst: false)
                 let shown = PlanTitleLayout.width(s.short ? c.short : c.full) * s.scale
                 let room = w - 32 - s.leading - s.trailing
                 #expect(s.scale >= PlanTitleLayout.minScale && s.scale <= 1, "\(c.label) \(w): масштаб \(s.scale)")
@@ -153,15 +153,16 @@ struct PlanTitleLadderTests {
             table.append(row)
         }
         print(table.joined(separator: "\n"))
-        // Лесенка на длинном слове («23 сентября»): 440 pt целиком; 393 pt: короткий месяц, без сжатия (месяц один — короче).
+        // Запасная лесенка (без шага «целиком», слово 18 pt как до 30.10) на длинном слове («23 сентября»): 440 pt целиком; 393 pt: короткий месяц.
+        let m18: (String) -> CGFloat = { PlanTitleLayout.width($0, size: 18) }
         let ru = DateText(language: "ru", timeZone: Self.utc), a = Self.day(2026, 9, 23)
-        // День теперь «Сентябрь»: на 320 pt слово не пропадает и без сокращения не сжимается глубже пола.
+        // «Сентябрь» на 22 pt: на 320 pt целиком нигде не влезает, слово не пропадает и не сжато глубже пола или ушло между кнопок.
         let day = PlanTitleLayout.dayTitles(dates: ru, day: a, year: "")
         let s320 = PlanTitleLayout.choose(full: day.full, short: day.short, screenWidth: 320, rightButtons: 3)
-        #expect(s320.scale >= PlanTitleLayout.squeezeFloor)
-        let s440 = PlanTitleLayout.choose(full: ru.dMon(a), short: ru.dMonAbbr(a), screenWidth: 440, rightButtons: 3)
+        #expect(s320.scale >= PlanTitleLayout.minScale && PlanTitleLayout.width(s320.short ? day.short : day.full) * s320.scale > 20)
+        let s440 = PlanTitleLayout.choose(full: ru.dMon(a), short: ru.dMonAbbr(a), screenWidth: 440, rightButtons: 3, wholeFirst: false, width: m18)
         #expect(!s440.short && s440.scale >= PlanTitleLayout.invisibleSqueeze)
-        let s393 = PlanTitleLayout.choose(full: ru.dMon(a), short: ru.dMonAbbr(a), screenWidth: 393, rightButtons: 3)
+        let s393 = PlanTitleLayout.choose(full: ru.dMon(a), short: ru.dMonAbbr(a), screenWidth: 393, rightButtons: 3, wholeFirst: false, width: m18)
         #expect(s393.short && s393.scale >= PlanTitleLayout.invisibleSqueeze, "393 pt: «23 сент.» без заметного сжатия")
     }
 
@@ -170,7 +171,7 @@ struct PlanTitleLadderTests {
         for t in ["23 сентября", "23 сент.", "Сентябрь 2027", "Сент. 2027", "9月23日", "September 23"] {
             let v = Text(t).font(webFont(18, 650)).tracking(-0.3).lineLimit(1).fixedSize()
             let host = UIHostingController(rootView: v).sizeThatFits(in: CGSize(width: 2000, height: 100)).width
-            #expect(abs(host - PlanTitleLayout.width(t)) <= 1.5, "«\(t)»: Text \(host), мера \(PlanTitleLayout.width(t))")
+            #expect(abs(host - PlanTitleLayout.width(t, size: 18)) <= 1.5, "«\(t)»: Text \(host), мера \(PlanTitleLayout.width(t, size: 18))")
         }
         for t in ["Октябрь", "Сентябрь", "October", "September"] {
             let v = Text(t).font(webFont(22, 650)).tracking(-0.3).lineLimit(1).fixedSize()
@@ -199,7 +200,7 @@ struct PlanTitleLadderTests {
             }
         }
         .overlay {
-            Text(step.short ? short : full).font(webFont(18, 650)).tracking(-0.3).foregroundStyle(pal.ink)
+            Text(step.short ? short : full).font(webFont(PlanTitleLayout.titleFont, 650)).tracking(-0.3).foregroundStyle(pal.ink)
                 .lineLimit(1).minimumScaleFactor(PlanTitleLayout.minScale)
                 .overlay(alignment: .leading) {
                     Icon("chevron", size: 16, line: 1.6).rotationEffect(.degrees(180)).foregroundStyle(pal.ink4)
