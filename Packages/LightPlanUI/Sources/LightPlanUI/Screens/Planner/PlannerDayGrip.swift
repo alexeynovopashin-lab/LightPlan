@@ -49,6 +49,21 @@ final class DayGrip {
     /// Жест поднят (веб `dlG.armed`): от подъёма или взятой ручки до отпускания.
     @ObservationIgnored var armed = false
 
+    /// Заготовка (меню часа) в руке: минута и точка касания до жеста, шаг ленты. Время под пальцем
+    /// считает та же `DayDrag.track`, что у записи, — шаг и мёртвая зона общие.
+    struct Draft: Equatable {
+        let a0: Int
+        let y0: CGFloat
+        let step: Int
+        /// Минута заготовки при пути пальца до `y` (точка ленты); не раньше полуночи, не позже последнего шага суток.
+        func at(y: CGFloat, hourHeight: CGFloat) -> Int {
+            DayDrag.track(.move, a0: a0, b0: a0 + 60, minutes: Double((y - y0) / hourHeight * 60), step: step, nest: nil).start
+        }
+    }
+    @ObservationIgnored var draft: Draft?
+    /// Заготовка поехала (палец ушёл за мёртвую зону): на оси встаёт капсула минуты, как у записи.
+    var draftLive = false
+
     /// До какого мгновения тап по ленте не открывает ни карточку, ни меню часа
     /// (веб `dlSwallowTill`): после жеста и после касания, снявшего выделение.
     @ObservationIgnored var swallowTill: TimeInterval = 0
