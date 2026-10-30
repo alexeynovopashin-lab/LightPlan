@@ -58,6 +58,66 @@ struct MoodboardTests {
         #expect(gal.map(\.sessionId) == ["s3", "s2", "s1", "s4"])     // в галерее — по убыванию даты
     }
 
+    // MARK: вид «день»: подборки выбранного дня впереди
+
+    private func timed(_ id: String, _ d: CivilDate, _ start: Int, kind: RecordKind = .shoot) -> Session {
+        Session(id: id, kind: kind, day: d, start: start, genre: .wedding)
+    }
+
+    private func dayLibrary(_ ss: [Session], empty: Set<String> = []) -> RefLibrary {
+        RefLibrary(shots: [RefFrame(id: "x")],
+                   boards: ss.map { RefBoard(id: "b" + $0.id, kind: .shoot, sid: $0.id, items: empty.contains($0.id) ? [] : ["x"]) })
+    }
+
+    @Test func dayBoardsComeFirstByStartTimeAndOnlyOnce() {
+        // Список записей не по времени: утро стоит после вечера — порядок группы всё равно по началу.
+        let ss = [timed("eve", day(7), 1080), timed("far", day(20), 600), timed("morn", day(7), 540),
+                  timed("past", day(2), 600), timed("meet", day(7), 780, kind: .meet)]
+        let f = Moodboard.folders(library: dayLibrary(ss), sessions: ss, genresOn: [])
+        let g = Moodboard.stripShoots(f, sessions: ss, today: day(5), day: day(7))
+        #expect(g.day.map(\.sessionId) == ["morn", "meet", "eve"])        // 09:00, 13:00, 18:00; встреча с подборкой тоже
+        #expect(g.rest.map(\.sessionId) == ["far", "past"])               // как «Съёмки» сейчас, но без подборок этого дня
+        let all = Set((g.day + g.rest).map(\.boardId))
+        #expect(all.count == g.day.count + g.rest.count)                   // ни одна подборка не стоит дважды
+        #expect(all == Set(f.filter { $0.kind == .shoot }.map(\.boardId))) // и ни одна не потерялась
+    }
+
+    @Test func otherDaysNeverEnterTheDayGroup() {
+        let ss = [timed("a", day(6), 600), timed("b", day(8), 600)]
+        let f = Moodboard.folders(library: dayLibrary(ss), sessions: ss, genresOn: [])
+        let g = Moodboard.stripShoots(f, sessions: ss, today: day(5), day: day(7))
+        #expect(g.day.isEmpty)
+        #expect(g.rest.map(\.sessionId) == ["a", "b"])
+    }
+
+    @Test func dayWithoutShootsLeavesTheStripAsItIs() {
+        let ss = [timed("a", day(9), 600), timed("b", day(2), 600)]
+        let f = Moodboard.folders(library: dayLibrary(ss), sessions: ss, genresOn: ["wedding"])
+        let g = Moodboard.stripShoots(f, sessions: ss, today: day(5), day: day(7))
+        #expect(g.day.isEmpty)
+        #expect(g.rest == Moodboard.stripShoots(f, sessions: ss, today: day(5)))   // один к одному, жанровые не трогаются
+        #expect(Moodboard.stripShoots([], sessions: [], today: day(5), day: day(7)).day.isEmpty)
+    }
+
+    @Test func shootOfTheDayWithoutBoardOrFramesIsNotInTheGroup() {
+        // Подборку «создали и не наполнили» лента и так не показывает; первая группа — тоже.
+        let ss = [timed("full", day(7), 600), timed("empty", day(7), 540), timed("none", day(7), 480)]
+        let lib = RefLibrary(shots: [RefFrame(id: "x")], boards: [
+            RefBoard(id: "bfull", kind: .shoot, sid: "full", items: ["x"]),
+            RefBoard(id: "bempty", kind: .shoot, sid: "empty", items: []),
+        ])
+        let f = Moodboard.folders(library: lib, sessions: ss, genresOn: [])
+        let g = Moodboard.stripShoots(f, sessions: ss, today: day(5), day: day(7))
+        #expect(g.day.map(\.sessionId) == ["full"])
+        #expect(g.rest.isEmpty)
+    }
+
+    @Test func sameStartKeepsListOrder() {
+        let ss = [timed("b", day(7), 600), timed("a", day(7), 600)]
+        let f = Moodboard.folders(library: dayLibrary(ss), sessions: ss, genresOn: [])
+        #expect(Moodboard.stripShoots(f, sessions: ss, today: day(5), day: day(7)).day.map(\.sessionId) == ["b", "a"])
+    }
+
     // MARK: ряд полосы
 
     @Test func rowFitsSixThenAllTileTakesTheLastSlot() {

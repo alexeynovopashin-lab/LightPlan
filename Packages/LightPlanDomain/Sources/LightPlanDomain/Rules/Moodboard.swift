@@ -89,6 +89,19 @@ public enum Moodboard {
         return (ahead + past).map(\.0)
     }
 
+    /// Вид «день»: впереди подборки записей выбранного дня — по времени начала, при равном начале
+    /// в порядке списка, — потом «Съёмки» как были, но без подборок этого дня (одна подборка на экране
+    /// не стоит дважды). Подборка записи стоит, только если у неё есть кадры или корзина
+    /// (`folders`): пустая адресная подборка на ленте не появляется и в первую группу тоже.
+    public static func stripShoots(_ folders: [MbFolder], sessions: [Session], today: CivilDate, day: CivilDate)
+        -> (day: [MbFolder], rest: [MbFolder]) {
+        let order = sessions.enumerated().filter { $0.element.day == day }
+            .sorted { ($0.element.start, $0.offset) < ($1.element.start, $1.offset) }.map(\.element.id)
+        let ofDay = order.compactMap { id in folders.first { $0.kind == .shoot && $0.sessionId == id } }
+        let taken = Set(ofDay.map(\.boardId))
+        return (ofDay, stripShoots(folders, sessions: sessions, today: today).filter { !taken.contains($0.boardId) })
+    }
+
     /// «Съёмки» в галерее — по убыванию даты (веб `renderMbTiles`).
     public static func galleryShoots(_ folders: [MbFolder], sessions: [Session]) -> [MbFolder] {
         folders.filter { $0.kind == .shoot }.compactMap { f in dayOf(f, sessions).map { (f, $0) } }
