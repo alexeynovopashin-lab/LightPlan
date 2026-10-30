@@ -148,6 +148,8 @@ struct PlannerDayBody: View {
                 }
             }
             .padding(.horizontal, 24)
+            // Заготовка: черта на её минуте — под блоками, как подсветка часа была в сетке.
+            if let a = armed { draftLine(a.at, pal) }
             // Блоки. Выделенное — над соседями, поднятое — ещё выше (веб `.sel` 2, `.lift` 3).
             ForEach(DayLanes.drawOrder(items), id: \.self) { i in
                 event(items[i], index: i, slot: slots[i], pal: pal)
@@ -168,6 +170,7 @@ struct PlannerDayBody: View {
             }
             if let k = selectedIndex(items) { handles(items[k], slot: slots[k], pal: pal).zIndex(4) }
             if let l = grip.live, l.moved { dragMark(l, pal).zIndex(5) }
+            if grip.draftLive, let a = armed { timeCapsule(a.at, pal).zIndex(5) }
             if let a = armed { slotMenu(a, pal).zIndex(6) }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -236,15 +239,11 @@ struct PlannerDayBody: View {
                     .fill(LinearGradient(colors: [Self.phase(a, sky), Self.phase(b, sky)], startPoint: .top, endPoint: .bottom))
                     .frame(width: 3)
                     .frame(width: 18)
-                Rectangle().fill(half == 30
-                        ? AnyShapeStyle(LinearGradient(stops: [.init(color: .clear, location: 0.5),
-                                                               .init(color: Color(hex: 0xE2A44C, alpha: 0.10), location: 1)],
-                                                       startPoint: .top, endPoint: .bottom))
-                        : AnyShapeStyle(Color.clear))
+                Rectangle().fill(Color.clear)
                     .overlay(alignment: .top) { Rectangle().fill(half == 0 ? pal.brassDark : pal.hairline).frame(height: 1) }
                     .overlay {
-                        Line().stroke(half == 30 ? pal.brassDark : pal.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                            .opacity(half == 30 ? 1 : 0.55)
+                        Line().stroke(pal.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                            .opacity(0.55)
                             .frame(height: 1)
                     }
                     .padding(.leading, 10)
@@ -259,14 +258,15 @@ struct PlannerDayBody: View {
             }
     }
 
-    /// Меню часа (`.slot-menu`): время и три действия под выбранным часом; у
-    /// последних часов опустить некуда — встаёт над ним. Сетку не сдвигает.
+    /// Меню часа (`.slot-menu`): время и три действия под чертой заготовки; у
+    /// последних часов опустить некуда — встаёт над ней. Сетку не сдвигает.
     private func slotMenu(_ a: (hour: Int, at: Int), _ pal: Palette) -> some View {
-        let top = Self.menuTop(hour: a.hour)
+        let top = Self.menuTop(at: a.at)
         let acts: [(String, String, SlotAct)] = [("camera", "day.actShoot", .shoot), ("guests", "day.actMeet", .meet),
                                                  ("lock", "day.actBusy", .busy)]
-        return HStack(spacing: 8) {
+        return HStack(spacing: Self.menuSpacing) {
             Text(f.fmt(Double(a.at % 1440))).font(webFont(13, 650)).monospacedDigit().foregroundStyle(pal.brass)
+                .frame(width: Self.menuTimeW, alignment: .leading)
             ForEach(acts, id: \.1) { ic, key, act in
                 Button {
                     armed = nil
@@ -284,23 +284,77 @@ struct PlannerDayBody: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.top, 4).padding(.bottom, 8)
+        .padding(.top, Self.menuPadTop).padding(.bottom, Self.menuPadBottom)
         .background(pal.surface)
-        .padding(.leading, 24 + 64).padding(.trailing, 24)
+        .padding(.leading, Self.menuLeft).padding(.trailing, Self.menuRight)
         .padding(.top, top)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    static let menuH: CGFloat = 66
-    /// Верх меню часа: под часом, у последних часов — над ним.
-    nonisolated static func menuTop(hour: Int) -> CGFloat {
-        let gridH = 25 * hourH, below = CGFloat(hour + 1) * hourH
-        return below + menuH > gridH ? max(0, CGFloat(hour) * hourH - menuH) : below
+    /// Черта заготовки (мягкое свечение вниз, как у подсветки получаса в вебе): на целом часе — сплошная, как черта часа,
+    /// на остальных минутах — пунктир сетки, только ярче. Тот же отступ слева и тот же пунктир, что у черт сетки.
+    private func draftLine(_ at: Int, _ pal: Palette) -> some View {
+        let y = Self.top(Double(at)), x = Self.gridLeft
+        return ZStack(alignment: .topLeading) {
+            Rectangle()
+                .fill(LinearGradient(colors: [.clear, Color(hex: 0xE2A44C, alpha: 0.10)], startPoint: .top, endPoint: .bottom))
+                .frame(height: Self.menuGap)
+                .offset(y: y)
+            if at % 60 == 0 {
+                Rectangle().fill(pal.brassDark).frame(height: 1).offset(y: y)
+            } else {
+                Line().stroke(pal.brassDark, style: StrokeStyle(lineWidth: 1, dash: [3, 3])).frame(height: 1).offset(y: y - 0.5)
+            }
+        }
+        .padding(.leading, x).padding(.trailing, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(false)
+        .shotNode("draft.line")
     }
 
-    /// Рамка меню часа на ленте: касание в ней — кнопкам меню, не жесту ленты.
-    nonisolated static func menuFrame(hour: Int, width: CGFloat) -> CGRect {
-        CGRect(x: 24 + 64, y: menuTop(hour: hour), width: max(0, width - 24 - 64 - 24), height: menuH)
+    // Меню часа: размеры вёрстки — по ним же считается, куда попал палец (`draftGrab`).
+    static let menuH: CGFloat = 66
+    static let menuLeft: CGFloat = 24 + 64
+    static let menuRight: CGFloat = 24
+    static let menuSpacing: CGFloat = 8
+    static let menuTimeW: CGFloat = 44
+    static let menuPadTop: CGFloat = 4
+    static let menuPadBottom: CGFloat = 8
+    /// Между чертой заготовки и верхом меню — половина часа: на получасе так было и раньше.
+    static let menuGap: CGFloat = hourH / 2
+    /// Левый край черт сетки: поле 24 + колонка часов 46 + ось 18 + отступ 10.
+    static let gridLeft: CGFloat = 24 + 46 + 18 + 10
+
+    /// Верх меню: под чертой заготовки, у последних часов — над ней. Едет вместе с чертой, а не прыгает по часам.
+    nonisolated static func menuTop(at: Int) -> CGFloat {
+        let gridH = 25 * hourH, y = top(Double(at))
+        return y + menuGap + menuH > gridH ? max(0, y - menuH) : y + menuGap
+    }
+
+    /// Рамка меню на ленте: касание в его кнопках — кнопкам, не жесту ленты.
+    nonisolated static func menuFrame(at: Int, width: CGFloat) -> CGRect {
+        CGRect(x: menuLeft, y: menuTop(at: at), width: max(0, width - menuLeft - menuRight), height: menuH)
+    }
+
+    /// Три кнопки меню: слева время, дальше поровну.
+    nonisolated static func menuButtons(at: Int, width: CGFloat) -> [CGRect] {
+        let m = menuFrame(at: at, width: width)
+        let bw = max(0, (m.width - menuTimeW - 3 * menuSpacing) / 3)
+        return (0..<3).map { i in
+            CGRect(x: m.minX + menuTimeW + menuSpacing + CGFloat(i) * (bw + menuSpacing), y: m.minY + menuPadTop,
+                   width: bw, height: menuH - menuPadTop - menuPadBottom)
+        }
+    }
+
+    /// Что под пальцем у открытой заготовки (меню и черта). Кнопки — кнопкам; остальное меню (время, щели между
+    /// кнопками) и полоса вокруг черты — заготовку берём сразу, без удержания, как выделенное тело записи.
+    enum DraftGrab: Equatable { case button, body }
+    nonisolated static func draftGrab(_ p: CGPoint, at: Int, width: CGFloat) -> DraftGrab? {
+        if menuButtons(at: at, width: width).contains(where: { $0.contains(p) }) { return .button }
+        if menuFrame(at: at, width: width).contains(p) { return .body }
+        let y = top(Double(at))
+        let band = CGRect(x: 70, y: y - 14, width: max(0, width - 70), height: 14 + menuGap)
+        return band.contains(p) ? .body : nil
     }
 
     /// Час и получас под точкой ленты — как у тапа: верх часа «:00», низ «:30».
@@ -469,13 +523,16 @@ struct PlannerDayBody: View {
     /// Капсула на оси — минута той кромки, которую ведёт палец (`.dl-mark.drag`):
     /// та же форма, что у «сейчас», только без линии через ленту.
     private func dragMark(_ l: DayGrip.Live, _ pal: Palette) -> some View {
-        let at = l.mode == .end ? l.end : l.start
-        return Text(f.fmt(Double(at)))
+        timeCapsule(l.mode == .end ? l.end : l.start, pal).shotNode("grip.mark")
+    }
+
+    /// Капсула минуты на оси — у записи в руке и у заготовки в руке.
+    private func timeCapsule(_ at: Int, _ pal: Palette) -> some View {
+        Text(f.fmt(Double(at)))
             .font(webFont(12)).tracking(0.2).monospacedDigit()
             .foregroundStyle(pal.onBrass)
             .padding(.horizontal, 8).frame(height: 19)
             .background(Capsule().fill(pal.brass))
-            .shotNode("grip.mark")
             .padding(.leading, 12)
             .padding(.top, Self.top(Double(min(1440, at))) - 9.5)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -502,8 +559,8 @@ struct PlannerDayBody: View {
             began: { _ in gripBegan(items, slots) },
             moved: { p in gripMoved(p) },
             ended: { cancelled in gripEnded(cancelled, items, slots) },
-            reset: { if !grip.armed { grip.hand = nil; grip.slotHold = nil } },
-            autoScroll: { grip.live != nil })
+            reset: { if !grip.armed { grip.hand = nil; grip.slotHold = nil; grip.draft = nil; grip.draftLive = false } },
+            autoScroll: { grip.live != nil || grip.draft != nil })
     }
 
     /// Касание ленты (веб `pointerdown` документа + `dlGrip` + ручки). Любое
@@ -515,12 +572,18 @@ struct PlannerDayBody: View {
         grip.laneTouch = stamp
         grip.hand = nil
         grip.slotHold = nil
+        grip.draft = nil
         closeLaneFan()
         let w = laneWidth
-        // Меню часа лежит над лентой: его кнопки жест ленты не трогает.
-        if let a = armed, Self.menuFrame(hour: a.hour, width: w).contains(p) {
-            DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) menu")
-            return .none
+        // Заготовка (меню часа) лежит над лентой: кнопки жест ленты не трогает, остальное меню и черта — берём сразу.
+        if let a = armed, let g = Self.draftGrab(p, at: a.at, width: w) {
+            if g == .button {
+                DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) menu")
+                return .none
+            }
+            grip.draft = DayGrip.Draft(a0: a.at, y0: p.y, step: app.dayDragStep)
+            DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) draft \(a.at)")
+            return .now
         }
         var deselected = false
         if let k = selectedIndex(items) {
@@ -554,6 +617,8 @@ struct PlannerDayBody: View {
         // удержание не делало ничего). Касание, снявшее выделение, — нет.
         if deselected { DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) none"); return .none }
         grip.slotHold = Self.slotAt(y: p.y)
+        // Удержание откроет заготовку, и тот же палец её поведёт — как в Календаре iPhone.
+        grip.draft = DayGrip.Draft(a0: grip.slotHold!.at, y0: p.y, step: app.dayDragStep)
         DayGripLog.note("down x=\(Int(p.x)) y=\(Int(p.y)) slot \(grip.slotHold!.at)")
         return .slot
     }
@@ -581,6 +646,12 @@ struct PlannerDayBody: View {
             DayGripLog.note("slot hold \(s.at)")
             return
         }
+        if grip.hand == nil, grip.draft != nil {
+            grip.armed = true
+            grip.swallowTill = .infinity
+            DayGripLog.note("draft take \(armed?.at ?? -1)")
+            return
+        }
         guard let h = grip.hand else { return }
         grip.armed = true
         grip.swallowTill = .infinity
@@ -598,6 +669,15 @@ struct PlannerDayBody: View {
     /// Ход пальца (веб `dlTrack`): время — по пути от точки касания на ленте;
     /// лента, уехавшая автопрокруткой, уже учтена в точке.
     private func gripMoved(_ p: CGPoint) {
+        if grip.hand == nil, let d = grip.draft, armed != nil {
+            let at = d.at(y: p.y, hourHeight: Self.hourH)
+            guard at != armed?.at else { return }
+            armed = (at / 60, at)
+            grip.draftLive = true
+            grip.tapNotch()
+            DayGripLog.note("draft move dy=\(String(format: "%.1f", p.y - d.y0)) -> \(at)")
+            return
+        }
         guard let h = grip.hand, !h.pinned, var l = grip.live else { return }
         let r = DayDrag.track(h.mode, a0: h.a0, b0: h.b0, minutes: Double((p.y - h.y0) / Self.hourH * 60),
                               step: h.step, nest: h.nest)
@@ -618,9 +698,14 @@ struct PlannerDayBody: View {
     /// веер; тап по выделенному — карточка. Касание отняла система — ничего не
     /// пишем. После жеста тап 0,45 с не открывает ни карточку, ни меню часа.
     private func gripEnded(_ cancelled: Bool, _ items: [DayItem], _ slots: [DayLanes.Slot?]) {
-        if grip.hand == nil, grip.slotHold != nil {
+        if grip.hand == nil, grip.slotHold != nil || grip.draft != nil {
             // Меню уже открыто удержанием; отпускание его не закрывает тапом часа.
+            // Заготовка встала там, куда довели; систему отняла касание — возвращаем, где была.
+            if cancelled, let d = grip.draft { armed = (d.a0 / 60, d.a0) }
+            DayGripLog.note("\(cancelled ? "draft cancel" : "draft end") \(armed?.at ?? -1)")
             grip.slotHold = nil
+            grip.draft = nil
+            grip.draftLive = false
             grip.armed = false
             grip.armedEnd = DayGrip.clock
             grip.swallowTill = DayGrip.clock + 0.45
