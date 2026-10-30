@@ -43,6 +43,10 @@ struct BraunPalette {
     var win: Color { pick(0xD3D3D1, 0x0A0A0A) }
     var winTopShadow: Color { Color.black.opacity(dark ? 0.7 : 0.25) }
     var winBottomRim: Color { Color.white.opacity(dark ? 0.08 : 0.8) }
+    /// Те же слои блика на красной полосе флажка (30.10): тень сверху и кромка снизу — как у окошка, но не сильнее 0,3 / 0,25: на красном (яркость ~60 из 255, не
+    /// ~10 как у тёмного окошка и не ~211 как у светлого) тень 0,7 съедает верх флажка до чёрного, а кромка 0,8 даёт белую полосу; на окошке то же слово — те же доли.
+    var flagTopShadow: Color { Color.black.opacity(min(dark ? 0.7 : 0.25, 0.3)) }
+    var flagBottomRim: Color { Color.white.opacity(min(dark ? 0.08 : 0.8, 0.25)) }
     /// Обводка окошка только в тёмной.
     var winRing: Color? { dark ? Color.white.opacity(0.12) : nil }
     /// Красный флажок Braun — левый край окошка.

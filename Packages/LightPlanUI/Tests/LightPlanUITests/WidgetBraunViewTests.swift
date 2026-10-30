@@ -291,7 +291,7 @@ struct WidgetBraunViewTests {
             let wx = 364 - 16 - L.windowWidth
             #expect(near(px.rgb(wx + BraunWindow.notchExtra + 3, 25), p.window, 12), "\(tag): окошко \(px.rgb(wx + BraunWindow.notchExtra + 3, 25))")
             // Флажок — левый край окошка (30.10): красная полоса у его верха, остриё внутрь, в V-вырезе слева подложка; над окошком ничего нет.
-            #expect(near(px.rgb(wx + 3, 18), p.flag, 8), "\(tag): полоса флажка \(px.rgb(wx + 3, 18))")
+            #expect(near(px.rgb(wx + 4.5, 21), p.flag, 8), "\(tag): полоса флажка (ниже тени блика) \(px.rgb(wx + 4.5, 21))")
             #expect(near(px.rgb(wx + 7, 25), p.flag, 12), "\(tag): остриё флажка \(px.rgb(wx + 7, 25))")
             #expect(near(px.rgb(wx + 0.8, 25), bg, 4), "\(tag): слева у флажка V-вырез (подложка в вырезе) \(px.rgb(wx + 0.8, 25))")
             #expect(near(px.rgb(wx + L.windowWidth / 2, 13), bg, 2), "\(tag): над окошком флажка нет \(px.rgb(wx + L.windowWidth / 2, 13))")

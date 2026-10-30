@@ -183,7 +183,8 @@ struct WidgetBraunIdleViewTests {
                         // Окошко вида шире доски (ширину задаёт «00:00:00», чтобы рамка не прыгала), поэтому флажок стоит левее: от рамки вида, не доски.
                         let plan = try #require(DayPlan(Self.frame(s)))
                         let left = 348 - BraunLayout(plan: plan, size: Plate.pro.size, medium: true, bare: true).windowWidth
-                        #expect(dist(px.rgb(left + 3, f.y + 2), hex(f.c)) <= 12, "\(tag): красная полоса у верха \(px.rgb(left + 3, f.y + 2))")
+                        // Верх 4 pt полосы затенён бликом окошка (30.10, `WidgetFlagFlushTests`), поэтому цвет — ниже тени: на 5 от верха полоса от 2,8 до 6,8.
+                        #expect(dist(px.rgb(left + 4.5, f.y + 5), hex(f.c)) <= 12, "\(tag): красная полоса \(px.rgb(left + 4.5, f.y + 5))")
                         #expect(dist(px.rgb(left + 0.4, f.y + 2), hex(bg)) <= 10, "\(tag): левее полосы вырез — фон плашки \(px.rgb(left + 0.4, f.y + 2))")
                         #expect(dist(px.rgb(left + 10.5, f.y + 9), hex(bg == 0x161616 ? 0x0A0A0A : 0xD3D3D1)) <= 40, "\(tag): за остриём флажка (9 от края) — окно")
                     case "track":

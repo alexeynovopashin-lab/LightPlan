@@ -253,7 +253,8 @@
   budget (40–70 a day per widget), so the cap is ours — a 12.5 h wedding with the ring is ~5 reloads. Views are `Shape`s, not `Canvas`.
   **The red Braun flag is the left edge of the shoot-time window, on every medium form** (`BraunNotchWindow`: V-notch 5 deep, 4 pt red band, window 9 pt wider; Alexey 30.10:
   «он должен быть краем окошка») — no chevron outside with a gap, no step at the top or bottom: in the dark theme the window's 0.5 pt ring is not visible, so the band is cut
-  by it at the top (`BraunWindow.notchBandInsetTop`). Held by `WidgetFlagFlushTests` (pixels: gap 0, top and bottom within 1 px at 2×/3×/4×, both plates, both themes).
+  by it at the top (`BraunWindow.notchBandInsetTop`). The window's bevel runs over the band to its outer edge (Alexey 30.10: «продли блики/тень до краёв флажка»): top shadow, bottom rim and the dark ring, clipped to the chevron outline;
+  on the red the shadow is ≤ 0.3 and the rim ≤ 0.25 (`BraunPalette.flagTopShadow/flagBottomRim` — the window's 0.7 / 0.8 blacken the top and whiten the bottom of the red). Held by `WidgetFlagFlushTests` (pixels: gap 0, top and bottom within 1 px, bevel visible on the red and not heavier than 35 % / +20 levels; 2×/3×/4×, both plates, both themes).
   Pictures: `docs/30b2v_sketches/built/` (`WidgetLiveTests.writesTheBuiltSheetsWhenAsked`, folder `/tmp/lp-built-out` must exist).
 - **Activity screen (30б.3).** Live Activity on the lock screen and in Dynamic Island while a shoot runs (words of Alexey 25–26.10). Rules in Domain:
   `ActivityFrame` (the state the system keeps — ≤ 4 KB, ≤ 16 points, short coding keys; `ActivityFrame.make(feed:shoot:now:mode:words:reach:)` from the same

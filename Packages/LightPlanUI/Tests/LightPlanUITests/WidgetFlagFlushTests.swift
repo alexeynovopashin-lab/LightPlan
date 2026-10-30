@@ -122,6 +122,54 @@ struct WidgetFlagFlushTests {
         } } } }
     }
 
+    private func lum(_ c: (r: Int, g: Int, b: Int)) -> Double { 0.299 * Double(c.r) + 0.587 * Double(c.g) + 0.114 * Double(c.b) }
+
+    /// Блик окошка идёт по флажку до его внешнего края (30.10: «продли блики/тень до краёв флажка, нет ощущения целостности»): тень сверху и кромка снизу видны на
+    /// красном, не тяжелее, чем на окошке (не чёрный верх, не белая полоса), в тёмной обводка 0,5 pt продолжена по срезу над красным, и ничего не выступает за контур.
+    private func checkBevel(_ px: Px, width w: Double, dark: Bool, _ tag: String) {
+        let f = find(px, width: w, dark: dark)
+        let s = px.scale, wx = f.flagX0
+        let pal = BraunPalette(dark: dark)
+        let plate = px.pt(wx - 6, 25)
+        let winX = w - 16 - 4
+        let inset = BraunWindow.notchBandInsetTop(ringed: pal.winRing != nil)
+        let top = Int(((16 + inset) * s).rounded(.up)), bottom = Int(34 * s) - 1
+        let flagFill = lum(px.pt(wx + 7, 25)), winFill = lum(px.pt(winX, 25))
+        // Тень сверху: на красном заметна (≥ 10 %) и не тяжелее 35 % (у окошка 19–25 %; с долей 0,7, как у тёмного окошка, верх флажка чернеет до 70 %).
+        let flagDark = 1 - lum(px.at(Int((wx + 1.5) * s), top)) / flagFill, winDark = 1 - lum(px.at(Int(winX * s), top)) / winFill
+        #expect(flagDark >= 0.10, "\(tag): тени сверху на красном нет — потемнение \(flagDark)")
+        #expect(flagDark <= 0.35, "\(tag): тень на красном тяжелее 35 %: \(flagDark), у окошка \(winDark)")
+        // Кромка снизу: заметно светлее красного (+15 уровней яркости) и не больше, чем на окошке (+20).
+        let flagRim = lum(px.at(Int((wx + 1.5) * s), bottom)) - flagFill, winRim = lum(px.at(Int(winX * s), bottom)) - winFill
+        #expect(flagRim >= 15, "\(tag): кромки снизу на красном нет — \(flagRim)")
+        #expect(flagRim <= winRim + 20, "\(tag): кромка на красном — белая полоса: \(flagRim) против \(winRim) у окошка")
+        // Обводка тёмного: по срезу над красным она ложится на подложку так же, как на окошке на тело (прибавка яркости в пределах 12 уровней).
+        if pal.winRing != nil {
+            let row = Int(16 * s)
+            let stripLift = lum(px.at(Int((wx + 1.5) * s), row)) - lum(plate), winLift = lum(px.at(Int(winX * s), row)) - winFill
+            #expect(stripLift >= 15 && abs(stripLift - winLift) <= 12, "\(tag): обводка над красным \(stripLift), на окошке \(winLift)")
+        }
+        // Не выступает за контур: над верхом и под низом полосы — подложка.
+        for y in [15.5, 34.5] {
+            let c = px.pt(wx + 2, y)
+            #expect(abs(c.r - plate.r) + abs(c.g - plate.g) + abs(c.b - plate.b) <= 6, "\(tag): за контуром полосы на y \(y) — \(c), подложка \(plate)")
+        }
+    }
+
+    @Test func theWindowsBevelRunsOverTheBareFlag() throws {
+        for (name, size) in Self.sizes { for dark in [true, false] { for scale in [3.0, 4.0] {
+            let px = try render(BraunWidgetView(frame: Self.bare(15, 18), alpha: false, medium: true), size: size, dark: dark, scale: scale)
+            checkBevel(px, width: Double(size.width), dark: dark, "Б \(name) \(dark ? "тёмная" : "светлая") \(Int(scale))×")
+        } } }
+    }
+
+    @Test func theWindowsBevelRunsOverTheRouteFlag() throws {
+        for (name, size) in Self.sizes { for dark in [true, false] { for scale in [3.0, 4.0] {
+            let px = try render(BraunWidgetView(frame: WidgetBraunViewTests.scenario("long"), alpha: false, medium: true), size: size, dark: dark, scale: scale)
+            checkBevel(px, width: Double(size.width), dark: dark, "маршрут \(name) \(dark ? "тёмная" : "светлая") \(Int(scale))×")
+        } } }
+    }
+
     /// Снимки Б и А/В для сверки «до / после» по пикселям (`tools`: python по папке) — пишутся, если папка заведена (`$LP_FLAG_DIR`, `/tmp/lp-flag-out/after`).
     @Test func writesThePicturesWhenAsked() throws {
         let dir = ProcessInfo.processInfo.environment["LP_FLAG_DIR"] ?? "/tmp/lp-flag-out/after"
