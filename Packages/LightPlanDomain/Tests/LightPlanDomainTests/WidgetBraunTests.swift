@@ -127,12 +127,8 @@ struct WidgetBraunTests {
         #expect(BraunWindow.showsHours(remaining: 3660) && !BraunWindow.showsHours(remaining: 3540))
     }
 
-    @Test func theFlagIsAChevronLeftOfTheWindowCentredOnIt() {
-        #expect(BraunWindow.flagWidth == 7 && BraunWindow.flagHeight == 12 && BraunWindow.flagReserve == 10)
-        // Окошко 18 высотой с верхом 16: флажок 12 по центру — верх 19; острие в 3 от левого края окошка.
-        #expect(BraunWindow.flagY(windowY: 16) == 19 && BraunWindow.flagX(windowX: 300) == 290)
-        #expect(BraunWindow.flagX(windowX: 300) + BraunWindow.flagWidth + BraunWindow.flagGap == 300)
-        let p = BraunWindow.flagPoints(width: 7, height: 12)
-        #expect(p.count == 6 && p[0] == (0, 0) && p[1] == (3.5, 0) && p[2] == (7, 6) && p[3] == (3.5, 12) && p[4] == (0, 12) && p[5] == (3.5, 6), "\(p)")
+    @Test func theNotchBandLosesTheRingWidthAtTheTopOnlyInTheDarkWindow() {
+        #expect(BraunWindow.ringWidth == 0.5)
+        #expect(BraunWindow.notchBandInsetTop(ringed: true) == 0.5 && BraunWindow.notchBandInsetTop(ringed: false) == 0)
     }
 }

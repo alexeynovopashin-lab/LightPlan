@@ -187,7 +187,7 @@ struct WidgetBraunViewTests {
             report.append("\(tag): D \(L.diameter), шапка \(L.header.size)/\(L.header.lines), горит \(BraunDial.lit(minutesLeft: Int(((plan.pointLeft ?? 0) / 60).rounded(.up))))")
             #expect(L.diameter == e.d, "\(tag): диаметр \(L.diameter) против демки \(e.d)")
             #expect(abs(L.cx - e.cx) < 0.01 && abs(L.cy - e.cy) < 0.01, "\(tag): центр часов (\(L.cx), \(L.cy)) против (\(e.cx), \(e.cy))")
-            // Флажок слева от окошка (Алексей 26.10) отнимает у имён ещё 10 pt против демки: «Анна-Мария и Константин» на 338 pt теперь 13, а не 15.
+            // Окошко шире демки (ширина по «00:00:00», как у А), и имена на 338 pt «Анна-Мария и Константин» — 13, а не 15; с флажком-краем окошка (30.10) ступень та же.
             let head = (e.scenario == "longNames" && e.plate == .regular) ? 13.0 : e.head
             #expect(L.header.size == head && L.headerHeight == e.headH, "\(tag): шапка \(L.header.size)/\(L.headerHeight) против \(head)/\(e.headH)")
             let minutes = Int(((plan.pointLeft ?? 0) / 60).rounded(.up))
@@ -289,12 +289,12 @@ struct WidgetBraunViewTests {
             #expect(near(px.rgb(t149.0, t149.1), p.tickMinor, 8), "\(tag): обычная риска \(px.rgb(t149.0, t149.1))")
             #expect(near(px.rgb(t24.0, t24.1), p.tickHour, 5), "\(tag): часовая риска впереди \(px.rgb(t24.0, t24.1))")
             let wx = 364 - 16 - L.windowWidth
-            #expect(near(px.rgb(wx + 3, 25), p.window, 12), "\(tag): окошко \(px.rgb(wx + 3, 25))")
-            let fx = BraunWindow.flagX(windowX: wx), fy = BraunWindow.flagY(windowY: 16)
-            #expect(near(px.rgb(fx + 3.5, fy + 3), p.flag, 8), "\(tag): флажок слева от окошка \(px.rgb(fx + 3.5, fy + 3))")
-            #expect(near(px.rgb(wx + L.windowWidth / 2, 13), bg, 2), "\(tag): над окошком флажка больше нет \(px.rgb(wx + L.windowWidth / 2, 13))")
-            #expect(near(px.rgb(fx + 0.8, fy + 6), bg, 4), "\(tag): слева у флажка V-вырез (подложка в вырезе) \(px.rgb(fx + 0.8, fy + 6))")
-            #expect(near(px.rgb(fx + 6.2, fy + 6), p.flag, 12), "\(tag): остриё флажка смотрит в окошко \(px.rgb(fx + 6.2, fy + 6))")
+            #expect(near(px.rgb(wx + BraunWindow.notchExtra + 3, 25), p.window, 12), "\(tag): окошко \(px.rgb(wx + BraunWindow.notchExtra + 3, 25))")
+            // Флажок — левый край окошка (30.10): красная полоса у его верха, остриё внутрь, в V-вырезе слева подложка; над окошком ничего нет.
+            #expect(near(px.rgb(wx + 4.5, 21), p.flag, 8), "\(tag): полоса флажка (ниже тени блика) \(px.rgb(wx + 4.5, 21))")
+            #expect(near(px.rgb(wx + 7, 25), p.flag, 12), "\(tag): остриё флажка \(px.rgb(wx + 7, 25))")
+            #expect(near(px.rgb(wx + 0.8, 25), bg, 4), "\(tag): слева у флажка V-вырез (подложка в вырезе) \(px.rgb(wx + 0.8, 25))")
+            #expect(near(px.rgb(wx + L.windowWidth / 2, 13), bg, 2), "\(tag): над окошком флажка нет \(px.rgb(wx + L.windowWidth / 2, 13))")
             // Текст центра барабана и соседа: самый далёкий от фона строки пиксель — цвет текста (стебли букв шире пикселя на 4-кратном масштабе).
             func ink(_ x0: Double, _ y0: Double, _ w: Double, _ h: Double, ground: (Double, Double, Double)) -> (Double, Double, Double) {
                 var best = ground, far = 0.0
@@ -429,8 +429,8 @@ struct WidgetBraunViewTests {
         let long = try #require(DayPlan(Self.scenario("lunch"))), short = try #require(DayPlan(Self.scenario("last")))
         let a = BraunLayout(plan: long, size: Plate.pro.size, medium: true), b = BraunLayout(plan: short, size: Plate.pro.size, medium: true)
         #expect(a.windowWidth == b.windowWidth && a.windowWidth > 40, "рамка не прыгает: \(a.windowWidth) и \(b.windowWidth)")
-        #expect(abs(a.windowWidth - (BraunText.width("00:00:00", size: 13, semibold: true, mono: true) + 14)) < 0.001)
-        #expect(abs(a.headerWidth - (364 - 32 - a.windowWidth - 10 - 10)) < 0.001, "шапка уступает окошку, 10 до него и ещё 10 флажку с зазором: \(a.headerWidth)")
+        #expect(abs(a.windowWidth - (BraunText.width("00:00:00", size: 13, semibold: true, mono: true) + 14 + BraunWindow.notchExtra)) < 0.001, "окошко: цифры, поля и полоса флажка 9")
+        #expect(abs(a.headerWidth - (364 - 32 - a.windowWidth - 10)) < 0.001, "шапка уступает окошку с флажком-краем, 10 до него (было 10 + 10 на шеврон с зазором): \(a.headerWidth)")
         #expect(BraunLayout(plan: long, size: Plate.small.size, medium: false).headerWidth == 138, "в малом окошка и флажка нет")
         #expect(BraunWindow.text(remaining: 10 * 3600 + 42 * 60) == "10:42:00" && BraunWindow.text(remaining: 42 * 60) == "42:00")
     }

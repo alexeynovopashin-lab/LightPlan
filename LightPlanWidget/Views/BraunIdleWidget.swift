@@ -139,7 +139,30 @@ struct BraunNotchWindow: View {
                 if let ring = pal.winRing { box.strokeBorder(ring, lineWidth: 0.5) }
             }
             .clipShape(NotchOutline())
-            NotchBand().fill(pal.flag).frame(width: BraunWindow.notchExtra, height: 18)
+            // Полоса — левый край окошка по всей высоте, но не выше его видимого тела: в тёмной обводка 0,5 сверху срезана. Те же слои блика, что у окошка
+            // (тень сверху, кромка снизу, обводка), идут по полосе до её внешнего края, по её контуру: флажок — торец окошка, а не красная фигура рядом (30.10).
+            let inset = BraunWindow.notchBandInsetTop(ringed: pal.winRing != nil)
+            let extra = BraunWindow.notchExtra
+            ZStack(alignment: .topLeading) {
+                ZStack {
+                    Rectangle().fill(pal.flag)
+                    Rectangle().fill(LinearGradient(colors: [pal.flagTopShadow, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.22)))
+                    Rectangle().fill(LinearGradient(colors: [.clear, pal.flagBottomRim], startPoint: UnitPoint(x: 0.5, y: 0.9), endPoint: .bottom))
+                }
+                .frame(width: extra, height: 18)
+                .mask(alignment: .bottom) { Rectangle().frame(width: extra, height: 18 - inset) }
+                .clipShape(NotchBand())
+                // Обводка тёмного — прямыми отрезками по верху и низу до самого края (у окошка её ведёт скруглённый угол, который полоса закрывает).
+                if let ring = pal.winRing {
+                    ZStack(alignment: .topLeading) {
+                        Rectangle().fill(ring).frame(width: extra, height: BraunWindow.ringWidth)
+                        Rectangle().fill(ring).frame(width: extra, height: BraunWindow.ringWidth).offset(y: 18 - BraunWindow.ringWidth)
+                    }
+                    .frame(width: extra, height: 18, alignment: .topLeading)
+                    .clipShape(NotchBand())
+                }
+            }
+            .frame(width: extra, height: 18)
         }
     }
 }
