@@ -76,15 +76,9 @@ struct PlanTitleLadderTests {
     @Test func headerTitleKeepsTheWholeWordAtSize22() {
         #expect(PlanTitleLayout.titleFont == 22)
         let axis = PlanTitleLayout.insets(rightButtons: 3).leading
-        var words: [String] = []
-        for code in ["ru", "en-US"] {
-            let d = DateText(language: code, timeZone: Self.utc)
-            for m in 1...12 { words.append(PlanTitleLayout.dayTitles(dates: d, day: Self.day(2026, m, 15), year: "").full) }
-        }
-        words += ["Сен – Окт", "Окт – Ноя", "Дек – Янв", "Sep – Oct", "Nov – Dec"]
-        for word in words {
+        for (word, short) in Self.realPairs(year: "") {
             for w: CGFloat in [440, 430, 393, 375] {
-                let st = PlanTitleLayout.choose(full: word, short: word, screenWidth: w, rightButtons: 3)
+                let st = PlanTitleLayout.choose(full: word, short: short, screenWidth: w, rightButtons: 3)
                 let shown = PlanTitleLayout.width(word) * st.scale
                 let room = w - 32 - st.leading - st.trailing
                 #expect(!st.short, "\(word) \(Int(w)): сократился")
@@ -104,6 +98,44 @@ struct PlanTitleLadderTests {
         #expect(old393.short, "без шага «целиком» на 393 pt «Окт.»")
         // Слово 22 pt шире 18 pt ровно в пропорции кегля: мера честная.
         #expect(abs(PlanTitleLayout.width(t.full) / PlanTitleLayout.width(t.full, size: 18) - 22.0 / 18) < 0.03)
+    }
+
+    /// Настоящие пары «полный / сокращённый» заголовка шапки, как их собирает экран: месяц (день, месяц, неделя в одном месяце:
+    /// `monthTitle` / `monthAbbr`) и неделя на стыке месяцев (две сокращённые трёхбуквенные части, полный и короткий вид равны).
+    private static func realPairs(year: String) -> [(full: String, short: String)] {
+        var out: [(full: String, short: String)] = []
+        for code in ["ru", "en-US"] {
+            let d = DateText(language: code, timeZone: utc)
+            for m in 1...12 { let t = PlanTitleLayout.dayTitles(dates: d, day: day(2026, m, 15), year: year); out.append((t.full, t.short)) }
+        }
+        for two in ["Сен – Окт", "Окт – Ноя", "Дек – Янв", "Sep – Oct", "Nov – Dec"] { out.append((two + year, two + year)) }
+        return out
+    }
+
+    /// Сокращение включается только когда целое слово не влезает ни на оси, ни между кнопками, и обязательно включается, когда не влезает
+    /// (с годом: «Октябрь 2027» ↔ «Окт. 2027»). Пары настоящие, проверяется, какой вариант выбран.
+    @Test func shortFormIsUsedOnlyWhenTheWholeWordFitsNowhere() {
+        let i = PlanTitleLayout.insets(rightButtons: 3)
+        let freeLead = PlanTitleLayout.leftWidth + 6 + PlanTitleLayout.gap + PlanTitleLayout.chevronReach
+        let freeTrail = PlanTitleLayout.rightWidth(buttons: 3) + 6 + PlanTitleLayout.gap
+        var sawShort = false, sawWhole = false
+        for year in ["", " 2027"] {
+            for (full, short) in Self.realPairs(year: year) where short != full {
+                for w: CGFloat in [440, 430, 393, 375, 320] {
+                    let st = PlanTitleLayout.choose(full: full, short: short, screenWidth: w, rightButtons: 3)
+                    let axisRoom = w - 32 - i.leading - i.trailing, freeRoom = w - 32 - freeLead - freeTrail
+                    let fitsSomewhere = PlanTitleLayout.width(full) * PlanTitleLayout.invisibleSqueeze <= max(axisRoom, freeRoom)
+                    #expect(st.short == !fitsSomewhere, "\(full)\(year) \(Int(w)): целое \(fitsSomewhere ? "влезает" : "не влезает") (\(axisRoom)/\(freeRoom)), а выбрано \(st.short ? short : full)")
+                    if st.short { sawShort = true } else { sawWhole = true }
+                }
+            }
+        }
+        #expect(sawShort && sawWhole, "в обе стороны: проверка не вырождена")
+        // С годом «Октябрь 2027» на 393 pt не влезает нигде (целое шире места между кнопками) — показывается «Окт. 2027»; на 440 pt целое.
+        let ru = DateText(language: "ru", timeZone: Self.utc)
+        let t = PlanTitleLayout.dayTitles(dates: ru, day: Self.day(2027, 10, 15), year: " 2027")
+        #expect(t.full == "Октябрь 2027" && t.short == "Окт. 2027")
+        #expect(!PlanTitleLayout.choose(full: t.full, short: t.short, screenWidth: 440, rightButtons: 3).short)
     }
 
     private struct Case { let label: String; let full: String; let short: String }
