@@ -72575,60 +72575,25 @@
         }
       }
     },
-    "widget.rateExcellent" : {
+    "widget.skyFog" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "отличный"
+            "value" : "туманный"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "excellent"
+            "value" : "foggy"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "excelente"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最高"
-          }
-        },
-        "zh" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "极好"
-          }
-        }
-      }
-    },
-    "widget.rateFog" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "туман"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "fog"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "niebla"
+            "value" : "brumoso"
           }
         },
         "ja" : {
@@ -72640,112 +72605,217 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "雾"
+            "value" : "有雾"
           }
         }
       }
     },
-    "widget.rateGood" : {
+    "widget.skyGrey" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "хороший"
+            "value" : "серый"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "good"
+            "value" : "grey"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bueno"
+            "value" : "gris"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "良い"
+            "value" : "灰色"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "好"
+            "value" : "灰暗"
           }
         }
       }
     },
-    "widget.ratePlain" : {
+    "widget.skyRise" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "обычный"
+            "value" : "рассвет · {t}"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ordinary"
+            "value" : "sunrise · {t}"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "común"
+            "value" : "amanecer · {t}"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "普通"
+            "value" : "日の出 · {t}"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "普通"
+            "value" : "日出 · {t}"
           }
         }
       }
     },
-    "widget.ratePoor" : {
+    "widget.skySet" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "плохой"
+            "value" : "закат · {t}"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "poor"
+            "value" : "sunset · {t}"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "malo"
+            "value" : "atardecer · {t}"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "悪い"
+            "value" : "日の入り · {t}"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "差"
+            "value" : "日落 · {t}"
+          }
+        }
+      }
+    },
+    "widget.skySoft" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "мягкий"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "soft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "suave"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "穏やか"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "柔和"
+          }
+        }
+      }
+    },
+    "widget.skyVivid" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "яркий"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vivid"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "intenso"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "鮮やか"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "绚丽"
+          }
+        }
+      }
+    },
+    "widget.skyWarm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "тёплый"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "warm"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cálido"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暖色"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "温暖"
           }
         }
       }

@@ -107,8 +107,8 @@ extension AppModel {
             .untilPoint: "widget.untilPoint", .untilShoot: "widget.untilShoot", .untilWedding: "widget.untilWedding",
             .wedding: "widget.wedding", .point: "widget.point", .points: "widget.points", .hourShort: "widget.hourShort",
             .minShort: "widget.minShort", .dayLength: "widget.dayLength", .more: "widget.more", .until: "widget.until",
-            .rateExcellent: "widget.rateExcellent", .rateGood: "widget.rateGood", .ratePlain: "widget.ratePlain",
-            .ratePoor: "widget.ratePoor", .rateFog: "widget.rateFog", .noShootsUntil: "widget.noShootsUntil",
+            .noShootsUntil: "widget.noShootsUntil", .skyVivid: "widget.skyVivid", .skyWarm: "widget.skyWarm", .skySoft: "widget.skySoft",
+            .skyGrey: "widget.skyGrey", .skyFog: "widget.skyFog", .skyRise: "widget.skyRise", .skySet: "widget.skySet",
         ]
         var words = WidgetFeed.Words(keys.mapValues { lex.t($0) })
         // «через 3 дня»: падеж зависит от числа, у расширения склонений нет — фразы на каждое число готовит приложение.

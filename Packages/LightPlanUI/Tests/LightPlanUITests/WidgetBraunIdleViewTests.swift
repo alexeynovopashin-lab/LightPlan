@@ -133,9 +133,18 @@ struct WidgetBraunIdleViewTests {
             for s in Scenario.allCases {
                 let px = try render(plate(s, .pro, dark: dark), scale: 4)
                 let (texts, _) = board(s, dark: dark)
-                for t in texts {
+                for var t in texts {
                     // Число балла над трубкой доски (28.10 ушло в линзу внутри трубки, `WidgetGaugeTests`) — места на доске больше нет.
                     if s != .b, t.t == "62" { continue }
+                    // Строка оценки слева: прямоугольник доски (до x 136) заходит на столбик (с x 129), и в тёмной теме его серые пиксели попадали
+                    // в «чернила» строки (верх 126,5 и на старом коде). Пока под ними была «р» из «хороший», середина сходилась; у «закат · тёплый»
+                    // (DECISIONS 30.10) хвостов вниз нет — ищем чернила только левее столбика.
+                    if s != .b, t.t == "хороший" { t.w = BraunGauge.x - 2 - t.x }
+                    // Е без прогноза: доска писала одно «завтра»; «завтра» больше не пишем (Алексей 30.10), а без слова неба строки нет — место пустое.
+                    if t.t == "завтра" {
+                        #expect(ink(px, t) == nil, "\(s) \(dark ? "чёрный" : "белый"): на месте «завтра» ничего не должно быть")
+                        continue
+                    }
                     // Окошко свадьбы рисует живой таймер, в снимке он заморожен: строки из окошка — те же цифры, но место проверяем по рамке.
                     guard let b = ink(px, t) else {
                         // Цвет совпал нигде: свет у вида настоящий, у доски — заданный; роли цветов те же, а вот пустого места быть не должно.
@@ -147,7 +156,8 @@ struct WidgetBraunIdleViewTests {
                     report.append("\(tag): чернила x \(b.x0)…\(b.x1) y \(b.y0)…\(b.y1) против \(t.x)…\(t.x + t.w) × \(t.y)…\(t.y + t.h)")
                     #expect(abs(cy - ry) <= 2.0, "\(tag): центр по высоте \(cy) против \(ry)")
                     #expect(b.x0 >= t.x - 2 && b.x1 <= t.x + t.w + 2, "\(tag): вышел за прямоугольник доски по x")
-                    if t.tight {
+                    // Слово оценки доски «хороший» сменилось словом неба «тёплый» (DECISIONS 30.10): место и цвет — доски, ширина — уже не её слова.
+                    if t.tight, t.t != "хороший" {
                         let wInk = b.x1 - b.x0
                         // Цифры: «1» в моноширинном начертании стоит в поле с широкими пустотами — чернила уже строки на 4–5 pt.
                         let digits = t.t.allSatisfy(\.isNumber)
@@ -212,7 +222,7 @@ struct WidgetBraunIdleViewTests {
         #expect(L.drum == CGRect(x: 146, y: 38, width: 202, height: 116))
         #expect(L.rows.map { $0.light?.kind } == [nil, .sunrise, .golden, .sunset, nil], "рассвет, золотой час в центре, закат")
         #expect(L.rows.map(\.slot.y) == [0, 22, 44, 72, 94] && L.rows.map(\.slot.height) == [22, 22, 28, 22, 22])
-        #expect(L.rows[3].extra == "хороший" && L.rows[1].extra == nil && L.rows[2].extra == nil, "оценка только у заката")
+        #expect(L.rows[3].extra == "тёплый" && L.rows[1].extra == nil && L.rows[2].extra == nil, "оценка только у заката")
         #expect(L.windowWidth > 0 && L.header.size == 15)
         #expect(BraunIdle.wholeShootLit(left: plan.shootLeft, total: plan.shoot.endDate.timeIntervalSince(plan.shoot.startDate)) == 44)
         // Без прогноза строки оценки нет.
@@ -305,7 +315,7 @@ struct WidgetBraunIdleViewTests {
         #expect(reg.rows[3].step.size <= 13)
         #expect(pro.rows[3].extraIcon, "Pro Max: знак оценки на месте")
         for L in [pro, reg] {
-            let avail = L.drumNameWidth - BraunLayout.lightSignWidth(offset: 1) - BraunLayout.ratingWidth("хороший", icon: L.rows[3].extraIcon)
+            let avail = L.drumNameWidth - BraunLayout.lightSignWidth(offset: 1) - BraunLayout.ratingWidth("тёплый", icon: L.rows[3].extraIcon)
             #expect(BraunText.width("Закат", size: L.rows[3].step.size, semibold: false) <= avail, "строка заката влезла целиком, кегль \(L.rows[3].step.size)")
         }
     }
