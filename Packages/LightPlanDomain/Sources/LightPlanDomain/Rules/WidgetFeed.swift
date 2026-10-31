@@ -151,8 +151,11 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
             case sunrise, sunset, golden, next, today, tomorrow, polarDay, polarNight, studio, shoot, route
             // 30б.2в: подписи колец и большого; `more` и `until` — шаблоны с `{n}` и `{t}`: порядок слов у языков разный.
             case untilPoint, untilShoot, untilWedding, wedding, point, points, hourShort, minShort, dayLength, more, until
-            // 30б.2в-5: оценка заката словом (по `DayQuality`) и строка пустой недели; `noShootsUntil` — шаблон с `{d}` («сб 31»).
-            case rateExcellent, rateGood, ratePlain, ratePoor, rateFog, noShootsUntil
+            // 30б.2в-5: строка пустой недели; `noShootsUntil` — шаблон с `{d}` («сб 31»).
+            case noShootsUntil
+            // Слово неба (DECISIONS 30.10 «Слово неба в виджете»): лестница насыщенности по `DayQuality`, не оценка; `skyRise`/`skySet` —
+            // шаблоны строки «рассвет · {t}» / «закат · {t}»: предмет и порядок слов — у языка, без «завтра»/«сегодня».
+            case skyVivid, skyWarm, skySoft, skyGrey, skyFog, skyRise, skySet
         }
 
         public static let fallback: [Key: String] = [
@@ -162,8 +165,9 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
             .untilPoint: "до конца точки", .untilShoot: "до конца съёмки", .untilWedding: "до конца свадьбы",
             .wedding: "свадьба", .point: "точка", .points: "точек", .hourShort: "ч", .minShort: "мин",
             .dayLength: "День", .more: "и ещё {n}", .until: "до {t}",
-            .rateExcellent: "отличный", .rateGood: "хороший", .ratePlain: "обычный", .ratePoor: "плохой", .rateFog: "туман",
             .noShootsUntil: "до {d} съёмок нет",
+            .skyVivid: "яркий", .skyWarm: "тёплый", .skySoft: "мягкий", .skyGrey: "серый", .skyFog: "туманный",
+            .skyRise: "рассвет · {t}", .skySet: "закат · {t}",
         ]
 
         public var table: [String: String]
@@ -186,14 +190,14 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
             return "через \(n) \(word)"
         }
 
-        /// Слово оценки заката по категории дня (`DayQuality`).
-        public func rating(_ q: DayQuality) -> String {
+        /// Слово неба по категории (`DayQuality`): отличный → «яркий», хороший → «тёплый», обычный → «мягкий», плохой → «серый», туман → «туманный».
+        public func sky(_ q: DayQuality) -> String {
             switch q {
-            case .excellent: self[.rateExcellent]
-            case .good: self[.rateGood]
-            case .plain: self[.ratePlain]
-            case .poor: self[.ratePoor]
-            case .fog: self[.rateFog]
+            case .excellent: self[.skyVivid]
+            case .good: self[.skyWarm]
+            case .plain: self[.skySoft]
+            case .poor: self[.skyGrey]
+            case .fog: self[.skyFog]
             }
         }
 

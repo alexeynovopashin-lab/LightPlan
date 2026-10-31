@@ -101,20 +101,26 @@ struct WidgetRatedEventTests {
     @Test func theSunriseWordComesFromItsOwnScoreAndTheMorningFog() throws {
         func word(_ r: WidgetFeed.Rating, at: Date) -> String? { BraunIdle.ratingWord(feed([r]).frame(at: at)) }
         let day = "2026-10-25"
-        #expect(word(.init(day: day, score: 20, quality: .poor, sunrise: 90), at: tsk(6)) == "отличный", "рассвет судят по его баллу, не по закату")
-        #expect(word(.init(day: day, score: 90, quality: .excellent, sunrise: 20), at: tsk(6)) == "плохой")
-        #expect(word(.init(day: day, score: 90, quality: .fog, sunrise: 90), at: tsk(6)) == "туман", "утренний туман перебивает балл")
+        #expect(word(.init(day: day, score: 20, quality: .poor, sunrise: 90), at: tsk(6)) == "яркий", "рассвет судят по его баллу, не по закату")
+        #expect(word(.init(day: day, score: 90, quality: .excellent, sunrise: 20), at: tsk(6)) == "серый")
+        #expect(word(.init(day: day, score: 90, quality: .fog, sunrise: 90), at: tsk(6)) == "туманный", "утренний туман перебивает балл")
         #expect(word(.init(day: day, score: 62, quality: .good, sunrise: nil), at: tsk(6)) == nil, "рассветного балла нет — слова нет")
-        #expect(word(.init(day: day, score: 62, quality: .good, sunrise: 10), at: tsk(14)) == "хороший", "закат — категория дня, как было")
-        #expect(word(.init(day: day, score: nil, quality: .plain, sunrise: 10), at: tsk(14)) == "обычный")
+        #expect(word(.init(day: day, score: 62, quality: .good, sunrise: 10), at: tsk(14)) == "тёплый", "закат — категория дня, как было")
+        #expect(word(.init(day: day, score: nil, quality: .plain, sunrise: 10), at: tsk(14)) == "мягкий")
     }
 
-    @Test func theLabelIsTheWordOfTheEvent() throws {
-        let f = feed()
-        let words = f.words
-        #expect(BraunIdle.ratingLabel(try #require(BraunIdle.ratedEvent(f.frame(at: tsk(5)))), words) == "Рассвет")
-        #expect(BraunIdle.ratingLabel(try #require(BraunIdle.ratedEvent(f.frame(at: tsk(14)))), words) == "Закат")
-        #expect(BraunIdle.ratingLabel(try #require(BraunIdle.ratedEvent(f.frame(at: tsk(21)))), words) == "Рассвет")
+    /// «рассвет · яркий» / «закат · серый»: предмет — то светило, время которого крупно; ни «завтра», ни «сегодня» (Алексей 30.10), и после заката
+    /// завтрашний рассвет — тоже просто «рассвет».
+    @Test func theLineIsTheEventAndTheSkyWordWithoutTomorrow() throws {
+        let f = feed([.init(day: "2026-10-25", score: 20, quality: .poor, sunrise: 90), .init(day: "2026-10-26", score: 62, quality: .good, sunrise: 55)])
+        #expect(BraunIdle.ratingLine(f.frame(at: tsk(5))) == "рассвет · яркий")
+        #expect(BraunIdle.ratingLine(f.frame(at: tsk(14))) == "закат · серый")
+        #expect(BraunIdle.ratingLine(f.frame(at: tsk(21))) == "рассвет · тёплый", "завтрашний рассвет — по завтрашнему баллу, без «завтра»")
+        #expect(BraunIdle.ratingLine(feed([]).frame(at: tsk(14))) == nil, "прогноза нет — строки нет")
+        let es = WidgetFeed.Words([.skySet: "atardecer · {t}", .skyFog: "con niebla", .skyGrey: "gris"])
+        var g = f.frame(at: tsk(14))
+        g.words = es
+        #expect(BraunIdle.ratingLine(g) == "atardecer · gris", "порядок и предмет — из шаблона языка")
     }
 
     // MARK: Лента

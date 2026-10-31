@@ -61,13 +61,14 @@ struct WidgetBraunIdleTests {
         let tomorrowOnly = feed(forecast: [.init(day: "2026-10-26", score: 62, quality: .good)]).frame(at: tsk(14))
         #expect(tomorrowOnly.rating == nil && BraunIdle.ratingWord(tomorrowOnly) == nil, "завтрашняя оценка сегодняшней не подставляется")
         let ok = feed(forecast: [.init(day: "2026-10-25", score: 62, quality: .good)]).frame(at: tsk(14))
-        #expect(ok.rating?.score == 62 && BraunIdle.ratingWord(ok) == "хороший")
+        #expect(ok.rating?.score == 62 && BraunIdle.ratingWord(ok) == "тёплый")
     }
 
-    @Test func ratingWordsAreTheFiveOfTheBoardAndTheAppsWordsWin() {
+    /// Слова неба (DECISIONS 30.10): лестница насыщенности, не оценка — ни «хороший», ни «плохой».
+    @Test func skyWordsAreTheLadderOfTheDecisionAndTheAppsWordsWin() {
         let w = WidgetFeed.Words()
-        #expect(DayQuality.allCases.map { w.rating($0) } == ["отличный", "хороший", "обычный", "плохой", "туман"])
-        #expect(WidgetFeed.Words([.rateGood: "good"]).rating(.good) == "good")
+        #expect(DayQuality.allCases.map { w.sky($0) } == ["яркий", "тёплый", "мягкий", "серый", "туманный"])
+        #expect(WidgetFeed.Words([.skyWarm: "warm"]).sky(.good) == "warm")
     }
 
     @Test func daysAheadAreSaidInTheRightCaseAndTheAppsPhrasesWin() {

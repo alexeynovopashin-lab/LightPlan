@@ -131,12 +131,13 @@ struct WidgetGaugeTests {
     /// (x 50 + ширина) кончаются раньше левой стенки трубки. 24 ч и 12 ч, 338 и 364.
     @Test func theLeftColumnStopsBeforeTheTube() throws {
         let words = WidgetFeed.Words()
-        for e in [BraunIdle.LightKind.sunrise, .sunset] {
+        for key in [WidgetFeed.Words.Key.skyRise, .skySet] {
             for q in DayQuality.allCases {
-                let t = "\(words[e == .sunrise ? .sunrise : .sunset]) · \(words.rating(q))"
-                let sizes = [12.0, 11, 10, 9]
-                let size = sizes.first { BraunText.width(t, size: $0, semibold: false) <= BraunIdleContent.ratingWidth } ?? 9
-                #expect(36 + BraunText.width(t, size: size, semibold: false) <= BraunGauge.x - 1 + 1e-9, "«\(t)» \(size) pt")
+                let t = words[key].replacingOccurrences(of: "{t}", with: words.sky(q))
+                for icon in [true, false] {
+                    let fit = BraunIdleContent.ratingFit(t, icon: icon)
+                    #expect(fit.x + BraunText.width(t, size: fit.size, semibold: false) <= BraunGauge.x - 1 + 1e-9, "«\(t)» \(fit.size) pt, знак \(fit.icon)")
+                }
             }
         }
         for t in ["17:02", "05:56", "12:52", "5:56 PM", "12:56 PM"] {

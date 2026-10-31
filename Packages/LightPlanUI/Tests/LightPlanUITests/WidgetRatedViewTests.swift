@@ -150,13 +150,15 @@ struct WidgetRatedViewTests {
         return (words[k == .sunrise ? .sunrise : (k == .golden ? .golden : .sunset)], ())
     }
 
-    /// Строка оценки слева («Рассвет · отличный») влезает в `ratingWidth` (92: до столбика 25 pt; было 99 при столбике 18) хотя бы в 9 pt на всех словах.
+    /// Строка оценки слева («рассвет · яркий») влезает целиком: со знаком в `ratingWidth` (92), иначе без знака в `ratingWidthBare` (112), хотя бы в 9 pt
+    /// на всех словах. Пять языков — `WidgetSkyLineTests`.
     @Test func theRatingLineFitsTheLeftColumnInTheSmallestStep() {
         let words = WidgetFeed.Words()
-        for e in [BraunIdle.LightKind.sunrise, .sunset] {
+        for key in [WidgetFeed.Words.Key.skyRise, .skySet] {
             for q in DayQuality.allCases {
-                let text = "\(words[e == .sunrise ? .sunrise : .sunset]) · \(words.rating(q))"
-                #expect(BraunText.width(text, size: 9, semibold: false) <= BraunIdleContent.ratingWidth, "«\(text)» не влезает даже в 9")
+                let text = words[key].replacingOccurrences(of: "{t}", with: words.sky(q))
+                let fit = BraunIdleContent.ratingFit(text, icon: true)
+                #expect(BraunText.width(text, size: fit.size, semibold: false) <= fit.width, "«\(text)» не влезает даже в 9")
             }
         }
     }

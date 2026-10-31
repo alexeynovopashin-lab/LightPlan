@@ -331,7 +331,7 @@ struct BraunIdleContent: View {
         let rise = timeText(d.sunrise), golden = timeText(d.golden), set = timeText(d.sunset)
         // Что оценивается — рассвет (до конца утреннего золотого часа) или закат; подпись и столбик идут за ним.
         let rated = BraunIdle.ratedEvent(frame)
-        let rating = ratingLine(rated)
+        let rating = BraunIdle.ratingLine(frame).map { Self.ratingFit($0, icon: true) }
         let gauge = rated?.score
         // Столбик стоит на x 129…154 (25 pt): время заката 22 уступает ему место.
         let setSize = fitted(set, [22, 20, 18, 16], semibold: true, avail: (gauge != nil ? BraunGauge.x - 2 : 160) - 50)
@@ -340,21 +340,35 @@ struct BraunIdleContent: View {
             row(sign: BraunSign.light(.golden), signSize: 18, signY: y(68, 66), text: golden, size: 14, textY: y(66, 64), textH: 22, role: roles[1])
             row(sign: BraunSign.light(.sunset), signSize: 26, signY: y(96, 90), text: set, size: setSize, textY: y(94, 88), textH: 30, role: roles[2], x: 50, tracking: -0.3)
             if let rating {
-                WidgetIcon(name: BraunSign.rating, size: 14, line: 1.5).foregroundStyle(pal.muted).frame(width: 14, height: 14).offset(x: 16, y: y(129, 123))
+                if rating.icon {
+                    WidgetIcon(name: BraunSign.rating, size: 14, line: 1.5).foregroundStyle(pal.muted).frame(width: 14, height: 14).offset(x: 16, y: y(129, 123))
+                }
                 Text(rating.text).font(.system(size: rating.size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
-                    .frame(width: Self.ratingWidth, height: 16, alignment: .leading).offset(x: 36, y: y(128, 122))
+                    .frame(width: rating.width, height: 16, alignment: .leading).offset(x: rating.x, y: y(128, 122))
             }
             if let gauge { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: BraunGauge.x, y: 38) }
         }
     }
 
-    /// Строка оценки: «Рассвет · хороший» / «Закат · хороший»; не влезла в `ratingWidth` (92 pt: до столбика 1 pt; было 99, пока столбик был 18 шириной) — мельчает 12 → 11 → 10 → 9, и только потом «…».
-    /// От x 36 до столбика минус 1.
+    /// Строка оценки («рассвет · яркий», `BraunIdle.ratingLine`) и как она стоит. Со знаком — текст от x 36 до столбика минус 1 (`ratingWidth`, 92 pt;
+    /// было 99, пока столбик был 18 шириной), мельчает 12 → 11 → 10 → 9. Слова неба 30.10 длиннее прежних («рассвет · туманный», «atardecer · con
+    /// niebla» не влезают в 92 и в 9 pt), поэтому дальше — без знака, от x 16 (`ratingWidthBare`, 112), снова 12 → 9, и только потом «…».
+    struct RatingFit: Equatable {
+        var text: String
+        var size: Double
+        var icon: Bool
+        var x: Double { icon ? 36 : 16 }
+        var width: Double { icon ? BraunIdleContent.ratingWidth : BraunIdleContent.ratingWidthBare }
+    }
+
     static let ratingWidth = BraunGauge.x - 1 - 36
-    private func ratingLine(_ e: BraunIdle.RatedEvent?) -> (text: String, size: Double)? {
-        guard let e, let word = BraunIdle.ratingWord(frame) else { return nil }
-        let text = "\(BraunIdle.ratingLabel(e, words)) · \(word)"
-        return (text, fitted(text, [12, 11, 10, 9], semibold: false, mono: false, avail: Self.ratingWidth))
+    static let ratingWidthBare = BraunGauge.x - 1 - 16
+    static let ratingSizes = [12.0, 11, 10, 9]
+
+    static func ratingFit(_ text: String, icon: Bool) -> RatingFit {
+        func size(_ avail: Double) -> Double? { ratingSizes.first { BraunText.width(text, size: $0, semibold: false) <= avail } }
+        if icon, let s = size(ratingWidth) { return RatingFit(text: text, size: s, icon: true) }
+        return RatingFit(text: text, size: size(ratingWidthBare) ?? ratingSizes.last ?? 9, icon: false)
     }
 
     private func row(sign: String, signSize: Double, signY: Double, text: String, size: Double, textY: Double, textH: Double, role: BraunIdle.Role,
@@ -374,10 +388,12 @@ struct BraunIdleContent: View {
             Text(rise).font(.system(size: fitted(rise, [22, 20, 18, 16], semibold: true, avail: (BraunIdle.ratedEvent(frame)?.score != nil ? BraunGauge.x - 2 : 160) - 50), weight: .semibold))
                 .monospacedDigit().tracking(-0.3).foregroundStyle(pal.amber).lineLimit(1)
                 .frame(width: 100, height: 30, alignment: .leading).offset(x: 50, y: 42)
-            // Завтрашний рассвет — с оценкой (30б.2в-6): «завтра · хороший» и столбик, как днём; нет прогноза — одно «завтра».
-            Text([words[.tomorrow].lowercased(), BraunIdle.ratingWord(frame)].compactMap { $0 }.joined(separator: " · "))
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
-                .frame(width: 116, height: 14, alignment: .leading).offset(x: 16, y: 76)
+            // Завтрашний рассвет — с оценкой (30б.2в-6) и столбиком, как днём: «рассвет · яркий», без «завтра» (Алексей 30.10: «человек сам
+            // понимает, что рассвет будет завтра»); нет прогноза — строки нет. Знака здесь нет: строка от x 16 до столбика (`ratingWidthBare`).
+            if let rating = BraunIdle.ratingLine(frame).map({ Self.ratingFit($0, icon: false) }) {
+                Text(rating.text).font(.system(size: rating.size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
+                    .frame(width: rating.width, height: 14, alignment: .leading).offset(x: rating.x, y: 76)
+            }
             if let gauge = BraunIdle.ratedEvent(frame)?.score { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: BraunGauge.x, y: 38) }
             dim(BraunSign.light(.golden), golden, signY: y(106, 102), textY: y(104, 100))
             dim(BraunSign.light(.sunset), set, signY: y(128, 122), textY: y(126, 120))

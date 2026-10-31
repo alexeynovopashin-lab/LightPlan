@@ -211,13 +211,17 @@ public enum BraunIdle {
         return RatedEvent(kind: kind, tomorrow: tomorrow, at: at, score: rating.sunrise, quality: q)
     }
 
-    /// Слово оценки; нет прогноза на это событие — `nil`, строки нет.
+    /// Слово неба; нет прогноза на это событие — `nil`, строки нет.
     public static func ratingWord(_ f: WidgetFrame) -> String? {
-        ratedEvent(f)?.quality.map { f.words.rating($0) }
+        ratedEvent(f)?.quality.map { f.words.sky($0) }
     }
 
-    /// «Рассвет» / «Закат» — подпись оценки (слова виджета, не новые).
-    public static func ratingLabel(_ e: RatedEvent, _ words: WidgetFeed.Words) -> String { words[e.kind == .sunrise ? .sunrise : .sunset] }
+    /// «рассвет · яркий» / «закат · серый» — строка оценки по шаблону языка (`skyRise`/`skySet`), без «завтра»: что рассвет завтра, видно и так
+    /// (Алексей 30.10). Нет прогноза — `nil`.
+    public static func ratingLine(_ f: WidgetFrame) -> String? {
+        guard let e = ratedEvent(f), let q = e.quality else { return nil }
+        return f.words[e.kind == .sunrise ? .skyRise : .skySet].replacingOccurrences(of: "{t}", with: f.words.sky(q))
+    }
 
     /// Высоты строк списка: ближайшая и остальные, зазор 2 (на 170 pt — 46 / 40, три строки = 130; на 158 pt — 44 / 38, чтобы три строки
     /// остались в 126 pt между полями: числа доски на 158 pt не заданы).

@@ -68,7 +68,8 @@ struct SmallView: View {
     @ViewBuilder private var light: some View {
         if let e = frame.light, let at = e.at {
             big(frame.clock(at, in: frame.zone))
-            Text(lightFoot(e))
+            // Под временем — место «Света»; «Завтра» у завтрашнего рассвета не пишем: видно и так (Алексей 30.10).
+            Text(frame.place.name)
                 .font(.footnote).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.8)
             nextShootLine
         } else {
@@ -76,13 +77,6 @@ struct SmallView: View {
             Text(frame.place.name).font(.footnote).foregroundStyle(st.ink2).lineLimit(1)
             nextShootLine
         }
-    }
-
-    /// Подпись под временем: место «Света»; завтрашний рассвет — со словом «Завтра».
-    private func lightFoot(_ e: WidgetFrame.LightEvent) -> String {
-        let name = frame.place.name
-        guard e.dayOffset >= 1 else { return name }
-        return name.isEmpty ? frame.words[.tomorrow] : "\(frame.words[.tomorrow]) · \(name)"
     }
 
     /// Свободный день: «Дальше: сб 15:00» — ближайшая съёмка дальше завтра.
