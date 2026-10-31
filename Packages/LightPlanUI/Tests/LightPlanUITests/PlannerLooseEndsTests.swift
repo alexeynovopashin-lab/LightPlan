@@ -122,8 +122,10 @@ struct PlannerLooseEndsTests {
             try await Task.sleep(for: .milliseconds(500))
             try await Task.sleep(for: .milliseconds(500))
             let scroll = try #require(descendants(window).compactMap { $0 as? UIScrollView }.max { $0.contentSize.height < $1.contentSize.height })
+            // Список длиннее окна. Порог кнопки (0,6 окна) здесь не пересчитываем: раньше высоту прокрутки ужимала полоса кнопки
+            // (555 из 700 pt), без полосы она 700, а окно правила считает сама кнопка — его проверяет то, что `sj.search` нарисована.
             let range = scroll.contentSize.height - scroll.bounds.height
-            try #require(range > 0.6 * scroll.bounds.height, "список вышел коротким: прокрутки \(range) pt")
+            try #require(range > 0, "список вышел коротким: прокрутки \(range) pt")
             let n = try await probe()
             let shared = try #require(n["sj.search"], "общая кнопка прыжка не нарисована")
             #expect(shared.text == "down", "от начала кнопка ведёт вниз: \(shared.text ?? "-")")
