@@ -166,11 +166,23 @@ struct YearLentaView: View {
     @Environment(\.accessibilityReduceMotion) private var still
     /// Зазор между строками чисел (веб `.year-cal-grid` `row-gap: 3px`).
     static let rowGap: CGFloat = 3
+
+    /// Высота сетки месяца по её ширине: ряды — квадраты в колонку (ширина / 7), между ними `rowGap`. Ленивая сетка в прокрутке
+    /// сама оценивает высоту рядов вне экрана, и при общем пересчёте раскладки верхи месяцев ленты прыгали (октябрь 3236 →
+    /// 6773…12546) — шапка называла февраль вместо октября (31.10). Сетка остаётся ленивой: дни создаются только видимые
+    /// (обычная сетка открывала ленту вдвое дольше, 180 → 372 мс на симуляторе). До первой раскладки ширины нет — высоту не задаём.
+    static func gridHeight(lead: Int, days: Int, width: CGFloat) -> CGFloat? {
+        guard width > 0 else { return nil }
+        let rows = CGFloat((lead + days + 6) / 7)
+        return rows * width / 7 + (rows - 1) * rowGap
+    }
     @State private var position = ScrollPosition(idType: String.self)
     /// Верх каждого месяца в координатах содержимого ленты.
     @State private var tops: [CivilDate: CGFloat] = [:]
     /// Верх сетки каждого месяца (под именем) в тех же координатах: сюда встаёт лента, чтобы первый ряд лёг под линейку.
     @State private var gridTops: [CivilDate: CGFloat] = [:]
+    /// Ширина сетки месяца: по ней высота сетки задана явно (`gridHeight`), а не берётся у ленивой сетки.
+    @State private var gridWidth: CGFloat = 0
     /// На сколько прокручена лента (0 в покое) и месяц, названный в закреплённой шапке (`YearPin.month`).
     @State private var scrolled: CGFloat = 0
     @State private var pinned: CivilDate?
@@ -401,6 +413,8 @@ struct YearLentaView: View {
                     .accessibilityLabel(f.dates.dMonYear(f.date(day)))
                 }
             }
+            .frame(height: Self.gridHeight(lead: lead, days: days, width: gridWidth), alignment: .top)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { gridWidth = $0 }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(yearStageSpace)) } action: { nav.lentaGrids[first] = $0 }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { part.yearGrids[first] = $0 }
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("lenta")).minY } action: { gridTops[first] = $0 }

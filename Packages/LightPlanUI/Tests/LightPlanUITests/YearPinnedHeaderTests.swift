@@ -53,6 +53,16 @@ struct YearPinnedHeaderTests {
         #expect(YearPin.restOffset(gridTop: 2) == 0, "выше начала не прокручиваем")
     }
 
+    /// Высота сетки месяца считается от ширины, не берётся у ленивой сетки (её оценки рядов вне экрана сдвигали верхи месяцев,
+    /// шапка называла февраль вместо октября): ряды — квадраты ширина / 7, между ними 3.
+    @Test func theMonthGridHeightComesFromItsWidth() {
+        let rows: (CGFloat) -> CGFloat = { $0 * 56 + ($0 - 1) * 3 }
+        #expect(YearLentaView.gridHeight(lead: 2, days: 31, width: 392) == rows(5), "октябрь 2026 с понедельника — 5 рядов")
+        #expect(YearLentaView.gridHeight(lead: 6, days: 31, width: 392) == rows(6), "месяц на 6 рядов")
+        #expect(YearLentaView.gridHeight(lead: 0, days: 28, width: 392) == rows(4), "февраль ровно в 4 ряда")
+        #expect(YearLentaView.gridHeight(lead: 3, days: 30, width: 0) == nil, "до первой раскладки высоту не задаём")
+    }
+
     // MARK: - Экран
 
     #if os(iOS)
@@ -108,6 +118,27 @@ struct YearPinnedHeaderTests {
         deinit { window.isHidden = true }
         var scroll: UIScrollView? { PlannerPinScroll.find(window) }
         func settle(_ ms: Int = 50) async throws { try await Task.sleep(for: .milliseconds(ms)) }
+        struct Trail { var last: CivilDate?; var foreign: [CivilDate] }
+        /// Шапка после прокрутки: каждые 10 мс записывает её название, пока оно не устоится на `want` (150 мс без смены), не дольше
+        /// `ms`. `last` — на чём устоялась, `foreign` — месяцы, кроме `want` и `allowed`, названные хоть раз по дороге. Один взгляд
+        /// через фиксированные 120–150 мс пропускал или ловил случайно кратковременный скачок: ленивая сетка месяца оценивала высоту
+        /// рядов вне экрана, верхи месяцев на 50–400 мс были неверны (октябрь 3236 → 3944…12546), и шапка называла сентябрь или
+        /// февраль, потом сама возвращалась (замер 31.10). Ожидание даёт итог, след ловит сам скачок.
+        func pinned(_ want: CivilDate, allowing allowed: [CivilDate] = [], within ms: Int = 1500) async throws -> Trail {
+            var trail = Trail(last: nav.lentaPinned, foreign: [])
+            var still = 0
+            func note(_ m: CivilDate?) { if let m, m != want, !allowed.contains(m), !trail.foreign.contains(m) { trail.foreign.append(m) } }
+            note(trail.last)
+            for _ in 0..<(ms / 10) {
+                try await settle(10)
+                let now = nav.lentaPinned
+                note(now)
+                still = now == trail.last ? still + 10 : 0
+                trail.last = now
+                if now == want, still >= 150 { break }
+            }
+            return trail
+        }
     }
 
     enum PlannerPinScroll {
@@ -131,19 +162,22 @@ struct YearPinnedHeaderTests {
     /// Лента открывается на месяце цели, и шапка называет его; пролистали в ноябрь — шапка называет ноябрь; вернулись — октябрь.
     @Test func theHeaderFollowsTheScroll() async throws {
         let rig = try await opened(model(), on: d(2026, 10))
-        #expect(rig.nav.lentaPinned == d(2026, 10), "открыли на октябре: \(String(describing: rig.nav.lentaPinned))")
+        let opened = try await rig.pinned(d(2026, 10)).last
+        #expect(opened == d(2026, 10), "открыли на октябре: \(String(describing: opened))")
         let sv = try #require(rig.scroll)
         let top = sv.adjustedContentInset.top
         let oct = sv.contentOffset.y + top
         sv.setContentOffset(CGPoint(x: 0, y: -top + oct + 330), animated: false)    // пол-ряда за октябрь, граница ноября дальше
-        try await rig.settle(150)
-        let mid = rig.nav.lentaPinned
+        let mid = try await rig.pinned(d(2026, 10), allowing: [d(2026, 11)])
+        #expect(mid.foreign.isEmpty, "по дороге к концу октября шапка называла чужие месяцы: \(mid.foreign)")
         sv.setContentOffset(CGPoint(x: 0, y: -top + oct + 360 + 40), animated: false)
-        try await rig.settle(150)
-        #expect(rig.nav.lentaPinned == d(2026, 11), "ноябрь у верхнего края: \(String(describing: rig.nav.lentaPinned)), до того \(String(describing: mid))")
+        let nov = try await rig.pinned(d(2026, 11), allowing: [d(2026, 10)])
+        #expect(nov.last == d(2026, 11), "ноябрь у верхнего края: \(String(describing: nov.last)), до того \(String(describing: mid.last))")
+        #expect(nov.foreign.isEmpty, "по дороге в ноябрь шапка называла чужие месяцы: \(nov.foreign)")
         sv.setContentOffset(CGPoint(x: 0, y: -top + oct), animated: false)
-        try await rig.settle(150)
-        #expect(rig.nav.lentaPinned == d(2026, 10), "вернулись на октябрь")
+        let back = try await rig.pinned(d(2026, 10), allowing: [d(2026, 11)])
+        #expect(back.last == d(2026, 10), "вернулись на октябрь: \(String(describing: back.last))")
+        #expect(back.foreign.isEmpty, "по дороге назад шапка называла чужие месяцы: \(back.foreign)")
     }
 
     /// Шапка стоит: пока лента едет внутри одного месяца, рамки шапки, названия и линейки (в окне, не в ленте) не меняются ни на
@@ -157,8 +191,9 @@ struct YearPinnedHeaderTests {
         let y0 = sv.contentOffset.y
         for step in [20.0, 60, 120] {
             sv.setContentOffset(CGPoint(x: 0, y: y0 + step), animated: false)     // внутри октября
-            try await rig.settle(120)
-            #expect(rig.nav.lentaPinned == d(2026, 10))
+            let pinned = try await rig.pinned(d(2026, 10))
+            #expect(pinned.last == d(2026, 10), "прокрутка на \(step): \(String(describing: pinned.last))")
+            #expect(pinned.foreign.isEmpty, "прокрутка на \(step): шапка называла чужие месяцы \(pinned.foreign)")
             #expect(PinBench.geo["head"] == a.0 && PinBench.geo["month"] == a.1 && PinBench.geo["ruler"] == a.2,
                     "шапка сдвинулась при прокрутке на \(step)")
         }
