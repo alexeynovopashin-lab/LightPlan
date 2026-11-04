@@ -74,15 +74,15 @@ public final class LightScreenModel {
 
     // MARK: - «Запланировать съёмку»
 
-    /// Что кнопка просит у формы (веб `planToday`: `openForm(selDate,
-    /// Math.round(SUN.goldB || viewMin), null, true)`): выбранный день ленты
-    /// «Свет» и начало золотого часа этого дня; золотого часа нет — минута,
-    /// на которой стоит таймбар. Форма открывается с `fromLight: true`:
-    /// время предложил свет, оно не округляется и следует за светом.
+    /// Что кнопка просит у формы (слово Алексея 04.11): «выставили время ползунком — на это время заводится съёмка».
+    /// Ровно то, что на экране, даже если ползунок не трогали; ушёл за полночь — следующий день.
     var planShoot: (day: CivilDate, start: Int) {
-        let m = timebar.machine
-        return (m.selectedDate, Int((timebar.solarDay.goldenB ?? m.viewMinute).rounded()))
+        let p = pickerStart
+        return (p.day, p.minute)
     }
+
+    /// Время на кнопке — то же, что заведётся.
+    var planShootTime: String { clock.fmt(Double(planShoot.start)) }
 
     // MARK: - Лист «Когда смотрим»
 

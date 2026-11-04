@@ -6,7 +6,7 @@ import LightPlanData
 import LightPlanDomain
 
 /// 29.8в.22: кнопка «Запланировать съёмку» на «Свете» открывала пустоту (`Button(action: {})`).
-/// Веб (`#planToday`): `openForm(selDate, Math.round(SUN.goldB || viewMin), null, true)`.
+/// Шаг 30д (слово Алексея 04.11): «выставили время ползунком — на это время заводится съёмка»; у веба был золотой час.
 @MainActor
 struct LightPlanShootButtonTests {
 
@@ -53,41 +53,36 @@ struct LightPlanShootButtonTests {
         app.openForm(day: r.day, start: r.start, fromLight: true)
     }
 
-    @Test("тап открывает форму на выбранный день «Света» с началом золотого часа, время от света")
-    func opensOnSelectedDayAtGoldenHour() throws {
+    @Test("тап заводит съёмку ровно на время ползунка, а не на золотой час")
+    func opensAtSliderMinute() throws {
         let app = app()
         let day = CivilDate(year: 2026, month: 10, day: 24)
-        app.light.timebar.show(day: day, minute: 13 * 60)
-        // Выбранный день «Света» не день «Съёмок»: форма берёт первый.
-        #expect(app.planner.selected != day)
-        let golden = try #require(app.light.timebar.solarDay.goldenB)
+        app.light.timebar.show(day: day, minute: 13 * 60 + 47)
+        #expect(app.planner.selected != day)                // выбранный день «Света» не день «Съёмок»: форма берёт первый
 
         tap(app)
 
         let f = try #require(app.form)
         #expect(f.day == day)
-        #expect(f.start == Int(golden.rounded()))
-        // `fromLight`: начало не округляется до шага и следует за светом (`fAuto` веба).
-        #expect(f.timeFromLight && f.timeIsProposed)
-        #expect(f.start != 13 * 60)
+        #expect(f.start == 13 * 60 + 47)                    // минута точно, без округления к шагу
+        #expect(!f.timeIsProposed)                          // время названо, жанр и свет его не двигают
+        #expect(app.light.planShootTime == "13:47")         // то же, что написано на кнопке
     }
 
-    @Test("золотого часа в этот день нет — кнопка называет минуту таймбара, день тот же")
-    func fallsBackToViewMinute() throws {
+    @Test("у свадьбы время с ползунка тоже не подменяется полднем")
+    func weddingKeepsSliderMinute() throws {
         let app = app()
-        // Шпицберген, декабрь: полярная ночь, солнце не поднимается — золотого часа нет.
-        app.light.timebar.setPlace(Place(latitude: 78.22, longitude: 15.65, zone: ZoneID("Arctic/Longyearbyen")!))
-        let day = CivilDate(year: 2026, month: 12, day: 21)
-        app.light.timebar.show(day: day, minute: 11 * 60 + 17)
-        try #require(app.light.timebar.solarDay.goldenB == nil)
-
-        let r = app.light.planShoot
-        #expect(r.day == day && r.start == 11 * 60 + 17)
-
-        // Форма берёт день из запроса; своё время она ставит по окну света места приложения (`applyPreset`,
-        // веб `applyGenrePreset`) — в тесте это Барнаул, а не Шпицберген таймбара, поэтому начало формы тут не сверяется.
+        app.lastFormGenre = .wedding
+        let day = CivilDate(year: 2026, month: 10, day: 24)
+        app.light.timebar.show(day: day, minute: 15 * 60 + 3)
         tap(app)
-        let f = try #require(app.form)
-        #expect(f.day == day)
+        #expect(app.form?.start == 15 * 60 + 3)
+    }
+
+    @Test("ширина кнопки — по дуге купола")
+    func buttonIsAsWideAsTheArc() {
+        #expect(LightScreenView.actionWidth(dome: 440) == 326)
+        #expect(LightScreenView.actionWidth(dome: 390) == 326)
+        #expect(abs(LightScreenView.actionWidth(dome: 375) - 326 * 375 / 390) < 0.01)
     }
 }

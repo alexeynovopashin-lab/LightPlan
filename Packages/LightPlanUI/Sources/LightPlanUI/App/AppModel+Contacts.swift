@@ -119,7 +119,7 @@ extension AppModel {
         guard form == nil, let m = snapshot.sessions.first(where: { $0.id == id }), MeetGrow.canGrow(m) else { return }
         let genre = m.genre ?? lastFormGenre
         // Время и длительность — как подсказала бы форма; день встречи — только якорь света, не дата съёмки.
-        let probe = EventForm.new(id: "", day: m.day, start: nil, fromLight: true, genre: genre, prefs: genrePrefs[genre],
+        let probe = EventForm.new(id: "", day: m.day, start: nil, fromLight: true, proposed: formDefaultStart(m.day), genre: genre, prefs: genrePrefs[genre],
                                   light: formLight(on: m.day), step: settings.timeStep, home: repeatHome,
                                   genreRate: genreRate(genre), currency: settings.currency)
         let shoot = MeetGrow.draft(from: m, shootId: Self.newRecordId(now()), day: m.day, start: probe.start,

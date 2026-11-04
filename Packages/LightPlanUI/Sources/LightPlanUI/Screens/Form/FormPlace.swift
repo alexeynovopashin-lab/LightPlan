@@ -438,6 +438,8 @@ struct FormWishBlock: View {
                     ForEach(rows.indices, id: \.self) { r in
                         HStack(spacing: 6) {
                             ForEach(rows[r], id: \.self) { w in tile(w, pal, t) }
+                            // Неполный ряд: плитки той же ширины, что и выше.
+                            ForEach(rows[r].count..<GenreGrid.columns, id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 0) }
                         }
                     }
                 }

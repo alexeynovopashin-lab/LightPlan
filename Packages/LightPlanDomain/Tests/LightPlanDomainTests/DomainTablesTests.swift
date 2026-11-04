@@ -139,7 +139,8 @@ struct DomainTablesTests {
         let bk = t["blockKinds"].array!
         #expect(BlockKind.allCases.map(\.rawValue) == bk.map { $0["k"].string! }, "BLOCK_KINDS")
         #expect(BlockKind.allCases.map(\.iconName) == bk.map { $0["ic"].string! }, "BLOCK_KINDS: знаки")
-        #expect(Wish.allCases.map(\.rawValue) == t["wishes"].strings!, "WISHES")
+        // «Рассвет» — только в нативе (слово Алексея 04.11), в таблице беты его нет.
+        #expect(Wish.allCases.filter { $0 != .sunrise }.map(\.rawValue) == t["wishes"].strings!, "WISHES")
         #expect(Wish.light.map(\.rawValue) == t["lightWish"].strings!, "LIGHT_WISH")
         #expect(Wish.allCases.filter(\.asksLight) .count == Wish.light.count)
         #expect(Currency.allCases.map(\.rawValue) == t["currencies"].strings!, "CURRENCIES")

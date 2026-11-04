@@ -236,7 +236,7 @@ struct ContactsStateTests {
         let app = model(sessions: [meet()])
         app.growMeet("m1")
         let target = day(12, 20)
-        let probe = EventForm.new(id: "", day: target, start: nil, fromLight: true, genre: app.form!.genre, prefs: app.genrePrefs[app.form!.genre],
+        let probe = EventForm.new(id: "", day: target, start: nil, fromLight: true, proposed: app.formDefaultStart(target), genre: app.form!.genre, prefs: app.genrePrefs[app.form!.genre],
                                   light: app.formLight(on: target), step: app.settings.timeStep, home: app.repeatHome,
                                   genreRate: app.genreRate(app.form!.genre), currency: app.settings.currency)
         app.form?.duration = 90

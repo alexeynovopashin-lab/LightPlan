@@ -332,6 +332,8 @@ public enum WishCheck {
                 if s < 50 { return WishClash(key: "dullSunset", params: ["score": String(s)]) }
             } else if q == .poor { return WishClash(key: "noSunset", params: [:], sky: q) }
             return nil
+        case .sunrise:
+            return q == .poor ? WishClash(key: "noSunrise", params: [:], sky: q) : nil
         case .rain:
             guard let q else { return nil }
             return q != .poor ? WishClash(key: "noRain", params: [:], sky: q) : nil

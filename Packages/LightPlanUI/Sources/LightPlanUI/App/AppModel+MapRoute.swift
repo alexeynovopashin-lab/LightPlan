@@ -112,17 +112,16 @@ extension AppModel {
         return enabledGenres.first { GenreProfile($0).hasRoute }
     }
 
-    /// «Сделать съёмкой» (`makeRouteShoot`): форма на день `day`, начало —
-    /// начало золотого часа или `minute`; точки дня — места черновика по
+    /// «Сделать съёмкой» (`makeRouteShoot`): форма на день `day`, время — как у любой
+    /// новой записи (шаг 30д: золотой час только по пожеланию «Закат»); точки дня — места черновика по
     /// порядку без часов, ссылками на места, способ — из `mapWalk`. Первая
     /// точка — место съёмки. Черновик остаётся. `false` — не из чего.
     @discardableResult
-    public func makeRouteShoot(day: CivilDate, minute: Double) -> Bool {
+    public func makeRouteShoot(day: CivilDate) -> Bool {
         let pts = routeSpots
         guard !pts.isEmpty, let g = routeGenre else { return false }
         lastFormGenre = g
-        let sun = SolarDay(date: day, place: place.place)
-        openForm(day: day, start: Int((sun.goldenB ?? minute).rounded()))
+        openForm(day: day)
         guard var f = form else { return false }
         f.route = pts.enumerated().map { i, sp in
             let nx = i + 1 < pts.count ? pts[i + 1] : nil

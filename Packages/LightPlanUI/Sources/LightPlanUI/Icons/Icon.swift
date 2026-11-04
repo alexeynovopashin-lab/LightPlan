@@ -37,7 +37,8 @@ public struct Icon: View {
     /// Знак пожелания к погоде по коду (`ICONS.wishes`). Своё пространство имён:
     /// `rain` пожелания — не то же самое, что `rain` погоды.
     public init(wish code: String, size: CGFloat = 22, line: CGFloat = 1.5) {
-        let art = IconArt.art(namespace: "wishes", name: code, in: IconLibrary.wishes) ?? Icon.common("dot")
+        // «Рассвета» нет в наборе пожеланий беты: знак тот же, что у восхода в телеметрии.
+        let art = IconArt.art(namespace: "wishes", name: code, in: IconLibrary.wishes) ?? Icon.common(code == "sunrise" ? "sunrise" : "dot")
         self.init(art: art, size: size, line: line, partStyles: [:])
     }
 

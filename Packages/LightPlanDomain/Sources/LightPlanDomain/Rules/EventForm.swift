@@ -46,6 +46,10 @@ public struct EventForm: Equatable, Sendable {
     public var timeIsProposed: Bool
     /// Время взято у света и не округляется (веб `fLight`).
     public var timeFromLight: Bool
+    /// Время сдвинуто без вопроса (шаг 30д): подсвечено, пока его не тронут руками. Живёт, пока открыта форма.
+    public var timeShifted = false
+    /// На что уже ответили «Оставить» (шаг 30д): в этой форме про то же больше не спрашиваем.
+    public var timeAsksDeclined: Set<TimeAsk.Kind> = []
 
     public var contact = ""
     public var clientPhone = ""
@@ -134,16 +138,17 @@ public struct EventForm: Equatable, Sendable {
 
     /// Новая запись (веб `openForm` + `applyGenrePreset`, L30471–30530, L26714–26776).
     /// - Parameters:
-    ///   - start: минута, которую назвали кнопка или тап по часу; `nil` — выбрать светом.
-    ///   - fromLight: минута — начало окна света и округляться не должна.
+    ///   - start: минута, которую назвали кнопка или тап по часу; `nil` — время правила, `proposed`.
+    ///   - fromLight: минута с экрана «Свет» — та, что видел человек, и округляться не должна.
+    ///   - proposed: время, если минуту не назвали (`ShootTime.defaultStart`).
     ///   - genre: жанр — последний использованный, форма его не сбрасывает (веб `shootType`).
-    public static func new(id: String, day: CivilDate, start: Int?, fromLight: Bool, mode: FormMode = .shoot,
+    public static func new(id: String, day: CivilDate, start: Int?, fromLight: Bool, proposed: Int = ShootTime.noon, mode: FormMode = .shoot,
                            genre: Genre, prefs: GenrePrefs? = nil, light: FormLightWindow?, step: Int = 5,
                            home: RepeatHome? = nil, genreRate: Decimal = 0, currency: Currency = .rub) -> EventForm {
         var f = EventForm(id: id, mode: mode, genre: genre, day: day,
-                          start: start.map { fromLight ? $0 : snap($0, step: step) } ?? 720,
+                          start: start.map { fromLight ? $0 : snap($0, step: step) } ?? proposed,
                           duration: 60,
-                          timeIsProposed: start == nil || fromLight, timeFromLight: fromLight)
+                          timeIsProposed: start == nil, timeFromLight: false)
         f.currency = currency
         f.applyPreset(prefs: prefs, light: light, genreRate: genreRate)
         // Места у новой съёмки ещё нет: город и опора — «Мой город» (веб L30524–30530).
@@ -209,9 +214,8 @@ public struct EventForm: Equatable, Sendable {
 
     // MARK: - Жанр и его пресет
 
-    /// Пресет жанра новой записи: длительность и начало (веб `applyGenrePreset`).
-    /// Встреча длится час и светом не двигается; событие дня и день без окна
-    /// начинаются в полдень; остальное — с начала золотого часа.
+    /// Пресет жанра новой записи: длительность (веб `applyGenrePreset`). Встреча длится час.
+    /// Начало жанр больше не двигает (шаг 30д): золотой час — только по пожеланию «Закат», `settleTime`.
     mutating func applyPreset(prefs: GenrePrefs?, light: FormLightWindow?, genreRate: Decimal = 0) {
         let sp = GenreProfile(genre).spec
         defer { presetMoney(prefs: prefs, genreRate: genreRate) }
@@ -223,18 +227,6 @@ public struct EventForm: Equatable, Sendable {
             duration = d
         } else {
             duration = Self.lightDuration(light)
-        }
-        guard timeIsProposed, mode != .meet else { fitPersons(); return }
-        let poor = light?.poor ?? true
-        if GenreProfile(genre).hasRoute || poor || light == nil {
-            start = 720
-            timeFromLight = false
-        } else if let w = light {
-            start = Int(w.start.rounded())
-            timeFromLight = true
-            if Double(duration) > w.end - w.start, duration <= 1440 {
-                start = ((Int(w.end.rounded()) - duration) % 1440 + 1440) % 1440
-            }
         }
         fitPersons()
     }
@@ -289,6 +281,7 @@ public struct EventForm: Equatable, Sendable {
             start = m
             timeIsProposed = false
             timeFromLight = false
+            timeShifted = false
             carryStudioStops(from: old)
         }
     }

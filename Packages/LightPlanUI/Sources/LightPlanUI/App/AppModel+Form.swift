@@ -101,8 +101,9 @@ extension AppModel {
     private func openCleanForm(day d: CivilDate, start: Int?, fromLight: Bool, mode: FormMode) {
         formIsDraft = false
         let genre = lastFormGenre
-        form = EventForm.new(id: Self.newRecordId(now()), day: d, start: start, fromLight: fromLight, mode: mode,
-                             genre: genre, prefs: genrePrefs[genre], light: formLight(on: d), step: settings.timeStep,
+        formTimeAsk = nil
+        form = EventForm.new(id: Self.newRecordId(now()), day: d, start: start, fromLight: fromLight,
+                             proposed: formDefaultStart(d), mode: mode, genre: genre, prefs: genrePrefs[genre], light: formLight(on: d), step: settings.timeStep,
                              home: repeatHome, genreRate: genreRate(genre), currency: settings.currency)
     }
 
@@ -170,6 +171,7 @@ extension AppModel {
     public func pickFormGenre(_ g: Genre, sub: SubGenre? = nil) {
         guard var f = form else { return }
         f.pick(g, sub: sub, prefs: genrePrefs[g], light: formLight(on: f.day), genreRate: genreRate(g))
+        f.followProposal(formTimeFacts(f))      // длительность жанра сдвигает начало под заказанный свет
         lastFormGenre = g
         form = f
         formChanged()
@@ -235,23 +237,69 @@ extension AppModel {
         formNote = nil
     }
 
-    /// Дату выбрали в форме. В форме «Назначить съёмку» время пока подсказано светом **дня встречи**: с выбором
-    /// даты подсказка пересчитывается по свету выбранного дня (ревью GPT к c9e7eea); названное руками время не трогаем.
+    /// Дату выбрали в форме. Предложенное время идёт за выбранным днём, длительность не трогаем: её могли поправить
+    /// до выбора даты (ревью GPT к 8ce02b5). Названное руками время остаётся, а всплывашка смотрит на свет нового дня.
     public func pickFormDay(_ d: CivilDate) {
         guard var f = form else { return }
-        let reprice = (f.dayUnset || f.growFrom != nil) && f.timeIsProposed
         f.setStart(day: d)
-        if reprice {
-            let probe = EventForm.new(id: "", day: d, start: nil, fromLight: true, genre: f.genre, prefs: genrePrefs[f.genre],
-                                      light: formLight(on: d), step: settings.timeStep, home: repeatHome,
-                                      genreRate: genreRate(f.genre), currency: settings.currency)
-            // Длительность не трогаем: её могли поправить до выбора даты (ревью GPT к 8ce02b5).
-            f.start = probe.start
-            f.timeIsProposed = probe.timeIsProposed
-            f.timeFromLight = probe.timeFromLight
-        }
+        formTimeAsk = f.settleTime(formTimeFacts(f))
         form = f
         formChanged()
+    }
+
+    // MARK: - Время съёмки (шаг 30д)
+
+    /// Время записи, которой минуту не назвали: полдень или сразу после последней записи дня.
+    func formDefaultStart(_ day: CivilDate) -> Int {
+        ShootTime.defaultStart(day: day, sessions: snapshot.sessions, blocks: snapshot.blocks,
+                               eventsLayer: eventsLayer, step: settings.timeStep)
+    }
+
+    /// Свет дня — у места приложения, как подсказка под «Начало» (`formLight`) и пожелания (`wishSky`).
+    func formTimeFacts(_ f: EventForm) -> EventForm.TimeFacts {
+        let sun = SolarDay(date: f.day, place: place.place)
+        let probe = f.session(orgName: nil, and: "", studios: snapshot.studios, spots: snapshot.spots,
+                              homeCity: homeCityName, now: now())
+        let skip = snapshot.sessions.firstIndex { $0.id == f.id }
+        let point = GeoPoint(f.sessionPlace.latitude, f.sessionPlace.longitude)
+        return EventForm.TimeFacts(goals: f.wishes.compactMap { LightGoal.of($0, sun: sun) },
+                                   defaultStart: formDefaultStart(f.day), step: settings.timeStep) { [self] start, duration in
+            ShootTime.busyUntil(ClashCandidate(day: f.day, start: start, end: start + duration, placeKey: probe.placeKey,
+                                               skipIndex: skip, wishes: f.wishes, point: point, trip: false, tripOff: false),
+                                sessions: snapshot.sessions, blocks: snapshot.blocks, context: clashContext)
+        }
+    }
+
+    /// Закрылось колесо начала, и время поменялось. Уже открытую всплывашку не перебиваем:
+    /// нажатие на пожелание тоже закрывает колесо.
+    public func formTimeSettled() {
+        guard formTimeAsk == nil, var f = form else { return }
+        formTimeAsk = f.settleTime(formTimeFacts(f))
+        form = f
+        formChanged()
+    }
+
+    /// Ответ на всплывашку. Следующая (свет → наложение) поднимается через такт: система ещё закрывает эту.
+    public func answerFormTime(_ ask: TimeAsk, move: Bool) {
+        guard var f = form else { return }
+        formTimeAsk = nil
+        let next = f.answer(ask, move: move) { self.formTimeFacts($0) }
+        form = f
+        formChanged()
+        guard let next else { return }
+        Task { @MainActor [weak self] in self?.formTimeAsk = next }
+    }
+
+    /// Заголовок, вопрос и кнопка «сдвинуть» всплывашки.
+    public func formTimeAskWords(_ a: TimeAsk) -> (title: String, question: String, move: String, keep: String) {
+        let c = ClockText(language: language, preference: Self.clock(settings.clock))
+        let at = c.fmt(Double(a.at)), to = c.fmt(Double(a.to)), keep = lexicon.t("time.keep", ["t": c.fmt(Double(a.keep))])
+        switch a.kind {
+        case .busy:
+            return (lexicon.t("time.busyT", ["t": at]), lexicon.t("time.busyQ", ["t": to]), lexicon.t("time.busyGo"), keep)
+        case .light(let w):
+            return (lexicon.t("time." + w.rawValue + "T", ["t": at]), lexicon.t("time.moveQ", ["t": to]), lexicon.t("time.move"), keep)
+        }
     }
 
     /// Почему форму сохранить нельзя (`nil` — можно): кнопка тогда не нажимается, причина стоит на экране.

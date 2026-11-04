@@ -80,6 +80,8 @@ struct FormCapsule: View {
     var node = ""
     let text: String
     let open: Bool
+    /// Время сдвинуто без вопроса (шаг 30д): янтарь, пока его не тронут руками.
+    var lit = false
     /// Потолок ширины для подписи, которую придумал человек (имя плейлиста): длинное имя режется многоточием.
     var maxWidth: CGFloat?
     let action: () -> Void
@@ -91,10 +93,11 @@ struct FormCapsule: View {
                 .font(.system(size: 16).monospacedDigit())
                 .lineLimit(1).truncationMode(.tail)
                 .frame(maxWidth: maxWidth)
-                .foregroundStyle(open ? pal.brass : pal.ink)
+                .foregroundStyle(open || lit ? pal.brass : pal.ink)
                 .padding(.horizontal, 12)
                 .frame(minWidth: 72, minHeight: 28)
-                .background(open ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Capsule())
+                .background(open || lit ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Capsule())
+                .overlay { if lit { Capsule().strokeBorder(Color(hex: 0xE2A44C, alpha: 0.7), lineWidth: 1) } }
                 .fixedSize()
         }
         .shotNode(node, text: text)

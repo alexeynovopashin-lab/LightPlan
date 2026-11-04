@@ -545,7 +545,19 @@
     "set.weekStartSat": "Суббота",
     "set.weekStartAuto": "Как в системе",
     "set.weekStartNote": "С этого дня считаются недели в месяце, неделе и выборе даты. Суббота и воскресенье в цвете всегда.",
-    "mb.dayShoots": "В этот день"
+    "mb.dayShoots": "В этот день",
+    "wish.sunrise": "Рассвет",
+    "wc.noSunriseT": "Рассвета не будет",
+    "wc.noSunriseM": "Прогноз: {sky} — горизонт будет закрыт.",
+    "time.sunsetT": "Закат в {t}",
+    "time.sunriseT": "Рассвет в {t}",
+    "time.starsT": "Звёзды видно с {t}",
+    "time.moveQ": "Сдвинуть начало на {t}?",
+    "time.move": "Сдвинуть",
+    "time.keep": "Оставить {t}",
+    "time.busyT": "Занято до {t}",
+    "time.busyQ": "Поставить на {t}?",
+    "time.busyGo": "Поставить"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1089,7 +1101,19 @@
     "set.weekStartSat": "Saturday",
     "set.weekStartAuto": "System default",
     "set.weekStartNote": "Weeks in the month, the week view and the date picker begin on this day. Saturday and Sunday are always in colour.",
-    "mb.dayShoots": "This day"
+    "mb.dayShoots": "This day",
+    "wish.sunrise": "Sunrise",
+    "wc.noSunriseT": "No sunrise",
+    "wc.noSunriseM": "Forecast: {sky} — the horizon will be hidden.",
+    "time.sunsetT": "Sunset at {t}",
+    "time.sunriseT": "Sunrise at {t}",
+    "time.starsT": "Stars visible from {t}",
+    "time.moveQ": "Move the start to {t}?",
+    "time.move": "Move",
+    "time.keep": "Keep {t}",
+    "time.busyT": "Busy until {t}",
+    "time.busyQ": "Set it to {t}?",
+    "time.busyGo": "Set"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1633,7 +1657,19 @@
     "set.weekStartSat": "Sábado",
     "set.weekStartAuto": "Según el sistema",
     "set.weekStartNote": "Las semanas del mes, de la semana y del selector de fecha empiezan en este día. El sábado y el domingo siempre van en color.",
-    "mb.dayShoots": "Este día"
+    "mb.dayShoots": "Este día",
+    "wish.sunrise": "Amanecer",
+    "wc.noSunriseT": "Sin amanecer",
+    "wc.noSunriseM": "Previsión: {sky}: el horizonte estará tapado.",
+    "time.sunsetT": "Atardecer a las {t}",
+    "time.sunriseT": "Amanecer a las {t}",
+    "time.starsT": "Estrellas visibles desde las {t}",
+    "time.moveQ": "¿Mover el inicio a las {t}?",
+    "time.move": "Mover",
+    "time.keep": "Dejar {t}",
+    "time.busyT": "Ocupado hasta las {t}",
+    "time.busyQ": "¿Poner a las {t}?",
+    "time.busyGo": "Poner"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2173,7 +2209,19 @@
     "set.weekStartSat": "土曜日",
     "set.weekStartAuto": "システムに合わせる",
     "set.weekStartNote": "月表示・週表示・日付選択の週はこの曜日から始まります。土曜日と日曜日は常に色付きで表示されます。",
-    "mb.dayShoots": "この日"
+    "mb.dayShoots": "この日",
+    "wish.sunrise": "日の出",
+    "wc.noSunriseT": "日の出は見えません",
+    "wc.noSunriseM": "予報: {sky} — 地平線は隠れます。",
+    "time.sunsetT": "日没 {t}",
+    "time.sunriseT": "日の出 {t}",
+    "time.starsT": "星が見えるのは {t} から",
+    "time.moveQ": "開始を {t} に移動しますか?",
+    "time.move": "移動",
+    "time.keep": "{t} のまま",
+    "time.busyT": "{t} まで予定あり",
+    "time.busyQ": "{t} に設定しますか?",
+    "time.busyGo": "設定"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2713,6 +2761,18 @@
     "set.weekStartSat": "星期六",
     "set.weekStartAuto": "跟随系统",
     "set.weekStartNote": "月视图、周视图和日期选择中的每一周从这一天开始。周六和周日始终以彩色显示。",
-    "mb.dayShoots": "这一天"
+    "mb.dayShoots": "这一天",
+    "wish.sunrise": "日出",
+    "wc.noSunriseT": "看不到日出",
+    "wc.noSunriseM": "预报:{sky} — 地平线会被遮住。",
+    "time.sunsetT": "日落 {t}",
+    "time.sunriseT": "日出 {t}",
+    "time.starsT": "{t} 起可见星空",
+    "time.moveQ": "把开始时间移到 {t}?",
+    "time.move": "移动",
+    "time.keep": "保留 {t}",
+    "time.busyT": "{t} 前已有安排",
+    "time.busyQ": "改到 {t}?",
+    "time.busyGo": "改时间"
   }
 }

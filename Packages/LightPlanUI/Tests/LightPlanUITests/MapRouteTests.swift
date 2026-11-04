@@ -191,7 +191,7 @@ struct MapRouteTests {
         app.toggleWalk(from: ids[1], to: ids[2])
         app.lastFormGenre = .wedding
         let day = CivilDate(year: 2026, month: 10, day: 3)
-        #expect(app.makeRouteShoot(day: day, minute: 600))
+        #expect(app.makeRouteShoot(day: day))
         guard let f = app.form else { Issue.record("форма не открылась"); return }
         #expect(f.genre == .wedding)
         #expect(f.route.map(\.spotId) == ids)

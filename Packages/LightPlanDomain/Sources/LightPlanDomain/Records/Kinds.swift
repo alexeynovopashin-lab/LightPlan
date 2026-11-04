@@ -52,7 +52,7 @@ public enum Currency: String, CaseIterable, Sendable {
 
 /// Пожелание к погоде и свету (веб `WISHES` в форме).
 public enum Wish: String, CaseIterable, Sendable {
-    case any, clear, sunset, cloudy, fog, rain, moon, stars
+    case any, clear, sunrise, sunset, cloudy, fog, rain, moon, stars
 
     /// Заказан ли свет (`LIGHT_WISH`): только с ним карточка говорит о золотом часе.
     public var asksLight: Bool { Wish.light.contains(self) }

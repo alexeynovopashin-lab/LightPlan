@@ -41,11 +41,11 @@ import LightPlanDomain
 
     @Test func presetDurationAndStart() {
         #expect(fresh(.portrait).duration == 60)
-        // час (60) длиннее окна (52): окно заканчивает съёмку
-        #expect(fresh(.portrait).start == 1170 && fresh(.portrait).timeFromLight)
+        // Без пожелания свет время не двигает (шаг 30д): новая запись — полдень при любом окне
+        #expect(fresh(.portrait).start == 720 && !fresh(.portrait).timeFromLight && fresh(.portrait).timeIsProposed)
         let long = FormLightWindow(start: 1100, end: 1230)
-        #expect(fresh(.portrait, light: long).start == 1100)
-        // событие дня — полдень, светом не двигается
+        #expect(fresh(.portrait, light: long).start == 720)
+        // событие дня — тоже полдень
         let w = fresh(.wedding)
         #expect(w.duration == 480 && w.start == 720 && !w.timeFromLight)
         // день без окна — тоже полдень
@@ -59,12 +59,6 @@ import LightPlanDomain
         #expect(m.duration == 60 && m.start == 840)
         // названное руками время округляется к шагу, свет — нет
         #expect(EventForm.new(id: "a", day: day, start: 843, fromLight: false, genre: .portrait, light: nil, step: 5).start == 845)
-    }
-
-    @Test func longerThanLightEndsAtSunset() {
-        // 180 минут длиннее окна: начало уезжает назад, чтобы окно закончило съёмку
-        let f = fresh(.report)
-        #expect(f.duration == 180 && f.start == 1230 - 180)
     }
 
     @Test func ownGenreDurationWinsAndAutoLightIsRemembered() {

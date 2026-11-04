@@ -12,6 +12,8 @@ struct FormScreen: View {
     @Environment(\.colorScheme) private var scheme
     /// Раскрыта одна из четырёх строк времени — по одной, как `ROWS` веба.
     @State private var picker: TimePicker? = Self.launchPicker
+    /// Начало, с которым открылось колесо: всплывашка — только если время поменяли.
+    @State private var startAtOpen: Int?
     @State private var orgSheet = false
     /// «Из Контактов» у поля телефона (К7): какому полю достанется выбранный контакт.
     @State private var pickSlot: FormPickSlot?
@@ -61,7 +63,7 @@ struct FormScreen: View {
                     // Порядок (28о, Алексей): жанр, дата и время, затем имена. Предупреждение — сразу
                     // под временем, к которому относится: над жанром оно называло чужой день (П5).
                     genreBlock(f, pal, t).padding(.top, 24)
-                    timeBlock(f, pal, t)
+                    timeBlock(f, pal, t).id("time")
                     if let w = app.formWarning(f) { FormWishWarn(warning: w) }
                     whoBlock(f, pal, t)
                     FormPlaceBlock(app: app, form: f, wheel: $stopWheel) { picker = nil; repMenu = false }.id("place")
@@ -78,6 +80,15 @@ struct FormScreen: View {
             .scrollJump(app.lexicon, node: "sj.form")
             // Призраки чужих календарей на день формы: плашка наложения читает готовый список (30.5).
             .task(id: f.day) { app.ghostsEnsure(around: f.day) }
+            // Сдвиг без вопроса (шаг 30д): пожелания ниже времени, подсветку надо увидеть.
+            .onChange(of: f.timeShifted) { _, lit in
+                if lit { withAnimation(.easeOut(duration: 0.34)) { proxy.scrollTo("time") } }
+            }
+            .onChange(of: picker) { old, new in
+                if new == .startTime { startAtOpen = app.form?.start }
+                if old == .startTime, new != .startTime, app.form?.start != startAtOpen { app.formTimeSettled() }
+            }
+            .modifier(FormTimeAlert(app: app))
             .onAppear { Self.launchScroll.map { id in DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { proxy.scrollTo(id, anchor: .top) } } }
             #if DEBUG
             // Снимок сценария (29.11): `-LPShotStopWheel start|end|hall` открывает барабан у точки 0.
@@ -401,7 +412,7 @@ struct FormScreen: View {
             FormGroup {
                 timeRow("form.start", t.t("form.start"), sub: startHint(f, t),
                         date: f.dayUnset ? t.t("form.pickDate") : dates.dMonShortYear(carrier(f.day)), time: clock.fmt(Double(f.start)),
-                        openDate: picker == .startDate, openTime: picker == .startTime,
+                        openDate: picker == .startDate, openTime: picker == .startTime, lit: f.timeShifted,
                         pickDate: { toggle(.startDate) }, pickTime: { toggle(.startTime) }, pal)
                 if picker == .startDate {
                     FormDateGrid(selected: f.day, dates: dates, date: carrier, weekStart: app.weekStart) { d in
@@ -436,7 +447,7 @@ struct FormScreen: View {
     }
 
     private func timeRow(_ node: String, _ label: String, sub: String?, date: String, time: String,
-                         openDate: Bool, openTime: Bool, pickDate: @escaping () -> Void, pickTime: @escaping () -> Void,
+                         openDate: Bool, openTime: Bool, lit: Bool = false, pickDate: @escaping () -> Void, pickTime: @escaping () -> Void,
                          _ pal: Palette) -> some View {
         VStack(alignment: .trailing, spacing: 4) {
             HStack(spacing: 12) {
@@ -444,7 +455,7 @@ struct FormScreen: View {
                 Spacer()
                 HStack(spacing: 6) {    // `.caps` веба: зазор 6
                     FormCapsule(node: node + "Date", text: date, open: openDate, action: pickDate)
-                    FormCapsule(node: node + "Val", text: time, open: openTime, action: pickTime)
+                    FormCapsule(node: node + "Val", text: time, open: openTime, lit: lit, action: pickTime)
                 }
             }
             if let sub { Text(sub).font(.system(size: 11)).foregroundStyle(pal.ink6).multilineTextAlignment(.trailing) }
@@ -786,6 +797,25 @@ enum FormPickSlot: Hashable {
         case .client: "client"
         case .person(let i): "p\(i)"
         case .order: "order"
+        }
+    }
+}
+
+/// Всплывашка о времени съёмки (шаг 30д): системное окно, как у других вопросов приложения.
+private struct FormTimeAlert: ViewModifier {
+    @Bindable var app: AppModel
+
+    func body(content: Content) -> some View {
+        let ask = app.formTimeAsk
+        let words = ask.map(app.formTimeAskWords)
+        content.alert(words?.title ?? "", isPresented: Binding(get: { app.formTimeAsk != nil },
+                                                               set: { if !$0 { app.formTimeAsk = nil } })) {
+            if let ask, let words {
+                Button(words.move) { app.answerFormTime(ask, move: true) }
+                Button(words.keep, role: .cancel) { app.answerFormTime(ask, move: false) }
+            }
+        } message: {
+            Text(words?.question ?? "")
         }
     }
 }

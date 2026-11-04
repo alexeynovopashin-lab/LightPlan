@@ -33,7 +33,6 @@ public struct LightScreenView: View {
     /// низа кнопки вычитается высота стоявших строк — иначе измерение и число строк расходились на проход раскладки.
     @State private var spoilerRows = 0
     @State private var spoilerExtraTuck: CGFloat = 0
-    @State private var actionHeight: CGFloat = 0
 
     public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {},
                 onPlan: @escaping (CivilDate, Int) -> Void = { _, _ in }) {
@@ -65,6 +64,10 @@ public struct LightScreenView: View {
                     dome(telemetry, pal)
                         .padding(.bottom, -Self.domeTuck(extra: tuckNow))
 
+                    // Черновой вариант места (ответ Алексея 04.11, схема А): сразу под горизонтом.
+                    actionButton(pal)
+                        .offset(y: Self.actionLift)
+
                     nextLight(telemetry, pal)
                         .padding(.horizontal, 24)
                         .padding(.top, 2)
@@ -79,14 +82,8 @@ public struct LightScreenView: View {
                                      windLabel: model.lexiconWord("pro.wind"))
                         .padding(.horizontal, 24)
 
-                    // `.screen-action { margin-top: auto }`: в «Просто» кнопка
-                    // ложится к низу, в «Астро» содержимое длиннее экрана и
-                    // зазора нет вовсе.
+                    // Кнопки внизу больше нет: остаток экрана уходит под список.
                     Spacer(minLength: 0)
-
-                    actionButton(subtitle: telemetry.actionSubtitle, pal)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionHeight = $0; refreshCollapsedRows() }
-                        .padding(.horizontal, 24)
                 }
                 .tabRise()
             }
@@ -268,14 +265,14 @@ public struct LightScreenView: View {
     /// 29.8в.27: пересчёт числа строк закрытого списка «Астро» по свежим измерениям.
 
     private func refreshCollapsedRows() {
-        guard model.proMode, spoilerBottom > 0, visibleHeight > 0, actionHeight > 0 else { return }
+        guard model.proMode, spoilerBottom > 0, visibleHeight > 0 else { return }
         let hasForecast = model.telemetry.sky != nil || model.telemetry.wind != nil
         let present = LightCollapsedList.present(hasForecast: hasForecast)
         let heights = present.map { rowHeights[$0] ?? LightCollapsedList.defaultRowHeight }
         // Низ «Подробно» приводится к базе: без необязательных строк, полоса 22 — как была бы раскладка, не зная, какая из них сейчас
         // на экране (иначе решение мигало бы). Шапка «Астро» сжата всегда, в базу входит сжатой.
         let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck
-        let plan = LightCollapsedList.plan(visibleHeight: visibleHeight, baselineBottom: baseline, actionHeight: actionHeight, rowHeights: heights)
+        let plan = LightCollapsedList.plan(visibleHeight: visibleHeight, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
         if plan.rows != fitRows { fitRows = plan.rows }
         if plan.extraTuck != extraTuck { extraTuck = plan.extraTuck }
     }
@@ -436,12 +433,11 @@ public struct LightScreenView: View {
 
     // MARK: - Кнопка съёмки
 
-    /// `.action`: волосок `--hair-4` сверху, поля 13 · 0 · 2; знак 22
-    /// латунью, подпись 16/600, справа окно 13 (`--ink-4`, цифры одной
-    /// ширины). Тап — форма новой съёмки на выбранный день с началом по свету
-    /// (`planShoot`, веб `#planToday`).
-    private func actionButton(subtitle: String, _ pal: Palette) -> some View {
-        Button(action: { let r = model.planShoot; onPlan(r.day, r.start) }) {
+    /// Строка под дугой: ширина дуги (326 из 440), высота 40 с полем 3, знак 22 латунью,
+    /// подпись 16/600, справа время с ползунка. Тап — новая съёмка ровно на это время (`planShoot`).
+    private func actionButton(_ pal: Palette) -> some View {
+        let time = model.planShootTime
+        return Button(action: { let r = model.planShoot; onPlan(r.day, r.start) }) {
             HStack(spacing: 13) {
                 PlanShootGlyph()
                     .stroke(pal.brass, style: StrokeStyle(lineWidth: 1.6 * 22 / 24, lineCap: .round, lineJoin: .round))
@@ -449,22 +445,29 @@ public struct LightScreenView: View {
                 Text(model.lexiconWord("today.planShoot"))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(pal.ink)
-                    .lineLimit(1)
+                    .lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
-                Text(subtitle)
-                    .font(.system(size: 13).monospacedDigit())
-                    .foregroundStyle(pal.ink4)
+                Text(time)
+                    .font(.system(size: 14, weight: .medium).monospacedDigit())
+                    .foregroundStyle(pal.brass)
                     .lineLimit(1)
-                    .shotNode("action.sub", text: subtitle)
+                    .shotNode("action.sub", text: time)
             }
-            // Волосок 1 + поле 13 сверху, как `border-top` и `padding-top` веба.
-            .padding(.top, 14).padding(.bottom, 2)
-            .overlay(alignment: .top) { Rectangle().fill(pal.hair4).frame(height: 1) }
-            .contentShape(Rectangle())
+            .padding(.horizontal, 16)
+            .frame(height: 40)
+            .background(pal.field, in: Capsule())
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .frame(width: Self.actionWidth(dome: domeSize.width))
+        .padding(.vertical, 3)
         .shotNode("action")
     }
+
+    /// Кнопка шириной по дуге и подтянута к горизонту (схема А, 04.11). Дуга — 326 из 390 единиц купола,
+    /// а купол мельче единицы только на экранах уже 390 (`DomeView`, «масштаб по меньшей стороне»).
+    static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
+    static let actionLift: CGFloat = -10
 }
 
 /// Знак кнопки съёмки — календарь с плюсом из разметки веба (`#planToday

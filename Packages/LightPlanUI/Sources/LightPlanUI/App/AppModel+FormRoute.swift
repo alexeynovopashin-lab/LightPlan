@@ -65,7 +65,12 @@ extension AppModel {
 
     // MARK: - Пожелания
 
-    public func toggleFormWish(_ w: Wish) { formEdit { $0.toggle(wish: w) } }
+    public func toggleFormWish(_ w: Wish) {
+        guard var f = form else { return }
+        formTimeAsk = f.toggleWish(w) { self.formTimeFacts($0) }
+        form = f
+        formChanged()
+    }
 
     /// Небо дня для проверки пожеланий — у места приложения, как у веба
     /// (`qualityOf`, `dayWeather`, `computeSun` смотрят на `LAT`/`LON`).
