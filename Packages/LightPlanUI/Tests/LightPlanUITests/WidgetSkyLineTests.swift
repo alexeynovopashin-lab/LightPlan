@@ -80,7 +80,10 @@ struct WidgetSkyLineTests {
                         let f = WidgetSkySheets.frame(lang: lang, hour: h, quality: q, shoots: [wedding])
                         let L = BraunLayout(plan: try #require(DayPlan(f)), size: p, medium: true, bare: true)
                         let tag = "Б \(lang) \(Int(p.width)) \(h):00 \(q)"
-                        for r in L.rows where r.light != nil && r.extra != nil {
+                        // Строка со словом обязана быть: иначе цикл ниже не проверит ничего и тест пройдёт, даже если слово пропало из барабана.
+                        let sky = L.rows.filter { $0.light != nil && $0.extra != nil }
+                        #expect(sky.count == 1 && sky.first?.extra == words.sky(q), "\(tag): слово неба в барабане — \(sky.map { $0.extra ?? "" }), ждём «\(words.sky(q))»")
+                        for r in sky {
                             let k = r.light?.kind ?? .sunrise
                             let name = f.words[k == .sunrise ? .sunrise : (k == .golden ? .golden : .sunset)]
                             #expect(r.step.lines == 1, "\(tag): название в одну строку")
