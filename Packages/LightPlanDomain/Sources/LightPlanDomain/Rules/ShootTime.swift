@@ -69,8 +69,7 @@ public enum ShootTime {
         let end = start + duration
         if touches(start: start, end: end, goal: g) { return .keep }
         let to = target(duration: duration, goal: g)
-        if end <= g.from { return to == start ? .keep : .ask(to: to) }
-        return to == start ? .keep : .shift(to: to)
+        return end <= g.from ? .ask(to: to) : .shift(to: to)
     }
 
     static func touches(start: Int, end: Int, goal g: LightGoal) -> Bool {

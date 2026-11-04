@@ -69,7 +69,7 @@ struct FormScreen: View {
                     FormPlaceBlock(app: app, form: f, wheel: $stopWheel) { picker = nil; repMenu = false }.id("place")
                     notesBlock(f, pal, t)
                     if f.shows(.order) { orderBlock(f, pal, t).id("order") }
-                    if f.mode != .meet { FormWishBlock(app: app, form: f) }
+                    if f.mode != .meet { FormWishBlock(app: app, form: f).id("wish") }
                     if f.shows(.payment) { FormPayBlock(app: app, form: f, sheet: $paySheet).id("pay") }
                     if f.shows(.delivery) { FormDeliveryBlock(app: app, form: f) }
                     if !f.isNew { deleteButton(f, pal, t) }

@@ -46,6 +46,7 @@ import LightPlanCore
         #expect(def([shoot("a", 720, 780)]) == 780)                                  // 12:00–13:00 → 13:00
         #expect(def([shoot("a", 540, 600)]) == 600)                                  // утренняя: после неё, а не в полдень
         #expect(def([shoot("a", 1020, 1080), shoot("b", 720, 780)]) == 1080)         // после последней, а не первой
+        #expect(def([shoot("b", 720, 780), shoot("a", 1020, 1080)]) == 1080)         // порядок в списке ни при чём
     }
 
     @Test func meetingsAndBusyHoursAlsoTakeTime() {
@@ -99,6 +100,7 @@ import LightPlanCore
         #expect(n(1170) == .keep)                   // 19:30 в золотом часе
         #expect(n(1200) == .keep)                   // ровно закат
         #expect(n(1210) == .keep)                   // синий час
+        #expect(n(1225) == .shift(to: 1140))        // ровно конец синего: света уже нет
         #expect(n(1230) == .shift(to: 1140))        // 20:30 после синего — сдвиг без вопроса
         #expect(n(1260) == .shift(to: 1140))        // 21:00 — как сказал Алексей
     }
@@ -236,6 +238,35 @@ import LightPlanCore
         #expect(f.toggleWish(.sunset) { _ in facts() } == nil)
     }
 
+    @Test func turningOneOffDoesNotAskAboutTheOther() {
+        var f = form(start: 900, wishes: [.sunset, .stars])
+        #expect(f.toggleWish(.stars) { _ in facts([sunset]) } == nil && f.start == 900)
+    }
+
+    @Test func wishWithoutLightDoesNotAskAboutTheOrderedOne() {
+        var f = form(start: 900, wishes: [.sunset])
+        #expect(f.toggleWish(.clear) { _ in facts([sunset]) } == nil && f.start == 900)
+    }
+
+    @Test func sunriseIsCheckedAgainstForecast() {
+        func sky(_ q: DayQuality?) -> WishSky {
+            WishSky(quality: q, sunsetScore: nil, astroNight: true, moonLevel: nil, moonPercent: nil, moonFraction: 0.5)
+        }
+        #expect(WishCheck.check(.sunrise, sky: sky(.poor), city: false)?.key == "noSunrise")
+        #expect(WishCheck.check(.sunrise, sky: sky(.excellent), city: false) == nil)
+        #expect(WishCheck.check(.sunrise, sky: sky(nil), city: false) == nil)
+    }
+
+    @Test func goalBeyondTheDayIsNotOffered() throws {
+        // Южнее белых ночей темнота в июне наступает уже после полуночи: минуты такой съёмки нет на этот день
+        let day = CivilDate(year: 2026, month: 6, day: 21)
+        let zone = ZoneID("Asia/Barnaul")!
+        let late = stride(from: 40.0, to: 56.0, by: 0.25).map { SolarDay(date: day, place: Place(latitude: $0, longitude: 83.77, zone: zone)) }
+            .first { ($0.astroB ?? 0) >= 1440 }
+        let sun = try #require(late, "широты, где темнота наступает после полуночи, не нашлось")
+        #expect(LightGoal.of(.stars, sun: sun) == nil)
+    }
+
     @Test func sunriseAndStarsInTheForm() {
         var a = form(start: 120)
         #expect(a.toggleWish(.sunrise) { _ in facts([sunrise]) } == TimeAsk(kind: .light(.sunrise), at: 300, to: 250, keep: 120))
@@ -312,6 +343,13 @@ import LightPlanCore
             ClashCandidate(day: day, start: start, end: start + 60, placeKey: "", skipIndex: nil, wishes: [], point: nil, trip: false, tripOff: false)
         }
         #expect(ShootTime.busyUntil(c(780), sessions: [s], blocks: [], context: ctx) == nil)
+        // «Впритык» в другое место и «два заказа на закат» — свои плашки, не повод двигать время
+        var far = s
+        far.place = "Парк"
+        var nearby = c(800)
+        nearby.placeKey = "дом"
+        #expect(Overlaps.clashes(for: nearby, sessions: [far], blocks: [], context: ctx).contains { $0.kind == .tripTight })
+        #expect(ShootTime.busyUntil(nearby, sessions: [far], blocks: [], context: ctx) == nil)
         #expect(ShootTime.busyUntil(c(750), sessions: [s], blocks: [], context: ctx) == 780)
         #expect(ShootTime.busyUntil(c(900), sessions: [], blocks: [busy(880, 60)], context: ctx) == 940)
         #expect(ShootTime.busyUntil(c(900), sessions: [], blocks: [busy(0, 0, allDay: true)], context: ctx) == nil)

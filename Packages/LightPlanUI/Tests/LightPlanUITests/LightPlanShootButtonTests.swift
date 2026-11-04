@@ -69,6 +69,42 @@ struct LightPlanShootButtonTests {
         #expect(app.light.planShootTime == "13:47")         // то же, что написано на кнопке
     }
 
+    /// Тянем ползунок, как палец: шкала суток идёт от солнечной полуночи до следующей, а не от 00:00 до 24:00.
+    private func drag(_ app: AppModel, to minute: Double) {
+        let m = app.light.timebar.machine, width = 400.0, thumb = 28.0
+        app.light.timebar.dragSlider(x: thumb / 2 + (minute - m.mint) / (m.maxt - m.mint) * (width - thumb), width: width, thumb: thumb)
+    }
+
+    @Test("ползунок за полночью — съёмка следующего дня")
+    func pastMidnightIsNextDay() throws {
+        let app = app()
+        // Барнаул: солнечная полночь около 01:20, шкала 23 сентября идёт до 01:20 следующего дня.
+        app.light.timebar.setPlace(Place(latitude: 53.35, longitude: 83.77, zone: ZoneID("Asia/Barnaul")!))
+        let day = CivilDate(year: 2026, month: 9, day: 23)
+        app.light.timebar.show(day: day, minute: 23 * 60)
+        try #require(app.light.timebar.machine.maxt > 1440 + 30)
+        drag(app, to: 1440 + 30)
+        #expect(app.light.timebar.machine.selectedDate == day)
+        let r = app.light.planShoot
+        #expect(r.day == day.adding(days: 1) && r.start == 30)
+        #expect(app.light.planShootTime == "00:30")
+        tap(app)
+        #expect(app.form?.day == day.adding(days: 1) && app.form?.start == 30)
+    }
+
+    @Test("ползунок до полуночи там, где шкала начинается раньше 00:00 — съёмка прошлого дня")
+    func beforeMidnightIsPreviousDay() throws {
+        let app = app()
+        // Анадырь в ноябре: солнечный полдень раньше 12:00, шкала начинается ещё вчера.
+        app.light.timebar.setPlace(Place(latitude: 64.73, longitude: 177.5, zone: ZoneID("Asia/Anadyr")!))
+        let day = CivilDate(year: 2026, month: 11, day: 3)
+        app.light.timebar.show(day: day, minute: 600)
+        try #require(app.light.timebar.machine.mint < -1)
+        drag(app, to: app.light.timebar.machine.mint + 0.6)
+        let r = app.light.planShoot
+        #expect(r.day == day.adding(days: -1) && r.start >= 1430 && r.start < 1440)
+    }
+
     @Test("у свадьбы время с ползунка тоже не подменяется полднем")
     func weddingKeepsSliderMinute() throws {
         let app = app()

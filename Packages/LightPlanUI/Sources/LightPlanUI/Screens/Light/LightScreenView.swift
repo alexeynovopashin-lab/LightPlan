@@ -67,6 +67,10 @@ public struct LightScreenView: View {
                     // Черновой вариант места (ответ Алексея 04.11, схема А): сразу под горизонтом.
                     actionButton(pal)
                         .offset(y: Self.actionLift)
+                        #if DEBUG
+                        // Замер шага 30д: `-LPShotNoAction 1` — кнопки не видно, место то же.
+                        .opacity(UserDefaults.standard.string(forKey: "LPShotNoAction") == nil ? 1 : 0)
+                        #endif
 
                     nextLight(telemetry, pal)
                         .padding(.horizontal, 24)
@@ -455,7 +459,9 @@ public struct LightScreenView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 40)
-            .background(pal.field, in: Capsule())
+            // Вуаль, а не заливка: светило под горизонтом идёт сквозь кнопку («светило не исчезает»).
+            // Замер 04.11: сплошное поле глушило его в 5–6 раз.
+            .background(Self.actionVeil(colorScheme), in: Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -468,6 +474,9 @@ public struct LightScreenView: View {
     /// а купол мельче единицы только на экранах уже 390 (`DomeView`, «масштаб по меньшей стороне»).
     static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
     static let actionLift: CGFloat = -10
+    static func actionVeil(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)
+    }
 }
 
 /// Знак кнопки съёмки — календарь с плюсом из разметки веба (`#planToday

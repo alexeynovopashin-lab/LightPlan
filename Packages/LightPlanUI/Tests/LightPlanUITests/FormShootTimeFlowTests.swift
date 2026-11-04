@@ -150,7 +150,7 @@ struct FormShootTimeFlowTests {
         a.openForm(day: day, start: 840, fromLight: false)
         a.toggleFormWish(.sunset)
         a.answerFormTime(try #require(a.formTimeAsk), move: true)
-        for _ in 0..<5 { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(100))           // отложенный вопрос встал в очередь главного актора раньше
         #expect(a.formTimeAsk?.kind == .busy)                   // та же форма: вопрос о наложении дошёл
 
         let b = app([shoot("x", spot, spot + 60)])
@@ -160,7 +160,7 @@ struct FormShootTimeFlowTests {
         b.closeForm()                                           // за этот такт форму закрыли и открыли другую
         b.draftStore.save(nil)
         b.openForm(day: day.adding(days: 1))
-        for _ in 0..<5 { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(100))           // отложенный вопрос встал в очередь главного актора раньше
         #expect(b.formTimeAsk == nil)
     }
 

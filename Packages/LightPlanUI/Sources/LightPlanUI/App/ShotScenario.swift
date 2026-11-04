@@ -165,6 +165,20 @@ extension AppModel {
             // Форма читает качество неба дня: ждём, пока погода из файла придёт (у веба она уже на месте).
             Task { @MainActor in
                 await app.light.weather.settled()
+                // Шаг 30д: `LPShotFormBusy 720-780` — запись на день формы, `LPShotFormWish sunset` — нажатое пожелание
+                // (через секунду, уже на открытой форме), `LPShotFormSettle 1` — закрытое колесо начала.
+                if let b = UserDefaults.standard.string(forKey: "LPShotFormBusy")?.split(separator: "-").compactMap({ Int($0) }), b.count == 2,
+                   let d = UserDefaults.standard.string(forKey: "LPShotFormDay")?.split(separator: "-").compactMap({ Int($0) }), d.count == 3 {
+                    app.snapshot.sessions.append(Session(id: "shot_busy", kind: .shoot, day: CivilDate(year: d[0], month: d[1], day: d[2]),
+                                                         start: b[0], end: b[1], duration: b[1] - b[0], genre: .portrait))
+                }
+                defer {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(1))
+                        if let w = UserDefaults.standard.string(forKey: "LPShotFormWish").flatMap(Wish.init(rawValue:)) { app.toggleFormWish(w) }
+                        if UserDefaults.standard.string(forKey: "LPShotFormSettle") != nil { app.formTimeSettled() }
+                    }
+                }
                 // Черновик другого дня (28о): `LPShotDraft ask|continue|new` — на диске черновик от 27 сентября
                 // с набранным текстом, просят 29 октября (как у Алексея): окно вопроса / ответ «продолжить» /
                 // ответ «новая». `LPShotFormDay yyyy-mm-dd` — форма на этот день без черновика (порядок блоков, предупреждение).
