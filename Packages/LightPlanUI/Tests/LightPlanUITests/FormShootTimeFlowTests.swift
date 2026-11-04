@@ -129,6 +129,41 @@ struct FormShootTimeFlowTests {
         #expect(a.form?.start == 780)
     }
 
+    @Test("жанр удлинил названную съёмку до чужой записи — спрашивает; длительность та же — молчит")
+    func genreDurationAsks() throws {
+        let a = app([shoot("x", 840, 900)])
+        a.openForm(day: day, start: 720, fromLight: false)
+        a.pickFormGenre(.wedding)                               // 12:00–20:00 накрывает 14:00–15:00
+        #expect(a.form?.start == 720)
+        let ask = try #require(a.formTimeAsk)
+        #expect(ask.kind == .busy && ask.at == 900)
+        let b = app([shoot("x", 840, 900)])
+        b.openForm(day: day, start: 720, fromLight: false)
+        b.pickFormGenre(.portrait, sub: nil)                    // жанр тот же: вопроса нет
+        #expect(b.formTimeAsk == nil)
+    }
+
+    @Test("следующий вопрос встаёт только над той же формой")
+    func nextAskStaysWithItsForm() async throws {
+        let spot = try golden(app())
+        let a = app([shoot("x", spot, spot + 60)])
+        a.openForm(day: day, start: 840, fromLight: false)
+        a.toggleFormWish(.sunset)
+        a.answerFormTime(try #require(a.formTimeAsk), move: true)
+        for _ in 0..<5 { await Task.yield() }
+        #expect(a.formTimeAsk?.kind == .busy)                   // та же форма: вопрос о наложении дошёл
+
+        let b = app([shoot("x", spot, spot + 60)])
+        b.openForm(day: day, start: 840, fromLight: false)
+        b.toggleFormWish(.sunset)
+        b.answerFormTime(try #require(b.formTimeAsk), move: true)
+        b.closeForm()                                           // за этот такт форму закрыли и открыли другую
+        b.draftStore.save(nil)
+        b.openForm(day: day.adding(days: 1))
+        for _ in 0..<5 { await Task.yield() }
+        #expect(b.formTimeAsk == nil)
+    }
+
     @Test("запись при правке сама с собой не спорит")
     func editingIgnoresItself() {
         let a = app([shoot("x", 720, 780)])

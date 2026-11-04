@@ -170,8 +170,10 @@ extension AppModel {
     /// Выбор жанра в форме: пресет пересобирается, последний жанр запоминается.
     public func pickFormGenre(_ g: Genre, sub: SubGenre? = nil) {
         guard var f = form else { return }
+        let duration = f.duration
         f.pick(g, sub: sub, prefs: genrePrefs[g], light: formLight(on: f.day), genreRate: genreRate(g))
-        f.followProposal(formTimeFacts(f))      // длительность жанра сдвигает начало под заказанный свет
+        // Длительность жанра меняет и начало под заказанный свет, и то, что съёмка накрывает (ревью к b49866e).
+        if f.duration != duration { formTimeAsk = f.settleTime(formTimeFacts(f)) }
         lastFormGenre = g
         form = f
         formChanged()
@@ -232,6 +234,7 @@ extension AppModel {
     public func closeForm() {
         writeDraft()
         form = nil
+        formTimeAsk = nil
         formIsDraft = false
         formOverDraft = false
         formNote = nil
@@ -287,7 +290,11 @@ extension AppModel {
         form = f
         formChanged()
         guard let next else { return }
-        Task { @MainActor [weak self] in self?.formTimeAsk = next }
+        let id = f.id
+        Task { @MainActor [weak self] in
+            // За этот такт форму могли закрыть: вопрос о старой записи не встаёт поверх новой (ревью к b49866e).
+            if self?.form?.id == id { self?.formTimeAsk = next }
+        }
     }
 
     /// Заголовок, вопрос и кнопка «сдвинуть» всплывашки.
@@ -485,7 +492,9 @@ extension AppModel {
         // Жанр формы выключили — форма перестраивается под первый включённый;
         // сохранённой записи время не переписываем (веб `renderGenres`, `swapped`).
         if var f = form, !enabledGenres.contains(f.genre), let first = enabledGenres.first {
+            let duration = f.duration
             f.pick(first, prefs: genrePrefs[first], light: formLight(on: f.day), genreRate: genreRate(first))
+            if f.duration != duration { formTimeAsk = f.settleTime(formTimeFacts(f)) }
             form = f
             formChanged()
         }
