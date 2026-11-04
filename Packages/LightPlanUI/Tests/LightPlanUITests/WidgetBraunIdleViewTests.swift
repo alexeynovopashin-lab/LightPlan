@@ -125,6 +125,72 @@ struct WidgetBraunIdleViewTests {
         }
     }
 
+    /// Шкала неба (DECISIONS 30.10): прогноз сценариев — балл 62, категория «хороший» → слово «тёплый». Оценивается закат: в Г 9:30 утренний золотой
+    /// час уже кончился, в Б 15:18, Д и «+» 14:00 — день. Буквально, а не из `WidgetFeed.Words`: вернись в словах старое «хороший» — тест это увидит.
+    static let skyWord = "тёплый", skyLine = "закат · тёплый"
+    /// Правый край барабана света на плашке 364: x 146 + ширина 202 (`theBareFormCountsTheWholeShootAndShowsLightOnTheRight`).
+    static let drumRight = 348.0
+
+    /// Строка доски (снята 27.10 со словом «хороший»), как её обязан нарисовать вид сейчас. Слева (Г, Д, «+»): «закат · тёплый» со знаком в 12 pt от x 36
+    /// (`BraunIdleContent.ratingFit`), прямоугольник — ширина этой строки, поэтому до столбика (x 129) он не доходит. Б: в барабане света знак 12 + зазор 3
+    /// + слово в кегле строки (`BraunLayout`), от x доски.
+    static func skyNow(_ t: BoardText, _ s: Scenario) throws -> BoardText {
+        var n = t
+        if s == .b {
+            let L = BraunLayout(plan: try #require(DayPlan(frame(.b))), size: Plate.pro.size, medium: true, bare: true)
+            let row = try #require(L.rows.first { $0.extra != nil })
+            #expect(row.extra == skyWord && row.light?.kind == .sunset, "Б: слово неба у заката — «\(row.extra ?? "")»")
+            n.t = skyWord
+            n.w = (row.extraIcon ? 12 + 3 : 0) + BraunText.width(skyWord, size: row.extraSize, semibold: false)
+        } else {
+            let fit = BraunIdleContent.ratingFit(skyLine, icon: true)
+            #expect(fit.icon && fit.size == 12, "\(s): «\(skyLine)» встаёт со знаком в 12 pt, а не \(fit.size) / знак \(fit.icon)")
+            n.t = skyLine
+            n.x = fit.x
+            n.w = BraunText.width(skyLine, size: fit.size, semibold: false)
+        }
+        n.tight = true
+        return n
+    }
+
+    /// Строка неба слева в Г, Д и «+» — та самая «закат · тёплый», пиксель в пиксель: образец (тот же шрифт 12 medium, цвет `muted`, рамка 92 × 16 от x 36,
+    /// фон плашки) снят отдельно и сравнен с областью строки на плашке. Ширина чернил тут не годится: старая «закат · хороший» не влезает в 12 pt, мельчает
+    /// до 11 и выходит почти той же ширины (90,0 против 87,6 pt). Средняя разница по пикселю — сумма трёх каналов, 0…765.
+    @Test func theLeftSkyLineIsTheNewWordPixelForPixel() throws {
+        var report: [String] = []
+        for dark in [true, false] {
+            let pal = BraunPalette(dark: dark)
+            func line(_ text: String, size: Double) throws -> Pixels {
+                try render(ZStack(alignment: .topLeading) {
+                    Rectangle().fill(pal.bg)
+                    Text(text).font(.system(size: size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
+                        .frame(width: BraunIdleContent.ratingWidth, height: 16, alignment: .leading)
+                }
+                .frame(width: BraunIdleContent.ratingWidth, height: 16).environment(\.colorScheme, dark ? .dark : .light), scale: 4)
+            }
+            let want = try line(Self.skyLine, size: 12), old = try line("закат · хороший", size: 11)
+            func diff(_ a: Pixels, _ ax: Double, _ ay: Double, _ b: Pixels) -> Double {
+                var sum = 0.0, n = 0.0, y = 0.125
+                while y < 16 {
+                    var x = 0.125
+                    while x < BraunIdleContent.ratingWidth { sum += dist(a.rgb(ax + x, ay + y), b.rgb(x, y)); n += 1; x += 0.25 }
+                    y += 0.25
+                }
+                return sum / n
+            }
+            #expect(diff(old, 0, 0, want) > 8, "образцы старой и новой строки должны различаться, иначе проверка слепа")
+            for s in [Scenario.g, .d, .z] {
+                let px = try render(plate(s, .pro, dark: dark), scale: 4)
+                let toNew = diff(px, 36, 128, want), toOld = diff(px, 36, 128, old)
+                let tag = "\(s) \(dark ? "чёрный" : "белый")"
+                report.append(String(format: "%@: от «%@» %.2f, от «закат · хороший» %.2f", tag, Self.skyLine, toNew, toOld))
+                #expect(toNew <= 2, "\(tag): строка неба не «\(Self.skyLine)» — средняя разница \(toNew), от старой «закат · хороший» \(toOld)")
+            }
+        }
+        print("SKY-PIXELS\n" + report.joined(separator: "\n"))
+        try? report.joined(separator: "\n").write(toFile: "/tmp/cc-sky-pixels.log", atomically: true, encoding: .utf8)
+    }
+
     /// Каждый текст доски стоит там же и тем же цветом: чернила внутри прямоугольника доски (допуск 2 pt), по высоте центр рамки чернил не дальше
     /// 2 pt от центра прямоугольника, у «плотных» текстов (ширина = ширина строки) ширина чернил не отличается больше чем на 6 % и 2 pt.
     @Test func everyTextOfTheBoardIsWhereTheBoardPutsItAtTheProMaxSize() throws {
@@ -136,17 +202,23 @@ struct WidgetBraunIdleViewTests {
                 for var t in texts {
                     // Число балла над трубкой доски (28.10 ушло в линзу внутри трубки, `WidgetGaugeTests`) — места на доске больше нет.
                     if s != .b, t.t == "62" { continue }
-                    // Строка оценки слева: прямоугольник доски (до x 136) заходит на столбик (с x 129), и в тёмной теме его серые пиксели попадали
-                    // в «чернила» строки (верх 126,5 и на старом коде). Пока под ними была «р» из «хороший», середина сходилась; у «закат · тёплый»
-                    // (DECISIONS 30.10) хвостов вниз нет — ищем чернила только левее столбика.
-                    if s != .b, t.t == "хороший" { t.w = BraunGauge.x - 2 - t.x }
+                    // Слово оценки доски «хороший» сменилось словом неба (DECISIONS 30.10): ждём то, что вид обязан нарисовать сейчас, буквально, и
+                    // сверяем ширину без поблажек (`skyNow`). Старое слово шире нового на 11 pt и дальше — тест краснеет.
+                    // Окно поиска чернил шире ожидаемой строки: окно шириной с неё обрезало бы лишнее справа, и старое, более широкое слово прошло бы.
+                    // Слева — до столбика (его серые пиксели в тёмной теме иначе попали бы в чернила), в Б — до правого края барабана.
+                    var scan = t
+                    if t.t == "хороший" {
+                        t = try Self.skyNow(t, s)
+                        scan = t
+                        scan.w = (s == .b ? Self.drumRight : BraunGauge.x - 2) - t.x
+                    }
                     // Е без прогноза: доска писала одно «завтра»; «завтра» больше не пишем (Алексей 30.10), а без слова неба строки нет — место пустое.
                     if t.t == "завтра" {
                         #expect(ink(px, t) == nil, "\(s) \(dark ? "чёрный" : "белый"): на месте «завтра» ничего не должно быть")
                         continue
                     }
                     // Окошко свадьбы рисует живой таймер, в снимке он заморожен: строки из окошка — те же цифры, но место проверяем по рамке.
-                    guard let b = ink(px, t) else {
+                    guard let b = ink(px, scan) else {
                         // Цвет совпал нигде: свет у вида настоящий, у доски — заданный; роли цветов те же, а вот пустого места быть не должно.
                         Issue.record("\(s) \(dark ? "чёрный" : "белый"): «\(t.t)» не найден в (\(t.x), \(t.y), \(t.w), \(t.h)) цветом \(String(t.c, radix: 16))")
                         continue
@@ -156,8 +228,7 @@ struct WidgetBraunIdleViewTests {
                     report.append("\(tag): чернила x \(b.x0)…\(b.x1) y \(b.y0)…\(b.y1) против \(t.x)…\(t.x + t.w) × \(t.y)…\(t.y + t.h)")
                     #expect(abs(cy - ry) <= 2.0, "\(tag): центр по высоте \(cy) против \(ry)")
                     #expect(b.x0 >= t.x - 2 && b.x1 <= t.x + t.w + 2, "\(tag): вышел за прямоугольник доски по x")
-                    // Слово оценки доски «хороший» сменилось словом неба «тёплый» (DECISIONS 30.10): место и цвет — доски, ширина — уже не её слова.
-                    if t.tight, t.t != "хороший" {
+                    if t.tight {
                         let wInk = b.x1 - b.x0
                         // Цифры: «1» в моноширинном начертании стоит в поле с широкими пустотами — чернила уже строки на 4–5 pt.
                         let digits = t.t.allSatisfy(\.isNumber)
