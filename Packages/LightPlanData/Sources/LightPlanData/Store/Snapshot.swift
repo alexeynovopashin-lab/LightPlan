@@ -38,6 +38,9 @@ public struct Snapshot: Sendable, Hashable {
     public var timeStep: Int?
     public var travelMin: Int?
     public var pro: Bool = false
+    /// Режим приложения: `simple`, `pro`, `astro` (30г.3). Веб его не знает и теряет при пересохранении, ключа может не быть;
+    /// как тогда читается режим — `AppMode.read`.
+    public var appMode: String?
     public var ribbonMode: String?
     public var drumSlot: String?
     /// Сводка «Карты» свёрнута. По умолчанию — да (слово Алексея 01.10; у беты без сохранения развёрнута,
@@ -97,7 +100,7 @@ extension Snapshot: Codable {
     enum CodingKeys: String, CodingKey, CaseIterable {
         case sessions, orgs, clients, clientsAssembled, blocks, spots, studios, trashed, myDocs, trashedDocs
         case loc, theme, clock, tempUnit, currency, timeStep, travelMin
-        case pro, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold, manualEnd
+        case pro, appMode, ribbonMode, drumSlot, mapFold, mapLabels, mapLayers, dayFold, manualEnd
         case practice, genres, genrePrefs, defaultRate, packs, delivery, equipment, musicApp, playlists, weekStart
         case cardOrder, cardOff, sync
     }
@@ -139,6 +142,7 @@ extension Snapshot: Codable {
         timeStep = try c.decodeIfPresent(Int.self, forKey: .timeStep)
         travelMin = try c.decodeIfPresent(Int.self, forKey: .travelMin)
         pro = try c.decodeIfPresent(Bool.self, forKey: .pro) ?? false
+        appMode = try? c.decodeIfPresent(String.self, forKey: .appMode)
         ribbonMode = try c.decodeIfPresent(String.self, forKey: .ribbonMode)
         drumSlot = try c.decodeIfPresent(String.self, forKey: .drumSlot)
         mapFold = try c.decodeIfPresent(Bool.self, forKey: .mapFold) ?? true
@@ -195,6 +199,7 @@ extension Snapshot: Codable {
         try c.encodeIfPresent(timeStep, forKey: .timeStep)
         try c.encodeIfPresent(travelMin, forKey: .travelMin)
         try c.encode(pro, forKey: .pro)
+        try c.encodeIfPresent(appMode, forKey: .appMode)
         try c.encodeIfPresent(ribbonMode, forKey: .ribbonMode)
         try c.encodeIfPresent(drumSlot, forKey: .drumSlot)
         try c.encode(mapFold, forKey: .mapFold)

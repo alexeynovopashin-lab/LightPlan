@@ -167,3 +167,57 @@ struct TrueStringsTests {
         }
     }
 }
+
+/// 30г.3: слова трёх режимов в каждом языке каталога. Источник — `Tools/lang_fixes.json` и `Tools/lang_native.json`.
+@Suite("Слова трёх режимов")
+struct ModeWordsTests {
+    static let keys = ["set.modeSimple", "set.modePro", "set.modeAstro",
+                       "set.modeNote.simple", "set.modeNote.pro", "set.modeNote.astro"]
+    static let langs = ["ru", "en", "es", "ja", "zh"]
+
+    @Test func threeDifferentButtonsAndNotesInEveryLanguage() throws {
+        var byLang: [String: [String]] = [:]
+        for key in Self.keys {
+            let v = try TrueStringsTests.values(TrueStringsTests.catalog, key)
+            for lang in Self.langs {
+                let word = try #require(v[lang], "\(key): нет слова (\(lang))")
+                #expect(!word.isEmpty)
+                byLang[lang, default: []].append(word)
+            }
+            // Американский наследует британский: своих слов здесь нет (ни одно не пишется иначе).
+            #expect(v["en-US"] == nil, "\(key): en-US не должен расходиться")
+        }
+        for (lang, words) in byLang { #expect(Set(words).count == Self.keys.count, "\(lang): совпали слова \(words)") }
+    }
+
+    @Test func middleButtonIsProAndAstroKeepsItsWord() throws {
+        let pro = try TrueStringsTests.values(TrueStringsTests.catalog, "set.modePro")
+        #expect(pro["ru"] == "Про" && pro["en"] == "Pro" && pro["es"] == "Pro" && pro["ja"] == "プロ" && pro["zh"] == "专业")
+        let astro = try TrueStringsTests.values(TrueStringsTests.catalog, "set.modeAstro")
+        #expect(astro["ru"] == "Астро" && astro["en"] == "Astro" && astro["es"] == "Astro" && astro["ja"] == "天体" && astro["zh"] == "天文")
+    }
+
+    /// Подпись называет кнопки теми же словами, что на самих кнопках.
+    @Test func notesNameTheButtonsByTheirWords() throws {
+        let pro = try TrueStringsTests.values(TrueStringsTests.catalog, "set.modePro")
+        let astro = try TrueStringsTests.values(TrueStringsTests.catalog, "set.modeAstro")
+        let notePro = try TrueStringsTests.values(TrueStringsTests.catalog, "set.modeNote.pro")
+        let noteAstro = try TrueStringsTests.values(TrueStringsTests.catalog, "set.modeNote.astro")
+        for lang in Self.langs {
+            #expect(notePro[lang]?.contains(try #require(astro[lang])) == true, "\(lang): подпись «Про» не называет «Астро»")
+            #expect(noteAstro[lang]?.contains(try #require(pro[lang])) == true, "\(lang): подпись «Астро» не называет «Про»")
+        }
+    }
+
+    /// То, что доходит до экрана, на всех шести языках приложения.
+    @Test(.enabled(if: catalogCompiled, "каталог не скомпилирован: запускать через xcodebuild test"))
+    func compiledCatalogGivesTheWordsInAllSixLanguages() {
+        for code in AppLanguage.codes {
+            let lex = Lexicon(code)
+            for key in Self.keys { #expect(lex.t(key) != key, "\(code) \(key): сырой ключ") }
+        }
+        #expect(Lexicon("en-US").t("set.modePro") == "Pro")
+        #expect(Lexicon("en-GB").t("set.modeAstro") == "Astro")
+        #expect(Lexicon("ru").t("set.modePro") == "Про")
+    }
+}

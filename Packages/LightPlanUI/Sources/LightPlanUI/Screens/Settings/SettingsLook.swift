@@ -36,7 +36,7 @@ struct SetHeader: View {
 struct WebSeg<V: Hashable>: View {
     let options: [(label: String, value: V)]
     @Binding var selection: V
-    /// Имена узлов пары по кнопкам (`mode.simple`, `mode.pro`).
+    /// Имена узлов пары по кнопкам (`mode.simple`, `mode.pro`, `mode.astro`).
     var nodes: [String] = []
     var sky: Bool = false
     /// Сколько строк позволено подписи кнопки: у веба «Apple Music» в четвёртой части переносится на две.
@@ -71,7 +71,7 @@ struct WebSeg<V: Hashable>: View {
         .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(alignment: .trailing) {
             if sky {
-                GeometryReader { g in SegSky().frame(width: g.size.width / 2 - 3).frame(maxWidth: .infinity, alignment: .trailing) }
+                GeometryReader { g in SegSky().frame(width: g.size.width / CGFloat(options.count)).frame(maxWidth: .infinity, alignment: .trailing) }
                     .padding(3)
                     .allowsHitTesting(false)
                     // `.seg-sky { transition: opacity 0.7s ease }` — своё время,
@@ -86,6 +86,11 @@ struct WebSeg<V: Hashable>: View {
 /// звёзды 0,8, линии 1 pt на 0,28. Рисунок и места — из разметки веба.
 struct SegSky: View {
     @Environment(\.colorScheme) private var colorScheme
+
+    /// Большая Медведица: доля ширины кнопки. У веба 30 % (кнопка — половина ряда); в трети ряда она легла бы на слово.
+    static let ursaShare: CGFloat = 0.24, ursaLeft: CGFloat = 0.04
+    /// Орион: правый край и ширина, как у веба.
+    static let orionRight: CGFloat = 0.94, orionShare: CGFloat = 0.13
 
     private static let ursa: (lines: [[CGPoint]], stars: [(CGPoint, CGFloat)]) = (
         [[CGPoint(x: 8, y: 26), CGPoint(x: 24, y: 20), CGPoint(x: 39, y: 20), CGPoint(x: 52, y: 26),
@@ -102,12 +107,12 @@ struct SegSky: View {
     var body: some View {
         let brass = Palette(colorScheme).brass
         Canvas { ctx, size in
-            // `.ss-ursa { left: 4%; top: 30%; width: 30% }`, viewBox 100×56;
+            // `.ss-ursa { left: 4%; top: 30% }`, viewBox 100×56 (ширина своя, `ursaShare`);
             // `.ss-orion { right: 6%; top: 14%; width: 13% }`, viewBox 84×116.
-            draw(Self.ursa, in: &ctx, origin: CGPoint(x: size.width * 0.04, y: size.height * 0.30),
-                 scale: size.width * 0.30 / 100, brass: brass)
-            let ow = size.width * 0.13
-            draw(Self.orion, in: &ctx, origin: CGPoint(x: size.width * 0.94 - ow, y: size.height * 0.14),
+            draw(Self.ursa, in: &ctx, origin: CGPoint(x: size.width * Self.ursaLeft, y: size.height * 0.30),
+                 scale: size.width * Self.ursaShare / 100, brass: brass)
+            let ow = size.width * Self.orionShare
+            draw(Self.orion, in: &ctx, origin: CGPoint(x: size.width * Self.orionRight - ow, y: size.height * 0.14),
                  scale: ow / 84, brass: brass)
         }
     }
@@ -138,7 +143,8 @@ struct SetNote: View {
             .font(.system(size: 12))
             .lineSpacing(18 - 14.3)
             .foregroundStyle(Palette(colorScheme).ink6)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            // `minWidth: 0`: строка впритык к ширине не раздвигает колонку (подпись «Про» на 17 Pro Max: 440,5 pt вместо 440).
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             .shotNode(node ?? "", text: text)
             // Строка 18 у веба делит лишнюю высоту поровну сверху и снизу
             // строки; межстрочный интервал даёт её только между строками.

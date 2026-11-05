@@ -105,7 +105,7 @@ public struct SettingsView: View {
     }
 
     /// Корень — вид веба: шапка «Light Plan · v3 · прототип», сегмент
-    /// Просто/Астро с небом на «Астро» и пояснением, девять строк разделов.
+    /// Просто/Про/Астро с небом на «Астро» и пояснением, девять строк разделов.
     /// Главы открываются системным переходом.
     public var body: some View {
         let t = app.lexicon
@@ -116,12 +116,13 @@ public struct SettingsView: View {
                     // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                     Group {
                     VStack(spacing: 0) {
-                        WebSeg(options: [(t.t("set.modeSimple"), false), (t.t("set.modePro"), true)],
-                               selection: modeBinding, nodes: ["mode.simple", "mode.pro"], sky: app.settings.pro && !skyWaiting)
+                        WebSeg(options: [(t.t("set.modeSimple"), AppMode.simple), (t.t("set.modePro"), .pro), (t.t("set.modeAstro"), .astro)],
+                               selection: modeBinding, nodes: ["mode.simple", "mode.pro", "mode.astro"],
+                               sky: app.settings.mode == .astro && !skyWaiting)
                             .shotNode("mode")
                             .padding(.horizontal, 24)
                             .padding(.top, 12)
-                        SetNote(text: t.t("set.modeNote"), node: "mode.note")
+                        SetNote(text: t.t("set.modeNote." + app.settings.mode.rawValue), node: "mode.note")
                     }
                     .padding(.top, 4)
                     VStack(spacing: 0) {
@@ -168,7 +169,7 @@ public struct SettingsView: View {
             }
         }
         .onAppear {
-            SkyLog.note("settings appear pro=\(app.settings.pro) layer=\(sky == nil ? "none" : "on")")
+            SkyLog.note("settings appear mode=\(app.settings.mode.rawValue) layer=\(sky == nil ? "none" : "on")")
             if let c = app.startChapter, let ch = Chapter(rawValue: c) { path = [ch]; app.startChapter = nil }
         }
         // Глава закрывает панель вкладок, как у веба.
@@ -221,11 +222,11 @@ public struct SettingsView: View {
 
     /// Переключатель режима. Небо — только на ВКЛЮЧЕНИЕ «Астро» (на нажатие,
     /// а не на смену значения: второе нажатие подряд перезапускает слой, как у
-    /// беты); «Просто» и запуск с уже включённым режимом неба не зовут.
-    private var modeBinding: Binding<Bool> {
-        Binding(get: { app.settings.pro }, set: { v in
-            app.update { $0.pro = v }
-            if v { showSky() } else { SkyLog.note("tap simple: no sky") }
+    /// беты); «Просто», «Про» и запуск с уже включённым режимом неба не зовут.
+    private var modeBinding: Binding<AppMode> {
+        Binding(get: { app.settings.mode }, set: { m in
+            app.update { $0.mode = m }
+            if m == .astro { showSky() } else { SkyLog.note("tap \(m.rawValue): no sky") }
         })
     }
 

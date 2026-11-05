@@ -557,7 +557,11 @@
     "time.keep": "Оставить {t}",
     "time.busyT": "Занято до {t}",
     "time.busyQ": "Поставить на {t}?",
-    "time.busyGo": "Поставить"
+    "time.busyGo": "Поставить",
+    "set.modeAstro": "Астро",
+    "set.modeNote.simple": "Только нужное для съёмок и света. Остальные настройки стоят как заведено.",
+    "set.modeNote.pro": "Все настройки и подробности о свете. Луна, звёзды и азимуты — в «Астро».",
+    "set.modeNote.astro": "Всё из «Про» и небо: включите то, что вам нужно."
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1113,7 +1117,11 @@
     "time.keep": "Keep {t}",
     "time.busyT": "Busy until {t}",
     "time.busyQ": "Set it to {t}?",
-    "time.busyGo": "Set"
+    "time.busyGo": "Set",
+    "set.modeAstro": "Astro",
+    "set.modeNote.simple": "Only what you need for shoots and light. All other settings stay as they are.",
+    "set.modeNote.pro": "All settings and the details of the light. Moon, stars and azimuths are in “Astro”.",
+    "set.modeNote.astro": "Everything in “Pro”, plus the sky: turn on what you need."
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1669,7 +1677,11 @@
     "time.keep": "Dejar {t}",
     "time.busyT": "Ocupado hasta las {t}",
     "time.busyQ": "¿Poner a las {t}?",
-    "time.busyGo": "Poner"
+    "time.busyGo": "Poner",
+    "set.modeAstro": "Astro",
+    "set.modeNote.simple": "Solo lo necesario para las sesiones y la luz. Los demás ajustes se quedan como están.",
+    "set.modeNote.pro": "Todos los ajustes y los detalles de la luz. La luna, las estrellas y los azimuts están en «Astro».",
+    "set.modeNote.astro": "Todo lo de «Pro» y además el cielo: activa lo que necesites."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2221,7 +2233,11 @@
     "time.keep": "{t} のまま",
     "time.busyT": "{t} まで予定あり",
     "time.busyQ": "{t} に設定しますか?",
-    "time.busyGo": "設定"
+    "time.busyGo": "設定",
+    "set.modeAstro": "天体",
+    "set.modeNote.simple": "撮影と光に必要なものだけ。その他の設定はそのままです。",
+    "set.modeNote.pro": "すべての設定と光の詳細。月、星、方位角は「天体」にあります。",
+    "set.modeNote.astro": "「プロ」のすべてに空を追加。必要なものをオンにしてください。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2773,6 +2789,10 @@
     "time.keep": "保留 {t}",
     "time.busyT": "{t} 前已有安排",
     "time.busyQ": "改到 {t}?",
-    "time.busyGo": "改时间"
+    "time.busyGo": "改时间",
+    "set.modeAstro": "天文",
+    "set.modeNote.simple": "只保留拍摄和光线所需的内容。其他设置保持不变。",
+    "set.modeNote.pro": "全部设置和光线详情。月亮、星星和方位角在“天文”中。",
+    "set.modeNote.astro": "包含“专业”的全部内容，再加上星空：打开你需要的即可。"
   }
 }

@@ -52,7 +52,7 @@ if (args.screens === 'ar') { require('./ar.js'); return; }
 if (args.help) {
   console.log(`Пара снимков «веб / натив» (Tools/shots/pair.js). Запуск из корня натива; ничего не строит и не снимает с --help.
   --screens light,map,planner,settings,card,m28   какие экраны (по умолчанию все)
-  --themes dark,light   --moments day,golden,night,dawn   --modes simple,astro   --scopes month,week,day
+  --themes dark,light   --moments day,golden,night,dawn   --modes simple,pro,astro   --scopes month,week,day
   --m28 mbgallery,mbshelf,mbfolder,orgs,orgcard,contacts,quest,meet   экраны итерации 28 (мудборды, организации, «Контакты», опросник, встреча); только они: --screens m28
   --drag [block:dy,...]   блок карточки в руке (27а.3, только натив; по умолчанию place:24,place:44): сдвиг, зазор, слот, тень
   --grip [<знак записи>]   лента дня с поднятой записью и ручками (29а; по умолчанию 26-е, sd_sep_clash_b); только они: --screens grip
@@ -95,10 +95,11 @@ const screens = (args.screens || 'light,map,planner,settings,card,m28').split(',
 /* Виды «Съёмок» (итерация 21). Режим и момент им не нужны: одна пара на вид
    и тему, в 13:00 — рядом съёмка «прямо сейчас» и черта «сейчас» на ленте. */
 const scopes = (args.scopes || 'month,week,day').split(',');
-/* Режим: «Просто» и «Астро» — у «Света» разный состав (лента суток и
-   «Подробно» только в астро), у «Настроек» — разделы вида. Прорези барабана
+/* Режим: «Просто», «Про» и «Астро» — у «Света» разный состав (лента суток и
+   «Подробно» только не в «Просто»), у «Настроек» — разделы вида. «Про» задаётся
+   ключом `appMode`, его знает только приложение: веб снимается в своём «Астро». Прорези барабана
    (`drumSlot`) различимы только в светлой теме, снимаются одним моментом. */
-const modes = (args.modes || 'simple,astro').split(',');
+const modes = (args.modes || 'simple,pro,astro').split(',');
 const slots = (args.slots || 'paper,graphite,window').split(',');
 /* Главы настроек, которые сверяются сверх корня: «Вид» (сегменты и образец
    барабана) и «Язык и регион» (сегменты и фишки) — на них все детали
@@ -566,13 +567,13 @@ function markdown(results) {
         ribbon === 'drum' ? null : ribbon, fold === 'open' ? 'fold' : null].filter(Boolean).join('-');
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
-    const s = { ...(scope ? plannerSeed : seed), theme, pro: mode === 'astro', drumSlot: slot, ribbonMode: ribbon };
+    const s = { ...(scope ? plannerSeed : seed), theme, pro: mode !== 'simple', appMode: mode, drumSlot: slot, ribbonMode: ribbon };
     if (screen === 'settings' && chapter === 'shoots') Object.assign(s, MUSIC);
     /* Карта (итерация 20а): в «Просто» солнце и луна, в «Астро» к ним
        Млечный Путь — так обе пары слоёв снимаются без отдельного перебора.
        Сводка — свёрнутая и раскрытая (`--fold`). */
     if (screen === 'map') {
-      s.mapLayers = { sun: true, moon: true, mw: mode === 'astro', compass: true, spots: true };
+      s.mapLayers = { sun: true, moon: true, mw: mode !== 'simple', compass: true, spots: true };
       s.mapFold = fold !== 'open';
       if (chapter === 'fan') s.spots = FAN_SPOTS;
       /* Режим маршрута (24а): те же три места — все в черновике по порядку.
@@ -860,6 +861,9 @@ function markdown(results) {
     // Поле-1: «Музыка» и «Плейлисты» ушли из «Съёмок» в свою главу (слова Алексея 25.10); у веба они на месте
     // (sec.4/5, seg.4, note.4/5, pl.*) — это записанный отход, не потеря: в «Съёмках» натива их пары нет.
     if (sc.chapter === 'shoots' && sc.screen === 'settings') for (const k of Object.keys(web.nodes)) if (/^(sec\.[45]|seg\.4|note\.[45]|pl\.)/.test(k)) delete web.nodes[k];
+    // 30г.3: у веба две кнопки и одна подпись, у приложения три кнопки и подпись на каждый режим. Эти узлы из пары
+    // исключены осознанно (опись `30g2_modes_table.md` § 4); ряд `mode` остаётся, строки разделов идут со сдвигом на разницу подписи.
+    if (sc.screen === 'settings' && !sc.chapter) for (const side of [web.nodes, nat.nodes]) for (const k of ['mode.simple', 'mode.pro', 'mode.astro', 'mode.note']) delete side[k];
     const cmp = await compare(page, sc.dir, web, nat, 3);
     // Цвета взяты с кадров как есть, смещение по высоте — от «✕» (см. выше).
     if (lift) { cmp.lift = lift; for (const r of cmp.rows) if (r.d) r.d[1] = +(r.d[1] - lift).toFixed(1); }

@@ -42,9 +42,11 @@ struct AppModelTests {
                                 coordinate: GeoCoordinate(latitude: 56.4846, longitude: 84.9476))
 
     private func model(_ snapshot: Snapshot = Snapshot(), store: Store? = nil,
-                       locator: Locator = Locator(authorized: false), memory: PlaceMemory? = nil) -> AppModel {
+                       locator: Locator = Locator(authorized: false), memory: PlaceMemory? = nil,
+                       modes: (any AppModeMemory)? = nil) -> AppModel {
         AppModel(snapshot: snapshot, store: store, language: "ru", zone: barnaul, locator: locator,
-                 geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather(), placeMemory: memory)
+                 geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather(), placeMemory: memory,
+                 modeMemory: modes)
     }
 
     // MARK: - «Готово, когда»: смена доезжает до «Света» без перезапуска
@@ -55,7 +57,7 @@ struct AppModelTests {
         let minute = light.timebar.machine.viewMinute
         let before = light.telemetry
 
-        app.update { $0.pro = true; $0.tempUnit = .f; $0.clock = .h12; $0.ribbonMode = .lane; $0.timeStep = 30 }
+        app.update { $0.mode = .astro; $0.tempUnit = .f; $0.clock = .h12; $0.ribbonMode = .lane; $0.timeStep = 30 }
 
         #expect(app.light === light)                        // экран тот же, не пересоздан
         #expect(light.timebar.machine.viewMinute == minute)  // выбранная минута на месте
@@ -185,16 +187,108 @@ struct AppModelTests {
         let first = model(store: store)
         #expect(first.showStartSheet)
         first.takeCity(tomsk)
-        first.update { $0.theme = .light; $0.pro = true }
+        first.update { $0.theme = .light; $0.mode = .astro }
         first.finishStart()
         await first.flush()
 
         let second = model(try await store.load(), store: store)
         #expect(!second.showStartSheet)
         #expect(second.settings.theme == .light)
-        #expect(second.settings.pro)
+        #expect(second.settings.mode == .astro)
         #expect(second.citySource == .settings)
         #expect(second.light.locationName == "Томск")
+    }
+
+    // MARK: - Три режима (30г.3)
+
+    private func webFile(_ json: String) throws -> Snapshot {
+        try JSONDecoder().decode(Snapshot.self, from: Data(json.utf8))
+    }
+
+    @Test func newPersonStartsInSimpleAndScreensKnowIt() {
+        let modes = InMemoryAppModeMemory()
+        let app = model(modes: modes)
+        #expect(app.settings.mode == .simple)
+        #expect(!app.light.proMode)
+        #expect(modes.mode == .simple)
+    }
+
+    /// Просто → Про → Астро → Просто: экраны читают прежнюю галочку, в «Про» и «Астро» она включена, память и снимок идут следом.
+    @Test func cycleReachesScreensMemoryAndSnapshot() {
+        let modes = InMemoryAppModeMemory()
+        let app = model(modes: modes)
+        for (mode, flag) in [(AppMode.pro, true), (.astro, true), (.simple, false), (.pro, true)] {
+            app.update { $0.mode = mode }
+            #expect(app.settings.mode == mode)
+            #expect(app.settings.pro == flag)
+            #expect(app.light.proMode == flag)
+            #expect(modes.mode == mode)
+            #expect(app.snapshot.appMode == mode.rawValue)
+            #expect(app.snapshot.pro == flag)
+        }
+    }
+
+    /// «Про» пока выглядит как «Астро»: смена между ними не трогает ничего, что читают экраны.
+    @Test func proLooksLikeAstroForNow() {
+        let app = model()
+        app.update { $0.mode = .pro }
+        let pro = app.light.telemetry
+        app.update { $0.mode = .astro }
+        #expect(app.light.telemetry == pro)
+        #expect(app.light.proMode)
+    }
+
+    @Test func oldFileStaysInItsModeAfterUpdate() throws {
+        let astro = InMemoryAppModeMemory()
+        #expect(model(try webFile(#"{"pro":true}"#), modes: astro).settings.mode == .astro)
+        #expect(astro.mode == .astro)
+        let simple = InMemoryAppModeMemory()
+        #expect(model(try webFile(#"{"pro":false}"#), modes: simple).settings.mode == .simple)
+        #expect(simple.mode == .simple)
+    }
+
+    /// Файл, пересохранённый вебом (ключа нет), не сбрасывает выбор: ни «Про» в «Астро», ни «Астро» в «Просто».
+    @Test func webFileDoesNotResetTheChoice() throws {
+        for (chosen, flag) in [(AppMode.pro, true), (.astro, false), (.simple, true), (.pro, false)] {
+            let app = model(try webFile("{\"pro\":\(flag)}"), modes: InMemoryAppModeMemory(chosen))
+            #expect(app.settings.mode == chosen, "выбрано \(chosen), галочка веба \(flag)")
+            #expect(app.light.proMode == chosen.webPro)
+            // Снимок сразу вровень: следующая запись вернёт файлу ключ и верную галочку.
+            #expect(app.snapshot.appMode == chosen.rawValue)
+            #expect(app.snapshot.pro == chosen.webPro)
+        }
+    }
+
+    /// Весь путь через диск: выбрали «Про», веб пересохранил файл, запуск, ещё запись, новый телефон с этим файлом.
+    @Test func proSurvivesWebResaveThroughTheStore() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lp-30g3-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = Store(directory: dir, debounce: .milliseconds(1))
+        let phone = InMemoryAppModeMemory()
+        let first = model(store: store, modes: phone)
+        first.update { $0.mode = .pro }
+        await first.flush()
+        #expect(try await store.load().appMode == "pro")
+
+        // Веб пишет только свои ключи (`saveAll`): галочка на месте, ключа нет.
+        var fromWeb = try await store.load()
+        fromWeb.appMode = nil
+        try await store.saveNow(fromWeb)
+
+        let second = model(try await store.load(), store: store, modes: phone)
+        #expect(second.settings.mode == .pro)
+        second.update { $0.theme = .light }
+        await second.flush()
+        #expect(try await store.load().appMode == "pro")
+
+        // Новый телефон с файлом, где ключ снова есть: режим едет с файлом и встаёт в память.
+        let otherPhone = InMemoryAppModeMemory(.astro)
+        #expect(model(try await store.load(), modes: otherPhone).settings.mode == .pro)
+        #expect(otherPhone.mode == .pro)
+
+        // Цена § 4: файл без ключа на новом телефоне без памяти — «Астро», выбор сделают заново.
+        try await store.saveNow(fromWeb)
+        #expect(model(try await store.load(), modes: InMemoryAppModeMemory()).settings.mode == .astro)
     }
 
     /// Глава «Карта и места» (20б): подписи и холст — после перезапуска те же.

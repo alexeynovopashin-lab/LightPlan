@@ -55440,6 +55440,41 @@
         }
       }
     },
+    "set.modeAstro" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Астро"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Astro"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Astro"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天体"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天文"
+          }
+        }
+      }
+    },
     "set.modeNote" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -55475,37 +55510,142 @@
         }
       }
     },
+    "set.modeNote.astro" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё из «Про» и небо: включите то, что вам нужно."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything in “Pro”, plus the sky: turn on what you need."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo lo de «Pro» y además el cielo: activa lo que necesites."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「プロ」のすべてに空を追加。必要なものをオンにしてください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "包含“专业”的全部内容，再加上星空：打开你需要的即可。"
+          }
+        }
+      }
+    },
+    "set.modeNote.pro" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все настройки и подробности о свете. Луна, звёзды и азимуты — в «Астро»."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All settings and the details of the light. Moon, stars and azimuths are in “Astro”."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todos los ajustes y los detalles de la luz. La luna, las estrellas y los azimuts están en «Astro»."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべての設定と光の詳細。月、星、方位角は「天体」にあります。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部设置和光线详情。月亮、星星和方位角在“天文”中。"
+          }
+        }
+      }
+    },
+    "set.modeNote.simple" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только нужное для съёмок и света. Остальные настройки стоят как заведено."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only what you need for shoots and light. All other settings stay as they are."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo lo necesario para las sesiones y la luz. Los demás ajustes se quedan como están."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撮影と光に必要なものだけ。その他の設定はそのままです。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只保留拍摄和光线所需的内容。其他设置保持不变。"
+          }
+        }
+      }
+    },
     "set.modePro" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Астро"
+            "value" : "Про"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Astro"
+            "value" : "Pro"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Astro"
+            "value" : "Pro"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "天体"
+            "value" : "プロ"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "天文"
+            "value" : "专业"
           }
         }
       }

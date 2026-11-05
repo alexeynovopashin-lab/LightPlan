@@ -78,6 +78,10 @@
   `Sky/SunMoonTheory.swift` (Meeus ch. 25 / 47), ≤ 0.02° vs Horizons. The AR Moon is topocentric (29.8в.23: `horizontal(ofDate:distanceKm:)`, Meeus ch. 40 parallax up to 0.95°, ≤ 0.013° vs Horizons topocentric); Sun and planets take no parallax (< 9″). `Sky.horizontal`, `SolarDay`, and `MoonSample`/`MilkyWay.corePosition`
   with the default `time: .web` keep the web's numbers for parity (Map instrument sky, dome constellations, Moon on the Light screen).
   A new AR layer must not call `Sky.horizontal`. Reference: `python3 Tools/sky_time_ref.py` → `Fixtures/sky_time_horizons.json`, read by `SkyTimeTests`.
+- **Three modes (30г.3).** `AppMode` (`simple|pro|astro`, `LightPlanData/Settings/AppMode.swift`) is the one place that knows how the mode is stored and read; `AppSettings.mode` holds it,
+  `AppSettings.pro` is read-only (`mode.webPro`, on in Pro and Astro) and is what the screens still read: Pro looks like Astro until 30г.5–7. File: key `appMode` + the web's flag `pro`, written together by `AppMode.write`.
+  Read (`AppMode.read`): key → phone memory (`DeviceAppModeMemory`, UserDefaults) → flag (`pro` = Astro, none = Simple). The web drops the key on re-save (`saveAll` writes only its own keys), so memory keeps the choice; cost: a web-saved file on a new phone gives Astro. Memory is written on start too.
+  Tests and shots use `InMemoryAppModeMemory` (the default of `AppModel.init`), only `live()` takes the device one, so a seed file decides the mode there. Sky only on tapping Astro. Words: `set.modePro` = «Про» via `lang_fixes.json`; `set.modeAstro`, `set.modeNote.<mode>` in `lang_native.json`. `make shots` modes `simple,pro,astro`; `mode.simple/pro/astro/note` are out of the web pair on purpose.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

@@ -530,6 +530,7 @@ public final class AppModel {
     // MARK: Слежение за местом (29.8в.12)
 
     @ObservationIgnored let placeMemory: any PlaceMemory
+    @ObservationIgnored let modeMemory: any AppModeMemory
     /// Копия памяти места; запись уходит в память устройства сразу.
     var placeMemoryRecord: PlaceMemoryRecord { didSet { placeMemory.record = placeMemoryRecord } }
     /// «Следовать за мной» включено (даже если доступа к геопозиции нет — тогда вид честно говорит об этом).
@@ -548,7 +549,15 @@ public final class AppModel {
          headingSource: (any HeadingSource)? = nil,
          weatherReachability: (any NetworkReachability)? = nil,
          placeMemory: (any PlaceMemory)? = nil,
+         modeMemory: (any AppModeMemory)? = nil,
          now: @escaping @Sendable () -> Date = { Date() }) {
+        let modes = modeMemory ?? InMemoryAppModeMemory()
+        let settings = AppSettings(snapshot: snapshot, zone: zone, remembered: modes.mode)
+        // Режим, каким его прочли, — сразу в память и в снимок: следующая запись вернёт файлу ключ, который снял веб.
+        modes.mode = settings.mode
+        self.modeMemory = modes
+        var snapshot = snapshot
+        settings.mode.write(to: &snapshot)
         self.snapshot = snapshot
         self.store = store
         self.now = now
@@ -559,7 +568,6 @@ public final class AppModel {
         self.cityLookup = cityLookup
         self.placeSearch = placeSearch
         self.heading = headingSource
-        let settings = AppSettings(snapshot: snapshot, zone: zone)
         self.settings = settings
         self.showStartSheet = !Self.met(snapshot)
         self.mapLayers = MapLayers(snapshot.mapLayers)
@@ -711,7 +719,7 @@ public final class AppModel {
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading(),
                         weatherReachability: SystemReachability(),
                         // Место и слежение — в памяти телефона (29.8в.12); тесты и снимки пар живут в памяти запуска.
-                        placeMemory: DevicePlaceMemory(), now: clock)
+                        placeMemory: DevicePlaceMemory(), modeMemory: DeviceAppModeMemory(), now: clock)
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
         model.pinterest = PinterestClient.live(config: PinterestConfig.load())
@@ -752,6 +760,7 @@ public final class AppModel {
         change(&settings)
         guard settings != before else { return }
         settings.apply(to: &snapshot)
+        if settings.mode != before.mode { modeMemory.mode = settings.mode }
         if before.manualEnd, !settings.manualEnd { clearFinishMarks() }
         persist()
 

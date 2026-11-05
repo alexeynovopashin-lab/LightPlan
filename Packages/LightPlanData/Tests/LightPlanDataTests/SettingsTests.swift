@@ -43,7 +43,7 @@ struct SettingsTests {
         var snap = Snapshot()
         snap.extra["me"] = .object(["phone": .string("+7 900 000-00-00"), "met": .bool(true)])
         var s = AppSettings(snapshot: snap)
-        s.pro = true; s.theme = .auto; s.drumSlot = .window; s.timeStep = 30; s.travelMin = 90
+        s.mode = .astro; s.theme = .auto; s.drumSlot = .window; s.timeStep = 30; s.travelMin = 90
         s.tempUnit = .f; s.clock = .h12; s.currency = .eur; s.practice = .eu; s.practicePicked = true
         s.takeCity(CityHit(name: "томск", area: "Томская область, Россия", countryCode: "ru",
                            coordinate: GeoCoordinate(latitude: 56.4846, longitude: 84.9476)))

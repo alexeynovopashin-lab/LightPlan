@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CoreText
+@testable import LightPlanUI
 
 /// Шаг 30а.5: подписи кнопок в рядах равной ширины умещаются на iPhone SE (375 pt) и 15 Pro Max (430 pt)
 /// на en/es/ja/zh. Меряется шрифтом (CoreText, системный SF и его подстановки для иероглифов), без снимка:
@@ -46,9 +47,9 @@ struct LabelFitTests {
              avail: { (($0 - 48 - 30 - 18) / 4 - 4) / 0.8 }),
         // PlannerBlockSheet.kinds: четыре чипа подряд (проверяется суммой ниже).
         // WebSeg в настройках: сегменты поровну, поля 24, рамка 3, внутри по 11; подпись 14.
-        Slot(name: "set.seg3", where_: "SettingsLook.swift WebSeg (3)", keys: ["set.delvGenre", "set.delvSingle", "set.delvNone"],
+        Slot(name: "set.seg3", where_: "SettingsLook.swift WebSeg (3)", keys: ["set.delvGenre", "set.delvSingle", "set.delvNone", "set.modeSimple", "set.modePro", "set.modeAstro"],
              size: 14, tracking: 0, lines: 1, avail: { ($0 - 54) / 3 - 22 }),
-        Slot(name: "set.seg2", where_: "SettingsLook.swift WebSeg (2)", keys: ["net.auto", "net.direct", "set.modeSimple", "set.modePro", "fb.idea", "fb.bug"],
+        Slot(name: "set.seg2", where_: "SettingsLook.swift WebSeg (2)", keys: ["net.auto", "net.direct", "fb.idea", "fb.bug"],
              size: 14, tracking: 0, lines: 1, avail: { ($0 - 54) / 2 - 22 }),
         // StudioAlertAskPlate.answer: плашка ≤ 360, поля 20, зазор 10.
         Slot(name: "studio.ask.answer", where_: "StudioAlertAskPlate.swift AlertAskPlate.button()", keys: ["studio.askNo", "studio.askYes", "wx.askLater"],
@@ -97,6 +98,30 @@ struct LabelFitTests {
                             bad.append("\(lang) \(Int(w)) pt · \(slot.name) (\(slot.where_)) · \(key) «\(text)»: \(n) стр. при \(slot.lines), ширина \(String(format: "%.1f", slot.avail(w)))")
                         }
                     }
+                }
+            }
+        }
+        #expect(bad.isEmpty, Comment(rawValue: bad.joined(separator: "\n")))
+    }
+
+    /// Звёзды на кнопке «Астро» (30г.3): в трети ряда не ложатся на слово ни на одном языке и экране.
+    @Test func skyOnTheAstroButtonLeavesItsWordAlone() throws {
+        let strings = try Self.catalog()
+        var bad: [String] = []
+        for lang in Self.langs {
+            let word = try #require(Self.value(strings, "set.modeAstro", lang))
+            let font = CTFontCreateUIFontForLanguage(.system, 14, nil)!
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: word, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): font]))
+            // Средний вес шире обычного меньше чем на 3 %; запас 2 pt с каждой стороны его покрывает.
+            let text = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+            for w in Self.widths {
+                let cell = (w - 54) / 3
+                let left = (cell - text) / 2, right = (cell + text) / 2
+                let ursaEnd = cell * (SegSky.ursaLeft + SegSky.ursaShare)
+                let orionStart = cell * (SegSky.orionRight - SegSky.orionShare)
+                if ursaEnd + 2 > left || orionStart - 2 < right {
+                    bad.append("\(lang) \(Int(w)) pt «\(word)»: слово \(left)…\(right), Медведица до \(ursaEnd), Орион от \(orionStart)")
                 }
             }
         }

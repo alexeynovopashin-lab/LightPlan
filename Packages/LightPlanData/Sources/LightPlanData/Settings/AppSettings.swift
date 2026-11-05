@@ -22,7 +22,9 @@ public struct AppSettings: Sendable, Equatable {
     /// Пороги дороги между площадками, минуты (`#travelSeg`).
     public static let travelChoices = [20, 40, 60, 90]
 
-    public var pro: Bool
+    public var mode: AppMode
+    /// Галочка веба. Только чтение: её задаёт режим, разойтись им негде.
+    public var pro: Bool { mode.webPro }
     public var theme: Theme
     public var ribbonMode: RibbonMode
     public var drumSlot: DrumSlot
@@ -44,12 +46,12 @@ public struct AppSettings: Sendable, Equatable {
     /// С какого дня неделя (`WeekStartChoice`; нет в снимке — понедельник, как у веба).
     public var weekStart: WeekStartChoice
 
-    public init(pro: Bool = false, theme: Theme = .dark, ribbonMode: RibbonMode = .drum,
+    public init(mode: AppMode = .simple, theme: Theme = .dark, ribbonMode: RibbonMode = .drum,
                 drumSlot: DrumSlot = .paper, timeStep: Int = 5, travelMin: Int = 40,
                 tempUnit: TempUnit = .c, clock: Clock = .auto, currency: Currency = .rub,
                 practice: Practice = .ru, practicePicked: Bool = false, home: HomeCity = HomeCity(),
                 manualEnd: Bool = false, musicApp: MusicApp? = nil, weekStart: WeekStartChoice = .standard) {
-        self.pro = pro; self.theme = theme; self.ribbonMode = ribbonMode; self.drumSlot = drumSlot
+        self.mode = mode; self.theme = theme; self.ribbonMode = ribbonMode; self.drumSlot = drumSlot
         self.timeStep = timeStep; self.travelMin = travelMin; self.tempUnit = tempUnit
         self.clock = clock; self.currency = currency; self.practice = practice
         self.practicePicked = practicePicked; self.home = home
@@ -57,9 +59,9 @@ public struct AppSettings: Sendable, Equatable {
     }
 
     /// Прочитать из снимка по правилам веба. `zone` — пояс телефона, по
-    /// нему угадывается практика, пока её не выбрали (`guessPractice`).
-    public init(snapshot s: Snapshot, zone: TimeZone = .current) {
-        pro = s.pro
+    /// нему угадывается практика, пока её не выбрали (`guessPractice`). `remembered` — режим из памяти телефона.
+    public init(snapshot s: Snapshot, zone: TimeZone = .current, remembered: AppMode? = nil) {
+        mode = AppMode.read(file: s.appMode, webPro: s.pro, remembered: remembered)
         // Старые записи знали только «dark» и «light»: всё прочее — тёмная.
         theme = s.theme.flatMap(Theme.init(rawValue:)) ?? .dark
         ribbonMode = s.ribbonMode == "lane" ? .lane : .drum
@@ -84,7 +86,7 @@ public struct AppSettings: Sendable, Equatable {
     /// Записать в снимок. Прочие поля снимка и прочие ключи `me` (номер,
     /// «знакомство пройдено») не трогаются.
     public func apply(to s: inout Snapshot) {
-        s.pro = pro
+        mode.write(to: &s)
         s.theme = theme.rawValue
         s.ribbonMode = ribbonMode.rawValue
         s.drumSlot = drumSlot.rawValue
