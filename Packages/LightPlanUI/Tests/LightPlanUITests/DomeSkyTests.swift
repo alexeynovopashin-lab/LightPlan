@@ -73,14 +73,107 @@ struct DomeSkyTests {
         #expect(sky(-12, light: false).zenith == SkyColor(5,10,22))
     }
 
-    @Test func starsStayVisibleOnTheNightBacking() {
+    @Test func darkThemeStarsStayVisibleOnTheNightBacking() {
+        #expect(DomeSky.starColor(lightTheme: false) == SkyColor(203,215,234))
         let opacity = DomeStars.points.map(\.opacity).max()!
-        for light in [false, true] {
-            let back = DomeSky.surface(lightTheme: light)
-            let star = LightPalette.lerp(back, DomeSky.starColor(lightTheme: light), opacity)
-            #expect((max(DomeSky.luminance(star), DomeSky.luminance(back)) + 0.05)
-                    / (min(DomeSky.luminance(star), DomeSky.luminance(back)) + 0.05) > 2.5)
+        let back = DomeSky.surface(lightTheme: false)
+        let star = LightPalette.lerp(back, DomeSky.starColor(lightTheme: false), opacity)
+        #expect((DomeSky.luminance(star) + 0.05) / (DomeSky.luminance(back) + 0.05) > 2.5)
+    }
+
+    /// Alexey on the phone, 05.11: «звезды на куполе черные, опять инверсия». A star is
+    /// light, not ink: it never gets darker than the sky behind it, even where the
+    /// night paper hides it. He chose white, seeing it next to two paler options.
+    @Test func lightThemeStarsAreWhiteNeverDarkerThanThePaper() {
+        let star = DomeSky.starColor(lightTheme: true)
+        #expect(star == SkyColor(255,255,255))
+        let back = DomeSky.surface(lightTheme: true)
+        for point in DomeStars.points {
+            #expect(DomeSky.luminance(LightPalette.lerp(back, star, point.opacity)) >= DomeSky.luminance(back))
         }
+    }
+
+    private func forecast(score: Int, low: Double, mid: Double, high: Double, humidity: Double) -> SkyPalette {
+        let hour = HourRecord(cloud: 0, code: 0, temperature: 10, low: low, mid: mid, high: high,
+                              humidity: humidity, windSpeed: 0, windDirection: nil, windGusts: nil)
+        return SkyPalette(weather: WeatherDay(quality: .good, cloud: 0, sunset: score, layers: hour,
+                          temperatureBase: 10, wind: 0, windDirection: nil, gust: 0, trend: [], real: true))!
+    }
+
+    /// How many times the centre line gets dimmer on the way from any height down to any lower one.
+    private func worstDarkening(_ dome: DomeSky) -> Double {
+        let levels = (0...20).map { DomeSky.luminance(dome.background(at: Double($0) / 20)) }
+        var worst = 1.0
+        for upper in levels.indices {
+            for lower in upper..<levels.count { worst = max(worst, levels[upper] / levels[lower]) }
+        }
+        return worst
+    }
+
+    /// Alexey on the phone, 05.11, 17:44: the lead colour of a grey forecast made a dark
+    /// patch at the horizon (2.33 times at the sun on the horizon). His word: «закат пусть
+    /// просто обесцвечивается, серый градиент из центра и голубые края выглядят неестественно».
+    @Test func greyForecastDoesNotDarkenTheLightDomeTowardTheHorizon() {
+        let lead = forecast(score: 5, low: 90, mid: 0, high: 0, humidity: 95)
+        for e in stride(from: -12.0, through: 6, by: 0.5) {
+            #expect(worstDarkening(sky(e, palette: lead)) < 1.03)
+        }
+    }
+
+    /// The whole dome loses its colour: grey at the top and at the edges alike.
+    @Test func greyForecastDrainsTheWholeLightDome() {
+        let lead = forecast(score: 5, low: 90, mid: 0, high: 0, humidity: 95)
+        for e in stride(from: -4.0, through: 0, by: 0.5) {
+            let dome = sky(e, palette: lead)
+            for colour in [dome.zenith, dome.horizon] {
+                #expect(max(colour.r, colour.g, colour.b) - min(colour.r, colour.g, colour.b) <= 2)
+            }
+        }
+        // By day and in the deep twilight there is no forecast to show.
+        #expect(sky(6, palette: lead).zenith == SkyColor(207,225,235))
+        #expect(sky(-12, palette: lead).zenith == SkyColor(38,65,110))
+    }
+
+    /// No oval from the centre: the paint of a colourless forecast repeats the sky under it.
+    @Test func greyForecastPaintsNoOvalOverTheLightDome() {
+        let lead = forecast(score: 5, low: 90, mid: 0, high: 0, humidity: 95)
+        for e in stride(from: -11.5, through: 5.5, by: 0.5) {
+            let dome = sky(e, palette: lead)
+            let paint = try! #require(dome.forecast)
+            for (colour, height) in [(paint.zenith, 0.0), (paint.high, 0.38), (paint.mid, 0.72), (paint.horizon, 1.0)] {
+                let under = LightPalette.lerp(dome.zenith, dome.horizon, height)
+                #expect(abs(colour.r - under.r) <= 1 && abs(colour.g - under.g) <= 1 && abs(colour.b - under.b) <= 1)
+            }
+        }
+    }
+
+    /// A partly grey forecast drains the sky only partly and keeps some sunset paint.
+    @Test func partlyGreyForecastDrainsInProportion() {
+        let some = forecast(score: 40, low: 0, mid: 60, high: 60, humidity: 50)
+        #expect(some.life > 0.3 && some.life < 0.7)
+        let dome = sky(-2, palette: some)
+        let plain = sky(-2)
+        let spread = { (c: SkyColor) in max(c.r, c.g, c.b) - min(c.r, c.g, c.b) }
+        #expect(spread(dome.horizon) > 0 && spread(dome.horizon) < spread(plain.horizon))
+        let paint = try! #require(dome.forecast)
+        #expect(spread(paint.horizon) > spread(dome.horizon))
+    }
+
+    /// The dark theme keeps the forecast as the web computes it: lead stays lead.
+    @Test func darkThemeForecastIsUntouched() {
+        let lead = forecast(score: 5, low: 90, mid: 0, high: 0, humidity: 95)
+        #expect(sky(-3, light: false, palette: lead).forecast == lead)
+        #expect(sky(-3, light: false, palette: lead).forecast?.horizon == SkyColor(92,92,96))
+        #expect(sky(-3, light: false, palette: bright).forecast == bright)
+    }
+
+    /// A colourful sunset keeps its colour: only the lead part of the mix turns pale.
+    @Test func lightThemeSunsetKeepsItsFullColours() {
+        let full = forecast(score: 100, low: 0, mid: 60, high: 60, humidity: 50)
+        let painted = sky(-3, palette: full).forecast
+        #expect(painted?.horizon == full.horizon)
+        #expect(painted?.mid == full.mid)
+        #expect(painted?.high == full.high)
     }
 
     /// Alexey on the phone, 28.09: the dark theme's day blue was still too bright

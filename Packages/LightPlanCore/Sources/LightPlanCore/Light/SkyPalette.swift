@@ -14,6 +14,12 @@ public struct SkyPalette: Sendable, Equatable {
     public let horizon: SkyColor
     /// Насколько живым будет небо, 0…1: ноль — свинец, зарева почти нет.
     public let life: Double
+    /// Доля цвета прогноза в каждой точке неба; остальное — свинец.
+    private let shares: Shares
+
+    private struct Shares: Sendable, Equatable {
+        let zenith, high, mid, horizon: Double
+    }
 
     static let zenithStop = SkyColor(56, 62, 82)     // холодный верх неба
     static let highStop = SkyColor(214, 124, 148)    // розовое послесвечение перистых
@@ -32,11 +38,35 @@ public struct SkyPalette: Sendable, Equatable {
         let life = clamp(s * 1.15, 0, 1) * (1 - wash * 0.6)
         // Верхний и средний ярусы работают, только если нижний не закрыл горизонт
         let gap = clamp(1 - L.low / 70, 0, 1)
-        zenith = mixDead(Self.zenithStop, 0.35 + life * 0.4)
-        high = mixDead(Self.highStop, life * clamp(L.high / 55, 0.25, 1) * gap)
-        mid = mixDead(Self.midStop, life * clamp(L.mid / 55, 0.3, 1) * gap)
-        horizon = mixDead(Self.horizonStop, life * gap)
+        let shares = Shares(zenith: 0.35 + life * 0.4, high: life * clamp(L.high / 55, 0.25, 1) * gap,
+                            mid: life * clamp(L.mid / 55, 0.3, 1) * gap, horizon: life * gap)
+        zenith = mixDead(Self.zenithStop, shares.zenith)
+        high = mixDead(Self.highStop, shares.high)
+        mid = mixDead(Self.midStop, shares.mid)
+        horizon = mixDead(Self.horizonStop, shares.horizon)
         self.life = life * gap
+        self.shares = shares
+    }
+
+    private init(zenith: SkyColor, high: SkyColor, mid: SkyColor, horizon: SkyColor, life: Double, shares: Shares) {
+        self.zenith = zenith
+        self.high = high
+        self.mid = mid
+        self.horizon = horizon
+        self.life = life
+        self.shares = shares
+    }
+
+    /// Та же палитра поверх светлого неба: вместо свинца в смеси — само небо на этой
+    /// высоте, так что бесцветный прогноз ничего поверх него не рисует. Холодный верх
+    /// неба — тоже цвет прогноза, он уходит вместе с `life` (у веба его нет: это только
+    /// купол «Астро» светлой темы, `DomeSky`).
+    public func over(zenith z: SkyColor, high h: SkyColor, mid m: SkyColor, horizon n: SkyColor) -> SkyPalette {
+        SkyPalette(zenith: LightPalette.lerp(z, Self.zenithStop, shares.zenith * life),
+                   high: LightPalette.lerp(h, Self.highStop, shares.high),
+                   mid: LightPalette.lerp(m, Self.midStop, shares.mid),
+                   horizon: LightPalette.lerp(n, Self.horizonStop, shares.horizon),
+                   life: life, shares: shares)
     }
 }
 

@@ -25,11 +25,25 @@ struct DomeSky: Sendable, Equatable {
         let k = upper.e == lower.e ? 0 : Self.clamp((e - lower.e) / (upper.e - lower.e))
         let a = lightTheme ? lower.light : lower.dark
         let b = lightTheme ? upper.light : upper.dark
-        zenith = LightPalette.lerp(a.0, b.0, k)
-        horizon = LightPalette.lerp(a.1, b.1, k)
-        forecast = morning ? nil : palette
+        var top = LightPalette.lerp(a.0, b.0, k)
+        var bottom = LightPalette.lerp(a.1, b.1, k)
+        let evening = morning ? nil : palette
         let colourStart = lightTheme ? 6.0 : 12.0
-        forecastOpacity = forecast == nil ? 0 : Self.clamp((colourStart - e) / colourStart) * Self.clamp((e + 12) / 8) * 0.62
+        let forecastShare = evening == nil ? 0 : Self.clamp((colourStart - e) / colourStart) * Self.clamp((e + 12) / 8)
+        forecastOpacity = forecastShare * 0.62
+        if lightTheme, let evening {
+            // Alexey, 05.11: «закат пусть просто обесцвечивается». No colour promised: the
+            // whole sky loses its colour, and lead is not painted over it as an oval.
+            let drain = forecastShare * (1 - evening.life)
+            top = Self.drained(top, drain)
+            bottom = Self.drained(bottom, drain)
+            forecast = evening.over(zenith: top, high: LightPalette.lerp(top, bottom, 0.38),
+                                    mid: LightPalette.lerp(top, bottom, 0.72), horizon: bottom)
+        } else {
+            forecast = evening
+        }
+        zenith = top
+        horizon = bottom
 
         let state = LightState(elevation: e, morning: morning)
         let near = Self.clamp((8 - e) / 14)
@@ -82,9 +96,17 @@ struct DomeSky: Sendable, Equatable {
         lightTheme ? SkyColor(250,248,243) : SkyColor(15,14,12)
     }
 
-    /// Star and meteor ink: pale on a dark backing, deep navy on the light paper.
+    /// Stars and meteors are light, not ink, in both themes. Alexey, 05.11: «звезды должны
+    /// быть светлыми и никак иначе, даже ценой, что их не будет видно». On the night paper
+    /// of the light theme they nearly vanish, and that is accepted.
     static func starColor(lightTheme: Bool) -> SkyColor {
-        lightTheme ? SkyColor(8,14,34) : SkyColor(203,215,234)
+        lightTheme ? SkyColor(255,255,255) : SkyColor(203,215,234)
+    }
+
+    /// The colour moved toward the grey of its own brightness, `amount` 0…1.
+    private static func drained(_ c: SkyColor, _ amount: Double) -> SkyColor {
+        let grey = Int((0.2126 * Double(c.r) + 0.7152 * Double(c.g) + 0.0722 * Double(c.b)).rounded())
+        return LightPalette.lerp(c, SkyColor(grey, grey, grey), amount)
     }
 
     private static func clamp(_ x: Double) -> Double { min(1, max(0, x)) }
