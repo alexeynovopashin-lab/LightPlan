@@ -161,6 +161,32 @@ struct PhoneGateTests {
         #expect(app.phoneAskOpen, "спросит снова")
     }
 
+    /// Ответ на ревью GPT к b3c0fa3: страна на листе меняется сразу, отказ возвращает и её. Номер без кода читается
+    /// по стране, поэтому оставшаяся чужая страна поменяла бы его смысл.
+    @Test func crossRestoresTheCountryToo() {
+        var snap = Snapshot()
+        snap.extra["me"] = .object(["met": .bool(true), "phone": .string("495 000-00-00")])
+        let app = model(snap)
+        app.openTab(.planner)
+        app.setTelCountry(TelCountry.of("GE")!)
+        app.setMyPhone("+995 555 00 00 00")
+        cross(app)
+        #expect(app.telCountry.iso == "RU")
+        #expect(app.myPhone == "495 000-00-00")
+
+        app.snapshot.extra["telCountry"] = nil         // страна ещё не выбрана: так и остаётся
+        app.openTab(.planner)
+        app.setTelCountry(TelCountry.of("GE")!)
+        cross(app)
+        #expect(app.snapshot.extra["telCountry"] == nil)
+
+        // «Готово» страну, наоборот, оставляет: номер теперь её.
+        app.openTab(.planner)
+        app.setTelCountry(TelCountry.of("GE")!)
+        answer(app, "+995 555 00 00 00")
+        #expect(app.telCountry.iso == "GE")
+    }
+
     /// Смахивание листа без «Готово» (то же `phoneSheetGone`), даже с целым номером в поле, — отказ.
     @Test func swipingAwayWithAFullNumberIsARefusalToo() {
         let app = model()

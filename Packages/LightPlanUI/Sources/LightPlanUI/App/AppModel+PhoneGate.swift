@@ -16,7 +16,7 @@ extension AppModel {
         guard plannerNeedsPhone, !hasPlannerPhone else { return true }
         phoneAskNext = next
         if !phoneAskOpen {
-            phoneAskWas = myPhone
+            phoneAskWas = (myPhone, snapshot.extra["telCountry"])
             phoneAskConfirmed = false
             phoneAskOpen = true
         }
@@ -42,7 +42,7 @@ extension AppModel {
         phoneAskOpen = false
     }
 
-    /// Лист ушёл с экрана. Всё, кроме «Готово» (крестик, смахивание), — отказ: поле как было, путь забыт.
+    /// Лист ушёл с экрана. Всё, кроме «Готово» (крестик, смахивание), — отказ: поле и страна как были, путь забыт.
     public func phoneSheetGone() {
         let next = phoneAskNext, confirmed = phoneAskConfirmed, was = phoneAskWas
         phoneAskNext = nil
@@ -52,7 +52,7 @@ extension AppModel {
         if confirmed {
             next?()
         } else if let was {
-            restoreMyPhone(was)
+            restoreMyPhone(was.phone, country: was.country)
         }
     }
 }

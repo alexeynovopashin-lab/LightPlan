@@ -64,11 +64,12 @@ extension AppModel {
         persist()
     }
 
-    /// Крестик листа «Ваш номер»: поле снова то, что было до листа, смены номера не было.
-    func restoreMyPhone(_ was: String) {
+    /// Крестик листа «Ваш номер»: поле и страна снова те, что были до листа, смены номера не было.
+    func restoreMyPhone(_ was: String, country: JSONValue?) {
         telSnap = nil
-        guard was != myPhone else { return }
+        guard was != myPhone || country != snapshot.extra["telCountry"] else { return }
         setMe("phone", was.isEmpty ? nil : .string(was))
+        snapshot.extra["telCountry"] = country
         persist()
     }
 
