@@ -20,7 +20,7 @@ INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait
 INFOPLIST_FILE = Config/Info-iOS.plist
 // Геолокация — только по запросу пользователя («Найти меня»), одна точка, без фона.
 // Текст видят на системном запросе; локализует его итерация 14.
-INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Light Plan finds out where you are to work out light and weather for your place. Your coordinates go to Open-Meteo for the forecast or, where it is unreachable, to our server in Yandex Cloud; Apple looks up the place name. Exact coordinates are not sent anywhere else.
+INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Light Plan finds out where you are to work out light and weather for your place. Your coordinates go to Open-Meteo for the forecast or, where it is unreachable, to our server in Yandex Cloud, rounded to about a kilometre; Apple looks up the place name. Route points go to routing servers, and the map and sky glow load by area.
 // Камера — слой AR (шаг 29.8в): дуга солнца поверх живого кадра. Спрашивается при первом входе в AR и только если
 // камера есть. Кадры нигде не сохраняются и никуда не уходят (превью без выхода кадров и без записи).
 INFOPLIST_KEY_NSCameraUsageDescription = Light Plan uses the camera to show where the sun will be: it draws the sun’s arc over the live view. Frames are not saved and are not sent anywhere.
@@ -31,7 +31,7 @@ INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = Light Plan shows your shoo
 // Контакты — клиенты в книге iPhone (шаг К7, docs/clients_reference.md § 5): iPhone показывает, кто звонит. Спрашивается при
 // первом открытии «Клиентов» и только в обычном «Light Plan» (тестовые «LP …» в книгу не пишут). Полный доступ: при
 // частичном не найти, кто уже записан. «Заметки» не трогаем — для них нужно особое разрешение Apple.
-INFOPLIST_KEY_NSContactsUsageDescription = Light Plan saves your clients to Contacts so your iPhone shows who is calling. It adds only your clients, never changes contacts you saved yourself (it only reads a birthday or messenger a client is missing), and sends nothing anywhere.
+INFOPLIST_KEY_NSContactsUsageDescription = Light Plan saves your clients to Contacts so your iPhone shows who is calling. It adds only your clients, never changes contacts you saved yourself (it only reads a birthday or messenger a client is missing), and does not send your contacts anywhere. Numbers in a shoot leave the app only when you tap: to find a studio booking or to write to a client.
 
 // Значок (Алексей 24.10: «пусть на значке будет бирка как на web версии… тут пусть будет альфа»). Чистый AppIcon — только
 // у основного «Light Plan» (Novopashin.LightPlan, ставится из main); любой другой идентификатор (слоты slotA…D, старые wt…)

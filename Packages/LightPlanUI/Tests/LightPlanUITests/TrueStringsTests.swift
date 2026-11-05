@@ -53,6 +53,48 @@ struct TrueStringsTests {
         "ja": "ほかのカレンダー", "zh-Hans": "其他日历",
     ]
 
+    /// Геопозиция: старое «больше никуда» и обязательное слово о серверах маршрутов.
+    static let locationKey = "NSLocationWhenInUseUsageDescription"
+    static let macPlist = "App-macOS/InfoPlist.xcstrings"
+    static let macLocationKey = "NSLocationUsageDescription"
+    static let nowhereElseClaims: [String: String] = [
+        "ru": "больше никуда не отправляются", "en": "not sent anywhere else", "es": "no se envían a ningún otro sitio",
+        "ja": "それ以外には送信されません", "zh-Hans": "不会发送到其他任何地方",
+    ]
+    static let locationMust: [String: String] = [
+        "ru": "серверы маршрутов", "en": "routing servers", "es": "servidores de rutas",
+        "ja": "ルート検索サーバー", "zh-Hans": "路线服务器",
+    ]
+    /// Контакты: старое общее «ничего никуда» и обязательное слово о брони.
+    static let contactsKey = "NSContactsUsageDescription"
+    static let sendsNothingClaims: [String: String] = [
+        "ru": "ничего никуда не отправляет", "en": "sends nothing anywhere", "es": "no envía nada a ningún sitio",
+        "ja": "どこにも何も送信しません", "zh-Hans": "也不会向任何地方发送内容",
+    ]
+    static let contactsMust: [String: String] = [
+        "ru": "брони", "en": "booking", "es": "reserva", "ja": "予約", "zh-Hans": "预订",
+    ]
+
+    @Test func locationTextNamesRoutesAndDropsNowhereElse() throws {
+        for (file, key) in [(Self.plist, Self.locationKey), (Self.macPlist, Self.macLocationKey)] {
+            let v = try Self.values(file, key)
+            #expect(Set(v.keys) == Set(Self.locationMust.keys), "\(file)")
+            for (lang, value) in v {
+                #expect(!value.contains(Self.nowhereElseClaims[lang] ?? "—"), "\(file) \(lang): старое «больше никуда»")
+                #expect(value.contains(Self.locationMust[lang] ?? "—"), "\(file) \(lang): не сказано о маршрутах")
+            }
+        }
+    }
+
+    @Test func contactsTextDropsSendsNothing() throws {
+        let v = try Self.values(Self.plist, Self.contactsKey)
+        #expect(Set(v.keys) == Set(Self.contactsMust.keys))
+        for (lang, value) in v {
+            #expect(!value.contains(Self.sendsNothingClaims[lang] ?? "—"), "\(lang): старое «ничего никуда»")
+            #expect(value.contains(Self.contactsMust[lang] ?? "—"), "\(lang): не сказано о брони")
+        }
+    }
+
     @Test func privacyLineNoLongerDeniesServers() throws {
         let v = try Self.values(Self.catalog, "set.privacy")
         #expect(Set(v.keys).isSuperset(of: Self.noServerClaims.keys))
@@ -71,18 +113,24 @@ struct TrueStringsTests {
         }
     }
 
-    /// Базовое значение сборки (`Config/iOS.xcconfig`) не должно остаться старым при новых переводах.
-    @Test func calendarBaseValueIsTheEnglishTranslation() throws {
-        let url = TextFixtures.root.appendingPathComponent("Config/iOS.xcconfig")
+    /// Базовое значение сборки (`Config/*.xcconfig`) не должно остаться старым при новых переводах.
+    @Test(arguments: [
+        ("Config/iOS.xcconfig", plist, calendarKey), ("Config/iOS.xcconfig", plist, locationKey),
+        ("Config/iOS.xcconfig", plist, contactsKey), ("Config/macOS.xcconfig", macPlist, macLocationKey),
+    ])
+    func baseValueIsTheEnglishTranslation(config: String, file: String, key: String) throws {
+        let url = TextFixtures.root.appendingPathComponent(config)
+        let prefix = "INFOPLIST_KEY_\(key) = "
         let line = try #require(try String(contentsOf: url, encoding: .utf8).components(separatedBy: .newlines)
-            .first { $0.hasPrefix("INFOPLIST_KEY_\(Self.calendarKey) = ") })
-        let en = try #require(try Self.values(Self.plist, Self.calendarKey)["en"])
-        #expect(line.dropFirst("INFOPLIST_KEY_\(Self.calendarKey) = ".count) == en)
+            .first { $0.hasPrefix(prefix) })
+        let en = try #require(try Self.values(file, key)["en"])
+        #expect(line.dropFirst(prefix.count) == en)
     }
 
     /// Каждый язык — настоящий перевод, а не русская копия.
     @Test func everyLanguageIsItsOwnTranslation() throws {
-        for (file, key) in [(Self.catalog, "set.privacy"), (Self.plist, Self.calendarKey)] {
+        for (file, key) in [(Self.catalog, "set.privacy"), (Self.plist, Self.calendarKey), (Self.plist, Self.locationKey),
+                            (Self.plist, Self.contactsKey), (Self.macPlist, Self.macLocationKey)] {
             let v = try Self.values(file, key)
             #expect(Set(v.values).count == v.count, "\(key): одинаковые значения в разных языках")
             for (lang, value) in v where lang != "ru" {
@@ -91,12 +139,31 @@ struct TrueStringsTests {
         }
     }
 
-    /// То, что доходит до экрана: каталог, собранный Xcode, отдаёт новый текст (под `swift test` каталога нет).
+    /// Что записано в источнике слова (`Tools/lang_fixes.json`): этого ждут и каталог, и экран.
+    static func privacySource() throws -> [String: String] {
+        let url = TextFixtures.root.appendingPathComponent("Tools/lang_fixes.json")
+        let obj = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: [String: [String: String]]])
+        return obj.compactMapValues { $0["set.privacy"]?["app"] }
+    }
+
+    @Test func catalogHoldsTheSourceWording() throws {
+        let want = try Self.privacySource()
+        #expect(Set(want.keys) == Set(Self.noServerClaims.keys))
+        let have = try Self.values(Self.catalog, "set.privacy")
+        for (lang, text) in want {
+            #expect(!text.isEmpty, "\(lang): пусто в источнике")
+            #expect(have[lang] == text, "\(lang): каталог разошёлся с источником")
+        }
+    }
+
+    /// То, что доходит до экрана: собранный каталог отдаёт ровно этот текст, не пустой и не посторонний
+    /// (замечание ревью f199ab8; под `swift test` каталога нет).
     @Test(.enabled(if: catalogCompiled, "каталог не скомпилирован"))
-    func compiledLineIsTheNewOne() {
+    func compiledLineIsTheSourceWording() throws {
+        let want = try Self.privacySource()
         for lang in ["ru", "en", "en-GB", "en-US", "es", "ja", "zh"] {
-            let text = Lexicon(lang).t("set.privacy")
-            for claim in Self.noServerClaims[String(lang.prefix(2))] ?? [] { #expect(!text.contains(claim), "\(lang): \(claim)") }
+            let expected = try #require(want[String(lang.prefix(2))])
+            #expect(Lexicon(lang).t("set.privacy") == expected, "\(lang)")
         }
     }
 }

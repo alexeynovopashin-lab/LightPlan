@@ -8,31 +8,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan finds out where you are to work out light and weather for your place. Your coordinates go to Open-Meteo for the forecast or, where it is unreachable, to our server in Yandex Cloud; Apple looks up the place name. Exact coordinates are not sent anywhere else."
+            "value": "Light Plan finds out where you are to work out light and weather for your place. Your coordinates go to Open-Meteo for the forecast or, where it is unreachable, to our server in Yandex Cloud, rounded to about a kilometre; Apple looks up the place name. Route points go to routing servers, and the map and sky glow load by area."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan узнаёт, где вы, чтобы посчитать свет и погоду для вашего места. Ваши координаты уходят в Open-Meteo за прогнозом, а там, где он недоступен, — на наш сервер в Yandex Cloud; название места определяет Apple. Точные координаты больше никуда не отправляются."
+            "value": "Light Plan узнаёт, где вы, чтобы посчитать свет и погоду для вашего места. Ваши координаты уходят в Open-Meteo за прогнозом, а там, где он недоступен, — на наш сервер в Yandex Cloud, округлённые примерно до километра; название места определяет Apple. Точки маршрута получают серверы маршрутов, а карта и засветка неба загружаются по району."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan averigua dónde estás para calcular la luz y el clima de tu lugar. Tus coordenadas van a Open-Meteo para el pronóstico o, donde no está disponible, a nuestro servidor en Yandex Cloud; Apple obtiene el nombre del lugar. Las coordenadas exactas no se envían a ningún otro sitio."
+            "value": "Light Plan averigua dónde estás para calcular la luz y el clima de tu lugar. Tus coordenadas van a Open-Meteo para el pronóstico o, donde no está disponible, a nuestro servidor en Yandex Cloud, redondeadas a un kilómetro aproximadamente; Apple obtiene el nombre del lugar. Los puntos de la ruta van a servidores de rutas, y el mapa y la contaminación lumínica se cargan por zona."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Planは、現在地の光と天気を計算するために位置情報を使います。座標は予報のためにOpen-Meteoへ、利用できない場合はYandex Cloud上の当社サーバーへ送られます。地名の取得にはAppleのサービスを使います。正確な座標はそれ以外には送信されません。"
+            "value": "Light Planは、現在地の光と天気を計算するために位置情報を使います。座標は予報のためにOpen-Meteoへ、利用できない場合は約1kmに丸めてYandex Cloud上の当社サーバーへ送られます。地名の取得にはAppleのサービスを使います。ルートの地点はルート検索サーバーへ送られ、地図と光害のデータは地域単位で読み込まれます。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan 获取您的位置，用于计算当地的光线和天气。坐标会发送到 Open-Meteo 获取预报；在其无法访问的地方，则经由我们位于 Yandex Cloud 的服务器；地名由 Apple 解析。精确坐标不会发送到其他任何地方。"
+            "value": "Light Plan 获取您的位置，用于计算当地的光线和天气。坐标会发送到 Open-Meteo 获取预报；在其无法访问的地方，则取整到约一公里后发送到我们位于 Yandex Cloud 的服务器；地名由 Apple 解析。路线上的点会发送到路线服务器，地图和光污染数据按区域加载。"
           }
         }
       }
@@ -116,31 +116,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan saves your clients to Contacts so your iPhone shows who is calling. It adds only your clients, never changes contacts you saved yourself (it only reads a birthday or messenger a client is missing), and sends nothing anywhere."
+            "value": "Light Plan saves your clients to Contacts so your iPhone shows who is calling. It adds only your clients, never changes contacts you saved yourself (it only reads a birthday or messenger a client is missing), and does not send your contacts anywhere. Numbers in a shoot leave the app only when you tap: to find a studio booking or to write to a client."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan сохраняет ваших клиентов в Контакты, чтобы iPhone показывал, кто звонит. Приложение добавляет только ваших клиентов, не меняет контакты, которые вы сохранили сами (лишь читает день рождения или мессенджер, которых нет у клиента), и ничего никуда не отправляет."
+            "value": "Light Plan сохраняет ваших клиентов в Контакты, чтобы iPhone показывал, кто звонит. Приложение добавляет только ваших клиентов, не меняет контакты, которые вы сохранили сами (лишь читает день рождения или мессенджер, которых нет у клиента), и никуда не отправляет вашу книгу контактов. Номера из съёмки приложение передаёт только по вашему нажатию: при поиске брони в студии или когда вы пишете клиенту."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan guarda a tus clientes en Contactos para que el iPhone muestre quién llama. Solo añade tus clientes, nunca cambia los contactos que guardaste tú (solo lee un cumpleaños o mensajero que le falte al cliente) y no envía nada a ningún sitio."
+            "value": "Light Plan guarda a tus clientes en Contactos para que el iPhone muestre quién llama. Solo añade tus clientes, nunca cambia los contactos que guardaste tú (solo lee un cumpleaños o mensajero que le falte al cliente) y no envía tus contactos a ningún sitio. Los números de una sesión solo salen de la app cuando tocas: para buscar la reserva en el estudio o para escribir al cliente."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Planはクライアントを連絡先に保存し、iPhoneに着信相手が表示されるようにします。追加するのはあなたのクライアントだけで、あなたが自分で保存した連絡先は変更しません（クライアントにない誕生日やメッセンジャーを読み取るだけです）。どこにも何も送信しません。"
+            "value": "Light Planはクライアントを連絡先に保存し、iPhoneに着信相手が表示されるようにします。追加するのはあなたのクライアントだけで、あなたが自分で保存した連絡先は変更しません（クライアントにない誕生日やメッセンジャーを読み取るだけです）。連絡先をどこかへ送信することはありません。撮影の電話番号を送るのは、スタジオの予約を探すときやクライアントに連絡するときに、あなたがタップした場合だけです。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan 会把你的客户保存到通讯录，让 iPhone 显示来电者。它只添加你的客户，绝不改动你自己保存的联系人（只读取客户缺少的生日或通讯软件），也不会向任何地方发送内容。"
+            "value": "Light Plan 会把你的客户保存到通讯录，让 iPhone 显示来电者。它只添加你的客户，绝不改动你自己保存的联系人（只读取客户缺少的生日或通讯软件），也不会把通讯录发送到任何地方。拍摄中的号码只有在你点按时才会离开应用：查找摄影棚预订或联系客户时。"
           }
         }
       }
