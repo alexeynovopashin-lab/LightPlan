@@ -56601,31 +56601,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Съёмки, места и настройки хранятся на устройстве. На наш сервер не уходит ничего — его нет."
+            "value" : "Съёмки, клиенты и заметки хранятся на устройстве. В интернет уходят координаты и названия мест — для погоды, засветки неба, карты и маршрутов — и ссылки, которые вы вставили, чтобы загрузить картинки. Только по вашему нажатию — телефоны, день и часы съёмки, чтобы найти бронь в студии. Часть этого идёт через наши серверы."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shoots, spots and settings are kept on your device. Nothing goes to our server — there is none."
+            "value" : "Shoots, clients and notes are kept on your device. Place coordinates and names go online for weather, sky glow, the map and routes, and links you paste go online to load pictures. Only when you tap: phone numbers and the day and hours of the shoot, to find the booking at the studio. Some of this passes through our servers."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las sesiones, los lugares y los ajustes se guardan en tu dispositivo. A nuestro servidor no va nada — no existe."
+            "value" : "Las sesiones, los clientes y las notas se guardan en tu dispositivo. A internet van las coordenadas y los nombres de los lugares, para el tiempo, la contaminación lumínica, el mapa y las rutas, y los enlaces que pegas, para cargar las imágenes. Solo cuando tocas: los teléfonos, el día y las horas de la sesión, para encontrar la reserva en el estudio. Parte de esto pasa por nuestros servidores."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "撮影・スポット・設定はお使いの端末に保存されます。当社のサーバーには何も送られません。そもそもサーバーがありません。"
+            "value" : "撮影・クライアント・メモは端末に保存されます。天気、光害、地図、ルートのために場所の座標と名前を、画像を読み込むために貼り付けたリンクをインターネットに送ります。タップしたときだけ、スタジオの予約を探すために電話番号と撮影の日時を送ります。その一部は当方のサーバーを経由します。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拍摄、地点和设置保存在你的设备上。没有任何数据发送到我们的服务器——因为不存在。"
+            "value" : "拍摄、客户和备注保存在你的设备上。为了天气、光污染、地图和路线，地点的坐标和名称会发送到互联网；为了加载图片，你粘贴的链接也会发送。只有在你点按时，才会发送电话号码以及拍摄的日期和时段，用于查找摄影棚的预订。其中一部分经过我们的服务器。"
           }
         }
       }

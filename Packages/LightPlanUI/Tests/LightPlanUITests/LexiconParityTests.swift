@@ -39,7 +39,10 @@ struct LexiconParityTests {
             let lex = Lexicon(code)
             let want = try #require(f.langs[code])
             for (i, key) in f.keys.enumerated() {
-                tally.check(code, lex.t(key), fixes[code]?[key] ?? want.t[i], key)
+                // Поправка `en` держит и en-GB, en-US, пока веб не отличает их от `en`: своих записей у них нет.
+                let base = String(code.prefix(2))
+                let inherited = want.t[i] == f.langs[base]?.t[i] ? fixes[base]?[key] : nil
+                tally.check(code, lex.t(key), fixes[code]?[key] ?? inherited ?? want.t[i], key)
             }
         }
         #expect(tally.total == 0, Comment(rawValue: tally.report))

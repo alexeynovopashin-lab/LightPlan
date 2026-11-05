@@ -26,8 +26,8 @@ INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Light Plan finds out where y
 INFOPLIST_KEY_NSCameraUsageDescription = Light Plan uses the camera to show where the sun will be: it draws the sun’s arc over the live view. Frames are not saved and are not sent anywhere.
 // Календарь — зеркало съёмок в свой календарь «Light Plan» (шаг 30.1–3, docs/14). Спрашивается, когда человек включает
 // «Съёмки в Календаре». Полный доступ, не «только запись»: под записью нельзя завести календарь и нельзя найти своё
-// событие, чтобы сдвинуть или убрать (замер iOS 26.5, Tools/calendar_probe). Читаем и правим только свой календарь.
-INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = Light Plan shows your shoots in its own calendar called “Light Plan” and keeps it up to date when you change something. For that it needs access to Calendar: it reads and changes only its own calendar, never touches other events, and sends nothing anywhere.
+// событие, чтобы сдвинуть или убрать (замер iOS 26.5, Tools/calendar_probe). Правим только свой календарь; другие читаем, только если человек их включил (30.5).
+INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = Light Plan shows your shoots in its own calendar called “Light Plan” and keeps it up to date when you change something; new events and changes of time or place made in that calendar go back to your shoots. If you turn on other calendars, it reads their events to show them next to your shoots, but does not change them or send them anywhere.
 // Контакты — клиенты в книге iPhone (шаг К7, docs/clients_reference.md § 5): iPhone показывает, кто звонит. Спрашивается при
 // первом открытии «Клиентов» и только в обычном «Light Plan» (тестовые «LP …» в книгу не пишут). Полный доступ: при
 // частичном не найти, кто уже записан. «Заметки» не трогаем — для них нужно особое разрешение Apple.

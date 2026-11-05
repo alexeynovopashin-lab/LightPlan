@@ -74,37 +74,37 @@
       }
     },
     "NSCalendarsFullAccessUsageDescription": {
-      "comment": "Текст системного запроса календаря (30.1): зеркало съёмок в свой календарь «Light Plan». Просим полный доступ, а не «только запись»: под записью нельзя ни завести календарь, ни найти и обновить своё событие (замер iOS 26.5, Tools/calendar_probe). Базовое значение — английский в Config/iOS.xcconfig, переводы — здесь; формулировку согласует Алексей.",
+      "comment": "Текст системного запроса календаря (30.1): зеркало съёмок в свой календарь «Light Plan», а по выбору человека чтение других календарей (30.5). Просим полный доступ, а не «только запись»: под записью нельзя ни завести календарь, ни найти и обновить своё событие (замер iOS 26.5, Tools/calendar_probe). Базовое значение — английский в Config/iOS.xcconfig, переводы — здесь; формулировку согласует Алексей.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan shows your shoots in its own calendar called “Light Plan” and keeps it up to date when you change something. For that it needs access to Calendar: it reads and changes only its own calendar, never touches other events, and sends nothing anywhere."
+            "value": "Light Plan shows your shoots in its own calendar called “Light Plan” and keeps it up to date when you change something; new events and changes of time or place made in that calendar go back to your shoots. If you turn on other calendars, it reads their events to show them next to your shoots, but does not change them or send them anywhere."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan показывает ваши съёмки в отдельном календаре «Light Plan» и обновляет его, когда вы что-то меняете. Для этого нужен доступ к Календарю: приложение читает и меняет только свой календарь, чужие события не трогает и никуда не отправляет."
+            "value": "Light Plan показывает ваши съёмки в отдельном календаре «Light Plan» и обновляет его, когда вы что-то меняете, а новые события и сдвиг времени или места из этого календаря переносит в съёмки. Если вы включите другие календари, приложение будет читать их события и показывать рядом со съёмками, но не меняет их и никуда не отправляет."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan muestra tus sesiones en un calendario aparte llamado «Light Plan» y lo mantiene al día cuando cambias algo. Para ello necesita acceso al Calendario: lee y modifica solo ese calendario, nunca toca otros eventos y no envía nada a ningún sitio."
+            "value": "Light Plan muestra tus sesiones en un calendario aparte llamado «Light Plan» y lo mantiene al día cuando cambias algo; los eventos nuevos y los cambios de hora o de lugar hechos en ese calendario pasan a tus sesiones. Si activas otros calendarios, lee sus eventos para mostrarlos junto a tus sesiones, pero no los modifica ni los envía a ningún sitio."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Planは、撮影を「Light Plan」という専用カレンダーに表示し、変更があるたびに更新します。そのためカレンダーへのアクセスが必要です。読み書きするのは専用カレンダーだけで、ほかの予定には触れず、どこにも送信しません。"
+            "value": "Light Planは、撮影を「Light Plan」という専用カレンダーに表示し、変更があるたびに更新します。このカレンダーで追加した予定や変更した時間・場所は撮影に反映されます。ほかのカレンダーをオンにすると、その予定を読み取って撮影と並べて表示しますが、変更も送信もしません。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Light Plan 会在名为“Light Plan”的专用日历中显示你的拍摄，并在你有改动时保持更新。为此需要访问日历：它只读取和修改自己的日历，不会触碰其他事件，也不会把任何内容发送到别处。"
+            "value": "Light Plan 会在名为“Light Plan”的专用日历中显示你的拍摄，并在你有改动时保持更新；在这个日历中新建的事件和更改的时间或地点会同步到拍摄。如果你开启其他日历，它会读取其中的事件并显示在拍摄旁边，但不会更改，也不会发送到任何地方。"
           }
         }
       }
