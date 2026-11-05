@@ -72,6 +72,8 @@ extension AppModel {
 
     /// Тап по строке: организация — её карточка в списке, запись — карточка записи.
     func openContact(_ r: PhoneBook.Row) {
+        // Съёмка без номера: сперва лист, список стоит на месте — крестик вернёт сюда же.
+        if case .shoot = r.card, !passPhoneGate(then: { [weak self] in self?.openContact(r) }) { return }
         closeContacts()
         switch r.card {
         case .org(let id):

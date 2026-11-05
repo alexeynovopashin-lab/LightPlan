@@ -203,7 +203,7 @@ private struct Shell: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !app.chapterOpen && !app.plannerPageOpen && app.card == nil && !app.mb.isOpen && !app.org.isOpen && !app.docsNav.isOpen && app.sunAR == nil {
                 GeometryReader { geo in
-                    TabBarView(tab: $app.tab, lexicon: app.lexicon)
+                    TabBarView(tab: Binding(get: { app.tab }, set: { app.openTab($0) }), lexicon: app.lexicon)
                         .shotNode("tabbar")
                         .frame(height: TabBarView.height)
                         .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
@@ -232,6 +232,12 @@ private struct Shell: View {
         .preferredColorScheme(app.settings.theme == .dark ? .dark : app.settings.theme == .light ? .light : nil)
         .sheet(isPresented: $app.showStartSheet, onDismiss: { app.finishStart() }) {
             StartSheet(app: app)
+        }
+        // Лист «Ваш номер» (30ж.1): путь к планировщику продолжается, когда лист ушёл с экрана, иначе форме негде открыться.
+        // Ссылка могла прийти под листом первого запуска: тогда этот лист ждёт, пока тот закроют.
+        .sheet(isPresented: Binding(get: { app.phoneAskOpen && !app.showStartSheet }, set: { app.phoneAskOpen = $0 }),
+               onDismiss: { app.phoneSheetGone() }) {
+            PhoneSheet(app: app)
         }
         // Форма записи (23): на всю высоту, как `#formOverlay` веба.
         .modifier(FormCover(app: app))

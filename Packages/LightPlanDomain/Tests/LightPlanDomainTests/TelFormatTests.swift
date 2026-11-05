@@ -54,6 +54,24 @@ import LightPlanDomain
         #expect(city.real && city.list.isEmpty)
     }
 
+    /// Что считается номером для планировщика (30ж.1): только тот, из которого получается ID приложения.
+    @Test func opensPlannerOnlyWithAnIdNumber() {
+        let ru = TelCountry.of("RU")!, kz = TelCountry.of("KZ")!, gb = TelCountry.of("GB")!
+        for good in ["+7 900 000-00-00", "8 900 000-00-00", "900 000-00-00", "79000000000"] {
+            #expect(TelFormat.opensPlanner(good, country: ru), "\(good)")
+        }
+        #expect(TelFormat.opensPlanner("+44 7911 000000", country: gb))
+        #expect(TelFormat.opensPlanner("+7 700 000-00-00", country: kz))
+        #expect(!TelFormat.opensPlanner("", country: ru))
+        #expect(!TelFormat.opensPlanner("+7 90", country: ru), "обрывок")
+        #expect(!TelFormat.opensPlanner("+7 900 000-00", country: ru), "не хватает цифр")
+        #expect(!TelFormat.opensPlanner("+7 495 000-00-00", country: ru), "городской")
+        #expect(!TelFormat.opensPlanner("+12", country: ru), "чужой код и две цифры: ID вышел бы, а это не номер")
+        #expect(TelFormat.isComplete("+7 495 000-00-00", country: ru))
+        #expect(!TelFormat.isComplete("+7 495 000", country: ru))
+        #expect(!TelFormat.isComplete("", country: ru))
+    }
+
     @Test func countriesCount() { #expect(TelCountry.all.count == 27) }
 
     @Test func iosAutofillDigitByDigit() {

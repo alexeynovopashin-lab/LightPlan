@@ -12,50 +12,20 @@ struct ProfilePhoneSection: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
     @FocusState private var focused: Bool
-    @State private var countrySheet = false
     @State private var copied = false
 
     var body: some View {
         let pal = Palette(scheme)
         let t = app.lexicon
-        let country = app.telCountry
         SecLabel(text: t.t("set.myPhone"))
-        HStack(spacing: 10) {
-            Button { countrySheet = true } label: {
-                HStack(spacing: 4) {
-                    Text("+" + country.cc).font(.system(size: 16).monospacedDigit())
-                    Icon("chevron", size: 14, line: 2.2).rotationEffect(.degrees(90))
-                }
-                .foregroundStyle(pal.ink)
-                .padding(.vertical, 8).padding(.horizontal, 12)
-                .background(pal.field, in: Capsule())
-            }
-            .buttonStyle(.plain)
-            TextField("", text: national, prompt: Text(TelFormat.nationalFormatted(country.example, country: country)).foregroundStyle(pal.ink8))
-                .font(.system(size: 16).monospacedDigit()).foregroundStyle(pal.ink)
-                .focused($focused)
-                .phoneKeyboard()
-        }
+        MyPhoneField(app: app, focused: $focused)
         .padding(.horizontal, 24).padding(.vertical, 8)
         .onChange(of: focused) { _, on in if !on { app.commitMyPhone() } }
         .onChange(of: phase) { _, _ in app.commitMyPhone() }
         .onDisappear { app.commitMyPhone() }
-        .sheet(isPresented: $countrySheet) { CountrySheet(app: app) }
 
-        // Страна по номеру: где кодов несколько, молчать нельзя — спрашиваем.
-        let fit = TelFormat.countriesFitting(app.myPhone).filter { $0 != country }
-        if !app.myPhone.isEmpty, app.myAppId.isEmpty, !fit.isEmpty {
-            Text(t.t("tel.ccAsk")).font(.system(size: 13)).foregroundStyle(pal.ink4).padding(.horizontal, 24).padding(.top, 4)
-            HStack(spacing: 8) {
-                ForEach(fit, id: \.iso) { c in
-                    Button(regionName(c.iso) + " +" + c.cc) { pick(c) }
-                        .font(.system(size: 13)).foregroundStyle(pal.ink3)
-                        .padding(.vertical, 10).padding(.horizontal, 15)
-                        .background(pal.press, in: Capsule())
-                }
-            }
-            .padding(.horizontal, 24).padding(.top, 8)
-        }
+        MyPhoneCountryAsk(app: app, hint: false)
+            .padding(.horizontal, 24)
 
         SecLabel(text: t.t("set.appId"))
         Button(action: copy) {
@@ -92,6 +62,36 @@ struct ProfilePhoneSection: View {
         guard let d = ISO8601DateFormatter().date(from: iso) else { return "" }
         return DateText(language: app.language).dMonShortYear(d)
     }
+}
+
+/// Поле номера: блок кода страны слева, национальная часть справа. Одно на «Профиль» и лист «Ваш номер» (30ж.1).
+struct MyPhoneField: View {
+    @Bindable var app: AppModel
+    var focused: FocusState<Bool>.Binding
+    @Environment(\.colorScheme) private var scheme
+    @State private var countrySheet = false
+
+    var body: some View {
+        let pal = Palette(scheme)
+        let country = app.telCountry
+        HStack(spacing: 10) {
+            Button { countrySheet = true } label: {
+                HStack(spacing: 4) {
+                    Text("+" + country.cc).font(.system(size: 16).monospacedDigit())
+                    Icon("chevron", size: 14, line: 2.2).rotationEffect(.degrees(90))
+                }
+                .foregroundStyle(pal.ink)
+                .padding(.vertical, 8).padding(.horizontal, 12)
+                .background(pal.field, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            TextField("", text: national, prompt: Text(TelFormat.nationalFormatted(country.example, country: country)).foregroundStyle(pal.ink8))
+                .font(.system(size: 16).monospacedDigit()).foregroundStyle(pal.ink)
+                .focused(focused)
+                .phoneKeyboard()
+        }
+        .sheet(isPresented: $countrySheet) { CountrySheet(app: app) }
+    }
 
     /// Поле: национальная часть; вставка с кодом другой страны переставляет и блок кода.
     private var national: Binding<String> {
@@ -102,12 +102,46 @@ struct ProfilePhoneSection: View {
             app.followCountryOfPhone()
         })
     }
+}
+
+/// Страна по номеру: где кодов несколько, молчать нельзя — спрашиваем. `hint` — лист «Ваш номер»: номер набран
+/// целиком, но он не мобильный: без слова «Готово» было бы серым без объяснения.
+struct MyPhoneCountryAsk: View {
+    @Bindable var app: AppModel
+    let hint: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let pal = Palette(scheme)
+        let t = app.lexicon
+        let country = app.telCountry
+        let fit = TelFormat.countriesFitting(app.myPhone).filter { $0 != country }
+        if !app.myPhone.isEmpty, app.myAppId.isEmpty, !fit.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(t.t("tel.ccAsk")).font(.system(size: 13)).foregroundStyle(pal.ink4)
+                HStack(spacing: 8) {
+                    ForEach(fit, id: \.iso) { c in
+                        Button(regionName(c.iso) + " +" + c.cc) { pick(c) }
+                            .font(.system(size: 13)).foregroundStyle(pal.ink3)
+                            .padding(.vertical, 10).padding(.horizontal, 15)
+                            .background(pal.press, in: Capsule())
+                            .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.top, 4)
+        } else if hint, !app.hasPlannerPhone, TelFormat.isComplete(app.myPhone, country: country) {
+            Text(t.t("set.appIdNotMobile")).font(.system(size: 13)).foregroundStyle(pal.ink4)
+                .shotNode("phone.notMobile", text: t.t("set.appIdNotMobile"))
+        }
+    }
 
     private func pick(_ c: TelCountry) {
         app.setTelCountry(c)
         let d = TelFormat.digits(app.myPhone)
         app.setMyPhone(TelFormat.format("+" + d, country: c))
-        app.commitMyPhone()
+        // Лист фиксирует номер сам, на «Готово»: крестик не должен оставить смену в цепочке прежних ID.
+        if !hint { app.commitMyPhone() }
     }
 
     private func regionName(_ iso: String) -> String {

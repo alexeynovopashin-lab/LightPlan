@@ -69,6 +69,7 @@ extension AppModel {
     /// как раньше (веб L30532–30543); на другой — форма не открывается, а задаётся вопрос
     /// `draftAsk` (28о, П5): раньше день из календаря молча подменялся днём черновика.
     public func openForm(day: CivilDate? = nil, start: Int? = nil, fromLight: Bool = true, mode: FormMode = .shoot) {
+        guard passPhoneGate(then: { [weak self] in self?.openForm(day: day, start: start, fromLight: fromLight, mode: mode) }) else { return }
         let d = day ?? planner.selected
         formOverDraft = false
         formPicked = []
@@ -153,6 +154,7 @@ extension AppModel {
     /// Правка существующей записи: черновика у правки нет.
     public func openForm(editing id: String) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
+        guard passPhoneGate(then: { [weak self] in self?.openForm(editing: id) }) else { return }
         formIsDraft = false
         formOverDraft = false
         formPicked = []

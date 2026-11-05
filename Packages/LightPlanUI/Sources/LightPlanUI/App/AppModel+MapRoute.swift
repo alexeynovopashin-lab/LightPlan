@@ -115,11 +115,15 @@ extension AppModel {
     /// «Сделать съёмкой» (`makeRouteShoot`): форма на день `day`, время — как у любой
     /// новой записи (шаг 30д: золотой час только по пожеланию «Закат»); точки дня — места черновика по
     /// порядку без часов, ссылками на места, способ — из `mapWalk`. Первая
-    /// точка — место съёмки. Черновик остаётся. `false` — не из чего.
+    /// точка — место съёмки. Черновик остаётся. `false` — не из чего, или сначала спросили номер:
+    /// тогда `made` сработает после «Готово», крестик оставляет маршрут как был.
     @discardableResult
-    public func makeRouteShoot(day: CivilDate) -> Bool {
+    public func makeRouteShoot(day: CivilDate, made: (() -> Void)? = nil) -> Bool {
         let pts = routeSpots
         guard !pts.isEmpty, let g = routeGenre else { return false }
+        guard passPhoneGate(then: { [weak self] in
+            if self?.makeRouteShoot(day: day) == true { made?() }
+        }) else { return false }
         lastFormGenre = g
         openForm(day: day)
         guard var f = form else { return false }

@@ -25,6 +25,17 @@ public final class AppModel {
     public internal(set) var citySource: DefaultCity.Source
     /// Лист «Откуда вы работаете» — первый запуск, пока знакомство не пройдено.
     public var showStartSheet: Bool
+    /// Планировщик требует номер (30ж.1): включает только `live()`. Тесты и снимки пар живут без листа,
+    /// проверки листа включают сами.
+    public var plannerNeedsPhone = false
+    /// Лист «Ваш номер» открыт.
+    public var phoneAskOpen = false
+    /// Куда человек шёл: выполняется, когда лист закрыт «Готово». Крестик путь забывает.
+    var phoneAskNext: (() -> Void)?
+    /// Что стояло в поле, когда лист открылся: крестик возвращает это.
+    var phoneAskWas: String?
+    /// Лист закрыт «Готово»: остальное делает `phoneSheetGone`, когда лист ушёл с экрана.
+    var phoneAskConfirmed = false
     /// Открытая вкладка. Живое приложение встаёт на «Свет»; снимок пары
     /// (итерация 19б) — на экран своего сценария.
     public var tab: AppTab = .light
@@ -731,6 +742,7 @@ public final class AppModel {
         model.attachCalendar()      // съёмки в Календаре iPhone, если человек включил (30.1)
         model.debugCalendarProbe()  // замер на настоящем календаре симулятора (`-LPCalendarProbe`, Debug)
         model.attachContacts()      // клиенты в Контактах iPhone — пишет только обычный «Light Plan» (К7)
+        model.plannerNeedsPhone = true   // без номера планировщик не открывается (30ж.1)
         model.widgetShare = WidgetShare.live()
         model.attachActivity()      // экран активности: плашка на экране блокировки, пока идёт съёмка (30б.3)
         model.publishWidget()       // место «Света» — виджету на главном экране (30б.1)

@@ -64,6 +64,14 @@ extension AppModel {
         persist()
     }
 
+    /// Крестик листа «Ваш номер»: поле снова то, что было до листа, смены номера не было.
+    func restoreMyPhone(_ was: String) {
+        telSnap = nil
+        guard was != myPhone else { return }
+        setMe("phone", was.isEmpty ? nil : .string(was))
+        persist()
+    }
+
     /// Страна идёт за номером молча, когда ответ один по коду (веб `telCcFollow`).
     public func followCountryOfPhone() {
         let fit = TelFormat.countriesFitting(myPhone)

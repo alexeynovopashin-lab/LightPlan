@@ -145,6 +145,8 @@ extension AppModel {
                 guard let known, open.id == known else { return .held }
                 return .applied(clash: layQuest(a))
             }
+            // Без номера ответ ждёт в черновике (записан выше), после «Готово» ляжет как обычно.
+            guard passPhoneGate(then: { [weak self] in _ = self?.receiveQuest(text, into: recordId) }) else { return .held }
             if let known { openForm(editing: known) } else { openQuestMeeting() }
             return .applied(clash: layQuest(a))
         }

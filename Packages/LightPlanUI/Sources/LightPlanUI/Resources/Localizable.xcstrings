@@ -42945,6 +42945,76 @@
         }
       }
     },
+    "phone.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш номер"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your number"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu número"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あなたの電話番号"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的号码"
+          }
+        }
+      }
+    },
+    "phone.why" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По нему студии и организаторы свяжут ваши съёмки со своими."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Studios and organisers use it to link your shoots with theirs."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con él, los estudios y los organizadores vinculan tus sesiones con las suyas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スタジオや主催者はこの番号で、あなたの撮影を自分たちの予定に結びつけます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "影棚和组织者通过它把你的拍摄与他们的安排关联起来。"
+          }
+        }
+      }
+    },
     "pick.dayToday" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -59611,31 +59681,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Город, где вы живёте или сейчас находитесь, и номер телефона. Новые съёмки заводятся в этом городе, а поездку в другой приложение узнаёт само. Оба ответа меняются в настройках."
+            "value" : "Город, где вы живёте или сейчас находитесь. Новые съёмки заводятся в этом городе, а поездку в другой приложение узнаёт само. Ответ меняется в настройках."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The city you live in or are staying in now, and your phone number. New shoots start in that city, and a trip to another one the app works out by itself. Both answers can be changed in settings."
+            "value" : "The city you live in or are staying in now. New shoots start in that city, and a trip to another one the app works out by itself. You can change it in settings."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La ciudad donde vives o donde estás ahora, y tu número de teléfono. Las nuevas sesiones se crean en esa ciudad, y un viaje a otra la app lo deduce sola. Ambas respuestas se cambian en los ajustes."
+            "value" : "La ciudad donde vives o donde estás ahora. Las nuevas sesiones se crean en esa ciudad, y un viaje a otra la app lo deduce sola. Se cambia en los ajustes."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "住んでいる、または今滞在している都市と電話番号。新しい撮影はその都市から始まり、他の都市への移動はアプリが自動で判断します。どちらも設定で変更できます。"
+            "value" : "住んでいる、または今滞在している都市。新しい撮影はその都市から始まり、他の都市への移動はアプリが自動で判断します。設定で変更できます。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你居住或当前所在的城市，以及你的电话号码。新拍摄默认在该城市，前往其他城市应用会自己判断。两项都可在设置中修改。"
+            "value" : "你居住或当前所在的城市。新拍摄默认在该城市，前往其他城市应用会自己判断。可在设置中修改。"
           }
         }
       }

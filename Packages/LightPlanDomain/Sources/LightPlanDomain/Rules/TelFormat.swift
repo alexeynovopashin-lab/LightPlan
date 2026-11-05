@@ -188,6 +188,18 @@ extension TelFormat {
     /// Короче пяти цифр — не номер, а обрывок (`telReal`).
     public static func isReal(_ value: String, country: TelCountry) -> Bool { full(value, country: country).count >= 5 }
 
+    /// Набран целиком: национальная часть по длине страны, без кода — подсказка о городском номере не лезет под руку на третьей цифре.
+    public static func isComplete(_ value: String, country sp: TelCountry) -> Bool {
+        let f = full(value, country: sp)
+        return f.hasPrefix(sp.cc) && sp.nsnOk(String(f.dropFirst(sp.cc.count)))
+    }
+
+    /// Номер, с которым открывается планировщик (Алексей 05.11, шаг 30ж.1): из него получается ID приложения.
+    /// Обрывок и городской не годятся: по ним студия и организатор ничего не свяжут.
+    public static func opensPlanner(_ value: String, country: TelCountry) -> Bool {
+        isReal(value, country: country) && !appId(value, country: country).isEmpty
+    }
+
     /// Страны, при которых введённое выходит мобильным (`telCcFit`). Городской номер сюда не попадает.
     public static func countriesFitting(_ raw: String) -> [TelCountry] {
         var d = digits(raw)

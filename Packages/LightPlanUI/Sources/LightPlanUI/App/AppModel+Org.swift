@@ -246,6 +246,7 @@ extension AppModel {
     /// Тап по съёмке организации: карточка организации и список закрываются, открывается
     /// карточка съёмки (веб L23826).
     func openOrgShoot(_ sessionId: String) {
+        guard passPhoneGate(then: { [weak self] in self?.openOrgShoot(sessionId) }) else { return }
         closeOrgCard()
         closeOrgs()
         openCard(id: sessionId)

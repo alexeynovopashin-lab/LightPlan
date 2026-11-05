@@ -120,6 +120,7 @@ extension AppModel {
     @discardableResult
     func openDayLink(_ url: URL) -> Bool {
         guard let day = WidgetFeed.day(in: url) else { return false }
+        guard passPhoneGate(then: { [weak self] in self?.openDayLink(url) }) else { return true }
         closeCard()
         tab = .planner
         planner.enterDay(day)

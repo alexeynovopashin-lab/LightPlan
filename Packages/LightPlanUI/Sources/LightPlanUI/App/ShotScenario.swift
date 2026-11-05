@@ -230,6 +230,14 @@ extension AppModel {
         // палец ещё держит: ручки, тень, капсула минуты (пара с `shot.js --sheet grip`).
         if s.sheet == "grip", let id = s.way { app.startChapter = "grip:" + id }
         if s.sheet == "bin" { app.binOpen = true }
+        // Лист «Ваш номер» (30ж.1): как после тапа по «Съёмкам»; `LPShotWay` — что в поле (номера вымышленные).
+        if s.sheet == "phoneask" {
+            app.plannerNeedsPhone = true
+            app.openTab(.planner)
+            if s.way == "mobile" { app.setMyPhone("+7 900 000-00-00") }
+            if s.way == "landline" { app.setMyPhone("+7 495 000-00-00") }
+            if s.way == "part" { app.setMyPhone("+7 900 000") }
+        }
         if s.sheet == "blk" { app.openBlockSheet(day: app.planner.selected) }
         // Итерация 28: мудборды, организации, «Контакты», опросник, встреча. `LPShotWay` — жанр полки,
         // код подборки, код организации или записи; без него — первая из засева.

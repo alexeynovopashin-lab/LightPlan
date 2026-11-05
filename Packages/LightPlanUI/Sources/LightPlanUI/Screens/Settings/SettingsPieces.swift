@@ -112,17 +112,10 @@ struct FeedbackSection: View {
 
 /// Лист «Откуда вы работаете» — первый запуск (`startSheet` веба). «Готово»
 /// закрывает лист, а не подтверждает ответ: пустое поле не повод держать
-/// человека на пороге. Номер телефона веба сюда не перенесён — поля профиля
-/// с номером нет ни в одной итерации плана (DECISIONS).
+/// человека на пороге. Только город: «Свету» номер не нужен, его спросит лист «Ваш номер»
+/// на входе в планировщик (Алексей 05.11, шаг 30ж.1).
 struct StartSheet: View {
     @Bindable var app: AppModel
-
-    private var phone: Binding<String> {
-        Binding(get: { app.myPhone }, set: { v in
-            let old = app.myPhone.filter(\.isNumber).count
-            app.setMyPhone(TelFormat.typed(v, previousDigits: old, country: app.telCountry))
-        })
-    }
 
     var body: some View {
         let t = app.lexicon
@@ -137,16 +130,6 @@ struct StartSheet: View {
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 8)
                 }
-                // Телефон — по желанию (итерация 23): целиком, одним полем, без блока кода;
-                // смены номера здесь не бывает, вопроса о копии нет (веб `#startTel`).
-                Section {
-                    TextField(t.t("start.telPh"), text: phone)
-                        #if os(iOS)
-                        .keyboardType(.phonePad).textContentType(.telephoneNumber)
-                        #endif
-                } footer: {
-                    Text(t.t("start.note"))
-                }
             }
             .navigationTitle(t.t("start.title"))
             .toolbar {
@@ -155,5 +138,44 @@ struct StartSheet: View {
                 }
             }
         }
+    }
+}
+
+/// Лист «Ваш номер» (Алексей 05.11, шаг 30ж.1): вход в планировщик и любой другой путь к съёмке, пока
+/// номера нет. Поле то же, что в «Профиле»; «Готово» работает только с номером, крестик возвращает на
+/// прежний экран и ничего не записывает. Кода подтверждения нет.
+struct PhoneSheet: View {
+    @Bindable var app: AppModel
+    @Environment(\.colorScheme) private var scheme
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let t = app.lexicon, pal = Palette(scheme)
+        NavigationStack {
+            List {
+                Section {
+                    MyPhoneField(app: app, focused: $focused)
+                        .shotNode("phone.field")
+                    MyPhoneCountryAsk(app: app, hint: true)
+                } footer: {
+                    Text(t.t("phone.why"))
+                        .shotNode("phone.why", text: t.t("phone.why"))
+                }
+            }
+            .navigationTitle(t.t("phone.title"))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { app.cancelPhoneAsk() } label: { Icon("close", size: 16, line: 2).foregroundStyle(pal.ink) }
+                        .accessibilityLabel(t.t("card.close"))
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { app.confirmPhoneAsk() } label: {
+                        Text(t.t("pick.done")).shotNode(app.hasPlannerPhone ? "phone.done.on" : "phone.done.off")
+                    }
+                    .disabled(!app.hasPlannerPhone)
+                }
+            }
+        }
+        .onAppear { focused = true }
     }
 }

@@ -929,7 +929,7 @@ struct MapScreenView: View {
                             app.toggleWalk(from: pts[i].id, to: pts[i + 1].id)
                         },
                         onMake: {
-                            if app.makeRouteShoot(day: app.light.timebar.machine.selectedDate) { setRouteMode(false) }
+                            if app.makeRouteShoot(day: app.light.timebar.machine.selectedDate, made: { setRouteMode(false) }) { setRouteMode(false) }
                         },
                         onSave: { saveTapped() },
                         onUndo: { withAnimation(.easeOut(duration: 0.2)) { app.takeUndo() } },

@@ -14,6 +14,11 @@
       "web": "天文",
       "app": "专业",
       "why": "30г.3: three modes (Alexey 31.10, «вариант А»). The web has two and calls its second one Astro under this key; in the app this key is the middle button, Astro is set.modeAstro."
+    },
+    "start.sub": {
+      "web": "你居住或当前所在的城市，以及你的电话号码。新拍摄默认在该城市，前往其他城市应用会自己判断。两项都可在设置中修改。",
+      "app": "你居住或当前所在的城市。新拍摄默认在该城市，前往其他城市应用会自己判断。可在设置中修改。",
+      "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
     }
   },
   "ru": {
@@ -26,6 +31,11 @@
       "web": "Астро",
       "app": "Про",
       "why": "30г.3: three modes (Alexey 31.10, «вариант А»). The web has two and calls its second one Astro under this key; in the app this key is the middle button, Astro is set.modeAstro."
+    },
+    "start.sub": {
+      "web": "Город, где вы живёте или сейчас находитесь, и номер телефона. Новые съёмки заводятся в этом городе, а поездку в другой приложение узнаёт само. Оба ответа меняются в настройках.",
+      "app": "Город, где вы живёте или сейчас находитесь. Новые съёмки заводятся в этом городе, а поездку в другой приложение узнаёт само. Ответ меняется в настройках.",
+      "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
     }
   },
   "en": {
@@ -38,6 +48,11 @@
       "web": "Astro",
       "app": "Pro",
       "why": "30г.3: three modes (Alexey 31.10, «вариант А»). The web has two and calls its second one Astro under this key; in the app this key is the middle button, Astro is set.modeAstro."
+    },
+    "start.sub": {
+      "web": "The city you live in or are staying in now, and your phone number. New shoots start in that city, and a trip to another one the app works out by itself. Both answers can be changed in settings.",
+      "app": "The city you live in or are staying in now. New shoots start in that city, and a trip to another one the app works out by itself. You can change it in settings.",
+      "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
     }
   },
   "es": {
@@ -50,6 +65,11 @@
       "web": "Astro",
       "app": "Pro",
       "why": "30г.3: three modes (Alexey 31.10, «вариант А»). The web has two and calls its second one Astro under this key; in the app this key is the middle button, Astro is set.modeAstro."
+    },
+    "start.sub": {
+      "web": "La ciudad donde vives o donde estás ahora, y tu número de teléfono. Las nuevas sesiones se crean en esa ciudad, y un viaje a otra la app lo deduce sola. Ambas respuestas se cambian en los ajustes.",
+      "app": "La ciudad donde vives o donde estás ahora. Las nuevas sesiones se crean en esa ciudad, y un viaje a otra la app lo deduce sola. Se cambia en los ajustes.",
+      "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
     }
   },
   "ja": {
@@ -62,6 +82,11 @@
       "web": "天体",
       "app": "プロ",
       "why": "30г.3: three modes (Alexey 31.10, «вариант А»). The web has two and calls its second one Astro under this key; in the app this key is the middle button, Astro is set.modeAstro."
+    },
+    "start.sub": {
+      "web": "住んでいる、または今滞在している都市と電話番号。新しい撮影はその都市から始まり、他の都市への移動はアプリが自動で判断します。どちらも設定で変更できます。",
+      "app": "住んでいる、または今滞在している都市。新しい撮影はその都市から始まり、他の都市への移動はアプリが自動で判断します。設定で変更できます。",
+      "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
     }
   }
 }

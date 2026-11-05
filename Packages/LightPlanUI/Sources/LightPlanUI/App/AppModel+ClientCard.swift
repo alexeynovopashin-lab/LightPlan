@@ -231,6 +231,7 @@ extension AppModel {
 
     /// Тап по съёмке клиента: карточка клиента и «Клиенты» закрываются, открывается карточка съёмки (как у организации).
     func openClientShoot(_ sessionId: String) {
+        guard passPhoneGate(then: { [weak self] in self?.openClientShoot(sessionId) }) else { return }
         closeClientCard()
         closeOrgs()
         openCard(id: sessionId)
