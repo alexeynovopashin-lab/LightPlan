@@ -51,7 +51,7 @@ public struct MapSummary: Equatable, Sendable {
     ///   - glow: засветка места (`glowVal`).
     ///   - mw: окно, луна и погода над окном; `nil` — слой выключен.
     public static func build(
-        date: CivilDate, t: Minutes, sun: SolarDay, place: Place, utcOffset: Double, pro: Bool,
+        date: CivilDate, t: Minutes, sun: SolarDay, place: Place, utcOffset: Double, pro: Bool, terms: Bool = true,
         glow: Double?, mw: MilkyWayInput?, dateShort: (CivilDate) -> String,
         lexicon: Lexicon, clock: ClockText
     ) -> MapSummary {
@@ -114,7 +114,8 @@ public struct MapSummary: Equatable, Sendable {
                             tone: nx.warm ? .warm : .ink2))
         }
 
-        if pro, let twi = twilight(sun: sun, t: t, lexicon: lexicon, clock: clock) {
+        // Ступень сумерек — термин (опись 30г.2 № 93): только «Астро» с «Терминами».
+        if pro, terms, let twi = twilight(sun: sun, t: t, lexicon: lexicon, clock: clock) {
             rows.append(Row(label: "map.twilight", text: twi, tone: .ink))
         }
 
@@ -170,15 +171,17 @@ public struct MapSummary: Equatable, Sendable {
                 ("mpro.maxDay", w.best.altitude < 0 ? lexicon.t("mpro.noRise")
                     : lexicon.t("mpro.altAt", ["alt": String(format: "%.1f", w.best.altitude), "t": clock.fmt(w.best.minute)])),
                 ("mpro.workAlt", lexicon.t("mpro.workRange", ["lo": workLo, "hi": workHi, "verdict": lexicon.t(verdict)])),
-                // Нет ночи — особое слово, как у `proHTML` веба.
-                ("pro.astroNight", w.dark && sun.astroB != nil && sun.astroA != nil
-                    ? clock.range(sun.astroB, sun.astroA! + 1440) : lexicon.t("pro.whiteNight")),
                 ("mpro.moonNow", moonNow.altitude > 0
                     ? lexicon.t("mpro.moonUp", ["alt": String(format: "%.0f", moonNow.altitude), "pct": "\(lit)"])
                     : lexicon.t("mpro.moonDown")),
                 ("mpro.window", w.from != nil ? clock.range(w.from, w.to)
                     : (w.dark && w.moonBlocks ? lexicon.t("mpro.windowMoon") : "—")),
             ]
+            // Нет ночи — особое слово, как у `proHTML` веба. Строка — термин: без «Терминов» её нет (опись 30г.2 § 2).
+            if terms {
+                items.insert(("pro.astroNight", w.dark && sun.astroB != nil && sun.astroA != nil
+                    ? clock.range(sun.astroB, sun.astroA! + 1440) : lexicon.t("pro.whiteNight")), at: 4)
+            }
             if let sky = mw.sky { items.append(("mpro.skyHum", "\(sky.humidity)%")) }
             if let glow {
                 let ratio = glow < 10 ? String(format: "%.2f", glow) : String(Int((glow + 0.5).rounded(.down)))

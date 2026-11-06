@@ -563,12 +563,15 @@ public final class AppModel {
          modeMemory: (any AppModeMemory)? = nil,
          now: @escaping @Sendable () -> Date = { Date() }) {
         let modes = modeMemory ?? InMemoryAppModeMemory()
-        let settings = AppSettings(snapshot: snapshot, zone: zone, remembered: modes.mode)
-        // Режим, каким его прочли, — сразу в память и в снимок: следующая запись вернёт файлу ключ, который снял веб.
+        let settings = AppSettings(snapshot: snapshot, zone: zone, remembered: modes.mode, rememberedAstro: modes.astro)
+        // Режим и переключатели «Астро», какими их прочли, — сразу в память и в снимок: следующая запись вернёт файлу
+        // ключи, которые снял веб.
         modes.mode = settings.mode
+        modes.astro = settings.astro
         self.modeMemory = modes
         var snapshot = snapshot
         settings.mode.write(to: &snapshot)
+        settings.astro.write(to: &snapshot)
         self.snapshot = snapshot
         self.store = store
         self.now = now
@@ -643,6 +646,7 @@ public final class AppModel {
                                       locationName: resolved.name ?? place.coordinate.text,
                                       clockPreference: Self.clock(settings.clock))
         light.proMode = settings.pro
+        light.terms = settings.sees(.terms)
         light.fahrenheit = settings.tempUnit == .f
         light.placeFollowing = live
         // Строка под именем запомненного места — сразу: тот же ответ геокодера наблюдателя не будит (равное значение).
@@ -773,10 +777,12 @@ public final class AppModel {
         guard settings != before else { return }
         settings.apply(to: &snapshot)
         if settings.mode != before.mode { modeMemory.mode = settings.mode }
+        if settings.astro != before.astro { modeMemory.astro = settings.astro }
         if before.manualEnd, !settings.manualEnd { clearFinishMarks() }
         persist()
 
         light.proMode = settings.pro
+        light.terms = settings.sees(.terms)
         light.fahrenheit = settings.tempUnit == .f
         if settings.clock != before.clock { light.clockPreference = Self.clock(settings.clock) }
         if settings.ribbonMode != before.ribbonMode { light.timebar.setRibbonMode(Self.ribbon(settings.ribbonMode)) }

@@ -25,6 +25,8 @@ public struct AppSettings: Sendable, Equatable {
     public var mode: AppMode
     /// Галочка веба. Только чтение: её задаёт режим, разойтись им негде.
     public var pro: Bool { mode.webPro }
+    /// Пять переключателей «Астро» (30г.4). Стоят и в «Просто»/«Про», но действуют только в «Астро» — см. `sees`.
+    public var astro: AstroSwitches
     public var theme: Theme
     public var ribbonMode: RibbonMode
     public var drumSlot: DrumSlot
@@ -46,12 +48,12 @@ public struct AppSettings: Sendable, Equatable {
     /// С какого дня неделя (`WeekStartChoice`; нет в снимке — понедельник, как у веба).
     public var weekStart: WeekStartChoice
 
-    public init(mode: AppMode = .simple, theme: Theme = .dark, ribbonMode: RibbonMode = .drum,
+    public init(mode: AppMode = .simple, astro: AstroSwitches = .allOn, theme: Theme = .dark, ribbonMode: RibbonMode = .drum,
                 drumSlot: DrumSlot = .paper, timeStep: Int = 5, travelMin: Int = 40,
                 tempUnit: TempUnit = .c, clock: Clock = .auto, currency: Currency = .rub,
                 practice: Practice = .ru, practicePicked: Bool = false, home: HomeCity = HomeCity(),
                 manualEnd: Bool = false, musicApp: MusicApp? = nil, weekStart: WeekStartChoice = .standard) {
-        self.mode = mode; self.theme = theme; self.ribbonMode = ribbonMode; self.drumSlot = drumSlot
+        self.mode = mode; self.astro = astro; self.theme = theme; self.ribbonMode = ribbonMode; self.drumSlot = drumSlot
         self.timeStep = timeStep; self.travelMin = travelMin; self.tempUnit = tempUnit
         self.clock = clock; self.currency = currency; self.practice = practice
         self.practicePicked = practicePicked; self.home = home
@@ -59,9 +61,11 @@ public struct AppSettings: Sendable, Equatable {
     }
 
     /// Прочитать из снимка по правилам веба. `zone` — пояс телефона, по
-    /// нему угадывается практика, пока её не выбрали (`guessPractice`). `remembered` — режим из памяти телефона.
-    public init(snapshot s: Snapshot, zone: TimeZone = .current, remembered: AppMode? = nil) {
+    /// нему угадывается практика, пока её не выбрали (`guessPractice`). `remembered`, `rememberedAstro` — режим и
+    /// переключатели из памяти телефона.
+    public init(snapshot s: Snapshot, zone: TimeZone = .current, remembered: AppMode? = nil, rememberedAstro: AstroSwitches? = nil) {
         mode = AppMode.read(file: s.appMode, webPro: s.pro, remembered: remembered)
+        astro = AstroSwitches.read(file: s.astroOff, remembered: rememberedAstro)
         // Старые записи знали только «dark» и «light»: всё прочее — тёмная.
         theme = s.theme.flatMap(Theme.init(rawValue:)) ?? .dark
         ribbonMode = s.ribbonMode == "lane" ? .lane : .drum
@@ -87,6 +91,7 @@ public struct AppSettings: Sendable, Equatable {
     /// «знакомство пройдено») не трогаются.
     public func apply(to s: inout Snapshot) {
         mode.write(to: &s)
+        astro.write(to: &s)
         s.theme = theme.rawValue
         s.ribbonMode = ribbonMode.rawValue
         s.drumSlot = drumSlot.rawValue
@@ -109,6 +114,10 @@ public struct AppSettings: Sendable, Equatable {
             s.weekStart = weekStart == .standard ? nil : weekStart.rawValue
         }
     }
+
+    /// Видно ли сейчас то, что прячет переключатель: только в «Астро» и только включённый (опись 30г.2 § 2).
+    /// С 30г.4 экраны спрашивают так «Термины»; остальные четыре пока читают `pro` («Про» выглядит как «Астро» до 30г.5–7).
+    public func sees(_ s: AstroSwitch) -> Bool { mode == .astro && astro[s] }
 
     /// Практика по часовому поясу — порт `guessPractice` веба: пояс — это
     /// география, то есть то, чем юрисдикция и определяется.

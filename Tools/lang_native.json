@@ -564,7 +564,14 @@
     "phone.why": "По нему студии и организаторы свяжут ваши съёмки со своими.",
     "set.modeNote.simple": "Только нужное для съёмок и света. Остальные настройки стоят как заведено.",
     "set.modeNote.pro": "Все настройки и подробности о свете. Луна, звёзды и азимуты — в «Астро».",
-    "set.modeNote.astro": "Всё из «Про» и небо: включите то, что вам нужно."
+    "set.modeNote.astro": "Всё из «Про» и небо: включите то, что вам нужно.",
+    "set.astro.moon": "Луна",
+    "set.astro.stars": "Звёзды",
+    "set.astro.azimuths": "Азимуты",
+    "set.astro.terms": "Термины",
+    "set.astro.milkyWay": "Млечный Путь",
+    "set.astro.waiting": "Пока работает только «Термины»: остальные четыре переключателя ещё ничего не прячут.",
+    "sun.night.label": "Ночь"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1127,7 +1134,14 @@
     "phone.why": "Studios and organisers use it to link your shoots with theirs.",
     "set.modeNote.simple": "Only what you need for shoots and light. All other settings stay as they are.",
     "set.modeNote.pro": "All settings and the details of the light. Moon, stars and azimuths are in “Astro”.",
-    "set.modeNote.astro": "Everything in “Pro”, plus the sky: turn on what you need."
+    "set.modeNote.astro": "Everything in “Pro”, plus the sky: turn on what you need.",
+    "set.astro.moon": "Moon",
+    "set.astro.stars": "Stars",
+    "set.astro.azimuths": "Azimuths",
+    "set.astro.terms": "Terms",
+    "set.astro.milkyWay": "Milky Way",
+    "set.astro.waiting": "Only “Terms” works for now: the other four switches don’t hide anything yet.",
+    "sun.night.label": "Night"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1690,7 +1704,14 @@
     "phone.why": "Con él, tus sesiones se vinculan a las de los estudios y los organizadores.",
     "set.modeNote.simple": "Solo lo necesario para las sesiones y la luz. Los demás ajustes se quedan como están.",
     "set.modeNote.pro": "Todos los ajustes y los detalles de la luz. La luna, las estrellas y los azimuts están en «Astro».",
-    "set.modeNote.astro": "Todo lo de «Pro» y además el cielo: activa lo que necesites."
+    "set.modeNote.astro": "Todo lo de «Pro» y además el cielo: activa lo que necesites.",
+    "set.astro.moon": "Luna",
+    "set.astro.stars": "Estrellas",
+    "set.astro.azimuths": "Azimuts",
+    "set.astro.terms": "Términos",
+    "set.astro.milkyWay": "Vía Láctea",
+    "set.astro.waiting": "Por ahora solo funciona «Términos»: los otros cuatro interruptores aún no ocultan nada.",
+    "sun.night.label": "Noche"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2249,7 +2270,14 @@
     "phone.why": "スタジオや主催者はこの番号で、あなたの撮影を自分たちの予定に結びつけます。",
     "set.modeNote.simple": "撮影と光に必要なものだけ。その他の設定はそのままです。",
     "set.modeNote.pro": "すべての設定と光の詳細。月、星、方位角は「天体」にあります。",
-    "set.modeNote.astro": "「プロ」のすべてに空を追加。必要なものをオンにしてください。"
+    "set.modeNote.astro": "「プロ」のすべてに空を追加。必要なものをオンにしてください。",
+    "set.astro.moon": "月",
+    "set.astro.stars": "星",
+    "set.astro.azimuths": "方位角",
+    "set.astro.terms": "用語",
+    "set.astro.milkyWay": "天の川",
+    "set.astro.waiting": "今のところ動くのは「用語」だけです。ほかの4つのスイッチはまだ何も隠しません。",
+    "sun.night.label": "夜"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2808,6 +2836,13 @@
     "phone.why": "影棚和组织者通过它把你的拍摄与他们的安排关联起来。",
     "set.modeNote.simple": "只保留拍摄和光线所需的内容。其他设置保持不变。",
     "set.modeNote.pro": "全部设置和光线详情。月亮、星星和方位角在“天文”中。",
-    "set.modeNote.astro": "包含“专业”的全部内容，再加上星空：打开你需要的即可。"
+    "set.modeNote.astro": "包含“专业”的全部内容，再加上星空：打开你需要的即可。",
+    "set.astro.moon": "月亮",
+    "set.astro.stars": "星星",
+    "set.astro.azimuths": "方位角",
+    "set.astro.terms": "术语",
+    "set.astro.milkyWay": "银河",
+    "set.astro.waiting": "目前只有“术语”生效：其他四个开关暂时不会隐藏任何内容。",
+    "sun.night.label": "夜晚"
   }
 }

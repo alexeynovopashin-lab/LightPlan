@@ -23,6 +23,10 @@ public final class LightScreenModel {
     /// `true` — «Астро».
     public var proMode = false
 
+    /// Переключатель «Термины» (30г.4): астрономические слова сумерек на куполе и их строки в «Подробно».
+    /// Только в «Астро» (`AppSettings.sees(.terms)`); в «Просто» и «Про» — простые слова.
+    public var terms = false
+
     /// Градусы Фаренгейта вместо Цельсия (`tempUnit` веба).
     public var fahrenheit = false
 
@@ -147,7 +151,7 @@ public final class LightScreenModel {
             weather: weatherDay, weatherStatus: weather.status, air: air,
             headerLocationName: headerLocationName, headerDateLabel: headerDateLabel(t: t),
             headerNote: headerNote(t: t),
-            lexicon: lexicon, clock: clock, fahrenheit: fahrenheit
+            lexicon: lexicon, clock: clock, fahrenheit: fahrenheit, terms: terms
         )
     }
 

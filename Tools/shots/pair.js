@@ -52,7 +52,7 @@ if (args.screens === 'ar') { require('./ar.js'); return; }
 if (args.help) {
   console.log(`Пара снимков «веб / натив» (Tools/shots/pair.js). Запуск из корня натива; ничего не строит и не снимает с --help.
   --screens light,map,planner,settings,card,m28   какие экраны (по умолчанию все)
-  --themes dark,light   --moments day,golden,night,dawn   --modes simple,pro,astro   --scopes month,week,day
+  --themes dark,light   --moments day,golden,night,dawn   --modes simple,pro,astro[,astro~terms]   --scopes month,week,day
   --m28 mbgallery,mbshelf,mbfolder,orgs,orgcard,contacts,quest,meet   экраны итерации 28 (мудборды, организации, «Контакты», опросник, встреча); только они: --screens m28
   --drag [block:dy,...]   блок карточки в руке (27а.3, только натив; по умолчанию place:24,place:44): сдвиг, зазор, слот, тень
   --grip [<знак записи>]   лента дня с поднятой записью и ручками (29а; по умолчанию 26-е, sd_sep_clash_b); только они: --screens grip
@@ -567,7 +567,10 @@ function markdown(results) {
         ribbon === 'drum' ? null : ribbon, fold === 'open' ? 'fold' : null].filter(Boolean).join('-');
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
-    const s = { ...(scope ? plannerSeed : seed), theme, pro: mode !== 'simple', appMode: mode, drumSlot: slot, ribbonMode: ribbon };
+    // `astro~terms` (30г.4): «Астро» с выключенными переключателями после «~» (ключ `astroOff`, знает только приложение).
+    const [appMode, ...astroOff] = mode.split('~');
+    const s = { ...(scope ? plannerSeed : seed), theme, pro: appMode !== 'simple', appMode, drumSlot: slot, ribbonMode: ribbon,
+      ...(astroOff.length ? { astroOff } : {}) };
     if (screen === 'settings' && chapter === 'shoots') Object.assign(s, MUSIC);
     /* Карта (итерация 20а): в «Просто» солнце и луна, в «Астро» к ним
        Млечный Путь — так обе пары слоёв снимаются без отдельного перебора.

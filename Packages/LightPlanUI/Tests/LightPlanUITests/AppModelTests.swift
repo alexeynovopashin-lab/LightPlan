@@ -228,14 +228,71 @@ struct AppModelTests {
         }
     }
 
-    /// «Про» пока выглядит как «Астро»: смена между ними не трогает ничего, что читают экраны.
-    @Test func proLooksLikeAstroForNow() {
+    /// «Про» пока выглядит как «Астро» без «Терминов» (30г.4; Луна, Звёзды, Азимуты, Млечный Путь — 30г.5–7): смена между ними
+    /// не трогает ничего, что читают экраны. Минута — глубокая ночь, где термины есть на куполе и в «Подробно».
+    @Test func proLooksLikeAstroWithoutTerms() {
         let app = model()
+        app.light.pick(day: CivilDate(year: 2026, month: 12, day: 21), minute: 60)
         app.update { $0.mode = .pro }
         let pro = app.light.telemetry
-        app.update { $0.mode = .astro }
+        app.update { $0.mode = .astro; $0.astro[.terms] = false }
         #expect(app.light.telemetry == pro)
         #expect(app.light.proMode)
+        app.update { $0.astro[.terms] = true }
+        #expect(app.light.telemetry != pro)
+    }
+
+    // MARK: - Пять переключателей «Астро» (30г.4)
+
+    /// «Термины» доезжают до «Света»: в «Просто» и «Про» их нет, в «Астро» — по переключателю; слово купола глубокой ночью.
+    @Test func termsReachTheLightScreenInThreeModes() {
+        let app = model()
+        app.light.pick(day: CivilDate(year: 2026, month: 12, day: 21), minute: 60)
+        let night = app.lexicon.t("sun.night.label"), term = app.lexicon.t("sun.astroNight.label")
+        for (mode, terms) in [(AppMode.simple, false), (.pro, false), (.astro, true)] {
+            app.update { $0.mode = mode }
+            #expect(app.light.terms == terms, "\(mode)")
+            #expect(app.light.telemetry.readout?.phase == (terms ? term : night), "\(mode)")
+        }
+        app.update { $0.astro[.terms] = false }
+        #expect(!app.light.terms)
+        #expect(app.light.telemetry.readout?.phase == night)
+        // Выключенный в «Астро» переключатель не включает термины в «Про» и не сбрасывается сменой режима.
+        app.update { $0.mode = .pro }
+        app.update { $0.mode = .astro }
+        #expect(!app.light.terms)
+        #expect(app.settings.astro[.terms] == false)
+    }
+
+    /// Первый вход в «Астро» и старые данные «Астро»: все пять включены, и это сразу в памяти и в снимке.
+    @Test func firstAstroAndOldAstroHaveAllFiveOn() throws {
+        let fresh = InMemoryAppModeMemory()
+        let app = model(modes: fresh)
+        app.update { $0.mode = .astro }
+        #expect(app.settings.astro == .allOn)
+        #expect(app.light.terms)
+        #expect(fresh.astro == .allOn)
+        let old = InMemoryAppModeMemory()
+        let was = model(try webFile(#"{"pro":true}"#), modes: old)
+        #expect(was.settings.mode == .astro)
+        #expect(was.settings.astro == .allOn)
+        #expect(was.light.terms)
+        #expect(old.astro == .allOn)
+        #expect(was.snapshot.astroOff == [])
+    }
+
+    /// Выключили «Термины», веб пересохранил файл (ключа нет): переключатель остаётся выключенным, снимок сразу вровень.
+    @Test func webFileDoesNotResetTheSwitches() throws {
+        let phone = InMemoryAppModeMemory()
+        let first = model(modes: phone)
+        first.update { $0.mode = .astro; $0.astro[.terms] = false }
+        #expect(phone.astro == AstroSwitches(off: [.terms]))
+        #expect(first.snapshot.astroOff == ["terms"])
+        let app = model(try webFile(#"{"pro":true}"#), modes: phone)
+        #expect(app.settings.mode == .astro)
+        #expect(app.settings.astro[.terms] == false)
+        #expect(!app.light.terms)
+        #expect(app.snapshot.astroOff == ["terms"])
     }
 
     @Test func oldFileStaysInItsModeAfterUpdate() throws {

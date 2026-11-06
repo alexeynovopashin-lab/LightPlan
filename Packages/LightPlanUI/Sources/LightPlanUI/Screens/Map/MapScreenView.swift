@@ -642,7 +642,7 @@ struct MapScreenView: View {
         return MapSummary.build(
             date: date, t: minute, sun: solar, place: place,
             utcOffset: place.zone.utcOffsetHours(on: app.light.timebar.todayInPlace), pro: app.light.proMode,
-            glow: app.glow.ratio, mw: mw,
+            terms: app.light.terms, glow: app.glow.ratio, mw: mw,
             dateShort: { dates.dMonShort(DateText.carrier(year: $0.year, month: $0.month - 1, day: $0.day, in: zone)) },
             lexicon: app.lexicon, clock: clock)
     }

@@ -22,25 +22,32 @@ public enum AppMode: String, Sendable, CaseIterable {
     }
 }
 
-/// Память режима на телефоне. Файл данных общий с вебом и теряет ключ, память — нет.
+/// Память режима на телефоне. Файл данных общий с вебом и теряет ключ, память — нет. С 30г.4 в ней же переключатели «Астро».
 public protocol AppModeMemory: AnyObject, Sendable {
     var mode: AppMode? { get set }
+    var astro: AstroSwitches? { get set }
 }
 
 /// Память на время запуска: тесты и снимки, где режим задаёт только файл.
 public final class InMemoryAppModeMemory: AppModeMemory, @unchecked Sendable {
     private let lock = NSLock()
     private var stored: AppMode?
-    public init(_ mode: AppMode? = nil) { stored = mode }
+    private var storedAstro: AstroSwitches?
+    public init(_ mode: AppMode? = nil, astro: AstroSwitches? = nil) { stored = mode; storedAstro = astro }
     public var mode: AppMode? {
         get { lock.withLock { stored } }
         set { lock.withLock { stored = newValue } }
     }
+    public var astro: AstroSwitches? {
+        get { lock.withLock { storedAstro } }
+        set { lock.withLock { storedAstro = newValue } }
+    }
 }
 
-/// Память телефона: одна строка в `UserDefaults`.
+/// Память телефона: строка режима и список выключенных переключателей в `UserDefaults`.
 public final class DeviceAppModeMemory: AppModeMemory, @unchecked Sendable {
     public static let key = "lightplan.native.app.mode"
+    public static let astroKey = "lightplan.native.app.astroOff"
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
@@ -48,5 +55,11 @@ public final class DeviceAppModeMemory: AppModeMemory, @unchecked Sendable {
     public var mode: AppMode? {
         get { defaults.string(forKey: Self.key).flatMap(AppMode.init(rawValue:)) }
         set { defaults.set(newValue?.rawValue, forKey: Self.key) }
+    }
+
+    /// Нет записи — `nil` (памяти нет), пустой список — все пять включены.
+    public var astro: AstroSwitches? {
+        get { (defaults.array(forKey: Self.astroKey) as? [String]).map { AstroSwitches.read(file: $0, remembered: nil) } }
+        set { defaults.set(newValue?.offNames, forKey: Self.astroKey) }
     }
 }

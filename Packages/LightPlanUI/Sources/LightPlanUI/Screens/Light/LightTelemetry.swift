@@ -135,7 +135,7 @@ public struct LightTelemetry: Equatable, Sendable {
         sun: SolarDay, t: Minutes, moon moonMode: Bool, moonSnapshot: MoonSnapshot?,
         weather: WeatherDay?, weatherStatus: WeatherStatus, air: AirSample?,
         headerLocationName: String, headerDateLabel: String, headerNote: String,
-        lexicon: Lexicon, clock: ClockText, fahrenheit: Bool = false
+        lexicon: Lexicon, clock: ClockText, fahrenheit: Bool = false, terms: Bool = true
     ) -> LightTelemetry {
         let raw = sun.state(at: t)
         let quality = weather?.quality
@@ -171,7 +171,7 @@ public struct LightTelemetry: Equatable, Sendable {
 
         let readout: Readout? = moonMode ? nil : Readout(
             time: clock.fmt(t),
-            phase: lexicon.t("sun.\(raw.code.rawValue).label"),
+            phase: lexicon.t(phaseKey(raw.code, terms: terms)),
             sense: lexicon.t("sun.\(raw.code.rawValue).sense")
         )
 
@@ -207,7 +207,7 @@ public struct LightTelemetry: Equatable, Sendable {
         let proGroups = buildProGroups(
             sun: sun, t: t, weather: weather, weatherStatus: weatherStatus,
             moonSnapshot: moonMode ? moonSnapshot : nil, lexicon: lexicon, clock: clock,
-            fahrenheit: fahrenheit
+            fahrenheit: fahrenheit, terms: terms
         )
 
         return LightTelemetry(
@@ -218,6 +218,17 @@ public struct LightTelemetry: Equatable, Sendable {
             air: Weather.airWord(air).map { lexicon.t($0.rawValue) },
             next: next, actionSubtitle: actionSubtitle, proGroups: proGroups
         )
+    }
+
+    /// Слово фазы под временем на куполе. Без терминов (ответ 6 Алексея, 31.10) астрономические сумерки — «Глубокие сумерки»
+    /// (то же слово, что у навигационных, `sun.deepDusk.label`), астрономическая ночь — «Ночь»; остальные слова и так простые.
+    static func phaseKey(_ code: LightCode, terms: Bool) -> String {
+        guard !terms else { return "sun.\(code.rawValue).label" }
+        switch code {
+        case .astroDawn, .astroDusk: return "sun.deepDusk.label"
+        case .astroNight: return "sun.night.label"
+        default: return "sun.\(code.rawValue).label"
+        }
     }
 
     // MARK: - «Что дальше» и спарклайн тренда
@@ -243,7 +254,7 @@ public struct LightTelemetry: Equatable, Sendable {
 
     private static func buildProGroups(
         sun: SolarDay, t: Minutes, weather: WeatherDay?, weatherStatus: WeatherStatus,
-        moonSnapshot: MoonSnapshot?, lexicon: Lexicon, clock: ClockText, fahrenheit: Bool
+        moonSnapshot: MoonSnapshot?, lexicon: Lexicon, clock: ClockText, fahrenheit: Bool, terms: Bool
     ) -> [ProGroup] {
         var groups: [ProGroup] = []
 
@@ -291,16 +302,17 @@ public struct LightTelemetry: Equatable, Sendable {
         // Астрономическая ночь: прочерк с особым словом «белая ночь», а не
         // просто «—» — единственная строка спойлера, где отсутствие значения
         // говорит не «нет данных», а «у этих суток нет темноты вовсе».
+        // Группа целиком — термины (опись 30г.2 № 67): без переключателя её нет.
         let astroNightValue: String
         if let astB = sun.astroB { astroNightValue = clock.range(astB, (sun.astroA ?? 0) + 1440) }
         else { astroNightValue = lexicon.t("pro.whiteNight") }
-        groups.append(ProGroup(iconName: "moon", title: lexicon.t("pro.twilight"), rows: [
+        if terms { groups.append(ProGroup(iconName: "moon", title: lexicon.t("pro.twilight"), rows: [
             ProRow(label: lexicon.t("pro.civil"), value: clock.range(sun.set, sun.civilB)),
             ProRow(label: lexicon.t("pro.nautical"), value: clock.range(sun.civilB, sun.nauticalB)),
             ProRow(label: lexicon.t("pro.astro"),
                    value: sun.astroB != nil ? clock.range(sun.nauticalB, sun.astroB) : clock.range(sun.nauticalB, (sun.nauticalA ?? 0) + 1440)),
             ProRow(label: lexicon.t("pro.astroNight"), value: astroNightValue),
-        ]))
+        ])) }
 
         // «Источник» говорит честно, откуда прогноз: сам Open-Meteo, наш сервер или «нет прогноза».
         let sourceRow = ProRow(label: lexicon.t("pro.source"), value: lexicon.t(Self.sourceKey(weatherStatus)))

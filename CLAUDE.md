@@ -82,6 +82,13 @@
   `AppSettings.pro` is read-only (`mode.webPro`, on in Pro and Astro) and is what the screens still read: Pro looks like Astro until 30г.5–7. File: key `appMode` + the web's flag `pro`, written together by `AppMode.write`.
   Read (`AppMode.read`): key → phone memory (`DeviceAppModeMemory`, UserDefaults) → flag (`pro` = Astro, none = Simple). The web drops the key on re-save (`saveAll` writes only its own keys), so memory keeps the choice; cost: a web-saved file on a new phone gives Astro. Memory is written on start too.
   Tests and shots use `InMemoryAppModeMemory` (the default of `AppModel.init`), only `live()` takes the device one, so a seed file decides the mode there. Sky only on tapping Astro. Words: `set.modePro` = «Про» via `lang_fixes.json`; `set.modeAstro`, `set.modeNote.<mode>` in `lang_native.json`. `make shots` modes `simple,pro,astro`; `mode.simple/pro/astro/note` are out of the web pair on purpose.
+- **Five Astro switches (30г.4).** `AstroSwitches` (`LightPlanData/Settings/AstroSwitches.swift`: moon, stars, azimuths, terms, milkyWay) in `AppSettings.astro`, stored like the mode:
+  file key `astroOff` (the switched-off names, always written) → `AppModeMemory.astro` (UserDefaults `lightplan.native.app.astroOff`) → all on. Nothing stored = all five on (first entry into
+  Astro, old Astro data). **Screens ask `AppSettings.sees(.x)`** (Astro and switch on), never the switch alone. Rows `AstroSwitchRows` right under the mode choice, Astro only;
+  only `.terms` works (`AstroSwitchRows.working`), the other four are disabled and the note `set.astro.waiting` says so — 30г.5–7 add them to `working`. Terms off (and in
+  Simple/Pro): dome word `LightTelemetry.phaseKey` — astro twilight → `sun.deepDusk.label` (the web's «Глубокие сумерки»), astro night → `sun.night.label` «Ночь»
+  (`lang_native.json`); «Сумерки» group of «Подробно», the map's `map.twilight` row and «Астрономическая ночь» in the Milky Way group are gone. Not yet: card «ниже −18°»,
+  AR notes, the card route's phase word. Shots: `--modes astro~terms` = Astro with terms off.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

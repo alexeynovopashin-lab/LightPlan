@@ -125,6 +125,7 @@ public struct SettingsView: View {
                         SetNote(text: t.t("set.modeNote." + app.settings.mode.rawValue), node: "mode.note")
                     }
                     .padding(.top, 4)
+                    if app.settings.mode == .astro { AstroSwitchRows(app: app) }
                     VStack(spacing: 0) {
                         ForEach(Chapter.allCases, id: \.self) { ch in
                             if ch.opensLayer {
