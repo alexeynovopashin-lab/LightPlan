@@ -127,6 +127,8 @@ extension AppModel {
         // Клиенты в Контактах (К7): `-LPShotContacts past|on|no|limited|denied|test` — подставная книга; без аргумента части «Контакты» нет.
         if let kind = UserDefaults.standard.string(forKey: "LPShotContacts") { app.shotContacts(kind) }
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
+        // Купол на луне (30г.6): `-LPShotDomeMoon 1` — как будто нажата «Солнце или луна»; без «Луны» купол всё равно на солнце.
+        if UserDefaults.standard.bool(forKey: "LPShotDomeMoon") { app.light.moonMode = true }
         if let mode = UserDefaults.standard.string(forKey: "LPShotRoads") { app.roads.useShotRoads(RoadBook.shotRouter(mode)) }
         // 28л.6: состояние детектора без сети — для снимков раздела «Сеть» (`reachable` | `unreachable` | `unknown`).
         if let raw = UserDefaults.standard.string(forKey: "LPShotNet"), let state = ForeignReach(rawValue: raw) {

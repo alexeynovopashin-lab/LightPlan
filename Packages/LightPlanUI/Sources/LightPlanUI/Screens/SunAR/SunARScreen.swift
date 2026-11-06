@@ -35,7 +35,8 @@ struct SunARScreen: View {
         _model = State(initialValue: SunARModel(target: target, source: SunARSources.attitude(),
                                                 clock: { Moment(appNow()) },
                                                 forceCalibration: SunARSources.forceCalibration,
-                                                language: app.language, clockPreference: app.light.clockPreference))
+                                                language: app.language, clockPreference: app.light.clockPreference,
+                                                allowed: app.arSkyLayers))
     }
 
     private var t: Lexicon { app.lexicon }
@@ -70,7 +71,7 @@ struct SunARScreen: View {
                                         arc: model.arc, sun: sun, now: model.sunNow, pickedIsNow: model.pickedIsNow,
                                         solar: model.solar)
             // Луна и Млечный Путь — только то, что включено: выключенное не считается и не рисуется.
-            let night: NightSkyARScene? = (model.moonOn || model.milkyWayOn)
+            let night: NightSkyARScene? = (model.moonShown || model.milkyWayOn)
                 ? model.nightScene(basis: model.aim, optics: model.optics, viewport: viewport) : nil
             let marks = SunARMarks.debugPlaced(SunARMarks.make(sun: scene, night: night, screen: size))
             // Звёзды и созвездия (29.8в.13): момент и место — те же, что у луны и солнца, «Сейчас» возвращает на текущий.
@@ -553,7 +554,12 @@ struct SunARScreen: View {
     /// Одна круглая кнопка «Слои» вместо двух включателей (29.8в.9б, слово Алексея 18.10): нажатие открывает список
     /// слоёв неба на системном стекле, у каждого свой переключатель. Состояние — те же флаги устройства, что и
     /// раньше (`SunARModel.setMoon` / `setMilkyWay`). Какие слои включены, видно по точкам под значком.
-    private var layersButton: some View {
+    /// Нет ни одного разрешённого слоя — кнопки нет (опись № 103).
+    @ViewBuilder private var layersButton: some View {
+        if model.layersButtonShown { layersButtonBody }
+    }
+
+    private var layersButtonBody: some View {
         let on = model.layersOn
         let names = on.map { t.t($0.labelKey) }.joined(separator: ", ")
         return Button { layersOpen.toggle() } label: {

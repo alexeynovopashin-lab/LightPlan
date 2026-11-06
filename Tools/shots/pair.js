@@ -52,13 +52,15 @@ if (args.screens === 'ar') { require('./ar.js'); return; }
 if (args.help) {
   console.log(`Пара снимков «веб / натив» (Tools/shots/pair.js). Запуск из корня натива; ничего не строит и не снимает с --help.
   --screens light,map,planner,settings,card,m28   какие экраны (по умолчанию все)
-  --themes dark,light   --moments day,golden,night,dawn   --modes simple,pro,astro[,astro~terms,astro~azimuths]   --scopes month,week,day
+  --themes dark,light   --moments day,golden,night,dawn   --modes simple,pro,astro[,astro~terms,astro~azimuths,astro~moon]   --scopes month,week,day
   --m28 mbgallery,mbshelf,mbfolder,orgs,orgcard,contacts,quest,meet   экраны итерации 28 (мудборды, организации, «Контакты», опросник, встреча); только они: --screens m28
   --drag [block:dy,...]   блок карточки в руке (27а.3, только натив; по умолчанию place:24,place:44): сдвиг, зазор, слот, тень
   --grip [<знак записи>]   лента дня с поднятой записью и ручками (29а; по умолчанию 26-е, sd_sep_clash_b); только они: --screens grip
   --part [<мс>,...]   разрез месяца при входе в день, кадр на мс от старта (29.2а; по умолчанию 170); только он: --screens part
   --partyear [<мс>,...]   тот же разрез при входе тапом по числу в ленте года (29.2б); только он: --screens partyear
   --cards / --phases / --forms / --layers / --sheets / --chapters   перебор отдельных экранов (см. шапку файла)
+  --rec-mode pro|astro|astro~moon   режим засева карточек и форм (30г.6; без флага «Просто»); --cards moon — съёмка с «Луной»
+  --dome-moon   купол «Света» и «Карты» как после нажатия «Солнце или луна» (30г.6, только натив; без «Луны» — солнце)
   --skip-build   --out <папка>   --forecast <файл>   --no-sheets --no-pick   --help   эта справка`);
   process.exit(0);
 }
@@ -166,6 +168,15 @@ const R27_BOARDS = [{ id: 'bd_r27_own', kind: 'shoot', sid: 'sd_sep_wed', genre:
 /* `panes` (29.2з): «Настя и Родион» с выездом и тремя пунктами оборудования — «Гостей» и «Выезд» в одной
    строке, «Оборудование» одно (растянуто на ряд). Сверяется высота плиток строки; один день, до съёмки. */
 const PANES = 'sd_oct_wed_kem';
+/* 30г.6: `--cards moon` — «Love story» 16.09 с пожеланиями «Закат» и «Луна» (строки луны блока «Свет»). Только по просьбе,
+   в полный прогон не входит. `--rec-mode pro|astro|astro~moon` — режим засева карточек и форм (без флага «Просто», как раньше). */
+const MOON_CARD = 'sd_sep_love';
+const recMode = (() => {
+  if (!args['rec-mode']) return { pro: false };
+  const [appMode, ...astroOff] = args['rec-mode'].split('~');
+  return { pro: appMode !== 'simple', appMode, ...(astroOff.length ? { astroOff } : {}) };
+})();
+const recTag = args['rec-mode'] ? args['rec-mode'].replace('~', '-no-') : null;
 const cards = args.cards ? args.cards.split(',') : [...Object.keys(CARDS), 'stack', 'finish', 'tune', 'meet', 'panes', 'music', 'musicapp', ...Object.keys(R27)];
 const phases = (args.phases || 'before,during,after').split(',');
 // Стена часов Барнаула (+7, без перехода) в минуту `m` суток записи `iso`.
@@ -276,6 +287,7 @@ async function nativeShot(udid, sc, dir) {
     ...(sc.net ? ['-LPShotNet', sc.net] : []),
     ...(sc.roads ? ['-LPShotRoads', sc.roads, ...(sc.roads === 'none' ? ['-LPShotReportDelay', '14'] : [])] : []),
     ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []),
+    ...(args['dome-moon'] ? ['-LPShotDomeMoon', '1'] : []),
     ...(args['form-scroll'] ? ['-LPShotFormScroll', args['form-scroll']] : []),
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     ...(sc.layer ? ['-LPShotSheet', sc.layer] : []),
@@ -600,11 +612,12 @@ function markdown(results) {
     list.push({ name, dir, screen, theme, moment: 'day', sheet: way, seed: seedFile });
   }
   for (const g of forms) for (const theme of themes) {
-    const name = ['planner', 'form', g, theme].join('-');
+    const name = ['planner', 'form', g, recTag, theme].filter(Boolean).join('-');
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
     const seedFile = path.join(dir, 'seed.json');
-    fs.writeFileSync(seedFile, JSON.stringify({ ...seed, ...(g.endsWith('+music') ? MUSIC : {}), theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' }));
+    fs.writeFileSync(seedFile, JSON.stringify({ ...seed, ...(g.endsWith('+music') ? MUSIC : {}), theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum',
+      ...recMode }));
     list.push({ name, dir, screen: 'planner', theme, moment: 'day', form: g.replace('+music', ''), seed: seedFile });
   }
   for (const layer of layers) for (const theme of themes) {
@@ -623,12 +636,14 @@ function markdown(results) {
     list.push({ name, dir, screen: 'planner', theme, moment: 'day', scope: 'month', layer, seed: seedFile });
   }
   if (screens.includes('card') && !args['only-sheets'] && !args['only-forms'] && !args['only-layers']) {
-    for (const g of cards) for (const ph of CARDS[g] ? phases : g === 'tune' || g === 'panes' ? ['before'] : ['during']) for (const theme of themes) {
-      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : g === 'panes' ? PANES : R27[g] ? CARDS.event : CARDS[g] || 'sd_sep_clash_a';
-      const name = ['card', g, ph, theme].join('-');
+    for (const g of cards) for (const ph of CARDS[g] ? phases : g === 'tune' || g === 'panes' || g === 'moon' ? ['before'] : ['during']) for (const theme of themes) {
+      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : g === 'panes' ? PANES : g === 'moon' ? MOON_CARD
+        : R27[g] ? CARDS.event : CARDS[g] || 'sd_sep_clash_a';
+      const name = ['card', g, ph, recTag, theme].filter(Boolean).join('-');
       const dir = path.join(OUT, name);
       fs.mkdirSync(dir, { recursive: true });
-      const s = { ...plannerSeed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum' };
+      const s = { ...plannerSeed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum', ...recMode };
+      if (g === 'moon') s.sessions = s.sessions.map(x => x.id !== id ? x : { ...x, wish: ['sunset', 'moon'] });
       if (g === 'stack') {
         // Три соседа сверх «Семьи Ким»: встреча утром и две съёмки вечером.
         const b = s.sessions.find(x => x.id === 'sd_sep_clash_b');

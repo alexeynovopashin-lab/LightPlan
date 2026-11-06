@@ -51,9 +51,10 @@ public struct MapSummary: Equatable, Sendable {
     ///   - glow: засветка места (`glowVal`).
     ///   - mw: окно, луна и погода над окном; `nil` — слой выключен.
     ///   - azimuths: переключатель «Азимуты» (30г.5): без него ни одного градуса направления и высоты светил.
+    ///   - moon: переключатель «Луна» (30г.6): без него нет строки «Луна» и обоих «Ближайших затмений» (опись № 92, 94).
     public static func build(
         date: CivilDate, t: Minutes, sun: SolarDay, place: Place, utcOffset: Double, pro: Bool, terms: Bool = true,
-        azimuths: Bool = true,
+        azimuths: Bool = true, moon: Bool = true,
         glow: Double?, mw: MilkyWayInput?, dateShort: (CivilDate) -> String,
         lexicon: Lexicon, clock: ClockText
     ) -> MapSummary {
@@ -103,7 +104,7 @@ public struct MapSummary: Equatable, Sendable {
         } else {
             moonText = lexicon.t("map.moonNoRise")
         }
-        rows.append(Row(label: "map.moon", text: moonText, tone: .ink))
+        if moon { rows.append(Row(label: "map.moon", text: moonText, tone: .ink)) }
 
         // «В тени» ночью — не ответ: в тени ночью всё.
         if e > -4 {
@@ -123,7 +124,7 @@ public struct MapSummary: Equatable, Sendable {
         }
 
         let viewDate = date.adding(days: Int((t / 1440).rounded(.down)))
-        if let ecl = EclipseTable.on(viewDate) {
+        if moon, let ecl = EclipseTable.on(viewDate) {
             rows.append(Row(label: "map.eclipse",
                             text: lexicon.t("ecl.line", ["kind": lexicon.t(ecl.kind.rawValue), "where": lexicon.t(ecl.whereKey)]),
                             tone: .terra))
@@ -200,8 +201,8 @@ public struct MapSummary: Equatable, Sendable {
             pro.append(g("stars", "mpro.mw", items))
         }
 
-        // Ближайшее затмение — последний пункт.
-        if let ecl = EclipseTable.next(from: date) {
+        // Ближайшее затмение — последний пункт; только с «Луной» (опись № 94, ответ 5).
+        if moon, let ecl = EclipseTable.next(from: date) {
             let days = ecl.date.ordinal - date.ordinal
             let when = days == 0 ? lexicon.t("mpro.eclToday")
                 : lexicon.t("mpro.eclIn", ["date": dateShort(ecl.date), "year": String(ecl.date.year),

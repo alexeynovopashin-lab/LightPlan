@@ -127,8 +127,9 @@ extension AppModel {
                                 night: starNight)
     }
 
+    /// Строки луны блока «Свет» — только с «Луной» (30г.6, опись № 145): пожелание в записи остаётся, его не показывают.
     func cardMoon(_ s: Session, phase: EventPhase) -> NightLight? {
-        guard phase != .after else { return nil }
+        guard phase != .after, seesMoon else { return nil }
         return NightLight.moon(s, route: lightRoute(s), spots: snapshot.spots, studios: snapshot.studios,
                                arcs: moonArcs,
                                lit: { p, d, t in
@@ -279,8 +280,9 @@ extension AppModel {
     /// «Ожидался закат. Прогноз на этот день — дождь.» — только по настоящему
     /// прогнозу якоря. Молчит при «Неважно» и когда прогноз совпал с
     /// пожеланием (туман ↔ туман, осадки ↔ дождь) — ошибка 13 веба.
+    /// Без «Луны» (30г.6, опись № 147) «Ожидалась луна» не говорится: пожелание остаётся в записи, но молчит.
     func cardWishMissed(_ s: Session, phase: EventPhase) -> String? {
-        let wishes = s.wishes.filter { $0 != .any }
+        let wishes = shownWishes(s.wishes).filter { $0 != .any }
         guard phase != .after, !wishes.isEmpty, let q = pointDay(anchor(s), s.day)?.day.quality,
               q == .poor || q == .fog else { return nil }
         if q == .fog && wishes.contains(.fog) { return nil }

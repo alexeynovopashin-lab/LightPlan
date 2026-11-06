@@ -26,16 +26,19 @@ public struct DomeView: View {
     /// Палитра заката по прогнозу дня: зарево, а в «Астро» ещё и само небо.
     let skyPalette: SkyPalette?
     let astro: Bool
+    /// Кнопка «Солнце или луна» — только с переключателем «Луна» (30г.6, опись № 54).
+    let swap: Bool
     @Binding var mode: DomeSkyMode
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var meteors = DomeMeteorController()
 
     public init(sun: SolarDay, place: Place, date: CivilDate, t: Minutes, nowMinute: Minutes?,
-                skyPalette: SkyPalette? = nil, astro: Bool = false, mode: Binding<DomeSkyMode>) {
+                skyPalette: SkyPalette? = nil, astro: Bool = false, swap: Bool = true, mode: Binding<DomeSkyMode>) {
         self.sun = sun
         self.skyPalette = skyPalette
         self.astro = astro
+        self.swap = swap
         self.place = place
         self.date = date
         self.t = t
@@ -77,11 +80,13 @@ public struct DomeView: View {
             #endif
             // `.sky-swap`: сверху справа, 26 pt от верха купола, 12 от края,
             // своё поле 7 pt вокруг знака 52×26.
-            SkySwapButton(mode: $mode)
-                .padding(7)
-                .shotNode("dome.swap")
-                .padding(.top, 26)
-                .padding(.trailing, 12)
+            if swap {
+                SkySwapButton(mode: $mode)
+                    .padding(7)
+                    .shotNode("dome.swap")
+                    .padding(.top, 26)
+                    .padding(.trailing, 12)
+            }
         }
         .frame(height: Self.height)
         .onAppear {

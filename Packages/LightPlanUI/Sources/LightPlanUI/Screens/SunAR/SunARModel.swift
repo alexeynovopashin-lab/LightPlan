@@ -172,6 +172,15 @@ final class SunARModel {
     // MARK: - Луна и Млечный Путь (29.8в.4)
 
     private let bodies: any ARBodiesSettings
+
+    /// Слои, которые разрешают переключатели «Астро» (`AppModel.arSkyLayers`): без «Луны» (30г.6) слоя луны нет ни на небе,
+    /// ни в списке «Слоёв», хотя флаг устройства (`moonOn`) остаётся как был — вернулся в «Астро» с «Луной», и луна там же.
+    var allowed: Set<SunARSkyLayer>
+    /// Луна на небе: слой включён и разрешён.
+    var moonShown: Bool { moonOn && allowed.contains(.moon) }
+    /// Кнопка «Слои» — пока разрешён хотя бы один её слой (опись № 103).
+    var layersButtonShown: Bool { !allowed.isEmpty }
+
     private(set) var moonOn: Bool
     private(set) var milkyWayOn: Bool
     private(set) var starsOn: Bool
@@ -314,7 +323,7 @@ final class SunARModel {
         let s = sun
         let sunPicked = HorizontalPoint(altitude: s.apparentAltitude, azimuth: s.azimuth)
         let n = sunNow
-        let moon: NightSkyARScene.MoonInput? = moonOn
+        let moon: NightSkyARScene.MoonInput? = moonShown
             ? .init(arc: moonArc, picked: moonPicked, now: pickedIsNow ? nil : moonNow, sunAtPicked: sunPicked,
                     sunAtNow: HorizontalPoint(altitude: n.apparentAltitude, azimuth: n.azimuth))
             : nil
@@ -387,8 +396,10 @@ final class SunARModel {
          clock: @escaping @MainActor () -> Moment = { Moment(Date()) },
          calibrationFlag: (any ARCalibrationFlag)? = nil, forceCalibration: Bool = false,
          bodies: (any ARBodiesSettings)? = nil, feedback: (any CalibrationFeedback)? = nil,
-         language: String = "ru", clockPreference: ClockPreference = .auto) {
+         language: String = "ru", clockPreference: ClockPreference = .auto,
+         allowed: Set<SunARSkyLayer> = Set(SunARSkyLayer.allCases)) {
         choice = target.choice
+        self.allowed = allowed
         let wall = SunTrack.wallClock(of: target.moment, in: target.place)
         // Часы таймбара — часы модели: «сейчас» и кнопка «↺ сейчас» тикают от одного источника (в тестах подставного).
         timebar = TimebarState(place: target.place, date: wall.day, weather: nil, language: language,

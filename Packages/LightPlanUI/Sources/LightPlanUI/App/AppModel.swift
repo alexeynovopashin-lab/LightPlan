@@ -648,6 +648,7 @@ public final class AppModel {
         light.proMode = settings.pro
         light.terms = settings.sees(.terms)
         light.azimuths = settings.sees(.azimuths)
+        light.moon = settings.sees(.moon)
         light.fahrenheit = settings.tempUnit == .f
         light.placeFollowing = live
         // Строка под именем запомненного места — сразу: тот же ответ геокодера наблюдателя не будит (равное значение).
@@ -785,6 +786,7 @@ public final class AppModel {
         light.proMode = settings.pro
         light.terms = settings.sees(.terms)
         light.azimuths = settings.sees(.azimuths)
+        light.moon = settings.sees(.moon)
         light.fahrenheit = settings.tempUnit == .f
         if settings.clock != before.clock { light.clockPreference = Self.clock(settings.clock) }
         if settings.ribbonMode != before.ribbonMode { light.timebar.setRibbonMode(Self.ribbon(settings.ribbonMode)) }

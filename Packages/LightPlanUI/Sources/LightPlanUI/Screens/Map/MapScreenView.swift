@@ -87,7 +87,8 @@ struct MapScreenView: View {
         let light = app.light
         let timebar = light.timebar
         let telemetry = light.telemetry
-        let layers = app.mapLayers
+        // Слои, которые рисуются: без «Луны» (30г.6) слоя луны нет, хотя в меню он мог остаться включённым.
+        let layers = app.mapLayersShown
         let lightTheme = !pal.dark
         let minute = timebar.machine.viewMinute
         let date = timebar.machine.selectedDate
@@ -642,7 +643,7 @@ struct MapScreenView: View {
         return MapSummary.build(
             date: date, t: minute, sun: solar, place: place,
             utcOffset: place.zone.utcOffsetHours(on: app.light.timebar.todayInPlace), pro: app.light.proMode,
-            terms: app.light.terms, azimuths: app.light.azimuths, glow: app.glow.ratio, mw: mw,
+            terms: app.light.terms, azimuths: app.light.azimuths, moon: app.light.moon, glow: app.glow.ratio, mw: mw,
             dateShort: { dates.dMonShort(DateText.carrier(year: $0.year, month: $0.month - 1, day: $0.day, in: zone)) },
             lexicon: app.lexicon, clock: clock)
     }
@@ -699,10 +700,12 @@ struct MapScreenView: View {
     /// 15 pt. Галочка 16 латунью (линия 2,2) видна у включённого, знак 19
     /// (линия 1,5) — `--ink-4`, у включённого `--ink`.
     private func layersMenu(_ pal: Palette, _ layers: MapLayers, darkCanvas: Bool) -> some View {
-        let items: [(MapLayers.Key, String, String)] = [
-            (.sun, "sun", "layer.sun"), (.moon, "moon", "layer.moon"), (.mw, "stars", "layer.mw"),
-            (.compass, "compass", "layer.compass"), (.spots, "pin", "layer.spots"),
+        let all: [MapLayers.Key: (String, String)] = [
+            .sun: ("sun", "layer.sun"), .moon: ("moon", "layer.moon"), .mw: ("stars", "layer.mw"),
+            .compass: ("compass", "layer.compass"), .spots: ("pin", "layer.spots"),
         ]
+        // Пункты по переключателям «Астро» (`mapLayerKeys`): без «Луны» строки «Луна» нет (30г.6).
+        let items: [(MapLayers.Key, String, String)] = app.mapLayerKeys.compactMap { k in all[k].map { (k, $0.0, $0.1) } }
         return VStack(spacing: 0) {
             ForEach(items, id: \.0) { key, icon, word in
                 let on = layers[key]

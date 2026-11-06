@@ -228,17 +228,17 @@ struct AppModelTests {
         }
     }
 
-    /// «Про» пока выглядит как «Астро» без «Терминов» и «Азимутов» (30г.4–5; Луна, Звёзды, Млечный Путь — 30г.6–7): смена между
+    /// «Про» пока выглядит как «Астро» без «Терминов», «Азимутов» и «Луны» (30г.4–6; Звёзды, Млечный Путь — 30г.7): смена между
     /// ними не трогает ничего, что читают экраны. Минута — глубокая ночь, где термины есть на куполе и в «Подробно»; градусы есть всегда.
     @Test func proLooksLikeAstroWithoutTermsAndAzimuths() {
         let app = model()
         app.light.pick(day: CivilDate(year: 2026, month: 12, day: 21), minute: 60)
         app.update { $0.mode = .pro }
         let pro = app.light.telemetry
-        app.update { $0.mode = .astro; $0.astro[.terms] = false; $0.astro[.azimuths] = false }
+        app.update { $0.mode = .astro; $0.astro[.terms] = false; $0.astro[.azimuths] = false; $0.astro[.moon] = false }
         #expect(app.light.telemetry == pro)
         #expect(app.light.proMode)
-        #expect(!app.light.azimuths)
+        #expect(!app.light.azimuths && !app.light.moon)
         app.update { $0.astro[.terms] = true }
         #expect(app.light.telemetry != pro)
         app.update { $0.astro[.terms] = false; $0.astro[.azimuths] = true }
@@ -265,8 +265,8 @@ struct AppModelTests {
         app.update { $0.mode = .pro }
         app.update { $0.mode = .astro }
         #expect(!app.light.azimuths)
-        // Переключатель «Азимуты» в настройках больше не приглушён; луна, звёзды и Млечный Путь ждут своих шагов.
-        #expect(AstroSwitchRows.working == [.azimuths, .terms])
+        // Переключатель «Азимуты» в настройках больше не приглушён (с 30г.6 и «Луна»); звёзды и Млечный Путь ждут своего шага.
+        #expect(AstroSwitchRows.working == [.moon, .azimuths, .terms])
     }
 
     /// Старт с выключенными «Азимутами» из файла: экраны сразу без градусов, не только после правки.
@@ -275,6 +275,15 @@ struct AppModelTests {
         #expect(app.settings.mode == .astro)
         #expect(!app.light.azimuths)
         #expect(app.light.terms)
+    }
+
+    /// Старт из файла (30г.6): «Луна» доезжает до экранов сразу, не только после правки — в «Астро» с ней и без неё.
+    @Test func moonFromFileOnStart() throws {
+        let on = model(try webFile(#"{"pro":true,"appMode":"astro"}"#))
+        #expect(on.settings.mode == .astro && on.light.moon)
+        let off = model(try webFile(#"{"pro":true,"appMode":"astro","astroOff":["moon"]}"#))
+        #expect(!off.light.moon && off.light.azimuths)
+        #expect(!model(try webFile(#"{"pro":true,"appMode":"pro"}"#)).light.moon)
     }
 
     // MARK: - Пять переключателей «Астро» (30г.4)

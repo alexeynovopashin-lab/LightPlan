@@ -214,8 +214,15 @@ function maskChecks(sc, nodes, bad) {
   }
 }
 /* Проверки по рамкам узлов. Возвращают список нарушений. */
-function verdict(sc, nodes) {
+/* 30г.6: луна в AR — только в «Астро» с «Луной» (`--mode astro`); без флага сид — «Просто», и включённый слой луны
+   не рисуется: ни метки, ни стрелки, ни строки в «Слоях», ни точки на кнопке. */
+const SEES_MOON = (() => { const [m, ...off] = String(args.mode || 'simple').split('~'); return m === 'astro' && !off.includes('moon'); })();
+function verdict(scIn, nodes) {
   const bad = [];
+  const sc = { ...scIn, moon: scIn.moon && SEES_MOON };
+  if (scIn.moon && !SEES_MOON) {
+    for (const k of Object.keys(nodes)) if (/^ar\.(mark\.moon|pointer\.moon|pointerLabel\.moon|layer\.moon)/.test(k)) bad.push(k + ': луна без «Луны»');
+  }
   const need = k => { if (!nodes[k]) { bad.push('нет узла ' + k); return false; } return true; };
   const touch = k => { if (need(k) && nodes[k].h < 43.9) bad.push(`${k}: высота касания ${nodes[k].h.toFixed(1)} < 44`); };
   if (sc.entry) {
@@ -234,7 +241,7 @@ function verdict(sc, nodes) {
     if (on !== want) bad.push(`«Слои» показывает «${on}», включено «${want}»`);
   }
   if (sc.layersOpen) {
-    for (const k of ['ar.layer.moon', 'ar.layer.mw', 'ar.layer.stars', 'ar.layer.constellations', 'ar.layer.planets']) { if (need(k)) touch(k); }
+    for (const k of [...(SEES_MOON ? ['ar.layer.moon'] : []), 'ar.layer.mw', 'ar.layer.stars', 'ar.layer.constellations', 'ar.layer.planets']) { if (need(k)) touch(k); }
     for (const k of ['ar.layer.stars', 'ar.layer.constellations']) if (nodes[k] && !/off$/.test(nodes[k].text || '')) bad.push(k + ' включена сама: ' + nodes[k].text);
     const a = nodes['ar.layer.moon'], b = nodes['ar.layer.mw'];
     if (a && b && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 0.5) bad.push('строки слоёв накладываются');
@@ -305,7 +312,7 @@ function verdict(sc, nodes) {
   for (const k of sun) if (![48, 34].includes(Math.round(nodes[k].w))) bad.push(`${k}: диаметр ${nodes[k].w} не 48/34`);
   if (sc.name === 'day' && !sun.length) bad.push('солнца в кадре нет');
   if (sc.name === 'night_moon') {
-    if (!moon.length) bad.push('луны в кадре нет');
+    if (!moon.length && SEES_MOON) bad.push('луны в кадре нет');
     if (!nodes['ar.pointer.sun']) bad.push('нет стрелки к солнцу за краем');
     for (const k of moon) {
       const t = nodes[k].text || '';

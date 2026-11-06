@@ -429,7 +429,8 @@ struct FormWishBlock: View {
     var body: some View {
         let pal = Palette(scheme)
         let t = app.lexicon
-        let all = Wish.allCases
+        // Плитки по переключателям «Астро»: без «Луны» восемь (30г.6, опись № 165).
+        let all = app.wishTiles
         let rows = stride(from: 0, to: all.count, by: GenreGrid.columns).map { Array(all[$0..<min($0 + GenreGrid.columns, all.count)]) }
         VStack(alignment: .leading, spacing: 0) {
             FormGroupLabel(text: t.t("form.wish"))
@@ -454,7 +455,8 @@ struct FormWishBlock: View {
     }
 
     private func tile(_ w: Wish, _ pal: Palette, _ t: Lexicon) -> some View {
-        let on = form.wishOn(w)
+        // «Неважно» горит, когда нет видимых пожеланий: скрытая «Луна» (30г.6) его не гасит.
+        let on = w == .any ? app.shownWishes(form.wishes).isEmpty : form.wishOn(w)
         let name = t.t("wish." + w.rawValue)
         return Button { app.toggleFormWish(w) } label: {
             VStack(spacing: 6) {

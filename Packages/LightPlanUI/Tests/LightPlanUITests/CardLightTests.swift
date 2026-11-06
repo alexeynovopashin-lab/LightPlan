@@ -112,8 +112,10 @@ struct CardLightTests {
         #expect(!says.contains { $0.text.contains("Золотой час") })
     }
 
+    /// Строка луны — только в «Астро» с «Луной» (30г.6); в остальных положениях её проверяет `MoonSwitchTests`.
     @Test func moonGetsOwnLine() async {
         let app = model([Self.shoot("a", wishes: [.moon])], rain: false)
+        app.update { $0.mode = .astro }
         let s = await open(app, "a")
         let moon = app.cardSays(s, phase: .before).first { $0.kind == .moon }
         #expect(moon != nil)

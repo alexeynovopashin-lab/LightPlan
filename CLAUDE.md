@@ -98,6 +98,15 @@
   only the circle), core rise/set «ядро восходит 22:40» (`ar.coreRisesAt/SetsAt`). Every AR degree caption comes from `SunARDegrees`. Kept: golden/blue hour side letters,
   lat/lon, core window altitudes (`mpro.maxDay`, `mpro.workAlt`) and «Луна сейчас» in the Milky Way group. Shots: `--modes astro~azimuths`; `Tools/shots/ar.js --mode pro|astro|astro~azimuths`
   (without it the seed is Simple: no degrees); `ar_contrast.py` shoots Astro so the heading chip is measured.
+- **Moon switch (30г.6).** `AstroSwitchRows.working` = moon + azimuths + terms. The Moon is seen only when `AppSettings.sees(.moon)`; AppModel copies it to
+  `LightScreenModel.moon`, the rest asks `AppModel+AstroSky.swift` (`seesMoon`, `mapLayersShown`, `mapLayerKeys`, `arSkyLayers`, `shownWishes`, `wishTiles`). Off (Simple, Pro,
+  Astro without it): no «Солнце или луна» on the dome (`DomeView(swap:)`), dome/«Подробно»/ribbon stay on the sun (`moonMode` = person's pick × switch, the pick is kept);
+  «Карта» — no moon layer drawn and no «Луна» in the layers menu, no `map.moon` row, no eclipse row / «Ближайшее затмение» group (`MapSummary.build(moon:)`); AR — moon layer
+  not drawn, no row in «Слои», no dot, no edge arrow (`SunARModel.allowed`, `moonShown`; the «Слои» button needs one allowed layer — `layersButtonShown`); card — no moon lines,
+  no «Ожидалась луна»; form — 8 wish tiles, no moon words in «замысел против прогноза», «Неважно» lit when no *shown* wish and it keeps the hidden «Луна».
+  **Nothing is written:** the moon wish, the map layer key and the AR device flag stay as they were and come back with the switch. Not here (30г.7): moon rows inside the Milky Way
+  group (`map.moonGlare`, `mpro.moonNow`), the AR Milky Way eye note, answer 4 (switch on → layer on). Shots: `--modes astro~moon`, `--dome-moon`, `--cards moon --rec-mode <m>`,
+  `--forms portrait --rec-mode <m>`; `Tools/shots/ar.js --mode astro` (without it the seed is Simple: no moon).
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

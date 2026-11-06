@@ -233,6 +233,7 @@ public struct LightScreenView: View {
                  nowMinute: model.timebar.nowMinute,
                  skyPalette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)),
                  astro: model.proMode,
+                 swap: model.moon,
                  mode: moonModeBinding)
             .shotNode("dome")
             .overlay {
