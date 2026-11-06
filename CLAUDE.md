@@ -90,6 +90,14 @@
   (`lang_native.json`); «Сумерки» group of «Подробно», the map's `map.twilight` row and «Астрономическая ночь» in the Milky Way group are gone. Not yet: card «ниже −18°»,
   AR notes (Alexey's wording / 30г.7). The card route's word needs nothing: `pointLightCode` names only «excellent» light (golden, dawn, sunset,
   blue), never astro twilight or night. Shots: `--modes astro~terms` = Astro with terms off.
+- **Azimuths switch (30г.5).** `AstroSwitchRows.working` = azimuths + terms. Degrees of direction and altitude (sun, moon, core) only when `AppSettings.sees(.azimuths)`;
+  AppModel copies it to `LightScreenModel.azimuths`, and «Карта» and AR read it from there. Off (Simple, Pro, Astro without it): «Свет» «Подробно» — no azimuth/altitude rows
+  (sun and moon), rise/noon/set show time only, shadow length stays; «Карта» — no «Свет идёт с», «Высота солнца», «Тень» in the fold, moon row in its Simple form,
+  «Подробно» keeps only shadow length of «Солнце в этот момент», no «Азимуты дня», no core azimuth/altitude; compass ring without 30°…330°, no chip on tap *and* on
+  timebar drag (`MapInstrument.Input.azimuths`); AR — no heading chip, no «Азимут · Высота» line, edge pointers without the «N° · +M°» plate (the arrow stays; layout reserves
+  only the circle), core rise/set «ядро восходит 22:40» (`ar.coreRisesAt/SetsAt`). Every AR degree caption comes from `SunARDegrees`. Kept: golden/blue hour side letters,
+  lat/lon, core window altitudes (`mpro.maxDay`, `mpro.workAlt`) and «Луна сейчас» in the Milky Way group. Shots: `--modes astro~azimuths`; `Tools/shots/ar.js --mode pro|astro|astro~azimuths`
+  (without it the seed is Simple: no degrees); `ar_contrast.py` shoots Astro so the heading chip is measured.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

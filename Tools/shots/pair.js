@@ -52,7 +52,7 @@ if (args.screens === 'ar') { require('./ar.js'); return; }
 if (args.help) {
   console.log(`Пара снимков «веб / натив» (Tools/shots/pair.js). Запуск из корня натива; ничего не строит и не снимает с --help.
   --screens light,map,planner,settings,card,m28   какие экраны (по умолчанию все)
-  --themes dark,light   --moments day,golden,night,dawn   --modes simple,pro,astro[,astro~terms]   --scopes month,week,day
+  --themes dark,light   --moments day,golden,night,dawn   --modes simple,pro,astro[,astro~terms,astro~azimuths]   --scopes month,week,day
   --m28 mbgallery,mbshelf,mbfolder,orgs,orgcard,contacts,quest,meet   экраны итерации 28 (мудборды, организации, «Контакты», опросник, встреча); только они: --screens m28
   --drag [block:dy,...]   блок карточки в руке (27а.3, только натив; по умолчанию place:24,place:44): сдвиг, зазор, слот, тень
   --grip [<знак записи>]   лента дня с поднятой записью и ручками (29а; по умолчанию 26-е, sd_sep_clash_b); только они: --screens grip
@@ -769,7 +769,8 @@ function markdown(results) {
   for (const screen of screens.filter(x => x !== 'planner' && x !== 'card' && x !== 'm28' && x !== 'grip' && x !== 'part' && x !== 'partyear')) for (const mode of modes) for (const theme of themes) {
     // «Настройки» от момента не зависят — одна пара на тему и режим.
     for (const moment of screen === 'settings' ? [moments[0]] : moments) {
-      if (args['only-spoiler']) { if (screen === 'light' && mode === 'astro') add(screen, theme, mode, moment, 'paper', 'spoiler'); continue; }
+      // «Подробно» есть в «Про» и «Астро» (30г.5: и в «Астро» с выключенными переключателями, `astro~azimuths`).
+      if (args['only-spoiler']) { if (screen === 'light' && mode !== 'simple') add(screen, theme, mode, moment, 'paper', 'spoiler'); continue; }
       for (const fold of screen === 'map' ? folds : ['shut']) add(screen, theme, mode, moment, 'paper', null, 'drum', fold);
     }
     if (screen === 'settings') for (const ch of chapters) add(screen, theme, mode, moments[0], 'paper', ch);

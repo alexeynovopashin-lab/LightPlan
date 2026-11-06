@@ -264,6 +264,8 @@
     "ar.mwWindowNone": "окна съёмки нет: {why}",
     "ar.coreRises": "ядро восходит {t} · {a}°",
     "ar.coreSets": "заходит {t} · {a}°",
+    "ar.coreRisesAt": "ядро восходит {t}",
+    "ar.coreSetsAt": "заходит {t}",
     "ar.entry.useMine": "Использовать моё местоположение",
     "ar.entry.keep": "Оставить «{name}»",
     "ar.entry.whyOff": "AR показывает небо там, где вы стоите. Геолокация выключена — выбранное в приложении место может оказаться не тем.",
@@ -570,7 +572,7 @@
     "set.astro.azimuths": "Азимуты",
     "set.astro.terms": "Термины",
     "set.astro.milkyWay": "Млечный Путь",
-    "set.astro.waiting": "Пока работает только «Термины»: остальные четыре переключателя ещё ничего не прячут.",
+    "set.astro.waiting": "Пока работают «Азимуты» и «Термины»: остальные три переключателя ещё ничего не прячут.",
     "sun.night.label": "Ночь"
   },
   "en": {
@@ -837,6 +839,8 @@
     "ar.mwWindowNone": "no shooting window: {why}",
     "ar.coreRises": "core rises {t} · {a}°",
     "ar.coreSets": "sets {t} · {a}°",
+    "ar.coreRisesAt": "core rises {t}",
+    "ar.coreSetsAt": "sets {t}",
     "ar.entry.useMine": "Use my location",
     "ar.entry.keep": "Keep “{name}”",
     "ar.entry.whyOff": "AR shows the sky where you stand. Location is off, so the place chosen in the app may not be the right one.",
@@ -1140,7 +1144,7 @@
     "set.astro.azimuths": "Azimuths",
     "set.astro.terms": "Terms",
     "set.astro.milkyWay": "Milky Way",
-    "set.astro.waiting": "Only “Terms” works for now: the other four switches don’t hide anything yet.",
+    "set.astro.waiting": "Only “Azimuths” and “Terms” work for now: the other three switches don’t hide anything yet.",
     "sun.night.label": "Night"
   },
   "es": {
@@ -1407,6 +1411,8 @@
     "ar.mwWindowNone": "sin ventana de rodaje: {why}",
     "ar.coreRises": "el núcleo sale {t} · {a}°",
     "ar.coreSets": "se pone {t} · {a}°",
+    "ar.coreRisesAt": "el núcleo sale {t}",
+    "ar.coreSetsAt": "se pone {t}",
     "ar.entry.useMine": "Usar mi ubicación",
     "ar.entry.keep": "Dejar «{name}»",
     "ar.entry.whyOff": "AR muestra el cielo donde estás. La ubicación está desactivada, así que el lugar elegido en la app puede no ser el correcto.",
@@ -1710,7 +1716,7 @@
     "set.astro.azimuths": "Azimuts",
     "set.astro.terms": "Términos",
     "set.astro.milkyWay": "Vía Láctea",
-    "set.astro.waiting": "Por ahora solo funciona «Términos»: los otros cuatro interruptores aún no ocultan nada.",
+    "set.astro.waiting": "Por ahora solo funcionan «Azimuts» y «Términos»: los otros tres interruptores aún no ocultan nada.",
     "sun.night.label": "Noche"
   },
   "ja": {
@@ -1976,6 +1982,8 @@
     "ar.mwWindowNone": "撮影の時間帯なし：{why}",
     "ar.coreRises": "中心核が昇る {t} · {a}°",
     "ar.coreSets": "沈む {t} · {a}°",
+    "ar.coreRisesAt": "中心核が昇る {t}",
+    "ar.coreSetsAt": "沈む {t}",
     "ar.entry.useMine": "現在地を使う",
     "ar.entry.keep": "「{name}」のままにする",
     "ar.entry.whyOff": "ARはいま立っている場所の空を表示します。位置情報がオフのため、アプリで選んだ場所が実際の場所と異なる可能性があります。",
@@ -2276,7 +2284,7 @@
     "set.astro.azimuths": "方位角",
     "set.astro.terms": "用語",
     "set.astro.milkyWay": "天の川",
-    "set.astro.waiting": "今のところ動くのは「用語」だけです。ほかの4つのスイッチはまだ何も隠しません。",
+    "set.astro.waiting": "今のところ動くのは「方位角」と「用語」だけです。ほかの3つのスイッチはまだ何も隠しません。",
     "sun.night.label": "夜"
   },
   "zh": {
@@ -2542,6 +2550,8 @@
     "ar.mwWindowNone": "没有拍摄时段：{why}",
     "ar.coreRises": "银心升起 {t} · {a}°",
     "ar.coreSets": "落下 {t} · {a}°",
+    "ar.coreRisesAt": "银心升起 {t}",
+    "ar.coreSetsAt": "落下 {t}",
     "ar.entry.useMine": "使用我的位置",
     "ar.entry.keep": "保留「{name}」",
     "ar.entry.whyOff": "AR 显示你所在位置的天空。定位已关闭，应用中选择的地点可能不是你所在的地方。",
@@ -2842,7 +2852,7 @@
     "set.astro.azimuths": "方位角",
     "set.astro.terms": "术语",
     "set.astro.milkyWay": "银河",
-    "set.astro.waiting": "目前只有“术语”生效：其他四个开关暂时不会隐藏任何内容。",
+    "set.astro.waiting": "目前只有“方位角”和“术语”生效：其他三个开关暂时不会隐藏任何内容。",
     "sun.night.label": "夜晚"
   }
 }

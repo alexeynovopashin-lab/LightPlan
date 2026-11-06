@@ -395,18 +395,21 @@ struct SunARPointerView: View {
         .shotNode("ar.pointer." + item.id, text: item.text)
         .position(x: p.x, y: p.y)
         .overlay(alignment: .topLeading) {
-            let w = (CGFloat(item.text.count) * 7 + 16)
-            let below = p.y + d / 2 + 14 < labelFlipY
-            Text(item.text)
-                .font(.system(size: 12, weight: .medium).monospacedDigit())
-                .foregroundStyle(SunARInk.light)
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(GlassPlate(shape: Capsule(), opacity: SunARInk.plateOpacity))
-                .fixedSize()
-                .shotNode("ar.pointerLabel." + item.id, text: item.text)
-                .position(x: min(max(p.x, w / 2 + 8), screen.width - w / 2 - 8),
-                          y: below ? p.y + d / 2 + 14 : p.y - d / 2 - 14)
-                .opacity(item.fade)
+            // Пустая подпись (без «Азимутов», 30г.5) — плашки нет, остаётся кружок со стрелкой.
+            if !item.text.isEmpty {
+                let w = (CGFloat(item.text.count) * 7 + 16)
+                let below = p.y + d / 2 + 14 < labelFlipY
+                Text(item.text)
+                    .font(.system(size: 12, weight: .medium).monospacedDigit())
+                    .foregroundStyle(SunARInk.light)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(GlassPlate(shape: Capsule(), opacity: SunARInk.plateOpacity))
+                    .fixedSize()
+                    .shotNode("ar.pointerLabel." + item.id, text: item.text)
+                    .position(x: min(max(p.x, w / 2 + 8), screen.width - w / 2 - 8),
+                              y: below ? p.y + d / 2 + 14 : p.y - d / 2 - 14)
+                    .opacity(item.fade)
+            }
         }
         .allowsHitTesting(false)
     }

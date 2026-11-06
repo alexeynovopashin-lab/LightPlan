@@ -95,7 +95,7 @@ struct MapScreenView: View {
         let place = timebar.place
         let clock = ClockText(language: app.language, preference: light.clockPreference)
         let input = MapInstrument.Input(
-            date: date, minute: minute, solar: solar, place: place, layers: layers, pro: light.proMode,
+            date: date, minute: minute, solar: solar, place: place, layers: layers, pro: light.proMode, azimuths: light.azimuths,
             lightTheme: lightTheme, chip: chip, clock: { clock.fmt($0) },
             cardinals: ["card.n", "card.e", "card.s", "card.w"].map { app.lexicon.t($0) })
         let scene = MapInstrument.scene(input, day: cache.day(date: date, place: place, solar: solar))
@@ -642,7 +642,7 @@ struct MapScreenView: View {
         return MapSummary.build(
             date: date, t: minute, sun: solar, place: place,
             utcOffset: place.zone.utcOffsetHours(on: app.light.timebar.todayInPlace), pro: app.light.proMode,
-            terms: app.light.terms, glow: app.glow.ratio, mw: mw,
+            terms: app.light.terms, azimuths: app.light.azimuths, glow: app.glow.ratio, mw: mw,
             dateShort: { dates.dMonShort(DateText.carrier(year: $0.year, month: $0.month - 1, day: $0.day, in: zone)) },
             lexicon: app.lexicon, clock: clock)
     }

@@ -50,8 +50,10 @@ public struct MapSummary: Equatable, Sendable {
     ///   - utcOffset: пояс места сейчас (`TZ` веба — `tzAt(…, new Date())`).
     ///   - glow: засветка места (`glowVal`).
     ///   - mw: окно, луна и погода над окном; `nil` — слой выключен.
+    ///   - azimuths: переключатель «Азимуты» (30г.5): без него ни одного градуса направления и высоты светил.
     public static func build(
         date: CivilDate, t: Minutes, sun: SolarDay, place: Place, utcOffset: Double, pro: Bool, terms: Bool = true,
+        azimuths: Bool = true,
         glow: Double?, mw: MilkyWayInput?, dateShort: (CivilDate) -> String,
         lexicon: Lexicon, clock: ClockText
     ) -> MapSummary {
@@ -67,14 +69,14 @@ public struct MapSummary: Equatable, Sendable {
         let lit = Int((moonNow.phase.fraction * 100 + 0.5).rounded(.down))
         var rows: [Row] = []
 
-        // Свет идёт — пока солнце светит или есть зарево (до −12°).
-        if pro, e > -12 {
+        // Свет идёт — пока солнце светит или есть зарево (до −12°). Три строки — «Азимуты» (опись 30г.2 № 91).
+        if pro, azimuths, e > -12 {
             let key = e > 0 ? "map.dirFrom" : "map.glowFrom"
             rows.append(Row(label: "map.lightFrom",
                             text: lexicon.t(key, ["dir": dir(az), "az": String(format: "%.0f", az)]), tone: .ink))
         }
-        if pro { rows.append(Row(label: "map.sunElev", text: signed(e), tone: .ink)) }
-        if pro, let sh, sh != 0 {
+        if pro, azimuths { rows.append(Row(label: "map.sunElev", text: signed(e), tone: .ink)) }
+        if pro, azimuths, let sh, sh != 0 {
             let n = sh < 10 ? String(format: "%.1f", sh) : String(Int((sh + 0.5).rounded(.down)))
             rows.append(Row(label: "map.shadow",
                             text: lexicon.t("map.shadowTo", ["n": n, "dir": dir((az + 180).truncatingRemainder(dividingBy: 360))]),
@@ -91,7 +93,8 @@ public struct MapSummary: Equatable, Sendable {
 
         let moonText: String
         if moonNow.altitude > 0 {
-            moonText = pro
+            // Направление и высота луны — градусы: без «Азимутов» строка как в «Просто» (саму строку прячет «Луна», 30г.6).
+            moonText = pro && azimuths
                 ? lexicon.t("map.moonPro", ["dir": dir(moonNow.azimuth), "alt": String(format: "%.0f", moonNow.altitude), "pct": "\(lit)"])
                 : lexicon.t("map.moonLit", ["pct": "\(lit)"])
                     + (moonArc.map { lexicon.t("map.moonSetsAt", ["t": clock.fmt($0.set)]) } ?? "")
@@ -139,12 +142,14 @@ public struct MapSummary: Equatable, Sendable {
         }
         func azAtOpt(_ m: Minutes?) -> Degrees? { m.map { sun.azimuth(at: $0) } }
         let riseAz = azAtOpt(sun.rise), setAz = azAtOpt(sun.set)
-        var pro: [LightTelemetry.ProGroup] = [
+        let shadowLen = ("pro.shadowLen", sh.flatMap { $0 != 0 ? $0 : nil }.map {
+            lexicon.t("pro.shadowOf", ["n": String(format: $0 < 10 ? "%.2f" : "%.1f", $0)]) } ?? "—")
+        // Без «Азимутов» (опись № 95): от «Солнца в этот момент» остаётся длина тени, «Азимутов дня» нет вовсе.
+        var pro: [LightTelemetry.ProGroup] = azimuths ? [
             g("sun", "pro.sunNow", [
                 ("pro.azimuth", azDir(az)),
                 ("pro.altitude", signed(e)),
-                ("pro.shadowLen", sh.flatMap { $0 != 0 ? $0 : nil }.map {
-                    lexicon.t("pro.shadowOf", ["n": String(format: $0 < 10 ? "%.2f" : "%.1f", $0)]) } ?? "—"),
+                shadowLen,
                 ("mpro.shadowFalls", azDir((az + 180).truncatingRemainder(dividingBy: 360))),
             ]),
             g("compass", "mpro.dayAzimuths", [
@@ -152,6 +157,8 @@ public struct MapSummary: Equatable, Sendable {
                 ("pro.sunset", setAz.map(azDir) ?? "—"),
                 ("mpro.sector", riseAz.flatMap { r in setAz.map { String(format: "%.0f", abs($0 - r)) + "°" } } ?? "—"),
             ]),
+        ] : [g("sun", "pro.sunNow", [shadowLen])]
+        pro += [
             g("compass", "mpro.place", [
                 ("mpro.lat", String(format: "%.4f", abs(place.latitude)) + "° " + (place.latitude >= 0 ? "N" : "S")),
                 ("mpro.lon", String(format: "%.4f", abs(place.longitude)) + "° " + (place.longitude >= 0 ? "E" : "W")),
@@ -182,6 +189,8 @@ public struct MapSummary: Equatable, Sendable {
                 items.insert(("pro.astroNight", w.dark && sun.astroB != nil && sun.astroA != nil
                     ? clock.range(sun.astroB, sun.astroA! + 1440) : lexicon.t("pro.whiteNight")), at: 4)
             }
+            // Азимут и высота ядра — градусы (опись § 2, «Азимуты»); высоты окна съёмки — мерило Млечного Пути, остаются.
+            if !azimuths { items.removeAll { $0.0 == "mpro.coreAz" || $0.0 == "mpro.coreAlt" } }
             if let sky = mw.sky { items.append(("mpro.skyHum", "\(sky.humidity)%")) }
             if let glow {
                 let ratio = glow < 10 ? String(format: "%.2f", glow) : String(Int((glow + 0.5).rounded(.down)))

@@ -345,6 +345,16 @@ function verdict(sc, nodes) {
   // Флаги устройства — аргументами запуска: `defaults write` через simctl пишет не в тот файл, что читает приложение.
   const flag = (k, v) => ['-lightplan.native.sunar.' + k, v ? 'YES' : 'NO'];
 
+  // 30г.5: `--mode simple|pro|astro|astro~azimuths` — режим и выключенные переключатели «Астро» в копии сида (без флага — сид как
+  // есть, то есть «Просто»: градусов в AR там нет). После «~» — выключенные переключатели (ключ `astroOff`), как в `pair.js`.
+  let SEED = path.join(FX, 'seed.json');
+  if (args.mode) {
+    const [appMode, ...astroOff] = String(args.mode).split('~');
+    const s = { ...JSON.parse(fs.readFileSync(SEED, 'utf8')), pro: appMode !== 'simple', appMode, astroOff };
+    fs.mkdirSync(OUT, { recursive: true });
+    SEED = path.join(OUT, 'seed-' + String(args.mode).replace(/~/g, '-') + '.json');
+    fs.writeFileSync(SEED, JSON.stringify(s));
+  }
   const rows = [];
   const only = args.only ? String(args.only).split(',') : null;
   for (const sc of SCENARIOS) {
@@ -355,7 +365,7 @@ function verdict(sc, nodes) {
     fs.rmSync(report, { force: true });
     try { run('xcrun', ['simctl', 'terminate', udid, BUNDLE], { stdio: 'ignore', timeout: 10000 }); } catch (e) {}
     run('xcrun', ['simctl', 'launch', udid, BUNDLE, '-AppleLanguages', `(${LANG})`, '-AppleLocale', LOCALE,
-      '-LPShotNow', sc.now, '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', path.join(FX, 'seed.json'),
+      '-LPShotNow', sc.now, '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', SEED,
       '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'), '-LPShotAir', path.join(FX, 'air_barnaul.json'),
       '-LPShotName', path.join(FX, 'place_barnaul.json'), '-LPShotScreen', 'map', '-LPShotReportDelay', '5',
       ...flag('calibrationSeen', true), ...flag('moon', sc.moon), ...flag('milkyWay', sc.mw),

@@ -2,14 +2,14 @@ import SwiftUI
 import LightPlanData
 
 /// Пять переключателей неба сразу под выбором режима, только в «Астро» (30г.4; рисунок `docs/30g2_prostoe_sketch.png`,
-/// колонка «Астро»). Работает пока один — «Термины»; остальные четыре видны включёнными, но до своих шагов (30г.5–30г.7)
+/// колонка «Астро»). Работают «Термины» (30г.4) и «Азимуты» (30г.5); остальные три видны включёнными, но до своих шагов (30г.6–30г.7)
 /// не трогаются, и строка под ними говорит об этом прямо, без сроков.
 struct AstroSwitchRows: View {
     let app: AppModel
     @Environment(\.colorScheme) private var colorScheme
 
     /// Переключатели, у которых уже есть работа.
-    static let working: Set<AstroSwitch> = [.terms]
+    static let working: Set<AstroSwitch> = [.azimuths, .terms]
 
     var body: some View {
         let t = app.lexicon, pal = Palette(colorScheme)

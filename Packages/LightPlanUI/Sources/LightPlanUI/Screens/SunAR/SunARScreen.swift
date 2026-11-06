@@ -193,10 +193,8 @@ struct SunARScreen: View {
                                                viewport: viewport, box: box) else { return nil }
             return SunARPointerItem(id: id, body: body, pointer: p, text: text, fade: fade)
         }
-        func label(_ az: Double, _ alt: Double) -> String {
-            let a = az.rounded() == 360 ? 0 : az.rounded()
-            return String(format: "%.0f° · %+.0f°", a, alt.rounded())
-        }
+        let degrees = app.light.azimuths
+        func label(_ az: Double, _ alt: Double) -> String { SunARDegrees.pointer(azimuth: az, altitude: alt, shown: degrees) }
         var out: [SunARPointerItem] = []
         if let i = item("sun", .sun, az: sun.azimuth, alt: sun.apparentAltitude,
                         text: label(sun.azimuth, sun.altitude), fade: sun.altitude < SunTrack.visibleFrom ? 0.6 : 1,
@@ -277,10 +275,10 @@ struct SunARScreen: View {
         t.t(e.kind == .sunset ? "ar.sunsetAt" : "ar.sunriseAt", ["t": clock.fmt(e.minutes)])
     }
 
-    /// «ядро восходит 22:40 · 195°» / «заходит 04:10 · 262°» — время по часам места, азимут от севера.
+    /// «ядро восходит 22:40 · 195°» / «заходит 04:10 · 262°» — время по часам места, азимут от севера (без «Азимутов» — без него).
     private func coreEventText(_ e: NightSkyARScene.CoreTrack.Event, clock: ClockText) -> String {
-        let az = Int(e.azimuth.rounded()) % 360
-        return t.t(e.kind == .rise ? "ar.coreRises" : "ar.coreSets", ["t": clock.fmt(e.minutes), "a": String(az)])
+        SunARDegrees.coreEvent(rise: e.kind == .rise, time: clock.fmt(e.minutes), azimuth: e.azimuth,
+                               shown: app.light.azimuths, lexicon: t)
     }
 
     @ViewBuilder
@@ -530,12 +528,18 @@ struct SunARScreen: View {
         .shotNode("ar.calibrate", text: t.t("ar.calibrate"))
     }
 
+    /// Чип курса — только с «Азимутами» (опись № 107): без них его нет вовсе, ряд кнопок короче.
+    @ViewBuilder
     private func headingChip(_ aim: HorizontalPoint) -> some View {
+        if let text = SunARDegrees.heading(aim.azimuth, shown: app.light.azimuths) { headingChipBody(text, azimuth: aim.azimuth) }
+    }
+
+    private func headingChipBody(_ text: String, azimuth: Double) -> some View {
         HStack(spacing: 6) {
             HeadingGlyph()
                 .stroke(SunARInk.buttonInk, style: StrokeStyle(lineWidth: 1.8 * 15 / 24, lineCap: .round, lineJoin: .round))
                 .frame(width: 15, height: 15)
-            Text(String(format: "%.0f°", aim.azimuth.rounded() == 360 ? 0 : aim.azimuth.rounded()))
+            Text(text)
                 .font(.system(size: 14, weight: .medium).monospacedDigit())
         }
         .foregroundStyle(SunARInk.buttonInk)
@@ -543,7 +547,7 @@ struct SunARScreen: View {
         .padding(.horizontal, 14)
         .frame(minHeight: SunARInk.touch)
         .glassEffect(SunARInk.buttonGlass, in: Capsule())
-        .shotNode("ar.heading", text: String(format: "%.0f", aim.azimuth))
+        .shotNode("ar.heading", text: String(format: "%.0f", azimuth))
     }
 
     /// Одна круглая кнопка «Слои» вместо двух включателей (29.8в.9б, слово Алексея 18.10): нажатие открывает список
@@ -617,10 +621,14 @@ struct SunARScreen: View {
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .shotNode("ar.note", text: eventNoteText)
                 Spacer(minLength: 8)
-                Text(String(format: "%@ %.0f° · %@ %+.0f°", t.t("pro.azimuth"), sun.azimuth, t.t("pro.altitude"), sun.altitude))
-                    .font(.system(size: 11).monospacedDigit()).opacity(0.7)
-                    .lineLimit(1).minimumScaleFactor(0.8)
-                    .shotNode("ar.sunPos", text: String(format: "%.1f %.1f", sun.azimuth, sun.altitude))
+                // Азимут и высота солнца — только с «Азимутами» (опись № 108).
+                if let pos = SunARDegrees.sunPosition(azimuth: sun.azimuth, altitude: sun.altitude,
+                                                      shown: app.light.azimuths, lexicon: t) {
+                    Text(pos)
+                        .font(.system(size: 11).monospacedDigit()).opacity(0.7)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                        .shotNode("ar.sunPos", text: String(format: "%.1f %.1f", sun.azimuth, sun.altitude))
+                }
             }
             TimebarView(model.timebar, showRibbon: false, bare: true, nowInk: SunARInk.nowTone, onNow: goNow)
                 .padding(.horizontal, -16)

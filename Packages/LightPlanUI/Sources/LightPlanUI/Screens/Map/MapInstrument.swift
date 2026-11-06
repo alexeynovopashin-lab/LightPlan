@@ -48,6 +48,9 @@ struct MapInstrument {
         var place: Place
         var layers: MapLayers
         var pro: Bool
+        /// Переключатель «Азимуты» (30г.5): числа на кольце и чипы азимута у светил. Без него кольцо без чисел, тап и ползунок
+        /// ничего не показывают (опись 30г.2 № 89, 90).
+        var azimuths: Bool
         /// Тема приложения — у колец и латуни (`ringColor`, `brassRing`).
         var lightTheme: Bool
         var chip: Chip?
@@ -176,7 +179,7 @@ struct MapInstrument {
             let big = g % 30 == 0
             sc.elements.append(.line(at(Double(g), tickOut - (big ? 6 : 3)), at(Double(g), tickOut),
                                      stroke: big ? brass(0.42) : ring(0.10), width: big ? 1.2 : 1, dash: [], round: false))
-            if big && input.pro {
+            if big && input.azimuths {
                 sc.elements.append(.text(String(g), center: at(Double(g), compassR), size: 8, weight: .regular,
                                          mono: true, color: ring(0.38), anchor: .middle, tracking: 0))
             }
@@ -254,7 +257,7 @@ struct MapInstrument {
             }
         }
 
-        if let chip = input.chip { chips(&sc, chip: chip, input: input, light: light, sunAz: az,
+        if input.azimuths, let chip = input.chip { chips(&sc, chip: chip, input: input, light: light, sunAz: az,
                                          moon: (moonNow.azimuth, moonNow.altitude), ring: ring) }
         return sc
     }

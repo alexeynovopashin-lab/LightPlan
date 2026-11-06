@@ -1576,6 +1576,41 @@
         }
       }
     },
+    "ar.coreRisesAt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро восходит {t}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "core rises {t}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el núcleo sale {t}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中心核が昇る {t}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心升起 {t}"
+          }
+        }
+      }
+    },
     "ar.coreSets" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1607,6 +1642,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "落下 {t} · {a}°"
+          }
+        }
+      }
+    },
+    "ar.coreSetsAt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "заходит {t}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sets {t}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "se pone {t}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沈む {t}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "落下 {t}"
           }
         }
       }
@@ -53206,31 +53276,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пока работает только «Термины»: остальные четыре переключателя ещё ничего не прячут."
+            "value" : "Пока работают «Азимуты» и «Термины»: остальные три переключателя ещё ничего не прячут."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Only “Terms” works for now: the other four switches don’t hide anything yet."
+            "value" : "Only “Azimuths” and “Terms” work for now: the other three switches don’t hide anything yet."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Por ahora solo funciona «Términos»: los otros cuatro interruptores aún no ocultan nada."
+            "value" : "Por ahora solo funcionan «Azimuts» y «Términos»: los otros tres interruptores aún no ocultan nada."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "今のところ動くのは「用語」だけです。ほかの4つのスイッチはまだ何も隠しません。"
+            "value" : "今のところ動くのは「方位角」と「用語」だけです。ほかの3つのスイッチはまだ何も隠しません。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "目前只有“术语”生效：其他四个开关暂时不会隐藏任何内容。"
+            "value" : "目前只有“方位角”和“术语”生效：其他三个开关暂时不会隐藏任何内容。"
           }
         }
       }
