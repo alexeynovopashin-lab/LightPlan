@@ -7,7 +7,7 @@
 SHELL := /bin/bash
 FIXTURES := Fixtures
 
-.PHONY: phone phoneslots checkstep clocksweep help parity blocks lang icons appicon widgetid brightstars milkywaygaia mwdata domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
+.PHONY: phone phoneslots checkstep clocksweep help parity telcountries blocks lang icons appicon widgetid brightstars milkywaygaia mwdata domain shots mapstyle mapref planner year tapspot pinch rotor sims glass lightfit
 
 help:
 	@echo "make parity   пересобрать фикстуры в $(FIXTURES)/ и доказать, что прогон повторяем"
@@ -19,6 +19,7 @@ help:
 	@echo "make brightstars яркие звёзды AR (V ≤ 2,5): JSON из снимков каталогов, Swift из JSON, проверка числами; без сети (снимки — node Tools/bright_stars/fetch.js)"
 	@echo "make milkywaygaia Млечный Путь из Gaia DR3: звёзды G ≤ 10 + карта свечения, картинки, проверка числами и повтор прогона; без сети, если есть сырой кэш (python3 Tools/milkyway_gaia/fetch.py, ~15 мин)"
 	@echo "make mwdata   данные Gaia (звёзды, карта свечения, spec.json) в ресурсы приложения без правки, сверка побайтно (29.8в.19)"
+	@echo "make telcountries все страны телефона из данных Google libphonenumber (тег в Tools/tel_countries.py, нужна сеть); ARGS=--check — совпадает ли лежащая таблица (30ж.2)"
 	@echo "make domain   пересобрать эталон таблиц и правил съёмки (итерация 11) и доказать повторяемость"
 	@echo "make mapstyle описание холста карты из beta/mapstyle.js (итерация 20а)"
 	@echo "make mapref   эталон сцены прибора карты из живой беты и доказать повторяемость (итерация 20а, ~3 мин)"
@@ -128,6 +129,9 @@ mwdata:
 # что у parity: дни записей — местные полуночи.
 tel:
 	@node Tools/parity/tel.js --out $(FIXTURES)
+
+telcountries:
+	@python3 -I Tools/tel_countries.py $(ARGS)
 
 domain:
 	@TZ=UTC node Tools/parity/domain.js --out $(FIXTURES)

@@ -95,12 +95,7 @@ struct MyPhoneField: View {
 
     /// Поле: национальная часть; вставка с кодом другой страны переставляет и блок кода.
     private var national: Binding<String> {
-        Binding(get: { TelFormat.national(of: app.myPhone, country: app.telCountry) }, set: { v in
-            let r = TelFormat.natIn(v, country: app.telCountry)
-            if let c = r.country { app.setTelCountry(c) }
-            app.setMyPhone(TelFormat.join(national: r.national, country: r.country ?? app.telCountry))
-            app.followCountryOfPhone()
-        })
+        Binding(get: { TelFormat.national(of: app.myPhone, country: app.telCountry) }, set: { app.typeMyNational($0) })
     }
 }
 
@@ -149,7 +144,9 @@ struct MyPhoneCountryAsk: View {
     }
 }
 
-/// «Код страны»: поиск по названию, +коду и ISO; выбор оставляет набранные цифры и переразбивает их.
+/// «Код страны»: все страны мира (30ж.2), названия на языке приложения по алфавиту этого языка, выбранная — первой.
+/// Поиск по названию (без регистра и точек над «ё»), по английскому названию, по +коду и ISO;
+/// выбор оставляет набранные цифры и переразбивает их.
 struct CountrySheet: View {
     @Bindable var app: AppModel
     @State private var query = ""
@@ -159,17 +156,14 @@ struct CountrySheet: View {
     var body: some View {
         let pal = Palette(scheme)
         let t = app.lexicon
-        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
-        let rows = TelCountry.all
-            .map { ($0, Locale(identifier: app.language).localizedString(forRegionCode: $0.iso) ?? $0.iso) }
-            .filter { q.isEmpty || $0.1.lowercased().contains(q) || $0.0.cc.contains(q.replacingOccurrences(of: "+", with: "")) || $0.0.iso.lowercased() == q }
-            .sorted { $0.1 < $1.1 }
+        let rows = Self.rows(query: query, language: app.language, current: app.telCountry)
         ScrollView {
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0) {
                 Text(t.t("tel.ccT")).font(webFont(19, 650)).foregroundStyle(pal.ink).frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, 12)
                 TextField("", text: $query, prompt: Text(t.t("tel.ccFind")).foregroundStyle(pal.ink8))
                     .font(.system(size: 16)).foregroundStyle(pal.ink)
+                    .autocorrectionDisabled()   // подсказка автокоррекции ложилась на первую строку списка (кадр 30ж.2)
                     .padding(12).background(pal.field, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 ForEach(rows, id: \.0.iso) { c, name in
                     Button { choose(c) } label: {
@@ -189,10 +183,25 @@ struct CountrySheet: View {
         .presentationDetents([.large])
     }
 
+    /// Строки листа: (страна, название). Пустой поиск — выбранная страна первой, остальные по алфавиту языка.
+    static func rows(query: String, language: String, current: TelCountry) -> [(TelCountry, String)] {
+        let loc = Locale(identifier: language), en = Locale(identifier: "en")
+        let q = query.trimmingCharacters(in: .whitespaces)
+        let code = q.hasPrefix("+") ? String(q.dropFirst()) : q
+        let fold: (String) -> String = { $0.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: loc) }
+        let fq = fold(q)
+        let all = TelCountry.all.map { ($0, loc.localizedString(forRegionCode: $0.iso) ?? $0.iso) }
+        let hit = q.isEmpty ? all : all.filter { c, name in
+            fold(name).contains(fq) || fold(en.localizedString(forRegionCode: c.iso) ?? "").contains(fq)
+                || (!code.isEmpty && TelFormat.digits(code) == code && c.cc.hasPrefix(code)) || c.iso.lowercased() == q.lowercased()
+        }
+        let sorted = hit.sorted { $0.1.compare($1.1, locale: loc) == .orderedAscending }
+        guard q.isEmpty, let i = sorted.firstIndex(where: { $0.0 == current }) else { return sorted }
+        return [sorted[i]] + sorted.prefix(i) + sorted.dropFirst(i + 1)
+    }
+
     private func choose(_ c: TelCountry) {
-        let digits = TelFormat.digits(app.myPhone)
-        app.setTelCountry(c)
-        if !digits.isEmpty { app.setMyPhone(TelFormat.join(national: TelFormat.natIn("+" + digits, country: c).national, country: c)) }
+        app.pickTelCountry(c)
         dismiss()
     }
 }

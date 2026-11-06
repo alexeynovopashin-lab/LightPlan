@@ -380,6 +380,8 @@ struct SettingsChapterView: View {
         if MilkyWayGaiaSource.useGaia, MilkyWayGaia.bundled { SetNote(text: t.t("set.creditGaia")) }
         // Панорама Млечного Пути (29.8в.20): CC BY 4.0 требует кредит рядом со слоем и в «О приложении».
         if MilkyWayPano.bundled { SetNote(text: t.t("ar.mwPano")) }
+        // Таблица стран телефона (30ж.2): данные Google libphonenumber, Apache 2.0 — тег данных и лицензия.
+        SetNote(text: t.t("set.creditPhone", ["tag": TelCountry.googleTag]))
         SetNote(text: t.t("set.tagline") + "\n" + t.t("set.build", ["stamp": SettingsText.buildStamp(app.language, clock: AppModel.clock(s.clock))]))
             .monospacedDigit()
     }

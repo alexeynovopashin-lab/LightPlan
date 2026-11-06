@@ -53760,6 +53760,41 @@
         }
       }
     },
+    "set.creditPhone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коды и мобильные номера стран: Google libphonenumber {tag}, лицензия Apache 2.0 (apache.org/licenses/LICENSE-2.0)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Country codes and mobile numbers: Google libphonenumber {tag}, licence Apache 2.0 (apache.org/licenses/LICENSE-2.0)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Códigos de país y números móviles: Google libphonenumber {tag}, licencia Apache 2.0 (apache.org/licenses/LICENSE-2.0)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "国番号と携帯電話番号：Google libphonenumber {tag}、ライセンス Apache 2.0（apache.org/licenses/LICENSE-2.0）。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "国家代码与手机号码：Google libphonenumber {tag}，许可 Apache 2.0（apache.org/licenses/LICENSE-2.0）。"
+          }
+        }
+      }
+    },
     "set.curNote" : {
       "extractionState" : "manual",
       "localizations" : {

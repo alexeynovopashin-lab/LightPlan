@@ -1,13 +1,16 @@
 import Foundation
 
-/// Страна телефонной нумерации (веб `TEL_CC`, L25306–25334): код, магистральный
-/// префикс, длины национального номера, образец разрядов и образец мобильного.
+/// Страна телефонной нумерации: код, магистральный префикс, длины национального номера, образец разрядов
+/// и образец мобильного. 27 строк веба (`TEL_CC`, L25306–25334) — `web`, как были; остальные страны мира —
+/// `google`, из данных Google libphonenumber (`TelCountries.generated.swift`, шаг 30ж.2).
 public struct TelCountry: Sendable, Hashable {
     public let iso: String
     public let cc: String
     public let trunk: String
     /// Допустимые длины национального номера; пусто — не меряется (DE, IT).
     public let nsn: [Int]
+    /// Самый длинный национальный номер, где длины не меряются (`nsn` пуст); нет — 11, как у веба.
+    public let longest: Int?
     /// Образец разрядов: «#» — цифра, остальное печатается как есть.
     public let format: String
     /// Регулярное выражение мобильного национального номера (с якорями).
@@ -15,7 +18,16 @@ public struct TelCountry: Sendable, Hashable {
     /// Образец местного мобильного — пример под списком стран.
     public let example: String
 
-    public static let all: [TelCountry] = [
+    init(iso: String, cc: String, trunk: String, nsn: [Int], longest: Int? = nil, format: String, mobile: String, example: String) {
+        self.iso = iso; self.cc = cc; self.trunk = trunk; self.nsn = nsn; self.longest = longest
+        self.format = format; self.mobile = mobile; self.example = example
+    }
+
+    /// Все страны: сначала 27 веба в его порядке (первая подошедшая выигрывает в `natIn`), за ними остальные.
+    public static let all: [TelCountry] = web + google
+
+    /// Строки веба. Не править под данные Google: расхождения с ними перечислены в отчёте 30ж.2.
+    public static let web: [TelCountry] = [
         .init(iso: "RU", cc: "7", trunk: "8", nsn: [10], format: "### ###-##-##", mobile: "^9\\d{9}$", example: "9261234567"),
         .init(iso: "KZ", cc: "7", trunk: "8", nsn: [10], format: "### ###-##-##", mobile: "^7\\d{9}$", example: "7011234567"),
         .init(iso: "BY", cc: "375", trunk: "80", nsn: [9], format: "## ###-##-##", mobile: "^(25|29|33|44)\\d{7}$", example: "291234567"),
@@ -45,7 +57,8 @@ public struct TelCountry: Sendable, Hashable {
         .init(iso: "MX", cc: "52", trunk: "0", nsn: [10], format: "## #### ####", mobile: "^[1-9]\\d{9}$", example: "5512345678"),
     ]
 
-    public static func of(_ iso: String) -> TelCountry? { all.first { $0.iso == iso } }
+    public static func of(_ iso: String) -> TelCountry? { byIso[iso] }
+    private static let byIso: [String: TelCountry] = Dictionary(all.map { ($0.iso, $0) }, uniquingKeysWith: { a, _ in a })
     public static let fallback = all[0]
 
     /// Догадка по часовому поясу, потом по региону языка, иначе Россия
@@ -76,10 +89,33 @@ public struct TelCountry: Sendable, Hashable {
     /// Остаток похож на местный национальный номер: длина сошлась (у DE и IT — образец мобильного).
     func nsnOk(_ n: String) -> Bool {
         if !nsn.isEmpty { return nsn.contains(n.count) }
-        return n.range(of: mobile, options: .regularExpression) != nil
+        return isMobileNational(n)
     }
     /// «Ещё влезает» — для поля, где номер набирается по цифре.
-    func nsnFits(_ n: String) -> Bool { n.count <= (nsn.max() ?? 11) }
+    func nsnFits(_ n: String) -> Bool { n.count <= (nsn.max() ?? longest ?? 11) }
+
+    /// Национальная часть проходит образец мобильного. Образец собирается один раз на страну:
+    /// `countriesFitting` с плюсом прогоняет до 25 стран кода +1 на каждую цифру.
+    func isMobileNational(_ n: String) -> Bool {
+        TelCountry.regex(mobile).firstMatch(in: n, range: NSRange(n.startIndex..., in: n)) != nil
+    }
+
+    private static let compiled = RegexCache()
+    static func regex(_ p: String) -> NSRegularExpression { compiled.get(p) }
+}
+
+/// Собранные образцы мобильного по тексту образца.
+private final class RegexCache: @unchecked Sendable {
+    private var map: [String: NSRegularExpression] = [:]
+    private let lock = NSLock()
+    func get(_ p: String) -> NSRegularExpression {
+        lock.lock(); defer { lock.unlock() }
+        if let r = map[p] { return r }
+        // Образцы из таблицы проверены тестом `everyMobileRuleCompilesAndTakesItsExample`.
+        let r = try! NSRegularExpression(pattern: p)
+        map[p] = r
+        return r
+    }
 }
 
 /// Телефон: разряды при вводе, международный вид, ID приложения — то же, что
@@ -154,7 +190,7 @@ public enum TelFormat {
         let d = full(value, country: sp)
         if d.isEmpty { return false }
         if d.hasPrefix(sp.cc) {
-            return String(d.dropFirst(sp.cc.count)).range(of: sp.mobile, options: .regularExpression) != nil
+            return sp.isMobileNational(String(d.dropFirst(sp.cc.count)))
         }
         return value.drop(while: { $0 == " " }).hasPrefix("+") || digits(value).hasPrefix("00")
     }
@@ -201,12 +237,15 @@ extension TelFormat {
     }
 
     /// Страны, при которых введённое выходит мобильным (`telCcFit`). Городской номер сюда не попадает.
+    /// С «+» — все страны мира: коды стран не начинаются один с другого, так что ответ один по коду
+    /// (кроме общих кодов: +1, +7, +44 …). Без «+» — только 27 стран веба, как было: десять цифр без кода
+    /// мобильны в десятках стран сразу, и российский номер «8 916 …» не должен уводить в чужую страну (30ж.2).
     public static func countriesFitting(_ raw: String) -> [TelCountry] {
         var d = digits(raw)
         if d.isEmpty { return [] }
         let plus = raw.drop(while: { $0 == " " }).hasPrefix("+") || d.hasPrefix("00")
         if d.hasPrefix("00") { d = String(d.dropFirst(2)) }
-        return TelCountry.all.filter { sp in
+        return (plus ? TelCountry.all : TelCountry.web).filter { sp in
             let n: String
             if plus {
                 guard d.hasPrefix(sp.cc) else { return false }
@@ -218,7 +257,7 @@ extension TelFormat {
             } else {
                 n = d
             }
-            return sp.nsnOk(n) && n.range(of: sp.mobile, options: .regularExpression) != nil
+            return sp.nsnOk(n) && sp.isMobileNational(n)
         }
     }
 

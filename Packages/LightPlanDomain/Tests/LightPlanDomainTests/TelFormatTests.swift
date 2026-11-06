@@ -17,6 +17,8 @@ import LightPlanDomain
         catch { fatalError("нет \(url.path): \(error). Собрать: make tel") }
     }()
 
+    static let webIsos = Set(TelCountry.web.map(\.iso))
+
     @Test func matchesWebOnEveryRow() {
         var bad: [String] = []
         for r in Self.rows {
@@ -24,7 +26,8 @@ import LightPlanDomain
             let f = TelFormat.format(r.v, country: sp), p = TelFormat.format(r.v, country: sp, pasted: true)
             let full = TelFormat.full(r.v, country: sp), mob = TelFormat.isMobile(r.v, country: sp)
             let id = TelFormat.appId(r.v, country: sp)
-            let fit = TelFormat.countriesFitting(r.v).map(\.iso), nat = TelFormat.national(of: r.v, country: sp)
+            // Веб знает 27 стран: с «+» полная таблица прибавляет к его ответу соседей по коду (+44 7911… — ещё и Гернси).
+            let fit = TelFormat.countriesFitting(r.v).map(\.iso).filter(Self.webIsos.contains), nat = TelFormat.national(of: r.v, country: sp)
             let join = TelFormat.join(national: r.v, country: sp), real = TelFormat.isReal(r.v, country: sp)
             let nin = TelFormat.natIn(r.v, country: sp)
             if fit != r.fit || nat != r.nat || join != r.join || real != r.real || nin.national != r.in.nat || nin.country?.iso != r.in.cc {
@@ -72,7 +75,7 @@ import LightPlanDomain
         #expect(!TelFormat.isComplete("", country: ru))
     }
 
-    @Test func countriesCount() { #expect(TelCountry.all.count == 27) }
+    @Test func countriesCount() { #expect(TelCountry.web.count == 27 && TelCountry.all.count == 244) }
 
     @Test func iosAutofillDigitByDigit() {
         // Номер приходит по цифре без +7: на десятой цифре возвращается ведущая часть.

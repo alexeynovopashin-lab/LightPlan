@@ -439,6 +439,80 @@ struct PhoneGateTests {
         #expect(app.telSnap == Self.mobile, "номер зафиксирован")
     }
 
+    // MARK: - Номер любой страны (30ж.2)
+
+    /// Фотограф вне 27 стран веба: вставка номера с «+» сама ставит страну, ID приложения есть, планировщик открыт.
+    @Test func aPastedNumberOfAnyCountryOpensThePlanner() {
+        for (raw, iso, id) in [("+61 412 345 678", "AU", "id61412345678"), ("+27 71 123 4567", "ZA", "id27711234567"),
+                               ("+54 9 11 2345-6789", "AR", "id5491123456789"), ("+84 912 345 678", "VN", "id84912345678"),
+                               ("+358 41 2345678", "FI", "id358412345678")] {
+            let app = model()
+            app.openTab(.planner)
+            app.typeMyNational(raw)
+            #expect(app.telCountry.iso == iso, "\(raw)")
+            #expect(app.myAppId == id && app.hasPlannerPhone, "\(raw): \(app.myPhone)")
+            app.confirmPhoneAsk()
+            app.phoneSheetGone()
+            #expect(app.tab == .planner && app.myAppId == id, "\(raw)")
+        }
+    }
+
+    /// Выбор страны в листе и набор национальной части: так же, как у России; городской «Готово» не включает.
+    @Test func aCountryPickedFromTheListTakesItsOwnNumbers() {
+        let app = model()
+        app.pickTelCountry(TelCountry.of("VN")!)
+        app.typeMyNational("912 345 678")
+        #expect(app.myPhone == "+84 912 345 678" && app.hasPlannerPhone)
+        app.typeMyNational("210 123 4567")
+        #expect(!app.hasPlannerPhone, "городской Вьетнама")
+        app.typeMyNational("912 3")
+        #expect(!app.hasPlannerPhone, "обрывок")
+        // Набранное остаётся при смене страны и переразбивается — и когда номер набран раньше, при чужом «+7».
+        app.typeMyNational("412345678")
+        app.pickTelCountry(TelCountry.of("AU")!)
+        #expect(app.myPhone == "+61 412 345 678" && app.myAppId == "id61412345678")
+        let late = model()
+        late.typeMyNational("412 345 678")
+        #expect(late.myPhone == "+7 412 345-67-8" && !late.hasPlannerPhone)
+        late.pickTelCountry(TelCountry.of("AU")!)
+        #expect(late.myPhone == "+61 412 345 678" && late.hasPlannerPhone)
+        // Россия ↔ Беларусь: как раньше, национальная часть едет в новую страну.
+        let ru = model()
+        ru.typeMyNational("916 123-45-67")
+        ru.pickTelCountry(TelCountry.of("BY")!)
+        #expect(ru.myPhone == "+375 91 612-34-567")
+    }
+
+    /// Российский номер без «+» (старый файл веба) не уводит в чужую страну и по-прежнему даёт ID.
+    @Test func aRussianNumberWithoutPlusStaysRussian() {
+        var snap = Snapshot()
+        snap.extra["me"] = .object(["met": .bool(true), "phone": .string("8 916 123-45-67")])
+        let app = model(snap)
+        app.followCountryOfPhone()
+        #expect(app.telCountry.iso == "RU" && app.myAppId == "id79161234567")
+    }
+
+    /// Лист «Код страны»: все страны мира, названия на языке приложения, по алфавиту, выбранная первой; поиск без регистра и «ё».
+    @Test func countryListFindsEveryCountryByItsName() {
+        let ru = TelCountry.of("RU")!
+        let all = CountrySheet.rows(query: "", language: "ru", current: TelCountry.of("FI")!)
+        #expect(all.count == TelCountry.all.count && all.first?.0.iso == "FI")
+        let rest = all.dropFirst().map(\.1)
+        #expect(rest == rest.sorted { $0.compare($1, locale: Locale(identifier: "ru")) == .orderedAscending })
+        #expect(all.allSatisfy { $0.1 != $0.0.iso }, "у каждой страны есть название: \(all.filter { $0.1 == $0.0.iso }.map(\.1))")
+        let isos = { (q: String, lang: String) in CountrySheet.rows(query: q, language: lang, current: ru).map(\.0.iso) }
+        #expect(isos("австрал", "ru") == ["AU"])
+        #expect(isos("ВЬЕТНАМ", "ru") == ["VN"])
+        #expect(isos("Vietnam", "ru") == ["VN"], "английское название находит и в русском приложении")
+        #expect(isos("аландские", "ru") == ["AX"])
+        #expect(Set(isos("+61", "ru")) == ["AU", "CC", "CX"])
+        #expect(isos("za", "en") .contains("ZA"))
+        #expect(isos("Sudáfrica", "es") == ["ZA"] && isos("sudafrica", "es") == ["ZA"], "без ударения")
+        let t0 = Date()
+        for q in ["", "а", "ав", "авс", "+6", "+61"] { _ = CountrySheet.rows(query: q, language: "ru", current: ru) }
+        print("country-sheet-timing \(Int(Date().timeIntervalSince(t0) / 6 * 1000)) ms на нажатие (среднее из 6)")
+    }
+
     // MARK: - Снимки и тесты без листа
 
     /// Снимки пар и засевы (`-LPShotSeed`) строят модель сами: правило выключено, в лист не упираются.

@@ -73,6 +73,23 @@ extension AppModel {
         persist()
     }
 
+    /// Поле номера: национальная часть; вставка с кодом другой страны переставляет и блок кода.
+    public func typeMyNational(_ v: String) {
+        let r = TelFormat.natIn(v, country: telCountry)
+        if let c = r.country { setTelCountry(c) }
+        setMyPhone(TelFormat.join(national: r.national, country: r.country ?? telCountry))
+        followCountryOfPhone()
+    }
+
+    /// Выбор в листе «Код страны»: цифры поля (без прежнего кода) остаются и переразбиваются по новой стране.
+    /// Раньше брались все цифры с прежним кодом и снимался код той страны, где номер мобильный; номер, набранный
+    /// при чужом «+7» до выбора своей страны, мобильным нигде не был, и «7» прилипала к нему (30ж.2).
+    public func pickTelCountry(_ c: TelCountry) {
+        let national = TelFormat.digits(TelFormat.national(of: myPhone, country: telCountry))
+        setTelCountry(c)
+        if !national.isEmpty { setMyPhone(TelFormat.join(national: national, country: c)) }
+    }
+
     /// Страна идёт за номером молча, когда ответ один по коду (веб `telCcFollow`).
     public func followCountryOfPhone() {
         let fit = TelFormat.countriesFitting(myPhone)

@@ -334,6 +334,12 @@
   written as typed; «Готово» commits (`confirmPhoneAsk`), ✕ or a swipe restores the field and forgets the path (`phoneSheetGone`, also where the path continues: a form cannot present before the sheet has left).
   A number = `TelFormat.opensPlanner`: an app ID comes out of it (mobile, ≥ 5 digits); a landline is refused with «нужен мобильный». Records are never touched. Only `live()` sets `plannerNeedsPhone`: tests and `-LPShotSeed` runs have no gate, so they never stop at the sheet;
   a branch copy's `test_seed.json` goes through `live()` and has no number on purpose (season records without a number = rule 5 of the decision, the sheet shows once). Shots: `node Tools/shots/phone_sheet.js` (`-LPShotSheet phoneask`, `-LPShotWay part|mobile|landline`).
+- **Every country's number (30ж.2, Alexey 06.11: «Любой мобильный номер должен учитываться»).** `TelCountry.all` = `web` (the web's 27 rows, untouched, first:
+  `natIn` takes the first fit) + `google` (`Rules/TelCountries.generated.swift`, 217 countries from Google libphonenumber, tag in `Tools/tel_countries.py` / `TelCountry.googleTag`,
+  Apache 2.0, line `set.creditPhone` in «О приложении»; `make telcountries [ARGS=--check|--diff27]`, the XML is not kept). Lengths: mobile ∪ landline; more than two → judged by
+  the mobile pattern, `longest` caps typing. Fixed-or-mobile countries (US, CA, PR, GU, MP, VI) accept both. `countriesFitting`: with «+» all countries (codes are prefix-free,
+  one answer per code), **without «+» only `web`** — ten digits are mobile in dozens of countries. Patterns compiled once (`RegexCache`). Zone guess unchanged; new countries come
+  by region or by a pasted «+». Country sheet: system names in the app language, sorted by its alphabet, chosen first, search folds case/accents and matches English names and «+code».
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 
