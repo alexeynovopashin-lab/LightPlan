@@ -107,14 +107,18 @@ struct MoonSwitchTests {
         }
     }
 
-    /// Строка под переключателями называет «Луну» среди работающих (шесть языков — под `xcodebuild test`).
+    /// Строка под переключателями называет «Луну» среди работающих, а не среди ждущих (шесть языков — под `xcodebuild test`):
+    /// работающие идут первыми — «Луна» раньше «Терминов», ждущие — после: «Термины» раньше «Звёзд»; «Луна» названа один раз.
     @Test(.enabled(if: catalogCompiled, "каталог не скомпилирован: запускать через xcodebuild test"))
-    func waitingNoteNamesTheMoon() {
-        let want = ["ru": "Луна", "en": "Moon", "es": "Luna", "ja": "月", "zh": "月亮"]
-        for (lang, word) in want {
-            let t = Lexicon(lang)
-            #expect(t.t("set.astro.waiting").contains(word), "\(lang)")
-            #expect(t.t("set.astro.waiting").contains(t.t("set.astro.stars")), "\(lang)")
+    func waitingNoteNamesTheMoon() throws {
+        for lang in ["ru", "en", "es", "ja", "zh"] {
+            let t = Lexicon(lang), note = t.t("set.astro.waiting")
+            let moon = try #require(note.range(of: t.t("set.astro.moon")), "\(lang)")
+            let terms = try #require(note.range(of: t.t("set.astro.terms")), "\(lang)")
+            let stars = try #require(note.range(of: t.t("set.astro.stars")), "\(lang)")
+            #expect(moon.upperBound <= terms.lowerBound, "\(lang): «Луна» среди работающих")
+            #expect(terms.upperBound <= stars.lowerBound, "\(lang): «Звёзды» среди ждущих")
+            #expect(note[moon.upperBound...].range(of: t.t("set.astro.moon")) == nil, "\(lang): «Луна» не названа второй раз")
         }
     }
 
