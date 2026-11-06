@@ -107,6 +107,17 @@
   **Nothing is written:** the moon wish, the map layer key and the AR device flag stay as they were and come back with the switch. Not here (30г.7): moon rows inside the Milky Way
   group (`map.moonGlare`, `mpro.moonNow`), the AR Milky Way eye note, answer 4 (switch on → layer on). Shots: `--modes astro~moon`, `--dome-moon`, `--cards moon --rec-mode <m>`,
   `--forms portrait --rec-mode <m>`; `Tools/shots/ar.js --mode astro` (without it the seed is Simple: no moon).
+- **Stars and Milky Way switches (30г.7).** `AstroSwitchRows.working` = all five; the note `set.astro.waiting` is gone (the inventory sketch has none: the
+  chapters follow the five rows). Rule `AppModel+AstroSky.swift`: `seesStars`, `seesMilkyWay`; AR layers by `SunARSkyLayer.astroSwitch` (stars, constellations,
+  planets → «Звёзды»; Milky Way → «Млечный Путь»), wishes by `AppModel.astroSwitch(of:)` (moon, stars). Off (Simple, Pro, Astro without it): **«Звёзды»** —
+  no sky animation on tapping «Астро» and no stars on its button (`SettingsView`), no AR rows/drawing of stars, constellations, planets (`SunARModel.starsShown`
+  …), card: no Milky Way window line incl. «…солнце не уходит ниже −18°» (`cardStars`), no «Ожидались звёзды», form: no tile (7 of 9 in Simple/Pro), no
+  «Звёзды днём» ask and no silent shift (`formTimeFacts` takes `shownWishes`), no star words in «замысел против прогноза»; **«Млечный Путь»** — no map layer, no
+  layers-menu row, no night canvas, no fold rows and no «Подробно» group (with its core altitudes and moon rows; `MapScreenView.summary` reads
+  `mapLayersShown.mw`), no AR band/core/«Как в тёмном месте». The AR «Слои» button exists while any of moon/stars/Milky Way is seen — none in Simple and Pro.
+  Dome stars (№ 57) stay in every mode. **Nothing is written**: the stars wish, `mapLayers.mw`, AR device flags stay and come back with the switch.
+  Shots: `--cards stars --rec-mode <m>`, `--screens map --only-spoiler` (map «Подробно»), `--modes astro~stars,astro~milkyWay`; `Tools/shots/ar.js --mode
+  astro|pro|astro~stars|astro~milkyWay` (nodes of a hidden layer and a «Слои» button without layers are violations).
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

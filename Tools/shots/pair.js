@@ -59,7 +59,8 @@ if (args.help) {
   --part [<мс>,...]   разрез месяца при входе в день, кадр на мс от старта (29.2а; по умолчанию 170); только он: --screens part
   --partyear [<мс>,...]   тот же разрез при входе тапом по числу в ленте года (29.2б); только он: --screens partyear
   --cards / --phases / --forms / --layers / --sheets / --chapters   перебор отдельных экранов (см. шапку файла)
-  --rec-mode pro|astro|astro~moon   режим засева карточек и форм (30г.6; без флага «Просто»); --cards moon — съёмка с «Луной»
+  --rec-mode pro|astro|astro~moon   режим засева карточек и форм (30г.6; без флага «Просто»); --cards moon — съёмка с «Луной», --cards stars — со «Звёздами» (30г.7)
+  --only-spoiler   только раскрытое «Подробно» «Света» и (30г.7) «Карты», режимы не «Просто»
   --dome-moon   купол «Света» и «Карты» как после нажатия «Солнце или луна» (30г.6, только натив; без «Луны» — солнце)
   --skip-build   --out <папка>   --forecast <файл>   --no-sheets --no-pick   --help   эта справка`);
   process.exit(0);
@@ -171,6 +172,8 @@ const PANES = 'sd_oct_wed_kem';
 /* 30г.6: `--cards moon` — «Love story» 16.09 с пожеланиями «Закат» и «Луна» (строки луны блока «Свет»). Только по просьбе,
    в полный прогон не входит. `--rec-mode pro|astro|astro~moon` — режим засева карточек и форм (без флага «Просто», как раньше). */
 const MOON_CARD = 'sd_sep_love';
+/* 30г.7: `--cards stars` — та же «Love story» с «Закатом» и «Звёздами» (строка окна Млечного Пути блока «Свет»). */
+const STARS_CARD = MOON_CARD;
 const recMode = (() => {
   if (!args['rec-mode']) return { pro: false };
   const [appMode, ...astroOff] = args['rec-mode'].split('~');
@@ -636,14 +639,15 @@ function markdown(results) {
     list.push({ name, dir, screen: 'planner', theme, moment: 'day', scope: 'month', layer, seed: seedFile });
   }
   if (screens.includes('card') && !args['only-sheets'] && !args['only-forms'] && !args['only-layers']) {
-    for (const g of cards) for (const ph of CARDS[g] ? phases : g === 'tune' || g === 'panes' || g === 'moon' ? ['before'] : ['during']) for (const theme of themes) {
-      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : g === 'panes' ? PANES : g === 'moon' ? MOON_CARD
+    for (const g of cards) for (const ph of CARDS[g] ? phases : g === 'tune' || g === 'panes' || g === 'moon' || g === 'stars' ? ['before'] : ['during']) for (const theme of themes) {
+      const id = g === 'tune' ? CARDS.client : g === 'meet' ? 'shot_meet' : g === 'panes' ? PANES : g === 'moon' ? MOON_CARD : g === 'stars' ? STARS_CARD
         : R27[g] ? CARDS.event : CARDS[g] || 'sd_sep_clash_a';
       const name = ['card', g, ph, recTag, theme].filter(Boolean).join('-');
       const dir = path.join(OUT, name);
       fs.mkdirSync(dir, { recursive: true });
       const s = { ...plannerSeed, theme, pro: false, drumSlot: 'paper', ribbonMode: 'drum', ...recMode };
       if (g === 'moon') s.sessions = s.sessions.map(x => x.id !== id ? x : { ...x, wish: ['sunset', 'moon'] });
+      if (g === 'stars') s.sessions = s.sessions.map(x => x.id !== id ? x : { ...x, wish: ['sunset', 'stars'] });
       if (g === 'stack') {
         // Три соседа сверх «Семьи Ким»: встреча утром и две съёмки вечером.
         const b = s.sessions.find(x => x.id === 'sd_sep_clash_b');
@@ -785,7 +789,12 @@ function markdown(results) {
     // «Настройки» от момента не зависят — одна пара на тему и режим.
     for (const moment of screen === 'settings' ? [moments[0]] : moments) {
       // «Подробно» есть в «Про» и «Астро» (30г.5: и в «Астро» с выключенными переключателями, `astro~azimuths`).
-      if (args['only-spoiler']) { if (screen === 'light' && mode !== 'simple') add(screen, theme, mode, moment, 'paper', 'spoiler'); continue; }
+      // 30г.7: и «Подробно» «Карты» — сводка раскрыта, в засеве не «Просто» слой Млечного Пути включён.
+      if (args['only-spoiler']) {
+        if (screen === 'light' && mode !== 'simple') add(screen, theme, mode, moment, 'paper', 'spoiler');
+        if (screen === 'map' && mode !== 'simple') add(screen, theme, mode, moment, 'paper', 'spoiler', 'drum', 'open');
+        continue;
+      }
       for (const fold of screen === 'map' ? folds : ['shut']) add(screen, theme, mode, moment, 'paper', null, 'drum', fold);
     }
     if (screen === 'settings') for (const ch of chapters) add(screen, theme, mode, moments[0], 'paper', ch);
