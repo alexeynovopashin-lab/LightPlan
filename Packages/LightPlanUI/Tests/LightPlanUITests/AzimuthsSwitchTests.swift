@@ -200,15 +200,12 @@ struct AzimuthsSwitchTests {
 
     @Test(.enabled(if: catalogCompiled, "каталог не скомпилирован: запускать через xcodebuild test"))
     func coreWordsWithoutDegreesInSixLanguages() {
-        let waiting = ["ru": "Азимуты", "en": "Azimuths", "en-US": "Azimuths", "es": "Azimuts", "ja": "方位角", "zh": "方位角"]
-        for (code, azimuths) in waiting {
+        for code in ["ru", "en", "en-US", "es", "ja", "zh"] {
             let t = Lexicon(code)
             for k in ["ar.coreRisesAt", "ar.coreSetsAt"] {
                 let w = t.t(k, ["t": "22:40"])
                 #expect(w != k && w.contains("22:40") && !w.contains("°"), "\(code) \(k): \(w)")
             }
-            #expect(t.t("set.astro.waiting").contains(azimuths), "\(code)")
-            #expect(t.t("set.astro.waiting").contains(t.t("set.astro.terms")), "\(code)")
         }
     }
 }

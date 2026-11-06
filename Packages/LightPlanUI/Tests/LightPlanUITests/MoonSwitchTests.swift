@@ -55,6 +55,8 @@ struct MoonSwitchTests {
     enum Look: CaseIterable, CustomStringConvertible {
         case simple, pro, astro, astroNoMoon
         var sees: Bool { self == .astro }
+        /// «Астро» — значит, остальные переключатели (с 30г.7 «Звёзды» и «Млечный Путь») включены.
+        var astroMode: Bool { self == .astro || self == .astroNoMoon }
         var description: String { "\(self == .simple ? "Просто" : self == .pro ? "Про" : self == .astro ? "Астро" : "Астро без Луны")" }
         func apply(_ s: inout AppSettings) {
             switch self {
@@ -107,21 +109,6 @@ struct MoonSwitchTests {
         }
     }
 
-    /// Строка под переключателями называет «Луну» среди работающих, а не среди ждущих (шесть языков — под `xcodebuild test`):
-    /// работающие идут первыми — «Луна» раньше «Терминов», ждущие — после: «Термины» раньше «Звёзд»; «Луна» названа один раз.
-    @Test(.enabled(if: catalogCompiled, "каталог не скомпилирован: запускать через xcodebuild test"))
-    func waitingNoteNamesTheMoon() throws {
-        for lang in ["ru", "en", "es", "ja", "zh"] {
-            let t = Lexicon(lang), note = t.t("set.astro.waiting")
-            let moon = try #require(note.range(of: t.t("set.astro.moon")), "\(lang)")
-            let terms = try #require(note.range(of: t.t("set.astro.terms")), "\(lang)")
-            let stars = try #require(note.range(of: t.t("set.astro.stars")), "\(lang)")
-            #expect(moon.upperBound <= terms.lowerBound, "\(lang): «Луна» среди работающих")
-            #expect(terms.upperBound <= stars.lowerBound, "\(lang): «Звёзды» среди ждущих")
-            #expect(note[moon.upperBound...].range(of: t.t("set.astro.moon")) == nil, "\(lang): «Луна» не названа второй раз")
-        }
-    }
-
     // MARK: - «Свет»: купол, лента, «Подробно» (№ 54, 65, § 2 лента)
 
     /// Луна на куполе — только в «Астро» с «Луной»; выбор кнопки помнится и возвращается вместе с переключателем.
@@ -159,7 +146,8 @@ struct MoonSwitchTests {
             app.update { look.apply(&$0) }
             #expect(app.mapLayersShown.moon == look.sees, "\(look)")
             #expect(app.mapLayerKeys.contains(.moon) == look.sees, "\(look)")
-            #expect(app.mapLayerKeys.count == (look.sees ? 5 : 4), "\(look)")
+            // Без «Астро» уходит и «Млечный Путь» (30г.7): 3 пункта; в «Астро» без «Луны» — 4.
+            #expect(app.mapLayerKeys.count == (look.sees ? 5 : look.astroMode ? 4 : 3), "\(look)")
             #expect(app.mapLayers.moon, "\(look): слой в файле выключился")
             #expect(app.snapshot.mapLayers?["moon"] != false, "\(look)")
             // Остальные слои — как в меню.
@@ -220,13 +208,13 @@ struct MoonSwitchTests {
                    allowed: allowed)
     }
 
-    /// Слои AR, которые разрешает приложение: луна — по «Луне», остальные пока всегда (их переключатели — 30г.7).
+    /// Слои AR, которые разрешает приложение: луна — по «Луне», остальные — по «Звёздам» и «Млечному Пути» (30г.7).
     @Test func arLayersFollowTheSwitch() {
         let app = model()
         for look in Look.allCases {
             app.update { look.apply(&$0) }
             #expect(app.arSkyLayers.contains(.moon) == look.sees, "\(look)")
-            #expect(app.arSkyLayers.isSuperset(of: [.milkyWay, .stars, .constellations, .planets]), "\(look)")
+            #expect(app.arSkyLayers.isSuperset(of: [.milkyWay, .stars, .constellations, .planets]) == look.astroMode, "\(look)")
         }
     }
 
@@ -253,17 +241,17 @@ struct MoonSwitchTests {
         #expect(back.moonShown && back.layersOn == [.moon])
     }
 
-    /// Кнопка «Слои» — пока разрешён хотя бы один её слой; без единого её нет (30г.7 добавит «Звёзды» и «Млечный Путь»).
+    /// Кнопка «Слои» — пока разрешён хотя бы один её слой; без единого её нет.
     @Test func arLayersButtonOnlyWithSomeLayerAllowed() {
         let defaults = UserDefaults(suiteName: "moon-switch-\(UUID().uuidString)")!
         #expect(ar(defaults, allowed: Set(SunARSkyLayer.allCases)).layersButtonShown)
         #expect(ar(defaults, allowed: [.moon]).layersButtonShown)
         #expect(!ar(defaults, allowed: []).layersButtonShown)
-        // Сегодня во всех положениях кнопка есть: звёзды и Млечный Путь ещё не прячутся.
+        // С 30г.7 в «Просто» и «Про» кнопки нет; в «Астро» без «Луны» она есть — остались звёзды и Млечный Путь.
         let app = model()
         for look in Look.allCases {
             app.update { look.apply(&$0) }
-            #expect(ar(defaults, allowed: app.arSkyLayers).layersButtonShown, "\(look)")
+            #expect(ar(defaults, allowed: app.arSkyLayers).layersButtonShown == look.astroMode, "\(look)")
         }
     }
 
@@ -311,9 +299,11 @@ struct MoonSwitchTests {
         let app = model()
         for look in Look.allCases {
             app.update { look.apply(&$0) }
-            #expect(app.wishTiles.count == (look.sees ? 9 : 8), "\(look)")
+            // Вне «Астро» уходят и «Звёзды» (30г.7): семь.
+            #expect(app.wishTiles.count == (look.sees ? 9 : look.astroMode ? 8 : 7), "\(look)")
             #expect(app.wishTiles.contains(.moon) == look.sees, "\(look)")
-            #expect(app.wishTiles == Wish.allCases.filter { $0 != .moon || look.sees }, "\(look)")
+            #expect(app.wishTiles == Wish.allCases.filter { ($0 != .moon || look.sees) && ($0 != .stars || look.astroMode) },
+                    "\(look)")
         }
     }
 

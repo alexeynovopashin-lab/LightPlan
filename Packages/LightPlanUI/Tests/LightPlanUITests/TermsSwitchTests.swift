@@ -87,7 +87,7 @@ struct TermsSwitchTests {
             #expect(t.t("sun.deepDusk.label") == deep[code], "\(code)")
             #expect(t.t("set.astro.terms") == terms[code], "\(code)")
             #expect(t.t("sun.astroNight.label") != word, "\(code): термин остаётся термином")
-            for sw in ["moon", "stars", "azimuths", "milkyWay", "waiting"] {
+            for sw in ["moon", "stars", "azimuths", "milkyWay"] {
                 #expect(t.t("set.astro." + sw) != "set.astro." + sw, "\(code) \(sw)")
             }
         }

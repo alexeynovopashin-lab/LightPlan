@@ -105,6 +105,8 @@ struct CardLightTests {
     /// «Звёзды» без «Заката»: о золотом часе ни слова, своя строка есть.
     @Test func starsGetOwnLineNotGolden() async {
         let app = model([Self.shoot("a", wishes: [.stars], start: 1320, end: 1500)], rain: false)
+        // Строка звёзд — только в «Астро» со «Звёздами» (30г.7); остальные положения — `StarsMilkyWaySwitchTests`.
+        app.update { $0.mode = .astro }
         let s = await open(app, "a")
         let says = app.cardSays(s, phase: .before)
         #expect(!says.contains { $0.kind == .golden })

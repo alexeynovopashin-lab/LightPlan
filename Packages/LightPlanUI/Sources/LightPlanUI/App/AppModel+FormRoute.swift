@@ -92,7 +92,8 @@ extension AppModel {
     /// словами — заголовок и текст. У встречи пожеланий нет.
     public func formWishWarning(_ f: EventForm) -> WishWarning? {
         guard f.mode != .meet,
-              // Без «Луны» (30г.6, опись № 203) о луне плашка молчит: скрытое пожелание остаётся в форме, но не проверяется.
+              // Без «Луны» (30г.6) и «Звёзд» (30г.7, опись № 203) о них плашка молчит: скрытое пожелание остаётся в форме,
+              // но не проверяется.
               let c = WishCheck.first(shownWishes(f.wishes), sky: wishSky(f.day), city: f.sessionPlace.isCity) else { return nil }
         var params = c.params
         if let q = c.sky { params["sky"] = lexicon.t("qualSky." + q.rawValue).lowercased() }

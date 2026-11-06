@@ -572,7 +572,6 @@
     "set.astro.azimuths": "Азимуты",
     "set.astro.terms": "Термины",
     "set.astro.milkyWay": "Млечный Путь",
-    "set.astro.waiting": "Пока работают «Луна», «Азимуты» и «Термины»: «Звёзды» и «Млечный Путь» ещё ничего не прячут.",
     "sun.night.label": "Ночь"
   },
   "en": {
@@ -1144,7 +1143,6 @@
     "set.astro.azimuths": "Azimuths",
     "set.astro.terms": "Terms",
     "set.astro.milkyWay": "Milky Way",
-    "set.astro.waiting": "Only “Moon”, “Azimuths” and “Terms” work for now: “Stars” and “Milky Way” don’t hide anything yet.",
     "sun.night.label": "Night"
   },
   "es": {
@@ -1716,7 +1714,6 @@
     "set.astro.azimuths": "Azimuts",
     "set.astro.terms": "Términos",
     "set.astro.milkyWay": "Vía Láctea",
-    "set.astro.waiting": "Por ahora solo funcionan «Luna», «Azimuts» y «Términos»: «Estrellas» y «Vía Láctea» aún no ocultan nada.",
     "sun.night.label": "Noche"
   },
   "ja": {
@@ -2284,7 +2281,6 @@
     "set.astro.azimuths": "方位角",
     "set.astro.terms": "用語",
     "set.astro.milkyWay": "天の川",
-    "set.astro.waiting": "今のところ動くのは「月」「方位角」「用語」だけです。「星」と「天の川」はまだ何も隠しません。",
     "sun.night.label": "夜"
   },
   "zh": {
@@ -2852,7 +2848,6 @@
     "set.astro.azimuths": "方位角",
     "set.astro.terms": "术语",
     "set.astro.milkyWay": "银河",
-    "set.astro.waiting": "目前只有“月亮”“方位角”和“术语”生效：“星星”和“银河”暂时不会隐藏任何内容。",
     "sun.night.label": "夜晚"
   }
 }

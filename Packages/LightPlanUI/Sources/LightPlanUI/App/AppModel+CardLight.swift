@@ -121,8 +121,10 @@ extension AppModel {
         return arcs
     }
 
+    /// Окно Млечного Пути блока «Свет» — только со «Звёздами» (30г.7, опись № 146, ответ 4): пожелание в записи остаётся,
+    /// его не показывают. Вместе с ним уходит и «…солнце не уходит ниже −18°» (`light.starsNoDark`).
     func cardStars(_ s: Session, phase: EventPhase) -> NightLight? {
-        guard phase != .after else { return nil }
+        guard phase != .after, seesStars else { return nil }
         return NightLight.stars(s, route: lightRoute(s), spots: snapshot.spots, studios: snapshot.studios,
                                 night: starNight)
     }
@@ -280,7 +282,8 @@ extension AppModel {
     /// «Ожидался закат. Прогноз на этот день — дождь.» — только по настоящему
     /// прогнозу якоря. Молчит при «Неважно» и когда прогноз совпал с
     /// пожеланием (туман ↔ туман, осадки ↔ дождь) — ошибка 13 веба.
-    /// Без «Луны» (30г.6, опись № 147) «Ожидалась луна» не говорится: пожелание остаётся в записи, но молчит.
+    /// Без «Луны» (30г.6, опись № 147) «Ожидалась луна» не говорится, без «Звёзд» (30г.7) — «Ожидались звёзды»:
+    /// пожелание остаётся в записи, но молчит.
     func cardWishMissed(_ s: Session, phase: EventPhase) -> String? {
         let wishes = shownWishes(s.wishes).filter { $0 != .any }
         guard phase != .after, !wishes.isEmpty, let q = pointDay(anchor(s), s.day)?.day.quality,

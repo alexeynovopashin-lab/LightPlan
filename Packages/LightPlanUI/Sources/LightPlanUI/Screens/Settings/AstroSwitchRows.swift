@@ -2,14 +2,14 @@ import SwiftUI
 import LightPlanData
 
 /// Пять переключателей неба сразу под выбором режима, только в «Астро» (30г.4; рисунок `docs/30g2_prostoe_sketch.png`,
-/// колонка «Астро»). Работают «Термины» (30г.4), «Азимуты» (30г.5) и «Луна» (30г.6); «Звёзды» и «Млечный Путь» видны включёнными, но до своего шага (30г.7)
-/// не трогаются, и строка под ними говорит об этом прямо, без сроков.
+/// колонка «Астро»). Работают все пять: «Термины» (30г.4), «Азимуты» (30г.5), «Луна» (30г.6), «Звёзды» и «Млечный Путь» (30г.7).
+/// Строки под ними нет, как на рисунке: за последней строкой сразу главы.
 struct AstroSwitchRows: View {
     let app: AppModel
     @Environment(\.colorScheme) private var colorScheme
 
-    /// Переключатели, у которых уже есть работа.
-    static let working: Set<AstroSwitch> = [.moon, .azimuths, .terms]
+    /// Переключатели, у которых уже есть работа: с 30г.7 все пять.
+    static let working: Set<AstroSwitch> = [.moon, .stars, .azimuths, .terms, .milkyWay]
 
     var body: some View {
         let t = app.lexicon, pal = Palette(colorScheme)
@@ -33,8 +33,6 @@ struct AstroSwitchRows: View {
                 .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
                 .shotNode("astro." + sw.rawValue)
             }
-            SetNote(text: t.t("set.astro.waiting"), node: "astro.note")
-                .padding(.bottom, 10)
         }
         .padding(.top, 2)
         .shotNode("astro")

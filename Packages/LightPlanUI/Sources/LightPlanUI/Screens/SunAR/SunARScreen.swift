@@ -71,7 +71,7 @@ struct SunARScreen: View {
                                         arc: model.arc, sun: sun, now: model.sunNow, pickedIsNow: model.pickedIsNow,
                                         solar: model.solar)
             // Луна и Млечный Путь — только то, что включено: выключенное не считается и не рисуется.
-            let night: NightSkyARScene? = (model.moonShown || model.milkyWayOn)
+            let night: NightSkyARScene? = (model.moonShown || model.milkyWayShown)
                 ? model.nightScene(basis: model.aim, optics: model.optics, viewport: viewport) : nil
             let marks = SunARMarks.debugPlaced(SunARMarks.make(sun: scene, night: night, screen: size))
             // Звёзды и созвездия (29.8в.13): момент и место — те же, что у луны и солнца, «Сейчас» возвращает на текущий.

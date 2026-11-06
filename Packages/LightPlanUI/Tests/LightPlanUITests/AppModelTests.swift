@@ -265,8 +265,8 @@ struct AppModelTests {
         app.update { $0.mode = .pro }
         app.update { $0.mode = .astro }
         #expect(!app.light.azimuths)
-        // Переключатель «Азимуты» в настройках больше не приглушён (с 30г.6 и «Луна»); звёзды и Млечный Путь ждут своего шага.
-        #expect(AstroSwitchRows.working == [.moon, .azimuths, .terms])
+        // Переключатель «Азимуты» в настройках не приглушён; с 30г.7 работают все пять.
+        #expect(AstroSwitchRows.working == Set(AstroSwitch.allCases))
     }
 
     /// Старт с выключенными «Азимутами» из файла: экраны сразу без градусов, не только после правки.

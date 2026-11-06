@@ -53270,41 +53270,6 @@
         }
       }
     },
-    "set.astro.waiting" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пока работают «Луна», «Азимуты» и «Термины»: «Звёзды» и «Млечный Путь» ещё ничего не прячут."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Only “Moon”, “Azimuths” and “Terms” work for now: “Stars” and “Milky Way” don’t hide anything yet."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Por ahora solo funcionan «Luna», «Azimuts» y «Términos»: «Estrellas» y «Vía Láctea» aún no ocultan nada."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "今のところ動くのは「月」「方位角」「用語」だけです。「星」と「天の川」はまだ何も隠しません。"
-          }
-        },
-        "zh" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "目前只有“月亮”“方位角”和“术语”生效：“星星”和“银河”暂时不会隐藏任何内容。"
-          }
-        }
-      }
-    },
     "set.backupLoad" : {
       "extractionState" : "manual",
       "localizations" : {
