@@ -88,7 +88,8 @@
   only `.terms` works (`AstroSwitchRows.working`), the other four are disabled and the note `set.astro.waiting` says so — 30г.5–7 add them to `working`. Terms off (and in
   Simple/Pro): dome word `LightTelemetry.phaseKey` — astro twilight → `sun.deepDusk.label` (the web's «Глубокие сумерки»), astro night → `sun.night.label` «Ночь»
   (`lang_native.json`); «Сумерки» group of «Подробно», the map's `map.twilight` row and «Астрономическая ночь» in the Milky Way group are gone. Not yet: card «ниже −18°»,
-  AR notes, the card route's phase word. Shots: `--modes astro~terms` = Astro with terms off.
+  AR notes (Alexey's wording / 30г.7). The card route's word needs nothing: `pointLightCode` names only «excellent» light (golden, dawn, sunset,
+  blue), never astro twilight or night. Shots: `--modes astro~terms` = Astro with terms off.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init
