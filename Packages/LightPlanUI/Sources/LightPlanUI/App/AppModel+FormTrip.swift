@@ -240,6 +240,7 @@ extension AppModel {
         st.latitude = (lat * 100_000).rounded() / 100_000
         st.longitude = (lon * 100_000).rounded() / 100_000
         st.modifiedAt = Self.ms(now())
+        rememberCatalogZone(d.zone, latitude: st.latitude, longitude: st.longitude)
         if let i = snapshot.studios.firstIndex(where: { $0.id == st.id }) {
             snapshot.studios[i] = st
         } else {
@@ -292,6 +293,8 @@ struct StudioDraft: Equatable {
     var longitude: Double?
     /// Адрес, по которому уже спрашивали геокодер (веб `addrAt`).
     var addressAsked: String?
+    /// Пояс места из общего списка (30е.1): на «Готово» ложится в кэш поясов, если клетка его не знает.
+    var zone: String?
 
     init(new town: String, at c: GeoCoordinate) {
         self.town = town

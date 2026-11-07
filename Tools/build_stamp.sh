@@ -53,6 +53,8 @@ dir="${TARGET_BUILD_DIR:-}/${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}"
 "$root/Tools/og_key.sh" "$dir"
 # Ключ CARTO (28л.3) — свой файл; нет ключа — плитки CARTO идут без него, сборка проходит.
 "$root/Tools/carto_key.sh" "$dir"
+# Общий список студий (30е.1) — свой файл; нет файла — приложение без списка, как до 30е.
+"$root/Tools/places_served.sh" "$dir"
 
 out="$dir/build_stamp.plist"
 pb=/usr/libexec/PlistBuddy

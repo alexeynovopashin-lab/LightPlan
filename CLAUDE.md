@@ -348,6 +348,16 @@
   the mobile pattern, `longest` caps typing. Fixed-or-mobile countries (US, CA, PR, GU, MP, VI) accept both. `countriesFitting`: with «+» all countries (codes are prefix-free,
   one answer per code), **without «+» only `web`** — ten digits are mobile in dozens of countries. Patterns compiled once (`RegexCache`). Zone guess unchanged; new countries come
   by region or by a pasted «+». Country sheet: system names in the app language, sorted by its alphabet, chosen first, search folds case/accents and matches English names and «+code».
+- **Shared studio list (30е.1, Alexey 07.11 «Да, A везде»).** The Event OS served file, format 1 (`event_os:16_Place_Registry.md`), is read by
+  `PlaceCatalogFile` (Data) through a `PlaceCatalogSource` — now `BundledPlaceCatalog` (`places_served.json` in the app), later the BroniOS server with
+  the same bytes. The file is **never in git** (`.gitignore`): `Tools/places_served.sh` (called by `build_stamp.sh`) copies the newest
+  `ws:20_shared/places_served_*.json` (`LP_PLACES_DIR`); no file or not format 1 → no copy, and the «Фотостудия» way of «Где снимаем» is exactly as before.
+  Rules `StudioCatalog` (Domain): search from 2 letters in the same sheet (name, address, city, halls; shoot city first), closed and merged places hidden,
+  a mark on every row («не проверена», «возможно, дубль — сверьте адрес»; only «проверена человеком» says «проверена»; the collector's `note` is never shown).
+  A picked row becomes the photographer's **own** card: `catalogId` = `pl…`, `key` empty (no «Связать с бронью»), no phone; a place already in own
+  studios selects that card; hand-made cards are never glued (hub Q-045 п. 4). On the map: the address is looked up (≤ 60 km from the city), else the
+  city centre of `CatalogCities` (39 cities, checked against Apple's geocoder 07.11), zone from the file or the city into the zone cache.
+  Tests/shots have no list unless `usePlaceCatalog` / `FixedPlaceCatalog`; the real file: `LP_PLACES_FILE=<file> swift test --filter realServedFileReadsWhole`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 
