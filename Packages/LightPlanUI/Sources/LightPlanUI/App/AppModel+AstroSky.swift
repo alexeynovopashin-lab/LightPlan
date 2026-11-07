@@ -46,6 +46,31 @@ extension AppModel {
         Set(SunARSkyLayer.allCases.filter { settings.sees($0.astroSwitch) })
     }
 
+    /// Включённый переключатель сразу показывает свои слои на «Карте» и в AR (ответ 4 Алексея, 05.11; 30г.7а): слой, убранный
+    /// в меню на месте, остаётся убран до следующего включения. Выключение слоёв не трогает — они только не видны (`mapLayersShown`,
+    /// `arSkyLayers`). Переход в «Астро» переключатели не нажимает, поэтому сюда не приходит. «Как в тёмном месте» — способ
+    /// показа Млечного Пути, а не слой: его флаг не трогается.
+    func showLayers(turnedOn switches: [AstroSwitch]) {
+        var map = mapLayers
+        for sw in switches {
+            for k in Self.mapLayerKeys(of: sw) { map[k] = true }
+            for l in SunARSkyLayer.allCases where l.astroSwitch == sw { arBodies[l] = true }
+        }
+        guard map != mapLayers else { return }
+        mapLayers = map
+        snapshot.mapLayers = map.saved
+    }
+
+    /// Слои «Карты» под переключателем: «Луна» — луна, «Млечный Путь» — Млечный Путь; у «Звёзд», «Азимутов» и «Терминов»
+    /// слоя на карте нет.
+    static func mapLayerKeys(of sw: AstroSwitch) -> [MapLayers.Key] {
+        switch sw {
+        case .moon: [.moon]
+        case .milkyWay: [.mw]
+        case .stars, .azimuths, .terms: []
+        }
+    }
+
     /// Пожелания, о которых экраны говорят: без «Луны» молчит «Луна», без «Звёзд» — «Звёзды» (опись № 147, 203),
     /// в записи обе остаются.
     func shownWishes(_ wishes: [Wish]) -> [Wish] {

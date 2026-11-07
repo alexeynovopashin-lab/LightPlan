@@ -722,6 +722,7 @@ struct MapScreenView: View {
                         Spacer(minLength: 0)
                     }
                     .padding(12)
+                    .shotNode("map.layer." + key.rawValue, text: on ? "on" : "off")
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

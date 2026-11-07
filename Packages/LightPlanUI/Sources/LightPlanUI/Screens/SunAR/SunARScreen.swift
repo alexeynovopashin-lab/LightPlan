@@ -30,13 +30,21 @@ struct SunARScreen: View {
         // `-LPSunARStill 1`: кадр «Уменьшения движения» в симуляторе (статичная восьмёрка калибровки).
         if UserDefaults.standard.bool(forKey: "LPSunARStill") { PlanMotion.stillOverride = true }
         #endif
+        _model = State(initialValue: Self.model(app: app, target: target, source: SunARSources.attitude()))
+    }
+
+    /// Модель экрана из приложения: часы, язык, слои, которые разрешают переключатели «Астро», и флаги слоёв приложения
+    /// (`AppModel.arBodies`) — те самые, что включает переключатель (30г.7а).
+    static func model(app: AppModel, target: SunARTarget, source: (any AttitudeSource)?,
+                      camera: (any ARCameraDriving)? = nil) -> SunARModel {
         // «Сейчас» — часы приложения: у снимков (`-LPShotNow`) и тестов оно подставное, у людей — настоящее.
         let appNow = app.now
-        _model = State(initialValue: SunARModel(target: target, source: SunARSources.attitude(),
-                                                clock: { Moment(appNow()) },
-                                                forceCalibration: SunARSources.forceCalibration,
-                                                language: app.language, clockPreference: app.light.clockPreference,
-                                                allowed: app.arSkyLayers))
+        return SunARModel(target: target, source: source, camera: camera,
+                          clock: { Moment(appNow()) },
+                          forceCalibration: SunARSources.forceCalibration,
+                          bodies: app.arBodies,
+                          language: app.language, clockPreference: app.light.clockPreference,
+                          allowed: app.arSkyLayers)
     }
 
     private var t: Lexicon { app.lexicon }

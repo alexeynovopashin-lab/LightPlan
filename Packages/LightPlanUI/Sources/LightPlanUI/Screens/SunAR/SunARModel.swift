@@ -93,6 +93,44 @@ final class DeviceBodiesSettings: ARBodiesSettings {
     }
 }
 
+/// Флаги слоёв на время запуска: тесты и снимки (30г.7а). Снимки берут стартовые значения из флагов устройства — их задают
+/// аргументы запуска (`Tools/shots/ar.js`), — а включение переключателя «Астро» пишет сюда, не в память телефона.
+@MainActor
+final class MemoryBodiesSettings: ARBodiesSettings {
+    var moon = false, milkyWay = false, stars = false, constellations = false, planets = false
+
+    init() {}
+
+    init(copying other: any ARBodiesSettings) {
+        moon = other.moon; milkyWay = other.milkyWay; stars = other.stars
+        constellations = other.constellations; planets = other.planets
+    }
+}
+
+extension ARBodiesSettings {
+    /// Флаг слоя по его имени в «Слоях».
+    subscript(_ layer: SunARSkyLayer) -> Bool {
+        get {
+            switch layer {
+            case .moon: moon
+            case .milkyWay: milkyWay
+            case .stars: stars
+            case .constellations: constellations
+            case .planets: planets
+            }
+        }
+        set {
+            switch layer {
+            case .moon: moon = newValue
+            case .milkyWay: milkyWay = newValue
+            case .stars: stars = newValue
+            case .constellations: constellations = newValue
+            case .planets: planets = newValue
+            }
+        }
+    }
+}
+
 /// Состояние экрана AR: поворот телефона, камера, выбранный момент и «сейчас», калибровка компаса.
 @MainActor @Observable
 final class SunARModel {

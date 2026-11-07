@@ -105,7 +105,7 @@
   not drawn, no row in «Слои», no dot, no edge arrow (`SunARModel.allowed`, `moonShown`; the «Слои» button needs one allowed layer — `layersButtonShown`); card — no moon lines,
   no «Ожидалась луна»; form — 8 wish tiles, no moon words in «замысел против прогноза», «Неважно» lit when no *shown* wish and it keeps the hidden «Луна».
   **Nothing is written:** the moon wish, the map layer key and the AR device flag stay as they were and come back with the switch. Not here (30г.7): moon rows inside the Milky Way
-  group (`map.moonGlare`, `mpro.moonNow`), the AR Milky Way eye note, answer 4 (switch on → layer on). Shots: `--modes astro~moon`, `--dome-moon`, `--cards moon --rec-mode <m>`,
+  group (`map.moonGlare`, `mpro.moonNow`), the AR Milky Way eye note. Shots: `--modes astro~moon`, `--dome-moon`, `--cards moon --rec-mode <m>`,
   `--forms portrait --rec-mode <m>`; `Tools/shots/ar.js --mode astro` (without it the seed is Simple: no moon).
 - **Stars and Milky Way switches (30г.7).** `AstroSwitchRows.working` = all five; the note `set.astro.waiting` is gone (the inventory sketch has none: the
   chapters follow the five rows). Rule `AppModel+AstroSky.swift`: `seesStars`, `seesMilkyWay`; AR layers by `SunARSkyLayer.astroSwitch` (stars, constellations,
@@ -115,7 +115,14 @@
   «Звёзды днём» ask and no silent shift (`formTimeFacts` takes `shownWishes`), no star words in «замысел против прогноза»; **«Млечный Путь»** — no map layer, no
   layers-menu row, no night canvas, no fold rows and no «Подробно» group (with its core altitudes and moon rows; `MapScreenView.summary` reads
   `mapLayersShown.mw`), no AR band/core/«Как в тёмном месте». The AR «Слои» button exists while any of moon/stars/Milky Way is seen — none in Simple and Pro.
-  Dome stars (№ 57) stay in every mode. **Nothing is written**: the stars wish, `mapLayers.mw`, AR device flags stay and come back with the switch.
+  Dome stars (№ 57) stay in every mode. **Nothing is written** on switching off or on entering Astro: the stars wish, `mapLayers.mw`, AR device flags stay.
+- **Switch on → its layers on (30г.7а, Alexey's answer 4, 05.11).** Only an off→on flip of a switch (`AppModel.update` → `showLayers(turnedOn:)`,
+  `AppModel+AstroSky.swift`) turns its layers on: «Луна» → map `moon` + AR moon; «Звёзды» → AR stars, constellations, planets; «Млечный Путь» →
+  map `mw` + AR Milky Way (`mapLayerKeys(of:)`, `SunARSkyLayer.astroSwitch`). Off, entering Astro, «Термины»/«Азимуты» touch nothing; a layer
+  removed in a menu stays removed until the next flip. «Как в тёмном месте» is a way of showing, not a layer — untouched. AR flags live in
+  `AppModel.arBodies` (`DeviceBodiesSettings` in `live()`, `MemoryBodiesSettings` in tests, a copy of the launch-arg flags in shots); the AR
+  screen takes them from there (`SunARScreen.model(app:target:source:)`). First entry into Astro changes nothing: map moon on, Milky Way off,
+  all AR layers off (defaults). Tests `AstroLayerOnTests`; shots `-LPShotAstroOn <switch>` (Debug: flips it off→on after launch).
   Shots: `--cards stars --rec-mode <m>`, `--screens map --only-spoiler` (map «Подробно»), `--modes astro~stars,astro~milkyWay`; `Tools/shots/ar.js --mode
   astro|pro|astro~stars|astro~milkyWay` (nodes of a hidden layer and a «Слои» button without layers are violations).
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,

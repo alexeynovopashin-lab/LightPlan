@@ -74,7 +74,7 @@ public final class AppModel {
     /// (кнопка «Добавить зал» у студии без залов, 29.11).
     var placeSheetOpenCard = false
     /// Слои карты — `mapLayers` снимка (меню слоёв — итерация 20б).
-    public private(set) var mapLayers: MapLayers
+    public internal(set) var mapLayers: MapLayers
     /// Поставщик холста (docs/17 § 10). Пока приложение бесплатное — MapLibre;
     /// выбор — глава «Карта и места». Веб такого ключа не знает, он лежит в
     /// снимке среди чужих (`extra`), как у других нативных полей.
@@ -542,6 +542,9 @@ public final class AppModel {
 
     @ObservationIgnored let placeMemory: any PlaceMemory
     @ObservationIgnored let modeMemory: any AppModeMemory
+    /// Флаги слоёв AR (луна, Млечный Путь, звёзды, созвездия, планеты): экран AR читает и пишет их здесь, включённый
+    /// переключатель «Астро» включает их (30г.7а). У людей — память телефона, у тестов и снимков — память запуска.
+    @ObservationIgnored let arBodies: any ARBodiesSettings
     /// Копия памяти места; запись уходит в память устройства сразу.
     var placeMemoryRecord: PlaceMemoryRecord { didSet { placeMemory.record = placeMemoryRecord } }
     /// «Следовать за мной» включено (даже если доступа к геопозиции нет — тогда вид честно говорит об этом).
@@ -561,7 +564,9 @@ public final class AppModel {
          weatherReachability: (any NetworkReachability)? = nil,
          placeMemory: (any PlaceMemory)? = nil,
          modeMemory: (any AppModeMemory)? = nil,
+         arBodies: (any ARBodiesSettings)? = nil,
          now: @escaping @Sendable () -> Date = { Date() }) {
+        self.arBodies = arBodies ?? MemoryBodiesSettings()
         let modes = modeMemory ?? InMemoryAppModeMemory()
         let settings = AppSettings(snapshot: snapshot, zone: zone, remembered: modes.mode, rememberedAstro: modes.astro)
         // Режим и переключатели «Астро», какими их прочли, — сразу в память и в снимок: следующая запись вернёт файлу
@@ -736,7 +741,8 @@ public final class AppModel {
                         glowSource: LorenzAtlas(), headingSource: CoreLocationHeading(),
                         weatherReachability: SystemReachability(),
                         // Место и слежение — в памяти телефона (29.8в.12); тесты и снимки пар живут в памяти запуска.
-                        placeMemory: DevicePlaceMemory(), modeMemory: DeviceAppModeMemory(), now: clock)
+                        placeMemory: DevicePlaceMemory(), modeMemory: DeviceAppModeMemory(),
+                        arBodies: DeviceBodiesSettings(), now: clock)
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
         model.pinterest = PinterestClient.live(config: PinterestConfig.load())
@@ -779,7 +785,10 @@ public final class AppModel {
         guard settings != before else { return }
         settings.apply(to: &snapshot)
         if settings.mode != before.mode { modeMemory.mode = settings.mode }
-        if settings.astro != before.astro { modeMemory.astro = settings.astro }
+        if settings.astro != before.astro {
+            modeMemory.astro = settings.astro
+            showLayers(turnedOn: AstroSwitch.allCases.filter { !before.astro[$0] && settings.astro[$0] })
+        }
         if before.manualEnd, !settings.manualEnd { clearFinishMarks() }
         persist()
 
