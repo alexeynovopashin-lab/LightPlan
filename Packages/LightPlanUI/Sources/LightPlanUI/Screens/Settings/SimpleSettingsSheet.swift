@@ -170,7 +170,8 @@ struct SimpleSettingsSheet: View {
 
 /// «Напоминать о съёмке» (шаг «Напоминание-1»): `notif.remind`, минуты до начала съёмки или встречи. Выбор не «выкл»
 /// спрашивает у системы право уведомлять, если ещё не спрашивали; отказ — пояснение ведёт в настройки iPhone. Одна и та же
-/// секция в главе «Оповещения» и на листе «Просто» (30г.8: `quiet` — без обычного пояснения, просьба и отказ видны).
+/// секция в главе «Оповещения» и на листе «Просто» (30г.8: `quiet` — без обычного пояснения, просьба и отказ видны; минуты
+/// числами без «мин», как на рисунке).
 struct ShootReminderSection: View {
     @Bindable var app: AppModel
     var quiet = false
@@ -183,7 +184,8 @@ struct ShootReminderSection: View {
         let denied = on && app.alertAuth == .denied
         VStack(alignment: .leading, spacing: 0) {
             SecLabel(text: t.t("set.remind"), node: "sec.remind")
-            WebSeg(options: ReminderSchedule.choices.map { ($0 == 0 ? t.t("set.off") : t.count("unit.minute", $0), $0) },
+            // На листе — голые числа, как на рисунке: «10 мин» в шести ячейках обрезается до «10 м…» (замер 30г.8).
+            WebSeg(options: ReminderSchedule.choices.map { ($0 == 0 ? t.t("set.off") : quiet ? String($0) : t.count("unit.minute", $0), $0) },
                    selection: SimpleSheet.remind(app))
                 .shotNode("remind.seg", text: "\(app.remindMinutes)")
                 .padding(.horizontal, 24).padding(.top, 12)

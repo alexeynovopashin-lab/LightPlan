@@ -74,6 +74,15 @@ struct SimpleSettingsSheetTests {
                                                                   "places", "store", "data", "network", "locale", "playlists", "about"])
     }
 
+    @Test func theLastRowScrollsAboveTheTabBar() {
+        // Замер 30г.8: прокрутка корня кончалась у полосы «домой» (34), панель вкладок 84 закрывала последние 50 pt —
+        // «О приложении» листа «Просто» и глав «Астро». Запас — ровно эти 50; дошла бы панель до прокрутки — 0.
+        #expect(SettingsView.tabBarReserve(bottomSafe: 34) == 50)
+        #expect(SettingsView.tabBarReserve(bottomSafe: 0) == TabBarView.height)
+        #expect(SettingsView.tabBarReserve(bottomSafe: TabBarView.height) == 0)
+        #expect(SettingsView.tabBarReserve(bottomSafe: 120) == 0)
+    }
+
     // MARK: - Значения не зависят от режима (ответ 2)
 
     private struct DryWeather: WeatherSource {

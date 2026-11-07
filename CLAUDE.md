@@ -128,6 +128,14 @@
   shots `-LPShotAstroOn <switch>` (Debug: flips it off→on after launch), `-LPShotEnterAstro 1` (taps «Астро» after launch).
   Shots: `--cards stars --rec-mode <m>`, `--screens map --only-spoiler` (map «Подробно»), `--modes astro~stars,astro~milkyWay`; `Tools/shots/ar.js --mode
   astro|pro|astro~stars|astro~milkyWay` (nodes of a hidden layer and a «Слои» button without layers are violations).
+- **Simple settings are one sheet (30г.8, Alexey's answer 5, 05.11).** `SettingsView.root(mode)`: Simple → `.sheet` (`SimpleSettingsSheet`,
+  `Screens/Settings/SimpleSettingsSheet.swift`), Pro/Astro → `.chapters` (13 chapters as before; Astro adds `AstroSwitchRows`). Mode choice + note stay on top
+  in every mode. Sheet = `SimpleSheet.items`, each with its inventory rows (`docs/30g2_modes_table.md` § A, column «Просто», branch `wt/30g-2-modes-recalc`):
+  city, theme, reminder, Calendar mirror (+ «Куда класть», no «Другие календари»: `CalendarMirrorSection.Look.sheet`), units, currency in place; rows Клиенты,
+  Контакты, Плейлисты (chapter), Корзина, О приложении (chapter). No plain notes under them, as on the sketch; a note that asks for an action (notification
+  or calendar access) stays (`ShootReminderSection(quiet:)`, shared with «Оповещения»). **Values never depend on the mode (answer 2):** sheet and chapters
+  bind the same fields (`SimpleSheet.binding`, `remind`), a value set in Pro keeps working in Simple and back. A new setting goes to Simple only if the
+  inventory says so. Shots: `-LPShotChapter end` scrolls the root to its end; in `pair.js` the Simple root has no web pair (web has chapters).
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

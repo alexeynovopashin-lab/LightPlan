@@ -601,7 +601,7 @@ function markdown(results) {
     }
     const seedFile = path.join(dir, 'seed.json');
     fs.writeFileSync(seedFile, JSON.stringify(s));
-    list.push({ name, dir, screen, theme, moment, chapter, scope, pick, seed: seedFile });
+    list.push({ name, dir, screen, theme, mode, moment, chapter, scope, pick, seed: seedFile });
   };
   for (const screen of ['light', 'map'].filter(x => screens.includes(x))) for (const way of sheets) for (const theme of themes) {
     if (screen === 'map' && way !== 'fork') continue;
@@ -892,6 +892,12 @@ function markdown(results) {
     // 30г.3: у веба две кнопки и одна подпись, у приложения три кнопки и подпись на каждый режим. Эти узлы из пары
     // исключены осознанно (опись `30g2_modes_table.md` § 4); ряд `mode` остаётся, строки разделов идут со сдвигом на разницу подписи.
     if (sc.screen === 'settings' && !sc.chapter) for (const side of [web.nodes, nat.nodes]) for (const k of ['mode.simple', 'mode.pro', 'mode.astro', 'mode.note']) delete side[k];
+    // 30г.8: в «Просто» у приложения один лист без глав (ответ 5 Алексея 05.11), у веба — главы. Пары у листа нет: строки глав
+    // веба и узлы листа исключены осознанно; лист сверяется с рисунком описи числами (`simple*` в native.json).
+    if (sc.screen === 'settings' && !sc.chapter && sc.mode === 'simple') {
+      for (const k of Object.keys(web.nodes)) if (/^nav/.test(k)) delete web.nodes[k];
+      for (const k of Object.keys(nat.nodes)) if (!/^(header|mode|tab)/.test(k)) delete nat.nodes[k];
+    }
     const cmp = await compare(page, sc.dir, web, nat, 3);
     // Цвета взяты с кадров как есть, смещение по высоте — от «✕» (см. выше).
     if (lift) { cmp.lift = lift; for (const r of cmp.rows) if (r.d) r.d[1] = +(r.d[1] - lift).toFixed(1); }

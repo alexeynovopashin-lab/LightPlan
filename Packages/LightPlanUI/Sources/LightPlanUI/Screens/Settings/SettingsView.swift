@@ -107,11 +107,16 @@ public struct SettingsView: View {
         }
     }
 
+    /// Запас внизу прокрутки корня: часть панели вкладок над безопасной зоной прокрутки.
+    static func tabBarReserve(bottomSafe: CGFloat) -> CGFloat { max(0, TabBarView.height - bottomSafe) }
+
     /// Якорь конца корня: снимки «лист прокручен до конца» (`-LPShotChapter end`, 30г.8).
     static let endAnchor = "settings.end"
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var path: [Chapter] = []
+    /// Низ безопасной зоны у прокрутки корня (полоса «домой»), для запаса под панель вкладок.
+    @State private var bottomSafe: CGFloat = 0
     /// Небо на включении «Астро» (29.9): идёт ли оно сейчас и когда оно погаснет.
     @State private var sky: SkyRun?
     /// `sky-wait` беты: пока небо на экране, звёзды на кнопке погашены.
@@ -160,6 +165,11 @@ public struct SettingsView: View {
                     Color.clear.frame(height: 0).id(Self.endAnchor)
                 }
             }
+            // Панель вкладок до прокрутки корня не доходит (замер 30г.8: конец прокрутки — край полосы «домой», 922 pt при панели
+            // от 872): последняя строка — «О приложении» листа «Просто» и глав «Астро» — оставалась под панелью, пальцем её не
+            // достать. Запас — то, что панель закрывает над полосой «домой»; дойди панель до прокрутки сама, запас станет 0.
+            .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomSafe = $0 }
+            .contentMargins(.bottom, Self.tabBarReserve(bottomSafe: bottomSafe), for: .scrollContent)
             .onAppear {
                 // Снимки: корень прокручен до конца (30г.8 — лист «Просто» целиком, «прокрутка до конца»).
                 guard app.startChapter == "end" else { return }
