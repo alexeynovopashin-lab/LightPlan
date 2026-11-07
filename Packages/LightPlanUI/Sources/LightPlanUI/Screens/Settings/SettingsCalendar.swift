@@ -15,13 +15,25 @@ import UIKit
 /// Там, где зеркала нет (Mac, снимки), остаётся прежняя приглушённая строка.
 struct CalendarMirrorSection: View {
     @Bindable var app: AppModel
+    /// Где стоит секция: глава «Календарь» (всё) или лист «Просто» (30г.8: только № 15–16 описи — зеркало и «Куда класть»).
+    var look: Look = .chapter
+
+    enum Look {
+        case chapter, sheet
+        /// Подпись «Календарь iPhone» над тумблером: на листе «Просто» её нет, как на рисунке.
+        var label: Bool { self == .chapter }
+        /// «Другие календари» и их галочки (№ 17–18 описи): в «Просто» их нет.
+        var ghosts: Bool { self == .chapter }
+        /// Обычное пояснение под тумблером; отказ и неудача видны всегда — они говорят, что делать.
+        var plainNote: Bool { self == .chapter }
+    }
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         let t = app.lexicon, pal = Palette(colorScheme)
         if app.calendarAvailable {
-            SecLabel(text: t.t("calm.label"), first: true, node: "sec.cal")
+            if look.label { SecLabel(text: t.t("calm.label"), first: true, node: "sec.cal") }
             HStack(spacing: 12) {
                 Text(t.t("calm.title")).font(.system(size: 15)).foregroundStyle(pal.ink)
                 Spacer(minLength: 0)
@@ -41,7 +53,7 @@ struct CalendarMirrorSection: View {
             .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
             // Открыли главу — узнать, где календарь лежит сейчас и какие учётные записи есть.
             .task { app.refreshCalendarSources() }
-            SetNote(text: note(t), node: "note.cal")
+            if let n = note(t) { SetNote(text: n, node: "note.cal") }
 
             // Не завелось — список тоже виден: выбрать другую учётную запись и есть выход.
             if app.calendarMirrorOn || app.calendarFailed {
@@ -65,7 +77,7 @@ struct CalendarMirrorSection: View {
                 SetNote(text: t.t("calm.whereNote"), node: "note.where")
             }
 
-            ghostRows(t, pal)
+            if look.ghosts { ghostRows(t, pal) }
         } else {
             // Там, где зеркала нет (Mac, снимки): глава «Календарь» не пуста — строка названа тем, чего здесь нет.
             SetItemRow(icon: nil, title: t.t("calm.title"), value: "", chevron: false, dim: true)
@@ -130,11 +142,11 @@ struct CalendarMirrorSection: View {
     }
 
     /// Что сказать под тумблером: отказ в доступе и неудача важнее обычного пояснения.
-    private func note(_ t: Lexicon) -> String {
+    private func note(_ t: Lexicon) -> String? {
         if app.calendarNeedsSettings { return t.t("calm.denied") }
         if app.calendarOffFailed { return t.t("calm.offFailed") }
         if app.calendarFailed { return t.t("calm.failed", ["where": app.calendarSourceTitle ?? ""]) }
-        return t.t("calm.note")
+        return look.plainNote ? t.t("calm.note") : nil
     }
 
     private func openSystemSettings() {

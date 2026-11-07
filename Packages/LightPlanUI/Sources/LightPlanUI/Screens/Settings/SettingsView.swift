@@ -90,6 +90,26 @@ public struct SettingsView: View {
         }
     }
 
+    /// Что стоит под выбором режима (30г.8; опись 30г.2, раздел А; ответ 5 Алексея 05.11). Значения настроек от режима
+    /// не зависят (ответ 2): меняется только то, как они разложены.
+    enum Root: Equatable {
+        /// «Просто»: один лист без глав (`SimpleSettingsSheet`, состав — `SimpleSheet.items`).
+        case sheet
+        /// «Про» и «Астро»: главы `Chapter.allCases`; в «Астро» над ними пять переключателей неба.
+        case chapters(astroSwitches: Bool)
+    }
+
+    static func root(_ mode: AppMode) -> Root {
+        switch mode {
+        case .simple: .sheet
+        case .pro: .chapters(astroSwitches: false)
+        case .astro: .chapters(astroSwitches: true)
+        }
+    }
+
+    /// Якорь конца корня: снимки «лист прокручен до конца» (`-LPShotChapter end`, 30г.8).
+    static let endAnchor = "settings.end"
+
     @Environment(\.colorScheme) private var colorScheme
     @State private var path: [Chapter] = []
     /// Небо на включении «Астро» (29.9): идёт ли оно сейчас и когда оно погаснет.
@@ -110,6 +130,7 @@ public struct SettingsView: View {
     public var body: some View {
         let t = app.lexicon
         NavigationStack(path: $path) {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
                     SetHeader(title: "Light Plan", sub: t.t("set.proto"))
@@ -125,31 +146,29 @@ public struct SettingsView: View {
                         SetNote(text: t.t("set.modeNote." + app.settings.mode.rawValue), node: "mode.note")
                     }
                     .padding(.top, 4)
-                    if app.settings.mode == .astro { AstroSwitchRows(app: app) }
-                    VStack(spacing: 0) {
-                        ForEach(Chapter.allCases, id: \.self) { ch in
-                            if ch.opensLayer {
-                                // «Клиенты» — не страница настроек, а слой, как «Организации» до К1.
-                                Button { withAnimation(overlaySlide) { app.openClients() } } label: {
-                                    SetItemRow(icon: ch.icon, title: t.t(ch.titleKey), value: value(of: ch))
-                                }
-                                .buttonStyle(.plain)
-                                .shotNode("nav." + ch.rawValue, text: t.t(ch.titleKey) + value(of: ch))
-                            } else {
-                                NavigationLink(value: ch) {
-                                    SetItemRow(icon: ch.icon, title: t.t(ch.titleKey), value: value(of: ch))
-                                }
-                                .buttonStyle(.plain)
-                                .shotNode("nav." + ch.rawValue, text: t.t(ch.titleKey) + value(of: ch))
-                            }
-                        }
+                    switch Self.root(app.settings.mode) {
+                    case .sheet:
+                        // «Просто» (30г.8, ответ 5): один лист без глав.
+                        SimpleSettingsSheet(app: app)
+                    case .chapters(let astroSwitches):
+                        if astroSwitches { AstroSwitchRows(app: app) }
+                        chapterRows
                     }
-                    .padding(.top, 2)
-                    .shotNode("nav")
                     if app.showsBuildLine { BuildLine(info: BuildInfo.current(), lexicon: t) }
                     }
                     .tabRise()
+                    Color.clear.frame(height: 0).id(Self.endAnchor)
                 }
+            }
+            .onAppear {
+                // Снимки: корень прокручен до конца (30г.8 — лист «Просто» целиком, «прокрутка до конца»).
+                guard app.startChapter == "end" else { return }
+                app.startChapter = nil
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    proxy.scrollTo(Self.endAnchor, anchor: .bottom)
+                }
+            }
             }
             .background(Palette(colorScheme).surface)
             #if os(iOS)
@@ -182,6 +201,32 @@ public struct SettingsView: View {
         }
     }
 
+    /// Главы «Про» и «Астро» — как до 30г.8.
+    private var chapterRows: some View {
+        let t = app.lexicon
+        return VStack(spacing: 0) {
+            ForEach(Chapter.allCases, id: \.self) { ch in
+                let v = Self.value(of: ch, app: app)
+                if ch.opensLayer {
+                    // «Клиенты» — не страница настроек, а слой, как «Организации» до К1.
+                    Button { withAnimation(overlaySlide) { app.openClients() } } label: {
+                        SetItemRow(icon: ch.icon, title: t.t(ch.titleKey), value: v)
+                    }
+                    .buttonStyle(.plain)
+                    .shotNode("nav." + ch.rawValue, text: t.t(ch.titleKey) + v)
+                } else {
+                    NavigationLink(value: ch) {
+                        SetItemRow(icon: ch.icon, title: t.t(ch.titleKey), value: v)
+                    }
+                    .buttonStyle(.plain)
+                    .shotNode("nav." + ch.rawValue, text: t.t(ch.titleKey) + v)
+                }
+            }
+        }
+        .padding(.top, 2)
+        .shotNode("nav")
+    }
+
     /// Небо кончается: слой убирается, таймер снимается, звёзды на кнопке проявляются (как по концу срока).
     private func endSky(reason: String) {
         SkyLog.note("end \(reason)")
@@ -192,7 +237,7 @@ public struct SettingsView: View {
 
     /// Порт `renderSetNav`. Чужие главы (оповещения, хранилище) до своих
     /// итераций молчат: сказать о них пока нечего.
-    private func value(of ch: Chapter) -> String {
+    static func value(of ch: Chapter, app: AppModel) -> String {
         let t = app.lexicon, s = app.settings
         switch ch {
         case .profile:
