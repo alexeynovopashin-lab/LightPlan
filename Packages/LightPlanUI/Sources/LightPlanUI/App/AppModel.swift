@@ -569,6 +569,9 @@ public final class AppModel {
         self.arBodies = arBodies ?? MemoryBodiesSettings()
         let modes = modeMemory ?? InMemoryAppModeMemory()
         let settings = AppSettings(snapshot: snapshot, zone: zone, remembered: modes.mode, rememberedAstro: modes.astro)
+        // Уже бывал в «Астро» (30г.7а): стоит в нём сейчас, стоял в прошлый запуск или выключал переключатель (они есть
+        // только в «Астро»). Так у тех, кто был в «Астро» до обновления, первый вход слоёв не включит.
+        if settings.mode == .astro || modes.mode == .astro || !settings.astro.off.isEmpty { modes.astroEntered = true }
         // Режим и переключатели «Астро», какими их прочли, — сразу в память и в снимок: следующая запись вернёт файлу
         // ключи, которые снял веб.
         modes.mode = settings.mode
@@ -785,10 +788,15 @@ public final class AppModel {
         guard settings != before else { return }
         settings.apply(to: &snapshot)
         if settings.mode != before.mode { modeMemory.mode = settings.mode }
-        if settings.astro != before.astro {
-            modeMemory.astro = settings.astro
-            showLayers(turnedOn: AstroSwitch.allCases.filter { !before.astro[$0] && settings.astro[$0] })
+        if settings.astro != before.astro { modeMemory.astro = settings.astro }
+        // Слои неба включает переключатель, который включили (ответ 4), и первый вход в «Астро» — как включение всех
+        // включённых там переключателей (опись, вопрос 4, вариант А). Повторный вход слоёв не трогает.
+        var turnedOn = AstroSwitch.allCases.filter { !before.astro[$0] && settings.astro[$0] }
+        if settings.mode == .astro, !modeMemory.astroEntered {
+            modeMemory.astroEntered = true
+            turnedOn = AstroSwitch.allCases.filter { settings.astro[$0] }
         }
+        if !turnedOn.isEmpty { showLayers(turnedOn: turnedOn) }
         if before.manualEnd, !settings.manualEnd { clearFinishMarks() }
         persist()
 

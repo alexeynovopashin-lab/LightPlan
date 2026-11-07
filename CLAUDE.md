@@ -121,8 +121,11 @@
   map `mw` + AR Milky Way (`mapLayerKeys(of:)`, `SunARSkyLayer.astroSwitch`). Off, entering Astro, «Термины»/«Азимуты» touch nothing; a layer
   removed in a menu stays removed until the next flip. «Как в тёмном месте» is a way of showing, not a layer — untouched. AR flags live in
   `AppModel.arBodies` (`DeviceBodiesSettings` in `live()`, `MemoryBodiesSettings` in tests, a copy of the launch-arg flags in shots); the AR
-  screen takes them from there (`SunARScreen.model(app:target:source:)`). First entry into Astro changes nothing: map moon on, Milky Way off,
-  all AR layers off (defaults). Tests `AstroLayerOnTests`; shots `-LPShotAstroOn <switch>` (Debug: flips it off→on after launch).
+  screen takes them from there (`SunARScreen.model(app:target:source:)`). **First entry into Astro counts as turning on every switch that is on**
+  (inventory, question 4, variant A: the AR sky is full at once): map moon + Milky Way, all five AR layers. Marker `AppModeMemory.astroEntered`
+  (UserDefaults `lightplan.native.app.astroEntered`, phone only); set without touching layers at launch for anyone already in Astro (mode key, old
+  `pro` flag, last launch's mode, any switch off) — they keep their layers. Re-entry from Pro/Simple touches nothing. Tests `AstroLayerOnTests`;
+  shots `-LPShotAstroOn <switch>` (Debug: flips it off→on after launch), `-LPShotEnterAstro 1` (taps «Астро» after launch).
   Shots: `--cards stars --rec-mode <m>`, `--screens map --only-spoiler` (map «Подробно»), `--modes astro~stars,astro~milkyWay`; `Tools/shots/ar.js --mode
   astro|pro|astro~stars|astro~milkyWay` (nodes of a hidden layer and a «Слои» button without layers are violations).
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,

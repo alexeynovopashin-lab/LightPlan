@@ -143,6 +143,8 @@ extension AppModel {
             app.update { $0.astro[sw] = false }
             app.update { $0.astro[sw] = true }
         }
+        // `-LPShotEnterAstro 1` — нажат «Астро» (сид в «Просто» или «Про»): первый вход включает слои неба.
+        if UserDefaults.standard.bool(forKey: "LPShotEnterAstro") { app.update { $0.mode = .astro } }
         #endif
         app.startChapter = s.chapter
         app.showsBuildLine = false

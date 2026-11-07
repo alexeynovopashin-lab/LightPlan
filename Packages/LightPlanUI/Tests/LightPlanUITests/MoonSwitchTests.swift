@@ -150,8 +150,10 @@ struct MoonSwitchTests {
             #expect(app.mapLayerKeys.count == (look.sees ? 5 : look.astroMode ? 4 : 3), "\(look)")
             #expect(app.mapLayers.moon, "\(look): слой в файле выключился")
             #expect(app.snapshot.mapLayers?["moon"] != false, "\(look)")
-            // Остальные слои — как в меню.
-            #expect(app.mapLayersShown.sun == app.mapLayers.sun && app.mapLayersShown.mw == app.mapLayers.mw)
+            // Остальные слои — как в меню; «Млечный Путь» — со своим переключателем (30г.7; первый вход в «Астро» его
+            // включил, 30г.7а).
+            #expect(app.mapLayersShown.sun == app.mapLayers.sun
+                    && app.mapLayersShown.mw == (app.mapLayers.mw && look.astroMode), "\(look)")
         }
     }
 

@@ -165,16 +165,21 @@ struct AstroLayerOnTests {
 
     // MARK: - Что слоёв не трогает
 
-    /// Переход в «Астро» из «Просто» и «Про» переключатели не нажимает: слои остаются как были, даже при выключенных.
-    @Test func enteringAstroDoesNotTouchTheLayers() {
+    /// Повторный вход в «Астро» (из «Просто» и «Про») слоёв не трогает: они остаются такими, какими человек их оставил.
+    @Test func enteringAstroAgainDoesNotTouchTheLayers() {
         for from in [AppMode.simple, .pro] {
             let app = model()
             app.update { $0.mode = from }
-            setAll(app, false)
-            let before = layers(app), file = app.snapshot.mapLayers
-            app.update { $0.mode = .astro }
-            #expect(layers(app) == before, "\(from) → astro: слои изменились")
-            #expect(app.snapshot.mapLayers == file, "\(from) → astro: файл изменился")
+            for on in [false, true] {
+                setAll(app, on)
+                app.setMapLayer(.moon, !on)
+                app.arBodies[.planets] = !on
+                let before = layers(app), file = app.snapshot.mapLayers
+                app.update { $0.mode = .astro }
+                #expect(layers(app) == before, "\(from) → astro, слои \(on): слои изменились")
+                #expect(app.snapshot.mapLayers == file, "\(from) → astro, слои \(on): файл изменился")
+                app.update { $0.mode = from }
+            }
         }
     }
 
@@ -204,17 +209,74 @@ struct AstroLayerOnTests {
         #expect(UserDefaults.standard.bool(forKey: key) == false)
     }
 
-    /// Первый вход в «Астро» (ничего не записано): все пять включены, слои — умолчания: на карте луна есть, Млечного Пути
-    /// нет; в AR все пять слоёв выключены (флаги устройства по умолчанию). Это записано как есть — вопрос к Алексею.
-    @Test func firstEntryIntoAstroKeepsTheDefaults() {
+    /// Новый человек в «Просто» или «Про», в «Астро» ещё не был.
+    private func fresh(_ mode: AppMode, memory: any AppModeMemory = InMemoryAppModeMemory(), snap: Snapshot = Snapshot()) -> AppModel {
         let now = ISO8601DateFormatter().date(from: "2026-09-20T12:00:00+03:00")!
-        let app = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
+        let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
                            locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
-                           weatherSource: NoWeather(), now: { now })
-        #expect(app.settings.mode == .simple && app.settings.astro == .allOn)
-        app.update { $0.mode = .astro }
-        #expect(app.mapLayers.moon && !app.mapLayers.mw)
-        #expect(SunARSkyLayer.allCases.allSatisfy { !app.arBodies[$0] })
+                           weatherSource: NoWeather(), modeMemory: memory, now: { now })
+        if app.settings.mode != mode { app.update { $0.mode = mode } }
+        return app
+    }
+
+    /// Первый вход в «Астро» (опись, вопрос 4, вариант А): все пять включены — это включение всех пяти, слои «Луны»,
+    /// «Звёзд» и «Млечного Пути» включаются на «Карте» и в AR, как рукой. Небо в AR сразу полное.
+    @Test func firstEntryIntoAstroTurnsTheSkyLayersOn() {
+        for from in [AppMode.simple, .pro] {
+            let app = fresh(from)
+            #expect(app.settings.astro == .allOn && !app.modeMemory.astroEntered)
+            #expect(!app.mapLayers.mw && SunARSkyLayer.allCases.allSatisfy { !app.arBodies[$0] }, "\(from): умолчания не те")
+            app.update { $0.mode = .astro }
+            #expect(app.mapLayers.moon && app.mapLayers.mw, "\(from): слои карты не включились")
+            #expect(app.snapshot.mapLayers?["mw"] == true && app.snapshot.mapLayers?["moon"] == true, "\(from): файл")
+            #expect(SunARSkyLayer.allCases.allSatisfy { app.arBodies[$0] }, "\(from): слои AR не включились")
+            #expect(app.modeMemory.astroEntered, "\(from): первый вход не отмечен")
+            let ar = SunARScreen.model(app: app, target: tomskNight, source: nil)
+            #expect(ar.layersOn == SunARSkyLayer.allCases, "\(from): на экране AR \(ar.layersOn)")
+        }
+    }
+
+    /// Кто был в «Астро» до обновления, не тронут: стоит в «Астро» (ключ режима или старая галочка `pro`), стоял в нём
+    /// в прошлый запуск или выключал переключатель. Слои как были — и при запуске, и при следующем входе в «Астро».
+    @Test func alreadyBeenInAstroIsNotTouched() {
+        var flag = Snapshot(); flag.pro = true
+        var key = Snapshot(); key.appMode = "astro"
+        var pro = Snapshot(); pro.appMode = "pro"
+        var offInPro = pro; offInPro.astroOff = ["stars"]
+        let cases: [(String, Snapshot, any AppModeMemory)] = [
+            ("галочка pro", flag, InMemoryAppModeMemory()),
+            ("ключ astro", key, InMemoryAppModeMemory()),
+            ("прошлый запуск в «Астро», файл в «Про»", pro, InMemoryAppModeMemory(.astro)),
+            ("выключал переключатель", offInPro, InMemoryAppModeMemory()),
+        ]
+        for (why, snap, memory) in cases {
+            let app = fresh(.pro, memory: memory, snap: snap)
+            #expect(app.modeMemory.astroEntered, "\(why): не отмечен")
+            let before = layers(app), file = app.snapshot.mapLayers
+            app.update { $0.mode = .astro }
+            app.update { $0.mode = .pro }
+            app.update { $0.mode = .astro }
+            #expect(layers(app) == before, "\(why): слои изменились")
+            #expect(app.snapshot.mapLayers == file, "\(why): файл изменился")
+        }
+    }
+
+    /// Отметка живёт в памяти телефона: после перезапуска повторный вход слоёв не включает.
+    @Test func firstEntryIsRememberedOnThePhone() {
+        let defaults = UserDefaults(suiteName: "astro-entered-\(UUID().uuidString)")!
+        let memory = DeviceAppModeMemory(defaults: defaults)
+        #expect(!memory.astroEntered)
+        let first = fresh(.pro, memory: memory)
+        first.update { $0.mode = .astro }
+        #expect(defaults.bool(forKey: DeviceAppModeMemory.astroEnteredKey)
+                && DeviceAppModeMemory.astroEnteredKey == "lightplan.native.app.astroEntered")
+        first.update { $0.mode = .pro }
+        // Новый запуск: файл в «Про», слои убраны; память та же.
+        var snap = first.snapshot; snap.mapLayers = ["moon": false, "mw": false]
+        let again = fresh(.pro, memory: DeviceAppModeMemory(defaults: defaults), snap: snap)
+        let before = layers(again)
+        again.update { $0.mode = .astro }
+        #expect(layers(again) == before && !again.mapLayers.mw)
     }
 
     // MARK: - Память
