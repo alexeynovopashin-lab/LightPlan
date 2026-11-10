@@ -135,7 +135,8 @@ public struct LightTelemetry: Equatable, Sendable {
         sun: SolarDay, t: Minutes, moon moonMode: Bool, moonSnapshot: MoonSnapshot?,
         weather: WeatherDay?, weatherStatus: WeatherStatus, air: AirSample?,
         headerLocationName: String, headerDateLabel: String, headerNote: String,
-        lexicon: Lexicon, clock: ClockText, fahrenheit: Bool = false, terms: Bool = true
+        lexicon: Lexicon, clock: ClockText, fahrenheit: Bool = false, terms: Bool = true,
+        azimuths: Bool = true
     ) -> LightTelemetry {
         let raw = sun.state(at: t)
         let quality = weather?.quality
@@ -207,7 +208,7 @@ public struct LightTelemetry: Equatable, Sendable {
         let proGroups = buildProGroups(
             sun: sun, t: t, weather: weather, weatherStatus: weatherStatus,
             moonSnapshot: moonMode ? moonSnapshot : nil, lexicon: lexicon, clock: clock,
-            fahrenheit: fahrenheit, terms: terms
+            fahrenheit: fahrenheit, terms: terms, azimuths: azimuths
         )
 
         return LightTelemetry(
@@ -254,41 +255,49 @@ public struct LightTelemetry: Equatable, Sendable {
 
     private static func buildProGroups(
         sun: SolarDay, t: Minutes, weather: WeatherDay?, weatherStatus: WeatherStatus,
-        moonSnapshot: MoonSnapshot?, lexicon: Lexicon, clock: ClockText, fahrenheit: Bool, terms: Bool
+        moonSnapshot: MoonSnapshot?, lexicon: Lexicon, clock: ClockText, fahrenheit: Bool, terms: Bool,
+        azimuths: Bool
     ) -> [ProGroup] {
         var groups: [ProGroup] = []
 
+        // Градусы направления и высоты — переключатель «Азимуты» (опись 30г.2 № 66 и § 2): без него строк азимута и высоты нет,
+        // у восхода, полудня и заката остаётся одно время.
+        func at(_ m: Minutes, _ deg: String) -> String { azimuths ? "\(clock.fmt(m)) · \(deg)°" : clock.fmt(m) }
+
         if let mo = moonSnapshot {
-            groups.append(ProGroup(iconName: "moon", title: lexicon.t("pro.moonNow"), rows: [
-                ProRow(label: lexicon.t("pro.phase"),
-                       value: "\(lexicon.t(mo.phase.name.rawValue)) · \(Int((mo.phase.fraction * 100).rounded()))%"),
-                ProRow(label: lexicon.t("pro.azimuth"), value: "\(deg1(mo.azimuth))° · \(dirOf(mo.azimuth, lexicon: lexicon))"),
-                ProRow(label: lexicon.t("pro.altitude"), value: signedDeg1(mo.altitude)),
-                ProRow(label: lexicon.t("pro.rise"),
-                       value: mo.arc.map { "\(clock.fmt($0.rise)) · \(deg0(mo.riseAzimuth ?? 0))°" } ?? "—"),
-                ProRow(label: lexicon.t("pro.set"),
-                       value: mo.arc.map { "\(clock.fmt($0.set)) · \(deg0(mo.setAzimuth ?? 0))°" } ?? "—"),
+            var rows = [ProRow(label: lexicon.t("pro.phase"),
+                               value: "\(lexicon.t(mo.phase.name.rawValue)) · \(Int((mo.phase.fraction * 100).rounded()))%")]
+            if azimuths {
+                rows.append(ProRow(label: lexicon.t("pro.azimuth"), value: "\(deg1(mo.azimuth))° · \(dirOf(mo.azimuth, lexicon: lexicon))"))
+                rows.append(ProRow(label: lexicon.t("pro.altitude"), value: signedDeg1(mo.altitude)))
+            }
+            rows += [
+                ProRow(label: lexicon.t("pro.rise"), value: mo.arc.map { at($0.rise, deg0(mo.riseAzimuth ?? 0)) } ?? "—"),
+                ProRow(label: lexicon.t("pro.set"), value: mo.arc.map { at($0.set, deg0(mo.setAzimuth ?? 0)) } ?? "—"),
                 ProRow(label: lexicon.t("pro.distance"), value: lexicon.t("pro.distKm", ["n": groupedNumber(mo.distance)])),
-            ]))
+            ]
+            groups.append(ProGroup(iconName: "moon", title: lexicon.t("pro.moonNow"), rows: rows))
         }
 
         let e = sun.elevation(at: t)
         let az = sun.azimuth(at: t)
         let shadow = sun.shadowRatio(at: t)
-        groups.append(ProGroup(iconName: "sun", title: lexicon.t("pro.sunNow"), rows: [
+        let shadowRow = ProRow(label: lexicon.t("pro.shadowLen"),
+                               value: shadow.map { lexicon.t("pro.shadowOf", ["n": $0 < 10 ? String(format: "%.2f", $0) : String(format: "%.1f", $0)]) } ?? "—")
+        // Длина тени — не градусы, остаётся и без «Азимутов» (опись № 60).
+        groups.append(ProGroup(iconName: "sun", title: lexicon.t("pro.sunNow"), rows: azimuths ? [
             ProRow(label: lexicon.t("pro.azimuth"), value: "\(deg1(az))° · \(dirOf(az, lexicon: lexicon))"),
             ProRow(label: lexicon.t("pro.altitude"), value: signedDeg1(e)),
-            ProRow(label: lexicon.t("pro.shadowLen"),
-                   value: shadow.map { lexicon.t("pro.shadowOf", ["n": $0 < 10 ? String(format: "%.2f", $0) : String(format: "%.1f", $0)]) } ?? "—"),
-        ]))
+            shadowRow,
+        ] : [shadowRow]))
 
         let dayLenParts = sun.rise.flatMap { rise in sun.set.map { set in clock.fmt(set - rise) } }?.split(separator: ":") ?? []
         let dayLenH = dayLenParts.first.map(String.init) ?? "0"
         let dayLenM = dayLenParts.count > 1 ? String(dayLenParts[1]) : "00"
         groups.append(ProGroup(iconName: "clock", title: lexicon.t("pro.dayCourse"), rows: [
-            ProRow(label: lexicon.t("pro.rise"), value: sun.rise.map { "\(clock.fmt($0)) · \(deg0(sun.azimuth(at: $0)))°" } ?? "—"),
-            ProRow(label: lexicon.t("pro.solarNoon"), value: "\(clock.fmt(sun.solarNoon)) · \(String(format: "%.1f", sun.maxElevation))°"),
-            ProRow(label: lexicon.t("pro.sunset"), value: sun.set.map { "\(clock.fmt($0)) · \(deg0(sun.azimuth(at: $0)))°" } ?? "—"),
+            ProRow(label: lexicon.t("pro.rise"), value: sun.rise.map { at($0, deg0(sun.azimuth(at: $0))) } ?? "—"),
+            ProRow(label: lexicon.t("pro.solarNoon"), value: at(sun.solarNoon, String(format: "%.1f", sun.maxElevation))),
+            ProRow(label: lexicon.t("pro.sunset"), value: sun.set.map { at($0, deg0(sun.azimuth(at: $0))) } ?? "—"),
             ProRow(label: lexicon.t("pro.dayLen"), value: lexicon.t("pro.dayLenFmt", ["h": dayLenH, "m": dayLenM])),
         ]))
 

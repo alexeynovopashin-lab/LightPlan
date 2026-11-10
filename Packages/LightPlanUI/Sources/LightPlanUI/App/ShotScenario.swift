@@ -108,6 +108,8 @@ extension AppModel {
                            weatherSource: FileWeatherSource(forecast: s.forecast, air: s.air),
                            headingSource: s.heading.map { ScriptedHeading(angles: $0, hold: .seconds(s.headingHold)) },
                            placeMemory: InMemoryPlaceMemory(memory),
+                           // Слои AR — из аргументов запуска, но в памяти запуска: включённый переключатель их не пишет в телефон.
+                           arBodies: MemoryBodiesSettings(copying: DeviceBodiesSettings()),
                            now: { fixed.addingTimeInterval(Date().timeIntervalSince(start)) })
         app.tab = switch s.screen {
         case .settings: .settings
@@ -127,11 +129,23 @@ extension AppModel {
         // Клиенты в Контактах (К7): `-LPShotContacts past|on|no|limited|denied|test` — подставная книга; без аргумента части «Контакты» нет.
         if let kind = UserDefaults.standard.string(forKey: "LPShotContacts") { app.shotContacts(kind) }
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
+        // Купол на луне (30г.6): `-LPShotDomeMoon 1` — как будто нажата «Солнце или луна»; без «Луны» купол всё равно на солнце.
+        if UserDefaults.standard.bool(forKey: "LPShotDomeMoon") { app.light.moonMode = true }
         if let mode = UserDefaults.standard.string(forKey: "LPShotRoads") { app.roads.useShotRoads(RoadBook.shotRouter(mode)) }
         // 28л.6: состояние детектора без сети — для снимков раздела «Сеть» (`reachable` | `unreachable` | `unknown`).
         if let raw = UserDefaults.standard.string(forKey: "LPShotNet"), let state = ForeignReach(rawValue: raw) {
             app.useShotNetwork(state)
         }
+        #if DEBUG
+        // 30г.7а: `-LPShotAstroOn <переключатель>` — переключатель «Астро» выключен и включён, как пальцем в настройках
+        // (кадры «было / стало» ответа 4: включённый переключатель показывает свой слой).
+        if let raw = UserDefaults.standard.string(forKey: "LPShotAstroOn"), let sw = AstroSwitch(rawValue: raw) {
+            app.update { $0.astro[sw] = false }
+            app.update { $0.astro[sw] = true }
+        }
+        // `-LPShotEnterAstro 1` — нажат «Астро» (сид в «Просто» или «Про»): первый вход включает слои неба.
+        if UserDefaults.standard.bool(forKey: "LPShotEnterAstro") { app.update { $0.mode = .astro } }
+        #endif
         app.startChapter = s.chapter
         app.showsBuildLine = false
         // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.

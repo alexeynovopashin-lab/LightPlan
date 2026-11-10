@@ -87,7 +87,9 @@ struct MapScreenView: View {
         let light = app.light
         let timebar = light.timebar
         let telemetry = light.telemetry
-        let layers = app.mapLayers
+        // Слои, которые рисуются: без «Луны» (30г.6) слоя луны нет, без «Млечного Пути» (30г.7) — его слоя и ночного холста,
+        // хотя в меню они могли остаться включёнными.
+        let layers = app.mapLayersShown
         let lightTheme = !pal.dark
         let minute = timebar.machine.viewMinute
         let date = timebar.machine.selectedDate
@@ -95,7 +97,7 @@ struct MapScreenView: View {
         let place = timebar.place
         let clock = ClockText(language: app.language, preference: light.clockPreference)
         let input = MapInstrument.Input(
-            date: date, minute: minute, solar: solar, place: place, layers: layers, pro: light.proMode,
+            date: date, minute: minute, solar: solar, place: place, layers: layers, pro: light.proMode, azimuths: light.azimuths,
             lightTheme: lightTheme, chip: chip, clock: { clock.fmt($0) },
             cardinals: ["card.n", "card.e", "card.s", "card.w"].map { app.lexicon.t($0) })
         let scene = MapInstrument.scene(input, day: cache.day(date: date, place: place, solar: solar))
@@ -628,9 +630,10 @@ struct MapScreenView: View {
     }
 
     /// Свод на минуту ползунка. Окно Млечного Пути и помеха луны — раз на
-    /// сутки и место, и только при включённом слое.
+    /// сутки и место, и только при слое, который виден: без «Млечного Пути» (30г.7, опись № 96) нет ни строк свода,
+    /// ни группы «Подробно» вместе с высотами ядра и луной в ней.
     private func summary(date: CivilDate, minute: Minutes, solar: SolarDay, place: Place, clock: ClockText) -> MapSummary {
-        let mw: MapSummary.MilkyWayInput? = app.mapLayers.mw ? {
+        let mw: MapSummary.MilkyWayInput? = app.mapLayersShown.mw ? {
             let (w, moon) = cache.milkyWay(date: date, place: place)
             return MapSummary.MilkyWayInput(
                 window: w, moon: moon, sky: app.light.weather.milkyWaySky(for: date, window: w),
@@ -642,7 +645,7 @@ struct MapScreenView: View {
         return MapSummary.build(
             date: date, t: minute, sun: solar, place: place,
             utcOffset: place.zone.utcOffsetHours(on: app.light.timebar.todayInPlace), pro: app.light.proMode,
-            terms: app.light.terms, glow: app.glow.ratio, mw: mw,
+            terms: app.light.terms, azimuths: app.light.azimuths, moon: app.light.moon, glow: app.glow.ratio, mw: mw,
             dateShort: { dates.dMonShort(DateText.carrier(year: $0.year, month: $0.month - 1, day: $0.day, in: zone)) },
             lexicon: app.lexicon, clock: clock)
     }
@@ -699,10 +702,12 @@ struct MapScreenView: View {
     /// 15 pt. Галочка 16 латунью (линия 2,2) видна у включённого, знак 19
     /// (линия 1,5) — `--ink-4`, у включённого `--ink`.
     private func layersMenu(_ pal: Palette, _ layers: MapLayers, darkCanvas: Bool) -> some View {
-        let items: [(MapLayers.Key, String, String)] = [
-            (.sun, "sun", "layer.sun"), (.moon, "moon", "layer.moon"), (.mw, "stars", "layer.mw"),
-            (.compass, "compass", "layer.compass"), (.spots, "pin", "layer.spots"),
+        let all: [MapLayers.Key: (String, String)] = [
+            .sun: ("sun", "layer.sun"), .moon: ("moon", "layer.moon"), .mw: ("stars", "layer.mw"),
+            .compass: ("compass", "layer.compass"), .spots: ("pin", "layer.spots"),
         ]
+        // Пункты по переключателям «Астро» (`mapLayerKeys`): без «Луны» строки «Луна» нет (30г.6), без «Млечного Пути» — его (30г.7).
+        let items: [(MapLayers.Key, String, String)] = app.mapLayerKeys.compactMap { k in all[k].map { (k, $0.0, $0.1) } }
         return VStack(spacing: 0) {
             ForEach(items, id: \.0) { key, icon, word in
                 let on = layers[key]
@@ -717,6 +722,7 @@ struct MapScreenView: View {
                         Spacer(minLength: 0)
                     }
                     .padding(12)
+                    .shotNode("map.layer." + key.rawValue, text: on ? "on" : "off")
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

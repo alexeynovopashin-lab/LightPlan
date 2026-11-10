@@ -67,7 +67,11 @@ extension AppModel {
 
     public func toggleFormWish(_ w: Wish) {
         guard var f = form else { return }
+        // «Неважно» стирает видимые пожелания, а скрытую «Луну» (30г.6) не трогает: данные не меняются от того, что их не видно.
+        let shown = Set(shownWishes(f.wishes))
+        let hidden = w == .any ? f.wishes.filter { !shown.contains($0) } : []
         formTimeAsk = f.toggleWish(w) { self.formTimeFacts($0) }
+        f.wishes += hidden
         form = f
         formChanged()
     }
@@ -88,7 +92,9 @@ extension AppModel {
     /// словами — заголовок и текст. У встречи пожеланий нет.
     public func formWishWarning(_ f: EventForm) -> WishWarning? {
         guard f.mode != .meet,
-              let c = WishCheck.first(f.wishes, sky: wishSky(f.day), city: f.sessionPlace.isCity) else { return nil }
+              // Без «Луны» (30г.6) и «Звёзд» (30г.7, опись № 203) о них плашка молчит: скрытое пожелание остаётся в форме,
+              // но не проверяется.
+              let c = WishCheck.first(shownWishes(f.wishes), sky: wishSky(f.day), city: f.sessionPlace.isCity) else { return nil }
         var params = c.params
         if let q = c.sky { params["sky"] = lexicon.t("qualSky." + q.rawValue).lowercased() }
         if let w = c.wish { params["wish"] = lexicon.t("wish." + w.rawValue).lowercased() }

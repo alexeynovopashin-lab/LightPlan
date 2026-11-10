@@ -214,8 +214,28 @@ function maskChecks(sc, nodes, bad) {
   }
 }
 /* Проверки по рамкам узлов. Возвращают список нарушений. */
-function verdict(sc, nodes) {
+/* 30г.6–7: слои неба в AR — только в «Астро» со своим переключателем (`--mode astro`, `astro~stars` …); без флага сид —
+   «Просто», и включённые слои не рисуются: ни меток, ни стрелок, ни строк в «Слоях», ни точек на кнопке. Звёзды, созвездия
+   и планеты — под «Звёздами», полоса, ядро и «Как в тёмном месте» — под «Млечным Путём». Кнопки «Слои» нет, когда не виден
+   ни один из трёх. */
+const SEES = (() => {
+  const [m, ...off] = String(args.mode || 'simple').split('~');
+  const on = k => m === 'astro' && !off.includes(k);
+  return { moon: on('moon'), stars: on('stars'), mw: on('milkyWay') };
+})();
+const SEES_MOON = SEES.moon;
+const HIDDEN = [
+  [SEES.moon, /^ar\.(mark\.moon|pointer\.moon|pointerLabel\.moon|layer\.moon)/, 'луна без «Луны»'],
+  [SEES.stars, /^ar\.(stars$|starLabel\.|planets$|planetLabel\.|layer\.(stars|constellations|planets)$)/, 'звёзды без «Звёзд»'],
+  [SEES.mw, /^ar\.(milkyWay|mark\.core|pointer\.core|pointerLabel\.core|layer\.mw)/, 'Млечный Путь без «Млечного Пути»'],
+];
+function verdict(scIn, nodes) {
   const bad = [];
+  const sc = { ...scIn, moon: scIn.moon && SEES.moon, mw: scIn.mw && SEES.mw,
+    stars: scIn.stars && SEES.stars, cons: scIn.cons && SEES.stars, planets: scIn.planets && SEES.stars };
+  for (const [seen, re, why] of HIDDEN) if (!seen) for (const k of Object.keys(nodes)) if (re.test(k)) bad.push(k + ': ' + why);
+  const button = SEES.moon || SEES.stars || SEES.mw;
+  if (!button && nodes['ar.layers']) bad.push('кнопка «Слои» без единого слоя неба');
   const need = k => { if (!nodes[k]) { bad.push('нет узла ' + k); return false; } return true; };
   const touch = k => { if (need(k) && nodes[k].h < 43.9) bad.push(`${k}: высота касания ${nodes[k].h.toFixed(1)} < 44`); };
   if (sc.entry) {
@@ -224,7 +244,7 @@ function verdict(sc, nodes) {
     if (nodes['ar.entry.useMine'] && !/моё местоположение/.test(nodes['ar.entry.useMine'].text || '')) bad.push('нет «Использовать моё местоположение»');
     return bad;
   }
-  touch('ar.back'); touch('ar.layers');
+  touch('ar.back'); if (button) touch('ar.layers');
   if (nodes['ar.layers'] && (nodes['ar.layers'].w < 43.9 || Math.abs(nodes['ar.layers'].w - nodes['ar.layers'].h) > 0.5)) bad.push('кнопка «Слои» не круг 44 pt: ' + nodes['ar.layers'].w + ' × ' + nodes['ar.layers'].h);
   if (nodes['ar.moonToggle'] || nodes['ar.mwToggle']) bad.push('остались круглые включатели луны / Млечного Пути: слои — одной кнопкой');
   // Кнопка «Слои» показывает включённые слои (точки под значком); список — в отчёте текстом узла.
@@ -234,7 +254,8 @@ function verdict(sc, nodes) {
     if (on !== want) bad.push(`«Слои» показывает «${on}», включено «${want}»`);
   }
   if (sc.layersOpen) {
-    for (const k of ['ar.layer.moon', 'ar.layer.mw', 'ar.layer.stars', 'ar.layer.constellations', 'ar.layer.planets']) { if (need(k)) touch(k); }
+    for (const k of [...(SEES.moon ? ['ar.layer.moon'] : []), ...(SEES.mw ? ['ar.layer.mw'] : []),
+      ...(SEES.stars ? ['ar.layer.stars', 'ar.layer.constellations', 'ar.layer.planets'] : [])]) { if (need(k)) touch(k); }
     for (const k of ['ar.layer.stars', 'ar.layer.constellations']) if (nodes[k] && !/off$/.test(nodes[k].text || '')) bad.push(k + ' включена сама: ' + nodes[k].text);
     const a = nodes['ar.layer.moon'], b = nodes['ar.layer.mw'];
     if (a && b && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 0.5) bad.push('строки слоёв накладываются');
@@ -305,7 +326,7 @@ function verdict(sc, nodes) {
   for (const k of sun) if (![48, 34].includes(Math.round(nodes[k].w))) bad.push(`${k}: диаметр ${nodes[k].w} не 48/34`);
   if (sc.name === 'day' && !sun.length) bad.push('солнца в кадре нет');
   if (sc.name === 'night_moon') {
-    if (!moon.length) bad.push('луны в кадре нет');
+    if (!moon.length && SEES_MOON) bad.push('луны в кадре нет');
     if (!nodes['ar.pointer.sun']) bad.push('нет стрелки к солнцу за краем');
     for (const k of moon) {
       const t = nodes[k].text || '';
@@ -314,7 +335,7 @@ function verdict(sc, nodes) {
       if (!m || Math.abs(+m[1] - 0.69) > 0.02) bad.push(k + ': фаза ' + (m && m[1]) + ' не 0,69');
     }
   }
-  if (sc.name === 'night_mw') {
+  if (sc.name === 'night_mw' && SEES.mw) {
     if (!need('ar.milkyWay')) return bad;
     const t = nodes['ar.milkyWay'].text || '';
     if (/polys=0/.test(t)) bad.push('полосы нет: ' + t);
@@ -345,6 +366,16 @@ function verdict(sc, nodes) {
   // Флаги устройства — аргументами запуска: `defaults write` через simctl пишет не в тот файл, что читает приложение.
   const flag = (k, v) => ['-lightplan.native.sunar.' + k, v ? 'YES' : 'NO'];
 
+  // 30г.5: `--mode simple|pro|astro|astro~azimuths` — режим и выключенные переключатели «Астро» в копии сида (без флага — сид как
+  // есть, то есть «Просто»: градусов в AR там нет). После «~» — выключенные переключатели (ключ `astroOff`), как в `pair.js`.
+  let SEED = path.join(FX, 'seed.json');
+  if (args.mode) {
+    const [appMode, ...astroOff] = String(args.mode).split('~');
+    const s = { ...JSON.parse(fs.readFileSync(SEED, 'utf8')), pro: appMode !== 'simple', appMode, astroOff };
+    fs.mkdirSync(OUT, { recursive: true });
+    SEED = path.join(OUT, 'seed-' + String(args.mode).replace(/~/g, '-') + '.json');
+    fs.writeFileSync(SEED, JSON.stringify(s));
+  }
   const rows = [];
   const only = args.only ? String(args.only).split(',') : null;
   for (const sc of SCENARIOS) {
@@ -355,7 +386,7 @@ function verdict(sc, nodes) {
     fs.rmSync(report, { force: true });
     try { run('xcrun', ['simctl', 'terminate', udid, BUNDLE], { stdio: 'ignore', timeout: 10000 }); } catch (e) {}
     run('xcrun', ['simctl', 'launch', udid, BUNDLE, '-AppleLanguages', `(${LANG})`, '-AppleLocale', LOCALE,
-      '-LPShotNow', sc.now, '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', path.join(FX, 'seed.json'),
+      '-LPShotNow', sc.now, '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', SEED,
       '-LPShotForecast', path.join(FX, 'forecast_barnaul.json'), '-LPShotAir', path.join(FX, 'air_barnaul.json'),
       '-LPShotName', path.join(FX, 'place_barnaul.json'), '-LPShotScreen', 'map', '-LPShotReportDelay', '5',
       ...flag('calibrationSeen', true), ...flag('moon', sc.moon), ...flag('milkyWay', sc.mw),

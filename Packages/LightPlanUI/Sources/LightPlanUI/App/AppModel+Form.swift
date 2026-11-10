@@ -267,7 +267,9 @@ extension AppModel {
                               homeCity: homeCityName, now: now())
         let skip = snapshot.sessions.firstIndex { $0.id == f.id }
         let point = GeoPoint(f.sessionPlace.latitude, f.sessionPlace.longitude)
-        return EventForm.TimeFacts(goals: f.wishes.compactMap { LightGoal.of($0, sun: sun) },
+        // Свет только видимых пожеланий: без «Звёзд» (30г.7, опись № 200) всплывашки «Звёзды» днём нет и время само
+        // не сдвигается, хотя пожелание в форме остаётся.
+        return EventForm.TimeFacts(goals: shownWishes(f.wishes).compactMap { LightGoal.of($0, sun: sun) },
                                    defaultStart: formDefaultStart(f.day), step: settings.timeStep) { [self] start, duration in
             ShootTime.busyUntil(ClashCandidate(day: f.day, start: start, end: start + duration, placeKey: probe.placeKey,
                                                skipIndex: skip, wishes: f.wishes, point: point, trip: false, tripOff: false),

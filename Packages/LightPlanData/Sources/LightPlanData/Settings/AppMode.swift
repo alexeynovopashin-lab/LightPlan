@@ -26,6 +26,9 @@ public enum AppMode: String, Sendable, CaseIterable {
 public protocol AppModeMemory: AnyObject, Sendable {
     var mode: AppMode? { get set }
     var astro: AstroSwitches? { get set }
+    /// Человек уже входил в «Астро» на этом телефоне (30г.7а): первый вход включает слои неба (опись, вопрос 4, вариант А),
+    /// повторный — нет. Кто был в «Астро» до обновления, отмечен при запуске, его слои не трогаются.
+    var astroEntered: Bool { get set }
 }
 
 /// Память на время запуска: тесты и снимки, где режим задаёт только файл.
@@ -33,7 +36,14 @@ public final class InMemoryAppModeMemory: AppModeMemory, @unchecked Sendable {
     private let lock = NSLock()
     private var stored: AppMode?
     private var storedAstro: AstroSwitches?
-    public init(_ mode: AppMode? = nil, astro: AstroSwitches? = nil) { stored = mode; storedAstro = astro }
+    private var storedEntered: Bool
+    public init(_ mode: AppMode? = nil, astro: AstroSwitches? = nil, astroEntered: Bool = false) {
+        stored = mode; storedAstro = astro; storedEntered = astroEntered
+    }
+    public var astroEntered: Bool {
+        get { lock.withLock { storedEntered } }
+        set { lock.withLock { storedEntered = newValue } }
+    }
     public var mode: AppMode? {
         get { lock.withLock { stored } }
         set { lock.withLock { stored = newValue } }
@@ -48,6 +58,7 @@ public final class InMemoryAppModeMemory: AppModeMemory, @unchecked Sendable {
 public final class DeviceAppModeMemory: AppModeMemory, @unchecked Sendable {
     public static let key = "lightplan.native.app.mode"
     public static let astroKey = "lightplan.native.app.astroOff"
+    public static let astroEnteredKey = "lightplan.native.app.astroEntered"
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
@@ -61,5 +72,10 @@ public final class DeviceAppModeMemory: AppModeMemory, @unchecked Sendable {
     public var astro: AstroSwitches? {
         get { (defaults.array(forKey: Self.astroKey) as? [String]).map { AstroSwitches.read(file: $0, remembered: nil) } }
         set { defaults.set(newValue?.offNames, forKey: Self.astroKey) }
+    }
+
+    public var astroEntered: Bool {
+        get { defaults.bool(forKey: Self.astroEnteredKey) }
+        set { defaults.set(newValue, forKey: Self.astroEnteredKey) }
     }
 }

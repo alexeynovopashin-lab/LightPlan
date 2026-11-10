@@ -23,7 +23,7 @@ struct MapInstrumentFrameTests {
         layers.mw = true
         let clock = ClockText(language: "ru", preference: .h24)
         let input = MapInstrument.Input(
-            date: date, minute: 1380, solar: solar, place: place, layers: layers, pro: true, lightTheme: false,
+            date: date, minute: 1380, solar: solar, place: place, layers: layers, pro: true, azimuths: true, lightTheme: false,
             chip: .drag, clock: { clock.fmt($0) }, cardinals: ["С", "В", "Ю", "З"])
         return (input, MapInstrument.Day(date: date, place: place, solar: solar))
     }

@@ -27,6 +27,18 @@ public final class LightScreenModel {
     /// Только в «Астро» (`AppSettings.sees(.terms)`); в «Просто» и «Про» — простые слова.
     public var terms = false
 
+    /// Переключатель «Азимуты» (30г.5): градусы направления и высоты солнца и луны в «Подробно» «Света», на «Карте» и в AR.
+    /// Только в «Астро» (`AppSettings.sees(.azimuths)`); в «Просто» и «Про» градусов положения нет. Карта и AR читают его отсюда.
+    public var azimuths = false
+
+    /// Переключатель «Луна» (30г.6): кнопка «Солнце или луна» на куполе, купол и «Подробно» в режиме луны, знаки фазы на ленте,
+    /// а «Карта» и AR читают его отсюда. Только в «Астро» (`AppSettings.sees(.moon)`). Без него купол показывает солнце,
+    /// но выбор человека помнится (`moonPicked`): вернулся в «Астро» с «Луной» — луна снова там, где её оставили.
+    public var moon = false { didSet { timebar.showMoon = moonPicked && moon } }
+
+    /// Что выбрал человек кнопкой на куполе; на экране — только вместе с «Луной».
+    private var moonPicked = false
+
     /// Градусы Фаренгейта вместо Цельсия (`tempUnit` веба).
     public var fahrenheit = false
 
@@ -46,10 +58,10 @@ public final class LightScreenModel {
     }
 
     /// Солнце или луна на куполе и в первой группе спойлера — тот же
-    /// тумблер, что уже делят `DomeView` и барабан таймбара.
+    /// тумблер, что уже делят `DomeView` и барабан таймбара. Без «Луны» (30г.6) всегда солнце.
     public var moonMode: Bool {
         get { timebar.showMoon }
-        set { timebar.showMoon = newValue }
+        set { moonPicked = newValue; timebar.showMoon = newValue && moon }
     }
 
     /// Лист «Когда смотрим» открыт — тап по показаниям купола (19в).
@@ -151,7 +163,7 @@ public final class LightScreenModel {
             weather: weatherDay, weatherStatus: weather.status, air: air,
             headerLocationName: headerLocationName, headerDateLabel: headerDateLabel(t: t),
             headerNote: headerNote(t: t),
-            lexicon: lexicon, clock: clock, fahrenheit: fahrenheit, terms: terms
+            lexicon: lexicon, clock: clock, fahrenheit: fahrenheit, terms: terms, azimuths: azimuths
         )
     }
 

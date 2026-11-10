@@ -61,7 +61,7 @@ struct MapSceneParityTests {
         let solar = SolarDay(date: date, place: place, time: .web)
         let clock = ClockText(language: "ru", preference: .h24)
         let input = MapInstrument.Input(
-            date: date, minute: c.minute, solar: solar, place: place, layers: MapLayers(c.layers), pro: c.pro,
+            date: date, minute: c.minute, solar: solar, place: place, layers: MapLayers(c.layers), pro: c.pro, azimuths: c.pro,
             lightTheme: c.light, chip: nil, clock: { clock.fmt($0) }, cardinals: ["С", "В", "Ю", "З"])
         return (input, MapInstrument.Day(date: date, place: place, solar: solar))
     }

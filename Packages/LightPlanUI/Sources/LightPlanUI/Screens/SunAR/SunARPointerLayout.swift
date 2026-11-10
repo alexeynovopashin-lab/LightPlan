@@ -53,12 +53,14 @@ enum SunARPointerLayout {
     /// Занятое стрелкой: кружок и подпись над ним или под ним (как рисует `SunARPointerView`).
     static func occupied(center p: CGPoint, text: String, screen: CGSize, flipY: CGFloat) -> [CGRect] {
         let d = SunARInk.pointerDiameter
+        let circle = CGRect(x: p.x - d / 2, y: p.y - d / 2, width: d, height: d)
+        // Без подписи (нет «Азимутов», 30г.5) занят только кружок: плашки нет, и места ей не держим.
+        guard !text.isEmpty else { return [circle] }
         let w = labelWidth(text)
         let below = p.y + d / 2 + 14 < flipY
         let lx = min(max(p.x, w / 2 + 8), screen.width - w / 2 - 8)
         let ly = below ? p.y + d / 2 + 14 : p.y - d / 2 - 14
-        return [CGRect(x: p.x - d / 2, y: p.y - d / 2, width: d, height: d),
-                CGRect(x: lx - w / 2, y: ly - labelHeight / 2, width: w, height: labelHeight)]
+        return [circle, CGRect(x: lx - w / 2, y: ly - labelHeight / 2, width: w, height: labelHeight)]
     }
 
     /// Наименьший зазор между занятыми прямоугольниками двух стрелок, pt (отрицательный — наложение).

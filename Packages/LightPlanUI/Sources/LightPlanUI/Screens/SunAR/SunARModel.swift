@@ -93,6 +93,44 @@ final class DeviceBodiesSettings: ARBodiesSettings {
     }
 }
 
+/// Флаги слоёв на время запуска: тесты и снимки (30г.7а). Снимки берут стартовые значения из флагов устройства — их задают
+/// аргументы запуска (`Tools/shots/ar.js`), — а включение переключателя «Астро» пишет сюда, не в память телефона.
+@MainActor
+final class MemoryBodiesSettings: ARBodiesSettings {
+    var moon = false, milkyWay = false, stars = false, constellations = false, planets = false
+
+    init() {}
+
+    init(copying other: any ARBodiesSettings) {
+        moon = other.moon; milkyWay = other.milkyWay; stars = other.stars
+        constellations = other.constellations; planets = other.planets
+    }
+}
+
+extension ARBodiesSettings {
+    /// Флаг слоя по его имени в «Слоях».
+    subscript(_ layer: SunARSkyLayer) -> Bool {
+        get {
+            switch layer {
+            case .moon: moon
+            case .milkyWay: milkyWay
+            case .stars: stars
+            case .constellations: constellations
+            case .planets: planets
+            }
+        }
+        set {
+            switch layer {
+            case .moon: moon = newValue
+            case .milkyWay: milkyWay = newValue
+            case .stars: stars = newValue
+            case .constellations: constellations = newValue
+            case .planets: planets = newValue
+            }
+        }
+    }
+}
+
 /// Состояние экрана AR: поворот телефона, камера, выбранный момент и «сейчас», калибровка компаса.
 @MainActor @Observable
 final class SunARModel {
@@ -172,6 +210,21 @@ final class SunARModel {
     // MARK: - Луна и Млечный Путь (29.8в.4)
 
     private let bodies: any ARBodiesSettings
+
+    /// Слои, которые разрешают переключатели «Астро» (`AppModel.arSkyLayers`): без «Луны» (30г.6) слоя луны нет ни на небе,
+    /// ни в списке «Слоёв», хотя флаг устройства (`moonOn`) остаётся как был — вернулся в «Астро» с «Луной», и луна там же.
+    var allowed: Set<SunARSkyLayer>
+    /// Луна на небе: слой включён и разрешён.
+    var moonShown: Bool { moonOn && allowed.contains(.moon) }
+    /// Млечный Путь, звёзды, созвездия и планеты на небе: слой включён и разрешён (30г.7: «Млечный Путь» и «Звёзды»).
+    /// Флаги устройства (`milkyWayOn` и прочие) не трогаются — вернулся в «Астро» с переключателем, и слой там же.
+    var milkyWayShown: Bool { milkyWayOn && allowed.contains(.milkyWay) }
+    var starsShown: Bool { starsOn && allowed.contains(.stars) }
+    var constellationsShown: Bool { constellationsOn && allowed.contains(.constellations) }
+    var planetsShown: Bool { planetsOn && allowed.contains(.planets) }
+    /// Кнопка «Слои» — пока разрешён хотя бы один её слой (опись № 103): в «Просто» и «Про» её нет.
+    var layersButtonShown: Bool { !allowed.isEmpty }
+
     private(set) var moonOn: Bool
     private(set) var milkyWayOn: Bool
     private(set) var starsOn: Bool
@@ -314,11 +367,11 @@ final class SunARModel {
         let s = sun
         let sunPicked = HorizontalPoint(altitude: s.apparentAltitude, azimuth: s.azimuth)
         let n = sunNow
-        let moon: NightSkyARScene.MoonInput? = moonOn
+        let moon: NightSkyARScene.MoonInput? = moonShown
             ? .init(arc: moonArc, picked: moonPicked, now: pickedIsNow ? nil : moonNow, sunAtPicked: sunPicked,
                     sunAtNow: HorizontalPoint(altitude: n.apparentAltitude, azimuth: n.azimuth))
             : nil
-        let mw: NightSkyARScene.MilkyWayInput? = milkyWayOn ? milkyWayInput(sunAltitude: s.altitude) : nil
+        let mw: NightSkyARScene.MilkyWayInput? = milkyWayShown ? milkyWayInput(sunAltitude: s.altitude) : nil
         return NightSkyARScene.make(basis: basis, optics: optics, viewport: viewport, moon: moon, milkyWay: mw)
     }
 
@@ -336,9 +389,9 @@ final class SunARModel {
     /// Звёзды и созвездия на экране камеры; `nil` — оба слоя выключены (ни расчёта, ни рисования). Момент — выбранный
     /// (кнопка «Сейчас» возвращает на текущий). Рисуются всегда, днём тоже (29.8в.18).
     func starScene(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport) -> StarSkyARScene? {
-        guard starsOn || constellationsOn else { return nil }
+        guard starsShown || constellationsShown else { return nil }
         return StarSkyAR.make(positions: starPositions, basis: basis, optics: optics,
-                              viewport: viewport, stars: starsOn, constellations: constellationsOn)
+                              viewport: viewport, stars: starsShown, constellations: constellationsShown)
     }
 
     /// Положения пяти планет на выбранный момент: держатся, пока не сдвинулась минута или не сменилось место.
@@ -354,7 +407,7 @@ final class SunARModel {
     /// Планеты на экране камеры (29.8в.15); `nil` — слой выключен. Момент — выбранный, «Сейчас» возвращает на текущий.
     /// Без включённого слоя планеты не считаются; список «Слоёв» спрашивает `planetsNearSun` отдельно.
     func planetScene(basis: CameraBasis, optics: CameraOptics, viewport: ScreenViewport) -> PlanetSkyARScene? {
-        guard planetsOn else { return nil }
+        guard planetsShown else { return nil }
         return PlanetSkyAR.make(samples: planetSamples, basis: basis, optics: optics,
                                 viewport: viewport)
     }
@@ -369,8 +422,9 @@ final class SunARModel {
     /// засветка. Справка, а не условие рисования (29.8в.18).
     var skyEyeCauses: [SkyEyeNote.Cause] { SkyEyeNote.causes(sunAltitude: sun.altitude, glow: glow) }
 
-    /// Включён хотя бы один слой неба: Млечный Путь, звёзды, созвездия или планеты (Луна — не слой неба для маски).
-    var skyLayerOn: Bool { milkyWayOn || starsOn || constellationsOn || planetsOn }
+    /// На небе хотя бы один слой неба: Млечный Путь, звёзды, созвездия или планеты (Луна — не слой неба для маски).
+    /// Слой, который не разрешает переключатель, маску не зовёт (30г.7).
+    var skyLayerOn: Bool { milkyWayShown || starsShown || constellationsShown || planetsShown }
 
     /// Затемняющая маска над кадром камеры (29.8в.18): ночной выбранный момент при светлом настоящем небе. Настоящее небо —
     /// солнце сейчас (часы и место телефона), а не экспозиция камеры. `0` — слоёв нет или настоящая ночь.
@@ -387,8 +441,10 @@ final class SunARModel {
          clock: @escaping @MainActor () -> Moment = { Moment(Date()) },
          calibrationFlag: (any ARCalibrationFlag)? = nil, forceCalibration: Bool = false,
          bodies: (any ARBodiesSettings)? = nil, feedback: (any CalibrationFeedback)? = nil,
-         language: String = "ru", clockPreference: ClockPreference = .auto) {
+         language: String = "ru", clockPreference: ClockPreference = .auto,
+         allowed: Set<SunARSkyLayer> = Set(SunARSkyLayer.allCases)) {
         choice = target.choice
+        self.allowed = allowed
         let wall = SunTrack.wallClock(of: target.moment, in: target.place)
         // Часы таймбара — часы модели: «сейчас» и кнопка «↺ сейчас» тикают от одного источника (в тестах подставного).
         timebar = TimebarState(place: target.place, date: wall.day, weather: nil, language: language,

@@ -67,8 +67,11 @@ extension SunARModel {
         }
     }
 
-    /// Включённые слои, в порядке списка.
-    var layersOn: [SunARSkyLayer] { SunARSkyLayer.allCases.filter { isOn($0) } }
+    /// Включённые слои, в порядке списка; слой, который не разрешает переключатель «Астро», не считается (30г.6).
+    var layersOn: [SunARSkyLayer] { layersListed.filter { isOn($0) } }
+
+    /// Строки списка «Слоёв»: только разрешённые переключателями (`allowed`).
+    var layersListed: [SunARSkyLayer] { SunARSkyLayer.allCases.filter { allowed.contains($0) } }
 }
 
 /// Круглая кнопка «Слои»; знак тот же, что у кнопки слоёв «Карты» (`LayersGlyph`, свой SVG веба). По виду видно, какие слои включены: под значком точка тоном каждого включённого слоя;
@@ -105,7 +108,7 @@ struct SunARLayersList: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(SunARSkyLayer.allCases) { layer in
+            ForEach(model.layersListed) { layer in
                 row(layer)
                 if layer == .milkyWay { darkRow }
             }

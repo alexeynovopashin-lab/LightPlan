@@ -118,7 +118,7 @@ public struct SettingsView: View {
                     VStack(spacing: 0) {
                         WebSeg(options: [(t.t("set.modeSimple"), AppMode.simple), (t.t("set.modePro"), .pro), (t.t("set.modeAstro"), .astro)],
                                selection: modeBinding, nodes: ["mode.simple", "mode.pro", "mode.astro"],
-                               sky: app.settings.mode == .astro && !skyWaiting)
+                               sky: app.seesStars && !skyWaiting)
                             .shotNode("mode")
                             .padding(.horizontal, 24)
                             .padding(.top, 12)
@@ -227,7 +227,8 @@ public struct SettingsView: View {
     private var modeBinding: Binding<AppMode> {
         Binding(get: { app.settings.mode }, set: { m in
             app.update { $0.mode = m }
-            if m == .astro { showSky() } else { SkyLog.note("tap \(m.rawValue): no sky") }
+            // Небо — звёзды и созвездия: только со «Звёздами» (30г.7, опись № 3); режим уже записан выше.
+            if app.seesStars { showSky() } else { SkyLog.note("tap \(m.rawValue): no sky") }
         })
     }
 

@@ -102,8 +102,13 @@ def run_case(udid, backdrop, variant, out, extra):
     if os.path.exists(report):
         os.remove(report)
     subprocess.run(['xcrun', 'simctl', 'terminate', udid, BUNDLE], capture_output=True)
+    # 30г.5: чип курса и «Азимут · Высота» есть только в «Астро» с «Азимутами» — сид снимается в «Астро», иначе их нечем мерить.
+    seed = json.load(open(FX + '/seed.json'))
+    seed.update(pro=True, appMode='astro', astroOff=[])
+    seed_path = os.path.join(out, 'seed-astro.json')
+    json.dump(seed, open(seed_path, 'w'))
     args = ['-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
-            '-LPShotNow', '2026-10-20T21:00:00+07:00', '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', FX + '/seed.json',
+            '-LPShotNow', '2026-10-20T21:00:00+07:00', '-LPShotZone', 'Asia/Tomsk', '-LPShotSeed', seed_path,
             '-LPShotForecast', FX + '/forecast_barnaul.json', '-LPShotAir', FX + '/air_barnaul.json',
             '-LPShotName', FX + '/place_barnaul.json', '-LPShotScreen', 'map', '-LPShotReportDelay', '5',
             '-lightplan.native.sunar.calibrationSeen', 'YES', '-lightplan.native.sunar.moon', 'NO',
