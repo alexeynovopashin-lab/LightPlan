@@ -438,12 +438,27 @@ extension AppModel {
             }
         default: break
         }
+        // Общий список студий (30е.1): `-LPShotCatalog demo` — выдуманный список (`demoCatalog`), настоящий файл в кадры не идёт.
+        if UserDefaults.standard.string(forKey: "LPShotCatalog") == "demo" { app.usePlaceCatalog(Self.demoCatalog) }
         if s.sheet == "loc" {
             app.placeSheetStart = s.way.flatMap(PlaceSheetForm.Way.init(rawValue:)) ?? .fork
             app.placeSheetOpen = true
         }
         return app
     }
+
+    /// Список для кадров 30е.1: Томсон, как в общем списке, и выдуманные места — непроверенное, возможный дубль,
+    /// закрытое (в выдаче его быть не должно) и место другого города со словом «Томск» в названии.
+    static let demoCatalog = PlaceCatalog(etag: 1, asOf: "2026-11-05", places: [
+        CatalogPlace(id: "pl100001", name: "Томсон", address: "Томск, ул. Красноармейская, 101а, 3 этаж, офисы 304, 305, 311",
+                     city: "Томск", timezone: "Asia/Tomsk",
+                     halls: [.init(number: 1, name: "Эдисон"), .init(number: 2, name: "Сфера")], check: .verified),
+        CatalogPlace(id: "pl900001", name: "Ромашка", address: "Томск, ул. Примерная, 1", city: "Томск"),
+        CatalogPlace(id: "pl900002", name: "Белый свет", address: "Томск, пр. Выдуманный, 22", city: "Томск",
+                     halls: [.init(number: 1, name: "Циклорама"), .init(number: 2, name: "Лофт")], check: .disputed),
+        CatalogPlace(id: "pl900003", name: "Закрытая студия", address: "Томск, ул. Старая, 5", city: "Томск", closed: true),
+        CatalogPlace(id: "pl900004", name: "Томский лофт", address: "ул. Придуманная, 7", city: "Новосибирск"),
+    ])
 
     /// Мессенджеры для снимков К4 — вписаны так, как их вставил бы фотограф (ссылкой профиля): у первого человека
     /// Telegram (основной) и VK, у второго — WhatsApp по номеру и Instagram.

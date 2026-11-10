@@ -396,6 +396,8 @@
   studios selects that card; hand-made cards are never glued (hub Q-045 п. 4). On the map: the address is looked up (≤ 60 km from the city), else the
   city centre of `CatalogCities` (39 cities, checked against Apple's geocoder 07.11), zone from the file or the city into the zone cache.
   Tests/shots have no list unless `usePlaceCatalog` / `FixedPlaceCatalog`; the real file: `LP_PLACES_FILE=<file> swift test --filter realServedFileReadsWhole`.
+  Shots: `node Tools/shots/studio_list.js` (Debug `-LPShotCatalog demo` = Tomson + invented places, never the real file;
+  `-LPShotCatalogQuery <text>`, `-LPShotCatalogPick 1`; row nodes `loc.catalog.here|other.<i>` carry «name|mark[|выбрана]»).
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

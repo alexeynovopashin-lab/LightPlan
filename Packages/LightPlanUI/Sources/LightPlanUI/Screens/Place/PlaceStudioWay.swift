@@ -70,6 +70,16 @@ struct PlaceStudioWay: View {
             if edit == Self.newCard { card(t, pal) }
             if let catalog { catalogPart(catalog, found, q: q, town: town, t, pal) }
         }
+        #if DEBUG
+        // Кадры 30е.1 (`Tools/shots/studio_list.js`): набранное в поиске и выбор первой строки выдачи.
+        .onAppear {
+            guard let q = UserDefaults.standard.string(forKey: "LPShotCatalogQuery"), app.placeCatalog != nil else { return }
+            query = q
+            if UserDefaults.standard.bool(forKey: "LPShotCatalogPick"), let r = app.catalogHits(q, town: sheetCity).here.first {
+                pickCatalog(r)
+            }
+        }
+        #endif
     }
 
     /// Город, которым список делится надвое (веб `sheetCity`): у точки — город съёмки.
@@ -189,11 +199,11 @@ struct PlaceStudioWay: View {
         } else {
             if !found.here.isEmpty {
                 secLabel(cityWord.map { t.t("loc.catalogHere", ["city": $0]) } ?? t.t("loc.catalogAll"), pal)
-                catalogList(found.here, more: found.moreHere, t, pal)
+                catalogList(found.here, more: found.moreHere, node: "here", t, pal)
             }
             if !found.other.isEmpty {
                 secLabel(t.t("loc.catalogOther"), pal)
-                catalogList(found.other, more: found.moreOther, t, pal)
+                catalogList(found.other, more: found.moreOther, node: "other", t, pal)
             }
             if !found.isEmpty {
                 Text(t.t("loc.catalogNote")).font(.system(size: 12)).foregroundStyle(pal.ink6)
@@ -204,9 +214,9 @@ struct PlaceStudioWay: View {
         }
     }
 
-    private func catalogList(_ rows: [StudioCatalog.Row], more: Int, _ t: Lexicon, _ pal: Palette) -> some View {
+    private func catalogList(_ rows: [StudioCatalog.Row], more: Int, node: String, _ t: Lexicon, _ pal: Palette) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            ForEach(Array(rows.enumerated()), id: \.element.place.id) { i, r in catalogRow(r, i, t, pal) }
+            ForEach(Array(rows.enumerated()), id: \.element.place.id) { i, r in catalogRow(r, "\(node).\(i)", t, pal) }
             if more > 0 {
                 Text(t.t("loc.catalogMore", ["n": "\(more)"])).font(.system(size: 12)).foregroundStyle(pal.ink6)
                     .padding(.top, 8)
@@ -216,7 +226,7 @@ struct PlaceStudioWay: View {
 
     /// Строка места: название, залы, адрес, пометка. Тап выбирает — как у своей студии;
     /// карандаша и корзины нет: править можно уже свою карточку после «Готово».
-    private func catalogRow(_ r: StudioCatalog.Row, _ i: Int, _ t: Lexicon, _ pal: Palette) -> some View {
+    private func catalogRow(_ r: StudioCatalog.Row, _ node: String, _ t: Lexicon, _ pal: Palette) -> some View {
         let p = r.place
         let picked = draft?.catalogId == p.id
         let halls = p.halls.map(\.name).joined(separator: " · ")
@@ -238,17 +248,28 @@ struct PlaceStudioWay: View {
         .buttonStyle(.plain)
         .overlay(alignment: .bottom) { Rectangle().fill(pal.hair).frame(height: 1) }
         .padding(.bottom, 1)
-        .shotNode("loc.catalog.\(i)")
+        .shotNode("loc.catalog.\(node)", text: p.name + "|" + markWord(StudioCatalog.mark(r), t) + (picked ? "|выбрана" : ""))
+    }
+
+    /// Слово пилюли пометки: то же, что на экране (рамки кадров его сверяют).
+    private func markWord(_ m: StudioCatalog.Mark, _ t: Lexicon) -> String {
+        switch m {
+        case .yours: t.t("loc.markYours")
+        case .verified: "✓ " + t.t("loc.markVerified")
+        case .unverified: t.t("loc.markUnverified")
+        case .disputed: t.t("loc.markDisputed")
+        }
     }
 
     @ViewBuilder
     private func mark(_ m: StudioCatalog.Mark, _ t: Lexicon, _ pal: Palette) -> some View {
-        switch m {
-        case .yours: markPill(t.t("loc.markYours"), pal.brass, pal)
-        case .verified: markPill("✓ " + t.t("loc.markVerified"), pal.green, pal)
-        case .unverified: markPill(t.t("loc.markUnverified"), pal.ink5, pal)
-        case .disputed: markPill(t.t("loc.markDisputed"), pal.terra, pal)
+        let c: Color = switch m {
+        case .yours: pal.brass
+        case .verified: pal.green
+        case .unverified: pal.ink5
+        case .disputed: pal.terra
         }
+        markPill(markWord(m, t), c, pal)
     }
 
     private func markPill(_ s: String, _ c: Color, _ pal: Palette) -> some View {
