@@ -136,6 +136,13 @@
   or calendar access) stays (`ShootReminderSection(quiet:)`, shared with «Оповещения»). **Values never depend on the mode (answer 2):** sheet and chapters
   bind the same fields (`SimpleSheet.binding`, `remind`), a value set in Pro keeps working in Simple and back. A new setting goes to Simple only if the
   inventory says so. Shots: `-LPShotChapter end` scrolls the root to its end; in `pair.js` the Simple root has no web pair (web has chapters).
+- **Simple outside Settings (30г.9, Alexey's answers 2–3, 05.11).** One rule `ModeLook` (`LightPlanData/Settings/ModeLook.swift`, `AppSettings.look`; Light/Map read
+  the copy `LightScreenModel.look`): dome sky in every mode (№ 55), no day ribbon in Simple (№ 68, 87), and Simple has no map layers button/menu (№ 71), no card
+  «Настроить карточку» (№ 131–134; switching to Simple closes an open tuning), no form gear «Мои жанры» (№ 150–151; the genre row keeps its 37 pt), no
+  «Самоочистка» row in a moodboard bin (№ 179). **Nothing is written or reset** (answer 2): card layout, genre list, bin term stay as stored and keep working.
+  Only exception: in Simple the map's sun, compass and «Мои места» are always on (`alwaysOnMapLayers` → `mapLayersShown`), the stored choice is kept for Pro.
+  Ghost calendars (№ 128) need nothing: their question comes only from the «Другие календари» toggle, which the Simple sheet has not. Tests `ModeLookTests`,
+  `SimpleSubmenusTests`; the view `if`s are held by shots (the nodes `map.layersBtn`, `card.tune`… are absent in Simple).
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init
