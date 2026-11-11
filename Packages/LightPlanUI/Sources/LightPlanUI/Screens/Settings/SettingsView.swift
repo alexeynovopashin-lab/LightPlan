@@ -288,12 +288,8 @@ public struct SettingsView: View {
     }
 
     private func showSky() {
-        let place = app.place.place
-        let now = app.now()
-        let moon = MoonSample(date: app.today, minutes: Double(app.nowMinute), place: place)
-        let scene = AstroSky.scene(
-            days: AstroSky.days(of: now), latitude: place.latitude, longitude: place.longitude,
-            moon: HorizontalPoint(altitude: moon.altitude, azimuth: moon.azimuth))
+        // Сцена — правило модели: созвездия по «Звёздам», луна в ней только с «Луной» (30г.10).
+        let scene = app.astroSkyScene()
         // Анимация идёт по часам устройства: часы приложения в сценариях съёмок подменены.
         let run = SkyRun(start: Date(), scene: scene)
         SkyLog.note("start constellations=\(scene.constellations.count) lines=\(scene.lines.count) stars=\(scene.stars.count) moon=\(scene.moon == nil ? "no" : "yes") codes=\(scene.constellations.joined(separator: ","))")

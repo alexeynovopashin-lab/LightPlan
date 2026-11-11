@@ -1,3 +1,5 @@
+import Foundation
+import LightPlanCore
 import LightPlanDomain
 import LightPlanData
 
@@ -15,6 +17,18 @@ extension AppModel {
     /// в карточке, плиткой и всплывашкой в форме, небо на нажатии «Астро» (опись № 3, 106, 146, 147, 166, 200, 203).
     /// Звёзды на куполе он не прячет (№ 57, ответ 6).
     var seesStars: Bool { settings.sees(.stars) }
+
+    /// Небо на нажатии «Астро» (опись № 3): созвездия над местом приложения сейчас. Само небо идёт только со «Звёздами»
+    /// (`SettingsView.modeBinding`); луна в нём — только с «Луной» (30г.10, DECISIONS 07.11 «луна в анимации неба на кнопке
+    /// „Астро“ не прячется без „Луны“»): без переключателя луны нет нигде, значит, и здесь.
+    func astroSkyScene() -> AstroSky.Scene {
+        let p = place.place
+        let moon: HorizontalPoint? = seesMoon ? {
+            let m = MoonSample(date: today, minutes: Double(nowMinute), place: p)
+            return HorizontalPoint(altitude: m.altitude, azimuth: m.azimuth)
+        }() : nil
+        return AstroSky.scene(days: AstroSky.days(of: now()), latitude: p.latitude, longitude: p.longitude, moon: moon)
+    }
 
     /// Переключатель «Млечный Путь» (30г.7): слой «Карты» с его сводом и группой «Подробно», слой AR с «Как в тёмном месте»
     /// (опись № 74, 96, 105).

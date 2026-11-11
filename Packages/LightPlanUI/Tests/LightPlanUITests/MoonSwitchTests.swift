@@ -77,10 +77,11 @@ struct MoonSwitchTests {
         return s
     }
 
-    private func model(_ sessions: [Session] = [], rain: Bool = false, look: Look = .astro) -> AppModel {
+    private func model(_ sessions: [Session] = [], rain: Bool = false, look: Look = .astro,
+                       at iso: String = "2026-09-20T12:00:00+03:00") -> AppModel {
         var snap = Snapshot()
         snap.sessions = sessions
-        let now = ISO8601DateFormatter().date(from: "2026-09-20T12:00:00+03:00")!
+        let now = ISO8601DateFormatter().date(from: iso)!
         let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!,
                            locator: NoLocator(), geocoder: SilentGeocoder(), cityLookup: NoCities(),
                            weatherSource: SkySource(rain: rain), now: { now })
@@ -93,6 +94,26 @@ struct MoonSwitchTests {
         app.openCard(id: id)
         await app.pointWeather.settled()
         return app.sessions.first { $0.id == id }!
+    }
+
+    // MARK: - Небо на нажатии «Астро»
+
+    /// 30г.10 (DECISIONS 07.11): в небе, которое идёт 2,4 с по нажатию «Астро» (опись № 3), луна стоит только с «Луной».
+    /// Само небо включают «Звёзды», поэтому «Астро» без «Луны» — это созвездия без луны; созвездия при этом те же.
+    /// Час берётся тот, где луна над горизонтом: иначе её нет в сцене и без правила, и тест ничего бы не доказал.
+    @Test func astroButtonSkyShowsTheMoonOnlyWithTheSwitch() throws {
+        let hours = (0..<24).map { String(format: "2026-09-20T%02d:00:00+03:00", $0) }
+        let up = try #require(hours.first { model(look: .astro, at: $0).astroSkyScene().moon != nil },
+                              "за сутки луна ни разу не над горизонтом — тесту не на чем стоять")
+        let with = model(look: .astro, at: up).astroSkyScene()
+        let without = model(look: .astroNoMoon, at: up).astroSkyScene()
+        #expect(with.moon != nil)
+        #expect(without.moon == nil, "«Астро» без «Луны»: луны в небе на кнопке быть не должно")
+        #expect(without.constellations == with.constellations && without.stars.count == with.stars.count
+                && without.lines.count == with.lines.count, "созвездия от «Луны» не зависят")
+        for look in [Look.simple, .pro] {
+            #expect(model(look: look, at: up).astroSkyScene().moon == nil, "\(look)")
+        }
     }
 
     // MARK: - Правило и настройки
