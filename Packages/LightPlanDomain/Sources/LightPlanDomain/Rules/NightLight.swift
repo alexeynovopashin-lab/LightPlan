@@ -12,12 +12,21 @@ public struct StarNight: Hashable, Sendable {
     public let moonBlocks: Bool
     /// Наибольшая освещённость луны над горизонтом в тёмное время, %.
     public let moonPercent: Int?
+    /// Луна засветит небо: закрыла годную минуту или по оценке «луна для звёзд» мешает (та же, что в своде «Карты» и в
+    /// форме). Не задано — как раньше, только `moonBlocks`.
+    public let moonWash: Bool
+    /// Ядро в тёмное время не поднимается на рабочую высоту. Не задано — как раньше: темнота была, а луна ни одной
+    /// годной минуты не закрыла (значит, годных и не было).
+    public let coreLow: Bool
 
-    public init(spans: [ClosedRange<Int>], dark: Bool, moonBlocks: Bool, moonPercent: Int?) {
+    public init(spans: [ClosedRange<Int>], dark: Bool, moonBlocks: Bool, moonPercent: Int?,
+                moonWash: Bool? = nil, coreLow: Bool? = nil) {
         self.spans = spans
         self.dark = dark
         self.moonBlocks = moonBlocks
         self.moonPercent = moonPercent
+        self.moonWash = moonWash ?? moonBlocks
+        self.coreLow = coreLow ?? (dark && !moonBlocks)
     }
 }
 
@@ -30,17 +39,38 @@ public struct StarNight: Hashable, Sendable {
 /// каждой своё место и свои сутки. Мимо — строка говорит всегда (веб у золотого
 /// часа молчит дальше трёх часов): пожелание заказано, и ответ «окно в 01:10 –
 /// 03:40» нужен и съёмке в 20:00.
+/// Почему Млечного Пути не будет видно — причина в строке карточки. Порядок случаев — порядок в строке (Алексей 11.11):
+/// недостаточно темно → луна засветит небо → ядро низко над горизонтом → точка в черте города.
+public enum StarsBlock: Hashable, Sendable {
+    /// Небо не темнеет (белые ночи).
+    case notDark
+    /// Луна засветит небо; освещена на `percent` %.
+    case moon(percent: Int)
+    /// Ядро в тёмное время ниже рабочей высоты.
+    case coreLow
+    /// Место съёмки в черте города — тот же признак записи (`Session.placeIsCity`), по которому форма говорит
+    /// «Засветка города» (`WishCheck`, `cityGlow`): правило одно, считается из одного поля.
+    case city
+
+    /// Все причины ночи без окна, по порядку. Пусто не бывает: без темноты — «недостаточно темно», с темнотой окно
+    /// не сложилось либо из-за луны, либо из-за высоты ядра.
+    public static func all(night n: StarNight, city: Bool) -> [StarsBlock] {
+        var out: [StarsBlock] = []
+        if !n.dark { out.append(.notDark) }
+        if n.moonWash { out.append(.moon(percent: n.moonPercent ?? 0)) }
+        if n.coreLow { out.append(.coreLow) }
+        if city { out.append(.city) }
+        return out.isEmpty ? [.coreLow] : out
+    }
+}
+
 public enum NightLight: Hashable, Sendable {
     /// Точка в окне Млечного Пути (минуты от полуночи первого дня).
     case starsIn(point: LightPoint?, window: ClosedRange<Int>)
     /// Окно есть, точка мимо на `gap` минут.
     case starsNear(point: LightPoint?, window: ClosedRange<Int>, gap: Int)
-    /// Окна нет: темнота есть, ядро высоко, но луна светит.
-    case starsMoon(percent: Int)
-    /// Окна нет: ядро в тёмное время ниже рабочей высоты.
-    case starsLow
-    /// Окна нет: небо не темнеет (белые ночи).
-    case starsNoDark
+    /// Окна нет: все причины сразу, в порядке `StarsBlock` (Алексей 11.11: «Все причины»). Список не пуст.
+    case starsNone([StarsBlock])
     /// Точка — когда луна над горизонтом; освещена на `percent` %.
     case moonUp(point: LightPoint?, arc: ClosedRange<Int>, percent: Int)
     /// Луна над горизонтом не в точку: ближайшая дуга и насколько мимо.
@@ -92,9 +122,7 @@ public enum NightLight: Hashable, Sendable {
         }
         if let (p, w, d) = near { return .starsNear(point: p.point, window: w, gap: d) }
         let n = night(ps.first?.at ?? Stops.skyPoint(of: s, spots: spots, studios: studios), s.day)
-        if !n.dark { return .starsNoDark }
-        if n.moonBlocks { return .starsMoon(percent: n.moonPercent ?? 0) }
-        return .starsLow
+        return .starsNone(StarsBlock.all(night: n, city: s.placeIsCity))
     }
 
     /// Строка «Луна» (пожелание `moon`); `nil` — пожелания нет.

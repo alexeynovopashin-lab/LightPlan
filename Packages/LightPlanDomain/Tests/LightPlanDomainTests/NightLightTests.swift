@@ -39,20 +39,47 @@ struct NightLightTests {
         #expect(gap == 1350 - 900)
     }
 
+    /// Алексей 11.11: «Все причины». Каждое сочетание из четырёх (темнота, луна, ядро, город) — 15 непустых — даёт список
+    /// ровно этих причин в одном порядке: недостаточно темно → луна → ядро низко → город. Окно при этом не меняется:
+    /// есть окно — причин не называют вовсе.
+    @Test func starsWithoutWindowNameEveryReasonInOrder() {
+        for mask in 1..<16 {
+            let noDark = mask & 1 != 0, moon = mask & 2 != 0, low = mask & 4 != 0, city = mask & 8 != 0
+            var s = shoot(23 * 60, 24 * 60, [.stars])
+            s.placeIsCity = city
+            let got = NightLight.stars(s, route: [], spots: [], studios: []) { _, _ in
+                StarNight(spans: [], dark: !noDark, moonBlocks: false, moonPercent: 91, moonWash: moon, coreLow: low)
+            }
+            var want: [StarsBlock] = []
+            if noDark { want.append(.notDark) }
+            if moon { want.append(.moon(percent: 91)) }
+            if low { want.append(.coreLow) }
+            if city { want.append(.city) }
+            #expect(got == .starsNone(want), "сочетание \(mask)")
+        }
+        // Город сам по себе окна не отменяет: точка в окне — строка «попадает в окно», как раньше.
+        var s = shoot(23 * 60, 24 * 60, [.stars])
+        s.placeIsCity = true
+        let inWindow = NightLight.stars(s, route: [], spots: [], studios: []) { _, _ in
+            StarNight(spans: [1350...1440], dark: true, moonBlocks: false, moonPercent: 10)
+        }
+        guard case .starsIn = inWindow else { Issue.record("ждали «в окне», вышло \(String(describing: inWindow))"); return }
+    }
+
     @Test func starsWithoutWindowSayWhy() {
         let s = shoot(23 * 60, 24 * 60, [.stars])
         let white = NightLight.stars(s, route: [], spots: [], studios: []) { _, _ in
             StarNight(spans: [], dark: false, moonBlocks: false, moonPercent: nil)
         }
-        #expect(white == .starsNoDark)
+        #expect(white == .starsNone([.notDark]))
         let moon = NightLight.stars(s, route: [], spots: [], studios: []) { _, _ in
             StarNight(spans: [], dark: true, moonBlocks: true, moonPercent: 87)
         }
-        #expect(moon == .starsMoon(percent: 87))
+        #expect(moon == .starsNone([.moon(percent: 87)]))
         let low = NightLight.stars(s, route: [], spots: [], studios: []) { _, _ in
             StarNight(spans: [], dark: true, moonBlocks: false, moonPercent: 0)
         }
-        #expect(low == .starsLow)
+        #expect(low == .starsNone([.coreLow]))
     }
 
     @Test func noWishNoLine() {

@@ -202,6 +202,30 @@ struct MoonSwitchTests {
         }
     }
 
+    /// Решение Алексея 11.11 (30г.10): луна в строках Млечного Пути — причина, по которой он виден или нет, а не светило.
+    /// Поэтому «Луна для звёзд: засветит · диск N %» в своде «Карты» и «Луна сейчас» в группе «Млечный Путь» остаются и
+    /// при выключенной «Луне» (Барнаул, 23.09.2026 23:00: диск 91 %, строка есть). Своя строка луны при этом уходит.
+    @Test func milkyWayMoonLinesStayWithoutTheMoonSwitch() throws {
+        let lexicon = Lexicon("ru"), clock = ClockText(language: "ru", preference: .h24)
+        let date = CivilDate(year: 2026, month: 9, day: 23)
+        let place = Place(latitude: 53.3481, longitude: 83.7798, zone: ZoneID(fixedOffsetHours: 7))
+        let sun = SolarDay(date: date, place: place)
+        func build(_ moon: Bool) -> MapSummary {
+            MapSummary.build(date: date, t: 1380, sun: sun, place: place, utcOffset: 7, pro: true, moon: moon, glow: nil,
+                             mw: MapSummary.MilkyWayInput(window: MilkyWayWindow(date: date, place: place),
+                                                          moon: MoonVsStars(date: date, place: place), sky: nil, nextDark: { nil }),
+                             dateShort: { "\($0.day).\($0.month)" }, lexicon: lexicon, clock: clock)
+        }
+        let on = build(true), off = build(false)
+        let glare = try #require(on.rows.first { $0.label == "map.moonGlare" }, "в эту ночь строки о луне для звёзд нет — тесту не на чем стоять")
+        #expect(off.rows.first { $0.label == "map.moonGlare" }?.text == glare.text, "без «Луны» строка «Луна для звёзд» пропала")
+        #expect(!off.rows.contains { $0.label == "map.moon" }, "своя строка луны без «Луны» осталась")
+        let group = { (s: MapSummary) in s.pro.first { $0.title == lexicon.t("mpro.mw") }?.rows.map(\.label) }
+        let rows = try #require(group(on))
+        #expect(rows.contains(lexicon.t("mpro.moonNow")))
+        #expect(group(off) == rows, "группа «Млечный Путь» в «Подробно» от «Луны» зависеть не должна")
+    }
+
     /// Свод: строки «Луна» и «Затмение», группа «Ближайшее затмение» в «Подробно» — только с «Луной». Прочее не меняется.
     @Test func mapSummaryHidesMoonAndEclipses() throws {
         let lexicon = Lexicon("ru"), clock = ClockText(language: "ru", preference: .h24)

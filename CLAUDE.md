@@ -87,8 +87,8 @@
   Astro, old Astro data). **Screens ask `AppSettings.sees(.x)`** (Astro and switch on), never the switch alone. Rows `AstroSwitchRows` right under the mode choice, Astro only;
   only `.terms` works (`AstroSwitchRows.working`), the other four are disabled and the note `set.astro.waiting` says so — 30г.5–7 add them to `working`. Terms off (and in
   Simple/Pro): dome word `LightTelemetry.phaseKey` — astro twilight → `sun.deepDusk.label` (the web's «Глубокие сумерки»), astro night → `sun.night.label` «Ночь»
-  (`lang_native.json`); «Сумерки» group of «Подробно», the map's `map.twilight` row and «Астрономическая ночь» in the Milky Way group are gone. Not yet: card «ниже −18°»,
-  AR notes (Alexey's wording / 30г.7). The card route's word needs nothing: `pointLightCode` names only «excellent» light (golden, dawn, sunset,
+  (`lang_native.json`); «Сумерки» group of «Подробно», the map's `map.twilight` row and «Астрономическая ночь» in the Milky Way group are gone. Card «ниже −18°» got plain words in 30г.10.
+  Not yet: AR notes under the layers («сумерки, солнце −9°», the moon note) and moon rows inside the Milky Way group read no switch of their own (30г.10 findings, Alexey decides). The card route's word needs nothing: `pointLightCode` names only «excellent» light (golden, dawn, sunset,
   blue), never astro twilight or night. Shots: `--modes astro~terms` = Astro with terms off.
 - **Azimuths switch (30г.5).** `AstroSwitchRows.working` = azimuths + terms. Degrees of direction and altitude (sun, moon, core) only when `AppSettings.sees(.azimuths)`;
   AppModel copies it to `LightScreenModel.azimuths`, and «Карта» and AR read it from there. Off (Simple, Pro, Astro without it): «Свет» «Подробно» — no azimuth/altitude rows
@@ -110,8 +110,8 @@
 - **Stars and Milky Way switches (30г.7).** `AstroSwitchRows.working` = all five; the note `set.astro.waiting` is gone (the inventory sketch has none: the
   chapters follow the five rows). Rule `AppModel+AstroSky.swift`: `seesStars`, `seesMilkyWay`; AR layers by `SunARSkyLayer.astroSwitch` (stars, constellations,
   planets → «Звёзды»; Milky Way → «Млечный Путь»), wishes by `AppModel.astroSwitch(of:)` (moon, stars). Off (Simple, Pro, Astro without it): **«Звёзды»** —
-  no sky animation on tapping «Астро» and no stars on its button (`SettingsView`), no AR rows/drawing of stars, constellations, planets (`SunARModel.starsShown`
-  …), card: no Milky Way window line incl. «…солнце не уходит ниже −18°» (`cardStars`), no «Ожидались звёзды», form: no tile (7 of 9 in Simple/Pro), no
+  no sky animation on tapping «Астро» and no stars on its button (`SettingsView`); the moon in that sky only with «Луна» (`AppModel.astroSkyScene`, 30г.10), no AR rows/drawing of stars, constellations, planets (`SunARModel.starsShown`
+  …), card: no Milky Way window line incl. the white-night line «Млечного Пути не будет видно. Недостаточно темно.» (`light.starsNoDark`, Alexey's words 11.11, 30г.10; `cardStars`), no «Ожидались звёзды», form: no tile (7 of 9 in Simple/Pro), no
   «Звёзды днём» ask and no silent shift (`formTimeFacts` takes `shownWishes`), no star words in «замысел против прогноза»; **«Млечный Путь»** — no map layer, no
   layers-menu row, no night canvas, no fold rows and no «Подробно» group (with its core altitudes and moon rows; `MapScreenView.summary` reads
   `mapLayersShown.mw`), no AR band/core/«Как в тёмном месте». The AR «Слои» button exists while any of moon/stars/Milky Way is seen — none in Simple and Pro.

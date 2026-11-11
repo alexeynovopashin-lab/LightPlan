@@ -29085,107 +29085,212 @@
         }
       }
     },
-    "light.starsLow" : {
+    "light.noStars.city" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Млечного Пути в эту ночь не будет: в тёмное время ядро не поднимается выше 10°."
+            "value" : "точка в черте города"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No Milky Way tonight: in the dark hours the core stays below 10°."
+            "value" : "the spot is inside the city"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta noche no habrá Vía Láctea: en las horas oscuras el núcleo no sube de 10°."
+            "value" : "el punto está dentro de la ciudad"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "今夜は天の川は見えません。暗い時間帯に銀河中心が 10° より上に昇りません。"
+            "value" : "地点が市街地の中"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "今晚看不到银河：天黑时银心升不过 10°。"
+            "value" : "地点在城区内"
           }
         }
       }
     },
-    "light.starsMoon" : {
+    "light.noStars.dark" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Млечного Пути в эту ночь не будет: луна освещена на {p}% и стоит над горизонтом, пока видно ядро."
+            "value" : "недостаточно темно"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No Milky Way tonight: the moon is {p}% lit and up while the core is visible."
+            "value" : "not dark enough"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta noche no habrá Vía Láctea: la luna está iluminada al {p}% y sobre el horizonte mientras se ve el núcleo."
+            "value" : "no oscurece lo suficiente"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "今夜は天の川は見えません。銀河中心が見える間、月（輝面 {p}%）が出ています。"
+            "value" : "暗さが足りない"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "今晚看不到银河：银心可见时月亮在地平线上，亮面 {p}%。"
+            "value" : "天不够黑"
           }
         }
       }
     },
-    "light.starsNoDark" : {
+    "light.noStars.line" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Млечного Пути в эту ночь не будет: небо не темнеет, солнце не уходит ниже −18°."
+            "value" : "Млечного Пути не будет видно. {why}."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No Milky Way tonight: the sky never gets dark, the sun stays above −18°."
+            "value" : "The Milky Way won’t be visible. {why}."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta noche no habrá Vía Láctea: el cielo no oscurece, el sol no baja de −18°."
+            "value" : "La Vía Láctea no se verá. {why}."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "今夜は天の川は見えません。空が暗くならず、太陽が −18° より下がりません。"
+            "value" : "天の川は見えません。{why}。"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "今晚看不到银河：天不会全黑，太阳不低于 −18°。"
+            "value" : "看不到银河。{why}。"
+          }
+        }
+      }
+    },
+    "light.noStars.low" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ядро низко над горизонтом"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the core is low above the horizon"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el núcleo queda bajo sobre el horizonte"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "銀河中心が低い"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "银心离地平线太低"
+          }
+        }
+      }
+    },
+    "light.noStars.moon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "луна засветит небо ({p}%)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the moon will wash out the sky ({p}%)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "la luna iluminará el cielo ({p}%)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月明かりが強い（{p}%）"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月光会照亮天空（{p}%）"
+          }
+        }
+      }
+    },
+    "light.noStars.sep" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ","
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ","
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ","
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "、"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "，"
           }
         }
       }

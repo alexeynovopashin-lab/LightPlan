@@ -106,8 +106,13 @@ extension AppModel {
         let key = "\(PointWeather.key(pl))|\(d)"
         if let hit = nightCache[key] { return hit }
         let w = MilkyWayWindow(date: d, place: pl)
+        let moon = MoonVsStars(date: d, place: pl)
+        // Причины «не будет видно» (30г.10, Алексей 11.11 «Все причины»), каждая по уже принятой оценке: луна — закрыла
+        // годную минуту окна или «засветит» по той же оценке, что в своде «Карты» и в форме (`MoonVsStars.level`);
+        // ядро — в тёмное время годных по высоте минут не было, а без темноты — не поднимается на рабочую высоту вовсе.
         let n = StarNight(spans: w.spans.map { Int($0.from.rounded())...Int($0.to.rounded()) }, dark: w.dark, moonBlocks: w.moonBlocks,
-                          moonPercent: MoonVsStars(date: d, place: pl).percent)
+                          moonPercent: moon.percent, moonWash: w.moonBlocks || moon.level == .blocking,
+                          coreLow: w.dark ? !w.moonBlocks : w.best.altitude < MilkyWay.workLow)
         nightCache[key] = n
         return n
     }
@@ -122,7 +127,8 @@ extension AppModel {
     }
 
     /// Окно Млечного Пути блока «Свет» — только со «Звёздами» (30г.7, опись № 146, ответ 4): пожелание в записи остаётся,
-    /// его не показывают. Вместе с ним уходит и «…солнце не уходит ниже −18°» (`light.starsNoDark`).
+    /// его не показывают. Вместе с ним уходит и строка «Млечного Пути не будет видно. …» (`noStarsLine`; до 30г.10 —
+    /// «…солнце не уходит ниже −18°»).
     func cardStars(_ s: Session, phase: EventPhase) -> NightLight? {
         guard phase != .after, seesStars else { return nil }
         return NightLight.stars(s, route: lightRoute(s), spots: snapshot.spots, studios: snapshot.studios,
@@ -139,6 +145,23 @@ extension AppModel {
                                    let f = MoonPhase(date: d, minutes: Double(t), utcOffsetHours: pl.zone.utcOffsetHours(on: d)).fraction
                                    return Int((f * 100).rounded())
                                })
+    }
+
+    /// «Млечного Пути не будет видно. Недостаточно темно, луна засветит небо (91%), точка в черте города.» — одна строка,
+    /// все причины через запятую в порядке `StarsBlock` (Алексей 11.11); первая — с заглавной буквы. Одна причина даёт
+    /// прежние две короткие фразы. Слова и разделитель — `light.noStars.*` (`Tools/lang_native.json`).
+    func noStarsLine(_ why: [StarsBlock]) -> String {
+        let parts = why.map { r -> String in
+            switch r {
+            case .notDark: lexicon.t("light.noStars.dark")
+            case .moon(let pct): lexicon.t("light.noStars.moon", ["p": "\(pct)"])
+            case .coreLow: lexicon.t("light.noStars.low")
+            case .city: lexicon.t("light.noStars.city")
+            }
+        }
+        let sep = lexicon.t("light.noStars.sep")
+        let joined = parts.joined(separator: sep == "," ? ", " : sep)
+        return lexicon.t("light.noStars.line", ["why": joined.prefix(1).uppercased() + joined.dropFirst()])
     }
 
     /// Реплики блока «Свет» сверху вниз: золотой час, звёзды, луна.
@@ -169,11 +192,10 @@ extension AppModel {
             case .starsIn(let p, let w): text = lexicon.t("light.inStars", ["name": name(p), "range": range(w)])
             case .starsNear(let p, let w, let gap):
                 text = lexicon.t("light.missStars", ["name": name(p), "range": range(w), "gap": f.durLabel(gap)])
-            case .starsMoon(let pct): text = lexicon.t("light.starsMoon", ["p": "\(pct)"])
-            case .starsLow: text = lexicon.t("light.starsLow")
-            default: text = lexicon.t("light.starsNoDark")
+            case .starsNone(let why): text = noStarsLine(why)
+            default: text = ""
             }
-            out.append(CardSay(kind: .stars, icon: "stars", text: text, bad: false))
+            if !text.isEmpty { out.append(CardSay(kind: .stars, icon: "stars", text: text, bad: false)) }
         }
         if let n = cardMoon(s, phase: phase) {
             let text: String

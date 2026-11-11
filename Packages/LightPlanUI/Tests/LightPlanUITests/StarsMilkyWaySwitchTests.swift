@@ -282,18 +282,80 @@ struct StarsMilkyWaySwitchTests {
         }
     }
 
-    /// «Млечного Пути в эту ночь не будет: небо не темнеет, солнце не уходит ниже −18°» (белая ночь, Москва 21.06.2027):
-    /// в «Астро» со «Звёздами» текст прежний — и без «Терминов» тоже (простых слов Алексей ещё не выбрал); в «Просто»,
-    /// «Про» и без «Звёзд» строки нет.
-    @Test func cardMinus18PhraseOnlyWithStarsAndUnchanged() async {
+    /// Белая ночь (Москва 21.06.2027): строка «Млечного Пути не будет видно. …» с причиной «недостаточно темно» — слова
+    /// Алексея 11.11 вместо «…солнце не уходит ниже −18°» (DECISIONS 07.11, 30г.10). Условие показа прежнее: строка стоит
+    /// в «Астро» со «Звёздами» (и без «Терминов», и без «Луны» тоже), а в «Просто», «Про» и без «Звёзд» её нет.
+    @Test func cardNoStarsLineOnlyWithStarsInAWhiteNight() async throws {
         let june = CivilDate(year: 2027, month: 6, day: 21)
         let app = model([Self.shoot("w", wishes: [.stars], day: june)])
         let s = await open(app, "w")
-        let phrase = app.lexicon.t("light.starsNoDark")
+        guard case .starsNone(let why)? = app.cardStars(s, phase: .before) else { Issue.record("ждали «не будет видно»"); return }
+        #expect(why.first == .notDark, "белая ночь: первой причиной ждали «недостаточно темно», вышло \(why)")
+        let phrase = app.noStarsLine(why)
         for look in Look.all {
             app.update { look.apply(&$0) }
             let line = app.cardSays(s, phase: .before).first { $0.kind == .stars }?.text
             #expect(line == (look.stars ? phrase : nil), "\(look)")
+        }
+    }
+
+    /// «Все причины» (Алексей 11.11): город в строке карточки — по признаку записи `placeIsCity`, тому же, что форма
+    /// передаёт своей плашке «Засветка города» (`AppModel+FormRoute`: `city: f.sessionPlace.isCity`, он и пишется в запись):
+    /// съёмка в черте города получает «точка в черте города» последней причиной, за городом — нет.
+    @Test func cardNoStarsLineNamesTheCityOfTheRecord() async {
+        let june = CivilDate(year: 2027, month: 6, day: 21)
+        var inCity = Self.shoot("c", wishes: [.stars], day: june), outside = Self.shoot("o", wishes: [.stars], day: june)
+        inCity.placeIsCity = true; outside.placeIsCity = false
+        let app = model([inCity, outside])
+        let c = await open(app, "c"), o = await open(app, "o")
+        guard case .starsNone(let whyC)? = app.cardStars(c, phase: .before),
+              case .starsNone(let whyO)? = app.cardStars(o, phase: .before) else { Issue.record("ждали «не будет видно»"); return }
+        #expect(whyC.last == .city && !whyO.contains(.city))
+        #expect(whyC.dropLast() == whyO[...], "город добавляется к остальным причинам, а не заменяет их")
+    }
+
+    /// Сборка строки: одна причина — две короткие фразы, как выбрал Алексей; несколько — через запятую в порядке
+    /// «недостаточно темно → луна → ядро → город», первая с заглавной буквы, в конце точка. Все 15 сочетаний.
+    @Test func noStarsLineJoinsEveryReasonInOrder() {
+        let app = model()
+        let all: [StarsBlock] = [.notDark, .moon(percent: 91), .coreLow, .city]
+        #expect(app.noStarsLine([.notDark]) == "Млечного Пути не будет видно. Недостаточно темно.")
+        #expect(app.noStarsLine([.coreLow]) == "Млечного Пути не будет видно. Ядро низко над горизонтом.")
+        #expect(app.noStarsLine([.moon(percent: 91)]) == "Млечного Пути не будет видно. Луна засветит небо (91%).")
+        #expect(app.noStarsLine([.city]) == "Млечного Пути не будет видно. Точка в черте города.")
+        #expect(app.noStarsLine([.notDark, .moon(percent: 91), .city])
+                == "Млечного Пути не будет видно. Недостаточно темно, луна засветит небо (91%), точка в черте города.")
+        #expect(app.noStarsLine(all)
+                == "Млечного Пути не будет видно. Недостаточно темно, луна засветит небо (91%), ядро низко над горизонтом, точка в черте города.")
+        let head = "Млечного Пути не будет видно. "
+        for mask in 1..<16 {
+            let why = all.enumerated().filter { mask & (1 << $0.offset) != 0 }.map(\.element)
+            let line = app.noStarsLine(why)
+            #expect(line.hasPrefix(head) && line.hasSuffix("."), "\(mask): «\(line)»")
+            let body = String(line.dropFirst(head.count).dropLast())
+            #expect(body.components(separatedBy: ", ").count == why.count, "\(mask): причин \(why.count) — «\(line)»")
+            #expect(body.first?.isUppercase == true, "\(mask): первая причина с заглавной — «\(line)»")
+            #expect(body.dropFirst().allSatisfy { !$0.isUppercase }, "\(mask): заглавная только первая — «\(line)»")
+        }
+    }
+
+    /// Слова строки в каталоге на всех шести языках: голова с местом для причин `{why}`, четыре причины и разделитель;
+    /// нигде нет градусов («−18°», «10°» — термины), причина о луне держит процент `{p}`. Американский английский своих
+    /// записей не держит и берёт британские — проверяется, что старых у него не осталось; прежние три ключа убраны.
+    @Test func noStarsWordsArePlainInEveryLanguage() throws {
+        let strings = try LabelFitTests.catalog()
+        let keys = ["line", "dark", "moon", "low", "city", "sep"].map { "light.noStars." + $0 }
+        for key in keys {
+            for lang in ["ru", "en", "es", "ja", "zh"] {
+                let v = try #require(LabelFitTests.value(strings, key, lang), "нет записи: \(key) \(lang)")
+                #expect(!v.isEmpty && !v.contains("°"), "\(key) \(lang): «\(v)»")
+                #expect(v.contains("{p}") == key.hasSuffix(".moon"), "\(key) \(lang): процент луны — «\(v)»")
+                #expect(v.contains("{why}") == key.hasSuffix(".line"), "\(key) \(lang): место причин — «\(v)»")
+            }
+            #expect(LabelFitTests.value(strings, key, "en-US") == nil, "\(key): у en-US своя запись")
+        }
+        for old in ["light.starsNoDark", "light.starsLow", "light.starsMoon"] {
+            #expect(strings[old] == nil, "\(old): старый ключ остался в каталоге")
         }
     }
 
