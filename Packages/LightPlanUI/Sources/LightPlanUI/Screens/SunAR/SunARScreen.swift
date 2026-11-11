@@ -577,7 +577,8 @@ struct SunARScreen: View {
         .glassEffect(SunARInk.buttonGlass.interactive(), in: Circle())
         .popover(isPresented: $layersOpen, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
             SunARLayersList(model: model, lexicon: t,
-                            clock: ClockText(language: app.language, preference: app.light.clockPreference))
+                            clock: ClockText(language: app.language, preference: app.light.clockPreference),
+                            look: SunARNoteLook(azimuths: app.light.azimuths, terms: app.light.terms))
                 .presentationCompactAdaptation(.popover)
         }
         .accessibilityLabel(t.t("ar.layers"))

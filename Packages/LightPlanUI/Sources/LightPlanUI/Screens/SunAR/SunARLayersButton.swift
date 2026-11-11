@@ -105,6 +105,8 @@ struct SunARLayersList: View {
     let lexicon: Lexicon
     /// Часы места: время в строках Млечного Пути пишется так же, как на подписях дуги.
     var clock = ClockText(language: "ru")
+    /// «Азимуты» и «Термины» для справок под слоями (30г.10); утро — по солнцу выбранного момента.
+    var look = SunARNoteLook.full
 
     var body: some View {
         VStack(spacing: 0) {
@@ -119,23 +121,29 @@ struct SunARLayersList: View {
         .preferredColorScheme(.dark)
     }
 
+    private var noteLook: SunARNoteLook {
+        var l = look
+        l.morning = model.sunRising
+        return l
+    }
+
     /// Мелкие строки под словом слоя.
     private func notes(_ layer: SunARSkyLayer) -> [String] {
         switch layer {
         case .moon: return []
         case .stars, .constellations:
             // Звёзды рисуются всегда (29.8в.18); справка о видимости глазом — число и причина, а не условие рисования.
-            return SunARSkyNotes.eyeLine(model.skyEyeCauses, lexicon).map { [$0] } ?? []
+            return SunARSkyNotes.eyeLine(model.skyEyeCauses, lexicon, look: noteLook).map { [$0] } ?? []
         case .planets:
             // Планеты (29.8в.15, 29.8в.18): рисуются всегда; справка о видимости глазом, и каждая, что ближе 15° к Солнцу
             // (такая не рисуется), подписана честно.
             let near = model.planetsNearSun.map { lexicon.t("ar.planetNearSun", ["name": lexicon.t($0.nameKey)]) }
-            return (SunARSkyNotes.eyeLine(model.skyEyeCauses, lexicon).map { [$0] } ?? []) + near
+            return (SunARSkyNotes.eyeLine(model.skyEyeCauses, lexicon, look: noteLook).map { [$0] } ?? []) + near
         case .milkyWay:
             // Млечный Путь (29.8в.17б): ядро над горизонтом и темнота, справка о видимости глазом (не условие
             // рисования), окно съёмки и подпись про формулу.
             return SunARMilkyWayNotes.lines(plan: model.milkyWayPlan, eye: model.milkyWayEyeNote, clock: clock, lexicon: lexicon,
-                                            gaia: MilkyWayGaiaSource.useGaia, pano: MilkyWayPano.bundled)
+                                            gaia: MilkyWayGaiaSource.useGaia, pano: MilkyWayPano.bundled, look: noteLook)
         }
     }
 

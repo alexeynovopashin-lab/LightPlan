@@ -495,6 +495,9 @@ final class SunARModel {
     /// Солнце в выбранную минуту выбранного дня.
     var sun: SunSample { SunTrack.sample(day: day, minutes: minutes, in: place) }
 
+    /// Солнце выбранного момента поднимается (утро у купола): через минуту оно выше. Нужно словам справок без «Терминов».
+    var sunRising: Bool { SunTrack.sample(day: day, minutes: minutes + 1, in: place).altitude > sun.altitude }
+
     /// Строка под временем: «до заката …», «после заката …», «до рассвета …».
     var eventNote: SunTrack.EventNote { SunTrack.note(at: minutes, solar: solar) }
 

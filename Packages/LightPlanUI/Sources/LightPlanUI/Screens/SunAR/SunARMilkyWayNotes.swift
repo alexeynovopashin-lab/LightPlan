@@ -12,9 +12,9 @@ enum SunARMilkyWayNotes {
     /// `gaia` — картина из каталога Gaia (29.8в.19): вместо «по формуле, условно» — «по звёздам каталога Gaia» и кредит
     /// данных строкой (лицензия CC BY-NC 3.0 IGO требует его рядом со слоем).
     static func lines(plan: MilkyWayPlan, eye: MilkyWayLook.EyeNote, clock: ClockText, lexicon t: Lexicon,
-                      gaia: Bool = false, pano: Bool = false) -> [String] {
+                      gaia: Bool = false, pano: Bool = false, look: SunARNoteLook = .full) -> [String] {
         let tail = pano ? [t.t(MilkyWayPano.creditKey)] : gaia ? [t.t("ar.mwGaia"), t.t("ar.mwCredit")] : [t.t("ar.mwFormula")]
-        return [above(plan: plan, clock: clock, t), eyeLine(eye, t), window(plan: plan, clock: clock, t)].compactMap { $0 } + tail
+        return [above(plan: plan, clock: clock, t), eyeLine(eye, t, look: look), window(plan: plan, clock: clock, t)].compactMap { $0 } + tail
     }
 
     /// «ядро над горизонтом 22:40–04:10 · темно с 20:30». Ядро не восходит или не заходит на этой широте — так и сказано.
@@ -47,13 +47,14 @@ enum SunARMilkyWayNotes {
     }
 
     /// «видимость глазом 8 %: город, засветка 12» / «днём не видно: солнце +20°» / «Луна 62 % освещена над горизонтом».
-    static func eyeLine(_ eye: MilkyWayLook.EyeNote, _ t: Lexicon) -> String {
+    /// `look` — «Азимуты» и «Термины» (30г.10); Луна остаётся при любом переключателе: она здесь причина (решение 11.11).
+    static func eyeLine(_ eye: MilkyWayLook.EyeNote, _ t: Lexicon, look: SunARNoteLook = .full) -> String {
         var why: [String] = []
         for cause in eye.causes {
             switch cause {
-            case .daylight(let sun): return t.t("ar.mwEyeDay", ["alt": signed(sun)])
+            case .daylight(let sun): return look.day(sun, t)
             case .moon(let pct): return t.t("ar.mwEyeMoon", ["pct": String(pct)])
-            case .twilight(let sun): why.append(t.t("ar.mwEyeTwilight", ["alt": signed(sun)]))
+            case .twilight(let sun): why.append(look.twilight(sun, t))
             case .glow(let level, let value):
                 let n = value < 10 ? String(format: "%.1f", value) : String(Int(value.rounded()))
                 switch level {

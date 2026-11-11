@@ -2486,6 +2486,41 @@
         }
       }
     },
+    "ar.mwEyeDayPlain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "днём не видно"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not visible by day"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "de día no se ve"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昼は見えません"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "白天看不见"
+          }
+        }
+      }
+    },
     "ar.mwEyeGlowCity" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2696,6 +2731,41 @@
         }
       }
     },
+    "ar.mwEyePhase" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{phase}, солнце {alt}°"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{phase}, Sun {alt}°"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{phase}, Sol {alt}°"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{phase}、太陽 {alt}°"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{phase}，太阳 {alt}°"
+          }
+        }
+      }
+    },
     "ar.mwEyeTwilight" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2727,6 +2797,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "曙暮光，太阳 {alt}°"
+          }
+        }
+      }
+    },
+    "ar.mwEyeTwilightPlain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сумерки"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "twilight"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "crepúsculo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "薄明"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "曙暮光"
           }
         }
       }
