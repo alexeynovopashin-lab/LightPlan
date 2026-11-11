@@ -113,6 +113,15 @@ public final class CurrentPlace {
         return zones.zone(at: c) != nil
     }
 
+    /// Пояс, известный без сети (студия из общего списка, 30е.1): ложится в кэш, только
+    /// если клетка ещё не знает своего. Возвращает, лёг ли.
+    @discardableResult
+    public func rememberZone(_ z: ZoneID, at c: GeoCoordinate) -> Bool {
+        guard zones.zone(at: c) == nil else { return false }
+        zones.remember(z, at: c)
+        return zones.zone(at: c) != nil
+    }
+
     private func scheduleNaming(for c: GeoCoordinate) {
         lookupTask?.cancel()                     // ответ про прежнее место уже не нужен
         lookupTask = Task { [namer, debounce] in

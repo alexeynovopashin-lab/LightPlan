@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Список студий 30е.1</title>
+<style>
+:root{
+  --bg:#f6f3ee; --page:#fffdf9; --ink:#1d1b18; --ink2:#4a463f; --ink3:#7a746a; --ink4:#a39d92;
+  --hair:#e6e0d6; --brass:#a8762c; --brassBg:rgba(226,164,76,.16); --amber:#b8650f; --amberBg:rgba(232,140,40,.14);
+  --ok:#3d7a4a; --okBg:rgba(61,122,74,.12); --new:#2f6f9a; --newBg:rgba(47,111,154,.10);
+  --phone:#fbf8f3; --field:#efe9df; --shadow:0 1px 2px rgba(0,0,0,.06),0 6px 24px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121110; --page:#1a1917; --ink:#f1ece4; --ink2:#cdc6ba; --ink3:#9c958a; --ink4:#6f6a62;
+    --hair:#2c2a27; --brass:#e2a44c; --brassBg:rgba(226,164,76,.16); --amber:#f0a050; --amberBg:rgba(240,160,80,.14);
+    --ok:#7cc48c; --okBg:rgba(124,196,140,.12); --new:#7ab8e0; --newBg:rgba(122,184,224,.12);
+    --phone:#1f1e1c; --field:#2a2826; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 24px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121110; --page:#1a1917; --ink:#f1ece4; --ink2:#cdc6ba; --ink3:#9c958a; --ink4:#6f6a62;
+  --hair:#2c2a27; --brass:#e2a44c; --brassBg:rgba(226,164,76,.16); --amber:#f0a050; --amberBg:rgba(240,160,80,.14);
+  --ok:#7cc48c; --okBg:rgba(124,196,140,.12); --new:#7ab8e0; --newBg:rgba(122,184,224,.12);
+  --phone:#1f1e1c; --field:#2a2826; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 24px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px}
+h2{font-size:19px;margin:44px 0 10px;padding-top:14px;border-top:1px solid var(--hair)}
+h3{font-size:15px;margin:22px 0 6px}
+p{margin:6px 0 10px;color:var(--ink2)}
+.lead{color:var(--ink3);font-size:14px}
+code{font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--field);padding:1px 5px;border-radius:5px;word-break:break-word}
+table{border-collapse:collapse;width:100%;margin:8px 0 14px;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid var(--hair)}
+th{color:var(--ink3);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll{overflow-x:auto}
+.note{background:var(--page);border:1px solid var(--hair);border-radius:12px;padding:12px 14px;margin:12px 0;color:var(--ink2);font-size:14px}
+.note b{color:var(--ink)}
+ul{padding-left:20px;margin:6px 0 12px} li{margin:3px 0;color:var(--ink2)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin:16px 0}
+@media (max-width:760px){.pair{grid-template-columns:1fr}}
+.col h3{margin-top:0}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:99px;margin-bottom:8px}
+.was{background:var(--field);color:var(--ink3)} .will{background:var(--brassBg);color:var(--brass)}
+/* телефон */
+.phone{background:var(--phone);border:1px solid var(--hair);border-radius:28px;box-shadow:var(--shadow);padding:18px 16px 16px;max-width:360px;margin:0 auto}
+.ph-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.ph-title{font-weight:700;font-size:17px}
+.ph-x{color:var(--ink4);font-size:18px}
+.ph-done{color:var(--brass);font-weight:600;font-size:15px}
+.ways{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.way{font-size:12px;padding:4px 10px;border-radius:99px;background:var(--field);color:var(--ink3)}
+.way.on{background:var(--brassBg);color:var(--brass);font-weight:600}
+.search{display:flex;align-items:center;gap:8px;height:42px;border-radius:12px;background:var(--field);padding:0 12px;color:var(--ink4);font-size:15px;margin-top:10px}
+.search .typed{color:var(--ink)} .search .caret{display:inline-block;width:1.5px;height:17px;background:var(--brass);margin-left:-6px}
+.sec{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin:20px 0 6px}
+.row{display:flex;gap:10px;align-items:flex-start;padding:9px 2px;border-bottom:1px solid var(--hair)}
+.row .chk{width:16px;color:var(--brass);font-weight:700;flex:none;padding-top:1px}
+.row .b{flex:1;min-width:0}
+.row .nm{font-size:15px;color:var(--ink)} .row.picked .nm{color:var(--brass)}
+.row .sub{font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .ic{color:var(--ink4);font-size:14px;flex:none;width:26px;text-align:center;padding-top:2px}
+.mark{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;margin-top:3px}
+.m-ok{background:var(--okBg);color:var(--ok)} .m-raw{background:var(--field);color:var(--ink3)} .m-dup{background:var(--amberBg);color:var(--amber)}
+.m-mine{background:var(--brassBg);color:var(--brass)}
+.add{color:var(--brass);font-weight:600;font-size:15px;padding:12px 2px 4px}
+.hint{font-size:12px;color:var(--ink3);margin:10px 0 0;line-height:1.45}
+.newbit{outline:2px dashed var(--new);outline-offset:3px;border-radius:8px}
+.card{border-radius:12px;background:var(--field);margin-top:12px}
+.card .f{padding:12px 14px;border-bottom:1px solid var(--phone);font-size:15px}
+.card .f.ph{color:var(--ink4)}
+.card .f small{display:block;font-size:11px;color:var(--ink4)}
+.hall{display:inline-block;background:var(--phone);border-radius:8px;padding:4px 9px;margin:4px 4px 0 0;font-size:13px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink3);margin:6px 0}
+.legend span::before{content:"";display:inline-block;width:14px;height:10px;border:2px dashed var(--new);border-radius:3px;margin-right:6px;vertical-align:-1px}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14px;margin:8px 0}
+.flow .st{background:var(--page);border:1px solid var(--hair);border-radius:10px;padding:6px 10px}
+.flow .ar{color:var(--ink4)}
+.fork{background:var(--page);border:1px solid var(--hair);border-radius:14px;padding:14px 16px;margin:14px 0}
+.fork h3{margin-top:0}
+.opt{display:grid;grid-template-columns:28px 1fr;gap:4px 8px;margin:8px 0}
+.opt .k{font-weight:700;color:var(--ink3)}
+.opt.pick .k{color:var(--brass)}
+.opt p{margin:0}
+.pickline{margin-top:8px;padding-top:8px;border-top:1px solid var(--hair);color:var(--ink)}
+</style>
+</head>
+<body>
+<main>
+
+<h1>Список студий: выбор студии из общего списка</h1>
+<p class="lead">Шаг 30е.1, ветка <code>wt/30e-1-studio-list</code> от <code>main</code> <code>c09fcb4</code>, 06.11.2026. Схема «было → станет» на одобрение Алексея; кода нет. Студии в примерах: Томсон (из списка) и выдуманные «Улыбка» и «Ромашка» с выдуманными адресами.</p>
+
+<div class="note"><b>Что решено раньше.</b> Записная книжка фотографа важнее списка: его карточка студии и прошлые съёмки живут, даже если студия ушла из списка (DECISIONS 05.11, «Каталог и фантомы»). Ключ студии — номер места <code>pl…</code>, не телефон и не хозяин. Окончательный источник списка — сервер BroniOS; на закрытый тест копия файла лежит в сборке, вне git (DECISIONS 06.11).<br>
+<b>Чего в этом шаге нет:</b> сообщений о новом названии, закрытии и переезде (30е.2); склейки карточки, заведённой руками, со списком (ответ Light Plan в хабе, Q-045 п. 4); кнопки «Связать с бронью» — у студии из списка её нет, как нет сейчас у любой студии, заведённой в нативе.</div>
+
+<h2>1. Как сейчас заводят и выбирают студию</h2>
+<div class="flow">
+  <span class="st">Форма съёмки → точка маршрута «Место»</span><span class="ar">→</span>
+  <span class="st">лист «Где снимаем»</span><span class="ar">→</span>
+  <span class="st">путь «Фотостудия» <small>(зал, адрес и телефон)</small></span><span class="ar">→</span>
+  <span class="st">строка студии или «Новая студия»</span><span class="ar">→</span>
+  <span class="st">«Готово»: студия встаёт в точку</span><span class="ar">→</span>
+  <span class="st">в форме под точкой «Выбрать зал» → барабан залов</span>
+</div>
+<ul>
+  <li><b>Список</b> — только свои студии фотографа: «Студии» (город съёмки) и «В других городах». Сверху поиск «Название, адрес или зал», он появляется, когда студий больше шести. Ниже — студии из прошлых съёмок, которых уже нет в списке (их можно выбрать, но не править). У строки карандаш (раскрыть карточку) и корзина.<br><small><code>Screens/Place/PlaceStudioWay.swift:25-69</code>, строка <code>:105-151</code>, поиск <code>:83-86</code>; «потерянные» студии <code>App/AppModel+FormTrip.swift:258-271</code>.</small></li>
+  <li><b>Карточка</b> — четыре поля: «Название студии», «Адрес — улица, дом», «Телефон студии», «Залы» (＋ зал). Адрес после ввода ищется на карте в городе съёмки, оттуда координаты и город.<br><small><code>PlaceStudioWay.swift:172-203</code>, поиск адреса <code>:285-300</code>.</small></li>
+  <li><b>«Готово»</b> сохраняет карточку всегда (новая встаёт первой) и кладёт студию в точку: ссылка <code>studioId</code>, строка места = название, зал сброшен, часы точки = часы съёмки. Нет координат — берутся координаты своего города.<br><small><code>Screens/Place/PlaceSheet.swift:591-597</code>; <code>AppModel+FormTrip.swift:219-250</code> (<code>saveStudio</code>); <code>LightPlanDomain/Rules/FormRoute.swift:181-188</code>.</small></li>
+  <li><b>Зал</b> выбирают уже в форме: кнопка «Выбрать зал» под точкой, барабан «название студии / залы»; залов нет — «Добавить зал» ведёт обратно в карточку. В точке остаётся строка «Томсон, зал Эдисон» и <code>hallId</code>.<br><small><code>Screens/Form/FormPlace.swift:213-248, 289-305</code>.</small></li>
+  <li><b>Съёмка хранит и ссылку, и копию</b>: <code>studioId</code>, <code>hallId</code> плюс название, адрес, город, координаты. Часовой пояс отдельно не хранится: его знает точка на карте (кэш поясов по клеткам 0,5°). <small><code>Records/Session.swift:55-69, 265-290</code>; <code>AppModel+Card.swift:74-79</code>.</small></li>
+</ul>
+
+<h3>Что лежит в <code>Studio.catalogId</code> и <code>key</code></h3>
+<table>
+<tr><th>Поле</th><th>В файле данных</th><th>Что там сейчас</th></tr>
+<tr><td><code>catalogId</code></td><td><code>tomcohId</code></td><td>Натив его <b>никогда не заполняет</b>: начальное значение пустое, поля на экране нет; читается из файла и переносится как есть (<code>Entities.swift:189-190</code>, <code>Entities+Codable.swift:157,173</code>, <code>AppModel+FormTrip.swift:227, 303-304</code>). Веб тоже только переносит (<code>beta/index.html</code> 36082, 36634). Уходит в <code>/booking/match</code> полем <code>studioId</code> (<code>BookingMatch.swift:53</code>); сервер BroniOS его пока не читает (хаб Q-044 п. 1). У студий на телефоне Алексея — не мерено.</td></tr>
+<tr><td><code>key</code></td><td><code>key</code></td><td>Ключ студии в канале брони, заголовок <code>X-Studio-Key</code>. Тоже только переносится. От него зависит строка «Связать с бронью»: видна лишь при непустом ключе (<code>Rules/FormTrip.swift:49-53</code>). У студии, заведённой в нативе, ключ пустой.</td></tr>
+</table>
+<p>Итого: у <code>catalogId</code> сейчас нет хозяина, и он ровно то место, куда ложится номер места <code>pl…</code>. Так и предлагает формат ядра («ключ в Studio.catalogId»). <code>key</code> студии из списка остаётся пустым.</p>
+
+<h2>2. Файл списка и формат версии 1</h2>
+<p>Формат: <code>event_os:16_Place_Registry.md</code>, раздел «Отдаваемый файл: формат версии 1», ветка PR #11 <code>claude/project-thread-binbdk</code> @ <code>3d99712</code>. Файл: <code>ws:20_shared/places_served_2026-11-06.json</code>. Числа ниже посчитаны скриптом по файлу 06.11.</p>
+<div class="scroll"><table>
+<tr><th>Что</th><th class="n">Число</th><th>Заметка</th></tr>
+<tr><td>Размер файла</td><td class="n">772 048 байт</td><td>≈ 754 КБ; в хабе мы писали «больше ~1 МБ — вернёмся к разбивке», укладывается</td></tr>
+<tr><td>Шапка</td><td class="n">—</td><td><code>format: 1</code>, <code>etag: 4483</code>, <code>asOf: 2026-11-05</code>, <code>count: 1518</code></td></tr>
+<tr><td>Мест</td><td class="n">1 518</td><td>номера <code>pl100001</code>…<code>pl101518</code> по возрастанию, без пропусков в порядке</td></tr>
+<tr><td>Действует / закрыта</td><td class="n">1 506 / 12</td><td>все 12 закрытых — «из сбора»; 11 из них в Томске (там 50 мест, действуют 39)</td></tr>
+<tr><td>Проверена человеком</td><td class="n">1</td><td>Томсон, <code>pl100001</code>, он же единственный «подключена»</td></tr>
+<tr><td>Из сбора</td><td class="n">1 473</td><td>из них 1 461 действует</td></tr>
+<tr><td>Спорная</td><td class="n">44</td><td>все действуют</td></tr>
+<tr><td>Городов</td><td class="n">39</td><td>от Москвы (277) до Ярославля (10); есть Астана, Алматы, Минск</td></tr>
+<tr><td>Залов с названием</td><td class="n">1 818</td><td>у 517 мест; у 1 001 места список залов пуст (= один зал с названием студии)</td></tr>
+<tr><td><code>hallsCount</code></td><td class="n">2</td><td>3 зала без названий; и одно место с 11 названными залами при <code>hallsCount: 12</code></td></tr>
+<tr><td>Окна / азимут</td><td class="n">3 / 3</td><td>только залы Томсона</td></tr>
+<tr><td>Часовой пояс</td><td class="n">50</td><td>только Томск (<code>Asia/Tomsk</code>); у 1 468 мест <code>null</code></td></tr>
+<tr><td>Без адреса</td><td class="n">14</td><td><code>address: null</code>; ещё у 6 адрес не начинается с города</td></tr>
+<tr><td>С пометкой <code>note</code></td><td class="n">234</td><td>рабочие пометки сбора со ссылками вида <code>studiogo:…</code>, <code>2gis:…</code></td></tr>
+<tr><td>Одинаковое название в одном городе</td><td class="n">54 места</td><td>филиалы и студии в одном доме: в строке нужен адрес</td></tr>
+<tr><td>Ссылки, <code>mergedInto</code>, <code>movedTo</code></td><td class="n">0</td><td>прежних названий (<code>names</code> больше одного) тоже нет</td></tr>
+<tr><td>Координаты, телефоны, почта</td><td class="n">нет</td><td>в формате их нет по замыслу</td></tr>
+</table></div>
+<div class="note"><b>Где файл расходится с форматом.</b> (1) Формат: <code>hallsCount</code> «только если залов несколько, а названий нет; halls тогда пуст» — у одного места 11 названных залов и <code>hallsCount: 12</code>. Читаю так: берём названные залы, число не используем. (2) <code>timezone</code> есть только у Томска, координат нет ни у кого: формат сам говорит «приложение узнаёт зону по адресу само» — значит, адрес всё равно ищется на карте (развилка 2). (3) Пометки <code>note</code> написаны для сборщика, а не для фотографа: показывать их как есть нельзя. Ядру об этом напишу в хаб после «да», это не блокирует.</div>
+
+<h2>3. Схема: путь «Фотостудия» было → станет</h2>
+<div class="legend"><span>новое на экране</span></div>
+
+<div class="pair">
+  <div class="col">
+    <div class="tag was">Было</div>
+    <div class="phone">
+      <div class="ph-top"><span class="ph-x">✕</span><span class="ph-title">Где снимаем</span><span class="ph-done">Готово</span></div>
+      <div class="ways"><span class="way">Адрес</span><span class="way">Мои места</span><span class="way on">Фотостудия</span></div>
+      <div class="sec">Студии</div>
+      <div class="row picked"><span class="chk">✓</span><div class="b"><div class="nm">Улыбка</div><div class="sub">Белый · Лофт</div><div class="sub">ул. Примерная, 7</div></div><span class="ic">✎</span><span class="ic">🗑</span></div>
+      <div class="sec">В других городах</div>
+      <div class="row"><span class="chk"></span><div class="b"><div class="nm">Ромашка</div><div class="sub">Новосибирск</div></div><span class="ic">✎</span><span class="ic">🗑</span></div>
+      <div class="add">＋ Новая студия</div>
+    </div>
+    <p class="hint" style="text-align:center">Только свои карточки. Поиск — с седьмой студии.</p>
+  </div>
+
+  <div class="col">
+    <div class="tag will">Станет</div>
+    <div class="phone">
+      <div class="ph-top"><span class="ph-x">✕</span><span class="ph-title">Где снимаем</span><span class="ph-done">Готово</span></div>
+      <div class="ways"><span class="way">Адрес</span><span class="way">Мои места</span><span class="way on">Фотостудия</span></div>
+      <div class="search newbit">⌕ <span>Название, улица или зал</span></div>
+      <div class="sec">Мои студии</div>
+      <div class="row picked"><span class="chk">✓</span><div class="b"><div class="nm">Улыбка</div><div class="sub">Белый · Лофт</div><div class="sub">ул. Примерная, 7</div></div><span class="ic">✎</span><span class="ic">🗑</span></div>
+      <div class="sec">В других городах</div>
+      <div class="row"><span class="chk"></span><div class="b"><div class="nm">Ромашка</div><div class="sub">Новосибирск</div></div><span class="ic">✎</span><span class="ic">🗑</span></div>
+      <div class="add">＋ Новая студия</div>
+      <div class="newbit" style="margin-top:14px;padding:4px 2px">
+        <div class="sec" style="margin-top:2px">Общий список · Томск</div>
+        <p class="hint" style="margin-top:0">39 студий Томска. Найдите свою по названию, улице или залу — карточка заполнится сама.</p>
+      </div>
+    </div>
+    <p class="hint" style="text-align:center">Поиск виден всегда, когда список есть в сборке. Пока ничего не набрано, список не вываливается: одна строка с числом студий города съёмки.</p>
+  </div>
+</div>
+
+<h3>Набрали «томс»</h3>
+<div class="pair">
+  <div class="col">
+    <div class="phone">
+      <div class="search"><span class="typed">томс</span><span class="caret"></span></div>
+      <div class="sec">Общий список · Томск</div>
+      <div class="row newbit"><span class="chk"></span><div class="b"><div class="nm">Томсон</div><div class="sub">Эдисон · Сфера · Вегас</div><div class="sub">Томск, ул. Красноармейская, 101а, 3 этаж, офисы 304, 305, 311</div><span class="mark m-ok">✓ проверена</span></div></div>
+      <p class="hint">Студии — из открытых источников. Почти все не проверены: адрес и залы сверьте со студией.</p>
+    </div>
+    <p class="hint">Город съёмки первым, потом «В других городах». Свои студии, подходящие под поиск, — выше, как сейчас. Закрытые в выдаче не показываются.</p>
+  </div>
+  <div class="col">
+    <div class="phone">
+      <div class="search"><span class="typed">улыб</span><span class="caret"></span></div>
+      <div class="sec">Мои студии</div>
+      <div class="row"><span class="chk"></span><div class="b"><div class="nm">Улыбка</div><div class="sub">Белый · Лофт</div><div class="sub">ул. Примерная, 7</div></div><span class="ic">✎</span><span class="ic">🗑</span></div>
+      <div class="sec">Общий список · Томск</div>
+      <div class="row newbit"><span class="chk"></span><div class="b"><div class="nm">Улыбка</div><div class="sub">2 зала</div><div class="sub">Томск, пр. Выдуманный, 12, 2 этаж</div><span class="mark m-raw">не проверена</span></div></div>
+      <div class="row newbit"><span class="chk"></span><div class="b"><div class="nm">Улыбка</div><div class="sub">один зал</div><div class="sub">Томск, ул. Примерная, 7</div><span class="mark m-dup">возможно, дубль — сверьте адрес</span></div></div>
+    </div>
+    <p class="hint">Своя карточка «Улыбка» и строки списка с тем же названием стоят раздельно: приложение их не склеивает и не говорит «это та же». Фотограф выбирает сам.</p>
+  </div>
+</div>
+
+<h3>Как видна степень проверки</h3>
+<table>
+<tr><th>В файле</th><th>На экране</th><th>Почему так</th></tr>
+<tr><td>проверена человеком</td><td><span class="mark m-ok">✓ проверена</span></td><td>единственная пометка с галочкой: подтверждение есть только тут</td></tr>
+<tr><td>из сбора</td><td><span class="mark m-raw">не проверена</span></td><td>серым, без тревоги; плюс одна строка под списком «из открытых источников, сверьте»</td></tr>
+<tr><td>спорная</td><td><span class="mark m-dup">возможно, дубль — сверьте адрес</span></td><td>янтарным, не прячем (так велит формат); пометку сборщика со ссылками на <code>studiogo</code> не показываем</td></tr>
+<tr><td>закрыта</td><td>нет в выдаче</td><td>при выборе новой студии скрыта; своя карточка с этим номером остаётся в «Моих студиях» как есть (сообщение — 30е.2)</td></tr>
+</table>
+
+<h3>Нажали строку списка и «Готово»: что попадает в карточку</h3>
+<div class="pair">
+  <div class="col">
+    <div class="phone">
+      <div class="sec" style="margin-top:0">Мои студии</div>
+      <div class="row picked newbit"><span class="chk">✓</span><div class="b"><div class="nm">Томсон</div><div class="sub">Эдисон · Сфера · Вегас</div><div class="sub">Томск, ул. Красноармейская, 101а, 3 этаж, …</div><span class="mark m-mine">из общего списка</span></div><span class="ic">✎</span><span class="ic">🗑</span></div>
+      <div class="card">
+        <div class="f">Томсон<small>Название студии</small></div>
+        <div class="f">Томск, ул. Красноармейская, 101а, 3 этаж, офисы 304, 305, 311<small>Адрес</small></div>
+        <div class="f ph">Телефон студии<small>в общем списке телефонов нет — впишите сами</small></div>
+        <div class="f">Залы<br><span class="hall">Эдисон</span><span class="hall">Сфера</span><span class="hall">Вегас</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <table>
+      <tr><th>Поле карточки</th><th>Откуда</th></tr>
+      <tr><td>номер места</td><td><code>placeId</code> → <code>catalogId</code> (<code>pl100001</code>); на экране не виден, только пометка «из общего списка»</td></tr>
+      <tr><td>название</td><td><code>name</code></td></tr>
+      <tr><td>адрес</td><td><code>address</code> целиком, с этажом и офисом; <code>null</code> — поле пустое</td></tr>
+      <tr><td>город</td><td><code>city</code></td></tr>
+      <tr><td>залы</td><td><code>halls[].name</code>, номер зала хранится в его <code>id</code>; пусто — один зал с названием студии, как сейчас у студии без залов; <code>hallsCount</code> без названий — залов нет, «Добавить зал»</td></tr>
+      <tr><td>телефон</td><td>пусто: в файле телефонов нет</td></tr>
+      <tr><td>координаты</td><td>адрес ищется на карте при выборе (развилка 2)</td></tr>
+      <tr><td>часовой пояс</td><td>как сейчас — по точке на карте; где в файле есть <code>timezone</code> (Томск), он сразу ложится в кэш поясов для этой точки</td></tr>
+      <tr><td>ключ брони <code>key</code></td><td>пусто: «Связать с бронью» не появляется</td></tr>
+    </table>
+    <ul>
+      <li>После «Готово» это <b>своя карточка фотографа</b>: карандаш правит её как любую другую, номер места остаётся. Удалится студия из списка — карточка и съёмки не меняются.</li>
+      <li>Студия с этим номером уже есть в «Моих студиях» — строка списка вместо пометки проверки пишет «уже у вас» и выбирает свою карточку; второй копии не будет.</li>
+      <li>Дальше всё как сейчас: студия в точке, под точкой «Выбрать зал».</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Файла в сборке нет</h3>
+<p>Экран ровно как «было»: ни поиска до седьмой студии, ни раздела «Общий список», ни строки про проверку. Слова «Студии» остаются «Студиями». Ошибок и пустых мест нет — приложение просто не знает о списке. Это и есть вид сборки из git: файл в git не лежит.</p>
+
+<h2>4. Развилки для Алексея</h2>
+
+<div class="fork">
+  <h3>1. Где искать в общем списке</h3>
+  <div class="opt pick"><span class="k">А</span><p><b>В том же листе «Фотостудия», поиском.</b> Свои студии сверху, общий список появляется по набранным буквам. Плюс: одно место, привычный путь, ничего не листать. Минус: лист становится длиннее, слово «Студии» меняется на «Мои студии».</p></div>
+  <div class="opt"><span class="k">Б</span><p><b>Отдельная кнопка «Найти в общем списке» → свой экран</b> с городом и поиском. Плюс: «Мои студии» не меняются вовсе. Минус: лишний экран и лишнее нажатие каждый раз; новичок, у которого своих студий нет, кнопку может не заметить.</p></div>
+  <div class="opt"><span class="k">В</span><p><b>Как А, но без набора показывать все студии города</b> (в Москве 277 строк). Плюс: можно листать, не зная названия. Минус: длинная лента непроверенных записей.</p></div>
+  <p class="pickline">Мой выбор: <b>А</b> — короче всего по нажатиям и не плодит экранов. Если Алексей хочет листать без названия, можно взять В только для городов, где студий меньше ~30.</p>
+</div>
+
+<div class="fork">
+  <h3>2. Где студия на карте (солнце, погода, дорога, пояс)</h3>
+  <p>В файле нет координат, а пояс — только у Томска. Без точки на карте у съёмки не будет верного солнца и дороги; сегодня карточка без координат молча берёт координаты своего города.</p>
+  <div class="opt pick"><span class="k">А</span><p><b>При выборе искать адрес на карте</b> (так же, как сейчас при вводе адреса руками); нет сети — центр города из небольшой таблицы 39 городов, позже уточняется сам. Плюс: точка дома, а не «где-то в городе». Минус: нужна сеть в момент выбора; адрес в 14 местах пуст, там будет центр города.</p></div>
+  <div class="opt"><span class="k">Б</span><p><b>Только центр города из таблицы.</b> Плюс: без сети, мгновенно. Минус: в Москве ошибка до 20–30 км (оценка, не мерено) — дорога и «выезжать в» неверны.</p></div>
+  <div class="opt"><span class="k">В</span><p><b>Попросить ядро класть координаты в файл.</b> Плюс: правильно и без сети. Минус: ждём ядро; до тех пор всё равно нужен А.</p></div>
+  <p class="pickline">Мой выбор: <b>А сейчас + просьба В в хаб</b>. Запрос на карту несёт только адрес студии, о фотографе ничего, — тот же запрос, что приложение делает сейчас.</p>
+</div>
+
+<div class="fork">
+  <h3>3. Насколько громко говорить «не проверена»</h3>
+  <p>1 473 из 1 518 мест не проверены; проверено одно.</p>
+  <div class="opt pick"><span class="k">А</span><p><b>Пометка у каждой строки + одна строка под списком</b> (как на схеме). Плюс: непроверенное нигде не выглядит подтверждённым. Минус: почти у всех строк серая пометка — шум.</p></div>
+  <div class="opt"><span class="k">Б</span><p><b>Пометка только у «проверена» и «спорная»</b>, у остальных ничего, плюс строка под списком. Плюс: чище. Минус: «не проверена» сказано один раз внизу, строку легко принять за подтверждённую.</p></div>
+  <p class="pickline">Мой выбор: <b>А</b> — задание ядра «не выдавать непроверенное за подтверждённое» прямое; когда проверенных станет много, переключим на Б одной правкой.</p>
+</div>
+
+<h3>Что решаю сам (обратимо, скажите, если нет)</h3>
+<ul>
+  <li>Пометку <code>note</code> сборщика не показываю; у «спорной» — общая фраза «возможно, дубль — сверьте адрес».</li>
+  <li>Повторный выбор того же места не создаёт вторую карточку.</li>
+  <li>Пояс из файла (сейчас только Томск) кладу в кэш поясов; без него пояс узнаётся по точке, как сейчас.</li>
+  <li>Поиск: без учёта регистра и «ё», по названию, адресу и залам; одна буква не ищет, с двух.</li>
+</ul>
+
+<h2>5. Объём кода после «да»</h2>
+<table>
+<tr><th>Часть</th><th>Что</th><th class="n">≈ строк</th></tr>
+<tr><td>Сборка</td><td>Скрипт берёт самый свежий <code>ws:20_shared/places_served_*.json</code> и кладёт в приложение; вызывается из уже существующего шага сборки (<code>Tools/build_stamp.sh</code>), так что правка проекта в Xcode не нужна. Строка в <code>.gitignore</code>. Нет файла — молча ничего.</td><td class="n">40</td></tr>
+<tr><td>Data</td><td>Чтение формата 1 (<code>PlaceCatalog</code>) отдельно от источника: источник «файл в сборке» сейчас, «сервер BroniOS» потом — тот же протокол, экран не меняется. Отказ формата ≠ 1 — как «файла нет».</td><td class="n">180</td></tr>
+<tr><td>Domain</td><td>Правила: поиск и порядок (город съёмки первым, закрытые скрыты, «уже у вас»), место → черновик карточки (залы, адрес, номер), слова проверки.</td><td class="n">160</td></tr>
+<tr><td>UI</td><td>Раздел «Общий список» в <code>PlaceStudioWay</code>, пометки, строка под списком, «из общего списка» у своей карточки, поиск адреса при выборе.</td><td class="n">170</td></tr>
+<tr><td>Слова</td><td>8–10 новых строк в <code>Tools/lang_native.json</code> на все языки приложения</td><td class="n">—</td></tr>
+<tr><td>Тесты</td><td>чтение файла (свой маленький пример, не реальные данные), поиск, закрытые, «уже у вас», нет файла = как сейчас, порча</td><td class="n">350</td></tr>
+</table>
+<p>Итого ≈ 550 строк кода и ≈ 350 строк тестов, около полутора–двух рабочих дней с кадрами и <code>checkstep</code>. Оценка, не мерено.</p>
+
+</main>
+</body>
+</html>

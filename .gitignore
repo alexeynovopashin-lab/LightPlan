@@ -10,3 +10,6 @@ xcuserdata/
 Tools/milkyway_gaia/raw/
 Tools/milkyway_gaia/__pycache__/
 
+
+# Общий список студий Event OS (30е.1): в сборку кладёт Tools/places_served.sh, в git не идёт (DECISIONS 06.11).
+places_served*.json

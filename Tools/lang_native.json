@@ -572,7 +572,20 @@
     "set.astro.azimuths": "Азимуты",
     "set.astro.terms": "Термины",
     "set.astro.milkyWay": "Млечный Путь",
-    "sun.night.label": "Ночь"
+    "sun.night.label": "Ночь",
+    "loc.myStudios": "Мои студии",
+    "loc.catalogHere": "Общий список · {city}",
+    "loc.catalogAll": "Общий список",
+    "loc.catalogOther": "Общий список · другие города",
+    "loc.catalogCount": "В общем списке: {n}. Найдите свою студию по названию, улице или залу — карточка заполнится сама.",
+    "loc.catalogFind": "Найдите студию по названию, улице или залу — карточка заполнится сама.",
+    "loc.catalogMore": "Ещё {n} — уточните поиск",
+    "loc.catalogNote": "Студии в общем списке — из открытых источников, почти все не проверены: адрес и залы сверьте со студией.",
+    "loc.markVerified": "проверена",
+    "loc.markUnverified": "не проверена",
+    "loc.markDisputed": "возможно, дубль — сверьте адрес",
+    "loc.markYours": "уже у вас",
+    "loc.markFromList": "из общего списка"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1143,7 +1156,20 @@
     "set.astro.azimuths": "Azimuths",
     "set.astro.terms": "Terms",
     "set.astro.milkyWay": "Milky Way",
-    "sun.night.label": "Night"
+    "sun.night.label": "Night",
+    "loc.myStudios": "My studios",
+    "loc.catalogHere": "Shared list · {city}",
+    "loc.catalogAll": "Shared list",
+    "loc.catalogOther": "Shared list · other cities",
+    "loc.catalogCount": "In the shared list: {n}. Find your studio by name, street or room — the card fills itself in.",
+    "loc.catalogFind": "Find a studio by name, street or room — the card fills itself in.",
+    "loc.catalogMore": "{n} more — narrow the search",
+    "loc.catalogNote": "Studios in the shared list come from open sources and almost none are verified: check the address and rooms with the studio.",
+    "loc.markVerified": "verified",
+    "loc.markUnverified": "not verified",
+    "loc.markDisputed": "may be a duplicate — check the address",
+    "loc.markYours": "already yours",
+    "loc.markFromList": "from the shared list"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1714,7 +1740,20 @@
     "set.astro.azimuths": "Azimuts",
     "set.astro.terms": "Términos",
     "set.astro.milkyWay": "Vía Láctea",
-    "sun.night.label": "Noche"
+    "sun.night.label": "Noche",
+    "loc.myStudios": "Mis estudios",
+    "loc.catalogHere": "Lista común · {city}",
+    "loc.catalogAll": "Lista común",
+    "loc.catalogOther": "Lista común · otras ciudades",
+    "loc.catalogCount": "En la lista común: {n}. Busca tu estudio por nombre, calle o sala: la ficha se rellena sola.",
+    "loc.catalogFind": "Busca un estudio por nombre, calle o sala: la ficha se rellena sola.",
+    "loc.catalogMore": "{n} más: afina la búsqueda",
+    "loc.catalogNote": "Los estudios de la lista común vienen de fuentes abiertas y casi ninguno está verificado: confirma la dirección y las salas con el estudio.",
+    "loc.markVerified": "verificado",
+    "loc.markUnverified": "sin verificar",
+    "loc.markDisputed": "puede ser un duplicado: confirma la dirección",
+    "loc.markYours": "ya está en los tuyos",
+    "loc.markFromList": "de la lista común"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2281,7 +2320,20 @@
     "set.astro.azimuths": "方位角",
     "set.astro.terms": "用語",
     "set.astro.milkyWay": "天の川",
-    "sun.night.label": "夜"
+    "sun.night.label": "夜",
+    "loc.myStudios": "マイスタジオ",
+    "loc.catalogHere": "共有リスト · {city}",
+    "loc.catalogAll": "共有リスト",
+    "loc.catalogOther": "共有リスト · 他の都市",
+    "loc.catalogCount": "共有リストに {n} 件。名前・通り・ルームでスタジオを探すと、カードが自動で埋まります。",
+    "loc.catalogFind": "名前・通り・ルームでスタジオを探すと、カードが自動で埋まります。",
+    "loc.catalogMore": "他に {n} 件 — 検索を絞ってください",
+    "loc.catalogNote": "共有リストのスタジオは公開情報からのもので、ほとんど未確認です。住所とルームはスタジオに確認してください。",
+    "loc.markVerified": "確認済み",
+    "loc.markUnverified": "未確認",
+    "loc.markDisputed": "重複の可能性 — 住所を確認",
+    "loc.markYours": "登録済み",
+    "loc.markFromList": "共有リストから"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -2848,6 +2900,19 @@
     "set.astro.azimuths": "方位角",
     "set.astro.terms": "术语",
     "set.astro.milkyWay": "银河",
-    "sun.night.label": "夜晚"
+    "sun.night.label": "夜晚",
+    "loc.myStudios": "我的影棚",
+    "loc.catalogHere": "公共列表 · {city}",
+    "loc.catalogAll": "公共列表",
+    "loc.catalogOther": "公共列表 · 其他城市",
+    "loc.catalogCount": "公共列表中有 {n} 个。按名称、街道或拍摄厅查找影棚，卡片会自动填好。",
+    "loc.catalogFind": "按名称、街道或拍摄厅查找影棚，卡片会自动填好。",
+    "loc.catalogMore": "还有 {n} 个，请缩小搜索",
+    "loc.catalogNote": "公共列表中的影棚来自公开来源，几乎都未核实：请向影棚核对地址和拍摄厅。",
+    "loc.markVerified": "已核实",
+    "loc.markUnverified": "未核实",
+    "loc.markDisputed": "可能重复，请核对地址",
+    "loc.markYours": "已在你的列表",
+    "loc.markFromList": "来自公共列表"
   }
 }

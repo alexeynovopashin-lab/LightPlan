@@ -26,23 +26,26 @@ struct PlaceStudioWay: View {
         let pal = Palette(scheme)
         let t = app.lexicon
         let all = app.studios + app.lostStudios
-        let many = all.count > Self.findFrom
+        // Общий список (30е.1) ищется в том же поле, поэтому с ним поиск виден всегда.
+        let catalog = app.placeCatalog
+        let many = all.count > Self.findFrom || catalog != nil
         let q = many ? query.trimmingCharacters(in: .whitespaces).lowercased() : ""
         let hit = q.isEmpty ? all : all.filter { Self.hit($0, q) }
         let town = sheetCity
+        let found = catalog == nil ? StudioCatalog.Hits() : app.catalogHits(q, town: town)
         let other = hit.filter { st in !town.isEmpty && !st.town.isEmpty && !Self.sameCity(st.town, town) }
         let here = hit.filter { st in !other.contains(where: { $0.id == st.id }) }
         VStack(alignment: .leading, spacing: 0) {
             if many { search(t, pal).padding(.top, 10) }
             if !here.isEmpty {
-                secLabel(t.t("loc.studios"), pal)
+                secLabel(t.t(catalog == nil ? "loc.studios" : "loc.myStudios"), pal)
                 list(here, town: town, t, pal)
             }
             if !other.isEmpty {
                 secLabel(t.t("loc.otherCities"), pal)
                 list(other, town: town, t, pal)
             }
-            if !q.isEmpty && hit.isEmpty {
+            if !q.isEmpty && hit.isEmpty && found.isEmpty {
                 Text(t.t("loc.studioNoHit")).font(.system(size: 12)).foregroundStyle(pal.ink6)
                     .padding(.top, 14).padding(.bottom, 12)
             }
@@ -65,7 +68,18 @@ struct PlaceStudioWay: View {
             .padding(.top, 2)
             .shotNode("loc.studioNew")
             if edit == Self.newCard { card(t, pal) }
+            if let catalog { catalogPart(catalog, found, q: q, town: town, t, pal) }
         }
+        #if DEBUG
+        // Кадры 30е.1 (`Tools/shots/studio_list.js`): набранное в поиске и выбор первой строки выдачи.
+        .onAppear {
+            guard let q = UserDefaults.standard.string(forKey: "LPShotCatalogQuery"), app.placeCatalog != nil else { return }
+            query = q
+            if UserDefaults.standard.bool(forKey: "LPShotCatalogPick"), let r = app.catalogHits(q, town: sheetCity).here.first {
+                pickCatalog(r)
+            }
+        }
+        #endif
     }
 
     /// Город, которым список делится надвое (веб `sheetCity`): у точки — город съёмки.
@@ -119,6 +133,7 @@ struct PlaceStudioWay: View {
                             .foregroundStyle(picked ? pal.brass : pal.ink).lineLimit(1)
                         if !sub.isEmpty { Text(sub).font(.system(size: 12)).foregroundStyle(pal.ink4).lineLimit(1) }
                         if !st.address.isEmpty { Text(st.address).font(.system(size: 12)).foregroundStyle(pal.ink4).lineLimit(1) }
+                        if StudioCatalog.placeId(of: st) != nil { markPill(t.t("loc.markFromList"), pal.brass, pal) }
                     }
                     Spacer(minLength: 0)
                 }
@@ -164,6 +179,120 @@ struct PlaceStudioWay: View {
         .frame(height: 46)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(focus == .query ? pal.press : .clear))
         .shotNode("loc.studioFind")
+    }
+
+    // MARK: - Общий список (30е.1)
+
+    /// До набора — одна строка с числом студий города съёмки; по набранным буквам —
+    /// выдача: город съёмки, потом другие города. Под ней одна строка о проверке.
+    @ViewBuilder
+    private func catalogPart(_ catalog: PlaceCatalog, _ found: StudioCatalog.Hits, q: String, town: String,
+                             _ t: Lexicon, _ pal: Palette) -> some View {
+        let cityWord = StudioCatalog.fold(town).isEmpty ? nil : town
+        if q.count < StudioCatalog.minQuery {
+            let n = cityWord.map { StudioCatalog.count(town: $0, in: catalog) } ?? 0
+            secLabel(cityWord != nil && n > 0 ? t.t("loc.catalogHere", ["city": town]) : t.t("loc.catalogAll"), pal)
+            Text(n > 0 ? t.t("loc.catalogCount", ["n": "\(n)"]) : t.t("loc.catalogFind"))
+                .font(.system(size: 12)).foregroundStyle(pal.ink6)
+                .fixedSize(horizontal: false, vertical: true)
+                .shotNode("loc.catalogHint")
+        } else {
+            if !found.here.isEmpty {
+                secLabel(cityWord.map { t.t("loc.catalogHere", ["city": $0]) } ?? t.t("loc.catalogAll"), pal)
+                catalogList(found.here, more: found.moreHere, node: "here", t, pal)
+            }
+            if !found.other.isEmpty {
+                secLabel(t.t("loc.catalogOther"), pal)
+                catalogList(found.other, more: found.moreOther, node: "other", t, pal)
+            }
+            if !found.isEmpty {
+                Text(t.t("loc.catalogNote")).font(.system(size: 12)).foregroundStyle(pal.ink6)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 10)
+                    .shotNode("loc.catalogNote")
+            }
+        }
+    }
+
+    private func catalogList(_ rows: [StudioCatalog.Row], more: Int, node: String, _ t: Lexicon, _ pal: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(rows.enumerated()), id: \.element.place.id) { i, r in catalogRow(r, "\(node).\(i)", t, pal) }
+            if more > 0 {
+                Text(t.t("loc.catalogMore", ["n": "\(more)"])).font(.system(size: 12)).foregroundStyle(pal.ink6)
+                    .padding(.top, 8)
+            }
+        }
+    }
+
+    /// Строка места: название, залы, адрес, пометка. Тап выбирает — как у своей студии;
+    /// карандаша и корзины нет: править можно уже свою карточку после «Готово».
+    private func catalogRow(_ r: StudioCatalog.Row, _ node: String, _ t: Lexicon, _ pal: Palette) -> some View {
+        let p = r.place
+        let picked = draft?.catalogId == p.id
+        let halls = p.halls.map(\.name).joined(separator: " · ")
+        return Button { pickCatalog(r) } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Icon("check", size: 15, line: 2.2).foregroundStyle(pal.brass).opacity(picked ? 1 : 0)
+                    .frame(width: 17).padding(.top, 2)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(p.name).font(.system(size: 15)).foregroundStyle(picked ? pal.brass : pal.ink).lineLimit(1)
+                    if !halls.isEmpty { Text(halls).font(.system(size: 12)).foregroundStyle(pal.ink4).lineLimit(1) }
+                    if !p.address.isEmpty { Text(p.address).font(.system(size: 12)).foregroundStyle(pal.ink4).lineLimit(2) }
+                    mark(StudioCatalog.mark(r), t, pal)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 10).padding(.horizontal, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair).frame(height: 1) }
+        .padding(.bottom, 1)
+        .shotNode("loc.catalog.\(node)", text: p.name + "|" + markWord(StudioCatalog.mark(r), t) + (picked ? "|выбрана" : ""))
+    }
+
+    /// Слово пилюли пометки: то же, что на экране (рамки кадров его сверяют).
+    private func markWord(_ m: StudioCatalog.Mark, _ t: Lexicon) -> String {
+        switch m {
+        case .yours: t.t("loc.markYours")
+        case .verified: "✓ " + t.t("loc.markVerified")
+        case .unverified: t.t("loc.markUnverified")
+        case .disputed: t.t("loc.markDisputed")
+        }
+    }
+
+    @ViewBuilder
+    private func mark(_ m: StudioCatalog.Mark, _ t: Lexicon, _ pal: Palette) -> some View {
+        let c: Color = switch m {
+        case .yours: pal.brass
+        case .verified: pal.green
+        case .unverified: pal.ink5
+        case .disputed: pal.terra
+        }
+        markPill(markWord(m, t), c, pal)
+    }
+
+    private func markPill(_ s: String, _ c: Color, _ pal: Palette) -> some View {
+        Text(s).font(.system(size: 11, weight: .semibold)).foregroundStyle(c)
+            .padding(.vertical, 1.5).padding(.horizontal, 7)
+            .background(c.opacity(0.13), in: Capsule())
+            .padding(.top, 3)
+    }
+
+    /// Строка списка выбирает студию, как строка своей: в точку она ляжет на «Готово».
+    /// Место уже у фотографа — выбирается его карточка. Дом ищется на карте по адресу;
+    /// не нашёлся — студия остаётся в центре своего города.
+    private func pickCatalog(_ r: StudioCatalog.Row) {
+        draft = app.catalogDraft(r)
+        edit = nil
+        focus = nil
+        guard r.mine == nil else { return }
+        let p = r.place
+        Task {
+            guard let c = await app.locateCatalogPlace(p), draft?.catalogId == p.id, draft?.id == nil else { return }
+            draft?.latitude = c.latitude
+            draft?.longitude = c.longitude
+        }
     }
 
     // MARK: - Карточка

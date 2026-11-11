@@ -492,6 +492,8 @@ public final class AppModel {
     @ObservationIgnored var ghostWatch: Task<Void, Never>?
     /// Призраки на прочитанное окно дней — только в памяти этого запуска: ни в снимок, ни в веб, ни в Календарь.
     public internal(set) var ghostList: [Ghost] = []
+    /// Общий список студий (30е.1); `nil` — списка нет, лист «Фотостудия» как до 30е.
+    public internal(set) var placeCatalog: PlaceCatalog?
     /// Человек включил «Другие календари» (память телефона).
     public internal(set) var ghostWanted = false
     /// Календари для списка в настройках: все, кроме «Light Plan», и показывается ли каждый.
@@ -764,6 +766,7 @@ public final class AppModel {
         model.publishWidget()       // место «Света» — виджету на главном экране (30б.1)
         model.watchWidgetForecast() // и оценка заката, когда придёт прогноз (30б.2в-5)
         model.debugContactsProbe()  // замер на настоящей книге симулятора (`-LPContactsProbe`, Debug)
+        model.attachPlaceCatalog(BundledPlaceCatalog())  // общий список студий из сборки, если он там есть (30е.1)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)
