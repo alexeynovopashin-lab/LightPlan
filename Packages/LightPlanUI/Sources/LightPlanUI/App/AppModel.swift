@@ -654,6 +654,7 @@ public final class AppModel {
                                       locationName: resolved.name ?? place.coordinate.text,
                                       clockPreference: Self.clock(settings.clock))
         light.proMode = settings.pro
+        light.look = settings.look
         light.terms = settings.sees(.terms)
         light.azimuths = settings.sees(.azimuths)
         light.moon = settings.sees(.moon)
@@ -788,6 +789,8 @@ public final class AppModel {
         guard settings != before else { return }
         settings.apply(to: &snapshot)
         if settings.mode != before.mode { modeMemory.mode = settings.mode }
+        // В «Просто» кнопки «Настроить карточку» нет (30г.9): открытый режим перестановки закрывается, иначе из него не выйти.
+        if !settings.look.cardTuning { cardTuning = false }
         if settings.astro != before.astro { modeMemory.astro = settings.astro }
         // Слои неба включает переключатель, который включили (ответ 4), и первый вход в «Астро» — как включение всех
         // включённых там переключателей (опись, вопрос 4, вариант А). Повторный вход слоёв не трогает.
@@ -801,6 +804,7 @@ public final class AppModel {
         persist()
 
         light.proMode = settings.pro
+        light.look = settings.look
         light.terms = settings.sees(.terms)
         light.azimuths = settings.sees(.azimuths)
         light.moon = settings.sees(.moon)

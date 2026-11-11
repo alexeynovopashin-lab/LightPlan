@@ -103,7 +103,7 @@ public struct LightScreenView: View {
         // Прогноз приходит позже первой раскладки: у «Неба» и «Ветра» появляется строка, а кнопка «Подробно» не сдвинулась — пересчитать.
         .onChange(of: model.telemetry.sky != nil || model.telemetry.wind != nil) { _, _ in refreshCollapsedRows() }
         .safeAreaInset(edge: .bottom, spacing: 8) {
-            TimebarView(model.timebar, showRibbon: model.proMode)
+            TimebarView(model.timebar, showRibbon: model.look.dayRibbon)
                 .shotNode("timebar")
                 .tabRise()
         }
@@ -232,7 +232,7 @@ public struct LightScreenView: View {
                  date: model.timebar.machine.selectedDate, t: model.timebar.machine.viewMinute,
                  nowMinute: model.timebar.nowMinute,
                  skyPalette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)),
-                 astro: model.proMode,
+                 astro: model.look.domeSky,
                  swap: model.moon,
                  mode: moonModeBinding)
             .shotNode("dome")
@@ -307,7 +307,7 @@ public struct LightScreenView: View {
     private func readoutView(_ r: LightTelemetry.Readout, _ t: LightTelemetry, _ pal: Palette) -> some View {
         let sun = model.timebar.solarDay
         let minute = model.timebar.machine.viewMinute
-        let sky = DomeSky(astro: model.proMode, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
+        let sky = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
                           lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
         // Text layout stays unchanged; only ink follows its actual height in the sky.
         let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))

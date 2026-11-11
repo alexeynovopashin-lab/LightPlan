@@ -23,6 +23,10 @@ public final class LightScreenModel {
     /// `true` — «Астро».
     public var proMode = false
 
+    /// Что режим показывает вне настроек (30г.9, `ModeLook`): цветное небо купола — во всех режимах, лента суток — не в «Просто».
+    /// Ставит `applySettings` вместе с `proMode`; «Карта» читает отсюда же.
+    public var look = ModeLook(.simple)
+
     /// Переключатель «Термины» (30г.4): астрономические слова сумерек на куполе и их строки в «Подробно».
     /// Только в «Астро» (`AppSettings.sees(.terms)`); в «Просто» и «Про» — простые слова.
     public var terms = false

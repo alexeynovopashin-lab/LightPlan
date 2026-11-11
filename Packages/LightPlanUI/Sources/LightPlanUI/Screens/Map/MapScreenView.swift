@@ -275,8 +275,11 @@ struct MapScreenView: View {
                         .allowsHitTesting(false)
                 }
 
-                layersButton(pal, on: layers.sun || layers.moon || layers.mw, darkCanvas: darkCanvas)
-                    .position(x: 12 + 17, y: ctlBot - 12 - 17)
+                // В «Просто» меню слоёв нет (30г.9, опись № 71): кнопки нет, солнце, компас и места горят всегда.
+                if app.settings.look.mapLayersMenu {
+                    layersButton(pal, on: layers.sun || layers.moon || layers.mw, darkCanvas: darkCanvas)
+                        .position(x: 12 + 17, y: ctlBot - 12 - 17)
+                }
 
                 // Справа: «Моё место» (`#mapHere`, 12 над низом) и над ним
                 // «Маршрут» (`#mapRouteBtn`, 54 над низом).
@@ -339,7 +342,7 @@ struct MapScreenView: View {
                 if fanOpen { spotFan(pal, size: size) }
             }
             .overlay {
-                if layersOpen {
+                if layersOpen && app.settings.look.mapLayersMenu {
                     ZStack(alignment: .bottomLeading) {
                         // Скрим — тап мимо меню закрывает его (`#mapLayersScrim`).
                         Color.clear.contentShape(Rectangle())
@@ -590,7 +593,7 @@ struct MapScreenView: View {
                 .shotNode("map.fold")
             }
 
-            TimebarView(light.timebar, showRibbon: light.proMode, bare: true)
+            TimebarView(light.timebar, showRibbon: light.look.dayRibbon, bare: true)
                 .shotNode("timebar")
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: { timebarTop = $0 }
         }
@@ -989,7 +992,7 @@ struct MapScreenView: View {
 
     /// Булавки на кадре в точках экрана — их острия ловят тап.
     private func spotMarks(size: CGSize, cy: CGFloat) -> [(id: String, tip: CGPoint, labelWidth: CGFloat)] {
-        guard app.mapLayers.spots else { return [] }
+        guard app.mapLayersShown.spots else { return [] }
         let cam = feed.camera ?? fallbackCamera(app.light.timebar.place)
         let here = app.place.coordinate
         let axis = CGPoint(x: size.width / 2, y: cy)

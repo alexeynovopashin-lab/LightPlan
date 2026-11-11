@@ -123,7 +123,8 @@ struct CardScreen: View {
                     .buttonStyle(.plain)
                     .shotNode("card.edit")
                 }
-                tuneButton(pal)
+                // В «Просто» карточку не настраивают (30г.9, опись № 131): порядок и блоки — как записаны.
+                if app.settings.look.cardTuning { tuneButton(pal) }
             }
         }
         .padding(.horizontal, 24)

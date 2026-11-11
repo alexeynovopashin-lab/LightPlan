@@ -205,13 +205,18 @@ struct FormScreen: View {
                     .font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)
                     .foregroundStyle(pal.ink7)
                 Spacer()
-                Button { genreSheet = true } label: {
-                    FormGearIcon().foregroundStyle(pal.ink4).padding(8).contentShape(Rectangle())
+                // В «Просто» шестерёнки «Мои жанры» нет (30г.9, опись № 150): сетка — записанный список жанров.
+                if app.settings.look.myGenres {
+                    Button { genreSheet = true } label: {
+                        FormGearIcon().foregroundStyle(pal.ink4).padding(8).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(t.t("form.myGenres"))
+                    .shotNode("form.gear")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(t.t("form.myGenres"))
-                .shotNode("form.gear")
             }
+            // Без шестерёнки ряд той же высоты 37 (знак 21 + поле 8 × 2): сетка жанров и всё ниже не сдвигаются.
+            .frame(minHeight: 37)
             .padding(.top, 6).padding(.horizontal, 4).padding(.bottom, 9)
             FormGroup {
                 GenreGrid(app: app, form: f)

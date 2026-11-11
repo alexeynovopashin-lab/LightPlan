@@ -21,11 +21,15 @@ extension AppModel {
     var seesMilkyWay: Bool { settings.sees(.milkyWay) }
 
     /// Слои «Карты», которые рисуются сейчас: то, что включено в меню слоёв, без того, что прячет переключатель.
-    /// Слой «Луна» — только с «Луной» (опись № 73), «Млечный Путь» — только с «Млечным Путём» (№ 74).
+    /// Слой «Луна» — только с «Луной» (опись № 73), «Млечный Путь» — только с «Млечным Путём» (№ 74). В «Просто» меню слоёв
+    /// нет, поэтому солнце, компас и «Мои места» горят всегда (30г.9, № 72, 75, 76): записанный выбор не трогается.
     var mapLayersShown: MapLayers {
         var l = mapLayers
         if !seesMoon { l.moon = false }
         if !seesMilkyWay { l.mw = false }
+        for name in settings.look.alwaysOnMapLayers {
+            if let k = MapLayers.Key(rawValue: name) { l[k] = true }
+        }
         return l
     }
 

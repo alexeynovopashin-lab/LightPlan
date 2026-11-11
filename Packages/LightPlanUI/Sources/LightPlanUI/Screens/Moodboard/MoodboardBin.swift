@@ -20,9 +20,12 @@ struct MbBinSheet: View {
         if let b = lib.board(boardId), b.kind == .shoot {
             let list = lib.binned(boardId)
             MbSheetFrame(title: t.t("card.bin"), sub: t.t("mb.binSub"), node: "mbs.bin", full: list.count > 3) {
-                FormGroup {
-                    MbRow(title: t.t("mb.binAuto"), sub: app.mbBinModeTitle(b.effectiveBinMode), node: "mbs.bin.mode") {
-                        app.mb.sheet = .binMode(boardId)
+                // В «Просто» срок не выбирают (30г.9, опись № 179): действует записанный, у кого не менялся — 7 дней.
+                if app.settings.look.binAutoClean {
+                    FormGroup {
+                        MbRow(title: t.t("mb.binAuto"), sub: app.mbBinModeTitle(b.effectiveBinMode), node: "mbs.bin.mode") {
+                            app.mb.sheet = .binMode(boardId)
+                        }
                     }
                 }
                 if list.isEmpty {
