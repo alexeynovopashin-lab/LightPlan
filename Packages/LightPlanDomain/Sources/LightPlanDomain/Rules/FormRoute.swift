@@ -339,6 +339,9 @@ public struct WishClash: Sendable, Equatable {
     public var wish: Wish?
     /// «Луна» (30г.12): луны в съёмку нет — плашка говорит словами строки карточки (`moonNear` / `moonNone`).
     public var moon: NightLight?
+    /// «Звёзды» (30г.11): все причины, почему Млечного Пути не будет видно, в порядке `StarsBlock`; плашка говорит их
+    /// словами строки карточки, а не ключом `key`. Пусто — обычная плашка по ключу.
+    public var stars: [StarsBlock] = []
 }
 
 public enum WishCheck {
@@ -351,12 +354,14 @@ public enum WishCheck {
         switch w {
         case .any: return nil
         case .stars:
-            if !sky.astroNight { return WishClash(key: "whiteNight", params: [:]) }
-            if let q, q != .excellent { return WishClash(key: "noStars", params: [:], sky: q) }
-            if city { return WishClash(key: "cityGlow", params: [:]) }
-            let pct = String(sky.moonPercent ?? 0)
-            if sky.moonLevel == 2 { return WishClash(key: "moonWash", params: ["pct": pct]) }
-            if sky.moonLevel == 1 { return WishClash(key: "moonDim", params: ["pct": pct]) }
+            // Все сработавшие причины сразу (30г.11, Алексей 12.11 «сделать форму как карточку»), условия — прежние веба:
+            // белая ночь, небо не ясное по прогнозу, луна засветит (уровень 2), точка в черте города.
+            let why = StarsBlock.ordered(notDark: !sky.astroNight, clouds: q.flatMap { $0 == .excellent ? nil : $0 },
+                                         moonPercent: sky.moonLevel == 2 ? (sky.moonPercent ?? 0) : nil,
+                                         coreLow: false, city: city)
+            if !why.isEmpty { return WishClash(key: "starsNone", params: [:], stars: why) }
+            // «Луна помешает» — не причина «не будет видно» (снимать можно), поэтому только одна, как у веба.
+            if sky.moonLevel == 1 { return WishClash(key: "moonDim", params: ["pct": String(sky.moonPercent ?? 0)]) }
             return nil
         case .sunset:
             if let s = sky.sunsetScore {

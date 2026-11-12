@@ -29225,6 +29225,41 @@
         }
       }
     },
+    "light.noStars.clouds" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "по прогнозу {sky}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the forecast says {sky}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el pronóstico da {sky}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "予報は{sky}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预报为{sky}"
+          }
+        }
+      }
+    },
     "light.noStars.dark" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -29260,37 +29295,72 @@
         }
       }
     },
+    "light.noStars.head" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Млечного Пути не будет видно"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Milky Way won’t be visible"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La Vía Láctea no se verá"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天の川は見えません"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "看不到银河"
+          }
+        }
+      }
+    },
     "light.noStars.line" : {
       "extractionState" : "manual",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Млечного Пути не будет видно. {why}."
+            "value" : "{head}. {why}"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The Milky Way won’t be visible. {why}."
+            "value" : "{head}. {why}"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La Vía Láctea no se verá. {why}."
+            "value" : "{head}. {why}"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "天の川は見えません。{why}。"
+            "value" : "{head}。{why}"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "看不到银河。{why}。"
+            "value" : "{head}。{why}"
           }
         }
       }
@@ -29396,6 +29466,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "，"
+          }
+        }
+      }
+    },
+    "light.noStars.why" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{why}."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{why}."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{why}."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{why}。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{why}。"
           }
         }
       }

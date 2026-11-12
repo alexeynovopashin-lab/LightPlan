@@ -56,6 +56,8 @@ struct NightLightTests {
             if low { want.append(.coreLow) }
             if city { want.append(.city) }
             #expect(got == .starsNone(want), "сочетание \(mask)")
+            // Карточка и форма (30г.11) берут порядок из одного места.
+            #expect(want == StarsBlock.ordered(notDark: noDark, moonPercent: moon ? 91 : nil, coreLow: low, city: city), "сочетание \(mask)")
         }
         // Город сам по себе окна не отменяет: точка в окне — строка «попадает в окно», как раньше.
         var s = shoot(23 * 60, 24 * 60, [.stars])

@@ -39,27 +39,38 @@ public struct StarNight: Hashable, Sendable {
 /// каждой своё место и свои сутки. Мимо — строка говорит всегда (веб у золотого
 /// часа молчит дальше трёх часов): пожелание заказано, и ответ «окно в 01:10 –
 /// 03:40» нужен и съёмке в 20:00.
-/// Почему Млечного Пути не будет видно — причина в строке карточки. Порядок случаев — порядок в строке (Алексей 11.11):
-/// недостаточно темно → луна засветит небо → ядро низко над горизонтом → точка в черте города.
+/// Почему Млечного Пути не будет видно — причина в строке карточки и в плашке формы. Порядок случаев — порядок в строке
+/// (Алексей 11.11; облачность формы — сразу за темнотой, 30г.11): недостаточно темно → по прогнозу облачно → луна засветит
+/// небо → ядро низко над горизонтом → точка в черте города.
 public enum StarsBlock: Hashable, Sendable {
     /// Небо не темнеет (белые ночи).
     case notDark
+    /// По прогнозу небо дня не ясное (`sky` — его слово). Только у формы: карточка прогноза в этой строке не читает.
+    case clouds(sky: DayQuality)
     /// Луна засветит небо; освещена на `percent` %.
     case moon(percent: Int)
     /// Ядро в тёмное время ниже рабочей высоты.
     case coreLow
     /// Место съёмки в черте города — тот же признак записи (`Session.placeIsCity`), по которому форма говорит
-    /// «Засветка города» (`WishCheck`, `cityGlow`): правило одно, считается из одного поля.
+    /// о засветке города (`WishCheck`): правило одно, считается из одного поля.
     case city
 
-    /// Все причины ночи без окна, по порядку. Пусто не бывает: без темноты — «недостаточно темно», с темнотой окно
-    /// не сложилось либо из-за луны, либо из-за высоты ядра.
-    public static func all(night n: StarNight, city: Bool) -> [StarsBlock] {
+    /// Сработавшие причины в порядке строки — единственное место, где этот порядок записан (карточка и форма).
+    public static func ordered(notDark: Bool, clouds: DayQuality? = nil, moonPercent: Int?, coreLow: Bool,
+                               city: Bool) -> [StarsBlock] {
         var out: [StarsBlock] = []
-        if !n.dark { out.append(.notDark) }
-        if n.moonWash { out.append(.moon(percent: n.moonPercent ?? 0)) }
-        if n.coreLow { out.append(.coreLow) }
+        if notDark { out.append(.notDark) }
+        if let clouds { out.append(.clouds(sky: clouds)) }
+        if let moonPercent { out.append(.moon(percent: moonPercent)) }
+        if coreLow { out.append(.coreLow) }
         if city { out.append(.city) }
+        return out
+    }
+
+    /// Все причины ночи без окна (карточка), по порядку. Пусто не бывает: без темноты — «недостаточно темно», с темнотой
+    /// окно не сложилось либо из-за луны, либо из-за высоты ядра.
+    public static func all(night n: StarNight, city: Bool) -> [StarsBlock] {
+        let out = ordered(notDark: !n.dark, moonPercent: n.moonWash ? (n.moonPercent ?? 0) : nil, coreLow: n.coreLow, city: city)
         return out.isEmpty ? [.coreLow] : out
     }
 }

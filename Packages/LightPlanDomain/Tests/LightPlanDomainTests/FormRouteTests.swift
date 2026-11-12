@@ -249,17 +249,19 @@ import LightPlanDomain
         }
         #expect(WishCheck.check(.stars, sky: none(), city: false) == nil)
         #expect(WishCheck.check(.moon, sky: none(), city: false) == nil)
-        #expect(WishCheck.check(.stars, sky: none(night: false), city: false)?.key == "whiteNight")
-        #expect(WishCheck.check(.stars, sky: none(), city: true)?.key == "cityGlow")
-        #expect(WishCheck.check(.stars, sky: none(moon: 2), city: false)?.key == "moonWash")
+        #expect(WishCheck.check(.stars, sky: none(night: false), city: false)?.stars == [.notDark])
+        #expect(WishCheck.check(.stars, sky: none(), city: true)?.stars == [.city])
+        #expect(WishCheck.check(.stars, sky: none(moon: 2), city: false)?.stars == [.moon(percent: 10)])
+        #expect(WishCheck.check(.stars, sky: none(night: false, moon: 2), city: true)?.stars == [.notDark, .moon(percent: 10), .city],
+                "без прогноза облачность не называется, остальные причины — все")
         #expect(WishCheck.check(.moon, sky: none(frac: 0.1), city: false)?.key == "newMoon")
     }
 
     @Test func wishCheckBranches() {
-        #expect(WishCheck.check(.stars, sky: sky(.excellent, night: false), city: false)?.key == "whiteNight")
-        #expect(WishCheck.check(.stars, sky: sky(.good), city: false)?.key == "noStars")
-        #expect(WishCheck.check(.stars, sky: sky(.excellent), city: true)?.key == "cityGlow")
-        #expect(WishCheck.check(.stars, sky: sky(.excellent, moon: 2, pct: 80), city: false)?.params["pct"] == "80")
+        #expect(WishCheck.check(.stars, sky: sky(.excellent, night: false), city: false)?.stars == [.notDark])
+        #expect(WishCheck.check(.stars, sky: sky(.good), city: false)?.stars == [.clouds(sky: .good)])
+        #expect(WishCheck.check(.stars, sky: sky(.excellent), city: true)?.stars == [.city])
+        #expect(WishCheck.check(.stars, sky: sky(.excellent, moon: 2, pct: 80), city: false)?.stars == [.moon(percent: 80)])
         #expect(WishCheck.check(.stars, sky: sky(.excellent), city: false) == nil)
         #expect(WishCheck.check(.sunset, sky: sky(.good, sunset: 40), city: false)?.key == "dullSunset")
         #expect(WishCheck.check(.sunset, sky: sky(.poor), city: false)?.key == "noSunset")
@@ -269,5 +271,38 @@ import LightPlanDomain
         #expect(WishCheck.check(.clear, sky: sky(.good), city: false)?.wish == .clear)
         #expect(WishCheck.check(.cloudy, sky: sky(.good), city: false) == nil)
         #expect(WishCheck.first([.cloudy, .rain], sky: sky(.good), city: false)?.key == "noRain")
+    }
+
+    /// 30г.11 (Алексей 12.11 «сделать форму как карточку»): «Звёзды» называют все сработавшие причины сразу, а не первую
+    /// по старшинству. Четыре причины формы — белая ночь, небо не ясное по прогнозу, луна засветит (уровень 2), точка
+    /// в черте города — все 16 сочетаний: список ровно этих причин в порядке строки карточки (темно → облачность → луна →
+    /// город), ядро форма не судит. Нет ни одной — плашки нет; «луна помешает» (уровень 1) — только одна и только без них.
+    @Test func starsNameEveryReasonInTheCardsOrder() {
+        for mask in 0..<16 {
+            let white = mask & 1 != 0, cloud = mask & 2 != 0, moon = mask & 4 != 0, city = mask & 8 != 0
+            for q in cloud ? [DayQuality.good, .plain, .poor, .fog] : [.excellent] {
+                let c = WishCheck.check(.stars, sky: sky(q, night: !white, moon: moon ? 2 : 0, pct: 91), city: city)
+                var want: [StarsBlock] = []
+                if white { want.append(.notDark) }
+                if cloud { want.append(.clouds(sky: q)) }
+                if moon { want.append(.moon(percent: 91)) }
+                if city { want.append(.city) }
+                #expect(want == StarsBlock.ordered(notDark: white, clouds: cloud ? q : nil, moonPercent: moon ? 91 : nil,
+                                                   coreLow: false, city: city), "сочетание \(mask): порядок не из общего правила")
+                if want.isEmpty {
+                    #expect(c == nil, "сочетание \(mask): ждали тишину, вышло \(String(describing: c))")
+                } else {
+                    #expect(c?.stars == want, "сочетание \(mask) \(q): вышло \(String(describing: c?.stars))")
+                    #expect(c?.key == "starsNone", "сочетание \(mask)")
+                }
+            }
+        }
+        let dim = WishCheck.check(.stars, sky: sky(.excellent, moon: 1, pct: 40), city: false)
+        #expect(dim?.key == "moonDim" && dim?.params["pct"] == "40" && dim?.stars == [])
+        #expect(WishCheck.check(.stars, sky: sky(.excellent, moon: 1, pct: 40), city: true)?.stars == [.city],
+                "«луна помешает» не добавляется к причинам «не будет видно»")
+        // Звёзды не первые в списке пожеланий — плашка всё равно их, если остальные сходятся.
+        #expect(WishCheck.first([.sunset, .stars], sky: sky(.good, sunset: 70, night: false), city: true)?.stars
+                == [.notDark, .clouds(sky: .good), .city])
     }
 }

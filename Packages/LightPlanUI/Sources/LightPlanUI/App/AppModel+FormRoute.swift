@@ -99,7 +99,7 @@ extension AppModel {
     }
 
     /// «Замысел против прогноза» (веб `wishesCheck`): первое несбывшееся пожелание
-    /// словами — заголовок и текст. У встречи пожеланий нет.
+    /// словами — заголовок и текст. У встречи пожеланий нет. «Звёзды» называют все причины сразу, как карточка (30г.11).
     public func formWishWarning(_ f: EventForm) -> WishWarning? {
         guard f.mode != .meet,
               // Без «Луны» (30г.6) и «Звёзд» (30г.7, опись № 203) о них плашка молчит: скрытое пожелание остаётся в форме,
@@ -107,6 +107,11 @@ extension AppModel {
               let c = WishCheck.first(shownWishes(f.wishes), sky: wishSky(f.day, form: f), city: f.sessionPlace.isCity) else { return nil }
         // «Луна» (30г.12): луны в съёмку нет — слова строки карточки, заголовок свой.
         if let n = c.moon { return WishWarning(title: lexicon.t("wc.moonAwayT"), message: moonWords(n)) }
+        // «Звёзды» (30г.11): все причины словами строки карточки — заголовок «Млечного Пути не будет видно», текст — причины.
+        if !c.stars.isEmpty {
+            let w = noStarsWords(c.stars)
+            return WishWarning(title: w.head, message: w.why)
+        }
         var params = c.params
         if let q = c.sky { params["sky"] = lexicon.t("qualSky." + q.rawValue).lowercased() }
         if let w = c.wish { params["wish"] = lexicon.t("wish." + w.rawValue).lowercased() }
