@@ -165,3 +165,13 @@ public enum NightLight: Hashable, Sendable {
         return out
     }
 }
+
+extension NightLight {
+    /// Ответ строки «Луна»: луны в точку нет — она на небе в другое время (`moonNear`) или в эти сутки не всходит.
+    public var isMoonAway: Bool {
+        switch self {
+        case .moonNear, .moonNone: true
+        default: false
+        }
+    }
+}
