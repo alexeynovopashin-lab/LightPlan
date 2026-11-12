@@ -161,6 +161,11 @@
   show a Sun more exact than the web's — by design they no longer equal it** (web: up to 0.55° / 5 min / 23 min at Tromsø). Reference:
   `python3 Tools/sun_horizons_ref.py` → `Fixtures/sun_horizons.json`, read by `SolarDayExactTests`; a web-parity test that feeds a screen
   component passes `time: .web` (e.g. `MapSceneParityTests`). Not yet moved: Moon and planets on Light/Map/dome (`.web` sidereal time).
+- **Light theme = variant Б in tokens (28к.3, Alexey 12.11 «Б, тёмный оранжевый»).** `Palette` light values are native-only now (comment on each: «Светлая натива с 28к.3»; dark branch
+  untouched, held by `LightTokensTests` against `d468b34`). Page `#EDEDF0`, white plates; **bright orange `brass`/`glyph` `#E4570B` only for fills, strokes, glyphs without text; every small
+  orange text is `brassInk` (`#B83C00`, 4.9:1 on page) / `brassSoftInk`**; text on an orange fill is `onBrass` (ink `#141416`, 4.96:1 — white gives 3.71) and `onBrassDim`. Depth: `.plateStyle(pal, radius:, glass:)`
+  (soft shadow outside the outline + white rim + glass under a 0.72 veil) and `.raisedStyle(pal, radius:)` (selected/raised), numbers in `PlateTokens` (`Theme/Plate.swift`); both are no-ops in dark. A new plate in the
+  light theme takes `.plateStyle`; a new orange text takes `brassInk`. Numbers, boards, dark proof, sunset ΔE: `docs/light_theme_2026-11/tokens/README.md`. Screen-specific shadows/colours left: same README, «28к.4».
 - **Glass never takes a rotation (28п).** `.glassEffect` under `rotationEffect` (or `scaleEffect`) swells into the
   bounding rectangle of the whole layer at angles that are not multiples of 90° (measured: three spot plates → one
   ≈ 420 × 415 pt slab). On «Карта» the rotor is two halves with the same angle (canvas, veil, road / instrument)
