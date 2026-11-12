@@ -132,7 +132,50 @@ def frame_table(root):
     return md
 
 
+def extra_table(root):
+    """Выбранное и тени на других экранах (мерено): сегмент «Компании», выбранный день 23, плитка «Место» карточки."""
+    from PIL import Image
+    out = []
+    for key, name in [("now", "сейчас"), ("A", "А"), ("B", "Б"), ("C", "В-красный"), ("D", "В-зелёный")]:
+        row = [name]
+        d = os.path.join(root, key, "m28-orgs-light")
+        im = Image.open(os.path.join(d, "native.png")).convert("RGB")
+        n = json.load(open(os.path.join(d, "native.json")))["nodes"]
+        sx = im.size[0] / 440
+        t = n["cl.tab.1"]  # выбранный сегмент: точка у левого края капсулы, жёлоб — 1,5 pt левее её края
+        y = int((t["y"] + t["h"] / 2) * sx)
+        thumb = im.getpixel((int((t["x"] + 4) * sx), y))
+        trough = im.getpixel((int((t["x"] - 1.5) * sx), y))
+        row.append(f"{f2(cr(thumb, trough))} / {f1(dl(thumb, trough))}")
+        d = os.path.join(root, key, "planner-month-light")
+        im = Image.open(os.path.join(d, "native.png")).convert("RGB")
+        n = json.load(open(os.path.join(d, "native.json")))["nodes"]
+        c = n["cal.n.23-0"]  # квадрат выбранного дня: угол внутри, подложка — за краем квадрата
+        sel = im.getpixel((int((c["x"] + c["w"] / 2) * sx), int((c["y"] + 3) * sx)))
+        plate = im.getpixel((int((c["x"] - 8) * sx), int((c["y"] + c["h"] / 2) * sx)))
+        row.append(f"{f2(cr(sel, plate))} / {f1(dl(sel, plate))}")
+        d = os.path.join(root, key, "card-people-during-light")
+        im = Image.open(os.path.join(d, "native.png")).convert("RGB")
+        n = json.load(open(os.path.join(d, "native.json")))["nodes"]
+        b = n["card.block.place"]
+        cx = int((b["x"] + b["w"] * 0.5) * sx)
+        tile = im.getpixel((cx, int((b["y"] + b["h"] / 2) * sx)))
+        sheet = im.getpixel((int((b["x"] - 5) * sx), int((b["y"] + b["h"] / 2) * sx)))
+        bottom = (b["y"] + b["h"]) * sx
+        band = [im.getpixel((cx, int(bottom + k))) for k in range(2, int(6 * sx))]
+        row.append(f"{f2(cr(tile, sheet))} / {f1(dl(tile, sheet))}")
+        row.append(f1(L(min(band, key=L)) - L(sheet)))
+        out.append(row)
+    head = ["вариант", "выбранный сегмент / жёлоб (мерено)", "выбранный день 23 / подложка месяца (мерено)",
+            "плитка карточки / лист (мерено)", "тень под плиткой карточки, ΔL* (мерено, 6 pt)"]
+    md = "| " + " | ".join(head) + " |\n|" + "---|" * len(head) + "\n"
+    for r in out:
+        md += "| " + " | ".join(r) + " |\n"
+    return md
+
+
 if __name__ == "__main__":
     print(code_table())
     if len(sys.argv) > 1:
         print(frame_table(sys.argv[1]))
+        print(extra_table(sys.argv[1]))
