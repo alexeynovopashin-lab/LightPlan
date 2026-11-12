@@ -138,7 +138,12 @@ extension AppModel {
     /// Строки луны блока «Свет» — только с «Луной» (30г.6, опись № 145): пожелание в записи остаётся, его не показывают.
     func cardMoon(_ s: Session, phase: EventPhase) -> NightLight? {
         guard phase != .after, seesMoon else { return nil }
-        return NightLight.moon(s, route: lightRoute(s), spots: snapshot.spots, studios: snapshot.studios,
+        return moonAnswer(s)
+    }
+
+    /// Ответ строки «Луна» без условий показа — его берёт и форма (30г.12): одно правило на карточку и плашку формы.
+    func moonAnswer(_ s: Session) -> NightLight? {
+        NightLight.moon(s, route: lightRoute(s), spots: snapshot.spots, studios: snapshot.studios,
                                arcs: moonArcs,
                                lit: { p, d, t in
                                    let pl = self.cardPlace(p)
@@ -207,17 +212,30 @@ extension AppModel {
             if !text.isEmpty { out.append(CardSay(kind: .stars, icon: "stars", text: text, bad: false)) }
         }
         if let n = cardMoon(s, phase: phase) {
-            let text: String
-            switch n {
-            case .moonUp(let p, let a, let pct):
-                text = lexicon.t("light.inMoon", ["name": name(p), "range": range(a), "p": "\(pct)"])
-            case .moonNear(let p, let a, let gap):
-                text = lexicon.t("light.missMoon", ["name": name(p), "range": range(a), "gap": f.durLabel(gap)])
-            default: text = lexicon.t("light.moonNone")
-            }
-            out.append(CardSay(kind: .moon, icon: "moon", text: text, bad: false))
+            out.append(CardSay(kind: .moon, icon: "moon", text: moonWords(n), bad: false))
         }
         return out
+    }
+
+    /// Слова строки «Луна» карточки; те же слова говорит плашка формы, когда луны в съёмку нет (30г.12).
+    func moonWords(_ n: NightLight) -> String {
+        let f = PlannerFacts(app: self, dark: false)
+        func name(_ p: LightPoint?) -> String { p?.name ?? lexicon.t("card.shootPoint") }
+        func range(_ w: ClosedRange<Int>) -> String { f.range(Double(w.lowerBound), Double(w.upperBound)) }
+        switch n {
+        case .moonUp(let p, let a, let pct):
+            return lexicon.t("light.inMoon", ["name": name(p), "range": range(a), "p": "\(pct)"])
+        case .moonNear(let p, let a, let gap):
+            return lexicon.t("light.missMoon", ["name": name(p), "range": range(a), "gap": f.durLabel(gap)])
+        default: return lexicon.t("light.moonNone")
+        }
+    }
+
+    /// Высота солнца в минуту точки (минуты от полуночи первого дня) над местом съёмки — для «ночь ли» у луны (30г.12).
+    /// Место — точка неба записи (`anchor`): точки маршрута одного дня рядом, солнце над ними одно с точностью до долей градуса.
+    func sunAltitude(_ s: Session, at t: Int) -> Double {
+        let k = dayIndex(t), m = t - k * 1440
+        return cardSun(anchor(s), s.date(ofDay: k)).elevation(at: Double(m))
     }
 
     /// Точка «Золотой» на ленте плитки дня (веб `lanePoints`): свет есть и не

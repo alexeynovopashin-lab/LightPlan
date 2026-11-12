@@ -78,14 +78,24 @@ extension AppModel {
 
     /// Небо дня для проверки пожеланий — у места приложения, как у веба
     /// (`qualityOf`, `dayWeather`, `computeSun` смотрят на `LAT`/`LON`).
-    func wishSky(_ day: CivilDate) -> WishSky {
+    func wishSky(_ day: CivilDate, form f: EventForm? = nil) -> WishSky {
         let wx = light.weather.day(for: day)      // `nil` — прогноза нет: пожелания про погоду молчат
         let p = place.place
         let sun = SolarDay(date: day, place: p)
         let moon = MoonVsStars(date: day, place: p)
         return WishSky(quality: wx?.quality, sunsetScore: wx?.sunset, astroNight: sun.astroB != nil,
                        moonLevel: moon.level?.rawValue, moonPercent: moon.percent,
-                       moonFraction: MoonPhase(date: day, minutes: 1320, zone: p.zone).fraction)
+                       moonFraction: MoonPhase(date: day, minutes: 1320, zone: p.zone).fraction,
+                       shootMoon: f.flatMap(shootMoon))
+    }
+
+    /// Луна во время съёмки из формы (30г.12, вариант А): ответ строки «Луна» карточки на ещё не сохранённую запись,
+    /// плюс «ночь ли» в точке, где луна на небе. Только при пожелании «Луна»: другим пожеланиям он не нужен.
+    func shootMoon(_ f: EventForm) -> ShootMoon? {
+        guard f.wishes.contains(.moon) else { return nil }
+        let s = f.session(orgName: nil, and: "", studios: snapshot.studios, spots: snapshot.spots,
+                          homeCity: homeCityName, now: now())
+        return ShootMoon.make(moonAnswer(s)) { p in self.sunAltitude(s, at: p?.minute ?? s.start) }
     }
 
     /// «Замысел против прогноза» (веб `wishesCheck`): первое несбывшееся пожелание
@@ -94,7 +104,9 @@ extension AppModel {
         guard f.mode != .meet,
               // Без «Луны» (30г.6) и «Звёзд» (30г.7, опись № 203) о них плашка молчит: скрытое пожелание остаётся в форме,
               // но не проверяется.
-              let c = WishCheck.first(shownWishes(f.wishes), sky: wishSky(f.day), city: f.sessionPlace.isCity) else { return nil }
+              let c = WishCheck.first(shownWishes(f.wishes), sky: wishSky(f.day, form: f), city: f.sessionPlace.isCity) else { return nil }
+        // «Луна» (30г.12): луны в съёмку нет — слова строки карточки, заголовок свой.
+        if let n = c.moon { return WishWarning(title: lexicon.t("wc.moonAwayT"), message: moonWords(n)) }
         // «Звёзды» (30г.11): все причины словами строки карточки — заголовок «Млечного Пути не будет видно», текст — причины.
         if !c.stars.isEmpty {
             let w = noStarsWords(c.stars)

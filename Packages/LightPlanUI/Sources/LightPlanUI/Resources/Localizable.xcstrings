@@ -72610,6 +72610,41 @@
         }
       }
     },
+    "wc.moonAwayT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Луны не будет во время съёмки"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No moon during the shoot"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No habrá luna durante la sesión"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撮影中は月が出ていません"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍摄时没有月亮"
+          }
+        }
+      }
+    },
     "wc.moonCloudM" : {
       "extractionState" : "manual",
       "localizations" : {

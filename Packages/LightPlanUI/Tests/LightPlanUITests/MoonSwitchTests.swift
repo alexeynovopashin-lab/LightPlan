@@ -395,3 +395,51 @@ struct MoonSwitchTests {
         #expect(app.form?.wishes == [])
     }
 }
+
+// MARK: - «Луна» в форме по времени съёмки (30г.12, вариант А)
+
+extension MoonSwitchTests {
+    /// Съёмка в Петербурге: оценка пояса по долготе там даёт настоящие +3, ответ не зависит от сети.
+    private static func spb(_ id: String, _ day: CivilDate, start: Int) -> Session {
+        var s = Session(id: id, kind: .shoot, day: day, start: start, end: start + 60, duration: 60, genre: .portrait)
+        s.wishes = [.moon]
+        s.latitude = 59.9343; s.longitude = 30.3351
+        return s
+    }
+
+    private func formWarning(_ s: Session, at iso: String) throws -> (AppModel, WishWarning?) {
+        let app = model([s], at: iso)
+        app.openForm(editing: s.id)
+        let f = try #require(app.form)
+        return (app, app.formWishWarning(f))
+    }
+
+    /// Белая ночь, полнолуние 18.06.2027, съёмка 21:00–22:00: луна взойдёт только в 23:12 (`MoonDay`, 30г.12). Раньше форма
+    /// молчала (фаза 100 % в 22:00), теперь говорит словами строки карточки, и слова те же, что у карточки.
+    @Test func formSaysTheMoonIsNotUpDuringTheShoot() throws {
+        let s = Self.spb("w", CivilDate(year: 2027, month: 6, day: 18), start: 1260)
+        let (app, warn) = try formWarning(s, at: "2027-06-10T12:00:00+03:00")
+        let w = try #require(warn, "луна под горизонтом всю съёмку — плашка должна быть")
+        #expect(w.title == app.lexicon.t("wc.moonAwayT"))
+        let card = try #require(app.moonAnswer(app.sessions.first { $0.id == "w" }!))
+        guard case .moonNear(_, let arc, _) = card else { Issue.record("ждали moonNear, а не \(card)"); return }
+        #expect(arc.lowerBound == 23 * 60 + 12, "восход 23:12, как в 30g12_moon_white_night.md")
+        #expect(w.message == app.moonWords(card), "форма говорит словами строки карточки")
+        for look in [Look.simple, .pro, .astroNoMoon] {
+            app.update { look.apply(&$0) }
+            #expect(app.formWishWarning(try #require(app.form)) == nil, "\(look): без «Луны» плашка о ней молчит")
+        }
+    }
+
+    /// Молодой месяц 13.11.2026 (18 % в 22:00): в 16:40 — сумерки, месяц на небе (14:14–18:09) — плашки нет; в 17:45 —
+    /// ночь (солнце ниже −6° с 17:22), месяц ещё на небе — «почти новая — света не даст», как прежде.
+    @Test func thinCrescentIsASubjectByDayAndAWarningAtNight() throws {
+        let day = CivilDate(year: 2026, month: 11, day: 13)
+        let (_, dusk) = try formWarning(Self.spb("d", day, start: 16 * 60 + 40), at: "2026-11-12T12:00:00+03:00")
+        #expect(dusk == nil, "месяц в сумерках — объект съёмки")
+        let (app, night) = try formWarning(Self.spb("n", day, start: 17 * 60 + 45), at: "2026-11-12T12:00:00+03:00")
+        let w = try #require(night)
+        #expect(w.title == app.lexicon.t("wc.newMoonT"))
+        #expect(w.message.contains("18%") || w.message.contains("17%"), "процент — в минуту съёмки: \(w.message)")
+    }
+}

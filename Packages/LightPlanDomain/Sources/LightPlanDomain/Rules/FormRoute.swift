@@ -288,15 +288,44 @@ public struct WishSky: Sendable, Equatable {
     public var moonPercent: Int?
     /// Освещённая доля диска в 22:00 (веб `moonPhase(d, 1320)`).
     public var moonFraction: Double
+    /// Луна во время самой съёмки (30г.12); `nil` — времени нет, и «Луна» проверяется по-вебовски, фазой в 22:00.
+    public var shootMoon: ShootMoon?
 
     public init(quality: DayQuality?, sunsetScore: Int?, astroNight: Bool, moonLevel: Int?,
-                moonPercent: Int?, moonFraction: Double) {
+                moonPercent: Int?, moonFraction: Double, shootMoon: ShootMoon? = nil) {
         self.quality = quality
         self.sunsetScore = sunsetScore
         self.astroNight = astroNight
         self.moonLevel = moonLevel
         self.moonPercent = moonPercent
         self.moonFraction = moonFraction
+        self.shootMoon = shootMoon
+    }
+}
+
+/// Луна во время съёмки для пожелания «Луна» (30г.12, Алексей 12.11: «луну можно снимать и днем»; вариант А): тот же
+/// ответ, что строка «Луна» карточки (`NightLight.moon`), чтобы форма и карточка не расходились.
+public enum ShootMoon: Sendable, Equatable {
+    /// Луна на небе в точку съёмки, освещена на `percent` %; `night` — солнце там ниже −6° (кончился синий час).
+    case up(percent: Int, night: Bool)
+    /// Луны на небе в съёмку нет: ответ карточки — `moonNear` (когда она на небе и насколько мимо) или `moonNone`.
+    case away(NightLight)
+
+    /// Солнце ниже этой высоты — ночь: луну там ждут как свет, и почти новая его не даст. Выше — день и сумерки,
+    /// где месяц снимают сам по себе. −6° — конец синего часа (`SolarDay.civilB`), та же граница, что `SunTrack.visibleFrom`.
+    public static let nightBelow = -6.0
+
+    /// Днём и в сумерках «почти новая» — только у луны, которую не увидеть вовсе: меньше 3 % диска, сутки-двое у
+    /// новолуния, рядом с солнцем. Порог исполнителя 30г.12, не слова Алексея; ночью — прежние веба 25 %.
+    public static let unseenBelow = 3
+
+    /// Из ответа строки карточки; `sunAltitude` — высота солнца в точке и минуте `moonUp`. `nil` — у карточки ответа нет.
+    public static func make(_ card: NightLight?, sunAltitude: (LightPoint?) -> Double) -> ShootMoon? {
+        switch card {
+        case .moonUp(let p, _, let pct)?: .up(percent: pct, night: sunAltitude(p) < nightBelow)
+        case let n? where n.isMoonAway: .away(n)
+        default: nil
+        }
     }
 }
 
@@ -308,6 +337,8 @@ public struct WishClash: Sendable, Equatable {
     public var sky: DayQuality?
     /// Слово пожелания в тексте: `wish.<w>` строчными.
     public var wish: Wish?
+    /// «Луна» (30г.12): луны в съёмку нет — плашка говорит словами строки карточки (`moonNear` / `moonNone`).
+    public var moon: NightLight?
     /// «Звёзды» (30г.11): все причины, почему Млечного Пути не будет видно, в порядке `StarsBlock`; плашка говорит их
     /// словами строки карточки, а не ключом `key`. Пусто — обычная плашка по ключу.
     public var stars: [StarsBlock] = []
@@ -343,8 +374,16 @@ public enum WishCheck {
             guard let q else { return nil }
             return q != .poor ? WishClash(key: "noRain", params: [:], sky: q) : nil
         case .moon:
-            if sky.moonFraction < 0.25 {
-                return WishClash(key: "newMoon", params: ["pct": String(Int((sky.moonFraction * 100).rounded()))])
+            // Время съёмки известно (30г.12): сначала — будет ли луна на небе, как в строке карточки; «почти новая —
+            // света не даст» только ночью, днём и в сумерках месяц снимают сам по себе. Без времени — как веб.
+            switch sky.shootMoon {
+            case .away(let n)?: return WishClash(key: "moonAway", params: [:], moon: n)
+            case .up(let pct, let night)?:
+                if pct < (night ? 25 : ShootMoon.unseenBelow) { return WishClash(key: "newMoon", params: ["pct": String(pct)]) }
+            case nil:
+                if sky.moonFraction < 0.25 {
+                    return WishClash(key: "newMoon", params: ["pct": String(Int((sky.moonFraction * 100).rounded()))])
+                }
             }
             return q == .poor ? WishClash(key: "moonCloud", params: [:], sky: q) : nil
         case .clear, .cloudy, .fog:
