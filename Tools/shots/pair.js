@@ -59,6 +59,7 @@ if (args.help) {
   --part [<мс>,...]   разрез месяца при входе в день, кадр на мс от старта (29.2а; по умолчанию 170); только он: --screens part
   --partyear [<мс>,...]   тот же разрез при входе тапом по числу в ленте года (29.2б); только он: --screens partyear
   --cards / --phases / --forms / --layers / --sheets / --chapters   перебор отдельных экранов (см. шапку файла)
+  --form-busy form   --form-reopen   с --forms (30г.14): другая съёмка на время формы (наложение) / «Сохранить» и открыть снова
   --rec-mode pro|astro|astro~moon   режим засева карточек и форм (30г.6; без флага «Просто»); --cards moon — съёмка с «Луной», --cards stars — со «Звёздами» (30г.7)
   --only-spoiler   только раскрытое «Подробно» «Света» и (30г.7) «Карты», режимы не «Просто»
   --form-day yyyy-mm-dd --form-wish stars   форма (--forms) на этот день с нажатым пожеланием: плашка «замысел против прогноза» (30г.11)
@@ -293,6 +294,9 @@ async function nativeShot(udid, sc, dir) {
     ...(args['drum-nudge'] ? ['-LPShotDrumNudge', args['drum-nudge']] : []),
     ...(args['dome-moon'] ? ['-LPShotDomeMoon', '1'] : []),
     ...(args['form-scroll'] ? ['-LPShotFormScroll', args['form-scroll']] : []),
+    // 30г.14: наложение на время формы и повторное открытие сохранённой съёмки (плашки под своим блоком).
+    ...(args['form-busy'] ? ['-LPShotFormBusy', args['form-busy']] : []),
+    ...(args['form-reopen'] ? ['-LPShotFormReopen', '1'] : []),
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     // 30г.11: `--form-day 2027-06-21 --form-wish stars` — форма на этот день с нажатым пожеланием (плашка «замысел против прогноза»).
     ...(sc.form && args['form-day'] ? ['-LPShotFormDay', args['form-day']] : []),
