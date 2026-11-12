@@ -95,6 +95,8 @@ public enum LightVariant: String, Sendable, CaseIterable {
         "bar": Tone(0xF0ECE5, 0.80), "fillA": Tone(0xF0ECE5, 0.80), "fillB": Tone(0xE6E1D8, 0.72),
         "overlay": Tone(0xF0ECE5, 0.86), "overlay2": Tone(0xF0ECE5, 0.96),
         "sheet2": Tone(0xF7F5F0), "peek2": Tone(0xF4F1EB),
+        // Пилюли и плитки знаков на `press`: прежний `#EDE9E1` на новом фоне растворялся («Заполнить» карточки) — ступень ниже.
+        "press": Tone(0xE6E1D8),
         "brass": Tone(0x8F5D17), "brassSoft": Tone(0x94601A),
         "ink5": Tone(0x6F685C), "ink5b": Tone(0x6F685C), "ink6": Tone(0x6F685C), "ink7": Tone(0x8E877A),
     ]
@@ -107,7 +109,7 @@ public enum LightVariant: String, Sendable, CaseIterable {
         "overlay": Tone(0xEDEDF0, 0.86), "overlay2": Tone(0xEDEDF0, 0.96), "overlay3": Tone(0xD3D3D8, 0.74),
         "sheet": Tone(0xFFFFFF), "sheet2": Tone(0xF6F6F8), "sheet3": Tone(0xFFFFFF, 0.72), "sheet4": Tone(0xFFFFFF, 0.72),
         "peek1": Tone(0xFFFFFF), "peek2": Tone(0xF2F2F5), "badgeBg": Tone(0xF2F2F5), "hatch": Tone(0xE5E5E9),
-        "field": Tone(0xE9E9ED), "fieldPress": Tone(0xDADADF), "press": Tone(0xEBEBEE), "press2": Tone(0xE8E8EC),
+        "field": Tone(0xE9E9ED), "fieldPress": Tone(0xDADADF), "press": Tone(0xE2E2E6), "press2": Tone(0xE8E8EC),
         "hairline": Tone(0xE0E0E4), "rail": Tone(0xD9D9DE), "rail2": Tone(0xCFCFD4), "rail3": Tone(0xD3D3D8),
         "rail4": Tone(0xD6D6DB), "rail5": Tone(0xC2C2C7), "edge": Tone(0xCBCBD0), "bezel": Tone(0xD6D6DB),
         "meterOff": Tone(0xCFCFD4), "knobEdge": Tone(0xC2C2C7),
