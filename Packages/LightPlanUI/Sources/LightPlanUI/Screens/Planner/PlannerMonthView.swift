@@ -170,7 +170,9 @@ private struct MonthPlate: View {
         let r = RoundedRectangle(cornerRadius: MonthMetrics.plateRadius, style: .continuous)
         r.fill(pal.sheetGlass)
             .glassEffect(.regular, in: r)
-            .overlay(r.strokeBorder(pal.hairline, lineWidth: 1))
+            // 28к.2: в вариантах со светлым кантом край подложки — белый, а не чернила.
+            .overlay(r.strokeBorder(LightVariant.lit(pal)?.rim == true ? Color.white.opacity(0.95) : pal.hairline,
+                                    lineWidth: LightVariant.lit(pal)?.rim == true ? 1.5 : 1))
             .overlay {
                 // Серп: контур минус тот же контур, сдвинутый на 1 pt вниз.
                 r.fill(pal.glassShine)
@@ -224,8 +226,11 @@ struct MonthCell: View {
         // Выходной — янтарный; прошедший гаснет до 0,75 (контраст 3,9 / 3,5 к подложке в тёмной / светлой — рядом с прошедшими
         // буднями `ink5`: 3,15 / 3,97); сегодня и дни вне месяца — свои цвета.
         let weekend = WeekStart.isWeekend(day)
-        let ink: Color = isToday ? pal.brass : out ? pal.ink10
+        let ink0: Color = isToday ? pal.brass : out ? pal.ink10
             : weekend ? pal.weekend.opacity(past ? 0.75 : 1) : past ? pal.ink5 : pal.ink
+        // 28к.2: чёрный выбранный день (варианты B–D) — цифра белая, сегодняшняя — акцентом.
+        let variant = LightVariant.lit(pal)
+        let ink: Color = sel && variant?.black == true ? (isToday ? variant!.accentFill : .white) : ink0
 
         Button {
             // Второй тап по выбранному числу — вход в день разрезом месяца (29.2а), первый — только выбор.
@@ -246,7 +251,9 @@ struct MonthCell: View {
                         // Выбранный день: скруглённый квадрат вокруг самой цифры, подписей не захватывает.
                         if sel {
                             RoundedRectangle(cornerRadius: MonthMetrics.selRadius, style: .continuous)
-                                .fill(MonthMetrics.selFill(pal, dark: scheme == .dark))
+                                .fill(variant.map { $0.black ? LightVariant.blackFill : pal.sheet }
+                                      ?? MonthMetrics.selFill(pal, dark: scheme == .dark))
+                                .lvRaised(pal, radius: MonthMetrics.selRadius)
                                 .frame(width: MonthMetrics.selSide, height: MonthMetrics.selSide)
                         }
                     }
@@ -501,6 +508,7 @@ struct PlannerDayList: View {
         .padding(.horizontal, 12)
         .frame(height: 40)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.sheet4))
+        .lvPlate(pal, radius: 12, glass: true)
         .contentShape(Rectangle())
         // Занятость — тапом в свой лист; запись — удержанием в веер (у
         // занятости веера нет, веб `if (b.dataset.b) return`).
@@ -542,6 +550,7 @@ struct PlannerDayList: View {
         .padding(.horizontal, 12)
         .frame(height: 40)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.sheet4))
+        .lvPlate(pal, radius: 12, glass: true)
     }
 }
 
@@ -577,18 +586,22 @@ struct PlannerDayStates: View {
             default: break
             }
         } label: {
+            // 28к.2: «Съёмка» — сплошная чёрная (варианты B–D) или белая с тенью (A).
+            let v = LightVariant.lit(pal)
+            let black = on && v?.black == true
             VStack(spacing: 2) {
                 PlanGlyph(kind: k)
-                    .stroke(ink, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+                    .stroke(black ? v!.accentFill : ink, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
                     .frame(width: 18, height: 18)
-                Text(f.t.t(key)).font(webFont(11, weight)).foregroundStyle(label).lineLimit(1)
+                Text(f.t.t(key)).font(webFont(11, weight)).foregroundStyle(black ? Color.white : label).lineLimit(1)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 44)
             .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? pal.sheet4 : .clear)
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1))
+                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(black ? LightVariant.blackFill : on ? pal.sheet4 : .clear)
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(black ? .clear : pal.hairline, lineWidth: 1))
             }
+            .lvRaised(pal, radius: 14, on: on)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

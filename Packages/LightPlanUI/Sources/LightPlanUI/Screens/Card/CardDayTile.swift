@@ -137,6 +137,7 @@ struct CardDayTile: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 12).padding(.vertical, 14)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(pal.sheet3))
+        .lvPlate(pal, radius: 18, glass: true)
         .shotNode("card.day")
         .padding(.top, 14)
     }

@@ -115,7 +115,8 @@ public struct DomeView: View {
     /// Купол ещё не заведён в общий словарь тем экрана (итерация 19) — эти
     /// несколько цветов нужны только ему, взяты из CSS веба буквально.
     private var surfaceColor: Color {
-        colorScheme == .light ? Color(red: 0xFA / 255, green: 0xF8 / 255, blue: 0xF3 / 255)
+        // 28к.2: светлая — из `Palette` (то же `#FAF8F3`), чтобы вариант светлой темы менял и вырез вокруг диска.
+        colorScheme == .light ? Palette(.light).surface
                                : Color(red: 0x0F / 255, green: 0x0E / 255, blue: 0x0C / 255)
     }
     private var ink6: Color {

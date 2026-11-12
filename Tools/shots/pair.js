@@ -65,6 +65,7 @@ if (args.help) {
   --form-day yyyy-mm-dd --form-wish stars   форма (--forms) на этот день с нажатым пожеланием: плашка «замысел против прогноза» (30г.11)
   --form-start <минуты>   с --form-day: начало съёмки в форме (30г.12: «Луна» по времени съёмки, 1260 = 21:00)
   --dome-moon   купол «Света» и «Карты» как после нажатия «Солнце или луна» (30г.6, только натив; без «Луны» — солнце)
+  --light-variant A|B|C|D   вариант светлой темы 28к.2 (только натив, Debug: -LPLightVariant)   --native-only   без веба и сверки, только native.png
   --skip-build   --out <папка>   --forecast <файл>   --no-sheets --no-pick   --help   эта справка`);
   process.exit(0);
 }
@@ -312,6 +313,8 @@ async function nativeShot(udid, sc, dir) {
     ...(sc.card ? ['-LPShotSheet', 'card', '-LPShotWay', sc.card, ...(sc.tune ? ['-LPShotTune', '1'] : []),
       ...(sc.drag ? ['-LPShotDrag', sc.drag] : []),
       ...(sc.fold ? ['-LPShotFold', sc.fold] : []), ...(sc.refs ? ['-LPShotRefs', sc.refs] : [])] : []),
+    // 28к.2: вариант светлой темы (Debug) — доски «сейчас | А | Б | В».
+    ...(args['light-variant'] ? ['-LPLightVariant', args['light-variant']] : []),
     '-LPShotReport', report],
   { env: { ...process.env, SIMCTL_CHILD_TZ: ZONE } });
   // Первый запуск после установки идёт до 20 с (замер 19б), следующие — 3–4 с.
@@ -829,6 +832,11 @@ function markdown(results) {
     if (screen === 'light' && mode === 'astro' && !args['no-lane']) add(screen, theme, mode, moments[0], 'paper', null, 'lane');
   }
 
+  // 28к.2: `--native-only` — только кадры приложения (варианты светлой темы), без веба и сверки.
+  if (args['native-only']) {
+    for (const sc of list) { await nativeShot(dev.udid, sc, sc.dir); console.log('натив: ' + sc.name); }
+    return;
+  }
   const { chromium } = playwright();
   const browser = await chromium.launch();
   const page = await browser.newPage();

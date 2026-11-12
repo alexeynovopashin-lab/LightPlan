@@ -80,6 +80,7 @@ private struct PaneShell<Content: View>: View {
             .padding(.horizontal, 14).padding(.vertical, 13)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .lvPlate(pal, radius: 16, glass: true)
             .shotNode(node)
             .padding(.top, top)
     }
@@ -123,6 +124,7 @@ struct CardDealBlock: View {
             }
             .padding(EdgeInsets(top: 14, leading: 12, bottom: 12, trailing: 12))
             .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .lvPlate(pal, radius: 18, glass: true)
             .shotNode("card.block.deal")
             .padding(.top, 14)
         }
@@ -236,6 +238,7 @@ struct CardPanesBlock: View {
         .padding(.horizontal, 14).padding(.vertical, 13)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .lvPlate(pal, radius: 16, glass: true)
         .shotNode("card.pane.\(String(describing: p.kind))")
     }
 
@@ -465,6 +468,7 @@ struct CardFold<Content: View>: View {
             if open { VStack(spacing: 0) { content() }.padding(.horizontal, 14).padding(.bottom, 13) }
         }
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .lvPlate(pal, radius: 16, glass: true)
         .shotNode("card.block.\(block.rawValue)", text: open ? "open" : "shut")
         .padding(.top, 9)
     }

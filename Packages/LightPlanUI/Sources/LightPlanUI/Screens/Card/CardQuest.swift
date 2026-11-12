@@ -105,6 +105,7 @@ struct CardQuestRow: View {
             }
             .padding(.trailing, 12)
             .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .lvPlate(pal, radius: 14, glass: true)
             .padding(.top, 12)
             .shotNode("card.quest")
         }

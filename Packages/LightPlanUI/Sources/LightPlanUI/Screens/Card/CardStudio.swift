@@ -185,6 +185,7 @@ struct CardStudio: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 13)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(pal.sheet3))
+        .lvPlate(pal, radius: 18, glass: true)
         .shotNode("card.studio")
         .padding(.top, 9)
     }

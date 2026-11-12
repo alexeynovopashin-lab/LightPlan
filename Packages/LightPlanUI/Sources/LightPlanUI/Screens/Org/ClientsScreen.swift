@@ -277,6 +277,7 @@ struct ClientsSeg<V: Hashable>: View {
                         .padding(.vertical, 7).padding(.horizontal, 12)
                         .frame(maxWidth: stretch ? .infinity : nil)
                         .background(on ? pal.segOn : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .lvRaised(pal, radius: 9, on: on)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -285,7 +286,8 @@ struct ClientsSeg<V: Hashable>: View {
         }
         .padding(3)
         .frame(maxWidth: stretch ? .infinity : nil)
-        .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        // 28к.2: в варианте светлой темы жёлоб сегмента — фон страницы, выбранное — белое с тенью (выпуклое).
+        .background(LightVariant.lit(pal) != nil ? pal.bg : pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shotNode(node)
     }
 }

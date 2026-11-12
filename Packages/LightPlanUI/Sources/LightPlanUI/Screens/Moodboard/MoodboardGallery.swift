@@ -58,6 +58,7 @@ struct MoodboardGallery: View {
             .focused($focused)
             .padding(.horizontal, 15).frame(height: 46)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.sheet))
+            .lvPlate(pal, radius: 12)
             .shotNode("mb.search")
             .padding(.top, 14)
     }
