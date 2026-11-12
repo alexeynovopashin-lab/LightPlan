@@ -141,7 +141,7 @@ struct BlockSheet: View {
                         Icon(k.iconName, size: 22, line: 1.5)
                         Text(t.t("blkKind." + k.rawValue)).font(.system(size: 10)).tracking(0.2).lineLimit(1)
                     }
-                    .foregroundStyle(on ? pal.brass : pal.ink5)
+                    .foregroundStyle(on ? pal.brassInk : pal.ink5)
                     .padding(.top, 11).padding(.bottom, 9).padding(.horizontal, 2)
                     .background(on ? pal.pressWarm : .clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .contentShape(Rectangle())

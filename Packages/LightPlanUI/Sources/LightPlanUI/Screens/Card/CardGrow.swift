@@ -14,7 +14,7 @@ struct CardGrow: View {
         if MeetGrow.canGrow(s) {
             Button { app.growMeet(s.id) } label: {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(app.lexicon.t("card.growT")).font(webFont(16, 600)).foregroundStyle(pal.brass)
+                    Text(app.lexicon.t("card.growT")).font(webFont(16, 600)).foregroundStyle(pal.brassInk)
                     Text(app.lexicon.t(s.kind == .meet ? "card.growS" : "card.growSEv")).font(webFont(12)).foregroundStyle(pal.ink4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -30,7 +30,7 @@ struct CardGrow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 15).padding(.vertical, 12)
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet3))
-                .lvPlate(pal, radius: 14, glass: true)
+                .plateStyle(pal, radius: 14, glass: true)
                 .padding(.top, 12)
                 .shotNode("card.grown", text: line)
         }

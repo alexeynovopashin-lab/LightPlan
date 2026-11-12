@@ -128,7 +128,7 @@ struct ClientCardScreen: View {
                             .font(.system(size: 14)).foregroundStyle(pal.ink3).lineSpacing(3)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Button { askingMerge = tw } label: {
-                            Text(t.t("clc.mergeOk")).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.brass)
+                            Text(t.t("clc.mergeOk")).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.brassInk)
                                 .padding(.horizontal, 12).frame(height: 34)
                                 .background(pal.pressBrass, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         }
@@ -186,7 +186,7 @@ struct ClientCardScreen: View {
             writeTo(c)
             if ClientBook.canAddPerson(c) {
                 Button { app.addClientPerson(id) } label: {
-                    Text(t.t("clc.addPerson")).font(.system(size: 15)).foregroundStyle(pal.brass)
+                    Text(t.t("clc.addPerson")).font(.system(size: 15)).foregroundStyle(pal.brassInk)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).frame(height: 44)
                         .background(pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .contentShape(Rectangle())
@@ -238,7 +238,7 @@ struct ClientCardScreen: View {
         return Button { dateAsk = .birthday(i) } label: {
             FormSubRow(node: "clc.bday.\(i)", label: t.t("clc.bday"), sub: age) {
                 Text(b.map { dayText(year: $0.year, month: $0.month, day: $0.day) } ?? t.t("clc.dateAdd"))
-                    .font(.system(size: 16)).foregroundStyle(b == nil ? pal.brass : pal.ink3)
+                    .font(.system(size: 16)).foregroundStyle(b == nil ? pal.brassInk : pal.ink3)
                     .shotNode("clc.bdayValue.\(i)", text: p.birthday ?? "")
             }
         }
@@ -259,7 +259,7 @@ struct ClientCardScreen: View {
                         FormSubRow(node: "clc.anniv", label: t.t("clc.anniv"),
                                    sub: app.clientAnniversaryFromWedding(c) ? t.t("clc.annivWedding") : nil) {
                             Text(a.map { dayText(year: $0.year, month: $0.month, day: $0.day) } ?? t.t("clc.dateAdd"))
-                                .font(.system(size: 16)).foregroundStyle(a == nil ? pal.brass : pal.ink3)
+                                .font(.system(size: 16)).foregroundStyle(a == nil ? pal.brassInk : pal.ink3)
                                 .shotNode("clc.annivValue", text: a?.snapshotString ?? "")
                         }
                     }
@@ -274,7 +274,7 @@ struct ClientCardScreen: View {
                 #endif
             } label: {
                 Text(t.t(denied ? "clc.greetDenied" : ask ? "clc.greetAsk" : "clc.greetNote")).font(.system(size: 13))
-                    .foregroundStyle(denied || ask ? pal.brass : pal.ink4).lineSpacing(4).multilineTextAlignment(.leading)
+                    .foregroundStyle(denied || ask ? pal.brassInk : pal.ink4).lineSpacing(4).multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 4).padding(.top, 8)
             }
@@ -386,7 +386,7 @@ struct ClientCardScreen: View {
             Menu {
                 ForEach(left, id: \.self) { k in Button(k.title) { app.addClientMessenger(id, at: i, k) } }
             } label: {
-                Text(t.t("clc.addMessenger")).font(.system(size: 15)).foregroundStyle(pal.brass)
+                Text(t.t("clc.addMessenger")).font(.system(size: 15)).foregroundStyle(pal.brassInk)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).frame(height: 44)
                     .contentShape(Rectangle())
             }
@@ -400,7 +400,7 @@ struct ClientCardScreen: View {
     @ViewBuilder private func pickRow(_ i: Int, _ pal: Palette) -> some View {
         #if os(iOS)
         Button { pickIndex = i; picking = true } label: {
-            Text(t.t("clk.pick")).font(.system(size: 15)).foregroundStyle(pal.brass)
+            Text(t.t("clk.pick")).font(.system(size: 15)).foregroundStyle(pal.brassInk)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).frame(height: 44)
                 .contentShape(Rectangle())
         }
@@ -435,7 +435,7 @@ struct ClientCardScreen: View {
                     LinkGlyph().stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round)).frame(width: 17, height: 17)
                     Text(t.t("clc.addLink")).font(.system(size: 15))
                 }
-                .foregroundStyle(pal.brass)
+                .foregroundStyle(pal.brassInk)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).frame(height: 44)
                 .background(pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .contentShape(Rectangle())
@@ -460,7 +460,7 @@ struct ClientCardScreen: View {
                 Button { if let u = d.url.flatMap(URL.init(string:)) { openURL(u) } } label: {
                     HStack(spacing: 11) {
                         Text(DocLabel.host(d.url ?? "", linkWord: t.t("ref.link"))).font(webFont(11)).tracking(0.2)
-                            .foregroundStyle(pal.brass).lineLimit(1).frame(minWidth: 56, alignment: .leading)
+                            .foregroundStyle(pal.brassInk).lineLimit(1).frame(minWidth: 56, alignment: .leading)
                         Text(DocLabel.sub(d, anyWord: t.t("doc.any"))).font(webFont(14)).foregroundStyle(pal.ink).lineLimit(1)
                         Spacer(minLength: 0)
                     }

@@ -1,0 +1,81 @@
+import SwiftUI
+
+/// Глубина светлой темы (28к.3, вариант «Б», Алексей 12.11): белая плашка лежит на сером фоне с мягкой тенью под собой и
+/// светлым кантом по краю, выбранное выпуклое, под плашками «Съёмок» и карточки — стекло. Принцип «Светлая тема — не
+/// инверсия»: блик белый, тень тёмная в обеих темах. **В тёмной теме все приёмы ничего не добавляют** (пиксели прежние):
+/// там плашку отделяет тон, как и раньше.
+///
+/// Числа живут здесь, а не в экранах: экран зовёт `.plateStyle(pal, radius:)` / `.raisedStyle(pal, radius:)`.
+public enum PlateTokens {
+    /// Чернила тени и чёрных элементов («+ Съёмка», выбранный день).
+    public static let shadowInk = Color.black
+    public static let blackFill = Color(hex: 0x141416)
+
+    /// Светлый кант плашки: белый, 1,5 pt (тот же у подложки месяца вместо тёмного волоска).
+    public static let rimColor = Color.white.opacity(0.95)
+    public static let rimWidth: CGFloat = 1.5
+
+    /// Мягкая тень плашки: широкая 0,10 / радиус 16 / вниз 8 и контактная 0,05 / 1 / 1.
+    public static let plate = Shadow(opacity: 0.10, radius: 16, y: 8, contactOpacity: 0.05)
+    /// Тень выбранного и поднятого (сегмент, день, «Запланировать съёмку»): короче и плотнее.
+    public static let raised = Shadow(opacity: 0.16, radius: 5, y: 2, contactOpacity: 0.10)
+
+    /// Белая вуаль плашек «Съёмок» и карточки: под ней стекло `.glassEffect(.regular)`.
+    public static let glassVeil = 0.72
+
+    public struct Shadow: Sendable, Equatable {
+        public let opacity: Double
+        public let radius: CGFloat
+        public let y: CGFloat
+        /// Контактная тень: радиус 1, вниз 1.
+        public let contactOpacity: Double
+    }
+}
+
+public extension View {
+    /// Плашка светлой темы: тень снаружи контура (внутри плашка не темнеет), светлый кант, при `glass` — системное стекло
+    /// под полупрозрачной заливкой. В тёмной теме — сам экран без изменений.
+    @ViewBuilder
+    func plateStyle(_ pal: Palette, radius: CGFloat, glass: Bool = false) -> some View {
+        if pal.dark { self } else { modifier(PlateModifier(radius: radius, glass: glass, token: PlateTokens.plate, rim: true)) }
+    }
+
+    /// Выбранное и поднятое в светлой теме: короткая тень под белым (выпуклое). В тёмной теме и при `on == false` — ничего.
+    @ViewBuilder
+    func raisedStyle(_ pal: Palette, radius: CGFloat, on: Bool = true) -> some View {
+        if on, !pal.dark { modifier(PlateModifier(radius: radius, glass: false, token: PlateTokens.raised, rim: false)) } else { self }
+    }
+}
+
+/// Тень только снаружи контура (как у подложки месяца): полупрозрачная заливка над ней не темнеет.
+private struct PlateModifier: ViewModifier {
+    let radius: CGFloat
+    let glass: Bool
+    let token: PlateTokens.Shadow
+    let rim: Bool
+
+    func body(content: Content) -> some View {
+        let r = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        content
+            .background {
+                if glass { Color.clear.glassEffect(.regular, in: r) }
+            }
+            .overlay {
+                if rim { r.strokeBorder(PlateTokens.rimColor, lineWidth: PlateTokens.rimWidth).allowsHitTesting(false) }
+            }
+            .background {
+                ZStack {
+                    r.fill(PlateTokens.shadowInk).shadow(color: PlateTokens.shadowInk.opacity(token.opacity), radius: token.radius, y: token.y)
+                    r.fill(PlateTokens.shadowInk).shadow(color: PlateTokens.shadowInk.opacity(token.contactOpacity), radius: 1, y: 1)
+                }
+                .mask {
+                    ZStack {
+                        Rectangle().padding(-60)
+                        r.blendMode(.destinationOut)
+                    }
+                    .compositingGroup()
+                }
+                .allowsHitTesting(false)
+            }
+    }
+}

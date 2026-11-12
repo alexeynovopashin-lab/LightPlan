@@ -69,7 +69,7 @@ struct MbBinSheet: View {
             }
             Spacer(minLength: 8)
             Button { app.mbBinRestore([e.id], into: b.id) } label: {
-                Text(t.t("mb.binBack")).font(webFont(14, 600)).foregroundStyle(pal.brass)
+                Text(t.t("mb.binBack")).font(webFont(14, 600)).foregroundStyle(pal.brassInk)
                     .padding(.horizontal, 12).frame(minHeight: 36).contentShape(Rectangle())
             }
             .buttonStyle(.plain).shotNode("mbs.bin.back.\(e.id)", text: e.id)

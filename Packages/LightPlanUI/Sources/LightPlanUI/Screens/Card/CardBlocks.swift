@@ -80,7 +80,7 @@ private struct PaneShell<Content: View>: View {
             .padding(.horizontal, 14).padding(.vertical, 13)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .lvPlate(pal, radius: 16, glass: true)
+            .plateStyle(pal, radius: 16, glass: true)
             .shotNode(node)
             .padding(.top, top)
     }
@@ -124,7 +124,7 @@ struct CardDealBlock: View {
             }
             .padding(EdgeInsets(top: 14, leading: 12, bottom: 12, trailing: 12))
             .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .lvPlate(pal, radius: 18, glass: true)
+            .plateStyle(pal, radius: 18, glass: true)
             .shotNode("card.block.deal")
             .padding(.top, 14)
         }
@@ -139,7 +139,7 @@ struct CardDealBlock: View {
                 if l.done { CheckMark().stroke(pal.sheet3, style: StrokeStyle(lineWidth: 2.4 * 13 / 24, lineCap: .round, lineJoin: .round)).frame(width: 13, height: 13) }
             }
             .frame(width: 26, height: 26)
-            Text(l.name).font(webFont(11)).foregroundStyle(l.isNext ? pal.brass : l.done ? pal.ink3 : pal.ink6)
+            Text(l.name).font(webFont(11)).foregroundStyle(l.isNext ? pal.brassInk : l.done ? pal.ink3 : pal.ink6)
                 .lineLimit(1).minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity)
@@ -238,7 +238,7 @@ struct CardPanesBlock: View {
         .padding(.horizontal, 14).padding(.vertical, 13)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .lvPlate(pal, radius: 16, glass: true)
+        .plateStyle(pal, radius: 16, glass: true)
         .shotNode("card.pane.\(String(describing: p.kind))")
     }
 
@@ -248,7 +248,7 @@ struct CardPanesBlock: View {
             return base.font(webFont(12)).lineLimit(1)
         }
         return (Text(String(sub[..<r.lowerBound])).foregroundStyle(pal.ink6)
-            + Text(at).foregroundStyle(pal.brass)
+            + Text(at).foregroundStyle(pal.brassInk)
             + Text(String(sub[r.upperBound...])).foregroundStyle(pal.ink6))
             .font(webFont(12)).lineLimit(1)
     }
@@ -334,7 +334,7 @@ struct CardMoneyBlock: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(m.net).font(webFont(17)).monospacedDigit().foregroundStyle(pal.brass)
+                    Text(m.net).font(webFont(17)).monospacedDigit().foregroundStyle(pal.brassInk)
                 }
             }
         }
@@ -424,7 +424,7 @@ struct CardRouteLineView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if let w = line.word {
-                Text(w).font(webFont(11.5)).foregroundStyle(line.blue ? pal.blue : pal.brass)
+                Text(w).font(webFont(11.5)).foregroundStyle(line.blue ? pal.blue : pal.brassInk)
             }
         }
         .padding(.vertical, 9)
@@ -468,7 +468,7 @@ struct CardFold<Content: View>: View {
             if open { VStack(spacing: 0) { content() }.padding(.horizontal, 14).padding(.bottom, 13) }
         }
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .lvPlate(pal, radius: 16, glass: true)
+        .plateStyle(pal, radius: 16, glass: true)
         .shotNode("card.block.\(block.rawValue)", text: open ? "open" : "shut")
         .padding(.top, 9)
     }

@@ -193,7 +193,7 @@ struct FormScreen: View {
             Text(app.form.map { app.draftStripText($0) } ?? t.t("form.draftRestored")).font(.system(size: 13)).foregroundStyle(pal.ink3)
             Spacer()
             Button(t.t("form.draftReset")) { app.resetDraft() }
-                .font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brass)
+                .font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brassInk)
         }
         .padding(.vertical, 10).padding(.horizontal, 14)
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -322,7 +322,7 @@ struct FormScreen: View {
                 if p.way != .phone {
                     HStack(spacing: 8) {
                         if p.way == .name {
-                            plateButton(t.t("clf.yes"), ink: pal.brass, back: pal.pressBrass, node: "form.clientYes") {
+                            plateButton(t.t("clf.yes"), ink: pal.brassInk, back: pal.pressBrass, node: "form.clientYes") {
                                 app.answerFormClient(.pick(p.clientId))
                             }
                         }
@@ -363,7 +363,7 @@ struct FormScreen: View {
             FormTextField(placeholder: placeholder, text: text, kind: .phone)
             #if os(iOS)
             Button { pickSlot = slot; picking = true } label: {
-                Text(t.t("clk.pick")).font(.system(size: 13, weight: .medium)).foregroundStyle(pal.brass)
+                Text(t.t("clk.pick")).font(.system(size: 13, weight: .medium)).foregroundStyle(pal.brassInk)
                     .lineLimit(1).fixedSize()
                     .padding(.horizontal, 14).frame(height: 44).contentShape(Rectangle())
             }
@@ -768,7 +768,7 @@ struct OrgPickSheet: View {
                 }
                 if app.form?.orgId != nil {
                     Button { app.org.docKind = nil; cardOpen = true } label: {
-                        Text(t.t("org.openCard")).font(.system(size: 15, weight: .medium)).foregroundStyle(pal.brass)
+                        Text(t.t("org.openCard")).font(.system(size: 15, weight: .medium)).foregroundStyle(pal.brassInk)
                             .frame(maxWidth: .infinity).frame(height: 48)
                             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.sheet))
                             .contentShape(Rectangle())

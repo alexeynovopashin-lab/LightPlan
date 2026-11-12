@@ -93,7 +93,7 @@ struct FormCapsule: View {
                 .font(.system(size: 16).monospacedDigit())
                 .lineLimit(1).truncationMode(.tail)
                 .frame(maxWidth: maxWidth)
-                .foregroundStyle(open || lit ? pal.brass : pal.ink)
+                .foregroundStyle(open || lit ? pal.brassInk : pal.ink)
                 .padding(.horizontal, 12)
                 .frame(minWidth: 72, minHeight: 28)
                 .background(open || lit ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Capsule())
@@ -181,7 +181,7 @@ struct GenreTile: View {
             if let sub { Icon(sub.iconName, size: 22, line: 1.5) } else { Icon(genre: genre.rawValue, size: 22, line: 1.5) }
             Text(name).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .foregroundStyle(on ? pal.brass : pal.ink5)
+        .foregroundStyle(on ? pal.brassInk : pal.ink5)
         .frame(maxWidth: .infinity)
         .padding(.top, 11).padding(.horizontal, 2).padding(.bottom, 9)
         .overlay(alignment: .bottom) {

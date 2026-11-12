@@ -49,7 +49,7 @@ struct CardClash: View {
             }
             .padding(.vertical, 11).padding(.horizontal, 14)
             .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .lvPlate(pal, radius: 14, glass: true)
+            .plateStyle(pal, radius: 14, glass: true)
             .modifier(WarnGlow(rgb: (226, 164, 76), alpha: pal.dark ? 0.32 : 0.55))
             .shotNode("card.clash")
             .padding(.top, 9)

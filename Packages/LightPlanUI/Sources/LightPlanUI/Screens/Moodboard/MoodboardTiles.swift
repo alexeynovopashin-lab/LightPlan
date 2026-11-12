@@ -42,7 +42,7 @@ struct MbCover: View {
                     }
                 }
                 .overlay { shape.strokeBorder(pal.hairline, lineWidth: 1) }
-                .lvPlate(pal, radius: radius)
+                .plateStyle(pal, radius: radius)
         }
     }
 }

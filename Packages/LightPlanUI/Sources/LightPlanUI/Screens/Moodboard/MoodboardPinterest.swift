@@ -154,7 +154,7 @@ struct MbPinStrip: View {
 
     private func action(_ title: String, _ pal: Palette, node: String, _ go: @escaping () -> Void) -> some View {
         Button(action: go) {
-            Text(title).font(webFont(13, 600)).foregroundStyle(pal.brass)
+            Text(title).font(webFont(13, 600)).foregroundStyle(pal.brassInk)
                 .padding(.horizontal, 6).frame(minHeight: 32).contentShape(Rectangle())
         }
         .buttonStyle(.plain).shotNode(node, text: title)

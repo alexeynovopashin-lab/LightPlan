@@ -72,7 +72,7 @@ struct CardQuestRow: View {
             HStack(spacing: 4) {
                 Button { app.openQuest(for: s) } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(words.title).font(webFont(15, sent ? 500 : 600)).foregroundStyle(sent ? pal.ink3 : pal.brass)
+                        Text(words.title).font(webFont(15, sent ? 500 : 600)).foregroundStyle(sent ? pal.ink3 : pal.brassInk)
                         Text(words.sub).font(webFont(12)).foregroundStyle(pal.ink4)
                     }
                     .padding(.horizontal, 15).padding(.vertical, 13)
@@ -105,7 +105,7 @@ struct CardQuestRow: View {
             }
             .padding(.trailing, 12)
             .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .lvPlate(pal, radius: 14, glass: true)
+            .plateStyle(pal, radius: 14, glass: true)
             .padding(.top, 12)
             .shotNode("card.quest")
         }

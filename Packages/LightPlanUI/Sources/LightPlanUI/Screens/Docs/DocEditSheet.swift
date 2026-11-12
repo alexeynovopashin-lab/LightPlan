@@ -123,7 +123,7 @@ struct DocEditSheet: View {
             Button {
                 if let s = UIPasteboard.general.string { draft.setURL(s.trimmingCharacters(in: .whitespacesAndNewlines)) }
             } label: {
-                Text(t.t("doc.paste")).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.brass)
+                Text(t.t("doc.paste")).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.brassInk)
                     .padding(.horizontal, 8).frame(minHeight: 36).contentShape(Rectangle())
             }
             .buttonStyle(.plain).shotNode("doc.sheet.paste")
@@ -205,7 +205,7 @@ struct DocEditSheet: View {
     private func option(_ title: String, on: Bool, id: String, _ pal: Palette, accent: Bool = false, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
             HStack(spacing: 8) {
-                Text(title).font(.system(size: 14.5)).foregroundStyle(accent ? pal.brass : pal.ink)
+                Text(title).font(.system(size: 14.5)).foregroundStyle(accent ? pal.brassInk : pal.ink)
                     .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
                 if on { Icon("check", size: 15, line: 2).foregroundStyle(pal.brass) }
             }

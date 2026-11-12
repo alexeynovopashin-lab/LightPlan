@@ -56,7 +56,7 @@ struct OrgListScreen: View {
             }
             .padding(14).frame(height: 64)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
-            .lvPlate(pal, radius: 16)
+            .plateStyle(pal, radius: 16)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

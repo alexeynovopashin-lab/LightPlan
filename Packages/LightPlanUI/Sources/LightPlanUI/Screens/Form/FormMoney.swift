@@ -44,7 +44,7 @@ struct FormPayBlock: View {
         Button { withAnimation(.easeOut(duration: 0.3)) { app.toggleFormPay() } } label: {
             HStack(spacing: 12) {
                 (Text(t.t("pay." + form.pay.rawValue) + " · ").foregroundStyle(pal.ink)
-                 + Text(money(form.summaryAmount(ctx))).fontWeight(.semibold).foregroundStyle(pal.brass))
+                 + Text(money(form.summaryAmount(ctx))).fontWeight(.semibold).foregroundStyle(pal.brassInk))
                     .font(.system(size: 15).monospacedDigit())
                 Spacer(minLength: 0)
                 Icon("chevron", size: 16, line: 2.4).foregroundStyle(pal.ink4)
@@ -155,7 +155,7 @@ struct FormPayBlock: View {
             Text(lbl).font(.system(size: 13).monospacedDigit()).foregroundStyle(pal.ink4)
             Spacer(minLength: 0)
             Text(money(net)).font(.system(size: 18, weight: .semibold).monospacedDigit())
-                .foregroundStyle(net < 0 ? pal.terra : pal.brass)
+                .foregroundStyle(net < 0 ? pal.terra : pal.brassInk)
         }
         .padding(.vertical, 14).padding(.horizontal, 15)
         .shotNode("form.payTotal")
@@ -203,7 +203,7 @@ struct FormChips: View {
                 Button { pick(options[i].1) } label: {
                     Text(options[i].0)
                         .font(.system(size: 13, weight: on ? .semibold : .regular))
-                        .foregroundStyle(on ? pal.brass : pal.ink3)
+                        .foregroundStyle(on ? pal.brassInk : pal.ink3)
                         .padding(.vertical, 10).padding(.horizontal, hPad)
                         .background(on ? pal.pressBrass : pal.press, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
@@ -229,7 +229,7 @@ struct FormMoneyField: View {
         field(pal)
             .font(.system(size: 16).monospacedDigit())
             .multilineTextAlignment(.trailing)
-            .foregroundStyle(focused ? pal.brass : pal.ink)
+            .foregroundStyle(focused ? pal.brassInk : pal.ink)
             .focused($focused)
             .fixedSize()
             // Высота поля веба — 30 (строка 18 и поля по 6), строка оплаты — 56 (пары 24 шаг 3).
@@ -289,7 +289,7 @@ struct FormUnitsStepper: View {
                 #endif
                 .focused($focused)
                 .multilineTextAlignment(.center)
-                .font(.system(size: 16).monospacedDigit()).foregroundStyle(focused ? pal.brass : pal.ink)
+                .font(.system(size: 16).monospacedDigit()).foregroundStyle(focused ? pal.brassInk : pal.ink)
                 .frame(width: 54, height: 22).padding(.vertical, 6).padding(.horizontal, 2)
                 .background(focused ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field,
                             in: RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -387,7 +387,7 @@ struct DeadlineDial: View {
                     Rectangle().fill(pal.rail5).frame(width: 1, height: 6).offset(x: x(i) - 0.5, y: 24)
                     Text(labels[i])
                         .font(.system(size: 9.5, weight: i == stop ? .semibold : .regular).monospacedDigit())
-                        .tracking(0.3).foregroundStyle(i == stop ? pal.brass : pal.ink7)
+                        .tracking(0.3).foregroundStyle(i == stop ? pal.brassInk : pal.ink7)
                         .fixedSize()
                         .frame(width: 60).offset(x: x(i) - 30, y: 33)
                 }
@@ -476,7 +476,7 @@ struct PaySheet: View {
                                 .font(.system(size: 15)).foregroundStyle(pal.ink)
                             Spacer()
                             Button { addPack(g) } label: {
-                                Text(t.t("gen.packAdd")).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brass)
+                                Text(t.t("gen.packAdd")).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brassInk)
                                     .padding(.vertical, 4)
                             }
                             .buttonStyle(.plain)

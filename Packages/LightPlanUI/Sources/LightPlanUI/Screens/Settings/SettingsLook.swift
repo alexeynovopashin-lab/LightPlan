@@ -230,7 +230,7 @@ struct Chips<V: Hashable>: View {
                 Button { selection = options[i].value } label: {
                     Text(options[i].label)
                         .font(.system(size: 13, weight: on ? .semibold : .regular))
-                        .foregroundStyle(on ? pal.brass : pal.ink3)
+                        .foregroundStyle(on ? pal.brassInk : pal.ink3)
                         .padding(.vertical, 10).padding(.horizontal, 15)
                         .background(on ? pal.pressBrass : pal.press, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
@@ -332,7 +332,7 @@ struct DataButtonStyle: ButtonStyle {
         let pal = Palette(colorScheme)
         configuration.label
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(pal.brass)
+            .foregroundStyle(pal.brassInk)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 13).padding(.horizontal, 15)
             .background(pal.pressWarm, in: RoundedRectangle(cornerRadius: 12, style: .continuous))

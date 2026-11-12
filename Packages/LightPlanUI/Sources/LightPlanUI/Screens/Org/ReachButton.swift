@@ -55,7 +55,7 @@ struct ReachButton: View {
                 glyph(15)
                 Text(plan.primary.title).font(webFont(15)).lineLimit(1)
             }
-            .foregroundStyle(pal.brass)
+            .foregroundStyle(pal.brassInk)
             .padding(.horizontal, 10).padding(.vertical, 9)
             .contentShape(Rectangle())
         } else {

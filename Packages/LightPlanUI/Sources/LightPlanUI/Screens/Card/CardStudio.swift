@@ -185,7 +185,7 @@ struct CardStudio: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 13)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(pal.sheet3))
-        .lvPlate(pal, radius: 18, glass: true)
+        .plateStyle(pal, radius: 18, glass: true)
         .shotNode("card.studio")
         .padding(.top, 9)
     }
@@ -200,7 +200,7 @@ struct CardStudio: View {
                 Text(app.lexicon.t("studio.callAdmin")).font(webFont(inside ? 15 : 17, 600)).lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .foregroundStyle(pal.brass)
+            .foregroundStyle(pal.brassInk)
             .padding(.horizontal, 12).padding(.vertical, inside ? 8 : 10)
             .background(pal.pressBrass, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

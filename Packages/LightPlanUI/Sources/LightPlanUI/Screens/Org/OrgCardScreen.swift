@@ -86,7 +86,7 @@ struct OrgCardScreen: View {
                 ForEach(Array(o.staff.indices), id: \.self) { i in staffPerson(i, pal) }
             }
             Button { app.addOrgPerson(id) } label: {
-                Text(t.t("org.addPerson")).font(.system(size: 15)).foregroundStyle(pal.brass)
+                Text(t.t("org.addPerson")).font(.system(size: 15)).foregroundStyle(pal.brassInk)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 15).frame(height: 44)
                     .background(pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .contentShape(Rectangle())
@@ -224,7 +224,7 @@ struct OrgCardScreen: View {
         return Button { app.org.docKind = on ? nil : k } label: {
             HStack(spacing: 5) {
                 Text(app.docKindName(k)).font(webFont(13)).foregroundStyle(on ? pal.onBrass : pal.ink3)
-                if n > 0 { Text("\(n)").font(webFont(13)).foregroundStyle(on ? pal.onBrass.opacity(0.6) : pal.ink6) }
+                if n > 0 { Text("\(n)").font(webFont(13)).foregroundStyle(on ? pal.onBrassDim : pal.ink6) }
             }
             .padding(.horizontal, 13).frame(height: 34)
             .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(on ? pal.brass : Color.clear))
@@ -243,7 +243,7 @@ struct OrgCardScreen: View {
             Button { open(d.doc) } label: {
                 HStack(spacing: 11) {
                     Text(top).font(webFont(11)).tracking(0.2)
-                        .foregroundStyle(pal.brass).lineLimit(1).frame(minWidth: 56, alignment: .leading)
+                        .foregroundStyle(pal.brassInk).lineLimit(1).frame(minWidth: 56, alignment: .leading)
                     Text(DocLabel.sub(d.doc, anyWord: t.t("doc.any"))).font(webFont(14)).foregroundStyle(pal.ink).lineLimit(1)
                     Spacer(minLength: 0)
                     Text(app.docTrailing(d.doc))

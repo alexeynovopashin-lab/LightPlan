@@ -330,7 +330,7 @@ struct YearLentaView: View {
                 } label: {
                     Text(f.dates.monthTitleN(m.month - 1))
                         .font(webFont(30, 650)).tracking(-0.5)
-                        .foregroundStyle(now ? pal.brass : pal.ink)
+                        .foregroundStyle(now ? pal.brassInk : pal.ink)
                         .lineLimit(1).minimumScaleFactor(0.6)
                         .shotNode("year.month", text: f.dates.monthTitleN(m.month - 1))
                 }
@@ -392,7 +392,7 @@ struct YearLentaView: View {
             } label: {
                 Text(f.dates.monthTitleN(first.month - 1))
                     .font(webFont(15, 600)).tracking(-0.1)
-                    .foregroundStyle(now ? pal.brass : pal.ink)
+                    .foregroundStyle(now ? pal.brassInk : pal.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, 8)
                     .contentShape(Rectangle())
@@ -515,7 +515,7 @@ struct Year12View: View {
                         Spacer()
                         Text(String(nav.year))
                             .font(webFont(30, 650)).tracking(-0.5).monospacedDigit()
-                            .foregroundStyle(nav.year == today.year ? pal.brass : pal.ink)
+                            .foregroundStyle(nav.year == today.year ? pal.brassInk : pal.ink)
                             .shotNode("y12.title", text: String(nav.year))
                         Spacer()
                         arrow(1, pal)
@@ -584,7 +584,7 @@ struct Year12View: View {
         return VStack(spacing: 0) {
             Text(f.dates.monthTitleN(i))
                 .font(webFont(12.5, 650)).tracking(0.1)
-                .foregroundStyle(now ? pal.brass : pal.ink)
+                .foregroundStyle(now ? pal.brassInk : pal.ink)
                 .shotNode("y12.name.\(i)")
                 .padding(.bottom, 7)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {

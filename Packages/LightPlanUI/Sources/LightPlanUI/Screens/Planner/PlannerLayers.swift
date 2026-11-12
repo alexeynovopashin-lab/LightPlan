@@ -175,7 +175,7 @@ struct UndoBar: View {
                         PlanMotion.takeUndo(app)
                     } label: {
                         Text(app.lexicon.t(u.actionKey)).font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(pal.brass).padding(.vertical, 2)
+                            .foregroundStyle(pal.brassInk).padding(.vertical, 2)
                     }
                     .buttonStyle(.plain)
                     .shotNode("undo.btn") }

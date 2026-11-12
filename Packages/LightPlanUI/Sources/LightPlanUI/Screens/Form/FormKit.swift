@@ -94,7 +94,7 @@ struct KitSheet: View {
                             .padding(10)
                             .background(pal.field, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         Button(action: add) {
-                            Text(t.t("kit.add")).font(.system(size: 15, weight: .semibold)).foregroundStyle(pal.brass)
+                            Text(t.t("kit.add")).font(.system(size: 15, weight: .semibold)).foregroundStyle(pal.brassInk)
                                 .frame(width: 38, height: 38).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -210,7 +210,7 @@ struct FormDocs: View {
         return Button { open(d, t) } label: {
             VStack(alignment: .leading, spacing: 5) {
                 Text(top).font(.system(size: 9.5, weight: .bold)).tracking(0.4).textCase(.uppercase)
-                    .foregroundStyle(pal.brass).lineLimit(1).padding(.trailing, 22)
+                    .foregroundStyle(pal.brassInk).lineLimit(1).padding(.trailing, 22)
                 Text(sub).font(.system(size: 11)).foregroundStyle(pal.ink4).lineSpacing(3).lineLimit(4)
                 Spacer(minLength: 0)
             }

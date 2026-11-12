@@ -87,7 +87,7 @@ struct PlannerSearchView: View {
             PlanMotion.openCard(app, id: s.id)
         } label: {
             HStack(spacing: 10) {
-                Text(f.dates.dMonShort(f.date(s.day))).font(webFont(16).monospacedDigit()).foregroundStyle(pal.brass)
+                Text(f.dates.dMonShort(f.date(s.day))).font(webFont(16).monospacedDigit()).foregroundStyle(pal.brassInk)
                     .lineLimit(1)
                 Text(name + " · " + f.fmt(Double(s.start)) + "–" + f.fmt(Double(s.endMinute)))
                     .font(webFont(16)).foregroundStyle(pal.ink).lineLimit(1).truncationMode(.tail)

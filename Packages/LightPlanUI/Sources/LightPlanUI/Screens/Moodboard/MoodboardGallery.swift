@@ -58,7 +58,7 @@ struct MoodboardGallery: View {
             .focused($focused)
             .padding(.horizontal, 15).frame(height: 46)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(pal.sheet))
-            .lvPlate(pal, radius: 12)
+            .plateStyle(pal, radius: 12)
             .shotNode("mb.search")
             .padding(.top, 14)
     }
@@ -73,7 +73,7 @@ struct MoodboardGallery: View {
                 } label: {
                     HStack(spacing: 5) {
                         Text(app.mbTagName(c.tag)).font(webFont(13)).foregroundStyle(on ? pal.onBrass : pal.ink3)
-                        Text("\(c.n)").font(webFont(13)).foregroundStyle(on ? pal.onBrass.opacity(0.6) : pal.ink6)
+                        Text("\(c.n)").font(webFont(13)).foregroundStyle(on ? pal.onBrassDim : pal.ink6)
                     }
                     .padding(.horizontal, 13).frame(height: 34)
                     .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(on ? pal.brass : Color.clear))

@@ -460,7 +460,7 @@ struct RouteBar: View {
                     Icon("bookmark", size: 16, line: 1.6)
                     Text(lexicon.t("map.routeSaveHere")).font(.system(size: 14, weight: .semibold))
                 }
-                .foregroundStyle(pal.brass)
+                .foregroundStyle(pal.brassInk)
                 .frame(maxWidth: .infinity).padding(.vertical, 10)
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(pal.brassDark, lineWidth: 1))
                 .contentShape(Rectangle())
@@ -490,7 +490,7 @@ struct RouteBar: View {
             Spacer(minLength: 0)
             Button(action: onUndo) {
                 Text(lexicon.t("plan.undo")).font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(pal.brass).padding(.vertical, 2)
+                    .foregroundStyle(pal.brassInk).padding(.vertical, 2)
             }
             .buttonStyle(.plain)
             .shotNode("undo.btn")

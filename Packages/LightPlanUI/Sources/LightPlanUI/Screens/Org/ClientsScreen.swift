@@ -114,7 +114,7 @@ struct ClientsScreen: View {
                     .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
                     contactsNote(contactsNoteText, pal, node: "clk.note")
                     if app.contactsOn, app.contactsPastAnswer == false, app.contactsPastWaiting > 0, app.contactsPastAsk == nil {
-                        contactsLine(t.t("clk.pastAgain", ["n": "\(app.contactsPastWaiting)"]), ink: pal.brass, pal, node: "clk.pastAgain") {
+                        contactsLine(t.t("clk.pastAgain", ["n": "\(app.contactsPastWaiting)"]), ink: pal.brassInk, pal, node: "clk.pastAgain") {
                             app.askPastClientsAgain()
                         }
                     }
@@ -177,7 +177,7 @@ struct ClientsScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 8) {
-                pastButton(t.t("clf.yes"), ink: pal.brass, back: pal.pressBrass, node: "clk.pastYes") { app.answerPastClients(true) }
+                pastButton(t.t("clf.yes"), ink: pal.brassInk, back: pal.pressBrass, node: "clk.pastYes") { app.answerPastClients(true) }
                 pastButton(t.t("studio.askNo"), ink: pal.ink3, back: pal.press, node: "clk.pastNo") { app.answerPastClients(false) }
             }
             .padding(.leading, 29)
@@ -277,7 +277,7 @@ struct ClientsSeg<V: Hashable>: View {
                         .padding(.vertical, 7).padding(.horizontal, 12)
                         .frame(maxWidth: stretch ? .infinity : nil)
                         .background(on ? pal.segOn : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                        .lvRaised(pal, radius: 9, on: on)
+                        .raisedStyle(pal, radius: 9, on: on)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -286,8 +286,8 @@ struct ClientsSeg<V: Hashable>: View {
         }
         .padding(3)
         .frame(maxWidth: stretch ? .infinity : nil)
-        // 28к.2: в варианте светлой темы жёлоб сегмента — фон страницы, выбранное — белое с тенью (выпуклое).
-        .background(LightVariant.lit(pal) != nil ? pal.bg : pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        // 28к.3: в светлой жёлоб сегмента — фон `bg`, выбранное — белое с тенью (выпуклое); в тёмной жёлоб — `sheet`.
+        .background(pal.dark ? pal.sheet : pal.bg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shotNode(node)
     }
 }
@@ -306,7 +306,7 @@ struct ClientFilterChips<V: Hashable>: View {
                 Button { selection = options[i].value } label: {
                     Text(options[i].label)
                         .font(.system(size: 13, weight: on ? .semibold : .regular))
-                        .foregroundStyle(on ? pal.brass : pal.ink3)
+                        .foregroundStyle(on ? pal.brassInk : pal.ink3)
                         .padding(.vertical, 9).padding(.horizontal, 14)
                         .background(on ? pal.pressBrass : pal.press, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }

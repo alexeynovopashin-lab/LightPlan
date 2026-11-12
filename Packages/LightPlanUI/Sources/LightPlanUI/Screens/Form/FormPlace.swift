@@ -118,7 +118,7 @@ struct FormPlaceBlock: View {
             // Узел на нити: номер в кружке, линия под ним тянется к следующему.
             VStack(spacing: 5) {
                 Text("\(i + 1)").font(.system(size: 12.5, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(lit ? pal.brass : pal.ink3)
+                    .foregroundStyle(lit ? pal.brassInk : pal.ink3)
                     .frame(width: 24, height: 24)
                     .background(lit ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Circle())
                     .overlay(Circle().strokeBorder(lit ? pal.pressBrass : pal.rail, lineWidth: 1))
@@ -172,7 +172,7 @@ struct FormPlaceBlock: View {
         Button(action: action) {
             Text(m.map { clock.fmt(Double($0)) } ?? "--:--")
                 .font(.system(size: 13).monospacedDigit())
-                .foregroundStyle(open ? pal.brass : (m == nil ? pal.ink8 : pal.ink))
+                .foregroundStyle(open ? pal.brassInk : (m == nil ? pal.ink8 : pal.ink))
         }
         .buttonStyle(.plain)
     }
@@ -230,9 +230,9 @@ struct FormPlaceBlock: View {
                 HStack(spacing: 6) {
                     Icon(Self.hallRowSign, size: 13, line: 1.5).foregroundStyle(open ? pal.brass : pal.ink5)
                     Text(r.placeText).font(.system(size: 13)).lineLimit(1).truncationMode(.tail)
-                        .foregroundStyle(open ? pal.brass : pal.ink4)
+                        .foregroundStyle(open ? pal.brassInk : pal.ink4)
                     if let ask {
-                        Text(ask).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brass)
+                        Text(ask).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brassInk)
                             .lineLimit(1).fixedSize()
                     }
                     Icon("chevron", size: 10, line: 2.4).foregroundStyle(open ? pal.brass : pal.ink6)
@@ -463,7 +463,7 @@ struct FormWishBlock: View {
                 Icon(wish: w.rawValue, size: 22, line: 1.5)
                 Text(name).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.8)
             }
-            .foregroundStyle(on ? pal.brass : pal.ink5)
+            .foregroundStyle(on ? pal.brassInk : pal.ink5)
             .frame(maxWidth: .infinity)
             .padding(.top, 11).padding(.horizontal, 2).padding(.bottom, 9)
             .background(on ? pal.pressWarm : .clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))

@@ -129,13 +129,13 @@ struct DocsSectionView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 10) {
                             Text(x.row.kindLabel).font(webFont(11)).tracking(0.2)
-                                .foregroundStyle(pal.brass).fixedSize(horizontal: false, vertical: true).frame(width: 72, alignment: .leading)
+                                .foregroundStyle(pal.brassInk).fixedSize(horizontal: false, vertical: true).frame(width: 72, alignment: .leading)
                             Text(x.row.title).font(webFont(14)).foregroundStyle(pal.ink).fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 0)
                             Text(app.docDeletedText(x.trashed)).font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
                         }
                         HStack(spacing: 18) {
-                            binAction(t.t("doc.binRestore"), "docs.binRestore.\(i)", pal.brass) { withAnimation(.easeOut(duration: 0.2)) { app.restoreDoc(x.trashed.doc.id) } }
+                            binAction(t.t("doc.binRestore"), "docs.binRestore.\(i)", pal.brassInk) { withAnimation(.easeOut(duration: 0.2)) { app.restoreDoc(x.trashed.doc.id) } }
                             binAction(t.t("doc.binForever"), "docs.binForever.\(i)", pal.badInk) { app.askPurgeDoc(x.trashed.doc.id) }
                             Spacer(minLength: 0)
                         }
@@ -253,7 +253,7 @@ struct DocsSectionView: View {
         return Button { app.org.shelfKind = on ? nil : k } label: {
             HStack(spacing: 5) {
                 Text(app.docKindName(k)).font(webFont(13)).foregroundStyle(on ? pal.onBrass : pal.ink3)
-                Text("\(n)").font(webFont(13)).foregroundStyle(on ? pal.onBrass.opacity(0.6) : pal.ink6)
+                Text("\(n)").font(webFont(13)).foregroundStyle(on ? pal.onBrassDim : pal.ink6)
             }
             .padding(.horizontal, 13).frame(height: 34)
             .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(on ? pal.brass : Color.clear))

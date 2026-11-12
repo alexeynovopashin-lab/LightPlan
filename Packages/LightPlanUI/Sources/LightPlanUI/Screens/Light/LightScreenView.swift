@@ -454,7 +454,7 @@ public struct LightScreenView: View {
                 Spacer(minLength: 0)
                 Text(time)
                     .font(.system(size: 14, weight: .medium).monospacedDigit())
-                    .foregroundStyle(pal.brass)
+                    .foregroundStyle(pal.brassInk)
                     .lineLimit(1)
                     .shotNode("action.sub", text: time)
             }
@@ -463,7 +463,7 @@ public struct LightScreenView: View {
             // Вуаль, а не заливка: светило под горизонтом идёт сквозь кнопку («светило не исчезает»).
             // Замер 04.11: сплошное поле глушило его в 5–6 раз.
             .background(Self.actionVeil(colorScheme), in: Capsule())
-            .lvRaised(Palette(colorScheme), radius: 20)
+            .raisedStyle(Palette(colorScheme), radius: 20)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -477,9 +477,8 @@ public struct LightScreenView: View {
     static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
     static let actionLift: CGFloat = -10
     static func actionVeil(_ scheme: ColorScheme) -> Color {
-        // 28к.2: в варианте светлой темы кнопка поднята — белая вуаль (светлее фона) и тень под ней.
-        if LightVariant.lit(Palette(scheme)) != nil { return Color.white.opacity(0.72) }
-        return scheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)
+        // 28к.3: в светлой кнопка поднята — белая вуаль (светлее фона) и тень под ней (`raisedStyle`); в тёмной — как была.
+        scheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(PlateTokens.glassVeil)
     }
 }
 

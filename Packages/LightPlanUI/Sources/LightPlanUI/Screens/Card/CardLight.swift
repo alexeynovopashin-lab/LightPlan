@@ -27,7 +27,7 @@ struct CardSayPlate: View {
         }
         .padding(.vertical, 11).padding(.horizontal, 14)
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .lvPlate(pal, radius: 14, glass: true)
+        .plateStyle(pal, radius: 14, glass: true)
         .modifier(OptionalGlow(rgb: glow, alpha: pal.dark ? 0.32 : 0.55))
         .shotNode(node)
     }
@@ -90,7 +90,7 @@ struct CardWeatherBlock: View {
         }
         .padding(.vertical, 12).padding(.horizontal, 14)
         .background(pal.sheet3, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .lvPlate(pal, radius: 16, glass: true)
+        .plateStyle(pal, radius: 16, glass: true)
         .shotNode("card.block.weather")
         .padding(.top, 9)
     }

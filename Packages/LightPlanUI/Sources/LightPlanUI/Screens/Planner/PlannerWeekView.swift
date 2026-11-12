@@ -59,10 +59,10 @@ private struct WeekRow: View {
             } label: {
                 VStack(spacing: 1) {
                     Text("\(day.day)").font(webFont(19, isToday ? 650 : 400)).monospacedDigit()
-                        .foregroundStyle(isToday ? pal.brass : weekend ? pal.weekend : pal.ink)
+                        .foregroundStyle(isToday ? pal.brassInk : weekend ? pal.weekend : pal.ink)
                         .frame(height: 22)
                     Text(f.dates.wdShort(f.date(day))).font(webFont(10)).tracking(0.6)
-                        .foregroundStyle(isToday ? pal.brass : weekend ? pal.weekend : pal.ink7)
+                        .foregroundStyle(isToday ? pal.brassInk : weekend ? pal.weekend : pal.ink7)
                         .frame(height: 12)
                     // Знак и градусы — из прогноза; без него колонка пуста (надпись — в раскрытом дне).
                     if let wx, let deg = f.temp(day) {
@@ -215,7 +215,7 @@ private struct WeekRow: View {
             Icon(ic, size: 14).foregroundStyle(pal.brass)
             Text(k).foregroundStyle(pal.ink4)
             Spacer(minLength: 8)
-            Text(v).monospacedDigit().foregroundStyle(gold ? pal.brass : pal.ink2)
+            Text(v).monospacedDigit().foregroundStyle(gold ? pal.brassInk : pal.ink2)
         }
         .font(webFont(12.5))
     }

@@ -201,7 +201,7 @@ struct GenreSheet: View {
                 Button { pick(options[i].1) } label: {
                     Text(options[i].0)
                         .font(.system(size: 13, weight: on ? .semibold : .regular))
-                        .foregroundStyle(on ? pal.brass : pal.ink3)
+                        .foregroundStyle(on ? pal.brassInk : pal.ink3)
                         .padding(.vertical, 10).padding(.horizontal, 15)
                         .background(on ? pal.pressBrass : pal.press, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }

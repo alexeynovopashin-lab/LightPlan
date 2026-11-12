@@ -18,6 +18,8 @@ enum LightScreenTheme {
     static func ink4(_ s: ColorScheme) -> Color { Palette(s).ink4 }
     static func ink6(_ s: ColorScheme) -> Color { Palette(s).ink6 }
     static func brass(_ s: ColorScheme) -> Color { Palette(s).brass }
+    /// Текст акцента (28к.3): в светлой тёмный оранжевый.
+    static func brassInk(_ s: ColorScheme) -> Color { Palette(s).brassInk }
     static func green(_ s: ColorScheme) -> Color { Palette(s).green }
     static func blue(_ s: ColorScheme) -> Color { Palette(s).blue }
     static func toneGood(_ s: ColorScheme) -> Color { Palette(s).toneGood }
@@ -43,7 +45,7 @@ enum LightScreenTheme {
 
     static func sunsetColor(_ tone: LightTelemetry.SunsetTone, scheme: ColorScheme) -> Color {
         switch tone {
-        case .brass: brass(scheme)
+        case .brass: brassInk(scheme)
         case .green: green(scheme)
         case .ink: ink(scheme)
         case .blue: blue(scheme)

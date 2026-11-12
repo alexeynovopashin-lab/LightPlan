@@ -48,7 +48,7 @@ struct PlannerDaySticky: View {
                     .frame(height: 12)
                 Text("\(d.day)")
                     .font(webFont(15, sel || today ? 650 : 400)).monospacedDigit()
-                    .foregroundStyle(sel ? pal.onBrass : today ? pal.brass : weekend ? pal.weekend : pal.ink2)
+                    .foregroundStyle(sel ? pal.onBrass : today ? pal.brassInk : weekend ? pal.weekend : pal.ink2)
                     .frame(width: 30, height: 30)
                     .background(Circle().fill(sel ? pal.brass : .clear))
                 HStack(spacing: 3) {
@@ -265,7 +265,7 @@ struct PlannerDayBody: View {
         let acts: [(String, String, SlotAct)] = [("camera", "day.actShoot", .shoot), ("guests", "day.actMeet", .meet),
                                                  ("lock", "day.actBusy", .busy)]
         return HStack(spacing: Self.menuSpacing) {
-            Text(f.fmt(Double(a.at % 1440))).font(webFont(13, 650)).monospacedDigit().foregroundStyle(pal.brass)
+            Text(f.fmt(Double(a.at % 1440))).font(webFont(13, 650)).monospacedDigit().foregroundStyle(pal.brassInk)
                 .frame(width: Self.menuTimeW, alignment: .leading)
             ForEach(acts, id: \.1) { ic, key, act in
                 Button {

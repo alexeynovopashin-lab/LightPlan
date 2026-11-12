@@ -173,7 +173,7 @@ struct MoodboardFolder: View {
     }
 
     private func toolButton(_ title: String, _ pal: Palette, node: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) { Text(title).font(webFont(12.5)).foregroundStyle(pal.brassSoft) }
+        Button(action: action) { Text(title).font(webFont(12.5)).foregroundStyle(pal.brassSoftInk) }
             .buttonStyle(.plain).shotNode(node, text: title)
     }
 
@@ -208,7 +208,7 @@ struct MoodboardFolder: View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Text(title).font(webFont(13)).foregroundStyle(on ? pal.onBrass : pal.ink3)
-                if n > 0 { Text("\(n)").font(webFont(13)).monospacedDigit().foregroundStyle(on ? pal.onBrass.opacity(0.6) : pal.ink6) }
+                if n > 0 { Text("\(n)").font(webFont(13)).monospacedDigit().foregroundStyle(on ? pal.onBrassDim : pal.ink6) }
             }
             .padding(.horizontal, 13).frame(height: 34)
             .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(on ? pal.brass : Color.clear))
@@ -395,7 +395,7 @@ struct MoodboardFolder: View {
     private func linkTile(_ url: String, _ pal: Palette) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text((RefLink.host(url) ?? t.t("ref.link")).uppercased()).font(webFont(9.5, 700)).tracking(0.4)
-                .foregroundStyle(pal.brass).lineLimit(1).padding(.trailing, 22)
+                .foregroundStyle(pal.brassInk).lineLimit(1).padding(.trailing, 22)
             Text(RefLink.tail(url)).font(webFont(11)).foregroundStyle(pal.ink4).lineSpacing(1.5).lineLimit(4)
             // Pinterest или прямая ссылка на фото без картинки: плитка честно говорит, что превью нет (картинка не придумывается).
             if PinterestLink.kind(url) != .other || ImageLink.kind(url) == .image {

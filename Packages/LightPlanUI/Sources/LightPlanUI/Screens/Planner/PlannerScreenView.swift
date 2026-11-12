@@ -235,7 +235,7 @@ public struct PlannerScreenView: View {
     /// «↺ сегодня» строкой под шапкой в месяце и неделе (`.now-back.show`).
     private func nowBack(_ pal: Palette, _ f: PlannerFacts) -> some View {
         Button { app.planner.goToday(f.today) } label: {
-            Text(f.t.t("today.backToday")).font(webFont(12.5)).foregroundStyle(pal.brass)
+            Text(f.t.t("today.backToday")).font(webFont(12.5)).foregroundStyle(pal.brassInk)
         }
         .buttonStyle(.plain)
         .padding(.bottom, 4)

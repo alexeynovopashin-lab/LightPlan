@@ -74,7 +74,7 @@ struct DocRow: View {
         Button { withAnimation(overlaySlide) { app.openDocPaper(row.shelf) } } label: {
             HStack(spacing: 10) {
                 Text(row.kindLabel).font(webFont(11)).tracking(0.2)
-                    .foregroundStyle(pal.brass).fixedSize(horizontal: false, vertical: true).frame(width: 72, alignment: .leading)
+                    .foregroundStyle(pal.brassInk).fixedSize(horizontal: false, vertical: true).frame(width: 72, alignment: .leading)
                 Text(row.title).font(webFont(14)).foregroundStyle(pal.ink).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 Text(row.dateText ?? "—").font(webFont(11.5)).foregroundStyle(pal.ink6).lineLimit(1)
@@ -130,7 +130,7 @@ struct DocTable: View {
     private func rowView(_ r: DocShelf.Row, _ i: Int, _ pal: Palette) -> some View {
         Button { withAnimation(overlaySlide) { app.openDocPaper(r.shelf) } } label: {
             HStack(alignment: .center, spacing: 8) {
-                Text(r.kindLabel).font(webFont(11)).foregroundStyle(pal.brass).fixedSize(horizontal: false, vertical: true)
+                Text(r.kindLabel).font(webFont(11)).foregroundStyle(pal.brassInk).fixedSize(horizontal: false, vertical: true)
                     .frame(width: 54, alignment: .leading)
                 Text(r.title).font(webFont(13)).foregroundStyle(pal.ink).fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)

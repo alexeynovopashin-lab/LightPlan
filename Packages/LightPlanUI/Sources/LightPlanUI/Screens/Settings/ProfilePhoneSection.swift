@@ -171,7 +171,7 @@ struct CountrySheet: View {
                             Text(name).font(.system(size: 16)).foregroundStyle(pal.ink)
                             Spacer()
                             Text("+" + c.cc).font(.system(size: 15).monospacedDigit()).foregroundStyle(pal.ink4)
-                            if c == app.telCountry { Icon("check", size: 18, line: 2).foregroundStyle(pal.brass) }
+                            if c == app.telCountry { Icon("check", size: 18, line: 2).foregroundStyle(pal.brassInk) }
                         }
                         .padding(.vertical, 12).contentShape(Rectangle())
                     }

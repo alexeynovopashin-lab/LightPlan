@@ -63,7 +63,7 @@ struct ContactsScreen: View {
                     .foregroundStyle(g.live ? pal.ink : pal.ink5).lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if g.mine { tag(t.t("ph.mine"), pal.green) }
-                if g.isLink { tag(t.t("ph.link"), pal.brass) }
+                if g.isLink { tag(t.t("ph.link"), pal.brassInk) }
                 if !g.live { tag(t.t("ph.past"), pal.ink7, line: pal.hair2) }
                 if g.live { call(g, gi, pal) }
             }

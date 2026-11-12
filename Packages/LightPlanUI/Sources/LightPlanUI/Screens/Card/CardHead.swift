@@ -214,7 +214,7 @@ struct CardHead: View {
                 Text(tel.shown).font(webFont(19)).monospacedDigit()
                 Icon("phone", size: 15)
             }
-            .foregroundStyle(pal.brass)
+            .foregroundStyle(pal.brassInk)
             .padding(.horizontal, 10).padding(.vertical, 9)
         }
         .buttonStyle(PressFade())

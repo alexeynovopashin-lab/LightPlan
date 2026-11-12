@@ -60,7 +60,7 @@ struct PlaceStudioWay: View {
                     Text(t.t("loc.studioNew")).font(.system(size: 15, weight: .semibold))
                     Spacer(minLength: 0)
                 }
-                .foregroundStyle(pal.brass)
+                .foregroundStyle(pal.brassInk)
                 .padding(.vertical, 13).padding(.horizontal, 2)
                 .contentShape(Rectangle())
             }
@@ -130,10 +130,10 @@ struct PlaceStudioWay: View {
                         .frame(width: 17)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(st.name.isEmpty ? t.t("loc.wayStudio") : st.name).font(.system(size: 15))
-                            .foregroundStyle(picked ? pal.brass : pal.ink).lineLimit(1)
+                            .foregroundStyle(picked ? pal.brassInk : pal.ink).lineLimit(1)
                         if !sub.isEmpty { Text(sub).font(.system(size: 12)).foregroundStyle(pal.ink4).lineLimit(1) }
                         if !st.address.isEmpty { Text(st.address).font(.system(size: 12)).foregroundStyle(pal.ink4).lineLimit(1) }
-                        if StudioCatalog.placeId(of: st) != nil { markPill(t.t("loc.markFromList"), pal.brass, pal) }
+                        if StudioCatalog.placeId(of: st) != nil { markPill(t.t("loc.markFromList"), pal.brassInk, pal) }
                     }
                     Spacer(minLength: 0)
                 }
@@ -144,7 +144,7 @@ struct PlaceStudioWay: View {
             if !lost {
                 Button { toggleEdit(st) } label: {
                     PlaceGlyphView(glyph: .pencil, size: 16, line: 1.6)
-                        .foregroundStyle(edit == st.id ? pal.brass : pal.ink6)
+                        .foregroundStyle(edit == st.id ? pal.brassInk : pal.ink6)
                         .frame(width: 36, height: 36).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -235,7 +235,7 @@ struct PlaceStudioWay: View {
                 Icon("check", size: 15, line: 2.2).foregroundStyle(pal.brass).opacity(picked ? 1 : 0)
                     .frame(width: 17).padding(.top, 2)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(p.name).font(.system(size: 15)).foregroundStyle(picked ? pal.brass : pal.ink).lineLimit(1)
+                    Text(p.name).font(.system(size: 15)).foregroundStyle(picked ? pal.brassInk : pal.ink).lineLimit(1)
                     if !halls.isEmpty { Text(halls).font(.system(size: 12)).foregroundStyle(pal.ink4).lineLimit(1) }
                     if !p.address.isEmpty { Text(p.address).font(.system(size: 12)).foregroundStyle(pal.ink4).lineLimit(2) }
                     mark(StudioCatalog.mark(r), t, pal)
@@ -264,7 +264,7 @@ struct PlaceStudioWay: View {
     @ViewBuilder
     private func mark(_ m: StudioCatalog.Mark, _ t: Lexicon, _ pal: Palette) -> some View {
         let c: Color = switch m {
-        case .yours: pal.brass
+        case .yours: pal.brassInk
         case .verified: pal.green
         case .unverified: pal.ink5
         case .disputed: pal.terra
@@ -308,7 +308,7 @@ struct PlaceStudioWay: View {
                     Text(t.t("loc.halls")).font(.system(size: 15)).foregroundStyle(pal.ink)
                     Spacer(minLength: 0)
                     Button { addHall() } label: {
-                        Text(t.t("loc.hallAdd")).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brass)
+                        Text(t.t("loc.hallAdd")).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brassInk)
                             .padding(.vertical, 4).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

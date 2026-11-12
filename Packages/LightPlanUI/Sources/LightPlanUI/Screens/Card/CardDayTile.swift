@@ -137,7 +137,7 @@ struct CardDayTile: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 12).padding(.vertical, 14)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(pal.sheet3))
-        .lvPlate(pal, radius: 18, glass: true)
+        .plateStyle(pal, radius: 18, glass: true)
         .shotNode("card.day")
         .padding(.top, 14)
     }
@@ -306,7 +306,7 @@ struct CardLane: View {
             }
             .frame(width: w, height: 14)
             Text(r.start.map { PlannerFacts(app: app, dark: pal.dark).fmt(Double($0)) } ?? "")
-                .font(webFont(11)).monospacedDigit().foregroundStyle(now ? pal.ink : gold ? pal.brass : pal.ink3)
+                .font(webFont(11)).monospacedDigit().foregroundStyle(now ? pal.ink : gold ? pal.brassInk : pal.ink3)
                 .padding(.top, 6)
             Text(Self.word(r.name)).font(webFont(9.5)).tracking(-0.2).foregroundStyle(pal.ink7)
                 .lineLimit(1).truncationMode(.tail)

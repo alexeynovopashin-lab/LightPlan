@@ -151,7 +151,7 @@ private struct MomentSheet: View {
                 } label: {
                     Text(model.lexiconWord(Self.chipDays[i].1))
                         .font(webFont(13, on ? 600 : 400))
-                        .foregroundStyle(on ? pal.brass : pal.ink3)
+                        .foregroundStyle(on ? pal.brassInk : pal.ink3)
                         .padding(.vertical, 10).padding(.horizontal, 15)
                         .background(on ? pal.pressBrass : pal.press, in: Capsule())
                 }

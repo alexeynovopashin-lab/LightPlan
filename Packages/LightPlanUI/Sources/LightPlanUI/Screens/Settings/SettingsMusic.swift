@@ -91,7 +91,7 @@ struct PlaylistsSection: View {
                 .onSubmit(add)
         } trailing: {
             Button(action: add) {
-                Text(t.t("kit.add")).font(.system(size: 15)).foregroundStyle(full ? pal.ink8 : pal.brass)
+                Text(t.t("kit.add")).font(.system(size: 15)).foregroundStyle(full ? pal.ink8 : pal.brassInk)
                     .frame(width: 30, height: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain)

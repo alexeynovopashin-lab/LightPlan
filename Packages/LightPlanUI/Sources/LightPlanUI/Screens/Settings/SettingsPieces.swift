@@ -93,7 +93,7 @@ struct FeedbackSection: View {
             .buttonStyle(DataButtonStyle())
             .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             Link(destination: Self.telegram) {
-                Text(t.t("fb.telegram")).font(.system(size: 14)).foregroundStyle(pal.brass)
+                Text(t.t("fb.telegram")).font(.system(size: 14)).foregroundStyle(pal.brassInk)
             }
             .padding(.horizontal, 24).padding(.top, 12)
             SetNote(text: t.t("fb.note"))

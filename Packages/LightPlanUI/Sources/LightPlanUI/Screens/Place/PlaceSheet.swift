@@ -194,7 +194,7 @@ struct PlaceSheet: View {
                     PlaceGlyphView(glyph: .arrow, size: 18, line: 1.8)
                     Text(t.t(detecting ? "loc.detecting" : "loc.iAmHere")).font(webFont(16, 650))
                 }
-                .foregroundStyle(pal.brass)
+                .foregroundStyle(pal.brassInk)
                 .frame(maxWidth: .infinity).frame(height: 52)
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.pressWarm))
                 .contentShape(Rectangle())
@@ -253,7 +253,7 @@ struct PlaceSheet: View {
             }
             if shown == .denied {
                 Button(t.t("loc.openSettings")) { openSystemSettings() }
-                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brass)
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brassInk)
                     .buttonStyle(.plain)
                     .padding(.top, 6)
                     .shotNode("loc.openSettings")
@@ -422,7 +422,7 @@ struct PlaceSheet: View {
                 if editing != nil { focus = .spotName }
             } label: {
                 PlaceGlyphView(glyph: .pencil, size: 16, line: 1.6)
-                    .foregroundStyle(editing == sp.id ? pal.brass : pal.ink6)
+                    .foregroundStyle(editing == sp.id ? pal.brassInk : pal.ink6)
                     .frame(width: 36, height: 36).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
