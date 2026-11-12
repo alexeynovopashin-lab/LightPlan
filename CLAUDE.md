@@ -112,7 +112,8 @@
   form record: moon not up during the shoot → plate `wc.moonAwayT` + the card's words (`moonWords`: `light.missMoon` / `light.moonNone`);
   up → «почти новая» only at night (sun < −6° at that minute, `ShootMoon.nightBelow`) under 25 %, by day and in twilight only under 3 %
   (`unseenBelow`, executor's threshold); clouds after. No time → the web rule (phase at 22:00). Tests `ShootMoonTests`,
-  `MoonSwitchTests.formSaysTheMoonIsNotUpDuringTheShoot` / `thinCrescentIsASubjectByDayAndAWarningAtNight`.
+  `MoonSwitchTests.formSaysTheMoonIsNotUpDuringTheShoot` / `thinCrescentIsASubjectByDayAndAWarningAtNight`. Shots: `pair.js --screens planner --forms portrait
+  --only-forms 1 --rec-mode astro --form-day 2027-06-18 --form-start 1260 --form-wish moon` (`--form-start` = minutes of the day).
 - **Stars and Milky Way switches (30г.7).** `AstroSwitchRows.working` = all five; the note `set.astro.waiting` is gone (the inventory sketch has none: the
   chapters follow the five rows). Rule `AppModel+AstroSky.swift`: `seesStars`, `seesMilkyWay`; AR layers by `SunARSkyLayer.astroSwitch` (stars, constellations,
   planets → «Звёзды»; Milky Way → «Млечный Путь»), wishes by `AppModel.astroSwitch(of:)` (moon, stars). Off (Simple, Pro, Astro without it): **«Звёзды»** —
