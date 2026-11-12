@@ -116,6 +116,10 @@
   layers-menu row, no night canvas, no fold rows and no «Подробно» group (with its core altitudes and moon rows; `MapScreenView.summary` reads
   `mapLayersShown.mw`), no AR band/core/«Как в тёмном месте». The AR «Слои» button exists while any of moon/stars/Milky Way is seen — none in Simple and Pro.
   Dome stars (№ 57) stay in every mode. **Nothing is written** on switching off or on entering Astro: the stars wish, `mapLayers.mw`, AR device flags stay.
+  **Form plate = card line (30г.11, Alexey 12.11):** the «Звёзды» plate names every reason at once in the card's words — title `light.noStars.head`, text
+  `light.noStars.why` (`AppModel.noStarsWords`; the card joins the same two by `light.noStars.line`); order lives only in `StarsBlock.ordered`. The form's own
+  conditions (web `wishCheck`, app place): white night → `по прогнозу {sky}` (`.clouds`, not clear sky) → moon level 2 → city; it does not judge the core.
+  `moonDim` (level 1) stays its own web plate, only when nothing else fired. Shots: `pair.js --forms portrait --rec-mode astro --form-wish stars --form-day <d>`.
 - **Switch on → its layers on (30г.7а, Alexey's answer 4, 05.11).** Only an off→on flip of a switch (`AppModel.update` → `showLayers(turnedOn:)`,
   `AppModel+AstroSky.swift`) turns its layers on: «Луна» → map `moon` + AR moon; «Звёзды» → AR stars, constellations, planets; «Млечный Путь» →
   map `mw` + AR Milky Way (`mapLayerKeys(of:)`, `SunARSkyLayer.astroSwitch`). Off, entering Astro, «Термины»/«Азимуты» touch nothing; a layer

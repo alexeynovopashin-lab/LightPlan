@@ -431,8 +431,8 @@ struct StarsMilkyWaySwitchTests {
 
     /// 30г.11 (Алексей 12.11 «сделать форму как карточку»): плашка формы о «Звёздах» называет все сработавшие причины
     /// словами строки карточки — заголовок «Млечного Пути не будет видно», текст — причины через запятую. Форма у дома
-    /// (точка в черте города): сентябрь с дождём — «по прогнозу дождь» и город; ясный сентябрь — город, без облачности;
-    /// белая ночь 21.06.2027 (без прогноза) — «недостаточно темно» первой и город последней.
+    /// (точка в черте города), 21.09 с луной 77 %: дождь — «по прогнозу дождь», луна, город; 5 % облаков — то же с «переменно»
+    /// (так считает прогноз); белая ночь 21.06.2027 (без прогноза) — «недостаточно темно» первой и город последней.
     @Test func formStarsWarningNamesEveryReasonLikeTheCard() async throws {
         func warning(rain: Bool, day: CivilDate) async throws -> WishWarning {
             let app = model(rain: rain)
@@ -446,10 +446,10 @@ struct StarsMilkyWaySwitchTests {
         let sep = CivilDate(year: 2026, month: 9, day: 21)
         let wet = try await warning(rain: true, day: sep)
         #expect(wet.title == "Млечного Пути не будет видно")
-        #expect(wet.message.hasPrefix("По прогнозу дождь, ") && wet.message.hasSuffix(", точка в черте города.")
-                || wet.message == "По прогнозу дождь, точка в черте города.", "«\(wet.message)»")
+        #expect(wet.message == "По прогнозу дождь, луна засветит небо (77%), точка в черте города.", "«\(wet.message)»")
         let dry = try await warning(rain: false, day: sep)
-        #expect(dry.title == wet.title && !dry.message.contains("прогноз") && dry.message.hasSuffix("очка в черте города."), "«\(dry.message)»")
+        #expect(dry.title == wet.title)
+        #expect(dry.message == "По прогнозу переменно, луна засветит небо (77%), точка в черте города.", "«\(dry.message)»")
         let white = try await warning(rain: false, day: CivilDate(year: 2027, month: 6, day: 21))
         #expect(white.message == "Недостаточно темно, точка в черте города.", "«\(white.message)»")
     }
