@@ -64,18 +64,17 @@ public struct LightScreenView: View {
                     dome(telemetry, pal)
                         .padding(.bottom, -Self.domeTuck(extra: tuckNow))
 
-                    // Черновой вариант места (ответ Алексея 04.11, схема А): сразу под горизонтом.
-                    actionButton(pal)
-                        .offset(y: Self.actionLift)
-                        #if DEBUG
-                        // Замер шага 30д: `-LPShotNoAction 1` — кнопки не видно, место то же.
-                        .opacity(UserDefaults.standard.string(forKey: "LPShotNoAction") == nil ? 1 : 0)
-                        #endif
-
+                    // 30з.1 (макет 4 Алексея 12.11): под куполом «до …» между основаниями дуги → «Запланировать съёмку» → список.
                     nextLight(telemetry, pal)
                         .padding(.horizontal, 24)
                         .padding(.top, 2)
                         .frame(height: 72, alignment: .top)
+
+                    actionButton(pal)
+                        #if DEBUG
+                        // Замер шага 30д: `-LPShotNoAction 1` — кнопки не видно, место то же.
+                        .opacity(UserDefaults.standard.string(forKey: "LPShotNoAction") == nil ? 1 : 0)
+                        #endif
 
                     telemetryList(telemetry, pal)
                         .padding(.horizontal, 24)
@@ -103,7 +102,7 @@ public struct LightScreenView: View {
         // Прогноз приходит позже первой раскладки: у «Неба» и «Ветра» появляется строка, а кнопка «Подробно» не сдвинулась — пересчитать.
         .onChange(of: model.telemetry.sky != nil || model.telemetry.wind != nil) { _, _ in refreshCollapsedRows() }
         .safeAreaInset(edge: .bottom, spacing: 8) {
-            TimebarView(model.timebar, showRibbon: model.look.dayRibbon)
+            TimebarView(model.timebar, showRibbon: model.look.dayRibbon, showEdges: false)
                 .shotNode("timebar")
                 .tabRise()
         }
@@ -249,6 +248,7 @@ public struct LightScreenView: View {
                     }
                 }
             }
+            .overlay { baseTimes(pal: Palette(colorScheme)) }
             .coordinateSpace(.named(Self.domeSpace))
             .onGeometryChange(for: CGSize.self) { $0.size } action: { domeSize = $0 }
             .contentShape(Rectangle())
@@ -258,6 +258,43 @@ public struct LightScreenView: View {
     }
 
     private static let domeSpace = "dome"
+
+    /// 30з.1: время рассвета и заката — у оснований дуги, знак над временем (макет 4). Основания — концы дуги на горизонте
+    /// (`cx ∓ rx`, `cy` в `viewBox` купола), через `DomeFit` — на любой ширине. После заката слева завтрашний рассвет (`baseRiseEdge`).
+    /// Не ловят касаний; рамку купола не меняют (лежат в его пустой полосе под горизонтом).
+    private func baseTimes(pal: Palette) -> some View {
+        let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
+        let g = DomeGeometry.self
+        let y = fit.point(CGPoint(x: 0, y: g.horizonY)).y + 6
+        let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x
+        let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x
+        let tb = model.timebar
+        return ZStack(alignment: .topLeading) {
+            baseLabel(tb.baseRiseEdge, pal).shotNode("edge.rise").position(x: left, y: y + 17.5)
+            if let setEdge = tb.setEdge { baseLabel(setEdge, pal).shotNode("edge.set").position(x: right, y: y + 17.5) }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(false)
+    }
+
+    @ViewBuilder
+    private func baseLabel(_ content: TimebarState.EdgeContent, _ pal: Palette) -> some View {
+        switch content {
+        case .time(let icon, let minutes):
+            VStack(spacing: 2) {
+                Icon(icon, size: 19, line: 1.6).foregroundStyle(pal.brassDeep)
+                Text(model.timebar.clockString(minutes))
+                    .font(.system(size: 12, weight: .medium).monospacedDigit())
+                    .foregroundStyle(pal.ink4)
+            }
+        case .text(let text):
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(pal.ink4)
+                .multilineTextAlignment(.center).lineLimit(2)
+                .frame(width: 84)
+        }
+    }
 
     /// Низ кнопки измерен вместе с тем, что стояло на экране в этой раскладке.
     private func measureSpoiler(_ m: LightCollapsedList.Measurement) {
@@ -475,7 +512,6 @@ public struct LightScreenView: View {
     /// Кнопка шириной по дуге и подтянута к горизонту (схема А, 04.11). Дуга — 326 из 390 единиц купола,
     /// а купол мельче единицы только на экранах уже 390 (`DomeView`, «масштаб по меньшей стороне»).
     static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
-    static let actionLift: CGFloat = -10
     static func actionVeil(_ scheme: ColorScheme) -> Color {
         // 28к.3: в светлой кнопка поднята — белая вуаль (светлее фона) и тень под ней (`raisedStyle`); в тёмной — как была.
         scheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(PlateTokens.glassVeil)

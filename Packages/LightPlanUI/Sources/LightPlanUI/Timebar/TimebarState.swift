@@ -427,6 +427,16 @@ public final class TimebarState {
         }
     }
 
+    /// 30з.1: левое основание дуги на «Свете». До заката смотримого дня — его рассвет (`riseEdge`); после заката — **настоящий**
+    /// завтрашний рассвет (слово Алексея 12.11: «согласен»). Отсчёт «до рассвета» ночью считает по правилу беты
+    /// (рассвет сегодняшнего дня + 24 ч, `SolarDay.nextLight`) — он отстаёт от завтрашнего на суточный сдвиг рассвета; здесь время честное.
+    public var baseRiseEdge: EdgeContent {
+        guard solarDay.polar == .normal, let set = solarDay.set, machine.viewMinute > set else { return riseEdge }
+        let next = SolarDay(date: date(offset: 1), place: place)
+        guard next.polar == .normal, let rise = next.rise else { return riseEdge }
+        return .time(icon: "sunrise", minutes: rise)
+    }
+
     public func clockString(_ minutes: Minutes) -> String { clock.fmt(minutes) }
 
     // MARK: - Даты ленты и барабана

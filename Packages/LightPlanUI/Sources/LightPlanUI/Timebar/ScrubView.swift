@@ -37,6 +37,11 @@ struct ScrubView: View {
                         .frame(width: w, height: 4)
                         .padding(.top, 16)
 
+                    // 30з.1: цифры часов — в том же слое, что рельс и риски: бегунок закрывает их и гнёт кольцом.
+                    RulerDigits(solarDay: state.solarDay)
+                        .frame(width: w, height: 16)
+                        .shotNode("ruler.digits")
+
                     RulerView(solarDay: state.solarDay)
                         .frame(width: max(0, w - 26), height: 10)
                         .shotNode("ruler")

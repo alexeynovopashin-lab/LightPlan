@@ -71,7 +71,8 @@ function astroState(n) {
   const on = OPT_ROWS.map(k => !!n[k]), tb = n.timebar, sp = n.spoiler, act = n.action;
   const compact = !n['header.sub'], has = n.dome && n['next.label'];
   const extra = has ? Math.max(0, stripBase(n) - strip(n)) : 0;
-  const spare = tb && sp && act ? tb.y - (sp.y + sp.h) - act.h - 8 : null;
+  // 30з.1 (и с 30д): кнопка съёмки стоит над списком и уже входит в низ «Подробно» — второй раз её высоту не вычитаем.
+  const spare = tb && sp && act ? tb.y - (sp.y + sp.h) - 8 : null;
   return { on, shown: on.filter(Boolean).length, compact, extra, spare };
 }
 function windProblems(astro, view, n) {
@@ -129,7 +130,7 @@ if (args.selftest) {
     ['зазор 5, порог 8', gapWhy(5, 8), true],
   );
   const wa = { text: '2 м/с · слабый' }, fr = { x: 0, y: 0, w: 1, h: 1 };
-  const base = (spare, extra = {}) => ({ timebar: { y: 700, h: 100 }, spoiler: { y: 700 - 38 - 8 - spare - 43, h: 43 }, action: { y: 0, h: 38 }, ...extra });
+  const base = (spare, extra = {}) => ({ timebar: { y: 700, h: 100 }, spoiler: { y: 700 - 8 - spare - 43, h: 43 }, action: { y: 0, h: 38 }, ...extra });
   const rows = (...k) => Object.fromEntries(k.map(x => [x, fr]));
   const dome = (extraTuck) => ({ dome: { x: 0, y: 0, w: 390, h: 240 }, 'next.label': { x: 0, y: 196 + 46 - 22 - extraTuck, w: 1, h: 1 } });
   const full = { 'header.sub': fr };

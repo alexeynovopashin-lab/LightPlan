@@ -27,3 +27,35 @@ struct RulerView: View {
         .allowsHitTesting(false)
     }
 }
+
+/// 30з.1: цифры часов над рельсом, как на макете Алексея (12.11). Цифра — час риски по модулю 24: шкала идёт от истинного
+/// полудня ±12 ч (`mint…maxt`), левого «0» у неё нет, полночь стоит там, где час 24 → «0». Каждые три часа, в тех же `x`, что риски
+/// (`RulerView`: поле 13 с каждого края). Лежат в слое, который гнёт кольцо бегунка, — под пальцем их закрывает и искажает стекло,
+/// цифры не прячутся и не поднимаются (Алексей: «бегунок должен закрывать цифры»). Поле 16 над рельсом уже было пустым — высота шкалы не растёт.
+struct RulerDigits: View {
+    let solarDay: SolarDay
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Час на цифре: каждые три, включая крайние, если те лежат на целом часе окна.
+    static func hours(mint: Double, maxt: Double) -> [Int] {
+        (0..<48).filter { h in h % 3 == 0 && Double(h) * 60 >= mint && Double(h) * 60 <= maxt }
+    }
+
+    static func label(_ h: Int) -> String { String(h % 24) }
+
+    var body: some View {
+        let pal = Palette(colorScheme)
+        Canvas { context, size in
+            let track = size.width - 26
+            for h in Self.hours(mint: solarDay.mint, maxt: solarDay.maxt) {
+                let x = 13 + (Double(h) * 60 - solarDay.mint) / 1440 * track
+                let text = Text(Self.label(h))
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .foregroundColor(pal.ink4)
+                context.draw(context.resolve(text), at: CGPoint(x: x, y: 8), anchor: .center)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}

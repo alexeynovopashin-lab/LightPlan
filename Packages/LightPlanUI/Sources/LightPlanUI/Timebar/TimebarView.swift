@@ -22,21 +22,24 @@ public struct TimebarView: View {
     /// яркость стекла под словом 0,056 над белым и 0,036 над голубым), и латунь `brassDeep` держит там 3,26 и 4,01 к 1.
     /// `nil` — цвет «Света» и «Карты».
     let nowInk: Color?
+    /// 30з.1: на «Свете» время рассвета и заката стоит у оснований дуги, строки краёв над лентой нет.
+    let showEdges: Bool
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false, nowInk: Color? = nil,
+    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false, nowInk: Color? = nil, showEdges: Bool = true,
                 onNow: (() -> Void)? = nil) {
         self.state = state
         self.showRibbon = showRibbon
         self.bare = bare
         self.nowInk = nowInk
+        self.showEdges = showEdges
         self.onNow = onNow
     }
 
     public var body: some View {
         let pal = Palette(colorScheme)
         VStack(spacing: 8) {
-            edges(pal)
+            if showEdges { edges(pal) }
             if showRibbon {
                 RibbonView(state: state).shotNode("ribbon")
             }
@@ -48,10 +51,29 @@ public struct TimebarView: View {
         // `.timebar`: поля 12 · 24 · 14, поверхность экрана, волосок сверху.
         .padding(EdgeInsets(top: 13, leading: 24, bottom: 14, trailing: 24))   // 1 — волосок `border-top`
         .background(bare ? .clear : pal.surface)
+        // 30з.1: строки краёв нет — «↺ Сейчас» плавает над правым краем верхней кромки таймбара и места не занимает (высота шкалы та же).
+        .overlay(alignment: .topTrailing) {
+            if !showEdges && state.nowButtonVisible { nowButton(pal).padding(.trailing, 10).offset(y: -26) }
+        }
         .overlay(alignment: .top) { Rectangle().fill(bare ? .clear : pal.hair).frame(height: 1) }
     }
 
     // MARK: - Края: восход, «сейчас», закат
+
+    /// `.now-tick`: 11/600, разрядка 0,4, `--brass-deep`; поле
+    /// 9 · 14 — для пальца, а не для глаза.
+    private func nowButton(_ pal: Palette) -> some View {
+        Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {
+            Text(state.nowButtonLabel)
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.4)
+                .foregroundStyle(nowInk ?? pal.brassDeep)
+                .padding(.vertical, 9).padding(.horizontal, 14)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("now", text: state.nowButtonLabel)
+    }
 
     private func edges(_ pal: Palette) -> some View {
         ZStack {
@@ -60,20 +82,7 @@ public struct TimebarView: View {
                 Spacer(minLength: 24)
                 if let setEdge = state.setEdge { edge(setEdge, pal).shotNode("edge.set") }
             }
-            if state.nowButtonVisible {
-                // `.now-tick`: 11/600, разрядка 0,4, `--brass-deep`; поле
-                // 9 · 14 — для пальца, а не для глаза.
-                Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {
-                    Text(state.nowButtonLabel)
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(0.4)
-                        .foregroundStyle(nowInk ?? pal.brassDeep)
-                        .padding(.vertical, 9).padding(.horizontal, 14)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .shotNode("now", text: state.nowButtonLabel)
-            }
+            if state.nowButtonVisible { nowButton(pal) }
         }
         .frame(height: 19)
     }
