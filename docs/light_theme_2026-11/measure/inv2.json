@@ -1,0 +1,2515 @@
+{
+"tokens": {
+"glyph": {
+"dark": "E2A44C",
+"da": 1.0,
+"light": "8A5A18",
+"la": 1.0,
+"chroma": 55.2,
+"uses": {
+"Card": 3
+},
+"total": 3,
+"cW": 5.9,
+"cP": 5.56,
+"cB": 4.88,
+"cD": 8.39
+},
+"pinRing": {
+"dark": "14110E",
+"da": 1.0,
+"light": "3A352E",
+"la": 1.0,
+"chroma": 5.3,
+"uses": {},
+"total": 0,
+"cW": 12.15,
+"cP": 11.45,
+"cB": 10.03,
+"cD": 1.03
+},
+"arcMid": {
+"dark": "EFEAE0",
+"da": 1.0,
+"light": "17150F",
+"la": 1.0,
+"chroma": 5.4,
+"uses": {},
+"total": 0,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"knob": {
+"dark": "EFEAE0",
+"da": 1.0,
+"light": "FFFFFF",
+"la": 1.0,
+"chroma": 5.4,
+"uses": {
+"Form": 1
+},
+"total": 1,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 15.22
+},
+"knobEdge": {
+"dark": "0F0E0C",
+"da": 1.0,
+"light": "C3BBAA",
+"la": 1.0,
+"chroma": 9.6,
+"uses": {
+"Form": 1
+},
+"total": 1,
+"cW": 1.91,
+"cP": 1.8,
+"cB": 1.58,
+"cD": 1.06
+},
+"meterOff": {
+"dark": "3A352E",
+"da": 1.0,
+"light": "D2CBBC",
+"la": 1.0,
+"chroma": 8.3,
+"uses": {
+"Planner": 1,
+"Light": 1
+},
+"total": 2,
+"cW": 1.61,
+"cP": 1.52,
+"cB": 1.33,
+"cD": 1.5
+},
+"bar": {
+"dark": "0F0E0C",
+"da": 0.72,
+"light": "FAF8F3",
+"la": 0.78,
+"chroma": 2.6,
+"uses": {
+"App": 1,
+"Planner": 1,
+"Map": 3
+},
+"total": 5,
+"cW": 1.06,
+"cP": 1.0,
+"cB": 1.14,
+"cD": 1.06
+},
+"bar2": {
+"dark": "17150F",
+"da": 0.55,
+"light": "FFFFFF",
+"la": 0.62,
+"chroma": 3.7,
+"uses": {
+"Map": 4
+},
+"total": 4,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 1.0
+},
+"fillA": {
+"dark": "0F0E0C",
+"da": 0.75,
+"light": "FAF8F3",
+"la": 0.8,
+"chroma": 2.6,
+"uses": {
+"Form": 1
+},
+"total": 1,
+"cW": 1.06,
+"cP": 1.0,
+"cB": 1.14,
+"cD": 1.06
+},
+"fillB": {
+"dark": "0F0E0C",
+"da": 0.6,
+"light": "EDE9E1",
+"la": 0.72,
+"chroma": 4.3,
+"uses": {
+"Place": 1
+},
+"total": 1,
+"cW": 1.21,
+"cP": 1.14,
+"cB": 1.0,
+"cD": 1.06
+},
+"overlay": {
+"dark": "12100E",
+"da": 0.82,
+"light": "FAF8F3",
+"la": 0.86,
+"chroma": 2.6,
+"uses": {
+"Light": 1
+},
+"total": 1,
+"cW": 1.06,
+"cP": 1.0,
+"cB": 1.14,
+"cD": 1.04
+},
+"overlay2": {
+"dark": "080706",
+"da": 0.94,
+"light": "FAF8F3",
+"la": 0.96,
+"chroma": 2.6,
+"uses": {
+"Card": 1
+},
+"total": 1,
+"cW": 1.06,
+"cP": 1.0,
+"cB": 1.14,
+"cD": 1.1
+},
+"overlay3": {
+"dark": "2C2924",
+"da": 0.68,
+"light": "D6D0C3",
+"la": 0.74,
+"chroma": 7.2,
+"uses": {
+"SavedSign.swift": 1,
+"NoticeBanner.swift": 1,
+"Planner": 1,
+"Map": 1
+},
+"total": 4,
+"cW": 1.54,
+"cP": 1.45,
+"cB": 1.27,
+"cD": 1.26
+},
+"hair": {
+"dark": "FFFFFF",
+"da": 0.05,
+"light": "000000",
+"la": 0.07,
+"chroma": 0.0,
+"uses": {
+"App": 1,
+"Planner": 4,
+"Map": 3,
+"Place": 3,
+"Timebar": 2
+},
+"total": 13,
+"cW": 21.0,
+"cP": 19.79,
+"cB": 17.34,
+"cD": 18.25
+},
+"sheetGlass": {
+"dark": "17150F",
+"da": 0.74,
+"light": "FFFFFF",
+"la": 0.78,
+"chroma": 3.7,
+"uses": {
+"Form": 1,
+"Planner": 2
+},
+"total": 3,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 1.0
+},
+"knobGlass": {
+"dark": "EFEAE0",
+"da": 0.26,
+"light": "FFFFFF",
+"la": 0.4,
+"chroma": 5.4,
+"uses": {
+"Timebar": 2
+},
+"total": 2,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 15.22
+},
+"drumFace": {
+"dark": "FFFFFF",
+"da": 0.05,
+"light": "17150F",
+"la": 0.05,
+"chroma": 3.7,
+"uses": {
+"Timebar": 1
+},
+"total": 1,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 18.25
+},
+"mapGlass": {
+"dark": "17150F",
+"da": 0.3,
+"light": "FFFFFF",
+"la": 0.26,
+"chroma": 3.7,
+"uses": {
+"Map": 2
+},
+"total": 2,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 1.0
+},
+"hair2": {
+"dark": "FFFFFF",
+"da": 0.04,
+"light": "000000",
+"la": 0.06,
+"chroma": 0.0,
+"uses": {
+"Settings": 11,
+"Org": 1,
+"Planner": 2,
+"Light": 2,
+"Place": 3
+},
+"total": 19,
+"cW": 21.0,
+"cP": 19.79,
+"cB": 17.34,
+"cD": 18.25
+},
+"hair3": {
+"dark": "FFFFFF",
+"da": 0.03,
+"light": "000000",
+"la": 0.05,
+"chroma": 0.0,
+"uses": {
+"Card": 1,
+"Map": 1,
+"Light": 1
+},
+"total": 3,
+"cW": 21.0,
+"cP": 19.79,
+"cB": 17.34,
+"cD": 18.25
+},
+"hair4": {
+"dark": "FFFFFF",
+"da": 0.07,
+"light": "000000",
+"la": 0.09,
+"chroma": 0.0,
+"uses": {
+"Planner": 2
+},
+"total": 2,
+"cW": 21.0,
+"cP": 19.79,
+"cB": 17.34,
+"cD": 18.25
+},
+"hair5": {
+"dark": "FFFFFF",
+"da": 0.18,
+"light": "000000",
+"la": 0.2,
+"chroma": 0.0,
+"uses": {
+"Light": 1
+},
+"total": 1,
+"cW": 21.0,
+"cP": 19.79,
+"cB": 17.34,
+"cD": 18.25
+},
+"glassFill": {
+"dark": "FFFFFF",
+"da": 0.07,
+"light": "17150F",
+"la": 0.045,
+"chroma": 3.7,
+"uses": {
+"Timebar": 2
+},
+"total": 2,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 18.25
+},
+"glassShine": {
+"dark": "FFFFFF",
+"da": 0.3,
+"light": "FFFFFF",
+"la": 0.95,
+"chroma": 0.0,
+"uses": {
+"Planner": 1,
+"Timebar": 8
+},
+"total": 9,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 18.25
+},
+"glassCast": {
+"dark": "000000",
+"da": 0.45,
+"light": "17150F",
+"la": 0.16,
+"chroma": 3.7,
+"uses": {
+"Planner": 2,
+"Map": 1,
+"Moodboard": 1,
+"Timebar": 1
+},
+"total": 5,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 1.15
+},
+"drumLip": {
+"dark": "FFFFFF",
+"da": 0.18,
+"light": "FFFFFF",
+"la": 0.95,
+"chroma": 0.0,
+"uses": {
+"Timebar": 1
+},
+"total": 1,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 18.25
+},
+"drumGlass": {
+"dark": "FFFFFF",
+"da": 0.13,
+"light": "FFFFFF",
+"la": 0.45,
+"chroma": 0.0,
+"uses": {
+"Timebar": 1
+},
+"total": 1,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 18.25
+},
+"inkA22": {
+"dark": "EFEAE0",
+"da": 0.22,
+"light": "17150F",
+"la": 0.22,
+"chroma": 5.4,
+"uses": {
+"Timebar": 3
+},
+"total": 3,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"inkA20": {
+"dark": "EFEAE0",
+"da": 0.2,
+"light": "17150F",
+"la": 0.2,
+"chroma": 5.4,
+"uses": {},
+"total": 0,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"inkA24": {
+"dark": "EFEAE0",
+"da": 0.24,
+"light": "17150F",
+"la": 0.24,
+"chroma": 5.4,
+"uses": {},
+"total": 0,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"inkA40": {
+"dark": "EFEAE0",
+"da": 0.4,
+"light": "17150F",
+"la": 0.4,
+"chroma": 5.4,
+"uses": {},
+"total": 0,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"inkA12": {
+"dark": "EFEAE0",
+"da": 0.12,
+"light": "17150F",
+"la": 0.12,
+"chroma": 5.4,
+"uses": {},
+"total": 0,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"inkA10": {
+"dark": "EFEAE0",
+"da": 0.1,
+"light": "17150F",
+"la": 0.1,
+"chroma": 5.4,
+"uses": {},
+"total": 0,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"inkA08": {
+"dark": "EFEAE0",
+"da": 0.08,
+"light": "17150F",
+"la": 0.08,
+"chroma": 5.4,
+"uses": {},
+"total": 0,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"bg": {
+"dark": "070606",
+"da": 1.0,
+"light": "EDE9E1",
+"la": 1.0,
+"chroma": 4.3,
+"uses": {
+"Widget": 2
+},
+"total": 2,
+"cW": 1.21,
+"cP": 1.14,
+"cB": 1.0,
+"cD": 1.11
+},
+"surface": {
+"dark": "0F0E0C",
+"da": 1.0,
+"light": "FAF8F3",
+"la": 1.0,
+"chroma": 2.6,
+"uses": {
+"Settings": 2,
+"Form": 9,
+"Card": 11,
+"Org": 9,
+"Planner": 12,
+"Docs": 4,
+"Map": 5,
+"Light": 2,
+"Moodboard": 5,
+"Place": 3,
+"Timebar": 1
+},
+"total": 63,
+"cW": 1.06,
+"cP": 1.0,
+"cB": 1.14,
+"cD": 1.06
+},
+"canvas": {
+"dark": "14110E",
+"da": 1.0,
+"light": "14110E",
+"la": 1.0,
+"chroma": 2.0,
+"uses": {
+"Map": 1
+},
+"total": 1,
+"cW": 18.81,
+"cP": 17.73,
+"cB": 15.54,
+"cD": 1.03
+},
+"sheet": {
+"dark": "17150F",
+"da": 1.0,
+"light": "FFFFFF",
+"la": 1.0,
+"chroma": 3.7,
+"uses": {
+"Settings": 3,
+"Form": 9,
+"Card": 7,
+"Org": 22,
+"Planner": 7,
+"Docs": 20,
+"Map": 1,
+"Light": 1,
+"Moodboard": 17
+},
+"total": 87,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 1.0
+},
+"sheet2": {
+"dark": "131109",
+"da": 1.0,
+"light": "F1EDE4",
+"la": 1.0,
+"chroma": 4.8,
+"uses": {
+"Card": 1,
+"Planner": 1
+},
+"total": 2,
+"cW": 1.17,
+"cP": 1.1,
+"cB": 1.04,
+"cD": 1.03
+},
+"sheet3": {
+"dark": "1A1710",
+"da": 1.0,
+"light": "FFFFFF",
+"la": 1.0,
+"chroma": 4.8,
+"uses": {
+"Form": 1,
+"Card": 13,
+"Planner": 1
+},
+"total": 15,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 1.02
+},
+"peek1": {
+"dark": "1B1811",
+"da": 1.0,
+"light": "FFFFFF",
+"la": 1.0,
+"chroma": 4.9,
+"uses": {
+"Card": 3
+},
+"total": 3,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 1.03
+},
+"peek2": {
+"dark": "221E16",
+"da": 1.0,
+"light": "F6F2E8",
+"la": 1.0,
+"chroma": 6.2,
+"uses": {
+"Card": 2,
+"Map": 1
+},
+"total": 3,
+"cW": 1.12,
+"cP": 1.05,
+"cB": 1.08,
+"cD": 1.1
+},
+"stackShade": {
+"dark": "000000",
+"da": 0.55,
+"light": "17150F",
+"la": 0.16,
+"chroma": 3.7,
+"uses": {
+"Card": 4
+},
+"total": 4,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 1.15
+},
+"stackEdge": {
+"dark": "FFFFFF",
+"da": 0.07,
+"light": "17150F",
+"la": 0.05,
+"chroma": 3.7,
+"uses": {
+"Card": 4
+},
+"total": 4,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 18.25
+},
+"sheet4": {
+"dark": "1A1712",
+"da": 1.0,
+"light": "FFFFFF",
+"la": 1.0,
+"chroma": 3.7,
+"uses": {
+"Form": 1,
+"Org": 1,
+"Planner": 3,
+"Docs": 1,
+"Moodboard": 4
+},
+"total": 10,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 1.02
+},
+"warnBg": {
+"dark": "191510",
+"da": 1.0,
+"light": "FBF1DE",
+"la": 1.0,
+"chroma": 10.4,
+"uses": {},
+"total": 0,
+"cW": 1.12,
+"cP": 1.06,
+"cB": 1.08,
+"cD": 1.0
+},
+"badBg": {
+"dark": "1D1512",
+"da": 1.0,
+"light": "FBE7DC",
+"la": 1.0,
+"chroma": 9.3,
+"uses": {
+"Card": 1,
+"Map": 1
+},
+"total": 2,
+"cW": 1.2,
+"cP": 1.13,
+"cB": 1.01,
+"cD": 1.02
+},
+"badgeBg": {
+"dark": "241F17",
+"da": 1.0,
+"light": "F4F0E6",
+"la": 1.0,
+"chroma": 6.4,
+"uses": {
+"Card": 3
+},
+"total": 3,
+"cW": 1.14,
+"cP": 1.07,
+"cB": 1.06,
+"cD": 1.12
+},
+"hatch": {
+"dark": "1C1A14",
+"da": 1.0,
+"light": "E7E2D8",
+"la": 1.0,
+"chroma": 5.5,
+"uses": {
+"Card": 1
+},
+"total": 1,
+"cW": 1.29,
+"cP": 1.22,
+"cB": 1.07,
+"cD": 1.05
+},
+"hairline": {
+"dark": "1C1913",
+"da": 1.0,
+"light": "E2DCD1",
+"la": 1.0,
+"chroma": 6.1,
+"uses": {
+"Planner": 6,
+"Docs": 2,
+"Map": 2,
+"Moodboard": 4,
+"Widget": 1
+},
+"total": 15,
+"cW": 1.36,
+"cP": 1.29,
+"cB": 1.13,
+"cD": 1.04
+},
+"onBrass": {
+"dark": "16120C",
+"da": 1.0,
+"light": "FFFFFF",
+"la": 1.0,
+"chroma": 3.6,
+"uses": {
+"NoticeBanner.swift": 1,
+"Form": 6,
+"Card": 2,
+"Org": 3,
+"Planner": 7,
+"Docs": 4,
+"Light": 1,
+"Moodboard": 8,
+"Place": 1
+},
+"total": 33,
+"cW": 1.0,
+"cP": 1.06,
+"cB": 1.21,
+"cD": 1.02
+},
+"field": {
+"dark": "1C1A16",
+"da": 1.0,
+"light": "EAE5DB",
+"la": 1.0,
+"chroma": 5.5,
+"uses": {
+"Settings": 2,
+"Form": 9,
+"Place": 1
+},
+"total": 12,
+"cW": 1.26,
+"cP": 1.18,
+"cB": 1.04,
+"cD": 1.05
+},
+"fieldPress": {
+"dark": "262218",
+"da": 1.0,
+"light": "DCD6C9",
+"la": 1.0,
+"chroma": 7.4,
+"uses": {},
+"total": 0,
+"cW": 1.45,
+"cP": 1.36,
+"cB": 1.2,
+"cD": 1.15
+},
+"press": {
+"dark": "221F19",
+"da": 1.0,
+"light": "EDE9E1",
+"la": 1.0,
+"chroma": 4.6,
+"uses": {
+"Settings": 2,
+"Form": 10,
+"Card": 7,
+"Org": 9,
+"Planner": 3,
+"Docs": 6,
+"Map": 1,
+"Light": 1,
+"Moodboard": 5,
+"Place": 3
+},
+"total": 47,
+"cW": 1.21,
+"cP": 1.14,
+"cB": 1.0,
+"cD": 1.11
+},
+"press2": {
+"dark": "201C15",
+"da": 1.0,
+"light": "EBE6DC",
+"la": 1.0,
+"chroma": 5.5,
+"uses": {},
+"total": 0,
+"cW": 1.24,
+"cP": 1.17,
+"cB": 1.03,
+"cD": 1.08
+},
+"pressWarm": {
+"dark": "221D14",
+"da": 1.0,
+"light": "F6ECD8",
+"la": 1.0,
+"chroma": 10.9,
+"uses": {
+"Settings": 1,
+"Form": 2,
+"Card": 1,
+"Planner": 1,
+"Place": 1
+},
+"total": 6,
+"cW": 1.17,
+"cP": 1.1,
+"cB": 1.03,
+"cD": 1.09
+},
+"pressBrass": {
+"dark": "33291A",
+"da": 1.0,
+"light": "F7E9CF",
+"la": 1.0,
+"chroma": 14.4,
+"uses": {
+"Settings": 1,
+"Form": 5,
+"Card": 1,
+"Org": 3,
+"Map": 1,
+"Light": 1
+},
+"total": 12,
+"cW": 1.2,
+"cP": 1.13,
+"cB": 1.01,
+"cD": 1.28
+},
+"rail": {
+"dark": "2B2822",
+"da": 1.0,
+"light": "DCD6C9",
+"la": 1.0,
+"chroma": 7.1,
+"uses": {
+"Form": 4,
+"Timebar": 1
+},
+"total": 5,
+"cW": 1.45,
+"cP": 1.36,
+"cB": 1.2,
+"cD": 1.24
+},
+"rail2": {
+"dark": "2E2A24",
+"da": 1.0,
+"light": "D2CBBC",
+"la": 1.0,
+"chroma": 8.3,
+"uses": {
+"Card": 1
+},
+"total": 1,
+"cW": 1.61,
+"cP": 1.52,
+"cB": 1.33,
+"cD": 1.28
+},
+"rail3": {
+"dark": "2C2820",
+"da": 1.0,
+"light": "D5CEC0",
+"la": 1.0,
+"chroma": 7.8,
+"uses": {
+"Card": 1
+},
+"total": 1,
+"cW": 1.56,
+"cP": 1.47,
+"cB": 1.29,
+"cD": 1.24
+},
+"rail4": {
+"dark": "2A261E",
+"da": 1.0,
+"light": "D8D1C3",
+"la": 1.0,
+"chroma": 7.8,
+"uses": {
+"Card": 2
+},
+"total": 2,
+"cW": 1.52,
+"cP": 1.43,
+"cB": 1.25,
+"cD": 1.21
+},
+"rail5": {
+"dark": "3A352E",
+"da": 1.0,
+"light": "C3BBAA",
+"la": 1.0,
+"chroma": 9.6,
+"uses": {
+"Form": 1,
+"Dome": 1,
+"Timebar": 2
+},
+"total": 4,
+"cW": 1.91,
+"cP": 1.8,
+"cB": 1.58,
+"cD": 1.5
+},
+"segOn": {
+"dark": "2A2724",
+"da": 1.0,
+"light": "DDD6C8",
+"la": 1.0,
+"chroma": 7.8,
+"uses": {
+"Settings": 1,
+"Org": 1
+},
+"total": 2,
+"cW": 1.45,
+"cP": 1.36,
+"cB": 1.19,
+"cD": 1.23
+},
+"bezel": {
+"dark": "1C1A17",
+"da": 1.0,
+"light": "D8D2C6",
+"la": 1.0,
+"chroma": 6.7,
+"uses": {},
+"total": 0,
+"cW": 1.5,
+"cP": 1.42,
+"cB": 1.24,
+"cD": 1.05
+},
+"edge": {
+"dark": "38332B",
+"da": 1.0,
+"light": "CFC8B9",
+"la": 1.0,
+"chroma": 8.4,
+"uses": {
+"Form": 5,
+"Card": 2,
+"Org": 1,
+"Planner": 4,
+"Docs": 2,
+"Light": 1,
+"Moodboard": 1,
+"Place": 1
+},
+"total": 17,
+"cW": 1.66,
+"cP": 1.57,
+"cB": 1.37,
+"cD": 1.46
+},
+"ink": {
+"dark": "EFEAE0",
+"da": 1.0,
+"light": "17150F",
+"la": 1.0,
+"chroma": 5.4,
+"uses": {
+"App": 1,
+"SavedSign.swift": 1,
+"NoticeBanner.swift": 1,
+"Settings": 22,
+"Form": 46,
+"Card": 27,
+"Org": 17,
+"Planner": 41,
+"Docs": 24,
+"Map": 9,
+"Light": 8,
+"Moodboard": 11,
+"Place": 16,
+"Timebar": 1,
+"Widget": 2
+},
+"total": 227,
+"cW": 18.25,
+"cP": 17.2,
+"cB": 15.07,
+"cD": 15.22
+},
+"ink2": {
+"dark": "C9C2B6",
+"da": 1.0,
+"light": "3A352E",
+"la": 1.0,
+"chroma": 6.9,
+"uses": {
+"Card": 4,
+"Planner": 5,
+"Map": 2,
+"Light": 5,
+"Moodboard": 2
+},
+"total": 18,
+"cW": 12.15,
+"cP": 11.45,
+"cB": 10.03,
+"cD": 10.32
+},
+"ink2b": {
+"dark": "C0B8AA",
+"da": 1.0,
+"light": "423C33",
+"la": 1.0,
+"chroma": 8.1,
+"uses": {
+"NoticeBanner.swift": 1
+},
+"total": 1,
+"cW": 10.9,
+"cP": 10.27,
+"cB": 9.01,
+"cD": 9.28
+},
+"ink3": {
+"dark": "A8A093",
+"da": 1.0,
+"light": "55504A",
+"la": 1.0,
+"chroma": 7.8,
+"uses": {
+"App": 1,
+"ScrollJump.swift": 1,
+"NoticeBanner.swift": 1,
+"Settings": 2,
+"Form": 18,
+"Card": 22,
+"Org": 14,
+"Planner": 20,
+"Docs": 12,
+"Map": 5,
+"Light": 3,
+"Moodboard": 11
+},
+"total": 110,
+"cW": 7.98,
+"cP": 7.52,
+"cB": 6.59,
+"cD": 7.05
+},
+"ink3b": {
+"dark": "A89C86",
+"da": 1.0,
+"light": "5A5348",
+"la": 1.0,
+"chroma": 13.1,
+"uses": {},
+"total": 0,
+"cW": 7.59,
+"cP": 7.15,
+"cB": 6.27,
+"cD": 6.75
+},
+"ink4": {
+"dark": "8A8478",
+"da": 1.0,
+"light": "6B6559",
+"la": 1.0,
+"chroma": 7.6,
+"uses": {
+"ScrollJump.swift": 1,
+"NoticeBanner.swift": 1,
+"Settings": 8,
+"Form": 21,
+"Card": 17,
+"Org": 23,
+"Planner": 39,
+"Docs": 15,
+"Map": 13,
+"Light": 17,
+"Moodboard": 14,
+"Place": 10,
+"Timebar": 2
+},
+"total": 181,
+"cW": 5.78,
+"cP": 5.45,
+"cB": 4.78,
+"cD": 4.91
+},
+"ink5": {
+"dark": "6B6559",
+"da": 1.0,
+"light": "857E70",
+"la": 1.0,
+"chroma": 8.6,
+"uses": {
+"Settings": 1,
+"Form": 5,
+"Card": 2,
+"Org": 7,
+"Planner": 12,
+"Docs": 1,
+"Map": 3,
+"Moodboard": 5,
+"Place": 4,
+"Timebar": 2
+},
+"total": 42,
+"cW": 4.03,
+"cP": 3.79,
+"cB": 3.33,
+"cD": 3.16
+},
+"ink5b": {
+"dark": "6E6558",
+"da": 1.0,
+"light": "857E70",
+"la": 1.0,
+"chroma": 8.7,
+"uses": {
+"Card": 4
+},
+"total": 4,
+"cW": 4.03,
+"cP": 3.79,
+"cB": 3.33,
+"cD": 3.19
+},
+"ink6": {
+"dark": "635E54",
+"da": 1.0,
+"light": "8C8578",
+"la": 1.0,
+"chroma": 7.9,
+"uses": {
+"App": 2,
+"Settings": 4,
+"Form": 18,
+"Card": 23,
+"Org": 14,
+"Planner": 10,
+"Docs": 20,
+"Map": 2,
+"Light": 2,
+"Moodboard": 9,
+"Place": 19,
+"Timebar": 1
+},
+"total": 124,
+"cW": 3.66,
+"cP": 3.45,
+"cB": 3.02,
+"cD": 2.83
+},
+"ink7": {
+"dark": "55504A",
+"da": 1.0,
+"light": "9A9385",
+"la": 1.0,
+"chroma": 8.3,
+"uses": {
+"Settings": 1,
+"Form": 9,
+"Card": 7,
+"Org": 7,
+"Planner": 12,
+"Map": 4,
+"Light": 1,
+"Moodboard": 3,
+"Place": 3,
+"Dome": 2,
+"Timebar": 3
+},
+"total": 52,
+"cW": 3.05,
+"cP": 2.87,
+"cB": 2.52,
+"cD": 2.29
+},
+"ink8": {
+"dark": "4A453E",
+"da": 1.0,
+"light": "ADA697",
+"la": 1.0,
+"chroma": 8.7,
+"uses": {
+"Settings": 4,
+"Form": 8,
+"Card": 3,
+"Org": 3,
+"Planner": 1,
+"Docs": 1,
+"Moodboard": 4,
+"Place": 6
+},
+"total": 30,
+"cW": 2.42,
+"cP": 2.28,
+"cB": 2.0,
+"cD": 1.92
+},
+"ink9": {
+"dark": "45403A",
+"da": 1.0,
+"light": "B5AE9F",
+"la": 1.0,
+"chroma": 8.6,
+"uses": {
+"Form": 2
+},
+"total": 2,
+"cW": 2.21,
+"cP": 2.08,
+"cB": 1.82,
+"cD": 1.78
+},
+"ink10": {
+"dark": "3A352F",
+"da": 1.0,
+"light": "BFB8A9",
+"la": 1.0,
+"chroma": 8.5,
+"uses": {
+"Planner": 1,
+"Map": 4,
+"Moodboard": 1
+},
+"total": 6,
+"cW": 1.97,
+"cP": 1.86,
+"cB": 1.63,
+"cD": 1.5
+},
+"brass": {
+"dark": "E2A44C",
+"da": 1.0,
+"light": "A9721F",
+"la": 1.0,
+"chroma": 55.2,
+"uses": {
+"App": 1,
+"SavedSign.swift": 1,
+"NoticeBanner.swift": 1,
+"Settings": 17,
+"Form": 42,
+"Card": 36,
+"Org": 26,
+"Planner": 51,
+"Docs": 12,
+"Map": 28,
+"Light": 5,
+"Moodboard": 13,
+"Place": 16,
+"Dome": 1,
+"Timebar": 1
+},
+"total": 251,
+"cW": 4.11,
+"cP": 3.87,
+"cB": 3.39,
+"cD": 8.39
+},
+"brassSoft": {
+"dark": "D9AC6B",
+"da": 1.0,
+"light": "9B6A22",
+"la": 1.0,
+"chroma": 47.7,
+"uses": {
+"Card": 2,
+"Planner": 2,
+"Moodboard": 2
+},
+"total": 6,
+"cW": 4.69,
+"cP": 4.42,
+"cB": 3.87,
+"cD": 8.75
+},
+"brassDeep": {
+"dark": "C9853F",
+"da": 1.0,
+"light": "8A5A18",
+"la": 1.0,
+"chroma": 51.2,
+"uses": {
+"Form": 1,
+"Card": 7,
+"Planner": 9,
+"Docs": 5,
+"Timebar": 2
+},
+"total": 24,
+"cW": 5.9,
+"cP": 5.56,
+"cB": 4.88,
+"cD": 6.01
+},
+"brassDark": {
+"dark": "8A4B22",
+"da": 1.0,
+"light": "6E3C15",
+"la": 1.0,
+"chroma": 42.1,
+"uses": {
+"NoticeBanner.swift": 1,
+"Planner": 4,
+"Map": 1
+},
+"total": 6,
+"cW": 9.05,
+"cP": 8.53,
+"cB": 7.48,
+"cD": 2.7
+},
+"green": {
+"dark": "A8B49B",
+"da": 1.0,
+"light": "5F6B4E",
+"la": 1.0,
+"chroma": 18.0,
+"uses": {
+"Card": 9,
+"Org": 1,
+"Planner": 2,
+"Light": 1,
+"Place": 1
+},
+"total": 14,
+"cW": 5.68,
+"cP": 5.35,
+"cB": 4.69,
+"cD": 8.4
+},
+"blue": {
+"dark": "7C9CC4",
+"da": 1.0,
+"light": "3F6088",
+"la": 1.0,
+"chroma": 25.9,
+"uses": {
+"Card": 6,
+"Planner": 1,
+"Light": 1
+},
+"total": 8,
+"cW": 6.48,
+"cP": 6.11,
+"cB": 5.35,
+"cD": 6.44
+},
+"toneGood": {
+"dark": "B5AC9C",
+"da": 1.0,
+"light": "6B6559",
+"la": 1.0,
+"chroma": 9.4,
+"uses": {
+"Light": 1
+},
+"total": 1,
+"cW": 5.78,
+"cP": 5.45,
+"cB": 4.78,
+"cD": 8.12
+},
+"terra": {
+"dark": "C9663D",
+"da": 1.0,
+"light": "A84E27",
+"la": 1.0,
+"chroma": 54.3,
+"uses": {
+"Form": 1,
+"Card": 6,
+"Planner": 5,
+"Map": 1,
+"Place": 3,
+"Timebar": 1
+},
+"total": 17,
+"cW": 5.55,
+"cP": 5.23,
+"cB": 4.58,
+"cD": 4.74
+},
+"terra2": {
+"dark": "B9603D",
+"da": 1.0,
+"light": "9E4722",
+"la": 1.0,
+"chroma": 51.2,
+"uses": {
+"Form": 1,
+"Planner": 1,
+"Moodboard": 1
+},
+"total": 3,
+"cW": 6.22,
+"cP": 5.86,
+"cB": 5.13,
+"cD": 4.17
+},
+"badInk": {
+"dark": "D9A08A",
+"da": 1.0,
+"light": "8A3F22",
+"la": 1.0,
+"chroma": 44.0,
+"uses": {
+"Card": 1,
+"Planner": 2,
+"Docs": 3,
+"Map": 1
+},
+"total": 7,
+"cW": 7.46,
+"cP": 7.03,
+"cB": 6.16,
+"cD": 8.12
+},
+"warnInk": {
+"dark": "D9C2A0",
+"da": 1.0,
+"light": "7A5A22",
+"la": 1.0,
+"chroma": 36.9,
+"uses": {
+"Card": 2
+},
+"total": 2,
+"cW": 6.34,
+"cP": 5.97,
+"cB": 5.23,
+"cD": 10.58
+},
+"moon": {
+"dark": "A8BDD8",
+"da": 1.0,
+"light": "A8BDD8",
+"la": 1.0,
+"chroma": 16.0,
+"uses": {
+"Light": 1,
+"Dome": 1
+},
+"total": 2,
+"cW": 1.92,
+"cP": 1.81,
+"cB": 1.59,
+"cD": 9.5
+},
+"moonLit": {
+"dark": "CFD6DE",
+"da": 1.0,
+"light": "CFD6DE",
+"la": 1.0,
+"chroma": 4.8,
+"uses": {},
+"total": 0,
+"cW": 1.47,
+"cP": 1.38,
+"cB": 1.21,
+"cD": 12.45
+},
+"moonDark": {
+"dark": "16161A",
+"da": 1.0,
+"light": "16161A",
+"la": 1.0,
+"chroma": 3.0,
+"uses": {},
+"total": 0,
+"cW": 18.04,
+"cP": 17.0,
+"cB": 14.9,
+"cD": 1.01
+}
+},
+"inline": [
+{
+"f": "Screens/Form/FormMoney.swift",
+"line": 238,
+"hex": "E2A44C",
+"src": ".background(focused ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field,"
+},
+{
+"f": "Screens/Form/FormMoney.swift",
+"line": 294,
+"hex": "E2A44C",
+"src": ".background(focused ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field,"
+},
+{
+"f": "Screens/Form/FormKit.swift",
+"line": 190,
+"hex": "17150F",
+"src": "(Text(kindName(k, t)) + (n > 0 ? Text(\"  \\(n)\").foregroundStyle(on ? Color(hex: 0x17150F, alpha: 0.6) : pal.ink6) : Text(\"\")))"
+},
+{
+"f": "Screens/Form/FormPieces.swift",
+"line": 99,
+"hex": "E2A44C",
+"src": ".background(open || lit ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Capsule())"
+},
+{
+"f": "Screens/Form/FormPieces.swift",
+"line": 100,
+"hex": "E2A44C",
+"src": ".overlay { if lit { Capsule().strokeBorder(Color(hex: 0xE2A44C, alpha: 0.7), lineWidth: 1) } }"
+},
+{
+"f": "Screens/Form/FormPlace.swift",
+"line": 123,
+"hex": "E2A44C",
+"src": ".background(lit ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Circle())"
+},
+{
+"f": "Screens/Form/FormPlace.swift",
+"line": 242,
+"hex": "E2A44C",
+"src": ".background(open ? Color(hex: 0xE2A44C, alpha: 0.16) : pal.field, in: Capsule())"
+},
+{
+"f": "Screens/Form/FormPlace.swift",
+"line": 266,
+"hex": "E2A44C",
+"src": ".background(Color(hex: 0xE2A44C, alpha: 0.16), in: Circle())"
+},
+{
+"f": "Screens/Org/ClientDateSheet.swift",
+"line": 88,
+"hex": "B9603D",
+"src": "Text(words.clear).font(.system(size: 15)).foregroundStyle(Color(hex: pal.dark ? 0xB9603D : 0x9E4722))"
+},
+{
+"f": "Screens/Org/ClientDateSheet.swift",
+"line": 88,
+"hex": "9E4722",
+"src": "Text(words.clear).font(.system(size: 15)).foregroundStyle(Color(hex: pal.dark ? 0xB9603D : 0x9E4722))"
+},
+{
+"f": "Screens/Org/ClientCardScreen.swift",
+"line": 541,
+"hex": "B9603D",
+"src": "Text(t.t(\"clc.del\")).font(.system(size: 15)).foregroundStyle(Color(hex: pal.dark ? 0xB9603D : 0x9E4722))"
+},
+{
+"f": "Screens/Org/ClientCardScreen.swift",
+"line": 541,
+"hex": "9E4722",
+"src": "Text(t.t(\"clc.del\")).font(.system(size: 15)).foregroundStyle(Color(hex: pal.dark ? 0xB9603D : 0x9E4722))"
+},
+{
+"f": "Screens/Org/OrgCardScreen.swift",
+"line": 340,
+"hex": "B9603D",
+"src": "Text(t.t(\"org.del\")).font(.system(size: 15)).foregroundStyle(Color(hex: pal.dark ? 0xB9603D : 0x9E4722))"
+},
+{
+"f": "Screens/Org/OrgCardScreen.swift",
+"line": 340,
+"hex": "9E4722",
+"src": "Text(t.t(\"org.del\")).font(.system(size: 15)).foregroundStyle(Color(hex: pal.dark ? 0xB9603D : 0x9E4722))"
+},
+{
+"f": "Screens/Planner/PlannerMonthView.swift",
+"line": 67,
+"hex": "E2A44C",
+"src": "ForEach([(\"plan.legendGood\", 0xE2A44C), (\"plan.legendOk\", 0xA8B49B), (\"plan.legendBad\", 0x7C9CC4)], id: \\.0) { k, c in"
+},
+{
+"f": "Screens/Planner/PlannerMonthView.swift",
+"line": 67,
+"hex": "A8B49B",
+"src": "ForEach([(\"plan.legendGood\", 0xE2A44C), (\"plan.legendOk\", 0xA8B49B), (\"plan.legendBad\", 0x7C9CC4)], id: \\.0) { k, c in"
+},
+{
+"f": "Screens/Planner/PlannerMonthView.swift",
+"line": 67,
+"hex": "7C9CC4",
+"src": "ForEach([(\"plan.legendGood\", 0xE2A44C), (\"plan.legendOk\", 0xA8B49B), (\"plan.legendBad\", 0x7C9CC4)], id: \\.0) { k, c in"
+},
+{
+"f": "Screens/Planner/PlannerMonthView.swift",
+"line": 158,
+"hex": "FFFFFF",
+"src": "dark ? Color(hex: 0xFFFFFF, alpha: 0.10) : Color(hex: 0x17150F, alpha: 0.12)"
+},
+{
+"f": "Screens/Planner/PlannerMonthView.swift",
+"line": 158,
+"hex": "17150F",
+"src": "dark ? Color(hex: 0xFFFFFF, alpha: 0.10) : Color(hex: 0x17150F, alpha: 0.12)"
+},
+{
+"f": "Screens/Planner/PlannerMonthView.swift",
+"line": 281,
+"hex": "A8B49B",
+"src": "return Label(text: f.words.shortType(s), color: dot ?? Color(hex: 0xA8B49B), busy: false)"
+},
+{
+"f": "Screens/Planner/PlannerLook.swift",
+"line": 43,
+"hex": "E2A44C",
+"src": "case .excellent, .fog: Color(hex: 0xE2A44C)"
+},
+{
+"f": "Screens/Planner/PlannerLook.swift",
+"line": 44,
+"hex": "A8B49B",
+"src": "case .good: Color(hex: 0xA8B49B)"
+},
+{
+"f": "Screens/Planner/PlannerLook.swift",
+"line": 46,
+"hex": "7C9CC4",
+"src": "case .poor: Color(hex: 0x7C9CC4)"
+},
+{
+"f": "Screens/Planner/PlannerDayView.swift",
+"line": 300,
+"hex": "E2A44C",
+"src": ".fill(LinearGradient(colors: [.clear, Color(hex: 0xE2A44C, alpha: 0.10)], startPoint: .top, endPoint: .bottom))"
+},
+{
+"f": "Screens/Planner/PlannerDayView.swift",
+"line": 431,
+"hex": "E2A44C",
+"src": ": soft ? (ink, 0.78, 0.24, 0.12) : (Color(hex: 0xE2A44C), 0.92, 0.55, 0.30)"
+},
+{
+"f": "Screens/SunAR/SunARCityBackdrop.swift",
+"line": 12,
+"hex": "73ADED",
+"src": "LinearGradient(colors: [Color(.sRGB, red: 0.45, green: 0.68, blue: 0.93), Color(.sRGB, red: 0.78, green: 0.88, blue: 0.97)],"
+},
+{
+"f": "Screens/SunAR/SunARCityBackdrop.swift",
+"line": 12,
+"hex": "C7E0F7",
+"src": "LinearGradient(colors: [Color(.sRGB, red: 0.45, green: 0.68, blue: 0.93), Color(.sRGB, red: 0.78, green: 0.88, blue: 0.97)],"
+},
+{
+"f": "Screens/SunAR/SunARCamera.swift",
+"line": 219,
+"hex": "1A2957",
+"src": "colors: [CGColor(red: 0.10, green: 0.16, blue: 0.34, alpha: 1),"
+},
+{
+"f": "Screens/SunAR/SunARCamera.swift",
+"line": 220,
+"hex": "D99E6B",
+"src": "CGColor(red: 0.85, green: 0.62, blue: 0.42, alpha: 1)] as CFArray, locations: [0, 1])!"
+},
+{
+"f": "Screens/SunAR/SunARCamera.swift",
+"line": 222,
+"hex": "FFFFFF",
+"src": "ctx.setStrokeColor(CGColor(red: 1, green: 1, blue: 1, alpha: 0.55))"
+},
+{
+"f": "Screens/SunAR/SunARCamera.swift",
+"line": 227,
+"hex": "000000",
+"src": "ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.45))"
+},
+{
+"f": "Screens/SunAR/SunARScreen.swift",
+"line": 303,
+"hex": "73ADED",
+"src": "case \"sky\": Color(.sRGB, red: 0.45, green: 0.68, blue: 0.93)"
+},
+{
+"f": "Screens/SunAR/SunARScreen.swift",
+"line": 305,
+"hex": "050A1A",
+"src": "case \"night\": Color(.sRGB, red: 0.02, green: 0.04, blue: 0.10)"
+},
+{
+"f": "Screens/SunAR/MilkyWayGaiaRenderer.swift",
+"line": 261,
+"hex": "000000",
+"src": "pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)"
+},
+{
+"f": "Screens/SunAR/MilkyWayPano.swift",
+"line": 152,
+"hex": "000000",
+"src": "pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)"
+},
+{
+"f": "Screens/SunAR/SunARLens.swift",
+"line": 225,
+"hex": "000000",
+"src": "pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 30,
+"hex": "D9AC6B",
+"src": "static let nowTone = Color(hex: 0xD9AC6B)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 32,
+"hex": "FFC24D",
+"src": "static let sunFill = Color(hex: 0xFFC24D)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 42,
+"hex": "FFC24D",
+"src": "static let sunTint = Color(hex: 0xFFC24D)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 43,
+"hex": "C9D6EA",
+"src": "static let moonTint = Color(hex: 0xC9D6EA)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 68,
+"hex": "DCE6FF",
+"src": "static let milkyWayTone = Color(hex: 0xDCE6FF)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 69,
+"hex": "FFEBC2",
+"src": "static let coreTone = Color(hex: 0xFFEBC2)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 72,
+"hex": "FFF3D6",
+"src": "static let starTone = Color(hex: 0xFFF3D6)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 73,
+"hex": "8FB0E8",
+"src": "static let constellationTone = Color(hex: 0x8FB0E8)"
+},
+{
+"f": "Screens/SunAR/SunARInk.swift",
+"line": 82,
+"hex": "F0C987",
+"src": "static let planetTone = Color(hex: 0xF0C987)"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 158,
+"hex": "FBF9F5",
+"src": "let ink = light ? RGBA.hex(0xFBF9F5) : RGBA.hex(0x14110E)"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 158,
+"hex": "14110E",
+"src": "let ink = light ? RGBA.hex(0xFBF9F5) : RGBA.hex(0x14110E)"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 199,
+"hex": "E2A44C",
+"src": "weight: .bold, mono: false, color: north ? .hex(0xE2A44C) : .hex(0x8A8478),"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 199,
+"hex": "8A8478",
+"src": "weight: .bold, mono: false, color: north ? .hex(0xE2A44C) : .hex(0x8A8478),"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 233,
+"hex": "CFD6DE",
+"src": "sc.elements.append(.circle(p, r: 4.5, fill: moonNow.altitude > 0 ? .hex(0xCFD6DE) : RGBA(207, 214, 222, 0.45),"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 254,
+"hex": "E2A44C",
+"src": "sc.elements.append(.circle(p, r: 5.5, fill: e > 0 ? .hex(0xE2A44C) : .hex(0x7C9CC4), stroke: ink,"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 254,
+"hex": "7C9CC4",
+"src": "sc.elements.append(.circle(p, r: 5.5, fill: e > 0 ? .hex(0xE2A44C) : .hex(0x7C9CC4), stroke: ink,"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 328,
+"hex": "E2A44C",
+"src": "sc.elements.append(.circle(p, r: 3.5, fill: ink, stroke: .hex(0xE2A44C), width: 1.5, dash: []))"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 331,
+"hex": "A89C86",
+"src": "color: .hex(0xA89C86), anchor: anchor, tracking: 0))"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 375,
+"hex": "C6AAE8",
+"src": "let c = live ? RGBA.hex(0xC6AAE8) : RGBA(198, 170, 232, 0.4)"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 385,
+"hex": "8A5A18",
+"src": "let sunInk = light ? RGBA.hex(0x8A5A18) : RGBA.hex(0xE2A44C)"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 385,
+"hex": "E2A44C",
+"src": "let sunInk = light ? RGBA.hex(0x8A5A18) : RGBA.hex(0xE2A44C)"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 386,
+"hex": "3F6088",
+"src": "let moonInk = light ? RGBA.hex(0x3F6088) : RGBA.hex(0xCFD6DE)"
+},
+{
+"f": "Screens/Map/MapInstrument.swift",
+"line": 386,
+"hex": "CFD6DE",
+"src": "let moonInk = light ? RGBA.hex(0x3F6088) : RGBA.hex(0xCFD6DE)"
+},
+{
+"f": "Screens/Map/MapInstrumentView.swift",
+"line": 150,
+"hex": "14110E",
+"src": "let ink = RGBA.hex(0x14110E)"
+},
+{
+"f": "Screens/Map/MapScreenView.swift",
+"line": 111,
+"hex": "E8E3DA",
+"src": "let ground = darkCanvas ? pal.canvas : Color(hex: 0xE8E3DA)"
+},
+{
+"f": "Screens/Map/MapScreenView.swift",
+"line": 187,
+"hex": "05070C",
+"src": "Color(hex: 0x05070C)"
+},
+{
+"f": "Screens/Map/MapScreenView.swift",
+"line": 227,
+"hex": "FF00FF",
+"src": "Circle().fill(Color(hex: 0xFF00FF)).frame(width: 8, height: 8)"
+},
+{
+"f": "Screens/Map/MapScreenView.swift",
+"line": 629,
+"hex": "C6AAE8",
+"src": "case .violet: Color(hex: 0xC6AAE8)"
+},
+{
+"f": "Screens/Map/MapScreenView.swift",
+"line": 630,
+"hex": "E2A44C",
+"src": "case .warm: Color(hex: 0xE2A44C)"
+},
+{
+"f": "Screens/Map/MapScreenView.swift",
+"line": 631,
+"hex": "8A8478",
+"src": "case .shade: Color(hex: 0x8A8478)"
+},
+{
+"f": "Screens/Light/LightTelemetry.swift",
+"line": 183,
+"hex": "sys:blue",
+"src": "tone: score >= 75 ? .brass : score >= 50 ? .green : score >= 28 ? .ink : .blue)"
+},
+{
+"f": "Screens/Moodboard/MoodboardTiles.swift",
+"line": 9,
+"hex": "3D5878",
+"src": "private static let deep: UInt32 = 0x3D5878, blue: UInt32 = 0x5B77A0, pink: UInt32 = 0xC9698F"
+},
+{
+"f": "Screens/Moodboard/MoodboardTiles.swift",
+"line": 9,
+"hex": "5B77A0",
+"src": "private static let deep: UInt32 = 0x3D5878, blue: UInt32 = 0x5B77A0, pink: UInt32 = 0xC9698F"
+},
+{
+"f": "Screens/Moodboard/MoodboardTiles.swift",
+"line": 9,
+"hex": "C9698F",
+"src": "private static let deep: UInt32 = 0x3D5878, blue: UInt32 = 0x5B77A0, pink: UInt32 = 0xC9698F"
+},
+{
+"f": "Screens/Moodboard/MoodboardTiles.swift",
+"line": 10,
+"hex": "D8502F",
+"src": "private static let scarlet: UInt32 = 0xD8502F, gold: UInt32 = 0xE2A44C, amber: UInt32 = 0xD9AC6B"
+},
+{
+"f": "Screens/Moodboard/MoodboardTiles.swift",
+"line": 10,
+"hex": "E2A44C",
+"src": "private static let scarlet: UInt32 = 0xD8502F, gold: UInt32 = 0xE2A44C, amber: UInt32 = 0xD9AC6B"
+},
+{
+"f": "Screens/Moodboard/MoodboardTiles.swift",
+"line": 10,
+"hex": "D9AC6B",
+"src": "private static let scarlet: UInt32 = 0xD8502F, gold: UInt32 = 0xE2A44C, amber: UInt32 = 0xD9AC6B"
+},
+{
+"f": "Screens/Moodboard/MoodboardTiles.swift",
+"line": 11,
+"hex": "EFEAE0",
+"src": "private static let silver: UInt32 = 0xEFEAE0, night: UInt32 = 0x687EA8"
+},
+{
+"f": "Screens/Moodboard/MoodboardTiles.swift",
+"line": 11,
+"hex": "687EA8",
+"src": "private static let silver: UInt32 = 0xEFEAE0, night: UInt32 = 0x687EA8"
+},
+{
+"f": "Screens/Moodboard/MoodboardFolder.swift",
+"line": 463,
+"hex": "B9603D",
+"src": "button(t.t(\"mb.selDel\") + (n > 0 ? \" \\(n)\" : \"\"), node: \"mb.selDel\", color: Color(hex: 0xB9603D)) { confirmRemove = true }"
+},
+{
+"f": "Screens/Moodboard/MoodboardSheets.swift",
+"line": 410,
+"hex": "B9603D",
+"src": "Text(t.t(\"mb.delBoard\")).font(webFont(15)).foregroundStyle(Color(hex: 0xB9603D))"
+},
+{
+"f": "Screens/Moodboard/MoodboardSheets.swift",
+"line": 464,
+"hex": "B9603D",
+"src": "Text(t.t(\"mb.remove\")).font(webFont(15)).foregroundStyle(Color(hex: 0xB9603D))"
+},
+{
+"f": "Dome/DomeView.swift",
+"line": 306,
+"hex": "17150F",
+"src": "layer.addFilter(.shadow(color: Color(hex: 0x17150F, alpha: 0.18), radius: 5, x: 0, y: 5))"
+},
+{
+"f": "Dome/DomeView.swift",
+"line": 420,
+"hex": "FFEEBA",
+"src": "let mid = LightPalette.lerp(color, SkyColor(255, 238, 186), light ? 0.25 : 0.55)"
+},
+{
+"f": "Dome/DomeView.swift",
+"line": 458,
+"hex": "17150F",
+"src": ".init(color: Color(hex: 0x17150F, alpha: 0.42), location: 0.42),"
+},
+{
+"f": "Dome/DomeView.swift",
+"line": 459,
+"hex": "17150F",
+"src": ".init(color: Color(hex: 0x17150F, alpha: 0), location: 1),"
+},
+{
+"f": "Dome/DomeView.swift",
+"line": 473,
+"hex": "17150F",
+"src": "layer.addFilter(.shadow(color: Color(hex: 0x17150F, alpha: 0.16), radius: 1, x: 0, y: 1))"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 81,
+"hex": "000000",
+"src": "return (l + 0.05) / 0.05 >= 1.05 / (l + 0.05) ? SkyColor(0, 0, 0) : SkyColor(255, 255, 255)"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 81,
+"hex": "FFFFFF",
+"src": "return (l + 0.05) / 0.05 >= 1.05 / (l + 0.05) ? SkyColor(0, 0, 0) : SkyColor(255, 255, 255)"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 96,
+"hex": "FAF8F3",
+"src": "lightTheme ? SkyColor(250,248,243) : SkyColor(15,14,12)"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 96,
+"hex": "0F0E0C",
+"src": "lightTheme ? SkyColor(250,248,243) : SkyColor(15,14,12)"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 103,
+"hex": "FFFFFF",
+"src": "lightTheme ? SkyColor(255,255,255) : SkyColor(203,215,234)"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 103,
+"hex": "CBD7EA",
+"src": "lightTheme ? SkyColor(255,255,255) : SkyColor(203,215,234)"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 140,
+"hex": "26416E",
+"src": "Stop(-12, (SkyColor(38,65,110), SkyColor(68,100,141)), (SkyColor(8,16,36), SkyColor(18,30,55))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 140,
+"hex": "44648D",
+"src": "Stop(-12, (SkyColor(38,65,110), SkyColor(68,100,141)), (SkyColor(8,16,36), SkyColor(18,30,55))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 140,
+"hex": "081024",
+"src": "Stop(-12, (SkyColor(38,65,110), SkyColor(68,100,141)), (SkyColor(8,16,36), SkyColor(18,30,55))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 140,
+"hex": "121E37",
+"src": "Stop(-12, (SkyColor(38,65,110), SkyColor(68,100,141)), (SkyColor(8,16,36), SkyColor(18,30,55))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 141,
+"hex": "6282AB",
+"src": "Stop(-6, (SkyColor(98,130,171), SkyColor(149,176,202)), (SkyColor(16,28,49), SkyColor(24,40,68))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 141,
+"hex": "95B0CA",
+"src": "Stop(-6, (SkyColor(98,130,171), SkyColor(149,176,202)), (SkyColor(16,28,49), SkyColor(24,40,68))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 141,
+"hex": "101C31",
+"src": "Stop(-6, (SkyColor(98,130,171), SkyColor(149,176,202)), (SkyColor(16,28,49), SkyColor(24,40,68))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 141,
+"hex": "182844",
+"src": "Stop(-6, (SkyColor(98,130,171), SkyColor(149,176,202)), (SkyColor(16,28,49), SkyColor(24,40,68))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 142,
+"hex": "CFE1EB",
+"src": "Stop(0, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,35,63), SkyColor(30,57,90))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 142,
+"hex": "EBF1F0",
+"src": "Stop(0, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,35,63), SkyColor(30,57,90))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 142,
+"hex": "12233F",
+"src": "Stop(0, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,35,63), SkyColor(30,57,90))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 142,
+"hex": "1E395A",
+"src": "Stop(0, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,35,63), SkyColor(30,57,90))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 143,
+"hex": "CFE1EB",
+"src": "Stop(6, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,38,67), SkyColor(35,68,103))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 143,
+"hex": "EBF1F0",
+"src": "Stop(6, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,38,67), SkyColor(35,68,103))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 143,
+"hex": "122643",
+"src": "Stop(6, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,38,67), SkyColor(35,68,103))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 143,
+"hex": "234467",
+"src": "Stop(6, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,38,67), SkyColor(35,68,103))),"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 144,
+"hex": "CFE1EB",
+"src": "Stop(40, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(21,46,78), SkyColor(42,78,116)))"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 144,
+"hex": "EBF1F0",
+"src": "Stop(40, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(21,46,78), SkyColor(42,78,116)))"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 144,
+"hex": "152E4E",
+"src": "Stop(40, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(21,46,78), SkyColor(42,78,116)))"
+},
+{
+"f": "Dome/DomeSky.swift",
+"line": 144,
+"hex": "2A4E74",
+"src": "Stop(40, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(21,46,78), SkyColor(42,78,116)))"
+},
+{
+"f": "Dome/DomeGeometry.swift",
+"line": 144,
+"hex": "FAF8F3",
+"src": "private static let litSurfaceLuminance = relativeLuminance(SkyColor(250, 248, 243))"
+},
+{
+"f": "Timebar/RibbonView.swift",
+"line": 317,
+"hex": "231F18",
+"src": "face = darkSlot ? (slot == .graphite ? Color(hex: 0x231F18, alpha: 0.72) : Color(hex: 0x17150F, alpha: 0.88))"
+},
+{
+"f": "Timebar/RibbonView.swift",
+"line": 317,
+"hex": "17150F",
+"src": "face = darkSlot ? (slot == .graphite ? Color(hex: 0x231F18, alpha: 0.72) : Color(hex: 0x17150F, alpha: 0.88))"
+},
+{
+"f": "Timebar/RibbonView.swift",
+"line": 319,
+"hex": "F0EBE1",
+"src": "ink = darkSlot ? Color(hex: 0xF0EBE1) : pal.ink"
+},
+{
+"f": "Timebar/RibbonView.swift",
+"line": 320,
+"hex": "C4BCAC",
+"src": "ink5 = darkSlot ? (slot == .graphite ? Color(hex: 0xC4BCAC) : Color(hex: 0x9A9384)) : pal.ink5"
+},
+{
+"f": "Timebar/RibbonView.swift",
+"line": 320,
+"hex": "9A9384",
+"src": "ink5 = darkSlot ? (slot == .graphite ? Color(hex: 0xC4BCAC) : Color(hex: 0x9A9384)) : pal.ink5"
+},
+{
+"f": "Timebar/RibbonView.swift",
+"line": 321,
+"hex": "D0704A",
+"src": "terra = darkSlot ? (slot == .graphite ? Color(hex: 0xD0704A) : Color(hex: 0xC9663D)) : pal.terra"
+},
+{
+"f": "Timebar/RibbonView.swift",
+"line": 321,
+"hex": "C9663D",
+"src": "terra = darkSlot ? (slot == .graphite ? Color(hex: 0xD0704A) : Color(hex: 0xC9663D)) : pal.terra"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 26,
+"hex": "E4E4E2",
+"src": "var bg: Color { pick(0xE4E4E2, 0x161616) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 26,
+"hex": "161616",
+"src": "var bg: Color { pick(0xE4E4E2, 0x161616) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 27,
+"hex": "111111",
+"src": "var text: Color { pick(0x111111, 0xECECEA) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 27,
+"hex": "ECECEA",
+"src": "var text: Color { pick(0x111111, 0xECECEA) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 28,
+"hex": "5B5B5B",
+"src": "var muted: Color { pick(0x5B5B5B, 0x9B9B9B) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 28,
+"hex": "9B9B9B",
+"src": "var muted: Color { pick(0x5B5B5B, 0x9B9B9B) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 30,
+"hex": "7A7A7A",
+"src": "var dim: Color { pick(0x7A7A7A, 0x6B6B6B) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 30,
+"hex": "6B6B6B",
+"src": "var dim: Color { pick(0x7A7A7A, 0x6B6B6B) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 32,
+"hex": "111111",
+"src": "var amber: Color { pick(0x111111, 0xF4B400) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 32,
+"hex": "F4B400",
+"src": "var amber: Color { pick(0x111111, 0xF4B400) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 33,
+"hex": "111111",
+"src": "var dot: Color { pick(0x111111, 0xECECEA) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 33,
+"hex": "ECECEA",
+"src": "var dot: Color { pick(0x111111, 0xECECEA) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 34,
+"hex": "DCDCDA",
+"src": "var dotOff: Color { pick(0xDCDCDA, 0x2E2E2E) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 34,
+"hex": "2E2E2E",
+"src": "var dotOff: Color { pick(0xDCDCDA, 0x2E2E2E) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 35,
+"hex": "CBCBC9",
+"src": "var tickOff: Color { pick(0xCBCBC9, 0x303030) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 35,
+"hex": "303030",
+"src": "var tickOff: Color { pick(0xCBCBC9, 0x303030) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 36,
+"hex": "6E6E6E",
+"src": "var tickMinor: Color { pick(0x6E6E6E, 0x8C8C8C) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 36,
+"hex": "8C8C8C",
+"src": "var tickMinor: Color { pick(0x6E6E6E, 0x8C8C8C) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 37,
+"hex": "111111",
+"src": "var tickHour: Color { pick(0x111111, 0xECECEA) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 37,
+"hex": "ECECEA",
+"src": "var tickHour: Color { pick(0x111111, 0xECECEA) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 38,
+"hex": "FAFAFA",
+"src": "var dial: Color { pick(0xFAFAFA, 0x0D0D0D) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 38,
+"hex": "0D0D0D",
+"src": "var dial: Color { pick(0xFAFAFA, 0x0D0D0D) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 41,
+"hex": "F4B400",
+"src": "var pill: Color { dark ? Color.white.opacity(0.07) : Self.hex(0xF4B400) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 43,
+"hex": "D3D3D1",
+"src": "var win: Color { pick(0xD3D3D1, 0x0A0A0A) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 43,
+"hex": "0A0A0A",
+"src": "var win: Color { pick(0xD3D3D1, 0x0A0A0A) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 53,
+"hex": "AD0A15",
+"src": "var flag: Color { pick(0xAD0A15, 0xC8102E) }"
+},
+{
+"f": "LightPlanWidget/Views/BraunWidget.swift",
+"line": 53,
+"hex": "C8102E",
+"src": "var flag: Color { pick(0xAD0A15, 0xC8102E) }"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/SkyPalette.swift",
+"line": 24,
+"hex": "383E52",
+"src": "static let zenithStop = SkyColor(56, 62, 82)     // холодный верх неба"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/SkyPalette.swift",
+"line": 25,
+"hex": "D67C94",
+"src": "static let highStop = SkyColor(214, 124, 148)    // розовое послесвечение перистых"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/SkyPalette.swift",
+"line": 26,
+"hex": "E2744A",
+"src": "static let midStop = SkyColor(226, 116, 74)      // алый и оранжевый средних облаков"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/SkyPalette.swift",
+"line": 27,
+"hex": "F7C476",
+"src": "static let horizonStop = SkyColor(247, 196, 118) // тёплая полоса у самого горизонта"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/SkyPalette.swift",
+"line": 28,
+"hex": "5C5C60",
+"src": "static let dead = SkyColor(92, 92, 96)           // «свинец»: цвета не будет"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightState.swift",
+"line": 66,
+"hex": "sys:blue",
+"src": "state = make(.blue, 0.24, 5, .excellent)"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightPalette.swift",
+"line": 24,
+"hex": "E2A44C",
+"src": "public static let gold = SkyColor(226, 164, 76)"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightPalette.swift",
+"line": 25,
+"hex": "D9AC6B",
+"src": "public static let amber = SkyColor(217, 172, 107)"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightPalette.swift",
+"line": 26,
+"hex": "EFEAE0",
+"src": "public static let silver = SkyColor(239, 234, 224)"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightPalette.swift",
+"line": 27,
+"hex": "D8502F",
+"src": "public static let scarlet = SkyColor(216, 80, 47)"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightPalette.swift",
+"line": 28,
+"hex": "C9698F",
+"src": "public static let pink = SkyColor(201, 105, 143)"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightPalette.swift",
+"line": 29,
+"hex": "5B77A0",
+"src": "public static let blue = SkyColor(91, 119, 160)"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightPalette.swift",
+"line": 30,
+"hex": "3D5878",
+"src": "public static let deep = SkyColor(61, 88, 120)"
+},
+{
+"f": "Packages/LightPlanCore/Sources/LightPlanCore/Light/LightPalette.swift",
+"line": 31,
+"hex": "687EA8",
+"src": "public static let night = SkyColor(104, 126, 168)"
+}
+],
+"near": []
+}

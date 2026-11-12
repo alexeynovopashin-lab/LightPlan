@@ -1,0 +1,26 @@
+{"what": "подложка месяца", "theme": "dark", "plate": 6.8, "page": 6.4, "fill_dL": 0.5, "light_edge": -0.5, "dark_edge": 0.0, "shadow_dL": -4.1, "verdict": "тень -4.1"}
+{"what": "подложка месяца", "theme": "light", "plate": 98.7, "page": 95.6, "fill_dL": 3.1, "light_edge": -1.7, "dark_edge": -0.7, "shadow_dL": -10.9, "verdict": "заливка +3.1 + тень -10.9"}
+{"what": "строка недели со съёмкой", "theme": "dark", "plate": 6.8, "page": 4.0, "fill_dL": 2.8, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.8"}
+{"what": "строка недели со съёмкой", "theme": "light", "plate": 100.0, "page": 97.6, "fill_dL": 2.4, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.4"}
+{"what": "строка клиента", "theme": "dark", "plate": 6.8, "page": 4.0, "fill_dL": 2.8, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.8"}
+{"what": "строка клиента", "theme": "light", "plate": 100.0, "page": 97.6, "fill_dL": 2.4, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.4"}
+{"what": "строка организации", "theme": "dark", "plate": 6.8, "page": 4.0, "fill_dL": 2.8, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.8"}
+{"what": "строка организации", "theme": "light", "plate": 100.0, "page": 97.6, "fill_dL": 2.4, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.4"}
+{"what": "поле карточки организации", "theme": "dark", "plate": 6.8, "page": 4.0, "fill_dL": 2.8, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.8"}
+{"what": "поле карточки организации", "theme": "light", "plate": 100.0, "page": 97.6, "fill_dL": 2.4, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.4"}
+{"what": "плитка кадра мудборда", "theme": "dark", "plate": 7.9, "page": 4.0, "fill_dL": 3.9, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +3.9"}
+{"what": "плитка кадра мудборда", "theme": "light", "plate": 100.0, "page": 97.6, "fill_dL": 2.4, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.4"}
+{"what": "сегмент режима", "theme": "dark", "plate": 6.8, "page": 4.0, "fill_dL": 2.8, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.8"}
+{"what": "сегмент режима", "theme": "light", "plate": 100.0, "page": 97.6, "fill_dL": 2.4, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 0.0, "verdict": "заливка +2.4"}
+за кадром лист карточки dark
+за кадром лист карточки light
+{"what": "плитка даты в карточке", "theme": "dark", "plate": 7.9, "page": 5.1, "fill_dL": 2.8, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": 2.8, "verdict": "заливка +2.8"}
+{"what": "плитка даты в карточке", "theme": "light", "plate": 100.0, "page": 93.8, "fill_dL": 6.2, "light_edge": 0.0, "dark_edge": 0.0, "shadow_dL": -4.0, "verdict": "заливка +6.2 + тень -4.0"}
+{"what": "плитка места в карточке", "theme": "dark", "plate": 7.9, "page": 12.7, "fill_dL": -4.9, "light_edge": -4.3, "dark_edge": 0.0, "shadow_dL": -8.2, "verdict": "заливка -4.9 + тень -8.2"}
+{"what": "плитка места в карточке", "theme": "light", "plate": 100.0, "page": 88.8, "fill_dL": 11.2, "light_edge": 0.0, "dark_edge": -2.2, "shadow_dL": 5.3, "verdict": "заливка +11.2"}
+за кадром блок «Где снимаем» в форме dark
+за кадром блок «Где снимаем» в форме light
+за кадром блок оплаты в форме dark
+за кадром блок оплаты в форме light
+{"what": "лист маршрута на карте", "theme": "dark", "plate": 4.8, "page": 4.9, "fill_dL": -0.1, "light_edge": 17.6, "dark_edge": 0.0, "shadow_dL": -0.1, "verdict": "светлый кант +17.6"}
+{"what": "лист маршрута на карте", "theme": "light", "plate": 97.3, "page": 88.6, "fill_dL": 8.7, "light_edge": 0.0, "dark_edge": 13.7, "shadow_dL": -15.8, "verdict": "заливка +8.7 + тёмный кант −13.7 + тень -15.8"}
