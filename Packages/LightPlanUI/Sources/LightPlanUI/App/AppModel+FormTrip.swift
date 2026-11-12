@@ -158,6 +158,29 @@ extension AppModel {
         formBusyWarning(f) ?? formClashWarning(f) ?? formGhostWarning(f) ?? formWishWarning(f)
     }
 
+    /// Плашки формы по местам (30г.14, Алексей 12.11 «да, так»): про время (занято, наложение, чужой календарь — первая из
+    /// них) всегда под временем; про погоду (погода, луна, Млечный Путь) — под пожеланиями, а наверху, под временем, только
+    /// та, с которой форма открылась, пока пожелания не трогали и вид беды (заголовок) тот же. Две беды — две плашки, одна
+    /// плашка — одно место.
+    public func formWarnings(_ f: EventForm) -> FormWarnings {
+        let time = formBusyWarning(f) ?? formClashWarning(f) ?? formGhostWarning(f)
+        var out = FormWarnings(top: time.map { [$0] } ?? [], underWishes: nil)
+        guard let wish = formWishWarning(f) else { return out }
+        if formWishTop != nil, wish.title == formWishTop { out.top.append(wish) } else { out.underWishes = wish }
+        return out
+    }
+
+    /// Открытие формы — смена записи в ней (новая, черновик, сохранённая, «Начать заново»): запоминается вид плашки про
+    /// погоду. Правка пожеланий той же записи стирает его — наверх плашка вернётся только при следующем открытии.
+    func formWarnFollow(from old: EventForm?) {
+        guard let f = form else { formWishTop = nil; return }
+        if f.id != old?.id {
+            formWishTop = formWishWarning(f)?.title
+        } else if f.wishes != old?.wishes, formWishTop != nil {
+            formWishTop = nil
+        }
+    }
+
     /// Занято — запрет, а не совет: плашка называет, чем занято («Концерт — 18:00–21:00»), и что сохранить нельзя.
     public func formBusyWarning(_ f: EventForm) -> WishWarning? {
         guard case .busy(let h)? = formSaveBlock(f) else { return nil }
@@ -308,5 +331,16 @@ struct StudioDraft: Equatable {
         halls = st.halls.map { Hall(id: $0.id, name: $0.name) }
         latitude = st.latitude ?? c.latitude
         longitude = st.longitude ?? c.longitude
+    }
+}
+
+/// Плашки формы по местам (30г.14): `top` — под временем (сначала про время, под ней про погоду), `underWishes` — под
+/// пожеланиями.
+public struct FormWarnings: Equatable, Sendable {
+    public var top: [WishWarning]
+    public var underWishes: WishWarning?
+    public init(top: [WishWarning], underWishes: WishWarning?) {
+        self.top = top
+        self.underWishes = underWishes
     }
 }

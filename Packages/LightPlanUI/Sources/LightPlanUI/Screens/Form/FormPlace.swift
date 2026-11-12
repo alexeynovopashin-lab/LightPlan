@@ -480,6 +480,8 @@ struct FormWishBlock: View {
 /// спокойным янтарным светом из-под неё, знак 16 `--brass-deep` слева.
 struct FormWishWarn: View {
     let warning: WishWarning
+    /// Имя на кадре (30г.14): плашек бывает две наверху и одна под пожеланиями; первая наверху — пара веба.
+    var node = "form.wishWarn"
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -498,7 +500,7 @@ struct FormWishWarn: View {
         .background(pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .modifier(WarnGlow(rgb: (226, 164, 76), alpha: scheme == .light ? 0.55 : 0.32))
         .padding(.top, 10)
-        .shotNode("form.wishWarn", text: warning.title)
+        .shotNode(node, text: warning.title)
     }
 }
 

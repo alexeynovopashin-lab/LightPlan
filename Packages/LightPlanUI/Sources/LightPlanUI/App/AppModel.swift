@@ -338,8 +338,11 @@ public final class AppModel {
     let deviceZone: TimeZone
 
     // MARK: - Форма записи (итерация 23; правила — `AppModel+Form`)
-    /// Открытая форма записи; `nil` — закрыта.
-    public var form: EventForm?
+    /// Открытая форма записи; `nil` — закрыта. Смена записи — открытие: плашка про погоду запоминается (30г.14).
+    public var form: EventForm? { didSet { formWarnFollow(from: oldValue) } }
+    /// Вид плашки про погоду, с которым форма открылась (30г.14, `AppModel+FormTrip`): пока он тот же и пожелания не
+    /// трогали, плашка стоит наверху; первая правка пожеланий стирает его до следующего открытия.
+    var formWishTop: String?
     /// Форма поднята из черновика — над ней полоса «Черновик восстановлен».
     public var formIsDraft = false
     /// Строка под заголовком формы («черновик стёрт»).

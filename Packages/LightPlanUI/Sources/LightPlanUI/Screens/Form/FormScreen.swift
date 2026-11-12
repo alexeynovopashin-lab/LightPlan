@@ -55,21 +55,28 @@ struct FormScreen: View {
         if let f = app.form {
             let pal = Palette(scheme)
             let t = app.lexicon
+            let warns = app.formWarnings(f)
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     title(f, pal, t)
                     if app.formIsDraft { draftStrip(pal, t) }
-                    // Порядок (28о, Алексей): жанр, дата и время, затем имена. Предупреждение — сразу
-                    // под временем, к которому относится: над жанром оно называло чужой день (П5).
+                    // Порядок (28о, Алексей): жанр, дата и время, затем имена. Плашки — под блоком, к которому
+                    // относятся (30г.14): про время — под временем; про погоду — под пожеланиями, а под временем
+                    // только та, с которой форма открылась (`formWarnings`).
                     genreBlock(f, pal, t).padding(.top, 24)
                     timeBlock(f, pal, t).id("time")
-                    if let w = app.formWarning(f) { FormWishWarn(warning: w) }
+                    ForEach(Array(warns.top.enumerated()), id: \.offset) { i, w in
+                        FormWishWarn(warning: w, node: i == 0 ? "form.wishWarn" : "form.wishWarn.2")
+                    }
                     whoBlock(f, pal, t)
                     FormPlaceBlock(app: app, form: f, wheel: $stopWheel) { picker = nil; repMenu = false }.id("place")
                     notesBlock(f, pal, t)
                     if f.shows(.order) { orderBlock(f, pal, t).id("order") }
-                    if f.mode != .meet { FormWishBlock(app: app, form: f).id("wish") }
+                    if f.mode != .meet {
+                        FormWishBlock(app: app, form: f).id("wish")
+                        if let w = warns.underWishes { FormWishWarn(warning: w, node: "form.wishWarn.wish") }
+                    }
                     if f.shows(.payment) { FormPayBlock(app: app, form: f, sheet: $paySheet).id("pay") }
                     if f.shows(.delivery) { FormDeliveryBlock(app: app, form: f) }
                     if !f.isNew { deleteButton(f, pal, t) }
