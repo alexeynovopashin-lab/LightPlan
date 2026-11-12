@@ -29214,13 +29214,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "地点が市街地の中"
+            "value" : "スポットが市街地にある"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "地点在城区内"
+            "value" : "该点在市区"
           }
         }
       }
@@ -29237,25 +29237,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "the forecast says {sky}"
+            "value" : "no clear sky in the forecast ({sky})"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "el pronóstico da {sky}"
+            "value" : "no se prevé cielo despejado ({sky})"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "予報は{sky}"
+            "value" : "予報では{sky}"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "预报为{sky}"
+            "value" : "预报天空不晴朗（{sky}）"
           }
         }
       }
@@ -29377,13 +29377,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "the core is low above the horizon"
+            "value" : "the core is low over the horizon"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "el núcleo queda bajo sobre el horizonte"
+            "value" : "el núcleo apenas se eleva sobre el horizonte"
           }
         },
         "ja" : {
@@ -29395,7 +29395,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "银心离地平线太低"
+            "value" : "银心高度太低"
           }
         }
       }
