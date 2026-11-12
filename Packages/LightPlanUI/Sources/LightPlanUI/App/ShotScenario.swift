@@ -189,13 +189,14 @@ extension AppModel {
                 defer {
                     Task { @MainActor in
                         try? await Task.sleep(for: .seconds(1))
-                        // 30г.14: `LPShotFormBusy form` — другая съёмка ровно на время открытой формы (наложение, сохранить можно).
+                        if let w = UserDefaults.standard.string(forKey: "LPShotFormWish").flatMap(Wish.init(rawValue:)) { app.toggleFormWish(w) }
+                        if UserDefaults.standard.string(forKey: "LPShotFormSettle") != nil { app.formTimeSettled() }
+                        // 30г.14: `LPShotFormBusy form` — другая съёмка ровно на время открытой формы (наложение, сохранить
+                        // можно) — после пожелания: оно может сдвинуть время.
                         if UserDefaults.standard.string(forKey: "LPShotFormBusy") == "form", let f = app.form {
                             app.snapshot.sessions.append(Session(id: "shot_busy", kind: .shoot, day: f.day, start: f.start,
                                                                  end: f.start + f.duration, duration: f.duration, genre: .portrait))
                         }
-                        if let w = UserDefaults.standard.string(forKey: "LPShotFormWish").flatMap(Wish.init(rawValue:)) { app.toggleFormWish(w) }
-                        if UserDefaults.standard.string(forKey: "LPShotFormSettle") != nil { app.formTimeSettled() }
                         // 30г.14: `LPShotFormReopen 1` — «Сохранить» и открыть ту же съёмку снова (повторное открытие).
                         if UserDefaults.standard.string(forKey: "LPShotFormReopen") != nil, let id = app.form?.id, app.saveForm() != nil {
                             app.openForm(editing: id)
