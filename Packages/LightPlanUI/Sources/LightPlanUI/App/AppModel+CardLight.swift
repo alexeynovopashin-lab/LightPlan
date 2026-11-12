@@ -151,9 +151,18 @@ extension AppModel {
     /// все причины через запятую в порядке `StarsBlock` (Алексей 11.11); первая — с заглавной буквы. Одна причина даёт
     /// прежние две короткие фразы. Слова и разделитель — `light.noStars.*` (`Tools/lang_native.json`).
     func noStarsLine(_ why: [StarsBlock]) -> String {
+        let w = noStarsWords(why)
+        return lexicon.t("light.noStars.line", ["head": w.head, "why": w.why])
+    }
+
+    /// Две фразы строки «не будет видно» порознь: `head` — «Млечного Пути не будет видно» (заголовок плашки формы),
+    /// `why` — «Недостаточно темно, …, точка в черте города.» (её текст). Карточка ставит их в одну строку
+    /// (`light.noStars.line`), форма (30г.11) — в две строки плашки: слова и порядок одни.
+    func noStarsWords(_ why: [StarsBlock]) -> (head: String, why: String) {
         let parts = why.map { r -> String in
             switch r {
             case .notDark: lexicon.t("light.noStars.dark")
+            case .clouds(let q): lexicon.t("light.noStars.clouds", ["sky": lexicon.t("qualSky." + q.rawValue).lowercased()])
             case .moon(let pct): lexicon.t("light.noStars.moon", ["p": "\(pct)"])
             case .coreLow: lexicon.t("light.noStars.low")
             case .city: lexicon.t("light.noStars.city")
@@ -161,7 +170,7 @@ extension AppModel {
         }
         let sep = lexicon.t("light.noStars.sep")
         let joined = parts.joined(separator: sep == "," ? ", " : sep)
-        return lexicon.t("light.noStars.line", ["why": joined.prefix(1).uppercased() + joined.dropFirst()])
+        return (lexicon.t("light.noStars.head"), lexicon.t("light.noStars.why", ["why": joined.prefix(1).uppercased() + joined.dropFirst()]))
     }
 
     /// Реплики блока «Свет» сверху вниз: золотой час, звёзды, луна.

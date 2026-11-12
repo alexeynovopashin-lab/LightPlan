@@ -61,6 +61,7 @@ if (args.help) {
   --cards / --phases / --forms / --layers / --sheets / --chapters   перебор отдельных экранов (см. шапку файла)
   --rec-mode pro|astro|astro~moon   режим засева карточек и форм (30г.6; без флага «Просто»); --cards moon — съёмка с «Луной», --cards stars — со «Звёздами» (30г.7)
   --only-spoiler   только раскрытое «Подробно» «Света» и (30г.7) «Карты», режимы не «Просто»
+  --form-day yyyy-mm-dd --form-wish stars   форма (--forms) на этот день с нажатым пожеланием: плашка «замысел против прогноза» (30г.11)
   --dome-moon   купол «Света» и «Карты» как после нажатия «Солнце или луна» (30г.6, только натив; без «Луны» — солнце)
   --skip-build   --out <папка>   --forecast <файл>   --no-sheets --no-pick   --help   эта справка`);
   process.exit(0);
@@ -293,6 +294,9 @@ async function nativeShot(udid, sc, dir) {
     ...(args['dome-moon'] ? ['-LPShotDomeMoon', '1'] : []),
     ...(args['form-scroll'] ? ['-LPShotFormScroll', args['form-scroll']] : []),
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
+    // 30г.11: `--form-day 2027-06-21 --form-wish stars` — форма на этот день с нажатым пожеланием (плашка «замысел против прогноза»).
+    ...(sc.form && args['form-day'] ? ['-LPShotFormDay', args['form-day']] : []),
+    ...(sc.form && args['form-wish'] ? ['-LPShotFormWish', args['form-wish']] : []),
     ...(sc.layer ? ['-LPShotSheet', sc.layer] : []),
     ...(sc.grip ? ['-LPShotSheet', 'grip', '-LPShotWay', sc.grip] : []),
     ...(sc.part ? ['-LPShotChapter', sc.partKind + ':' + sc.part, '-LPShotReportDelay', '6'] : []),
@@ -615,7 +619,7 @@ function markdown(results) {
     list.push({ name, dir, screen, theme, moment: 'day', sheet: way, seed: seedFile });
   }
   for (const g of forms) for (const theme of themes) {
-    const name = ['planner', 'form', g, recTag, theme].filter(Boolean).join('-');
+    const name = ['planner', 'form', g, recTag, args['form-wish'], args['form-day'], theme].filter(Boolean).join('-');
     const dir = path.join(OUT, name);
     fs.mkdirSync(dir, { recursive: true });
     const seedFile = path.join(dir, 'seed.json');

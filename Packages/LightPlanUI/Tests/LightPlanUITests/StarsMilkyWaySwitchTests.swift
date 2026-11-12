@@ -315,22 +315,28 @@ struct StarsMilkyWaySwitchTests {
     }
 
     /// Сборка строки: одна причина — две короткие фразы, как выбрал Алексей; несколько — через запятую в порядке
-    /// «недостаточно темно → луна → ядро → город», первая с заглавной буквы, в конце точка. Все 15 сочетаний.
+    /// «недостаточно темно → облачность (только форма, 30г.11) → луна → ядро → город», первая с заглавной буквы, в конце
+    /// точка. Все 31 сочетание; плашка формы — те же две фразы порознь (заголовок и текст).
     @Test func noStarsLineJoinsEveryReasonInOrder() {
         let app = model()
-        let all: [StarsBlock] = [.notDark, .moon(percent: 91), .coreLow, .city]
+        let all: [StarsBlock] = [.notDark, .clouds(sky: .good), .moon(percent: 91), .coreLow, .city]
+        #expect(app.noStarsLine([.clouds(sky: .poor)]) == "Млечного Пути не будет видно. По прогнозу дождь.")
+        #expect(app.noStarsLine([.notDark, .clouds(sky: .good), .city])
+                == "Млечного Пути не будет видно. Недостаточно темно, по прогнозу облачно с прояснениями, точка в черте города.")
         #expect(app.noStarsLine([.notDark]) == "Млечного Пути не будет видно. Недостаточно темно.")
         #expect(app.noStarsLine([.coreLow]) == "Млечного Пути не будет видно. Ядро низко над горизонтом.")
         #expect(app.noStarsLine([.moon(percent: 91)]) == "Млечного Пути не будет видно. Луна засветит небо (91%).")
         #expect(app.noStarsLine([.city]) == "Млечного Пути не будет видно. Точка в черте города.")
         #expect(app.noStarsLine([.notDark, .moon(percent: 91), .city])
                 == "Млечного Пути не будет видно. Недостаточно темно, луна засветит небо (91%), точка в черте города.")
-        #expect(app.noStarsLine(all)
+        #expect(app.noStarsLine(all.filter { if case .clouds = $0 { false } else { true } })
                 == "Млечного Пути не будет видно. Недостаточно темно, луна засветит небо (91%), ядро низко над горизонтом, точка в черте города.")
         let head = "Млечного Пути не будет видно. "
-        for mask in 1..<16 {
+        for mask in 1..<32 {
             let why = all.enumerated().filter { mask & (1 << $0.offset) != 0 }.map(\.element)
             let line = app.noStarsLine(why)
+            let words = app.noStarsWords(why)
+            #expect(words.head + ". " + words.why == line, "\(mask): плашка формы и строка карточки разошлись — «\(line)»")
             #expect(line.hasPrefix(head) && line.hasSuffix("."), "\(mask): «\(line)»")
             let body = String(line.dropFirst(head.count).dropLast())
             #expect(body.components(separatedBy: ", ").count == why.count, "\(mask): причин \(why.count) — «\(line)»")
@@ -344,13 +350,15 @@ struct StarsMilkyWaySwitchTests {
     /// записей не держит и берёт британские — проверяется, что старых у него не осталось; прежние три ключа убраны.
     @Test func noStarsWordsArePlainInEveryLanguage() throws {
         let strings = try LabelFitTests.catalog()
-        let keys = ["line", "dark", "moon", "low", "city", "sep"].map { "light.noStars." + $0 }
+        let keys = ["line", "head", "why", "dark", "clouds", "moon", "low", "city", "sep"].map { "light.noStars." + $0 }
         for key in keys {
             for lang in ["ru", "en", "es", "ja", "zh"] {
                 let v = try #require(LabelFitTests.value(strings, key, lang), "нет записи: \(key) \(lang)")
                 #expect(!v.isEmpty && !v.contains("°"), "\(key) \(lang): «\(v)»")
                 #expect(v.contains("{p}") == key.hasSuffix(".moon"), "\(key) \(lang): процент луны — «\(v)»")
-                #expect(v.contains("{why}") == key.hasSuffix(".line"), "\(key) \(lang): место причин — «\(v)»")
+                #expect(v.contains("{sky}") == key.hasSuffix(".clouds"), "\(key) \(lang): небо прогноза — «\(v)»")
+                #expect(v.contains("{why}") == (key.hasSuffix(".line") || key.hasSuffix(".why")), "\(key) \(lang): место причин — «\(v)»")
+                #expect(v.contains("{head}") == key.hasSuffix(".line"), "\(key) \(lang): место заголовка — «\(v)»")
             }
             #expect(LabelFitTests.value(strings, key, "en-US") == nil, "\(key): у en-US своя запись")
         }
@@ -419,6 +427,31 @@ struct StarsMilkyWaySwitchTests {
             #expect((app.formWishWarning(form) == nil) == !look.stars, "\(look)")
             #expect(app.form?.wishes == [.stars], "\(look)")
         }
+    }
+
+    /// 30г.11 (Алексей 12.11 «сделать форму как карточку»): плашка формы о «Звёздах» называет все сработавшие причины
+    /// словами строки карточки — заголовок «Млечного Пути не будет видно», текст — причины через запятую. Форма у дома
+    /// (точка в черте города): сентябрь с дождём — «по прогнозу дождь» и город; ясный сентябрь — город, без облачности;
+    /// белая ночь 21.06.2027 (без прогноза) — «недостаточно темно» первой и город последней.
+    @Test func formStarsWarningNamesEveryReasonLikeTheCard() async throws {
+        func warning(rain: Bool, day: CivilDate) async throws -> WishWarning {
+            let app = model(rain: rain)
+            await app.light.weather.settled()
+            app.openForm(day: day)
+            app.toggleFormWish(.stars)
+            let form = try #require(app.form)
+            #expect(form.sessionPlace.isCity, "форма у дома — в черте города")
+            return try #require(app.formWishWarning(form))
+        }
+        let sep = CivilDate(year: 2026, month: 9, day: 21)
+        let wet = try await warning(rain: true, day: sep)
+        #expect(wet.title == "Млечного Пути не будет видно")
+        #expect(wet.message.hasPrefix("По прогнозу дождь, ") && wet.message.hasSuffix(", точка в черте города.")
+                || wet.message == "По прогнозу дождь, точка в черте города.", "«\(wet.message)»")
+        let dry = try await warning(rain: false, day: sep)
+        #expect(dry.title == wet.title && !dry.message.contains("прогноз") && dry.message.hasSuffix("очка в черте города."), "«\(dry.message)»")
+        let white = try await warning(rain: false, day: CivilDate(year: 2027, month: 6, day: 21))
+        #expect(white.message == "Недостаточно темно, точка в черте города.", "«\(white.message)»")
     }
 
     /// Сохранённая съёмка со «Звёздами», правка в «Про»: «Неважно» стирает только видимые; после «Сохранить» «Звёзды»
