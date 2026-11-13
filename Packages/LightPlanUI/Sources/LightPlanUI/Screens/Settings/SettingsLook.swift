@@ -54,11 +54,12 @@ struct WebSeg<V: Hashable>: View {
                 } label: {
                     Text(options[i].label)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(on ? pal.ink : pal.ink4)
+                        // Светлая тема (30з.2, слово Алексея 16.11: «потерялись выделения»): выбранная — чёрная плашка с белым словом, как выбранный день.
+                        .foregroundStyle(on ? (pal.dark ? pal.ink : Color.white) : pal.ink4)
                         .lineLimit(lines).multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity, maxHeight: lines > 1 ? .infinity : nil)
                         .padding(11)
-                        .background(on ? pal.segOn : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .background(on ? (pal.dark ? pal.segOn : PlateTokens.blackFill) : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

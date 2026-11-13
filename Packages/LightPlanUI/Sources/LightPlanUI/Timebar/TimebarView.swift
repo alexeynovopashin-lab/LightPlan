@@ -58,8 +58,12 @@ public struct TimebarView: View {
             if plate { Color.clear.glassPlate(pal, hush: 0.7) } else { (bare ? Color.clear : pal.surface) }
         }
         // 30з.1: строки краёв нет — «↺ Сейчас» плавает по центру над верхней кромкой таймбара и места не занимает (высота шкалы та же).
-        .overlay(alignment: .top) {
-            if !showEdges && state.nowButtonVisible { nowButton(pal, floating: true).offset(y: Self.floatingNowOffset) }
+        // 30з.2 (слово Алексея 16.11: «кнопку сейчас смещаем вправо … удобнее пальцу, не перекрываем шеврон»): справа, правый край капсулы на
+        // линии правого поля содержимого плашек (16 внутри плашки у «Света»); высота та же.
+        .overlay(alignment: .topTrailing) {
+            if !showEdges && state.nowButtonVisible {
+                nowButton(pal, floating: true).offset(y: Self.floatingNowOffset).padding(.trailing, plate ? 16 : 24)
+            }
         }
         .overlay(alignment: .top) { Rectangle().fill(bare || plate ? .clear : pal.hair).frame(height: 1) }
     }

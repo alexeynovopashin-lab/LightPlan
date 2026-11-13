@@ -272,11 +272,11 @@ struct ClientsSeg<V: Hashable>: View {
                 } label: {
                     Text(options[i].label)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(on ? pal.ink : pal.ink4)
+                        .foregroundStyle(on ? (pal.dark ? pal.ink : Color.white) : pal.ink4)
                         .lineLimit(1).minimumScaleFactor(0.8)
                         .padding(.vertical, 7).padding(.horizontal, 12)
                         .frame(maxWidth: stretch ? .infinity : nil)
-                        .background(on ? pal.segOn : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .background(on ? (pal.dark ? pal.segOn : PlateTokens.blackFill) : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                         .raisedStyle(pal, radius: 9, on: on)
                         .contentShape(Rectangle())
                 }
