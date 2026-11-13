@@ -165,14 +165,18 @@ enum ArcG1 {
     static let discHaloRadius: Double = 14
     static let discHaloOpacity: Double = 0.45
     static let discHaloBlur: Double = 6
+    /// Внешнее кольцо, как у тёмной темы (`DomeGeometry.ringRadius`, 16 pt): заливка и кромка цвета состояния света (`ringColor`, как у тёмной: красное у горизонта). Без него светлое солнце читалось
+    /// вдвое мельче тёмного (слово Алексея 14.11): видимый поперечник 15 pt против 32 pt.
+    static let discRingFill: Double = 0.18
+    static let discRingStroke: Double = 0.34
     /// Диск: кромка шире ядра на 1,2 pt, персиковое кольцо уже на 0,4, белая середина уже на 2 (`DomeGeometry.coreRadius` = 6,5).
     static let discRimExtra: Double = 1.2
     static let discPeachInset: Double = 0.4
     static let discWhiteInset: Double = 2
 
     /// Диск солнца светлой темы: оранжевая кромка, персиковое кольцо, белая середина, под ним мягкое оранжевое свечение.
-    /// `halo` и `core` — доли силы 0…1 (над линией горизонта обе равны доле светила; под линией — размытая копия, см. `paintBody`).
-    static func paintDisc(_ context: inout GraphicsContext, at pos: CGPoint, halo: Double, core: Double) {
+    /// `ringColor` — цвет состояния света в эту минуту. `halo`, `ring` и `core` — доли силы 0…1 (над линией горизонта обе равны доле светила; под линией — размытая копия, см. `paintBody`).
+    static func paintDisc(_ context: inout GraphicsContext, at pos: CGPoint, halo: Double, ring: Double, ringColor: Color, core: Double) {
         let r = DomeGeometry.coreRadius
         func disc(_ radius: Double) -> Path {
             Path(ellipseIn: CGRect(x: pos.x - CGFloat(radius), y: pos.y - CGFloat(radius), width: CGFloat(radius * 2), height: CGFloat(radius * 2)))
@@ -185,6 +189,11 @@ enum ArcG1 {
                     blur.fill(disc(discHaloRadius), with: .color(orange.color))
                 }
             }
+        }
+        if ring > 0.002 {
+            let ringPath = disc(DomeGeometry.ringRadius)
+            context.fill(ringPath, with: .color(ringColor.opacity(discRingFill * ring)))
+            context.stroke(ringPath, with: .color(ringColor.opacity(discRingStroke * ring)), lineWidth: 1)
         }
         guard core > 0.002 else { return }
         context.drawLayer { layer in

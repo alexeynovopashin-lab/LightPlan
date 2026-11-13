@@ -443,7 +443,7 @@ public struct DomeView: View {
 
         // 28к.5: светлая тема — диск листа Г1 (кромка, персиковое кольцо, белая середина, мягкое свечение) вместо кольца, тени и выреза.
         if colorScheme == .light {
-            ArcG1.paintDisc(&context, at: pos, halo: ring, core: core)
+            ArcG1.paintDisc(&context, at: pos, halo: ring, ring: ring, ringColor: ink, core: core)
             return
         }
 
