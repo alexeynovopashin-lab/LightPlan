@@ -32,14 +32,17 @@ struct AstroSkyView: View {
     static let lifetime = 2.4
 
     var body: some View {
-        let brass = Palette(colorScheme).brass
+        // 28к.4 (слово Алексея 13.11: «звёзды кислотно-оранжевые»): в светлой теме звёзды и линии созвездий чёрные, фон не затемняется
+        // (затемнение .42 лежало серой плёнкой на светлых «Настройках»). В тёмной — латунь и затемнение, как было.
+        let light = colorScheme == .light
+        let brass = light ? Color.black : Palette(colorScheme).brass
         TimelineView(.animation) { context in
             let t = context.date.timeIntervalSince(start)
             Canvas { ctx, size in
                 draw(ctx, size: size, t: t, brass: brass)
             }
             // `as-veil`: затемнение и всё небо одной прозрачностью.
-            .background(Color.black.opacity(0.42))
+            .background(light ? Color.clear : Color.black.opacity(0.42))
             .opacity(Self.veil(t))
         }
         .allowsHitTesting(false)

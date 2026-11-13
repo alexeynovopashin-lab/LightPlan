@@ -230,7 +230,7 @@ struct MonthCell: View {
             : weekend ? pal.weekend.opacity(past ? 0.75 : 1) : past ? pal.ink5 : pal.ink
         // 28к.3: в светлой выбранный день — чёрный квадрат, цифра белая, сегодняшняя — оранжевая (яркая: на чёрном 4,96:1).
         let blackSel = sel && !pal.dark
-        let ink: Color = blackSel ? (isToday ? pal.brass : .white) : ink0
+        let ink: Color = blackSel ? .white : ink0   // 28к.4: на чёрном знак белый (раньше сегодняшний был оранжевым)
 
         Button {
             // Второй тап по выбранному числу — вход в день разрезом месяца (29.2а), первый — только выбор.
@@ -585,11 +585,11 @@ struct PlannerDayStates: View {
             default: break
             }
         } label: {
-            // 28к.3: «Съёмка» в светлой — сплошная чёрная, знак оранжевый, подпись белая.
+            // 28к.3: «Съёмка» в светлой — сплошная чёрная; 28к.4 (палитра Д): знак и подпись белые, оранжевый на чёрном читался красным.
             let black = on && !pal.dark
             VStack(spacing: 2) {
                 PlanGlyph(kind: k)
-                    .stroke(black ? pal.brass : ink, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+                    .stroke(black ? Color.white : ink, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
                     .frame(width: 18, height: 18)
                 Text(f.t.t(key)).font(webFont(11, weight)).foregroundStyle(black ? Color.white : label).lineLimit(1)
             }

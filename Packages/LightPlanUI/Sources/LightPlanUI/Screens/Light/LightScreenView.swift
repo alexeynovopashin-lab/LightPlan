@@ -83,7 +83,7 @@ public struct LightScreenView: View {
         let minute = model.timebar.machine.viewMinute
         let skyNow = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
                              lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
-        let presence = DomeGeometry.clamp((sun.elevation(at: minute) + 18) / 6, 0, 1)
+        let presence = Self.skyPresence(dark: pal.dark, elevation: sun.elevation(at: minute))
         let headPal = Self.headerPalette(pal, sky: skyNow, presence: presence)
 
         ScrollView {
@@ -159,7 +159,7 @@ public struct LightScreenView: View {
         let minute = model.timebar.machine.viewMinute
         let skyNow = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
                              lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
-        let presence = DomeGeometry.clamp((sun.elevation(at: minute) + 18) / 6, 0, 1)
+        let presence = Self.skyPresence(dark: pal.dark, elevation: sun.elevation(at: minute))
         let headPal = Self.headerPalette(pal, sky: skyNow, presence: presence)
 
         ScrollView {
@@ -428,11 +428,19 @@ public struct LightScreenView: View {
         }
     }
 
+    /// 0…1: сколько неба видно над страницей. Тёмная тема — подложка всегда целиком (в `LightSkyBackdrop` не читается). Светлая с 28к.4
+    /// (палитра Д, слово Алексея 13.11: «ночью небо темнеет и в самый тёмный момент заменяется белым»): **всегда 1** — небо остаётся
+    /// тёмно-синим всю ночь. Раньше оно проявлялось из цвета страницы между −18° и −12° (ночью небо = страница), и в астрономическую
+    /// ночь подложка исчезала в белое.
+    static func skyPresence(dark: Bool, elevation e: Double) -> Double {
+        dark ? DomeGeometry.clamp((e + 18) / 6, 0, 1) : 1
+    }
+
     /// Шапка стоит на небе: в светлой теме тёмное небо сумерек просит светлые чернила (порог — равный контраст тёмных и светлых чернил,
     /// L ≈ 0,17). В тёмной теме чернила светлые на любом небе.
     static func headerPalette(_ pal: Palette, sky: DomeSky?, presence: Double) -> Palette {
         guard !pal.dark, let sky else { return pal }
-        let page = SkyColor(237, 237, 240)
+        let page = DomeSky.surface(lightTheme: true)
         let seen = LightPalette.lerp(page, sky.zenith, presence)
         return DomeSky.luminance(seen) > 0.17 ? pal : Palette(.dark)
     }
@@ -482,7 +490,7 @@ public struct LightScreenView: View {
         case .time(let icon, let minutes):
             // Знак 19 → 28 pt (×1,47), время 12 → 13, подпись 12 под временем цветом акцента (текст — `brassInk`); время серое как было.
             VStack(spacing: 2) {
-                Icon(icon, size: Self.baseIconSize, line: 1.6).foregroundStyle(pal.brassDeep)
+                Icon(icon, size: Self.baseIconSize, line: 1.6).foregroundStyle(pal.sunSign)
                 Text(model.timebar.clockString(minutes))
                     .font(.system(size: 13, weight: .medium).monospacedDigit())
                     .foregroundStyle(pal.ink4)
@@ -524,7 +532,7 @@ public struct LightScreenView: View {
         switch content {
         case .time(let icon, let minutes):
             VStack(spacing: 2) {
-                Icon(icon, size: 19, line: 1.6).foregroundStyle(pal.brassDeep)
+                Icon(icon, size: 19, line: 1.6).foregroundStyle(pal.sunSign)
                 Text(model.timebar.clockString(minutes))
                     .font(.system(size: 12, weight: .medium).monospacedDigit())
                     .foregroundStyle(pal.ink4)

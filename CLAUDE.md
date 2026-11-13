@@ -161,11 +161,16 @@
   show a Sun more exact than the web's — by design they no longer equal it** (web: up to 0.55° / 5 min / 23 min at Tromsø). Reference:
   `python3 Tools/sun_horizons_ref.py` → `Fixtures/sun_horizons.json`, read by `SolarDayExactTests`; a web-parity test that feeds a screen
   component passes `time: .web` (e.g. `MapSceneParityTests`). Not yet moved: Moon and planets on Light/Map/dome (`.web` sidereal time).
-- **Light theme = variant Б in tokens (28к.3, Alexey 12.11 «Б, тёмный оранжевый»).** `Palette` light values are native-only now (comment on each: «Светлая натива с 28к.3»; dark branch
-  untouched, held by `LightTokensTests` against `d468b34`). Page `#EDEDF0`, white plates; **bright orange `brass`/`glyph` `#E4570B` only for fills, strokes, glyphs without text; every small
-  orange text is `brassInk` (`#B83C00`, 4.9:1 on page) / `brassSoftInk`**; text on an orange fill is `onBrass` (ink `#141416`, 4.96:1 — white gives 3.71) and `onBrassDim`. Depth: `.plateStyle(pal, radius:, glass:)`
-  (soft shadow outside the outline + white rim + glass under a 0.72 veil) and `.raisedStyle(pal, radius:)` (selected/raised), numbers in `PlateTokens` (`Theme/Plate.swift`); both are no-ops in dark. A new plate in the
-  light theme takes `.plateStyle`; a new orange text takes `brassInk`. Numbers, boards, dark proof, sunset ΔE: `docs/light_theme_2026-11/tokens/README.md`. Screen-specific shadows/colours left: same README, «28к.4».
+- **Light theme = palette Д in tokens (28к.4, Alexey 13.11 «палитра Д, по образцу, как есть»; before it was variant Б, 28к.3).** The designer's sample is ported
+  LITERALLY — nothing is darkened toward contrast, numbers are shown to Alexey, the decision stays his. `Palette` light values: page `#E6E6E7` (`surface`), block `#F3F3F5` (`sheet`…, 1.125:1 on the page — that is the design;
+  white rim 1.5 pt, light shadows stay off since 30з.2), orange `#F29230` for fills/glyphs (`brass`, `glyph`, `brassSoft`) and `#F09329` for text and lines (`brassInk`, `brassSoftInk`, `brassDark`, `sunSign`);
+  black button `PlateTokens.blackFill` `#010101` with a WHITE glyph (orange on black read red — no orange on black anywhere, incl. the seg «Астро» stars and today's digit on the selected day);
+  ink `#000000`, second ink `#5C5C62` (`ink3`), `onBrass` black. Tokens the sample does not set (fields, press, rails, hairlines) were moved from Б by the same offset from the page; table «было → стало» and the list
+  of small orange text places: `docs/light_palette_d_2026-11/`. **Sky:** `DomeSky.dayLight` `#86BAEC → #DCEBF9`, `DomeSky.nightLight` `#0E1A3A → #1E2B4A` (white stars); the light sky no longer fades into the page at astro night
+  (`LightScreenView.skyPresence` = 1 in light — this was the «white night»). `.stars` condition words («Звёздная ночь») use `ink3` in light (`LightScreenTheme.toneColor`; `moon` #A8BDD8 is 1.7:1 on the block).
+  Settings «Астро» tap: black stars, no 0.42 veil in light (`AstroSkyView`). Known and accepted numbers: orange text 2.1:1 on the block, arc orange on day sky 1.9 (horizon) / 1.15 (top); `ink5`/`ink6` 4.38:1 and weekend ink on `bg` 4.31:1 on the new page.
+  `brassDeep` (#8A5A18: weekend, warnings) was left brown on purpose. Tests `LightTokensTests`, `DomeSkyTests` (night stays navy, `skyPresence`), `AstroSkyLightTests` (renders the layer to pixels). Shots: `node Tools/shots/palette_d.js` (34 native frames) +
+  `Tools/shots/palette_d.py diff|px|col|max|ratio` — dark must be 0 px different before/after any palette work (mask the Dynamic Island band: the simulator draws it or not at random).
 - **Glass never takes a rotation (28п).** `.glassEffect` under `rotationEffect` (or `scaleEffect`) swells into the
   bounding rectangle of the whole layer at angles that are not multiples of 90° (measured: three spot plates → one
   ≈ 420 × 415 pt slab). On «Карта» the rotor is two halves with the same angle (canvas, veil, road / instrument)

@@ -89,12 +89,21 @@ struct DomeSky: Sendable, Equatable {
         return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b)
     }
 
-    /// The screen's backing around the dome (`--surface` of the web: #0F0E0C dark,
-    /// #FAF8F3 light, what `DomeView.surfaceColor` paints). The web paints no sky in
-    /// Astro, so at night its dome inside IS this colour.
+    /// The screen's backing around the dome (`--surface` of the web: #0F0E0C dark; the light
+    /// page since 28к.4 is #E6E6E7, palette Д). The web paints no sky in Astro, so in the
+    /// dark theme at night its dome inside IS this colour. The light theme no longer does
+    /// that: its night is the navy `nightLight` (28к.4).
     static func surface(lightTheme: Bool) -> SkyColor {
-        lightTheme ? SkyColor(250,248,243) : SkyColor(15,14,12)
+        lightTheme ? SkyColor(230,230,231) : SkyColor(15,14,12)
     }
+
+    /// Palette Д (28к.4, Alexey 13.11), light theme only. The designer's sample has no sky,
+    /// so these two come from the sheet card of Д: day #86BAEC (top) → #DCEBF9 (horizon),
+    /// night #0E1A3A (top) → #1E2B4A (horizon). Taken as they are, no contrast fitting.
+    /// Before: day (207,225,235) → (235,241,240); night = the page colour (the sky faded
+    /// into the page at astronomical night and then jumped to white).
+    static let dayLight: (SkyColor, SkyColor) = (SkyColor(134,186,236), SkyColor(220,235,249))
+    static let nightLight: (SkyColor, SkyColor) = (SkyColor(14,26,58), SkyColor(30,43,74))
 
     /// Stars and meteors are light, not ink, in both themes. Alexey, 05.11: «звезды должны
     /// быть светлыми и никак иначе, даже ценой, что их не будет видно». On the night paper
@@ -129,18 +138,17 @@ struct DomeSky: Sendable, Equatable {
             self.dark = (dim(dark.0), dim(dark.1))
         }
     }
-    private static let surfaceLight = surface(lightTheme: true)
     private static let surfaceDark = surface(lightTheme: false)
     private static let stops: [Stop] = [
-        // Astronomical night paints the screen's own backing (28е, Alexey 02.10: inside
-        // the dome was darker than the screen). Measured before: dark (0,0,0) on
-        // (15,14,12), light (19,36,67) on (250,248,243); the web paints no sky at all.
-        Stop(-24, (surfaceLight, surfaceLight), (surfaceDark, surfaceDark), dimDark: false),
-        Stop(-18, (surfaceLight, surfaceLight), (surfaceDark, surfaceDark), dimDark: false),
+        // Astronomical night paints the screen's own backing in the dark theme (28е, Alexey 02.10:
+        // inside the dome was darker than the screen). Measured before: dark (0,0,0) on (15,14,12);
+        // the web paints no sky at all. The light theme (28к.4) has its own navy night, not the page.
+        Stop(-24, nightLight, (surfaceDark, surfaceDark), dimDark: false),
+        Stop(-18, nightLight, (surfaceDark, surfaceDark), dimDark: false),
         Stop(-12, (SkyColor(38,65,110), SkyColor(68,100,141)), (SkyColor(8,16,36), SkyColor(18,30,55))),
         Stop(-6, (SkyColor(98,130,171), SkyColor(149,176,202)), (SkyColor(16,28,49), SkyColor(24,40,68))),
-        Stop(0, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,35,63), SkyColor(30,57,90))),
-        Stop(6, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(18,38,67), SkyColor(35,68,103))),
-        Stop(40, (SkyColor(207,225,235), SkyColor(235,241,240)), (SkyColor(21,46,78), SkyColor(42,78,116)))
+        Stop(0, dayLight, (SkyColor(18,35,63), SkyColor(30,57,90))),
+        Stop(6, dayLight, (SkyColor(18,38,67), SkyColor(35,68,103))),
+        Stop(40, dayLight, (SkyColor(21,46,78), SkyColor(42,78,116)))
     ]
 }

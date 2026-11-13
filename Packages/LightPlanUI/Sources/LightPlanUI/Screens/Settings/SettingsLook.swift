@@ -106,7 +106,8 @@ struct SegSky: View {
          (CGPoint(x: 56, y: 55), 3.2), (CGPoint(x: 26, y: 98), 3), (CGPoint(x: 66, y: 94), 4.2)])
 
     var body: some View {
-        let brass = Palette(colorScheme).brass
+        // 28к.4 (палитра Д): в светлой теме кнопка «Астро» чёрная, и созвездия на ней белые — оранжевый на чёрном читался красным.
+        let brass = colorScheme == .light ? Color.white : Palette(colorScheme).brass
         Canvas { ctx, size in
             // `.ss-ursa { left: 4%; top: 30% }`, viewBox 100×56 (ширина своя, `ursaShare`);
             // `.ss-orion { right: 6%; top: 14%; width: 13% }`, viewBox 84×116.

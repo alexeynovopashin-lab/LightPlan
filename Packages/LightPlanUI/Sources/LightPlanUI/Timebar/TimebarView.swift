@@ -125,7 +125,7 @@ public struct TimebarView: View {
         switch content {
         case .time(let icon, let minutes):
             HStack(spacing: 7) {
-                Icon(icon, size: 19, line: 1.6).foregroundStyle(pal.brassDeep)
+                Icon(icon, size: 19, line: 1.6).foregroundStyle(pal.sunSign)
                 Text(state.clockString(minutes))
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(pal.ink4)

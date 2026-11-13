@@ -11,9 +11,9 @@ public enum PlateTokens {
     /// отделяют тон фона и светлый кант. Числа теней ниже целы: `true` вернёт их.
     public static let lightShadowsOn = false
 
-    /// Чернила тени и чёрных элементов («+ Съёмка», выбранный день).
+    /// Чернила тени и чёрных элементов («+ Съёмка», выбранный день). Палитра Д (28к.4): кнопка #010101, знак и подпись на ней белые.
     public static let shadowInk = Color.black
-    public static let blackFill = Color(hex: 0x141416)
+    public static let blackFill = Color(hex: 0x010101)
 
     /// Светлый кант плашки: белый, 1,5 pt (тот же у подложки месяца вместо тёмного волоска).
     public static let rimColor = Color.white.opacity(0.95)

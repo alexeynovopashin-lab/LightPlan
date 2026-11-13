@@ -24,7 +24,8 @@ enum LightScreenTheme {
     static func blue(_ s: ColorScheme) -> Color { Palette(s).blue }
     static func toneGood(_ s: ColorScheme) -> Color { Palette(s).toneGood }
     /// `--moon` веба не переопределяется в светлой теме — один и тот же
-    /// голубоватый цвет в обеих.
+    /// голубоватый цвет в обеих. Но слово условия «Звёздная ночь» (`.stars`) в светлой теме не этим цветом: #A8BDD8 на блоке даёт
+    /// 1,9:1 (слово Алексея 13.11, «не читается») — там вторые чернила `ink3` (#5C5C62, образец палитры Д).
     static let moon = Palette(.dark).moon
     static func meterOff(_ s: ColorScheme) -> Color { Palette(s).meterOff }
     /// Фон экрана — `--surface`: на телефоне `.device` заливает весь экран
@@ -39,7 +40,7 @@ enum LightScreenTheme {
         case .excellent: Color(state)
         case .good: toneGood(scheme)
         case .neutral: ink4(scheme)
-        case .stars: moon
+        case .stars: scheme == .light ? ink3(scheme) : moon
         }
     }
 

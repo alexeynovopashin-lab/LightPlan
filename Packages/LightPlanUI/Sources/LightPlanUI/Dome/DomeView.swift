@@ -283,7 +283,10 @@ public struct DomeView: View {
                 .init(color: c.opacity(0.5), location: 1),
             ])
         }
-        let c = Color(red: 0xE2 / 255, green: 0xA4 / 255, blue: 0x4C / 255)
+        // 28к.4 (палитра Д): концы дуги в светлой теме — оранжевый образца #F09329 вместо латуни #E2A44C. Только цвет; форма и
+        // толщина дуги — как были (дуга-меч Г1 — шаг 28к.5).
+        let c = colorScheme == .light ? Color(red: 0xF0 / 255, green: 0x93 / 255, blue: 0x29 / 255)
+                                      : Color(red: 0xE2 / 255, green: 0xA4 / 255, blue: 0x4C / 255)
         return Gradient(stops: [
             .init(color: c, location: 0), .init(color: c, location: 0.1),
             .init(color: arcMid.opacity(0.28), location: 0.3),
