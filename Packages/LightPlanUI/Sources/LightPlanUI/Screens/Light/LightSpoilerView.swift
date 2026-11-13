@@ -25,6 +25,10 @@ struct LightSpoilerView: View {
     var above: AnyView = AnyView(EmptyView())
     /// `true` — «Свет» (30з.2): условия и кнопка на одной плашке, каждая рубрика на своей. `false` — как было («Карта»: рубрики подряд без плашек).
     var plated = false
+    /// «Свет» (30з.2): сюда плашка «условия» пишет свою нижнюю кромку, а здесь же узнаётся, раскрыты ли рубрики.
+    var probe: PlateProbe? = nil
+    /// Пустой низ плашки «условия» под капсулой: 10 над капсулой, 40 сама капсула, 6 под ней + 4 поля плашки = 10 до кромки. Чистая заливка плашки.
+    static let capsuleSlot: CGFloat = 56
 
     /// Пара снимков (28е): `-LPShotSpoiler 1` — раскрыт сразу и прокручен к плашке неба; `2` (прибор `make lightfit`) —
     /// раскрыт и стоит в начале, без прокрутки.
@@ -74,8 +78,10 @@ struct LightSpoilerView: View {
                 VStack(spacing: 0) {
                     above
                     if open { button(pal) }
+                    Color.clear.frame(height: Self.capsuleSlot)
                 }
             }
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(LightScreenView.viewportSpace)).maxY } action: { probe?.maxY = $0 }
             if open, mounted {
                 VStack(spacing: 0) {
                     ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
@@ -93,6 +99,7 @@ struct LightSpoilerView: View {
                 .shotNode("spoiler.list")
             }
         }
+        .task(id: open && mounted) { probe?.follows = !(open && mounted) }
         .task {
             guard open, Self.shotMode == 1 else { return }
             try? await Task.sleep(for: .seconds(1))
