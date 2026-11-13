@@ -304,8 +304,11 @@ public struct LightScreenView: View {
     /// 30з.2: промежуток между плашками и от плашек до краёв — 8 pt, поля плашки по бокам 8 (содержимое внутри стоит на прежних 24).
     static let plateGap: CGFloat = 8
     /// Знак рассвета и заката у оснований дуги (было 19) и высота стопки «знак → время → подпись»: 26 + 2 + 15 + 2 + 13.
-    static let baseIconSize: CGFloat = 26
-    static let baseStackHeight: CGFloat = 26 + 2 + 15 + 2 + 13
+    /// Размеры подобраны на равновесие плашки, а не списаны с рисунка (Алексей: «делал на глаз»): знак 28, время 13, подпись 12 — боковые
+    /// колонки по весу близки к числу в центре (оно стало легче: 30 → 28 pt); стопка чуть опущена к середине плашки.
+    static let baseIconSize: CGFloat = 28
+    static let baseStackTop: CGFloat = 10
+    static let baseStackHeight: CGFloat = 28 + 2 + 16 + 2 + 15
     /// Низ плашки «сейчас» ниже блока «до …».
     private static let nowPlateBottom: CGFloat = 10
 
@@ -366,8 +369,8 @@ public struct LightScreenView: View {
     private func baseTimes(pal: Palette, rise: CGFloat) -> some View {
         let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
         let g = DomeGeometry.self
-        // Стопка на сторону (слово Алексея 16.11): знак → время → подпись; верх стопки на 6 pt ниже горизонта.
-        let y = 6 + Self.baseStackHeight / 2 - rise
+        // Стопка на сторону (слово Алексея 16.11): знак → время → подпись; верх стопки на `baseStackTop` ниже горизонта.
+        let y = Self.baseStackTop + Self.baseStackHeight / 2 - rise
         let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x - 8
         let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x - 8
         let tb = model.timebar
@@ -383,14 +386,14 @@ public struct LightScreenView: View {
     private func baseLabel(_ content: TimebarState.EdgeContent, _ pal: Palette, caption: String) -> some View {
         switch content {
         case .time(let icon, let minutes):
-            // Знак 19 → 26 pt (×1,37), подпись под временем цветом акцента (текст — `brassInk`), время серое как было.
+            // Знак 19 → 28 pt (×1,47), время 12 → 13, подпись 12 под временем цветом акцента (текст — `brassInk`); время серое как было.
             VStack(spacing: 2) {
                 Icon(icon, size: Self.baseIconSize, line: 1.6).foregroundStyle(pal.brassDeep)
                 Text(model.timebar.clockString(minutes))
-                    .font(.system(size: 12, weight: .medium).monospacedDigit())
+                    .font(.system(size: 13, weight: .medium).monospacedDigit())
                     .foregroundStyle(pal.ink4)
                 Text(caption)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 12, weight: .medium)).tracking(0.2)
                     .foregroundStyle(pal.brassInk)
                     .lineLimit(1)
                     .shotNode("edge.cap", text: caption)
@@ -503,7 +506,7 @@ public struct LightScreenView: View {
                 .shotNode("next.label", text: nl.label)
                 .frame(height: 13)
             Text(nl.value)
-                .font(.system(size: 30, weight: .light).monospacedDigit()).tracking(-0.5)
+                .font(.system(size: 28, weight: .light).monospacedDigit()).tracking(-0.5)
                 .foregroundStyle(LightScreenTheme.toneColor(t.tone, state: t.stateColor, scheme: colorScheme))
                 .shotNode("next.value", text: nl.value)
                 .frame(height: 31.5)
