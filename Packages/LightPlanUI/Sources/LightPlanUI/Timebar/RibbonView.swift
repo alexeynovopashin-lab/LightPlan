@@ -155,7 +155,7 @@ struct RibbonView: View {
                     .padding(.leading, Double(hour) * 60 * pxPerMin)
                     .padding(.top, Self.height - 10 - (major ? 8 : 6))
                 if hour == 6 || hour == 12 || hour == 18 {
-                    Text("\(hour)")
+                    Text(state.hourLabel(hour))
                         .font(.system(size: 8, weight: .semibold).monospacedDigit()).tracking(0.5)
                         .foregroundStyle(pal.ink5)
                         .fixedSize()

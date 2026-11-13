@@ -93,6 +93,8 @@ public final class TimebarState {
     var scaleMarks: [DayScale.Mark] { machine.scale.marks(start: machine.mint, end: machine.maxt) }
     /// Цифры над рисками в часах пользователя (`ClockText.is12`: настройка «Часы» или привычка языка): 24 — 0, 3, … 24; 12 — 12AM, 3, 6, 9, 12PM, 3, 6, 9, 12AM.
     func scaleLabel(_ mark: DayScale.Mark) -> String? { mark.hour.map { clock.scaleLabel(hour: $0) } }
+    /// Та же цифра для ленты дней (6, 12, 18): лента и шкала читаются одинаково (30з.4).
+    func hourLabel(_ hour: Int) -> String { clock.scaleLabel(hour: hour) }
 
     /// Час, в котором стоит минута `m`, для щелчков: через `floor`, а не `Int(m) / 60` — тот усекает к нулю, и все минуты −59…59
     /// вместе были бы «часом 0»: переход через 00:00 слева (из часа до полуночи) не щёлкал бы.

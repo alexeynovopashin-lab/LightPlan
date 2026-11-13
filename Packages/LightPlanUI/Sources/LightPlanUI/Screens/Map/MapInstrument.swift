@@ -56,6 +56,8 @@ struct MapInstrument {
         var chip: Chip?
         /// Время события словами часов приложения (`fmt`).
         var clock: (Minutes) -> String
+        /// Цифра часа на дуге (каждые три часа, `h` — 0…21): 24 часа — «03», 12 часов — 12AM, 3, 6, 9, 12PM… (`ClockText.scaleLabel`, 30з.4).
+        var hourLabel: (Int) -> String = { ($0 < 10 ? "0" : "") + String($0) }
         /// «С», «В», «Ю», «З» — словарь (`card.n` …).
         var cardinals: [String]
     }
@@ -215,7 +217,7 @@ struct MapInstrument {
 
         if input.layers.sun {
             sunPath(&sc, day: day, t: t)
-            hourMarks(&sc, day: day, ink: ink, clock: input.clock)
+            hourMarks(&sc, day: day, ink: ink, clock: input.clock, hourLabel: input.hourLabel)
         }
 
         if input.layers.moon {
@@ -306,7 +308,8 @@ struct MapInstrument {
 
     /// Часовые засечки, подпись каждые три часа (уступает восходу и закату),
     /// восход и закат — метки со временем.
-    private static func hourMarks(_ sc: inout Scene, day: Day, ink: RGBA, clock: (Minutes) -> String) {
+    private static func hourMarks(_ sc: inout Scene, day: Day, ink: RGBA, clock: (Minutes) -> String,
+                                  hourLabel: (Int) -> String) {
         func nearRiseSet(_ x: Double) -> Bool {
             (day.rise.map { abs(x - $0.minute) < 34 } ?? false) || (day.set.map { abs(x - $0.minute) < 34 } ?? false)
         }
@@ -318,7 +321,7 @@ struct MapInstrument {
             sc.marks.hourDots += 1
             if h % 3 != 0 || nearRiseSet(s.minute) { continue }
             let lp = at(s.az, min(r + 10, hourLabelMax))
-            sc.elements.append(.text((h < 10 ? "0" : "") + String(h), center: CGPoint(x: lp.x, y: lp.y + 3.4 - 9 * textMid),
+            sc.elements.append(.text(hourLabel(h), center: CGPoint(x: lp.x, y: lp.y + 3.4 - 9 * textMid),
                                      size: 9, weight: .regular, mono: true, color: RGBA(168, 156, 134, 0.72),
                                      anchor: .middle, tracking: 0))
         }

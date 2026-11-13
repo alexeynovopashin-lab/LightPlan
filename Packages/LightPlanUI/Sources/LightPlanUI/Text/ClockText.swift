@@ -101,6 +101,14 @@ public struct ClockText: Sendable {
         return out
     }
 
+    /// Подпись целого часа в сетке (30з.4, «цифры надо починить везде»): 24 часа — «07:00», 12 часов — «7 AM» (в Календаре iOS так же): минуты «:00»
+    /// и разделитель срезаны, остальное — слова языка (`fmt`). Час 24 и 0 — одна полночь.
+    public func hourLine(_ h: Int) -> String {
+        let m = Double(((h % 24) + 24) % 24 * 60)
+        if !is12 { return fmt(m) }
+        return fmt(m).replacingOccurrences(of: #"[:.]00"#, with: "", options: .regularExpression)
+    }
+
     /// Время для крупных мест: цифры и отдельно обозначение половины суток.
     public func parts(_ m: Double?) -> [ClockPart] {
         guard let m, !m.isNaN else { return [ClockPart(text: "—", isDayPeriod: false)] }

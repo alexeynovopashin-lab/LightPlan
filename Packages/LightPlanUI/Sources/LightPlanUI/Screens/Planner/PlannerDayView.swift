@@ -226,7 +226,7 @@ struct PlannerDayBody: View {
     /// Час сетки. Тап по верхней половине — «:00», по нижней — «:30» (веб: на
     /// получас пальцем попадают, точнее правят в форме); повторный — закрыть.
     private func slot(_ h: Int, pal: Palette, sky: SolarDay, hushed: Bool, half: Int?) -> some View {
-        let label = String(format: "%02d:00", h % 24)
+        let label = f.clock.hourLine(h)
         return HStack(spacing: 0) {
                 Text(label).font(webFont(12)).tracking(0.2).monospacedDigit()
                     .foregroundStyle(half == 0 ? pal.brassDeep : pal.ink7)

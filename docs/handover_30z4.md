@@ -31,3 +31,10 @@ Left on the solar window on purpose: `DomeView` star rotation `(t − sun.mint)`
   (hour field + AM/PM field of the app's own `hmm` template, no space; period only at 0/12/24): 12AM,3,6,9,12PM,3,6,9,12AM. `DayScale.Mark.hour` replaced the string digit (`digit` = 24 h text).
 - Still 24 h in 12 h mode: only the hour numbers 6/12/18 of the lane ribbon (`RibbonView` line ~158, `Text("\(hour)")`). Seen fine in 12 h: dome clock, plan button, rise/set, golden hour range.
 - Simple sheet: item `.clock` after `.units` (`SimpleSheet`, inventory row № 34 moved from «нет» to «есть» in `SimpleSettingsSheetTests`), same `settings.clock`, words `set.clock*` as the chapter, no note under it.
+
+## Round 3 (13.11, «цифры надо починить везде»)
+- Leaks of 24 h digits in 12 h mode found by grep (`%02d`, `% 24`, `/ 60 … :`, `DateFormatter`, `Text(date…)`, every `ClockText` user) and fixed: lane ribbon 6/12/18 (`RibbonView`, `TimebarState.hourLabel` =
+  `scaleLabel`), hour grid of «Съёмки» day (`PlannerDayView.slot`, `ClockText.hourLine`: «07:00» / «7 AM»), hour digits on the Map instrument arc (`MapInstrument.Input.hourLabel`, 24 h «03», 12 h = `scaleLabel`).
+- Left 24 h on purpose: `AppModel+FormTrip.hm24` (machine format of the booking query), durations/countdowns (`StudioHour.clock`, `ColonCount`, `MapSummary.gap`, widget `RemainText`), minute wheel «00…59».
+- Widget/Activity: `clock12` comes from the same `settings.clock` (`WidgetShare.makeWidgetFeed`), republished on every `persist()` (which `update` calls).
+- Tests: `Scale30z4Tests` gridHourLine, ribbonDigitsFollowTheClock, mapInstrumentHourDigits (xcodebuild, simulator; 32 tests green with AzimuthsSwitch/MapInstrumentFrame).

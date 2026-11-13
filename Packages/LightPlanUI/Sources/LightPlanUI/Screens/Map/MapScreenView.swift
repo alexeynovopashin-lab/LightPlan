@@ -99,6 +99,7 @@ struct MapScreenView: View {
         let input = MapInstrument.Input(
             date: date, minute: minute, solar: solar, place: place, layers: layers, pro: light.proMode, azimuths: light.azimuths,
             lightTheme: lightTheme, chip: chip, clock: { clock.fmt($0) },
+            hourLabel: { clock.is12 ? clock.scaleLabel(hour: $0) : ($0 < 10 ? "0" : "") + String($0) },
             cardinals: ["card.n", "card.e", "card.s", "card.w"].map { app.lexicon.t($0) })
         let scene = MapInstrument.scene(input, day: cache.day(date: date, place: place, solar: solar))
         // Вуаль по высоте солнца до −18°; со звёздами глубже (`nightVeil`).

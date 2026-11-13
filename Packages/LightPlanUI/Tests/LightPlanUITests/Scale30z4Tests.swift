@@ -224,6 +224,53 @@ struct Scale30z4Tests {
         #expect(ru12[1] == "3" && ru12[0].hasPrefix("12") && ru12[0].count > 2 && ru12[4].hasPrefix("12") && ru12[0] != ru12[4], "\(ru12)")
     }
 
+    // MARK: - Цифры везде слушаются «Часов» (заход 3)
+
+    private func plain(_ s: String) -> String { s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ") }
+
+    @Test("час сетки «Съёмок»: 24 часа — «07:00», 12 часов — «7 AM»; полночь и 24-й час одинаковы")
+    func gridHourLine() {
+        let h24 = ClockText(language: "ru", preference: .h24)
+        #expect(h24.hourLine(7) == "07:00" && h24.hourLine(0) == "00:00" && h24.hourLine(24) == "00:00" && h24.hourLine(18) == "18:00")
+        let h12 = ClockText(language: "en", preference: .h12)
+        #expect(plain(h12.hourLine(7)) == "7 AM" && plain(h12.hourLine(12)) == "12 PM" && plain(h12.hourLine(0)) == "12 AM")
+        #expect(plain(h12.hourLine(24)) == "12 AM" && plain(h12.hourLine(23)) == "11 PM")
+        // По-русски в 12 часах — слова платформы, но без «:00».
+        let ru12 = ClockText(language: "ru", preference: .h12)
+        for h in 0...24 { #expect(!ru12.hourLine(h).contains(":"), "\(h): \(ru12.hourLine(h))") }
+        // Привычка языка, когда выбор «Как в языке».
+        #expect(plain(ClockText(language: "en", preference: .auto).hourLine(15)) == "3 PM")
+        #expect(ClockText(language: "ru", preference: .auto).hourLine(15) == "15:00")
+    }
+
+    @Test("лента дней: 6, 12, 18 в 24 часах, 6, 12PM, 6 в 12 часах — как шкала")
+    func ribbonDigitsFollowTheClock() {
+        let m = app()
+        m.update { $0.clock = .h24 }
+        #expect([6, 12, 18].map { m.light.timebar.hourLabel($0) } == ["6", "12", "18"])
+        m.update { $0.clock = .h12 }
+        #expect([6, 12, 18].map { m.light.timebar.hourLabel($0) } == ["6", "12PM", "6"], "\([6, 12, 18].map { m.light.timebar.hourLabel($0) })")
+        #expect(m.light.timebar.hourLabel(12) == m.light.timebar.scaleMarks.compactMap { mk in mk.hour == 12 ? m.light.timebar.scaleLabel(mk) : nil }.first)
+    }
+
+    @Test("цифры часов на дуге прибора «Карты»: «03» в 24 часах, 12AM / 3 / 12PM в 12 часах")
+    func mapInstrumentHourDigits() {
+        let sun = SolarDay(date: Self.day, place: Self.moscow)
+        func numbers(_ label: ((Int) -> String)?) -> [String] {
+            var input = MapInstrument.Input(date: Self.day, minute: sun.solarNoon - 120, solar: sun, place: Self.moscow, layers: MapLayers(),
+                                            pro: true, azimuths: false, lightTheme: false, chip: nil,
+                                            clock: { ClockText(language: "en", preference: .h12).fmt($0) }, cardinals: ["N", "E", "S", "W"])
+            if let label { input.hourLabel = label }
+            let scene = MapInstrument.scene(input, day: MapInstrument.Day(date: Self.day, place: Self.moscow, solar: sun))
+            return scene.elements.compactMap { if case .text(let str, _, let size, _, _, _, _, _) = $0, size == 9 { return str } else { return nil } }
+        }
+        let c12 = ClockText(language: "en", preference: .h12)
+        let old = numbers(nil), new = numbers { c12.scaleLabel(hour: $0) }
+        #expect(!old.isEmpty && old.allSatisfy { $0.count == 2 }, "\(old)")
+        #expect(old.count == new.count)
+        #expect(new.allSatisfy { ["12AM", "3", "6", "9", "12PM"].contains($0) }, "\(new)")
+    }
+
     #if canImport(UIKit)
     @Test("12AM / 12PM не налезают на соседей и не режутся по краям: iPhone 14 (390) и 17 Pro Max (440)")
     func twelveHourDigitsFit() {
