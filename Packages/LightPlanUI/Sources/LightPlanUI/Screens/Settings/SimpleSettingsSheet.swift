@@ -15,7 +15,7 @@ import UIKit
 enum SimpleSheet {
 
     enum Item: String, CaseIterable {
-        case city, theme, remind, calendar, units, currency
+        case city, theme, lightView, remind, calendar, units, currency
         case clients, contacts, playlists, bin, about
 
         /// Строки описи (раздел А), которые стоят в этом пункте.
@@ -23,6 +23,7 @@ enum SimpleSheet {
             switch self {
             case .city: [4]
             case .theme: [10]
+            case .lightView: []              // 30з.2а: нет в описи, решение оркестратора — оба вида «Света» проверяются во всех режимах
             case .remind: [24]
             case .calendar: [15, 16]          // «Куда класть» идёт вслед за тумблером
             case .units: [36]
@@ -39,13 +40,13 @@ enum SimpleSheet {
         var opensScreen: Bool {
             switch self {
             case .clients, .contacts, .playlists, .bin, .about: true
-            case .city, .theme, .remind, .calendar, .units, .currency: false
+            case .city, .theme, .lightView, .remind, .calendar, .units, .currency: false
             }
         }
     }
 
     /// Порядок листа — как на рисунке.
-    static let items: [Item] = [.city, .theme, .remind, .calendar, .units, .currency,
+    static let items: [Item] = [.city, .theme, .lightView, .remind, .calendar, .units, .currency,
                                 .clients, .contacts, .playlists, .bin, .about]
 
     /// Строки описи над листом во всех режимах: выбор режима и пояснение под ним.
@@ -69,6 +70,7 @@ enum SimpleSheet {
         switch item {
         case .city: return s.home.isEmpty ? "" : s.home.name
         case .theme: return s.theme.rawValue
+        case .lightView: return s.lightBlocks ? "blocks" : "flat"
         case .remind: return String(app.remindMinutes)
         case .calendar: return app.calendarMirrorOn ? "on" : "off"
         case .units: return s.tempUnit.rawValue
@@ -124,6 +126,13 @@ struct SimpleSettingsSheet: View {
                 WebSeg(options: [(t.t("set.themeDark"), AppSettings.Theme.dark), (t.t("set.themeLight"), .light),
                                  (t.t("set.themeAuto"), .auto)],
                        selection: SimpleSheet.binding(app, \.theme))
+                    .padding(.horizontal, 24).padding(.top, 12)
+            }
+        case .lightView:
+            VStack(alignment: .leading, spacing: 0) {
+                SecLabel(text: t.t("set.lightView"))
+                WebSeg(options: [(t.t("set.lightViewBlocks"), true), (t.t("set.lightViewFlat"), false)],
+                       selection: SimpleSheet.binding(app, \.lightBlocks))
                     .padding(.horizontal, 24).padding(.top, 12)
             }
         case .remind:

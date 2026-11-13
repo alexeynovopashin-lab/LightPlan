@@ -30,9 +30,11 @@ public struct LightScreenView: View {
     /// На сколько pt (0…12) поднята полоса под дугой сверх 22: только когда без этого не помещается важный набор. Выбирает
     /// `LightCollapsedList.plan` по измеренной высоте; «Просто» не затрагивается. Шапка «Астро» сжата всегда (слово Алексея 21.10).
     @State private var extraTuck: CGFloat = 0
-    /// 30з.2: на низких экранах, когда даже без необязательных строк и с полосой 12 плашка «условия» не помещается над щелью «↺ Сейчас», купол
-    /// поднят на столько pt (0…`maxDomeLift`) под низ шапки: над дугой есть пустое небо, шапка по бокам его не касается.
-    @State private var domeLift: CGFloat = 0
+    /// 30з.2а: сдвиг «купол + плашки» по высоте между шапкой и куполом (pt). Больше нуля — остаток высоты после целых строк уходит в небо
+    /// над куполом, а низ плашки «условия» стоит ровно на обычный зазор над плашкой «время» (вид «Без блоков» — «Подробно» над строкой
+    /// кнопки). Меньше нуля (до `-LightCollapsedList.maxDomeLift`) — на низком экране купол поднят под шапку, когда не хватило даже строк
+    /// и полосы под дугой. Одно число, поэтому подъём и опускание не спорят.
+    @State private var skyShift: CGFloat = 0
     @State private var rowHeights: [LightCollapsedList.Row: CGFloat] = [:]
     /// Низ кнопки «Подробно» в координатах содержимого прокрутки и высота кнопки съёмки — по ним считается запас высоты.
     @State private var spoilerBottom: CGFloat = 0
@@ -40,6 +42,10 @@ public struct LightScreenView: View {
     /// низа кнопки вычитается высота стоявших строк — иначе измерение и число строк расходились на проход раскладки.
     @State private var spoilerRows = 0
     @State private var spoilerExtraTuck: CGFloat = 0
+    @State private var spoilerShift: CGFloat = 0
+    /// «Без блоков», «Просто»: низ содержимого (последняя строка) и сдвиг неба, при котором он измерен.
+    @State private var flatBottom: CGFloat = 0
+    @State private var flatBottomShift: CGFloat = 0
 
     public init(_ model: LightScreenModel, onPlace: @escaping () -> Void = {},
                 onPlan: @escaping (CivilDate, Int) -> Void = { _, _ in }) {
@@ -53,7 +59,7 @@ public struct LightScreenView: View {
         Group { if model.blocks { blocksBody } else { flatBody } }
             .onChange(of: model.blocks) { _, _ in
                 // Вид переключён на ходу: измерения прежнего вида не годятся новому.
-                fitRows = 0; extraTuck = 0; domeLift = 0; spoilerBottom = 0
+                fitRows = 0; extraTuck = 0; skyShift = 0; spoilerBottom = 0
                 refreshCollapsedRows()
             }
     }
@@ -69,7 +75,7 @@ public struct LightScreenView: View {
         let tuckNow = model.proMode && LightCollapsedList.shortensByHeight ? extraTuck : 0
         let layoutNow = LightCollapsedList.Layout(
             rows: LightCollapsedList.shown(astro: model.proMode, fit: shownFit, hasForecast: telemetry.sky != nil || telemetry.wind != nil).count,
-            extraTuck: tuckNow)
+            extraTuck: tuckNow, shift: skyShift)
 
         // 30з.2 (макет 4 Алексея 12.11): небо шире купола — подложка «шапка + купол» с чёрной виньеткой по углам; три плашки
         // матового стекла: «сейчас» (от линии горизонта), «условия» (список + ручка «Подробно»), «время» (пульт, лента дат и шкала, внизу).
@@ -82,18 +88,7 @@ public struct LightScreenView: View {
 
         ScrollView {
             VStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    header(telemetry.header, note: telemetry.forecastNote, headPal)
-                        .padding(.horizontal, 24)
-                        .zIndex(1)
-
-                    dome(telemetry, pal, skyFill: skyNow == nil)
-                        .padding(.top, -domeLift)
-                        .padding(.bottom, -Self.domeTuck(extra: tuckNow))
-                        .tabRise()
-                }
-                .frame(maxWidth: .infinity)
-                .background(alignment: .top) { skyBackdrop(skyNow, pal, tuck: Self.domeTuck(extra: tuckNow), presence: presence) }
+                skyBlock(telemetry, pal, sky: skyNow, headPal: headPal, presence: presence, tuck: tuckNow, flat: false)
 
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
@@ -106,7 +101,7 @@ public struct LightScreenView: View {
                                      measureTag: layoutNow, onMeasure: { measureSpoiler($0) },
                                      windLabel: model.lexiconWord("pro.wind"),
                                      above: AnyView(telemetryList(telemetry, pal)), plated: true, probe: plateProbe,
-                                     onPlate: { refreshCollapsedRows() })
+                                     onPlate: { refreshCollapsedRows() }, shiftTag: skyShift)
                         .padding(.top, Self.plateGap)
                 }
                 .tabRise()
@@ -149,27 +144,31 @@ public struct LightScreenView: View {
         .background(pal.surface)
     }
 
-    /// Вид «Без блоков» (30з.2а): экран 30з.1 как в `e6a5ccd` — плоский, без плашек и без подложки неба; кнопка съёмки парящая капсула и «↺» в одной строке над
-    /// лентой. Не улучшается; от вида с блоками отличается только этим телом, расчётом строк и кнопкой.
+    /// Вид «Без блоков» (30з.2а): экран 30з.1 — плоский, без плашек. Небо за шапкой и куполом то же, что у вида с блоками (слово Алексея 13.11:
+    /// «небо в виде без блоков тоже расширим»). Строка капсулы съёмки и «↺» стоит над лентой во нижней вставке, а не парит поверх списка:
+    /// список кончается «Подробно» целиком, над строкой кнопки обычный зазор, а лишняя высота уходит в небо над куполом (`skyShift`).
     @ViewBuilder private var flatBody: some View {
         let telemetry = model.telemetry
         let pal = Palette(colorScheme)
         let tuckNow = model.proMode ? extraTuck : 0
         let layoutNow = LightCollapsedList.Layout(
             rows: LightCollapsedList.shown(astro: model.proMode, fit: fitRows, hasForecast: telemetry.sky != nil || telemetry.wind != nil).count,
-            extraTuck: tuckNow)
+            extraTuck: tuckNow, shift: skyShift)
+
+        let sun = model.timebar.solarDay
+        let minute = model.timebar.machine.viewMinute
+        let skyNow = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
+                             lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
+        let presence = DomeGeometry.clamp((sun.elevation(at: minute) + 18) / 6, 0, 1)
+        let headPal = Self.headerPalette(pal, sky: skyNow, presence: presence)
 
         ScrollView {
             VStack(spacing: 0) {
-                header(telemetry.header, note: telemetry.forecastNote, pal)
-                    .padding(.horizontal, 24)
+                skyBlock(telemetry, pal, sky: skyNow, headPal: headPal, presence: presence, tuck: tuckNow, flat: true)
 
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
-                    dome(telemetry, pal, skyFill: true, flatTimes: true)
-                        .padding(.bottom, -Self.domeTuck(extra: tuckNow))
-
-                    // 30з.1 (макет 4 Алексея 12.11): под куполом «до …» между основаниями дуги → «Запланировать съёмку» → список.
+                    // 30з.1 (макет 4 Алексея 12.11): под куполом «до …» между основаниями дуги → список.
                     nextLight(telemetry, pal)
                         .padding(.horizontal, 24)
                         .padding(.top, 2)
@@ -184,39 +183,61 @@ public struct LightScreenView: View {
                                      windLabel: model.lexiconWord("pro.wind"))
                         .padding(.horizontal, 24)
 
-                    // Кнопки внизу больше нет: остаток экрана уходит под список.
-                    Spacer(minLength: 0)
+                    // «Просто»: спойлера нет — низ содержимого меряет эта метка.
+                    if !model.proMode {
+                        Color.clear.frame(height: 0)
+                            .onGeometryChange(for: LightCollapsedList.Measurement.self) { [layoutNow] in
+                                LightCollapsedList.Measurement(bottom: $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY, layout: layoutNow)
+                            } action: { flatBottom = $0.bottom; flatBottomShift = $0.layout.shift; refreshCollapsedRows() }
+                    }
                 }
                 .tabRise()
             }
-            .frame(minHeight: max(0, visibleHeight - Self.actionReserve), alignment: .top)
             .coordinateSpace(.named(LightCollapsedList.contentSpace))
         }
         .scrollBounceBehavior(.basedOnSize)
-        // 30з.1 (слово Алексея 13.11: «под большой палец, … парящей, над интерфейсом»): кнопка съёмки — парящая капсула над лентой дат и
-        // шкалой; список уходит под неё, низ прокрутки отступает на её высоту, чтобы последняя строка доставалась.
-        .safeAreaPadding(.bottom, Self.actionReserve)
-        .overlay(alignment: .bottom) {
-            flatActionRow(pal)
-                .tabRise()
-        }
+        .shotNode("light.scroll")
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0; refreshCollapsedRows() }
         .onChange(of: model.proMode) { _, pro in
             // В «Просто» спойлера нет и ничего не прячется; в «Астро» число строк решит новое измерение.
-            if !pro { fitRows = 0; extraTuck = 0; spoilerBottom = 0 }
+            if !pro { fitRows = 0; extraTuck = 0; spoilerBottom = 0 } else { flatBottom = 0 }
+            refreshCollapsedRows()
         }
         // Прогноз приходит позже первой раскладки: у «Неба» и «Ветра» появляется строка, а кнопка «Подробно» не сдвинулась — пересчитать.
         .onChange(of: model.telemetry.sky != nil || model.telemetry.wind != nil) { _, _ in refreshCollapsedRows() }
         .safeAreaInset(edge: .bottom, spacing: 8) {
-            TimebarView(model.timebar, showRibbon: model.look.dayRibbon, showEdges: false)
-                .shotNode("timebar")
-                .tabRise()
+            VStack(spacing: 8) {
+                flatActionRow(pal)
+                TimebarView(model.timebar, showRibbon: model.look.dayRibbon, showEdges: false)
+                    .shotNode("timebar")
+            }
+            .tabRise()
         }
         .background(pal.surface)
     }
 
     /// Сколько необязательных строк стоит в закрытом списке: все, пока укорочение по высоте выключено (30з.2).
     private var shownFit: Int { LightCollapsedList.shortensByHeight ? fitRows : Int.max }
+
+    /// Подложка неба, шапка и купол — общие для обоих видов (30з.2а: небо «Без блоков» то же, что «С блоками»). `skyShift` — отступ между
+    /// шапкой и куполом: остаток высоты уходит сюда, подъём купола — отрицательный отступ.
+    @ViewBuilder
+    private func skyBlock(_ telemetry: LightTelemetry, _ pal: Palette, sky skyNow: DomeSky?, headPal: Palette, presence: Double,
+                          tuck tuckNow: CGFloat, flat: Bool) -> some View {
+        VStack(spacing: 0) {
+            header(telemetry.header, note: telemetry.forecastNote, headPal)
+                .padding(.horizontal, 24)
+                .zIndex(1)
+
+            dome(telemetry, pal, skyFill: skyNow == nil, flatTimes: flat)
+                .padding(.top, skyShift)
+                .padding(.bottom, -Self.domeTuck(extra: tuckNow))
+                .tabRise()
+                .shotNode("sky.shift", text: String(format: "%.1f", Double(skyShift)))
+        }
+        .frame(maxWidth: .infinity)
+        .background(alignment: .top) { skyBackdrop(skyNow, pal, tuck: Self.domeTuck(extra: tuckNow), presence: presence) }
+    }
 
     // MARK: - Шапка
 
@@ -522,52 +543,64 @@ public struct LightScreenView: View {
         spoilerBottom = m.bottom
         spoilerRows = m.layout.rows
         spoilerExtraTuck = m.layout.extraTuck
+        spoilerShift = m.layout.shift
         refreshCollapsedRows()
     }
 
-    /// 29.8в.27: пересчёт числа строк закрытого списка «Астро» по свежим измерениям.
+    /// 29.8в.27: пересчёт числа строк закрытого списка «Астро» по свежим измерениям. 30з.2а: после строк остаток высоты (или нехватка)
+    /// идёт в `skyShift` — низ плашки «условия» всегда ровно на обычный зазор над плашкой «время».
     private func refreshCollapsedRows() {
         guard model.blocks else { refreshFlatRows(); return }
-        guard LightCollapsedList.shortensByHeight, visibleHeight > 0, plate3Top.isFinite else { return }
-        // 30з.2а: плашка «условия» в покое кончается не ниже верха плашки «время» минус обычный зазор между плашками.
-        let limit = plate3Top - Self.plateGap
+        guard LightCollapsedList.shortensByHeight, visibleHeight > 0, plate3Top.isFinite, plateProbe.contentTop.isFinite else { return }
+        // Плашка «условия» в покое кончается ровно на обычный зазор выше плашки «время»; место отсчёта — начало содержимого.
+        let room = plate3Top - Self.plateGap - plateProbe.contentTop
         guard model.proMode else {
-            // «Просто»: ручки и спрятанных строк нет — все на месте; нехватку берёт на себя подъём купола. Измерение — низ плашки в покое
-            // (вид из видимой части), приведённый к раскладке без подъёма.
-            guard plateProbe.atRest, plateProbe.vp.isFinite else { return }
-            let deficit = plateProbe.vp + domeLift - limit + LightCollapsedList.slack
-            let lift = min(LightCollapsedList.maxDomeLift, max(0, deficit))
-            if abs(lift - domeLift) > 0.25 { domeLift = lift }
+            // «Просто»: ручки и спрятанных строк нет — все на месте. Низ плашки в содержимом, приведённый к раскладке без сдвига.
+            guard plateProbe.contentMax.isFinite else { return }
+            setShift(room - (plateProbe.contentMax - plateProbe.shift))
             return
         }
-        guard spoilerBottom > 0, plateProbe.contentTop.isFinite else { return }
+        guard spoilerBottom > 0 else { return }
         let hasForecast = model.telemetry.sky != nil || model.telemetry.wind != nil
         let present = LightCollapsedList.present(hasForecast: hasForecast)
         let heights = present.map { rowHeights[$0] ?? LightCollapsedList.defaultRowHeight }
-        // Низ «Подробно» приводится к базе: без необязательных строк, полоса 22 — как была бы раскладка, не зная, какая из них сейчас
-        // на экране (иначе решение мигало бы). Шапка «Астро» сжата всегда, в базу входит сжатой.
-        let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck + domeLift
-        // Ручка «Подробно» стоит у самой нижней кромки плашки «условия»: после неё в плашке ничего нет (`tail` = 0).
-        let room = limit - plateProbe.contentTop
+        // Низ «Подробно» приводится к базе: без необязательных строк, полоса 22, сдвиг 0 — как была бы раскладка, не зная, какая из них
+        // сейчас на экране (иначе решение мигало бы). Шапка «Астро» сжата всегда, в базу входит сжатой.
+        let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck - spoilerShift
+        // Ручка «Подробно» стоит у самой нижней кромки плашки «условия»: после неё в плашке ничего нет.
         let plan = LightCollapsedList.plan(visibleHeight: room, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
         if plan.rows != fitRows { fitRows = plan.rows }
         if plan.extraTuck != extraTuck { extraTuck = plan.extraTuck }
-        // Даже без строк и с полосой 12 не помещается — остаток берёт подъём купола.
-        let spare = room - baseline - LightCollapsedList.slack
-        let lift = min(LightCollapsedList.maxDomeLift, max(0, -spare - LightCollapsedList.maxExtraTuck))
-        if abs(lift - domeLift) > 0.25 { domeLift = lift }
+        let chosen = heights.prefix(plan.rows).reduce(CGFloat(0), +)
+        setShift(room - (baseline + chosen - plan.extraTuck))
     }
 
-    /// Вид «Без блоков»: расчёт 30з.1 как был.
+    /// Вид «Без блоков»: те же правила — «Подробно» (или последняя строка) целиком, над строкой кнопки обычный зазор — поле кнопки и
+    /// 13 pt самой «Подробно»; остаток — в небо над куполом.
     private func refreshFlatRows() {
-        guard model.proMode, spoilerBottom > 0, visibleHeight > 0 else { return }
+        guard visibleHeight > 0 else { return }
+        let room = visibleHeight
+        guard model.proMode else {
+            guard flatBottom > 0 else { return }
+            setShift(room - (flatBottom - flatBottomShift))
+            return
+        }
+        guard spoilerBottom > 0 else { return }
         let hasForecast = model.telemetry.sky != nil || model.telemetry.wind != nil
         let present = LightCollapsedList.present(hasForecast: hasForecast)
         let heights = present.map { rowHeights[$0] ?? LightCollapsedList.defaultRowHeight }
-        let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck
-        let plan = LightCollapsedList.plan(visibleHeight: visibleHeight - Self.actionReserve, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
+        let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck - spoilerShift
+        let plan = LightCollapsedList.plan(visibleHeight: room, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
         if plan.rows != fitRows { fitRows = plan.rows }
         if plan.extraTuck != extraTuck { extraTuck = plan.extraTuck }
+        let chosen = heights.prefix(plan.rows).reduce(CGFloat(0), +)
+        setShift(room - (baseline + chosen - plan.extraTuck))
+    }
+
+    /// Сдвиг неба: вниз — сколько осталось, вверх — не больше `maxDomeLift`.
+    private func setShift(_ target: CGFloat) {
+        let shift = max(-LightCollapsedList.maxDomeLift, target)
+        if abs(shift - skyShift) > 0.25 { skyShift = shift }
     }
 
     /// 29.8в.26: от горизонта дуги (196 из 240 в `viewBox`) до подписи «до золотого часа» у веба 44 + 2 pt — пустая
@@ -778,8 +811,6 @@ public struct LightScreenView: View {
     /// Кнопка шириной по дуге и подтянута к горизонту (схема А, 04.11). Дуга — 326 из 390 единиц купола,
     /// а купол мельче единицы только на экранах уже 390 (`DomeView`, «масштаб по меньшей стороне»).
     static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
-    /// Вид «Без блоков»: высота строки капсулы и «↺» (40 + поля 3 · 2) — на столько отступает низ прокрутки.
-    static let actionReserve: CGFloat = 46
     static let viewportSpace = "lightViewport"
     static func actionVeil(_ scheme: ColorScheme) -> Color {
         // 28к.3: в светлой кнопка поднята — белая вуаль (светлее фона) и тень под ней (`raisedStyle`); в тёмной — как была.
@@ -890,7 +921,7 @@ enum LightCollapsedList {
     /// 30з.2 (слово Алексея 13.11: «парящая кнопка решила проблему места, пользователь сам прокрутит список и достанет информацию из-под
     /// кнопки»): укорочение закрытого списка «Астро» по высоте экрана выключено — оно существовало, чтобы кнопка «Запланировать съёмку»,
     /// стоявшая в потоке, помещалась над нижней панелью. Теперь кнопка парит, список показывает все строки режима на любой модели и
-    /// уезжает под капсулу прокруткой; низ прокрутки отступает на капсулу (`actionReserve`), чтобы последнюю строку можно было вытянуть.
+    /// уезжает под капсулу прокруткой; низ прокрутки отступает на капсулу, чтобы последнюю строку можно было вытянуть.
     /// Правила `plan` / `shown(fit:)` и их тесты целы: вернуть укорочение — `true`.
     static let shortensByHeight = true
     static let contentSpace = "lightContent"
@@ -919,6 +950,8 @@ enum LightCollapsedList {
     struct Layout: Equatable {
         var rows = 0
         var extraTuck: CGFloat = 0
+        /// 30з.2а: сдвиг неба (`skyShift`) в этой раскладке — из измеренного низа он вычитается, чтобы решение не зависело от того, что на экране.
+        var shift: CGFloat = 0
     }
 
     /// Низ «Подробно» (в координатах содержимого) вместе с раскладкой, при которой он измерен.
@@ -957,6 +990,8 @@ final class PlateProbe {
     /// Нижняя кромка плашки в координатах экрана (`viewportSpace`) и в координатах содержимого (последние измерения).
     @ObservationIgnored var vp: CGFloat = .infinity
     @ObservationIgnored var contentMax: CGFloat = .infinity
+    /// Сдвиг неба, при котором сняты `vp` и `contentMax`.
+    @ObservationIgnored var shift: CGFloat = 0
     /// Где на экране стоит начало содержимого в покое (разность двух систем координат).
     @ObservationIgnored var contentTop: CGFloat = .infinity
 

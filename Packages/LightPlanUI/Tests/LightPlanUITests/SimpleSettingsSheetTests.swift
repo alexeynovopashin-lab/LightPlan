@@ -34,9 +34,10 @@ struct SimpleSettingsSheetTests {
     }
 
     @Test func theSheetFollowsTheSketchSixSettingsInPlaceThenFiveRows() {
-        #expect(SimpleSheet.items == [.city, .theme, .remind, .calendar, .units, .currency,
+        // 30з.2а: после темы — «Экран „Свет“» (вне описи, решение оркестратора).
+        #expect(SimpleSheet.items == [.city, .theme, .lightView, .remind, .calendar, .units, .currency,
                                       .clients, .contacts, .playlists, .bin, .about])
-        #expect(SimpleSheet.items.map(\.opensScreen) == Array(repeating: false, count: 6) + Array(repeating: true, count: 5))
+        #expect(SimpleSheet.items.map(\.opensScreen) == Array(repeating: false, count: 7) + Array(repeating: true, count: 5))
     }
 
     @Test func modeChoiceStandsAboveTheSheetInEveryMode() {

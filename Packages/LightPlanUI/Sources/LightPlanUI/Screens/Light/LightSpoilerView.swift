@@ -29,6 +29,8 @@ struct LightSpoilerView: View {
     var probe: PlateProbe? = nil
     /// Плашка «условия» сдвинулась или сменила высоту: экран пересчитывает, сколько строк помещается.
     var onPlate: () -> Void = {}
+    /// 30з.2а: сдвиг неба (`skyShift`) в этой раскладке — уходит в пробу вместе с измерением, чтобы экран знал положение плашки без сдвига.
+    var shiftTag: CGFloat = 0
     /// Поле плашки сверху и снизу (`plate(_:_:)`); у плашки с ручкой «Подробно» снизу его нет — ручка сама стоит у нижней кромки.
     static let plateInset: CGFloat = 4
     /// 30з.2а: ручка «Подробно» — тонкая полоса у нижней кромки плашки «условия»: подпись и шеврон, видимая высота 28, зона касания 44.
@@ -85,9 +87,9 @@ struct LightSpoilerView: View {
                     if open { handle(pal) }
                 }
             }
-            .onGeometryChange(for: [CGFloat].self) {
-                [$0.frame(in: .named(LightScreenView.viewportSpace)).maxY, $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY]
-            } action: { probe?.vp = $0[0]; probe?.contentMax = $0[1]; probe?.refresh(); onPlate() }
+            .onGeometryChange(for: [CGFloat].self) { [shiftTag] in
+                [$0.frame(in: .named(LightScreenView.viewportSpace)).maxY, $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY, shiftTag]
+            } action: { probe?.vp = $0[0]; probe?.contentMax = $0[1]; probe?.shift = $0[2]; probe?.refresh(); onPlate() }
             .shotNode("plate.cond")
             if open, mounted {
                 VStack(spacing: 0) {
