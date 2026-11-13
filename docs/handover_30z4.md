@@ -30,3 +30,4 @@ Left on the solar window on purpose: `DomeView` star rotation `(t − sun.mint)`
 - 12 h rule: `ClockText.is12` (setting `AppSettings.clock` → `ClockPreference`, `.auto` = locale `j` template) — `TimebarState.clock`, fed by `setClockPreference`. Scale digits: `ClockText.scaleLabel(hour:)`
   (hour field + AM/PM field of the app's own `hmm` template, no space; period only at 0/12/24): 12AM,3,6,9,12PM,3,6,9,12AM. `DayScale.Mark.hour` replaced the string digit (`digit` = 24 h text).
 - Still 24 h in 12 h mode: only the hour numbers 6/12/18 of the lane ribbon (`RibbonView` line ~158, `Text("\(hour)")`). Seen fine in 12 h: dome clock, plan button, rise/set, golden hour range.
+- Simple sheet: item `.clock` after `.units` (`SimpleSheet`, inventory row № 34 moved from «нет» to «есть» in `SimpleSettingsSheetTests`), same `settings.clock`, words `set.clock*` as the chapter, no note under it.

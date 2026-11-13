@@ -14,10 +14,10 @@ struct SimpleSettingsSheetTests {
     // MARK: - Опись
 
     /// Колонка «Просто», строки № 1–44: «есть» или «следует за №…» (№ 16 идёт за № 15, его тумблер на листе).
-    static let simpleRows: Set<Int> = [1, 2, 4, 7, 10, 15, 16, 20, 24, 29, 36, 37, 39, 40, 41, 42, 43, 44]
+    static let simpleRows: Set<Int> = [1, 2, 4, 7, 10, 15, 16, 20, 24, 29, 34, 36, 37, 39, 40, 41, 42, 43, 44]
     /// Колонка «Просто»: «нет, фиксировано» (№ 3 — небо на «Астро», его держат `StarsMilkyWaySwitchTests`).
     static let hiddenRows: Set<Int> = [3, 5, 6, 8, 9, 11, 12, 13, 14, 17, 18, 19, 21, 22, 23, 25, 26, 27, 28,
-                                       30, 31, 32, 33, 34, 35, 38]
+                                       30, 31, 32, 33, 35, 38]
 
     @Test func inventoryRowsOneToFortyFourAreAllAccountedFor() {
         #expect(Self.simpleRows.isDisjoint(with: Self.hiddenRows))
@@ -35,9 +35,10 @@ struct SimpleSettingsSheetTests {
 
     @Test func theSheetFollowsTheSketchSixSettingsInPlaceThenFiveRows() {
         // 30з.2а: после темы — «Экран „Свет“» (вне описи, решение оркестратора).
-        #expect(SimpleSheet.items == [.city, .theme, .lightView, .remind, .calendar, .units, .currency,
+        // 30з.4: после единиц — «Часы» (24 | AM/PM), строка описи № 34 (слово Алексея 13.11).
+        #expect(SimpleSheet.items == [.city, .theme, .lightView, .remind, .calendar, .units, .clock, .currency,
                                       .clients, .contacts, .playlists, .bin, .about])
-        #expect(SimpleSheet.items.map(\.opensScreen) == Array(repeating: false, count: 7) + Array(repeating: true, count: 5))
+        #expect(SimpleSheet.items.map(\.opensScreen) == Array(repeating: false, count: 8) + Array(repeating: true, count: 5))
     }
 
     @Test func modeChoiceStandsAboveTheSheetInEveryMode() {
@@ -133,6 +134,21 @@ struct SimpleSettingsSheetTests {
         #expect(SimpleSheet.binding(app, \.tempUnit).wrappedValue == .f)
         #expect(SimpleSheet.binding(app, \.currency).wrappedValue == .usd)
         #expect(SimpleSheet.remind(app).wrappedValue == 30)
+    }
+
+    @Test func theClockChoiceOnTheSheetIsTheSameSettingAsInTheChapter() {
+        let app = model(mode: .simple)
+        #expect(SimpleSheet.Item.clock.inventoryRows == [34])
+        #expect(SimpleSheet.state(.clock, app: app) == "auto")
+        SimpleSheet.binding(app, \.clock).wrappedValue = .h12
+        #expect(app.settings.clock == .h12 && SimpleSheet.state(.clock, app: app) == "12")
+        // «Свет» читает то же поле: цифры шкалы — 12AM, 3, …
+        #expect(app.light.timebar.scaleLabel(app.light.timebar.scaleMarks.first { $0.hour == 0 }!) == "12AM")
+        app.update { $0.mode = .pro }
+        #expect(app.settings.clock == .h12)
+        app.update { $0.mode = .simple }
+        SimpleSheet.binding(app, \.clock).wrappedValue = .h24
+        #expect(app.light.timebar.scaleLabel(app.light.timebar.scaleMarks.first { $0.hour == 0 }!) == "0")
     }
 
     @Test func aValueChangedOnTheSimpleSheetShowsInPro() {

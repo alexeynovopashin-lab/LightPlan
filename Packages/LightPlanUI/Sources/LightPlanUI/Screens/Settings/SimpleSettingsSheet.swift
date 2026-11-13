@@ -15,7 +15,7 @@ import UIKit
 enum SimpleSheet {
 
     enum Item: String, CaseIterable {
-        case city, theme, lightView, remind, calendar, units, currency
+        case city, theme, lightView, remind, calendar, units, clock, currency
         case clients, contacts, playlists, bin, about
 
         /// Строки описи (раздел А), которые стоят в этом пункте.
@@ -27,6 +27,7 @@ enum SimpleSheet {
             case .remind: [24]
             case .calendar: [15, 16]          // «Куда класть» идёт вслед за тумблером
             case .units: [36]
+            case .clock: [34]                // 30з.4 (слово Алексея 13.11: «в режиме просто нет переключателя 24|AMPM»): строка описи № 34 из «нет» в «есть»
             case .currency: [37]
             case .clients: [20]
             case .contacts: [7]
@@ -40,13 +41,13 @@ enum SimpleSheet {
         var opensScreen: Bool {
             switch self {
             case .clients, .contacts, .playlists, .bin, .about: true
-            case .city, .theme, .lightView, .remind, .calendar, .units, .currency: false
+            case .city, .theme, .lightView, .remind, .calendar, .units, .clock, .currency: false
             }
         }
     }
 
     /// Порядок листа — как на рисунке.
-    static let items: [Item] = [.city, .theme, .lightView, .remind, .calendar, .units, .currency,
+    static let items: [Item] = [.city, .theme, .lightView, .remind, .calendar, .units, .clock, .currency,
                                 .clients, .contacts, .playlists, .bin, .about]
 
     /// Строки описи над листом во всех режимах: выбор режима и пояснение под ним.
@@ -74,6 +75,7 @@ enum SimpleSheet {
         case .remind: return String(app.remindMinutes)
         case .calendar: return app.calendarMirrorOn ? "on" : "off"
         case .units: return s.tempUnit.rawValue
+        case .clock: return s.clock.rawValue
         case .currency: return s.currency.rawValue
         case .clients: return app.clientsValue
         case .contacts: return app.contactsValue
@@ -145,6 +147,14 @@ struct SimpleSettingsSheet: View {
                 SecLabel(text: t.t("set.units"))
                 WebSeg(options: [("°C", AppSettings.TempUnit.c), ("°F", AppSettings.TempUnit.f)],
                        selection: SimpleSheet.binding(app, \.tempUnit))
+                    .padding(.horizontal, 24).padding(.top, 12)
+            }
+        case .clock:
+            // Часы — тот же `settings.clock` и те же три выбора и слова, что в главе «Язык и регион» (`set.clock*`); пояснения под ним, как у остальных пунктов листа, нет.
+            VStack(alignment: .leading, spacing: 0) {
+                SecLabel(text: t.t("set.clock"))
+                WebSeg(options: [(t.t("set.clockAuto"), AppSettings.Clock.auto), (t.t("set.clock24"), .h24), (t.t("set.clock12"), .h12)],
+                       selection: SimpleSheet.binding(app, \.clock))
                     .padding(.horizontal, 24).padding(.top, 12)
             }
         case .currency:
