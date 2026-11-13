@@ -53,7 +53,7 @@ public struct TimebarView: View {
         .background(bare ? .clear : pal.surface)
         // 30з.1: строки краёв нет — «↺ Сейчас» плавает по центру над верхней кромкой таймбара и места не занимает (высота шкалы та же).
         .overlay(alignment: .top) {
-            if !showEdges && state.nowButtonVisible { nowButton(pal).offset(y: -26) }
+            if !showEdges && state.nowButtonVisible { nowButton(pal, floating: true).offset(y: Self.floatingNowOffset) }
         }
         .overlay(alignment: .top) { Rectangle().fill(bare ? .clear : pal.hair).frame(height: 1) }
     }
@@ -62,13 +62,21 @@ public struct TimebarView: View {
 
     /// `.now-tick`: 11/600, разрядка 0,4, `--brass-deep`; поле
     /// 9 · 14 — для пальца, а не для глаза.
-    private func nowButton(_ pal: Palette) -> some View {
+    /// «Свет» (30з.1): «↺ Сейчас» стоит ровно посередине между низом капсулы съёмки и верхом ленты дат. Рамки: верх ленты = верх таймбара + 13
+    /// (поле); низ капсулы = верх таймбара − 8 (зазор вставки) − 28 (строка «Сейчас», `LightScreenView.nowLift`) − 3 (поле капсулы) = −39.
+    /// Щель 52 pt, середина −13: 26 pt до капсулы и 26 pt до ленты. Кнопка 34 pt высотой → верх на −13 − 17 = −30.
+    static let floatingNowHeight: CGFloat = 34
+    static let floatingNowOffset: CGFloat = -13 - floatingNowHeight / 2
+
+    private func nowButton(_ pal: Palette, floating: Bool = false) -> some View {
         Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {
             Text(state.nowButtonLabel)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: floating ? 13 : 11, weight: .semibold))
                 .tracking(0.4)
                 .foregroundStyle(nowInk ?? pal.brassDeep)
-                .padding(.vertical, 9).padding(.horizontal, 14)
+                // На «Свете» (30з.1) кнопка 34 pt высотой — центр считается из рамок (см. оверлей ниже); на «Карте» и в AR поле 9 · 14, как было.
+                .padding(.vertical, floating ? 0 : 9).padding(.horizontal, 14)
+                .frame(height: floating ? Self.floatingNowHeight : nil)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
