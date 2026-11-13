@@ -186,7 +186,7 @@ struct UndoBar: View {
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.overlay3))
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(pal.hairline, lineWidth: 1))
-                .shadow(color: pal.glassCast, radius: 15, y: 10)
+                .blockShadow(color: pal.glassCast, radius: 15, y: 10)
                 .padding(.horizontal, 14).padding(.bottom, 14)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: u.token) {

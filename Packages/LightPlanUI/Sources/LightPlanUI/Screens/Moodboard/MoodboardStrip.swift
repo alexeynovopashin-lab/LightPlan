@@ -80,7 +80,7 @@ struct MoodboardStrip: View {
                 ForEach(Array(top.enumerated().reversed()), id: \.element.id) { i, fo in
                     MbCover(boardId: fo.boardId, genre: fo.genre, radius: 13, mark: 0.56, stroke: 1.9)
                         .frame(width: 42, height: 42)
-                        .shadow(color: .black.opacity(0.18), radius: 5, y: 3)
+                        .blockShadow(color: .black.opacity(0.18), radius: 5, y: 3)
                         .rotationEffect(.degrees(i == 0 ? -5 : i == 2 ? 5 : 0))
                         .offset(x: 23 * CGFloat(i))
                 }

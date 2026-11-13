@@ -7,6 +7,10 @@ import SwiftUI
 ///
 /// Числа живут здесь, а не в экранах: экран зовёт `.plateStyle(pal, radius:)` / `.raisedStyle(pal, radius:)`.
 public enum PlateTokens {
+    /// 30з.2 (слово Алексея 13.11: «убираем тени от блоков на светлой теме»): тени плашек светлой темы выключены — плашку от страницы
+    /// отделяют тон фона и светлый кант. Числа теней ниже целы: `true` вернёт их.
+    public static let lightShadowsOn = false
+
     /// Чернила тени и чёрных элементов («+ Съёмка», выбранный день).
     public static let shadowInk = Color.black
     public static let blackFill = Color(hex: 0x141416)
@@ -43,7 +47,7 @@ public extension View {
     /// Выбранное и поднятое в светлой теме: короткая тень под белым (выпуклое). В тёмной теме и при `on == false` — ничего.
     @ViewBuilder
     func raisedStyle(_ pal: Palette, radius: CGFloat, on: Bool = true) -> some View {
-        if on, !pal.dark { modifier(PlateModifier(radius: radius, glass: false, token: PlateTokens.raised, rim: false)) } else { self }
+        if on, !pal.dark, PlateTokens.lightShadowsOn { modifier(PlateModifier(radius: radius, glass: false, token: PlateTokens.raised, rim: false)) } else { self }
     }
 }
 
@@ -64,6 +68,7 @@ private struct PlateModifier: ViewModifier {
                 if rim { r.strokeBorder(PlateTokens.rimColor, lineWidth: PlateTokens.rimWidth).allowsHitTesting(false) }
             }
             .background {
+                if PlateTokens.lightShadowsOn {
                 ZStack {
                     r.fill(PlateTokens.shadowInk).shadow(color: PlateTokens.shadowInk.opacity(token.opacity), radius: token.radius, y: token.y)
                     r.fill(PlateTokens.shadowInk).shadow(color: PlateTokens.shadowInk.opacity(token.contactOpacity), radius: 1, y: 1)
@@ -76,7 +81,23 @@ private struct PlateModifier: ViewModifier {
                     .compositingGroup()
                 }
                 .allowsHitTesting(false)
+                }
             }
+    }
+}
+
+public extension View {
+    /// Тень блока (плашка, подложка месяца, обложка мудборда, панель «Отменить»): только в тёмной теме; в светлой выключена (30з.2).
+    func blockShadow(color: Color, radius: CGFloat, x: CGFloat = 0, y: CGFloat = 0) -> some View {
+        modifier(BlockShadowModifier(color: color, radius: radius, x: x, y: y))
+    }
+}
+
+private struct BlockShadowModifier: ViewModifier {
+    let color: Color, radius: CGFloat, x: CGFloat, y: CGFloat
+    @Environment(\.colorScheme) private var scheme
+    func body(content: Content) -> some View {
+        if scheme == .dark || PlateTokens.lightShadowsOn { content.shadow(color: color, radius: radius, x: x, y: y) } else { content }
     }
 }
 

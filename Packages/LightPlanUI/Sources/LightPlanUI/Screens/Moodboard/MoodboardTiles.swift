@@ -64,7 +64,7 @@ struct MbArt: View {
                 leaf(pal.sheet4, pal).frame(width: w - 6, height: w - 3)
                     .rotationEffect(.degrees(2.5)).offset(x: 3, y: 3 - 3)
                 MbCover(boardId: boardId, genre: genre)
-                    .shadow(color: .black.opacity(0.18), radius: 7, y: 4)
+                    .blockShadow(color: .black.opacity(0.18), radius: 7, y: 4)
                     .frame(width: w, height: w)
                 if count > 0 {
                     Text("\(count)").font(webFont(10.5, 600)).foregroundStyle(.white).monospacedDigit()
@@ -215,7 +215,7 @@ struct MbMoreTile: View {
         }
         .frame(width: w, height: w)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 7, y: 4)
+        .blockShadow(color: .black.opacity(0.18), radius: 7, y: 4)
     }
 }
 

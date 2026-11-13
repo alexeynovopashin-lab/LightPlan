@@ -28,7 +28,8 @@ struct LightSkyBackdrop: View {
     /// Небо стекает в цвет страницы на столько точек ниже горизонта (там стекло первой плашки).
     static let fade: CGFloat = 64
 
-    /// Сила виньетки в углах.
+    /// Сила виньетки в углах (низ). Верхние углы темнее вдвое: вторая такая же виньетка над верхней половиной (слово Алексея 13.11:
+    /// «затемняющий градиент в верхних углах надо усилить»): 0,62 → ≈ 0,86 в тёмной, 0,14 → ≈ 0,26 в светлой; радиус и середина те же.
     static func vignetteStrength(dark: Bool) -> Double { dark ? 0.62 : 0.14 }
 
     var body: some View {
@@ -59,6 +60,21 @@ struct LightSkyBackdrop: View {
                     .init(color: .black, location: 0),
                     .init(color: .black, location: (horizonY - vTop) / vHeight),
                     .init(color: .clear, location: 1),
+                ], startPoint: .top, endPoint: .bottom)
+            }
+            .offset(y: Self.above + vTop)
+            // Добавка только в верхних углах: тот же эллипс ещё раз, под маской «сверху до 60 % высоты зоны».
+            EllipticalGradient(stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .clear, location: 0.42),
+                .init(color: Color.black.opacity(Self.vignetteStrength(dark: pal.dark) * (pal.dark ? 1 : presence)), location: 1),
+            ], center: UnitPoint(x: 0.5, y: 0.46), startRadiusFraction: 0, endRadiusFraction: 0.78)
+            .frame(width: zoneSize.width, height: vHeight)
+            .mask {
+                LinearGradient(stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black, location: 0.22),
+                    .init(color: .clear, location: 0.6),
                 ], startPoint: .top, endPoint: .bottom)
             }
             .offset(y: Self.above + vTop)

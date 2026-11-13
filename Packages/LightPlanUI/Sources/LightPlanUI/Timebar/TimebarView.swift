@@ -72,7 +72,9 @@ public struct TimebarView: View {
     /// (поле); низ капсулы = верх таймбара − 8 (зазор вставки) − 28 (строка «Сейчас», `LightScreenView.nowLift`) − 3 (поле капсулы) = −39.
     /// Щель 52 pt, середина −13: 26 pt до капсулы и 26 pt до ленты. Кнопка 34 pt высотой → верх на −13 − 17 = −30.
     static let floatingNowHeight: CGFloat = 34
-    static let floatingNowOffset: CGFloat = -13 - floatingNowHeight / 2
+    /// 30з.2: щель между плашками «условия» и «время» — постоянная, «↺ Сейчас» по центру неё: верх кнопки на `nowGap / 2 + высота / 2` выше плашки.
+    static let nowGap: CGFloat = 44
+    static let floatingNowOffset: CGFloat = -nowGap / 2 - floatingNowHeight / 2
 
     private func nowButton(_ pal: Palette, floating: Bool = false) -> some View {
         Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {

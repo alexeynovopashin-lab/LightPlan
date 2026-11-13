@@ -188,7 +188,7 @@ private struct MonthPlate: View {
             .background {
                 // Тень без заливки под стеклом: контур вырезан, подложка не темнеет изнутри.
                 r.fill(Color.black)
-                    .shadow(color: pal.glassCast, radius: MonthMetrics.shadowRadius, y: MonthMetrics.shadowY)
+                    .blockShadow(color: pal.glassCast, radius: MonthMetrics.shadowRadius, y: MonthMetrics.shadowY)
                     .mask {
                         ZStack {
                             Rectangle().padding(-60)
