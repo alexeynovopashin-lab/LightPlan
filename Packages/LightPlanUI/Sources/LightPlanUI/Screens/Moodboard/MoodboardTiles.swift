@@ -19,16 +19,26 @@ struct MbCover: View {
     let boardId: String
     let genre: String?
     var radius: CGFloat = 12
+    /// Свои радиусы по углам (мозаика «Все»: внешние углы — как у плитки, внутренние — малые); `nil` — везде `radius`.
+    /// Рамка идёт по той же фигуре, поэтому внешний контур мозаики не режется общей обрезкой и рамка не рвётся на углу.
+    var corners: RectangleCornerRadii? = nil
     /// Доля знака от обложки и толщина штриха: плитка 42 %/1,5, веер и мозаика 56 %/1,9.
     var mark: CGFloat = 0.42
     var stroke: CGFloat = 1.5
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        if let corners {
+            cover(UnevenRoundedRectangle(cornerRadii: corners, style: .continuous))
+        } else {
+            cover(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        }
+    }
+
+    private func cover<S: InsettableShape>(_ shape: S) -> some View {
         let pal = Palette(scheme)
         let pair = MbSkyColors.pairs[MbSky.index(boardId)]
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        GeometryReader { g in
+        return GeometryReader { g in
             shape.fill(pal.sheet)
                 .overlay {
                     shape.fill(LinearGradient(colors: [Color(hex: pair.0, alpha: 0.85), Color(hex: pair.1, alpha: 0.85)],
@@ -200,21 +210,42 @@ struct MbMoreTile: View {
         .aspectRatio(1, contentMode: .fit)
     }
 
-    /// Ячейки 2×2 без зазора; меньше четырёх — растягиваются по месту (веб `.mb-cover.mo`).
     private func mosaic(_ w: CGFloat) -> some View {
+        MbMosaic(cells: cells, side: w)
+            .shadow(color: .black.opacity(0.18), radius: 7, y: 4)
+    }
+}
+
+/// Ячейки 2×2 с зазором 2; меньше четырёх — растягиваются по месту (веб `.mb-cover.mo`).
+struct MbMosaic: View {
+    let cells: [MbFolder]
+    let side: CGFloat
+
+    var body: some View {
         let rows = stride(from: 0, to: cells.count, by: 2).map { Array(cells[$0..<min($0 + 2, cells.count)]) }
         return VStack(spacing: 2) {
             ForEach(rows.indices, id: \.self) { r in
                 HStack(spacing: 2) {
-                    ForEach(rows[r]) { f in
-                        MbCover(boardId: f.boardId, genre: f.genre, radius: 6, mark: 0.56, stroke: 1.9)
+                    ForEach(rows[r].indices, id: \.self) { c in
+                        let f = rows[r][c]
+                        MbCover(boardId: f.boardId, genre: f.genre, radius: Self.inner, corners: Self.corners(
+                                    top: r == 0, bottom: r == rows.count - 1, leading: c == 0, trailing: c == rows[r].count - 1),
+                                mark: 0.56, stroke: 1.9)
                     }
                 }
             }
         }
-        .frame(width: w, height: w)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 7, y: 4)
+        .frame(width: side, height: side)
+    }
+
+    /// Радиус внешнего угла мозаики — как у плитки; внутренние углы ячеек (у зазора в 2 pt) остаются малыми.
+    static let outer: CGFloat = 12, inner: CGFloat = 6
+
+    /// Углы ячейки: внешний угол мозаики берёт большой радиус, остальные — малый. Так край и рамка ячейки сами рисуют контур,
+    /// без общей обрезки поверх (обрезка радиусом 12 съедала рамку ячейки радиуса 6 на всей дуге — «надкушенный» угол).
+    static func corners(top: Bool, bottom: Bool, leading: Bool, trailing: Bool) -> RectangleCornerRadii {
+        RectangleCornerRadii(topLeading: top && leading ? outer : inner, bottomLeading: bottom && leading ? outer : inner,
+                             bottomTrailing: bottom && trailing ? outer : inner, topTrailing: top && trailing ? outer : inner)
     }
 }
 

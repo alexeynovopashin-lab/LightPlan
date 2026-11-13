@@ -152,6 +152,38 @@ struct ActivityFrameTests {
         #expect(f.island == f.next)
     }
 
+    // MARK: Свёрнутый остров на последней точке (30и.2)
+
+    /// Слово Алексея 14.11: «положить иконку и таймер точки». Справа в свёрнутом острове — часы; после последней точки это время до
+    /// конца съёмки — те же часы, что на плашке («до конца свадьбы»), а не отдельное правило. Проверено до правки: остров и так считал
+    /// до конца (`island = next`), пустым он бывает только у съёмки без конца (завершается вручную) — тест держит оба случая.
+    @Test func onTheLastPointTheIslandCountsToTheEndOfTheShootLikeThePlate() {
+        let f = make(wedding(), at: tsk(20, 0))
+        #expect(f.current == 3 && f.points.last?.word == "Банкет")
+        #expect(f.island == .init(label: "до конца свадьбы", to: ms(tsk(22, 0))))
+        #expect(f.island == f.next, "остров берёт часы плашки, не свои")
+        // Золотой час уже позади — на последней точке он остров не перехватывает.
+        let g = make(wedding(sunset: true), at: tsk(21, 0))
+        #expect(g.island == .init(label: "до конца свадьбы", to: ms(tsk(22, 0))))
+        // Не свадьба — «до конца съёмки».
+        var other = wedding(); other.genre = "family"
+        #expect(make(other, at: tsk(20, 0)).island?.label == "до конца съёмки")
+    }
+
+    @Test func theIslandOfAShootWithoutAnEndHasNothingToCountAndStaysEmpty() {
+        let f = make(wedding(open: true), at: tsk(20, 0))
+        #expect(f.current == 3 && f.endsAt == nil)
+        #expect(f.island == nil, "конца нет — считать нечего, остров показывает только знак")
+    }
+
+    @Test func theLastPointKeepsTheFrameWithinTheLimit() {
+        let long = (0..<20).map { stop(12 + $0 / 4, ($0 % 4) * 15, "Достопримечательность номер \($0)", sign: "walk") }
+        let f = make(wedding(stops: long), at: tsk(21, 30))
+        #expect(f.points.count <= ActivityFrame.maxPoints)
+        #expect(f.encodedSize + ActivityFrame.propertiesReserve <= ActivityFrame.limit)
+        #expect(f.island?.to == ms(tsk(22, 0)), "на последней точке остров считает до конца, в пределах 4 КБ")
+    }
+
     // MARK: Студия
 
     @Test func studioModeKeepsTheLaneAndAddsExitAndButtons() {
