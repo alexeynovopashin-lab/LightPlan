@@ -49,9 +49,9 @@ public struct LightScreenView: View {
     public var body: some View {
         let telemetry = model.telemetry
         let pal = Palette(colorScheme)
-        let tuckNow = model.proMode ? extraTuck : 0
+        let tuckNow = model.proMode && LightCollapsedList.shortensByHeight ? extraTuck : 0
         let layoutNow = LightCollapsedList.Layout(
-            rows: LightCollapsedList.shown(astro: model.proMode, fit: fitRows, hasForecast: telemetry.sky != nil || telemetry.wind != nil).count,
+            rows: LightCollapsedList.shown(astro: model.proMode, fit: shownFit, hasForecast: telemetry.sky != nil || telemetry.wind != nil).count,
             extraTuck: tuckNow)
 
         // 30з.2 (макет 4 Алексея 12.11): небо шире купола — подложка «шапка + купол» с чёрной виньеткой по углам; три плашки
@@ -133,6 +133,9 @@ public struct LightScreenView: View {
         }
         .background(pal.surface)
     }
+
+    /// Сколько необязательных строк стоит в закрытом списке: все, пока укорочение по высоте выключено (30з.2).
+    private var shownFit: Int { LightCollapsedList.shortensByHeight ? fitRows : Int.max }
 
     // MARK: - Шапка
 
@@ -388,7 +391,7 @@ public struct LightScreenView: View {
     /// 29.8в.27: пересчёт числа строк закрытого списка «Астро» по свежим измерениям.
 
     private func refreshCollapsedRows() {
-        guard model.proMode, spoilerBottom > 0, visibleHeight > 0 else { return }
+        guard LightCollapsedList.shortensByHeight, model.proMode, spoilerBottom > 0, visibleHeight > 0 else { return }
         let hasForecast = model.telemetry.sky != nil || model.telemetry.wind != nil
         let present = LightCollapsedList.present(hasForecast: hasForecast)
         let heights = present.map { rowHeights[$0] ?? LightCollapsedList.defaultRowHeight }
@@ -515,7 +518,7 @@ public struct LightScreenView: View {
             plainRow(labelKey: "tele.golden", value: t.golden)
             plainRow(labelKey: "tele.light", value: t.light)
             // «Тени», «Небо», «Ветер» — необязательные строки: в «Астро» стоит столько первых, сколько помещается (`LightCollapsedList`).
-            let shown = LightCollapsedList.shown(astro: model.proMode, fit: fitRows, hasForecast: t.sky != nil || t.wind != nil)
+            let shown = LightCollapsedList.shown(astro: model.proMode, fit: shownFit, hasForecast: t.sky != nil || t.wind != nil)
             if shown.contains(.shadow) {
                 plainRow(labelKey: "tele.shadow", value: t.shadow)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeights[.shadow] = $0; refreshCollapsedRows() }
@@ -700,6 +703,12 @@ private struct DomeDragModifier: ViewModifier {
 /// прятать некуда — три строки, шапка и полоса (22) прежние.
 enum LightCollapsedList {
     enum Row: CaseIterable { case shadow, sky, wind }
+    /// 30з.2 (слово Алексея 13.11: «парящая кнопка решила проблему места, пользователь сам прокрутит список и достанет информацию из-под
+    /// кнопки»): укорочение закрытого списка «Астро» по высоте экрана выключено — оно существовало, чтобы кнопка «Запланировать съёмку»,
+    /// стоявшая в потоке, помещалась над нижней панелью. Теперь кнопка парит, список показывает все строки режима на любой модели и
+    /// уезжает под капсулу прокруткой; низ прокрутки отступает на капсулу (`actionReserve`), чтобы последнюю строку можно было вытянуть.
+    /// Правила `plan` / `shown(fit:)` и их тесты целы: вернуть укорочение — `true`.
+    static let shortensByHeight = false
     static let contentSpace = "lightContent"
     /// Строка телеметрии 35 pt (`TelemetryRow`), пока настоящая высота не измерена.
     static let defaultRowHeight: CGFloat = 35
