@@ -28,6 +28,9 @@ public struct LightScreenView: View {
     /// На сколько pt (0…12) поднята полоса под дугой сверх 22: только когда без этого не помещается важный набор. Выбирает
     /// `LightCollapsedList.plan` по измеренной высоте; «Просто» не затрагивается. Шапка «Астро» сжата всегда (слово Алексея 21.10).
     @State private var extraTuck: CGFloat = 0
+    /// 30з.2: на низких экранах, когда даже без необязательных строк и с полосой 12 плашка «условия» не помещается над щелью «↺ Сейчас», купол
+    /// поднят на столько pt (0…`maxDomeLift`) под низ шапки: над дугой есть пустое небо, шапка по бокам его не касается.
+    @State private var domeLift: CGFloat = 0
     @State private var rowHeights: [LightCollapsedList.Row: CGFloat] = [:]
     /// Низ кнопки «Подробно» в координатах содержимого прокрутки и высота кнопки съёмки — по ним считается запас высоты.
     @State private var spoilerBottom: CGFloat = 0
@@ -70,8 +73,10 @@ public struct LightScreenView: View {
                 VStack(spacing: 0) {
                     header(telemetry.header, note: telemetry.forecastNote, headPal)
                         .padding(.horizontal, 24)
+                        .zIndex(1)
 
                     dome(telemetry, pal, skyFill: skyNow == nil)
+                        .padding(.top, -domeLift)
                         .padding(.bottom, -Self.domeTuck(extra: tuckNow))
                         .tabRise()
                 }
@@ -97,18 +102,26 @@ public struct LightScreenView: View {
                 }
                 .tabRise()
             }
-            .frame(minHeight: max(0, visibleHeight - Self.capsuleReserve), alignment: .top)
+            .frame(minHeight: max(0, visibleHeight), alignment: .top)
             .coordinateSpace(.named(LightCollapsedList.contentSpace))
         }
         .scrollBounceBehavior(.basedOnSize)
-        // Низ прокрутки отступает на капсулу, чтобы последнюю плашку можно было вытянуть из-под неё.
-        .safeAreaPadding(.bottom, Self.capsuleReserve)
+        // Рубрики раскрыты: последнюю плашку можно вытянуть из-под капсулы (низ прокрутки отступает на неё). Свёрнуто — пустой низ плашки
+        // «условия» сам даёт этот запас, отступа нет (иначе страница ехала бы зря).
+        .safeAreaPadding(.bottom, plateProbe.grouped ? max(0, visibleHeight - plateProbe.rest) + Self.capsuleReserve : 0)
+        .onScrollGeometryChange(for: Bool.self) { abs($0.contentOffset.y + $0.contentInsets.top) < 0.5 } action: { _, atRest in
+            plateProbe.atRest = atRest
+            plateProbe.refresh()
+            refreshCollapsedRows()
+        }
+        .shotNode("light.scroll")
+        .onChange(of: plateProbe.rest) { _, _ in refreshCollapsedRows() }
         // 30з.2 (слово Алексея 16.11: «появилась обрезка»): прокрутки среза нет — содержимое идёт вниз под щель «↺ Сейчас» и под плашку
         // «время» (её стекло размывает проходящее под ним), плашки сохраняют скруглённые низы. Последняя плашка выезжает целиком выше капсулы.
         .coordinateSpace(.named(Self.viewportSpace))
         // 30з.2 (слово Алексея 13.11: «помещаем её в блок, она также парит, но находится над блоком»): капсула «Запланировать съёмку» —
-        // на всю внутреннюю ширину плашек (поля 24, как у строк), её положение неподвижно: низ видимой части над щелью «↺ Сейчас».
-        // Любая плашка, которую прокрутили к низу, уходит под неё.
+        // на всю внутреннюю ширину плашек (поля 24, как у строк). В покое она лежит в пустом низу плашки «условия», ничего не перекрывая;
+        // при прокрутке и раскрытии «Подробно» стоит на том же месте экрана, а содержимое уходит под неё (`CapsuleAnchor`).
         .overlay(alignment: .bottom) {
             CapsuleAnchor(probe: plateProbe, viewportHeight: visibleHeight, bottomMargin: Self.capsuleMargin) {
                 actionButton(pal)
@@ -124,6 +137,7 @@ public struct LightScreenView: View {
         .onChange(of: model.proMode) { _, pro in
             // В «Просто» спойлера нет и ничего не прячется; в «Астро» число строк решит новое измерение.
             if !pro { fitRows = 0; extraTuck = 0; spoilerBottom = 0 }
+            refreshCollapsedRows()
         }
         // Прогноз приходит позже первой раскладки: у «Неба» и «Ветра» появляется строка, а кнопка «Подробно» не сдвинулась — пересчитать.
         .onChange(of: model.telemetry.sky != nil || model.telemetry.wind != nil) { _, _ in refreshCollapsedRows() }
@@ -301,6 +315,8 @@ public struct LightScreenView: View {
     /// колонки по весу близки к числу в центре (оно стало легче: 30 → 28 pt); стопка чуть опущена к середине плашки.
     static let baseIconSize: CGFloat = 28
     static let baseStackTop: CGFloat = 10
+    /// Центр стопки у основания дуги не ближе к краю плашки: полуширина подписи 28 + поле 12.
+    static let baseEdgeInset: CGFloat = 40
     static let baseStackHeight: CGFloat = 28 + 2 + 16 + 2 + 15
     /// Низ плашки «сейчас» ниже блока «до …».
     private static let nowPlateBottom: CGFloat = 10
@@ -364,8 +380,10 @@ public struct LightScreenView: View {
         let g = DomeGeometry.self
         // Стопка на сторону (слово Алексея 16.11): знак → время → подпись; верх стопки на `baseStackTop` ниже горизонта.
         let y = Self.baseStackTop + Self.baseStackHeight / 2 - rise
-        let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x - 8
-        let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x - 8
+        // Стопка шире знака («рассвет» ≈ 50 pt): на 390 pt основание дуги стоит у самого края плашки — центр не ближе `edgeInset` к краям.
+        let blockWidth = max(1, domeSize.width - 16)
+        let left = max(fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x - 8, Self.baseEdgeInset)
+        let right = min(fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x - 8, blockWidth - Self.baseEdgeInset)
         let tb = model.timebar
         return ZStack(alignment: .topLeading) {
             baseLabel(tb.baseRiseEdge, pal, caption: model.lexiconWord("light.baseRise")).shotNode("edge.rise").position(x: left, y: y)
@@ -411,16 +429,33 @@ public struct LightScreenView: View {
     /// 29.8в.27: пересчёт числа строк закрытого списка «Астро» по свежим измерениям.
 
     private func refreshCollapsedRows() {
-        guard LightCollapsedList.shortensByHeight, model.proMode, spoilerBottom > 0, visibleHeight > 0 else { return }
+        guard LightCollapsedList.shortensByHeight, visibleHeight > 0 else { return }
+        guard model.proMode else {
+            // «Просто»: спойлера нет, строки прятать некуда — все на месте; нехватку берёт на себя подъём купола. Измерение — низ плашки в покое
+            // (вид из видимой части), приведённый к раскладке без подъёма.
+            guard plateProbe.atRest, plateProbe.vp.isFinite else { return }
+            let deficit = plateProbe.vp + domeLift - visibleHeight + LightCollapsedList.slack
+            let lift = min(LightCollapsedList.maxDomeLift, max(0, deficit))
+            if abs(lift - domeLift) > 0.25 { domeLift = lift }
+            return
+        }
+        guard spoilerBottom > 0 else { return }
         let hasForecast = model.telemetry.sky != nil || model.telemetry.wind != nil
         let present = LightCollapsedList.present(hasForecast: hasForecast)
         let heights = present.map { rowHeights[$0] ?? LightCollapsedList.defaultRowHeight }
         // Низ «Подробно» приводится к базе: без необязательных строк, полоса 22 — как была бы раскладка, не зная, какая из них сейчас
         // на экране (иначе решение мигало бы). Шапка «Астро» сжата всегда, в базу входит сжатой.
-        let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck
-        let plan = LightCollapsedList.plan(visibleHeight: visibleHeight, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
+        let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck + domeLift
+        // Низ плашки в покое = низ «Подробно» + пустой низ под капсулой + поле плашки: он не должен уходить ниже низа видимой части (там щель «↺ Сейчас»).
+        let tail = LightSpoilerView.capsuleSlot + LightSpoilerView.plateInset
+        let room = visibleHeight - plateProbe.contentTop
+        let plan = LightCollapsedList.plan(visibleHeight: room, baselineBottom: baseline, actionHeight: tail, rowHeights: heights)
         if plan.rows != fitRows { fitRows = plan.rows }
         if plan.extraTuck != extraTuck { extraTuck = plan.extraTuck }
+        // Даже без строк и с полосой 12 не помещается — остаток берёт подъём купола.
+        let spare = room - (baseline + tail) - LightCollapsedList.slack
+        let lift = min(LightCollapsedList.maxDomeLift, max(0, -spare - LightCollapsedList.maxExtraTuck))
+        if abs(lift - domeLift) > 0.25 { domeLift = lift }
     }
 
     /// 29.8в.26: от горизонта дуги (196 из 240 в `viewBox`) до подписи «до золотого часа» у веба 44 + 2 pt — пустая
@@ -604,7 +639,10 @@ public struct LightScreenView: View {
             // Парящая: системное стекло, как у других плавающих кнопок (30з.1). Ни затемнения, ни затухания рядом с ней нет (слово Алексея
             // 16.11): под ней пустой низ плашки «условия», а если плашка длиннее экрана — строки просто уходят под стекло.
             .glassEffect(.regular, in: Capsule())
-                        .contentShape(Capsule())
+            .flatGlass(Capsule(), light: !pal.dark)
+            // Светлая тема: капсула на белой плашке без тени — тонкий кант, чтобы её край читался (кант, не тень).
+            .overlay { if !pal.dark { Capsule().strokeBorder(pal.hair4, lineWidth: 1).allowsHitTesting(false) } }
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .shotNode("action")
@@ -729,7 +767,7 @@ enum LightCollapsedList {
     /// стоявшая в потоке, помещалась над нижней панелью. Теперь кнопка парит, список показывает все строки режима на любой модели и
     /// уезжает под капсулу прокруткой; низ прокрутки отступает на капсулу (`actionReserve`), чтобы последнюю строку можно было вытянуть.
     /// Правила `plan` / `shown(fit:)` и их тесты целы: вернуть укорочение — `true`.
-    static let shortensByHeight = false
+    static let shortensByHeight = true
     static let contentSpace = "lightContent"
     /// Строка телеметрии 35 pt (`TelemetryRow`), пока настоящая высота не измерена.
     static let defaultRowHeight: CGFloat = 35
@@ -745,6 +783,8 @@ enum LightCollapsedList {
 
     /// Полоса под дугой: сверх 22 pt можно поднять не больше чем на 12 (подпись остаётся в 12 pt от горизонта).
     static let maxExtraTuck: CGFloat = 12
+    /// 30з.2: сколько pt купол можно поднять под шапку, когда ничего другого не осталось.
+    static let maxDomeLift: CGFloat = 30
     /// Запас на округление: у `make lightfit` кнопка съёмки на 393 pt вышла на 1 pt под панель при расчёте «нужно 14» (замер 29.8в.27) —
     /// измеренные в содержимом рамки и раскладка расходятся на доли точки. Плана хватает на 1 pt больше.
     static let slack: CGFloat = 1
@@ -784,17 +824,31 @@ enum LightCollapsedList {
     }
 }
 
-/// Где нижняя кромка плашки «условия» (координаты видимой части прокрутки) и стоит ли капсула в её пустом низу (30з.2).
+/// Где в покое нижняя кромка плашки «условия» (координаты видимой части прокрутки) и раскрыты ли рубрики (30з.2).
 @Observable
 final class PlateProbe {
-    var maxY: CGFloat = .infinity
-    /// `true` — под плашкой «условия» нет рубрик «Подробно»: капсула лежит на пустом низу плашки, пока тот в кадре. `false` — рубрики раскрыты:
-    /// капсула неподвижна у низа видимой части.
-    var follows = true
+    /// Нижняя кромка плашки при прокрутке в начале: `.infinity`, пока не измерена. Обновляется только в покое (прокрутка в начале), поэтому
+    /// не дрожит вместе с жестом.
+    var rest: CGFloat = .infinity
+    /// Рубрики «Подробно» под плашкой «условия» развёрнуты (или разворачиваются).
+    var grouped = false
+    @ObservationIgnored var atRest = true
+    /// Нижняя кромка плашки в координатах видимой части и в координатах содержимого (последние измерения).
+    @ObservationIgnored var vp: CGFloat = .infinity
+    @ObservationIgnored var contentMax: CGFloat = .infinity
+    /// Где в видимой части стоит начало содержимого в покое (разность двух систем координат).
+    @ObservationIgnored var contentTop: CGFloat = 0
+
+    func refresh() {
+        guard atRest, vp.isFinite else { return }
+        if !rest.isFinite || abs(rest - vp) > 0.25 { rest = vp }
+        if contentMax.isFinite { contentTop = vp - contentMax }
+    }
 }
 
-/// Положение капсулы (30з.2). Низ капсулы — на `bottomMargin` выше низа видимой части; если пустой низ плашки «условия» в кадре выше этого
-/// места (список короткий, рубрики свёрнуты), капсула стоит в нём — на тех же `bottomMargin` выше кромки плашки. Ни затемнения, ни маски.
+/// Положение капсулы (30з.2): всегда там, где она лежит в покое, — на `bottomMargin` выше нижней кромки плашки «условия» в её пустом низу.
+/// Не ниже `bottomMargin` над низом видимой части (длинный список: плашка в покое ниже экрана — капсула у низа видимой части). Прокрутка
+/// и раскрытие «Подробно» её не двигают: содержимое уходит под неё. Ни затемнения, ни маски.
 struct CapsuleAnchor<Content: View>: View {
     let probe: PlateProbe
     let viewportHeight: CGFloat
@@ -802,7 +856,7 @@ struct CapsuleAnchor<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        let lift = probe.follows ? min(0, probe.maxY - viewportHeight) : 0
+        let lift = probe.rest.isFinite ? min(0, probe.rest - viewportHeight) : 0
         content
             .padding(.bottom, bottomMargin)
             .offset(y: lift)

@@ -62,7 +62,8 @@ private struct PlateModifier: ViewModifier {
         let r = RoundedRectangle(cornerRadius: radius, style: .continuous)
         content
             .background {
-                if glass { Color.clear.glassEffect(.regular, in: r) }
+                // Тень у встроенного стекла своя и падает наружу: в светлой теме её срезаем по контуру (слово Алексея 16.11 «вернулись тени»).
+                if glass { Color.clear.glassEffect(.regular, in: r).clipShape(r) }
             }
             .overlay {
                 if rim { r.strokeBorder(PlateTokens.rimColor, lineWidth: PlateTokens.rimWidth).allowsHitTesting(false) }
@@ -142,5 +143,21 @@ private struct GlassPlateModifier: ViewModifier {
                 .background { shape.fill(Color.white.opacity(PlateTokens.glassVeil)) }
                 .plateStyle(pal, radius: radius, glass: true)
         }
+    }
+}
+
+public extension View {
+    /// Светлая тема (30з.2): у встроенного стекла есть своя мягкая тень вокруг контура; срез по форме оставляет кант и убирает тень.
+    /// Тёмная — стекло как есть.
+    func flatGlass<S: Shape>(_ shape: S, light: Bool) -> some View {
+        modifier(FlatGlassModifier(shape: shape, light: light))
+    }
+}
+
+private struct FlatGlassModifier<S: Shape>: ViewModifier {
+    let shape: S
+    let light: Bool
+    func body(content: Content) -> some View {
+        if light { content.clipShape(shape) } else { content }
     }
 }

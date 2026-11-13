@@ -29,6 +29,8 @@ struct LightSpoilerView: View {
     var probe: PlateProbe? = nil
     /// Пустой низ плашки «условия» под капсулой: 10 над капсулой, 40 сама капсула, 6 под ней + 4 поля плашки = 10 до кромки. Чистая заливка плашки.
     static let capsuleSlot: CGFloat = 56
+    /// Поле плашки сверху и снизу (`plate(_:_:)`).
+    static let plateInset: CGFloat = 4
 
     /// Пара снимков (28е): `-LPShotSpoiler 1` — раскрыт сразу и прокручен к плашке неба; `2` (прибор `make lightfit`) —
     /// раскрыт и стоит в начале, без прокрутки.
@@ -63,7 +65,7 @@ struct LightSpoilerView: View {
     /// Плашка «Света» (30з.2): стекло, поля как у плашек «сейчас»/«время» — 8 от края, внутри 16 (содержимое стоит на 24).
     private func plate<C: View>(_ pal: Palette, @ViewBuilder _ content: () -> C) -> some View {
         content()
-            .padding(.horizontal, 16).padding(.vertical, 4)
+            .padding(.horizontal, 16).padding(.vertical, Self.plateInset)
             .glassPlate(pal)
             .padding(.horizontal, 8)
     }
@@ -81,7 +83,10 @@ struct LightSpoilerView: View {
                     Color.clear.frame(height: Self.capsuleSlot)
                 }
             }
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(LightScreenView.viewportSpace)).maxY } action: { probe?.maxY = $0 }
+            .onGeometryChange(for: [CGFloat].self) {
+                [$0.frame(in: .named(LightScreenView.viewportSpace)).maxY, $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY]
+            } action: { probe?.vp = $0[0]; probe?.contentMax = $0[1]; probe?.refresh() }
+            .shotNode("plate.cond")
             if open, mounted {
                 VStack(spacing: 0) {
                     ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
@@ -99,7 +104,7 @@ struct LightSpoilerView: View {
                 .shotNode("spoiler.list")
             }
         }
-        .task(id: open && mounted) { probe?.follows = !(open && mounted) }
+        .task(id: open && mounted) { probe?.grouped = open && mounted }
         .task {
             guard open, Self.shotMode == 1 else { return }
             try? await Task.sleep(for: .seconds(1))

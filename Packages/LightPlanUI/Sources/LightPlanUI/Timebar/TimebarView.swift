@@ -77,7 +77,7 @@ public struct TimebarView: View {
     /// Щель 52 pt, середина −13: 26 pt до капсулы и 26 pt до ленты. Кнопка 34 pt высотой → верх на −13 − 17 = −30.
     static let floatingNowHeight: CGFloat = 34
     /// 30з.2: щель между плашками «условия» и «время» — постоянная, «↺ Сейчас» по центру неё: верх кнопки на `nowGap / 2 + высота / 2` выше плашки.
-    static let nowGap: CGFloat = 44
+    static let nowGap: CGFloat = 50
     static let floatingNowOffset: CGFloat = -nowGap / 2 - floatingNowHeight / 2
 
     private func nowButton(_ pal: Palette, floating: Bool = false) -> some View {
@@ -131,7 +131,8 @@ public struct TimebarView: View {
 
 private struct NowGlass: ViewModifier {
     let on: Bool
+    @Environment(\.colorScheme) private var scheme
     func body(content: Content) -> some View {
-        if on { content.glassEffect(.regular, in: Capsule()) } else { content }
+        if on { content.glassEffect(.regular, in: Capsule()).flatGlass(Capsule(), light: scheme == .light) } else { content }
     }
 }
