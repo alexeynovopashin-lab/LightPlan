@@ -51,9 +51,9 @@ public struct TimebarView: View {
         // `.timebar`: поля 12 · 24 · 14, поверхность экрана, волосок сверху.
         .padding(EdgeInsets(top: 13, leading: 24, bottom: 14, trailing: 24))   // 1 — волосок `border-top`
         .background(bare ? .clear : pal.surface)
-        // 30з.1: строки краёв нет — «↺ Сейчас» плавает над правым краем верхней кромки таймбара и места не занимает (высота шкалы та же).
-        .overlay(alignment: .topTrailing) {
-            if !showEdges && state.nowButtonVisible { nowButton(pal).padding(.trailing, 10).offset(y: -26) }
+        // 30з.1: строки краёв нет — «↺ Сейчас» плавает по центру над верхней кромкой таймбара и места не занимает (высота шкалы та же).
+        .overlay(alignment: .top) {
+            if !showEdges && state.nowButtonVisible { nowButton(pal).offset(y: -26) }
         }
         .overlay(alignment: .top) { Rectangle().fill(bare ? .clear : pal.hair).frame(height: 1) }
     }
