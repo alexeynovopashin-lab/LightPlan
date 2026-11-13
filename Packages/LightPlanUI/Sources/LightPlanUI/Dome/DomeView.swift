@@ -312,13 +312,15 @@ public struct DomeView: View {
         let g = DomeGeometry.self
         // Светлая тема: дуга приподнята тенью 0 5 10 (`#arcPath` веба,
         // `drop-shadow(... rgba(23,21,15,0.18))`) — край неба, а не предмет.
-        context.drawLayer { layer in
-            if colorScheme == .light {
-                layer.addFilter(.shadow(color: Color(hex: 0x17150F, alpha: 0.18), radius: 5, x: 0, y: 5))
+        if colorScheme == .light {
+            // 28к.5: светлая тема — дуга Г1 «тонкая» (лента 2,4 → 4,0 pt со свечением и белой жилой, `ArcG1`); тень 0 5 10 ей не нужна.
+            ArcG1.paint(&context, sun: sun)
+        } else {
+            context.drawLayer { layer in
+                layer.stroke(arcPath(), with: .linearGradient(arcGradient(moon: false),
+                    startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: CGFloat(g.viewWidth), y: 0)),
+                    style: StrokeStyle(lineWidth: 3, lineCap: .round))
             }
-            layer.stroke(arcPath(), with: .linearGradient(arcGradient(moon: false),
-                startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: CGFloat(g.viewWidth), y: 0)),
-                style: StrokeStyle(lineWidth: 3, lineCap: .round))
         }
 
         // Отвес — под телом светила, как `#drop` в разметке веба (до 19б
@@ -437,6 +439,12 @@ public struct DomeView: View {
                             .init(color: Color(edge).opacity(a * 0.55), location: 0.5),
                             .init(color: Color(edge).opacity(0), location: 1),
                          ]), center: pos, startRadius: 0, endRadius: r))
+        }
+
+        // 28к.5: светлая тема — диск листа Г1 (кромка, персиковое кольцо, белая середина, мягкое свечение) вместо кольца, тени и выреза.
+        if colorScheme == .light {
+            ArcG1.paintDisc(&context, at: pos, halo: ring, core: core)
+            return
         }
 
         // Внешнее кольцо: свечение вокруг диска со своей кромкой.
