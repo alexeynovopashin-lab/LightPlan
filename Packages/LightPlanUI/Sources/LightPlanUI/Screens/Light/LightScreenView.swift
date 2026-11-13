@@ -149,8 +149,8 @@ public struct LightScreenView: View {
         .background(pal.surface)
     }
 
-    /// Вид «Без блоков» (30з.2а): экран 30з.1 как в `e6a5ccd` — плоский, без плашек и без подложки неба; кнопка съёмки парящая капсула над
-    /// лентой, «↺ Сейчас» плавает над лентой. Не улучшается; от вида с блоками отличается только этим телом, расчётом строк и кнопкой.
+    /// Вид «Без блоков» (30з.2а): экран 30з.1 как в `e6a5ccd` — плоский, без плашек и без подложки неба; кнопка съёмки парящая капсула и «↺» в одной строке над
+    /// лентой. Не улучшается; от вида с блоками отличается только этим телом, расчётом строк и кнопкой.
     @ViewBuilder private var flatBody: some View {
         let telemetry = model.telemetry
         let pal = Palette(colorScheme)
@@ -166,7 +166,7 @@ public struct LightScreenView: View {
 
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
-                    dome(telemetry, pal, skyFill: true)
+                    dome(telemetry, pal, skyFill: true, flatTimes: true)
                         .padding(.bottom, -Self.domeTuck(extra: tuckNow))
 
                     // 30з.1 (макет 4 Алексея 12.11): под куполом «до …» между основаниями дуги → «Запланировать съёмку» → список.
@@ -197,9 +197,7 @@ public struct LightScreenView: View {
         // шкалой; список уходит под неё, низ прокрутки отступает на её высоту, чтобы последняя строка доставалась.
         .safeAreaPadding(.bottom, Self.actionReserve)
         .overlay(alignment: .bottom) {
-            actionButton(pal, flat: true)
-                // Капсула неподвижна (слово Алексея 13.11): строка «↺ Сейчас» между ней и лентой занята всегда, кнопка появляется в ней по центру.
-                .padding(.bottom, Self.nowLift)
+            flatActionRow(pal)
                 .tabRise()
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0; refreshCollapsedRows() }
@@ -337,7 +335,7 @@ public struct LightScreenView: View {
 
     // MARK: - Купол и показание
 
-    private func dome(_ t: LightTelemetry, _ pal: Palette, skyFill: Bool) -> some View {
+    private func dome(_ t: LightTelemetry, _ pal: Palette, skyFill: Bool, flatTimes: Bool = false) -> some View {
         DomeView(sun: model.timebar.solarDay, place: model.timebar.place,
                  date: model.timebar.machine.selectedDate, t: model.timebar.machine.viewMinute,
                  nowMinute: model.timebar.nowMinute,
@@ -360,6 +358,7 @@ public struct LightScreenView: View {
                     }
                 }
             }
+            .overlay { if flatTimes { flatBaseTimes(pal: Palette(colorScheme)) } }
             .coordinateSpace(.named(Self.domeSpace))
             .onGeometryChange(for: CGSize.self) { $0.size } action: { domeSize = $0 }
             .contentShape(Rectangle())
@@ -471,6 +470,43 @@ public struct LightScreenView: View {
                     .foregroundStyle(pal.brassInk)
                     .lineLimit(1)
                     .shotNode("edge.cap", text: caption)
+            }
+        case .text(let text):
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(pal.ink4)
+                .multilineTextAlignment(.center).lineLimit(2)
+                .frame(width: 84)
+        }
+    }
+
+    /// Вид «Без блоков» (30з.1, `e6a5ccd`): время рассвета и заката — у оснований дуги, знак над временем, в пустой полосе купола под
+    /// горизонтом. Основания — концы дуги на горизонте (`cx ∓ rx`, `cy` в `viewBox` купола), через `DomeFit`. После заката слева
+    /// завтрашний рассвет (`baseRiseEdge`). Не ловят касаний; рамку купола не меняют.
+    private func flatBaseTimes(pal: Palette) -> some View {
+        let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
+        let g = DomeGeometry.self
+        let y = fit.point(CGPoint(x: 0, y: g.horizonY)).y + 6
+        let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x
+        let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x
+        let tb = model.timebar
+        return ZStack(alignment: .topLeading) {
+            flatBaseLabel(tb.baseRiseEdge, pal).shotNode("edge.rise").position(x: left, y: y + 17.5)
+            if let setEdge = tb.setEdge { flatBaseLabel(setEdge, pal).shotNode("edge.set").position(x: right, y: y + 17.5) }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(false)
+    }
+
+    @ViewBuilder
+    private func flatBaseLabel(_ content: TimebarState.EdgeContent, _ pal: Palette) -> some View {
+        switch content {
+        case .time(let icon, let minutes):
+            VStack(spacing: 2) {
+                Icon(icon, size: 19, line: 1.6).foregroundStyle(pal.brassDeep)
+                Text(model.timebar.clockString(minutes))
+                    .font(.system(size: 12, weight: .medium).monospacedDigit())
+                    .foregroundStyle(pal.ink4)
             }
         case .text(let text):
             Text(text)
@@ -720,8 +756,6 @@ public struct LightScreenView: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .frame(width: flat ? Self.actionWidth(dome: domeSize.width) : nil)
-        .padding(.vertical, flat ? 3 : 0)
         #if DEBUG
         // Замер шага 30д: `-LPShotNoAction 1` — кнопки не видно, место то же.
         .opacity(UserDefaults.standard.string(forKey: "LPShotNoAction") == nil ? 1 : 0)
@@ -729,12 +763,23 @@ public struct LightScreenView: View {
         .shotNode("action")
     }
 
+    /// Вид «Без блоков» (слово Алексея 13.11: «перенесём кнопку „сегодня“ в одну строку с „Запланировать съёмку“, сможем перенести кнопку ниже»):
+    /// капсула съёмки и круглая «↺» в одной строке над лентой; строки «↺ Сейчас» между ними и лентой больше нет. Ширина строки — дуга
+    /// (`actionWidth`) и место под «↺» (40 + 8), не шире экрана без полей 16.
+    private func flatActionRow(_ pal: Palette) -> some View {
+        HStack(spacing: 8) {
+            actionButton(pal, flat: true)
+            NowResetButton(state: model.timebar, pal: pal)
+        }
+        .frame(width: min(Self.actionWidth(dome: domeSize.width) + 48, max(0, domeSize.width - 32)))
+        .padding(.vertical, 3)
+    }
+
     /// Кнопка шириной по дуге и подтянута к горизонту (схема А, 04.11). Дуга — 326 из 390 единиц купола,
     /// а купол мельче единицы только на экранах уже 390 (`DomeView`, «масштаб по меньшей стороне»).
     static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
-    /// Вид «Без блоков» (30з.1): высота капсулы (40 + поля 3 · 2) — на столько отступает низ прокрутки; над ней строка «↺ Сейчас» (`nowLift`).
-    static let actionReserve: CGFloat = 46 + 28
-    static let nowLift: CGFloat = 28
+    /// Вид «Без блоков»: высота строки капсулы и «↺» (40 + поля 3 · 2) — на столько отступает низ прокрутки.
+    static let actionReserve: CGFloat = 46
     static let viewportSpace = "lightViewport"
     static func actionVeil(_ scheme: ColorScheme) -> Color {
         // 28к.3: в светлой кнопка поднята — белая вуаль (светлее фона) и тень под ней (`raisedStyle`); в тёмной — как была.

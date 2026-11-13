@@ -62,11 +62,7 @@ public struct TimebarView: View {
         .background {
             if plate { Color.clear.glassPlate(pal, hush: 0.7) } else { (bare ? Color.clear : pal.surface) }
         }
-        // 30з.1: строки краёв нет — «↺ Сейчас» плавает по центру над верхней кромкой таймбара и места не занимает (высота шкалы та же).
-        // Вид «Без блоков» (30з.2а) — ровно так, как в 30з.1. У плашки (`plate`) плавающей кнопки нет: «↺» стоит в строке пульта.
-        .overlay(alignment: .top) {
-            if !plate && !showEdges && state.nowButtonVisible { nowButton(pal, floating: true).offset(y: Self.floatingNowOffset) }
-        }
+        // «↺» живёт в строке капсулы «Запланировать съёмку» (30з.2а, оба вида «Света»); плавающей кнопки над лентой больше нет.
         .overlay(alignment: .top) { Rectangle().fill(bare || plate ? .clear : pal.hair).frame(height: 1) }
     }
 
@@ -78,24 +74,9 @@ public struct TimebarView: View {
     /// «↺» на постоянном месте справа от капсулы: время и день уже «сейчас» — приглушена и не отзывается; сдвинули время или день —
     /// загорается акцентом и возвращает оба (то же, что «↺ сейчас» / «↺ сегодня» до пульта). Не появляется, не исчезает, ничего не двигает.
     private func consoleRow(_ pal: Palette, _ content: AnyView) -> some View {
-        let active = state.nowButtonVisible
-        return HStack(spacing: 8) {
+        HStack(spacing: 8) {
             content
-            Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(active ? pal.brassInk : pal.ink4.opacity(0.4))
-                    .frame(width: Self.consoleHeight, height: Self.consoleHeight)
-                    .glassEffect(.regular, in: Circle())
-                    .flatGlass(Circle(), light: !pal.dark)
-                    .overlay { if !pal.dark { Circle().strokeBorder(pal.hair4, lineWidth: 1).allowsHitTesting(false) } }
-                    .contentShape(Circle())
-                    .animation(.easeOut(duration: 0.2), value: active)
-            }
-            .buttonStyle(.plain)
-            .disabled(!active)
-            .accessibilityLabel(String(state.nowButtonLabel.dropFirst(2)))
-            .shotNode("now", text: active ? state.nowButtonLabel : "")
+            NowResetButton(state: state, pal: pal, onNow: onNow)
         }
         .frame(height: Self.consoleHeight)
     }
@@ -154,5 +135,32 @@ public struct TimebarView: View {
                 .font(.system(size: 11, weight: .medium).monospacedDigit())
                 .foregroundStyle(pal.ink4)
         }
+    }
+}
+
+/// Круглая «↺» пульта (30з.2а): на постоянном месте, время и день уже «сейчас» — приглушена и не отзывается; сдвинули — горит акцентом и
+/// возвращает оба. Одна на оба вида «Света»: в плашке «время» и в строке капсулы вида «Без блоков».
+struct NowResetButton: View {
+    let state: TimebarState
+    let pal: Palette
+    var onNow: (() -> Void)? = nil
+
+    var body: some View {
+        let active = state.nowButtonVisible
+        Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {
+            Image(systemName: "arrow.counterclockwise")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(active ? pal.brassInk : pal.ink4.opacity(0.4))
+                .frame(width: TimebarView.consoleHeight, height: TimebarView.consoleHeight)
+                .glassEffect(.regular, in: Circle())
+                .flatGlass(Circle(), light: !pal.dark)
+                .overlay { if !pal.dark { Circle().strokeBorder(pal.hair4, lineWidth: 1).allowsHitTesting(false) } }
+                .contentShape(Circle())
+                .animation(.easeOut(duration: 0.2), value: active)
+        }
+        .buttonStyle(.plain)
+        .disabled(!active)
+        .accessibilityLabel(String(state.nowButtonLabel.dropFirst(2)))
+        .shotNode("now", text: active ? state.nowButtonLabel : "")
     }
 }
