@@ -21,3 +21,12 @@ Left on the solar window on purpose: `DomeView` star rotation `(t − sun.mint)`
 - `swift test` in `Packages/LightPlanUI` does not build on the Mac host (pre-existing: `PlannerMotionBench`/`PlannerMonthView`); UI tests go through `xcodebuild test -only-testing:LightPlanUITests/<Suite>`.
 - `-LPShotKnob -40`: UserDefaults eats the minus — pass `" -40"`.
 - The simulator panel was not granted to the executor: shots by `xcrun simctl io … screenshot`, no taps.
+
+## Round 2 (13.11, orchestrator: «переводи AR» + 12 h)
+- AR = calendar scale: `TimebarState` default is now `.calendar` (AR passes nothing). Nothing uses `.solar` any more; it stays only as the default of `TimelineMachine`
+  (the old mechanics tests are written against the solar window) — not removed on purpose, see `DayScale` doc.
+- AR layers in the margins: formulas of absolute time, no change needed. Core test `DayScaleTests.arLayersInTheMargins` (sun, moon, planets, stars, Milky Way core + centre line at −60/−40/1480/1500
+  = neighbour day at 1380/1400/40/60); UI test `arUsesTheCalendarScale`; old `SunARTests` (56 tests with the rest) green.
+- 12 h rule: `ClockText.is12` (setting `AppSettings.clock` → `ClockPreference`, `.auto` = locale `j` template) — `TimebarState.clock`, fed by `setClockPreference`. Scale digits: `ClockText.scaleLabel(hour:)`
+  (hour field + AM/PM field of the app's own `hmm` template, no space; period only at 0/12/24): 12AM,3,6,9,12PM,3,6,9,12AM. `DayScale.Mark.hour` replaced the string digit (`digit` = 24 h text).
+- Still 24 h in 12 h mode: only the hour numbers 6/12/18 of the lane ribbon (`RibbonView` line ~158, `Text("\(hour)")`). Seen fine in 12 h: dome clock, plan button, rise/set, golden hour range.

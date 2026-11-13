@@ -120,4 +120,31 @@ struct DayScaleTests {
         let nightBefore = d.state(at: -40), nightAfter = d.state(at: 1500)
         #expect(nightBefore.stars == nightAfter.stars)
     }
+
+    // MARK: - AR (30з.4, второй круг): слои неба в полях шкалы — те же, что у соседнего дня
+
+    @Test("AR: Солнце, Луна, планеты, звёзды и Млечный Путь в −40 и 1480 минут = тем же слоям соседнего дня")
+    func arLayersInTheMargins() {
+        let place = Self.moscow
+        let d = CivilDate(year: 2026, month: 11, day: 13)
+        func close(_ a: Degrees, _ b: Degrees, _ tol: Degrees = 1e-6) -> Bool {
+            let diff = abs(a - b).truncatingRemainder(dividingBy: 360)
+            return min(diff, 360 - diff) < tol
+        }
+        for (day, t, nDay, nT) in [(d, -40.0, d.adding(days: -1), 1400.0), (d, 1480.0, d.adding(days: 1), 40.0),
+                                   (d, -60.0, d.adding(days: -1), 1380.0), (d, 1500.0, d.adding(days: 1), 60.0)] {
+            let sun = SunTrack.sample(day: day, minutes: t, in: place), sunN = SunTrack.sample(day: nDay, minutes: nT, in: place)
+            #expect(close(sun.altitude, sunN.altitude) && close(sun.azimuth, sunN.azimuth), "солнце \(t)")
+            let moon = MoonTrack.sample(day: day, minutes: t, in: place), moonN = MoonTrack.sample(day: nDay, minutes: nT, in: place)
+            #expect(close(moon.altitude, moonN.altitude) && close(moon.azimuth, moonN.azimuth) && moon.phase.fraction == moonN.phase.fraction, "луна \(t)")
+            let pl = PlanetSkyAR.samples(day: day, minutes: t, in: place), plN = PlanetSkyAR.samples(day: nDay, minutes: nT, in: place)
+            #expect(pl.count == plN.count && zip(pl, plN).allSatisfy { close($0.horizontal.altitude, $1.horizontal.altitude) && close($0.horizontal.azimuth, $1.horizontal.azimuth) }, "планеты \(t)")
+            let st = StarSkyAR.horizontals(day: day, minutes: t, in: place), stN = StarSkyAR.horizontals(day: nDay, minutes: nT, in: place)
+            #expect(st.count == stN.count && zip(st, stN).allSatisfy { close($0.altitude, $1.altitude) && close($0.azimuth, $1.azimuth) }, "звёзды \(t)")
+            let core = MilkyWayAR.core(day: day, minutes: t, in: place), coreN = MilkyWayAR.core(day: nDay, minutes: nT, in: place)
+            #expect(close(core.altitude, coreN.altitude) && close(core.azimuth, coreN.azimuth), "ядро \(t)")
+            let band = MilkyWayAR.center(day: day, minutes: t, in: place), bandN = MilkyWayAR.center(day: nDay, minutes: nT, in: place)
+            #expect(band.count == bandN.count && zip(band, bandN).allSatisfy { close($0.altitude, $1.altitude) && close($0.azimuth, $1.azimuth) }, "полоса \(t)")
+        }
+    }
 }

@@ -73,6 +73,34 @@ public struct ClockText: Sendable {
         return timeParts(n).map(\.text).joined()
     }
 
+    /// Цифра шкалы ползунка (30з.4): час `h` (0…24). 24 часа — просто число. 12 часов — **полночь и полдень с «AM/PM»**, остальные часы голым числом:
+    /// «12AM», 3, 6, 9, «12PM», 3, 6, 9, «12AM» — слова те же, что в `fmt` (шаблон языка `hmm`, тот же регистр и знаки); из шаблона берутся только
+    /// поле часа и поле «AM/PM», минуты и разделители отброшены, пробела между ними нет (в узкой шкале он не помещается).
+    public func scaleLabel(hour h: Int) -> String {
+        if !is12 { return String(h) }
+        let m = ((h % 24) + 24) % 24 * 60
+        let date = Self.atMin(m)
+        let f = DateFormatter()
+        f.locale = locale
+        f.calendar = Self.utc
+        f.timeZone = Self.utcZone
+        f.setLocalizedDateFormatFromTemplate("hmm")
+        let wantsPeriod = m % 720 == 0
+        var out = ""
+        for token in Self.tokens(f.dateFormat) {
+            guard case .field(let run) = token, let c = run.first else { continue }
+            let isHour = "hHkK".contains(c), isPeriod = "abB".contains(c)
+            guard isHour || (isPeriod && wantsPeriod) else { continue }
+            let one = DateFormatter()
+            one.locale = locale
+            one.calendar = Self.utc
+            one.timeZone = Self.utcZone
+            one.dateFormat = isHour ? String(repeating: "h", count: 1) : run
+            out += Self.nonBreaking(one.string(from: date))
+        }
+        return out
+    }
+
     /// Время для крупных мест: цифры и отдельно обозначение половины суток.
     public func parts(_ m: Double?) -> [ClockPart] {
         guard let m, !m.isNaN else { return [ClockPart(text: "—", isDayPeriod: false)] }

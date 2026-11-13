@@ -1,5 +1,8 @@
 import Testing
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 @testable import LightPlanUI
 import LightPlanCore
 import LightPlanData
@@ -190,4 +193,62 @@ struct Scale30z4Tests {
             #expect(!t.shadow.isEmpty && !t.next.label.isEmpty)
         }
     }
+
+    // MARK: - AR на той же шкале и 12-часовые цифры
+
+    @Test("AR ходит по той же календарной шкале: окно −60…1500, цифры и риски те же")
+    func arUsesTheCalendarScale() {
+        let place = Place(latitude: 53.35, longitude: 83.77, zone: ZoneID("Asia/Barnaul")!)
+        let m = SunARModel(target: SunARTarget(place: place, moment: Moment(ISO8601DateFormatter().date(from: "2026-09-23T06:00:00Z")!)),
+                           source: nil)
+        #expect(m.timebar.scale == .calendar && m.timebar.scaleStart == -60 && m.timebar.scaleEnd == 1500)
+        #expect(RulerDigits.labels(m.timebar.scaleMarks) == ["0", "3", "6", "9", "12", "15", "18", "21", "24"])
+        // Поля: ручка уходит в −60 и 1500, день не меняется; Солнце и Луна считаются без падения.
+        m.set(minutes: -40); #expect(m.minutes == -40 && m.day == m.timebar.machine.selectedDate)
+        _ = m.sun; _ = m.moonPicked
+        m.set(minutes: 1480); #expect(m.minutes == 1480)
+        _ = m.sun; _ = m.moonPicked; _ = m.eventNote
+    }
+
+    @Test("цифры шкалы в 12 часах: 12AM, 3, 6, 9, 12PM, 3, 6, 9, 12AM; в 24 часах — 0, 3, … 24")
+    func twelveHourDigits() {
+        let marks = DayScale.calendar.marks(start: -60, end: 1500)
+        func labels(_ c: ClockText) -> [String] { marks.compactMap { m in m.hour.map { c.scaleLabel(hour: $0) } } }
+        let h12 = labels(ClockText(language: "en", preference: .h12))
+        #expect(h12 == ["12AM", "3", "6", "9", "12PM", "3", "6", "9", "12AM"], "\(h12)")
+        #expect(labels(ClockText(language: "en", preference: .h24)) == ["0", "3", "6", "9", "12", "15", "18", "21", "24"])
+        // Правило то же, что у остальных часов: настройка, а без неё — привычка языка.
+        #expect(ClockText(language: "en", preference: .auto).scaleLabel(hour: 12) == "12PM")
+        #expect(ClockText(language: "ru", preference: .auto).scaleLabel(hour: 12) == "12")
+        let ru12 = labels(ClockText(language: "ru", preference: .h12))
+        #expect(ru12[1] == "3" && ru12[0].hasPrefix("12") && ru12[0].count > 2 && ru12[4].hasPrefix("12") && ru12[0] != ru12[4], "\(ru12)")
+    }
+
+    #if canImport(UIKit)
+    @Test("12AM / 12PM не налезают на соседей и не режутся по краям: iPhone 14 (390) и 17 Pro Max (440)")
+    func twelveHourDigitsFit() {
+        let font = UIFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        var table = ""
+        for (name, W) in [("17 Pro Max", 440.0), ("iPhone 14", 390.0)] {
+            let canvas = W - 48                                           // ширина слоя цифр: плашка 8 + поле 16 с каждой стороны
+            let track = canvas - 26
+            for lang in ["en", "ru"] {
+                let clock = ClockText(language: lang, preference: .h12)
+                var prevRight = -Double.infinity
+                for mark in DayScale.calendar.marks(start: -60, end: 1500) {
+                    guard let h = mark.hour else { continue }
+                    let text = clock.scaleLabel(hour: h)
+                    let width = Double((text as NSString).size(withAttributes: [.font: font]).width)
+                    let centre = 13 + DayScale.fraction(of: mark.minute, start: -60, end: 1500) * track
+                    let left = centre - width / 2, right = centre + width / 2
+                    table += String(format: "%@ %@ %@ x=%.1f w=%.1f [%.1f…%.1f] gap=%.1f\n", name, lang, text, centre + 24, width, left + 24, right + 24, left - prevRight)
+                    #expect(left >= 0 && right <= canvas, "\(name) \(lang) \(text) режется: \(left)…\(right) из \(canvas)")
+                    if prevRight > -Double.infinity { #expect(left - prevRight >= 6, "\(name) \(lang) \(text) вплотную к соседу: \(left - prevRight)") }
+                    prevRight = right
+                }
+            }
+        }
+        print("SCALE12 \n" + table)
+    }
+    #endif
 }

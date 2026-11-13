@@ -45,10 +45,15 @@ struct RulerDigits: View {
     let marks: [DayScale.Mark]
     let start: Minutes
     let end: Minutes
+    /// Подпись метки в часах пользователя (`TimebarState.scaleLabel`).
+    let label: (DayScale.Mark) -> String?
     @Environment(\.colorScheme) private var colorScheme
 
     /// Подписи цифр слева направо — то, что видно над рельсом.
     static func labels(_ marks: [DayScale.Mark]) -> [String] { marks.compactMap(\.digit) }
+
+    /// Кегль и вес цифр шкалы — одно место для вида и для замеров ширины.
+    static let font = Font.system(size: 11, weight: .medium).monospacedDigit()
 
     /// Поле с каждого края: половина ширины ручки (13). Центр ручки на упоре стоит в первой и последней риске.
     static let inset: CGFloat = 13
@@ -58,10 +63,10 @@ struct RulerDigits: View {
         Canvas { context, size in
             let track = size.width - 2 * Self.inset
             for mark in marks {
-                guard let digit = mark.digit else { continue }
+                guard let digit = label(mark) else { continue }
                 let x = Self.inset + DayScale.fraction(of: mark.minute, start: start, end: end) * track
                 let text = Text(digit)
-                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .font(Self.font)
                     .foregroundColor(pal.ink4)
                 context.draw(context.resolve(text), at: CGPoint(x: x, y: 8), anchor: .center)
             }

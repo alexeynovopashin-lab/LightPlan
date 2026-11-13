@@ -38,7 +38,7 @@ struct ScrubView: View {
                         .padding(.top, 16)
 
                     // 30з.1: цифры часов — в том же слое, что рельс и риски: бегунок закрывает их и гнёт кольцом.
-                    RulerDigits(marks: state.scaleMarks, start: state.scaleStart, end: state.scaleEnd)
+                    RulerDigits(marks: state.scaleMarks, start: state.scaleStart, end: state.scaleEnd, label: { state.scaleLabel($0) })
                         .frame(width: w, height: 16)
                         .shotNode("ruler.digits")
 

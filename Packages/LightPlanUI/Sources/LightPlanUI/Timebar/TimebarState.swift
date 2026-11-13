@@ -70,7 +70,7 @@ public final class TimebarState {
 
     public init(place: Place, date: CivilDate, weather: WeatherStore? = nil,
                 language: String = "ru", ribbonMode: RibbonMode = .drum,
-                clockPreference: ClockPreference = .auto, scale: DayScale = .solar,
+                clockPreference: ClockPreference = .auto, scale: DayScale = .calendar,
                 now: @escaping @Sendable () -> Date = { Date() }) {
         self.place = place
         self.now = now
@@ -91,6 +91,8 @@ public final class TimebarState {
     public var scaleStart: Minutes { machine.mint }
     public var scaleEnd: Minutes { machine.maxt }
     var scaleMarks: [DayScale.Mark] { machine.scale.marks(start: machine.mint, end: machine.maxt) }
+    /// Цифры над рисками в часах пользователя (`ClockText.is12`: настройка «Часы» или привычка языка): 24 — 0, 3, … 24; 12 — 12AM, 3, 6, 9, 12PM, 3, 6, 9, 12AM.
+    func scaleLabel(_ mark: DayScale.Mark) -> String? { mark.hour.map { clock.scaleLabel(hour: $0) } }
 
     /// Час, в котором стоит минута `m`, для щелчков: через `floor`, а не `Int(m) / 60` — тот усекает к нулю, и все минуты −59…59
     /// вместе были бы «часом 0»: переход через 00:00 слева (из часа до полуночи) не щёлкал бы.
