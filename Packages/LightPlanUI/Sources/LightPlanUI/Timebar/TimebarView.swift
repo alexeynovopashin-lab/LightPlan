@@ -55,7 +55,7 @@ public struct TimebarView: View {
         // `.timebar`: поля 12 · 24 · 14, поверхность экрана, волосок сверху.
         .padding(EdgeInsets(top: 13, leading: plate ? 16 : 24, bottom: 14, trailing: plate ? 16 : 24))   // 1 — волосок `border-top`
         .background {
-            if plate { Color.clear.glassPlate(pal) } else { (bare ? Color.clear : pal.surface) }
+            if plate { Color.clear.glassPlate(pal, hush: 0.7) } else { (bare ? Color.clear : pal.surface) }
         }
         // 30з.1: строки краёв нет — «↺ Сейчас» плавает по центру над верхней кромкой таймбара и места не занимает (высота шкалы та же).
         .overlay(alignment: .top) {
@@ -85,6 +85,8 @@ public struct TimebarView: View {
                 // На «Свете» (30з.1) кнопка 34 pt высотой — центр считается из рамок (см. оверлей ниже); на «Карте» и в AR поле 9 · 14, как было.
                 .padding(.vertical, floating ? 0 : 9).padding(.horizontal, 14)
                 .frame(height: floating ? Self.floatingNowHeight : nil)
+                // 30з.2: на «Свете» под кнопкой проходят плашки (прокрутка идёт под щель) — своё стекло, чтобы слово читалось над любой строкой.
+                .modifier(NowGlass(on: floating))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -120,5 +122,12 @@ public struct TimebarView: View {
                 .font(.system(size: 11, weight: .medium).monospacedDigit())
                 .foregroundStyle(pal.ink4)
         }
+    }
+}
+
+private struct NowGlass: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View {
+        if on { content.glassEffect(.regular, in: Capsule()) } else { content }
     }
 }

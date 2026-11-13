@@ -106,9 +106,12 @@ public extension View {
     /// `.glassEffect(.regular)` в скруглённой рамке, кант даёт само стекло. Светлая тема — токены 28к.3: белая вуаль `glassVeil` над
     /// стеклом, светлый кант и мягкая тень `plateStyle`. Тёмная: тонкая светлая вуаль `darkVeil`, чтобы матовая плашка читалась на сером
     /// фоне, как на макете (там плашка в 1,6 раза светлее фона). Нарисованного блика нет (`Tools/check_glass.sh`).
-    func glassPlate(_ pal: Palette, radius: CGFloat = 22) -> some View {
+    ///
+    /// `hush` (0…1): под стеклом тон страницы с такой плотностью — плашка, под которой прокручивается чужое содержимое («время» на «Свете»,
+    /// 30з.2), не показывает его резко сквозь стекло.
+    func glassPlate(_ pal: Palette, radius: CGFloat = 22, hush: Double = 0) -> some View {
         let r = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        return modifier(GlassPlateModifier(pal: pal, shape: r, radius: radius))
+        return modifier(GlassPlateModifier(pal: pal, shape: r, radius: radius, hush: hush))
     }
 }
 
@@ -122,9 +125,14 @@ private struct GlassPlateModifier: ViewModifier {
     let pal: Palette
     let shape: RoundedRectangle
     let radius: CGFloat
+    let hush: Double
+
+    func body(content: Content) -> some View {
+        inner(content).background { if hush > 0 { shape.fill(pal.surface.opacity(hush)) } }
+    }
 
     @ViewBuilder
-    func body(content: Content) -> some View {
+    private func inner(_ content: Content) -> some View {
         if pal.dark {
             content
                 .background { shape.fill(Color.white.opacity(GlassPlateTokens.darkVeil)) }
