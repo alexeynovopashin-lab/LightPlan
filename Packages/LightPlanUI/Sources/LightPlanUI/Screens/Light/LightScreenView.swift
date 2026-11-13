@@ -103,6 +103,17 @@ public struct LightScreenView: View {
         .safeAreaPadding(.bottom, Self.capsuleReserve)
         // 30з.2 (слово Алексея 16.11: «появилась обрезка»): прокрутки среза нет — содержимое идёт вниз под щель «↺ Сейчас» и под плашку
         // «время» (её стекло размывает проходящее под ним), плашки сохраняют скруглённые низы. Последняя плашка выезжает целиком выше капсулы.
+        // Под капсулой содержимое плавно гаснет (36 pt от её низа вниз), а не обрывается: строки, ушедшие под кнопку, не торчат обрезками
+        // под ней в щели «↺ Сейчас» (слово Алексея 16.11 «обрати внимание на это место»). Сверху и по бокам маска не режет.
+        .mask {
+            VStack(spacing: 0) {
+                Rectangle()
+                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: Self.capsuleFade)
+            }
+            // Вверх без среза; низ маски — на капсулу выше низа видимой части, затухание уходит ниже её рамки.
+            .padding(.top, -1000)
+            .padding(.bottom, Self.capsuleFade - Self.capsuleMargin)
+        }
         // 30з.2 (слово Алексея 13.11: «помещаем её в блок, она также парит, но находится над блоком»): капсула «Запланировать съёмку» —
         // на всю внутреннюю ширину плашек (поля 24, как у строк), её положение неподвижно: низ видимой части над щелью «↺ Сейчас».
         // Любая плашка, которую прокрутили к низу, уходит под неё.
@@ -594,8 +605,10 @@ public struct LightScreenView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 40)
-            // Парящая: системное стекло, как у других плавающих кнопок (30з.1).
+            // Парящая: системное стекло, как у других плавающих кнопок (30з.1). 30з.2: под стеклом плотный тон страницы (светлая — белый),
+            // иначе строки плашки, уходящие под капсулу, просвечивают сквозь неё пятнами («Подробно» под кнопкой, слова на краю).
             .glassEffect(.regular, in: Capsule())
+            .background { Capsule().fill(pal.dark ? pal.surface.opacity(Self.capsuleHush) : Color.white.opacity(Self.capsuleHush)) }
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -607,6 +620,10 @@ public struct LightScreenView: View {
     static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
     /// 30з.2: капсула 40 pt, от нижней кромки видимой части 10 pt; низ прокрутки отступает на неё + 8 pt.
     static let capsuleHeight: CGFloat = 40
+    /// Длина затухания содержимого под капсулой.
+    static let capsuleFade: CGFloat = 36
+    /// Плотность тона под стеклом капсулы.
+    static let capsuleHush: Double = 0.9
     static let capsuleMargin: CGFloat = 10
     static let capsuleReserve: CGFloat = 40 + 10 + 8
     static func actionVeil(_ scheme: ColorScheme) -> Color {
