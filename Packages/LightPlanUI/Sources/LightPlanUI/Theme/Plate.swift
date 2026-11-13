@@ -79,3 +79,39 @@ private struct PlateModifier: ViewModifier {
             }
     }
 }
+
+public extension View {
+    /// 30з.2 (макет 4 Алексея 12.11: «плашки … из матового нативного стекла», кант «тиснение»): плашка «Света» — системное стекло
+    /// `.glassEffect(.regular)` в скруглённой рамке, кант даёт само стекло. Светлая тема — токены 28к.3: белая вуаль `glassVeil` над
+    /// стеклом, светлый кант и мягкая тень `plateStyle`. Тёмная: тонкая светлая вуаль `darkVeil`, чтобы матовая плашка читалась на сером
+    /// фоне, как на макете (там плашка в 1,6 раза светлее фона). Нарисованного блика нет (`Tools/check_glass.sh`).
+    func glassPlate(_ pal: Palette, radius: CGFloat = 22) -> some View {
+        let r = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return modifier(GlassPlateModifier(pal: pal, shape: r, radius: radius))
+    }
+}
+
+public enum GlassPlateTokens {
+    /// Белая вуаль матовой плашки в тёмной теме.
+    public static let darkVeil = 0.04
+    public static let radius: CGFloat = 22
+}
+
+private struct GlassPlateModifier: ViewModifier {
+    let pal: Palette
+    let shape: RoundedRectangle
+    let radius: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if pal.dark {
+            content
+                .background { shape.fill(Color.white.opacity(GlassPlateTokens.darkVeil)) }
+                .background { Color.clear.glassEffect(.regular, in: shape) }
+        } else {
+            content
+                .background { shape.fill(Color.white.opacity(PlateTokens.glassVeil)) }
+                .plateStyle(pal, radius: radius, glass: true)
+        }
+    }
+}

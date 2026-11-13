@@ -24,15 +24,19 @@ public struct TimebarView: View {
     let nowInk: Color?
     /// 30з.1: на «Свете» время рассвета и заката стоит у оснований дуги, строки краёв над лентой нет.
     let showEdges: Bool
+    /// 30з.2: на «Свете» лента дат и шкала лежат на третьей плашке матового стекла (`glassPlate`), а не на сплошной поверхности с волоском;
+    /// поля по бокам 16 (плашка отступает от края на 8, содержимое стоит где стояло — на 24).
+    let plate: Bool
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false, nowInk: Color? = nil, showEdges: Bool = true,
+    public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false, nowInk: Color? = nil, showEdges: Bool = true, plate: Bool = false,
                 onNow: (() -> Void)? = nil) {
         self.state = state
         self.showRibbon = showRibbon
         self.bare = bare
         self.nowInk = nowInk
         self.showEdges = showEdges
+        self.plate = plate
         self.onNow = onNow
     }
 
@@ -49,13 +53,15 @@ public struct TimebarView: View {
                 .shotNode("track")
         }
         // `.timebar`: поля 12 · 24 · 14, поверхность экрана, волосок сверху.
-        .padding(EdgeInsets(top: 13, leading: 24, bottom: 14, trailing: 24))   // 1 — волосок `border-top`
-        .background(bare ? .clear : pal.surface)
+        .padding(EdgeInsets(top: 13, leading: plate ? 16 : 24, bottom: 14, trailing: plate ? 16 : 24))   // 1 — волосок `border-top`
+        .background {
+            if plate { Color.clear.glassPlate(pal) } else { (bare ? Color.clear : pal.surface) }
+        }
         // 30з.1: строки краёв нет — «↺ Сейчас» плавает по центру над верхней кромкой таймбара и места не занимает (высота шкалы та же).
         .overlay(alignment: .top) {
             if !showEdges && state.nowButtonVisible { nowButton(pal, floating: true).offset(y: Self.floatingNowOffset) }
         }
-        .overlay(alignment: .top) { Rectangle().fill(bare ? .clear : pal.hair).frame(height: 1) }
+        .overlay(alignment: .top) { Rectangle().fill(bare || plate ? .clear : pal.hair).frame(height: 1) }
     }
 
     // MARK: - Края: восход, «сейчас», закат

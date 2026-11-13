@@ -28,14 +28,19 @@ public struct DomeView: View {
     let astro: Bool
     /// Кнопка «Солнце или луна» — только с переключателем «Луна» (30г.6, опись № 54).
     let swap: Bool
+    /// 30з.2: `false` — основной градиент неба купол не рисует: его кладёт подложка экрана (`LightSkyBackdrop`) на всю ширину и до верха,
+    /// иначе виньетка подложки лежала бы только снаружи купола и давала шов. Прогнозный тон внутри купола рисуется как был.
+    let skyFill: Bool
     @Binding var mode: DomeSkyMode
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var meteors = DomeMeteorController()
 
     public init(sun: SolarDay, place: Place, date: CivilDate, t: Minutes, nowMinute: Minutes?,
-                skyPalette: SkyPalette? = nil, astro: Bool = false, swap: Bool = true, mode: Binding<DomeSkyMode>) {
+                skyPalette: SkyPalette? = nil, astro: Bool = false, swap: Bool = true, skyFill: Bool = true,
+                mode: Binding<DomeSkyMode>) {
         self.sun = sun
+        self.skyFill = skyFill
         self.skyPalette = skyPalette
         self.astro = astro
         self.swap = swap
@@ -183,8 +188,10 @@ public struct DomeView: View {
         let g = DomeGeometry.self
         let top = CGPoint(x: CGFloat(g.cx), y: CGFloat(g.cy - g.ry))
         let bottom = CGPoint(x: CGFloat(g.cx), y: CGFloat(g.cy))
-        context.fill(skyPath(), with: .linearGradient(Gradient(colors: [Color(sky.zenith), Color(sky.horizon)]),
-                                                     startPoint: top, endPoint: bottom))
+        if skyFill {
+            context.fill(skyPath(), with: .linearGradient(Gradient(colors: [Color(sky.zenith), Color(sky.horizon)]),
+                                                         startPoint: top, endPoint: bottom))
+        }
         guard let palette = sky.forecast, sky.forecastOpacity > 0 else { return }
         context.drawLayer { layer in
             layer.clip(to: skyPath())

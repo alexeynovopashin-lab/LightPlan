@@ -54,30 +54,46 @@ public struct LightScreenView: View {
             rows: LightCollapsedList.shown(astro: model.proMode, fit: fitRows, hasForecast: telemetry.sky != nil || telemetry.wind != nil).count,
             extraTuck: tuckNow)
 
+        // 30з.2 (макет 4 Алексея 12.11): небо шире купола — подложка «шапка + купол» с чёрной виньеткой по углам; три плашки
+        // матового стекла: «сейчас» (от линии горизонта), «условия» (список + «Подробно»), «время» (лента дат + шкала, внизу).
+        let sun = model.timebar.solarDay
+        let minute = model.timebar.machine.viewMinute
+        let skyNow = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
+                             lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
+        let presence = DomeGeometry.clamp((sun.elevation(at: minute) + 18) / 6, 0, 1)
+        let headPal = Self.headerPalette(pal, sky: skyNow, presence: presence)
+
         ScrollView {
             VStack(spacing: 0) {
-                header(telemetry.header, note: telemetry.forecastNote, pal)
-                    .padding(.horizontal, 24)
+                VStack(spacing: 0) {
+                    header(telemetry.header, note: telemetry.forecastNote, headPal)
+                        .padding(.horizontal, 24)
+
+                    dome(telemetry, pal, skyFill: skyNow == nil)
+                        .padding(.bottom, -Self.domeTuck(extra: tuckNow))
+                        .tabRise()
+                }
+                .frame(maxWidth: .infinity)
+                .background(alignment: .top) { skyBackdrop(skyNow, pal, tuck: Self.domeTuck(extra: tuckNow), presence: presence) }
 
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
-                    dome(telemetry, pal)
-                        .padding(.bottom, -Self.domeTuck(extra: tuckNow))
+                    // 30з.1 (макет 4 Алексея 12.11): под куполом «до …» между основаниями дуги → список. «Запланировать съёмку» — парящая
+                    // капсула над лентой (ниже). 30з.2: «сейчас» — плашка стекла от линии горизонта, времена у оснований дуги внутри неё.
+                    nowPlate(telemetry, pal, tuck: Self.domeTuck(extra: tuckNow))
 
-                    // 30з.1 (макет 4 Алексея 12.11): под куполом «до …» между основаниями дуги → «Запланировать съёмку» → список.
-                    nextLight(telemetry, pal)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 2)
-                        .frame(height: 72, alignment: .top)
+                    VStack(spacing: 0) {
+                        telemetryList(telemetry, pal)
 
-                    telemetryList(telemetry, pal)
-                        .padding(.horizontal, 24)
-
-                    LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
-                                     openTitle: model.lexiconWord("today.hide"),
-                                     measureTag: layoutNow, onMeasure: { measureSpoiler($0) },
-                                     windLabel: model.lexiconWord("pro.wind"))
-                        .padding(.horizontal, 24)
+                        LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
+                                         openTitle: model.lexiconWord("today.hide"),
+                                         measureTag: layoutNow, onMeasure: { measureSpoiler($0) },
+                                         windLabel: model.lexiconWord("pro.wind"))
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 4)
+                    .glassPlate(pal)
+                    .padding(.horizontal, 8)
+                    .padding(.top, Self.plateGap)
 
                     // Кнопки внизу больше нет: остаток экрана уходит под список.
                     Spacer(minLength: 0)
@@ -109,8 +125,10 @@ public struct LightScreenView: View {
         // Прогноз приходит позже первой раскладки: у «Неба» и «Ветра» появляется строка, а кнопка «Подробно» не сдвинулась — пересчитать.
         .onChange(of: model.telemetry.sky != nil || model.telemetry.wind != nil) { _, _ in refreshCollapsedRows() }
         .safeAreaInset(edge: .bottom, spacing: 8) {
-            TimebarView(model.timebar, showRibbon: model.look.dayRibbon, showEdges: false)
+            // 30з.2: третья плашка — лента дат и шкала на стекле; отступ от краёв 8, от нижней панели 8, между плашками виден фон.
+            TimebarView(model.timebar, showRibbon: model.look.dayRibbon, showEdges: false, plate: true)
                 .shotNode("timebar")
+                .padding(.horizontal, 8).padding(.bottom, Self.plateGap)
                 .tabRise()
         }
         .background(pal.surface)
@@ -233,13 +251,14 @@ public struct LightScreenView: View {
 
     // MARK: - Купол и показание
 
-    private func dome(_ t: LightTelemetry, _ pal: Palette) -> some View {
+    private func dome(_ t: LightTelemetry, _ pal: Palette, skyFill: Bool) -> some View {
         DomeView(sun: model.timebar.solarDay, place: model.timebar.place,
                  date: model.timebar.machine.selectedDate, t: model.timebar.machine.viewMinute,
                  nowMinute: model.timebar.nowMinute,
                  skyPalette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)),
                  astro: model.look.domeSky,
                  swap: model.moon,
+                 skyFill: skyFill,
                  mode: moonModeBinding)
             .shotNode("dome")
             .overlay {
@@ -255,7 +274,6 @@ public struct LightScreenView: View {
                     }
                 }
             }
-            .overlay { baseTimes(pal: Palette(colorScheme)) }
             .coordinateSpace(.named(Self.domeSpace))
             .onGeometryChange(for: CGSize.self) { $0.size } action: { domeSize = $0 }
             .contentShape(Rectangle())
@@ -266,19 +284,75 @@ public struct LightScreenView: View {
 
     private static let domeSpace = "dome"
 
-    /// 30з.1: время рассвета и заката — у оснований дуги, знак над временем (макет 4). Основания — концы дуги на горизонте
-    /// (`cx ∓ rx`, `cy` в `viewBox` купола), через `DomeFit` — на любой ширине. После заката слева завтрашний рассвет (`baseRiseEdge`).
-    /// Не ловят касаний; рамку купола не меняют (лежат в его пустой полосе под горизонтом).
-    private func baseTimes(pal: Palette) -> some View {
+    /// 30з.2: промежуток между плашками и от плашек до краёв — 8 pt, поля плашки по бокам 8 (содержимое внутри стоит на прежних 24).
+    static let plateGap: CGFloat = 8
+    /// Низ плашки «сейчас» ниже блока «до …».
+    private static let nowPlateBottom: CGFloat = 10
+
+    /// Отступ безопасной зоны сверху у окна: внутри прокрутки `GeometryProxy` его не отдаёт (шов под строкой состояния на первом кадре 30з.2).
+    private static var windowSafeTop: CGFloat {
+        #if os(iOS)
+        UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
+            .first(where: \.isKeyWindow)?.safeAreaInsets.top ?? 0
+        #else
+        0
+        #endif
+    }
+
+    /// Подложка неба за шапкой и куполом (`LightSkyBackdrop`): рамка и положение зенита и горизонта — из размера зоны и вписывания купола.
+    @ViewBuilder
+    private func skyBackdrop(_ sky: DomeSky?, _ pal: Palette, tuck: CGFloat, presence: Double) -> some View {
+        if let sky {
+            GeometryReader { geo in
+                let fit = DomeFit(size: CGSize(width: max(1, geo.size.width), height: DomeView.height))
+                let domeTop = geo.size.height + tuck - DomeView.height
+                LightSkyBackdrop(sky: sky, pal: pal, zoneSize: geo.size,
+                                 zenithY: domeTop + fit.point(CGPoint(x: 0, y: CGFloat(DomeGeometry.cy - DomeGeometry.ry))).y,
+                                 horizonY: domeTop + fit.point(CGPoint(x: 0, y: CGFloat(DomeGeometry.horizonY))).y,
+                                 safeTop: Self.windowSafeTop, presence: presence)
+            }
+        }
+    }
+
+    /// Шапка стоит на небе: в светлой теме тёмное небо сумерек просит светлые чернила (порог — равный контраст тёмных и светлых чернил,
+    /// L ≈ 0,17). В тёмной теме чернила светлые на любом небе.
+    static func headerPalette(_ pal: Palette, sky: DomeSky?, presence: Double) -> Palette {
+        guard !pal.dark, let sky else { return pal }
+        let page = SkyColor(237, 237, 240)
+        let seen = LightPalette.lerp(page, sky.zenith, presence)
+        return DomeSky.luminance(seen) > 0.17 ? pal : Palette(.dark)
+    }
+
+    /// Плашка «сейчас» (30з.2): от линии горизонта вниз; внутри — «до …» по центру и время рассвета и заката у оснований дуги, знак над
+    /// временем. Основания — концы дуги на горизонте (`cx ∓ rx`, `cy` в `viewBox` купола), через `DomeFit` — на любой ширине. После
+    /// заката слева завтрашний рассвет (`baseRiseEdge`). Кнопки в плашке нет: она парит над лентой.
+    private func nowPlate(_ t: LightTelemetry, _ pal: Palette, tuck: CGFloat) -> some View {
+        let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
+        // От верха блока «до …» (низ рамки «шапка + купол») вверх до горизонта: купол 240 − подъём 22 − горизонт у 196 → 22 pt.
+        let rise = max(0, DomeView.height - tuck - fit.point(CGPoint(x: 0, y: CGFloat(DomeGeometry.horizonY))).y)
+        return nextLight(t, pal)
+            .padding(.top, 2)
+            .frame(height: 72, alignment: .top)
+            .frame(maxWidth: .infinity)
+            .overlay(alignment: .topLeading) { baseTimes(pal: pal, rise: rise) }
+            .padding(.bottom, Self.nowPlateBottom)
+            .background(alignment: .top) {
+                Color.clear.glassPlate(pal).padding(.top, -rise)
+            }
+            .padding(.horizontal, 8)
+    }
+
+    /// Времена у оснований дуги: координаты блока «до …» (его левый край — x = 8 экрана, верх — `rise` ниже горизонта). Касаний не ловят.
+    private func baseTimes(pal: Palette, rise: CGFloat) -> some View {
         let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
         let g = DomeGeometry.self
-        let y = fit.point(CGPoint(x: 0, y: g.horizonY)).y + 6
-        let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x
-        let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x
+        let y = 6 + 17.5 - rise
+        let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x - 8
+        let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x - 8
         let tb = model.timebar
         return ZStack(alignment: .topLeading) {
-            baseLabel(tb.baseRiseEdge, pal).shotNode("edge.rise").position(x: left, y: y + 17.5)
-            if let setEdge = tb.setEdge { baseLabel(setEdge, pal).shotNode("edge.set").position(x: right, y: y + 17.5) }
+            baseLabel(tb.baseRiseEdge, pal).shotNode("edge.rise").position(x: left, y: y)
+            if let setEdge = tb.setEdge { baseLabel(setEdge, pal).shotNode("edge.set").position(x: right, y: y) }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .allowsHitTesting(false)
