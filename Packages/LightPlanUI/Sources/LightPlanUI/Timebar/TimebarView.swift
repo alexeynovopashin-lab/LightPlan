@@ -27,22 +27,27 @@ public struct TimebarView: View {
     /// 30з.2: на «Свете» лента дат и шкала лежат на третьей плашке матового стекла (`glassPlate`), а не на сплошной поверхности с волоском;
     /// поля по бокам 16 (плашка отступает от края на 8, содержимое стоит где стояло — на 24).
     let plate: Bool
+    /// 30з.2а («пульт»): верхняя строка плашки — слева что передано (капсула «Запланировать съёмку»), справа круглая «↺» на постоянном месте.
+    /// Только вместе с `plate`; без неё строки нет.
+    let console: AnyView?
     @Environment(\.colorScheme) private var colorScheme
 
     public init(_ state: TimebarState, showRibbon: Bool = true, bare: Bool = false, nowInk: Color? = nil, showEdges: Bool = true, plate: Bool = false,
-                onNow: (() -> Void)? = nil) {
+                console: AnyView? = nil, onNow: (() -> Void)? = nil) {
         self.state = state
         self.showRibbon = showRibbon
         self.bare = bare
         self.nowInk = nowInk
         self.showEdges = showEdges
         self.plate = plate
+        self.console = console
         self.onNow = onNow
     }
 
     public var body: some View {
         let pal = Palette(colorScheme)
         VStack(spacing: 8) {
+            if plate, let console { consoleRow(pal, console) }
             if showEdges { edges(pal) }
             if showRibbon {
                 RibbonView(state: state).shotNode("ribbon")
@@ -58,14 +63,41 @@ public struct TimebarView: View {
             if plate { Color.clear.glassPlate(pal, hush: 0.7) } else { (bare ? Color.clear : pal.surface) }
         }
         // 30з.1: строки краёв нет — «↺ Сейчас» плавает по центру над верхней кромкой таймбара и места не занимает (высота шкалы та же).
-        // 30з.2 (слово Алексея 16.11: «кнопку сейчас смещаем вправо … удобнее пальцу, не перекрываем шеврон»): справа, правый край капсулы на
-        // линии правого поля содержимого плашек (16 внутри плашки у «Света»); высота та же.
-        .overlay(alignment: .topTrailing) {
-            if !showEdges && state.nowButtonVisible {
-                nowButton(pal, floating: true).offset(y: Self.floatingNowOffset).padding(.trailing, plate ? 16 : 24)
-            }
+        // Вид «Без блоков» (30з.2а) — ровно так, как в 30з.1. У плашки (`plate`) плавающей кнопки нет: «↺» стоит в строке пульта.
+        .overlay(alignment: .top) {
+            if !plate && !showEdges && state.nowButtonVisible { nowButton(pal, floating: true).offset(y: Self.floatingNowOffset) }
         }
         .overlay(alignment: .top) { Rectangle().fill(bare || plate ? .clear : pal.hair).frame(height: 1) }
+    }
+
+    // MARK: - Пульт (30з.2а)
+
+    /// Высота строки пульта: капсула «Запланировать съёмку» и круглая «↺» одной высоты.
+    static let consoleHeight: CGFloat = 40
+
+    /// «↺» на постоянном месте справа от капсулы: время и день уже «сейчас» — приглушена и не отзывается; сдвинули время или день —
+    /// загорается акцентом и возвращает оба (то же, что «↺ сейчас» / «↺ сегодня» до пульта). Не появляется, не исчезает, ничего не двигает.
+    private func consoleRow(_ pal: Palette, _ content: AnyView) -> some View {
+        let active = state.nowButtonVisible
+        return HStack(spacing: 8) {
+            content
+            Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(active ? pal.brassInk : pal.ink4.opacity(0.4))
+                    .frame(width: Self.consoleHeight, height: Self.consoleHeight)
+                    .glassEffect(.regular, in: Circle())
+                    .flatGlass(Circle(), light: !pal.dark)
+                    .overlay { if !pal.dark { Circle().strokeBorder(pal.hair4, lineWidth: 1).allowsHitTesting(false) } }
+                    .contentShape(Circle())
+                    .animation(.easeOut(duration: 0.2), value: active)
+            }
+            .buttonStyle(.plain)
+            .disabled(!active)
+            .accessibilityLabel(String(state.nowButtonLabel.dropFirst(2)))
+            .shotNode("now", text: active ? state.nowButtonLabel : "")
+        }
+        .frame(height: Self.consoleHeight)
     }
 
     // MARK: - Края: восход, «сейчас», закат
@@ -76,9 +108,7 @@ public struct TimebarView: View {
     /// (поле); низ капсулы = верх таймбара − 8 (зазор вставки) − 28 (строка «Сейчас», `LightScreenView.nowLift`) − 3 (поле капсулы) = −39.
     /// Щель 52 pt, середина −13: 26 pt до капсулы и 26 pt до ленты. Кнопка 34 pt высотой → верх на −13 − 17 = −30.
     static let floatingNowHeight: CGFloat = 34
-    /// 30з.2: щель между плашками «условия» и «время» — постоянная, «↺ Сейчас» по центру неё: верх кнопки на `nowGap / 2 + высота / 2` выше плашки.
-    static let nowGap: CGFloat = 50
-    static let floatingNowOffset: CGFloat = -nowGap / 2 - floatingNowHeight / 2
+    static let floatingNowOffset: CGFloat = -13 - floatingNowHeight / 2
 
     private func nowButton(_ pal: Palette, floating: Bool = false) -> some View {
         Button { if let onNow { onNow() } else { state.jumpToNow() } } label: {
@@ -89,8 +119,6 @@ public struct TimebarView: View {
                 // На «Свете» (30з.1) кнопка 34 pt высотой — центр считается из рамок (см. оверлей ниже); на «Карте» и в AR поле 9 · 14, как было.
                 .padding(.vertical, floating ? 0 : 9).padding(.horizontal, 14)
                 .frame(height: floating ? Self.floatingNowHeight : nil)
-                // 30з.2: на «Свете» под кнопкой проходят плашки (прокрутка идёт под щель) — своё стекло, чтобы слово читалось над любой строкой.
-                .modifier(NowGlass(on: floating))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -126,13 +154,5 @@ public struct TimebarView: View {
                 .font(.system(size: 11, weight: .medium).monospacedDigit())
                 .foregroundStyle(pal.ink4)
         }
-    }
-}
-
-private struct NowGlass: ViewModifier {
-    let on: Bool
-    @Environment(\.colorScheme) private var scheme
-    func body(content: Content) -> some View {
-        if on { content.glassEffect(.regular, in: Capsule()).flatGlass(Capsule(), light: scheme == .light) } else { content }
     }
 }

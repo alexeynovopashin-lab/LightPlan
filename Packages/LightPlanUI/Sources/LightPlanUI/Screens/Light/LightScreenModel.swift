@@ -27,6 +27,9 @@ public final class LightScreenModel {
     /// Ставит `applySettings` вместе с `proMode`; «Карта» читает отсюда же.
     public var look = ModeLook(.simple)
 
+    /// Вид «Света» (30з.2а, `AppSettings.lightBlocks`): `true` — плашки и небо («С блоками»), `false` — плоский вид 30з.1 («Без блоков»).
+    public var blocks = true
+
     /// Переключатель «Термины» (30г.4): астрономические слова сумерек на куполе и их строки в «Подробно».
     /// Только в «Астро» (`AppSettings.sees(.terms)`); в «Просто» и «Про» — простые слова.
     public var terms = false

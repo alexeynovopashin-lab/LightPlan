@@ -573,7 +573,7 @@ public final class AppModel {
          now: @escaping @Sendable () -> Date = { Date() }) {
         self.arBodies = arBodies ?? MemoryBodiesSettings()
         let modes = modeMemory ?? InMemoryAppModeMemory()
-        let settings = AppSettings(snapshot: snapshot, zone: zone, remembered: modes.mode, rememberedAstro: modes.astro)
+        var settings = AppSettings(snapshot: snapshot, zone: zone, remembered: modes.mode, rememberedAstro: modes.astro)
         // Уже бывал в «Астро» (30г.7а): стоит в нём сейчас, стоял в прошлый запуск или выключал переключатель (они есть
         // только в «Астро»). Так у тех, кто был в «Астро» до обновления, первый вход слоёв не включит.
         if settings.mode == .astro || modes.mode == .astro || !settings.astro.off.isEmpty { modes.astroEntered = true }
@@ -595,6 +595,8 @@ public final class AppModel {
         self.cityLookup = cityLookup
         self.placeSearch = placeSearch
         self.heading = headingSource
+        // 30з.2а: `-LPLightBlocks YES|NO` (Debug-снимки и приборы) переопределяет вид «Света», не записывая его в файл.
+        if let arg = UserDefaults.standard.string(forKey: "LPLightBlocks") { settings.lightBlocks = !["NO", "0", "FALSE"].contains(arg.uppercased()) }
         self.settings = settings
         self.showStartSheet = !Self.met(snapshot)
         self.mapLayers = MapLayers(snapshot.mapLayers)
@@ -660,6 +662,7 @@ public final class AppModel {
                                       clockPreference: Self.clock(settings.clock))
         light.proMode = settings.pro
         light.look = settings.look
+        light.blocks = settings.lightBlocks
         light.terms = settings.sees(.terms)
         light.azimuths = settings.sees(.azimuths)
         light.moon = settings.sees(.moon)
@@ -811,6 +814,7 @@ public final class AppModel {
 
         light.proMode = settings.pro
         light.look = settings.look
+        light.blocks = settings.lightBlocks
         light.terms = settings.sees(.terms)
         light.azimuths = settings.sees(.azimuths)
         light.moon = settings.sees(.moon)

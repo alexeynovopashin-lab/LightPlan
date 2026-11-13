@@ -98,6 +98,29 @@ struct SettingsTests {
         #expect(AppSettings(snapshot: back).weekStart == .mon)
     }
 
+    // MARK: - Вид «Света» (30з.2а)
+
+    @Test func lightViewDefaultsToBlocksAndWritesNothing() throws {
+        var snap = Snapshot()
+        var s = AppSettings(snapshot: snap)
+        #expect(s.lightBlocks)
+        s.apply(to: &snap)
+        #expect(snap.lightView == nil)
+        #expect(!String(decoding: try JSONEncoder().encode(snap), as: UTF8.self).contains("lightView"))
+    }
+
+    @Test func flatLightViewRoundTripsAndBlocksReturnsToNoKey() throws {
+        var snap = Snapshot()
+        var s = AppSettings(snapshot: snap)
+        s.lightBlocks = false
+        s.apply(to: &snap)
+        let reread = try JSONDecoder().decode(Snapshot.self, from: try JSONEncoder().encode(snap))
+        #expect(AppSettings(snapshot: reread).lightBlocks == false)
+        s.lightBlocks = true
+        s.apply(to: &snap)
+        #expect(snap.lightView == nil)
+    }
+
     @Test func guessedPracticeIsNotWrittenAsAChoice() {
         var snap = Snapshot()
         AppSettings(snapshot: snap, zone: TimeZone(identifier: "Europe/Berlin")!).apply(to: &snap)

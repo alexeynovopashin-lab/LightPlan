@@ -27,10 +27,13 @@ struct LightSpoilerView: View {
     var plated = false
     /// «Свет» (30з.2): сюда плашка «условия» пишет свою нижнюю кромку, а здесь же узнаётся, раскрыты ли рубрики.
     var probe: PlateProbe? = nil
-    /// Пустой низ плашки «условия» под капсулой: 10 над капсулой, 40 сама капсула, 6 под ней + 4 поля плашки = 10 до кромки. Чистая заливка плашки.
-    static let capsuleSlot: CGFloat = 56
-    /// Поле плашки сверху и снизу (`plate(_:_:)`).
+    /// Плашка «условия» сдвинулась или сменила высоту: экран пересчитывает, сколько строк помещается.
+    var onPlate: () -> Void = {}
+    /// Поле плашки сверху и снизу (`plate(_:_:)`); у плашки с ручкой «Подробно» снизу его нет — ручка сама стоит у нижней кромки.
     static let plateInset: CGFloat = 4
+    /// 30з.2а: ручка «Подробно» — тонкая полоса у нижней кромки плашки «условия»: подпись и шеврон, видимая высота 28, зона касания 44.
+    static let handleHeight: CGFloat = 28
+    static let handleHit: CGFloat = 44
 
     /// Пара снимков (28е): `-LPShotSpoiler 1` — раскрыт сразу и прокручен к плашке неба; `2` (прибор `make lightfit`) —
     /// раскрыт и стоит в начале, без прокрутки.
@@ -63,9 +66,9 @@ struct LightSpoilerView: View {
     }
 
     /// Плашка «Света» (30з.2): стекло, поля как у плашек «сейчас»/«время» — 8 от края, внутри 16 (содержимое стоит на 24).
-    private func plate<C: View>(_ pal: Palette, @ViewBuilder _ content: () -> C) -> some View {
+    private func plate<C: View>(_ pal: Palette, handle: Bool = false, @ViewBuilder _ content: () -> C) -> some View {
         content()
-            .padding(.horizontal, 16).padding(.vertical, Self.plateInset)
+            .padding(.horizontal, 16).padding(.top, Self.plateInset).padding(.bottom, handle ? 0 : Self.plateInset)
             .glassPlate(pal)
             .padding(.horizontal, 8)
     }
@@ -76,16 +79,15 @@ struct LightSpoilerView: View {
         // Плашка «условия»: список и кнопка (в «Просто» кнопки нет). Раскрытые рубрики — каждая своя плашка ниже, через 8 pt.
         ScrollViewReader { proxy in
         VStack(spacing: 0) {
-            plate(pal) {
+            plate(pal, handle: open) {
                 VStack(spacing: 0) {
                     above
-                    if open { button(pal) }
-                    Color.clear.frame(height: Self.capsuleSlot)
+                    if open { handle(pal) }
                 }
             }
             .onGeometryChange(for: [CGFloat].self) {
                 [$0.frame(in: .named(LightScreenView.viewportSpace)).maxY, $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY]
-            } action: { probe?.vp = $0[0]; probe?.contentMax = $0[1]; probe?.refresh() }
+            } action: { probe?.vp = $0[0]; probe?.contentMax = $0[1]; probe?.refresh(); onPlate() }
             .shotNode("plate.cond")
             if open, mounted {
                 VStack(spacing: 0) {
@@ -104,7 +106,6 @@ struct LightSpoilerView: View {
                 .shotNode("spoiler.list")
             }
         }
-        .task(id: open && mounted) { probe?.grouped = open && mounted }
         .task {
             guard open, Self.shotMode == 1 else { return }
             try? await Task.sleep(for: .seconds(1))
@@ -146,6 +147,29 @@ struct LightSpoilerView: View {
     }
 
     static var plateGap: CGFloat { 8 }
+
+    /// Ручка «Подробно» (30з.2а): подпись 12/600 и шеврон 12 в одной строке по центру, 28 pt высотой у нижней кромки плашки «условия»;
+    /// кнопка 44 pt высотой, лишние по 8 pt сверху и снизу не занимают места (`padding(-8)`).
+    private func handle(_ pal: Palette) -> some View {
+        Button(action: toggle) {
+            HStack(spacing: 6) {
+                Text(SpoilerReveal.label(expanded: expanded, closed: title, open: openTitle))
+                    .font(.system(size: 12, weight: .semibold)).tracking(0.2).foregroundStyle(pal.ink3)
+                Icon("chevron", size: 12, line: 2.4)
+                    .foregroundStyle(pal.ink4)
+                    .rotationEffect(.degrees(SpoilerReveal.chevronAngle(expanded: expanded)))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.handleHit)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, -(Self.handleHit - Self.handleHeight) / 2)
+        .shotNode("spoiler")
+        .onGeometryChange(for: LightCollapsedList.Measurement.self) { [measureTag] in
+            LightCollapsedList.Measurement(bottom: $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY, layout: measureTag)
+        } action: { onMeasure($0) }
+    }
 
     /// `#spoilerBtn`: отступ 6 сверху, поле 13, по центру столбики 17 (`--ink-4`), подпись 14/600 (`--ink-2`), шеврон 16 вниз
     /// (`--ink-4`, линия 2,4), зазоры 8.

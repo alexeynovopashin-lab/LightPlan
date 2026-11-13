@@ -18,8 +18,10 @@ public struct LightScreenView: View {
     /// Видимая высота прокрутки — чтобы кнопка съёмки легла к низу, как
     /// `.screen-action { margin-top: auto }` веба.
     @State private var visibleHeight: CGFloat = 0
-    /// Нижняя кромка плашки «условия» в видимой части и «капсула стоит в её пустом низу» — читает только `CapsuleAnchor`.
+    /// Нижняя кромка плашки «условия» (в видимой части и в содержимом) — по ней решается, сколько строк помещается в покое.
     @State private var plateProbe = PlateProbe()
+    /// Верх плашки «время» в `viewportSpace` (30з.2а): ниже него, за вычетом зазора между плашками, плашка «условия» в покое не уходит.
+    @State private var plate3Top: CGFloat = .infinity
     /// Рамка купола и показаний в ней — светило пальцем (19в).
     @State private var domeSize = CGSize(width: 0, height: DomeView.height)
     @State private var readoutFrame = CGRect.null
@@ -46,12 +48,22 @@ public struct LightScreenView: View {
         self.onPlan = onPlan
     }
 
+    /// Два вида (30з.2а, настройка «Экран „Свет“»): «С блоками» — небо и три плашки, «Без блоков» — плоский вид 30з.1.
+    public var body: some View {
+        Group { if model.blocks { blocksBody } else { flatBody } }
+            .onChange(of: model.blocks) { _, _ in
+                // Вид переключён на ходу: измерения прежнего вида не годятся новому.
+                fitRows = 0; extraTuck = 0; domeLift = 0; spoilerBottom = 0
+                refreshCollapsedRows()
+            }
+    }
+
     /// Вёрстка — числа `#s-today` беты (вычисленные стили, снимок пары 19б):
     /// поля экрана 24, шапка сразу под безопасной зоной (29.2г: у веба там +24 от размытия часов iOS 27, у натива его нет), купол во всю ширину высотой 240,
     /// «что дальше» 72, строки телеметрии по 35, кнопка съёмки у низа,
     /// таймбар прибит над вкладками. До 19б это был стенд: поля 16, таймбар
     /// посреди прокрутки, свой набор кеглей.
-    public var body: some View {
+    @ViewBuilder private var blocksBody: some View {
         let telemetry = model.telemetry
         let pal = Palette(colorScheme)
         let tuckNow = model.proMode && LightCollapsedList.shortensByHeight ? extraTuck : 0
@@ -60,7 +72,7 @@ public struct LightScreenView: View {
             extraTuck: tuckNow)
 
         // 30з.2 (макет 4 Алексея 12.11): небо шире купола — подложка «шапка + купол» с чёрной виньеткой по углам; три плашки
-        // матового стекла: «сейчас» (от линии горизонта), «условия» (список + «Подробно»), «время» (лента дат + шкала, внизу).
+        // матового стекла: «сейчас» (от линии горизонта), «условия» (список + ручка «Подробно»), «время» (пульт, лента дат и шкала, внизу).
         let sun = model.timebar.solarDay
         let minute = model.timebar.machine.viewMinute
         let skyNow = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
@@ -85,54 +97,31 @@ public struct LightScreenView: View {
 
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
-                    // 30з.1 (макет 4 Алексея 12.11): под куполом «до …» между основаниями дуги → список. «Запланировать съёмку» — парящая
-                    // капсула над лентой (ниже). 30з.2: «сейчас» — плашка стекла от линии горизонта, времена у оснований дуги внутри неё.
+                    // 30з.2: «сейчас» — плашка стекла от линии горизонта, времена у оснований дуги внутри неё.
                     nowPlate(telemetry, pal, tuck: Self.domeTuck(extra: tuckNow))
 
-                    // 30з.2: плашка «условия» (список + «Подробно») и под ней каждая рубрика «Подробно» — своя плашка (`LightSpoilerView`).
+                    // 30з.2: плашка «условия» (список + ручка «Подробно») и под ней каждая рубрика «Подробно» — своя плашка (`LightSpoilerView`).
                     LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
                                      openTitle: model.lexiconWord("today.hide"),
                                      measureTag: layoutNow, onMeasure: { measureSpoiler($0) },
                                      windLabel: model.lexiconWord("pro.wind"),
-                                     above: AnyView(telemetryList(telemetry, pal)), plated: true, probe: plateProbe)
+                                     above: AnyView(telemetryList(telemetry, pal)), plated: true, probe: plateProbe,
+                                     onPlate: { refreshCollapsedRows() })
                         .padding(.top, Self.plateGap)
-
-                    // Кнопки внизу больше нет: остаток экрана уходит под список.
-                    Spacer(minLength: 0)
                 }
                 .tabRise()
             }
-            .frame(minHeight: max(0, visibleHeight), alignment: .top)
+            // 30з.2а: растяжки по высоте экрана нет — страница не длиннее своего содержимого, и пока оно (в покое, «Подробно» закрыт)
+            // помещается над плашкой «время», она не прокручивается (`.basedOnSize`). Дальше содержимое уходит под плашку «время».
             .coordinateSpace(.named(LightCollapsedList.contentSpace))
         }
         .scrollBounceBehavior(.basedOnSize)
-        // Рубрики раскрыты: последнюю плашку можно вытянуть из-под капсулы (низ прокрутки отступает на неё). Свёрнуто — пустой низ плашки
-        // «условия» сам даёт этот запас, отступа нет (иначе страница ехала бы зря).
-        .safeAreaPadding(.bottom, plateProbe.grouped ? max(0, visibleHeight - plateProbe.rest) + Self.capsuleReserve : 0)
         .onScrollGeometryChange(for: Bool.self) { abs($0.contentOffset.y + $0.contentInsets.top) < 0.5 } action: { _, atRest in
             plateProbe.atRest = atRest
             plateProbe.refresh()
             refreshCollapsedRows()
         }
         .shotNode("light.scroll")
-        .onChange(of: plateProbe.rest) { _, _ in refreshCollapsedRows() }
-        // 30з.2 (слово Алексея 16.11: «появилась обрезка»): прокрутки среза нет — содержимое идёт вниз под щель «↺ Сейчас» и под плашку
-        // «время» (её стекло размывает проходящее под ним), плашки сохраняют скруглённые низы. Последняя плашка выезжает целиком выше капсулы.
-        .coordinateSpace(.named(Self.viewportSpace))
-        // 30з.2 (слово Алексея 13.11: «помещаем её в блок, она также парит, но находится над блоком»): капсула «Запланировать съёмку» —
-        // на всю внутреннюю ширину плашек (поля 24, как у строк). В покое она лежит в пустом низу плашки «условия», ничего не перекрывая;
-        // при прокрутке и раскрытии «Подробно» стоит на том же месте экрана, а содержимое уходит под неё (`CapsuleAnchor`).
-        .overlay(alignment: .bottom) {
-            CapsuleAnchor(probe: plateProbe, viewportHeight: visibleHeight, bottomMargin: Self.capsuleMargin) {
-                actionButton(pal)
-                #if DEBUG
-                // Замер шага 30д: `-LPShotNoAction 1` — кнопки не видно, место то же.
-                .opacity(UserDefaults.standard.string(forKey: "LPShotNoAction") == nil ? 1 : 0)
-                #endif
-                .padding(.horizontal, 24)
-                .tabRise()
-            }
-        }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0; refreshCollapsedRows() }
         .onChange(of: model.proMode) { _, pro in
             // В «Просто» спойлера нет и ничего не прячется; в «Астро» число строк решит новое измерение.
@@ -142,15 +131,88 @@ public struct LightScreenView: View {
         // Прогноз приходит позже первой раскладки: у «Неба» и «Ветра» появляется строка, а кнопка «Подробно» не сдвинулась — пересчитать.
         .onChange(of: model.telemetry.sky != nil || model.telemetry.wind != nil) { _, _ in refreshCollapsedRows() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            // 30з.2: третья плашка — лента дат и шкала на стекле; отступ от краёв 8, от нижней панели 8. Над ней всегда щель
-            // `TimebarView.nowGap` (фон страницы): в ней по центру появляется «↺ Сейчас», ничего не сдвигая.
+            // 30з.2а: третья плашка — пульт (капсула «Запланировать съёмку» и «↺»), лента дат и шкала на стекле; от краёв 8, от нижней
+            // панели 8, от плашки «условия» (в покое) 8 — обычный зазор между плашками, не коридор.
             VStack(spacing: 0) {
-                Color.clear.frame(height: TimebarView.nowGap)
-                TimebarView(model.timebar, showRibbon: model.look.dayRibbon, showEdges: false, plate: true)
+                Color.clear.frame(height: Self.plateGap)
+                TimebarView(model.timebar, showRibbon: model.look.dayRibbon, showEdges: false, plate: true,
+                            console: AnyView(actionButton(pal)))
                     .shotNode("timebar")
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.viewportSpace)).minY } action: {
+                        if abs($0 - plate3Top) > 0.25 { plate3Top = $0; refreshCollapsedRows() }
+                    }
                     .padding(.horizontal, 8).padding(.bottom, Self.plateGap)
             }
             .tabRise()
+        }
+        .coordinateSpace(.named(Self.viewportSpace))
+        .background(pal.surface)
+    }
+
+    /// Вид «Без блоков» (30з.2а): экран 30з.1 как в `e6a5ccd` — плоский, без плашек и без подложки неба; кнопка съёмки парящая капсула над
+    /// лентой, «↺ Сейчас» плавает над лентой. Не улучшается; от вида с блоками отличается только этим телом, расчётом строк и кнопкой.
+    @ViewBuilder private var flatBody: some View {
+        let telemetry = model.telemetry
+        let pal = Palette(colorScheme)
+        let tuckNow = model.proMode ? extraTuck : 0
+        let layoutNow = LightCollapsedList.Layout(
+            rows: LightCollapsedList.shown(astro: model.proMode, fit: fitRows, hasForecast: telemetry.sky != nil || telemetry.wind != nil).count,
+            extraTuck: tuckNow)
+
+        ScrollView {
+            VStack(spacing: 0) {
+                header(telemetry.header, note: telemetry.forecastNote, pal)
+                    .padding(.horizontal, 24)
+
+                // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
+                Group {
+                    dome(telemetry, pal, skyFill: true)
+                        .padding(.bottom, -Self.domeTuck(extra: tuckNow))
+
+                    // 30з.1 (макет 4 Алексея 12.11): под куполом «до …» между основаниями дуги → «Запланировать съёмку» → список.
+                    nextLight(telemetry, pal)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 2)
+                        .frame(height: 72, alignment: .top)
+
+                    telemetryList(telemetry, pal)
+                        .padding(.horizontal, 24)
+
+                    LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
+                                     openTitle: model.lexiconWord("today.hide"),
+                                     measureTag: layoutNow, onMeasure: { measureSpoiler($0) },
+                                     windLabel: model.lexiconWord("pro.wind"))
+                        .padding(.horizontal, 24)
+
+                    // Кнопки внизу больше нет: остаток экрана уходит под список.
+                    Spacer(minLength: 0)
+                }
+                .tabRise()
+            }
+            .frame(minHeight: max(0, visibleHeight - Self.actionReserve), alignment: .top)
+            .coordinateSpace(.named(LightCollapsedList.contentSpace))
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        // 30з.1 (слово Алексея 13.11: «под большой палец, … парящей, над интерфейсом»): кнопка съёмки — парящая капсула над лентой дат и
+        // шкалой; список уходит под неё, низ прокрутки отступает на её высоту, чтобы последняя строка доставалась.
+        .safeAreaPadding(.bottom, Self.actionReserve)
+        .overlay(alignment: .bottom) {
+            actionButton(pal, flat: true)
+                // Капсула неподвижна (слово Алексея 13.11): строка «↺ Сейчас» между ней и лентой занята всегда, кнопка появляется в ней по центру.
+                .padding(.bottom, Self.nowLift)
+                .tabRise()
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0; refreshCollapsedRows() }
+        .onChange(of: model.proMode) { _, pro in
+            // В «Просто» спойлера нет и ничего не прячется; в «Астро» число строк решит новое измерение.
+            if !pro { fitRows = 0; extraTuck = 0; spoilerBottom = 0 }
+        }
+        // Прогноз приходит позже первой раскладки: у «Неба» и «Ветра» появляется строка, а кнопка «Подробно» не сдвинулась — пересчитать.
+        .onChange(of: model.telemetry.sky != nil || model.telemetry.wind != nil) { _, _ in refreshCollapsedRows() }
+        .safeAreaInset(edge: .bottom, spacing: 8) {
+            TimebarView(model.timebar, showRibbon: model.look.dayRibbon, showEdges: false)
+                .shotNode("timebar")
+                .tabRise()
         }
         .background(pal.surface)
     }
@@ -371,6 +433,7 @@ public struct LightScreenView: View {
             .background(alignment: .top) {
                 Color.clear.glassPlate(pal).padding(.top, -rise)
             }
+            .shotNode("plate.now")
             .padding(.horizontal, 8)
     }
 
@@ -427,35 +490,48 @@ public struct LightScreenView: View {
     }
 
     /// 29.8в.27: пересчёт числа строк закрытого списка «Астро» по свежим измерениям.
-
     private func refreshCollapsedRows() {
-        guard LightCollapsedList.shortensByHeight, visibleHeight > 0 else { return }
+        guard model.blocks else { refreshFlatRows(); return }
+        guard LightCollapsedList.shortensByHeight, visibleHeight > 0, plate3Top.isFinite else { return }
+        // 30з.2а: плашка «условия» в покое кончается не ниже верха плашки «время» минус обычный зазор между плашками.
+        let limit = plate3Top - Self.plateGap
         guard model.proMode else {
-            // «Просто»: спойлера нет, строки прятать некуда — все на месте; нехватку берёт на себя подъём купола. Измерение — низ плашки в покое
+            // «Просто»: ручки и спрятанных строк нет — все на месте; нехватку берёт на себя подъём купола. Измерение — низ плашки в покое
             // (вид из видимой части), приведённый к раскладке без подъёма.
             guard plateProbe.atRest, plateProbe.vp.isFinite else { return }
-            let deficit = plateProbe.vp + domeLift - visibleHeight + LightCollapsedList.slack
+            let deficit = plateProbe.vp + domeLift - limit + LightCollapsedList.slack
             let lift = min(LightCollapsedList.maxDomeLift, max(0, deficit))
             if abs(lift - domeLift) > 0.25 { domeLift = lift }
             return
         }
-        guard spoilerBottom > 0 else { return }
+        guard spoilerBottom > 0, plateProbe.contentTop.isFinite else { return }
         let hasForecast = model.telemetry.sky != nil || model.telemetry.wind != nil
         let present = LightCollapsedList.present(hasForecast: hasForecast)
         let heights = present.map { rowHeights[$0] ?? LightCollapsedList.defaultRowHeight }
         // Низ «Подробно» приводится к базе: без необязательных строк, полоса 22 — как была бы раскладка, не зная, какая из них сейчас
         // на экране (иначе решение мигало бы). Шапка «Астро» сжата всегда, в базу входит сжатой.
         let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck + domeLift
-        // Низ плашки в покое = низ «Подробно» + пустой низ под капсулой + поле плашки: он не должен уходить ниже низа видимой части (там щель «↺ Сейчас»).
-        let tail = LightSpoilerView.capsuleSlot + LightSpoilerView.plateInset
-        let room = visibleHeight - plateProbe.contentTop
-        let plan = LightCollapsedList.plan(visibleHeight: room, baselineBottom: baseline, actionHeight: tail, rowHeights: heights)
+        // Ручка «Подробно» стоит у самой нижней кромки плашки «условия»: после неё в плашке ничего нет (`tail` = 0).
+        let room = limit - plateProbe.contentTop
+        let plan = LightCollapsedList.plan(visibleHeight: room, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
         if plan.rows != fitRows { fitRows = plan.rows }
         if plan.extraTuck != extraTuck { extraTuck = plan.extraTuck }
         // Даже без строк и с полосой 12 не помещается — остаток берёт подъём купола.
-        let spare = room - (baseline + tail) - LightCollapsedList.slack
+        let spare = room - baseline - LightCollapsedList.slack
         let lift = min(LightCollapsedList.maxDomeLift, max(0, -spare - LightCollapsedList.maxExtraTuck))
         if abs(lift - domeLift) > 0.25 { domeLift = lift }
+    }
+
+    /// Вид «Без блоков»: расчёт 30з.1 как был.
+    private func refreshFlatRows() {
+        guard model.proMode, spoilerBottom > 0, visibleHeight > 0 else { return }
+        let hasForecast = model.telemetry.sky != nil || model.telemetry.wind != nil
+        let present = LightCollapsedList.present(hasForecast: hasForecast)
+        let heights = present.map { rowHeights[$0] ?? LightCollapsedList.defaultRowHeight }
+        let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck
+        let plan = LightCollapsedList.plan(visibleHeight: visibleHeight - Self.actionReserve, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
+        if plan.rows != fitRows { fitRows = plan.rows }
+        if plan.extraTuck != extraTuck { extraTuck = plan.extraTuck }
     }
 
     /// 29.8в.26: от горизонта дуги (196 из 240 в `viewBox`) до подписи «до золотого часа» у веба 44 + 2 pt — пустая
@@ -616,7 +692,7 @@ public struct LightScreenView: View {
 
     /// Строка под дугой: ширина дуги (326 из 440), высота 40 с полем 3, знак 22 латунью,
     /// подпись 16/600, справа время с ползунка. Тап — новая съёмка ровно на это время (`planShoot`).
-    private func actionButton(_ pal: Palette) -> some View {
+    private func actionButton(_ pal: Palette, flat: Bool = false) -> some View {
         let time = model.planShootTime
         return Button(action: { let r = model.planShoot; onPlan(r.day, r.start) }) {
             HStack(spacing: 13) {
@@ -636,25 +712,29 @@ public struct LightScreenView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 40)
-            // Парящая: системное стекло, как у других плавающих кнопок (30з.1). Ни затемнения, ни затухания рядом с ней нет (слово Алексея
-            // 16.11): под ней пустой низ плашки «условия», а если плашка длиннее экрана — строки просто уходят под стекло.
+            // Системное стекло, как у других плавающих кнопок (30з.1). Ни затемнения, ни затухания рядом с ней нет (слово Алексея 16.11).
             .glassEffect(.regular, in: Capsule())
             .flatGlass(Capsule(), light: !pal.dark)
             // Светлая тема: капсула на белой плашке без тени — тонкий кант, чтобы её край читался (кант, не тень).
-            .overlay { if !pal.dark { Capsule().strokeBorder(pal.hair4, lineWidth: 1).allowsHitTesting(false) } }
+            .overlay { if !pal.dark && !flat { Capsule().strokeBorder(pal.hair4, lineWidth: 1).allowsHitTesting(false) } }
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .frame(width: flat ? Self.actionWidth(dome: domeSize.width) : nil)
+        .padding(.vertical, flat ? 3 : 0)
+        #if DEBUG
+        // Замер шага 30д: `-LPShotNoAction 1` — кнопки не видно, место то же.
+        .opacity(UserDefaults.standard.string(forKey: "LPShotNoAction") == nil ? 1 : 0)
+        #endif
         .shotNode("action")
     }
 
     /// Кнопка шириной по дуге и подтянута к горизонту (схема А, 04.11). Дуга — 326 из 390 единиц купола,
     /// а купол мельче единицы только на экранах уже 390 (`DomeView`, «масштаб по меньшей стороне»).
     static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
-    /// 30з.2: капсула 40 pt, от нижней кромки видимой части 10 pt; низ прокрутки отступает на неё + 8 pt.
-    static let capsuleHeight: CGFloat = 40
-    static let capsuleMargin: CGFloat = 10
-    static let capsuleReserve: CGFloat = 40 + 10 + 8
+    /// Вид «Без блоков» (30з.1): высота капсулы (40 + поля 3 · 2) — на столько отступает низ прокрутки; над ней строка «↺ Сейчас» (`nowLift`).
+    static let actionReserve: CGFloat = 46 + 28
+    static let nowLift: CGFloat = 28
     static let viewportSpace = "lightViewport"
     static func actionVeil(_ scheme: ColorScheme) -> Color {
         // 28к.3: в светлой кнопка поднята — белая вуаль (светлее фона) и тень под ней (`raisedStyle`); в тёмной — как была.
@@ -824,41 +904,18 @@ enum LightCollapsedList {
     }
 }
 
-/// Где в покое нижняя кромка плашки «условия» (координаты видимой части прокрутки) и раскрыты ли рубрики (30з.2).
+/// Где в покое нижняя кромка плашки «условия» (30з.2).
 @Observable
 final class PlateProbe {
-    /// Нижняя кромка плашки при прокрутке в начале: `.infinity`, пока не измерена. Обновляется только в покое (прокрутка в начале), поэтому
-    /// не дрожит вместе с жестом.
-    var rest: CGFloat = .infinity
-    /// Рубрики «Подробно» под плашкой «условия» развёрнуты (или разворачиваются).
-    var grouped = false
     @ObservationIgnored var atRest = true
-    /// Нижняя кромка плашки в координатах видимой части и в координатах содержимого (последние измерения).
+    /// Нижняя кромка плашки в координатах экрана (`viewportSpace`) и в координатах содержимого (последние измерения).
     @ObservationIgnored var vp: CGFloat = .infinity
     @ObservationIgnored var contentMax: CGFloat = .infinity
-    /// Где в видимой части стоит начало содержимого в покое (разность двух систем координат).
-    @ObservationIgnored var contentTop: CGFloat = 0
+    /// Где на экране стоит начало содержимого в покое (разность двух систем координат).
+    @ObservationIgnored var contentTop: CGFloat = .infinity
 
     func refresh() {
-        guard atRest, vp.isFinite else { return }
-        if !rest.isFinite || abs(rest - vp) > 0.25 { rest = vp }
-        if contentMax.isFinite { contentTop = vp - contentMax }
-    }
-}
-
-/// Положение капсулы (30з.2): всегда там, где она лежит в покое, — на `bottomMargin` выше нижней кромки плашки «условия» в её пустом низу.
-/// Не ниже `bottomMargin` над низом видимой части (длинный список: плашка в покое ниже экрана — капсула у низа видимой части). Прокрутка
-/// и раскрытие «Подробно» её не двигают: содержимое уходит под неё. Ни затемнения, ни маски.
-struct CapsuleAnchor<Content: View>: View {
-    let probe: PlateProbe
-    let viewportHeight: CGFloat
-    let bottomMargin: CGFloat
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        let lift = probe.rest.isFinite ? min(0, probe.rest - viewportHeight) : 0
-        content
-            .padding(.bottom, bottomMargin)
-            .offset(y: lift)
+        guard atRest, vp.isFinite, contentMax.isFinite else { return }
+        contentTop = vp - contentMax
     }
 }

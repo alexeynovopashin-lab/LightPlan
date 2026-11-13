@@ -56525,6 +56525,181 @@
         }
       }
     },
+    "set.lightView" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран «Свет»"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“Light” screen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla «Luz»"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「光」画面"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「光线」屏幕"
+          }
+        }
+      }
+    },
+    "set.lightViewBlocks" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С блоками"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With blocks"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con bloques"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ブロックあり"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "带板块"
+          }
+        }
+      }
+    },
+    "set.lightViewFlat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без блоков"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No blocks"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin bloques"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ブロックなし"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无板块"
+          }
+        }
+      }
+    },
+    "set.lightViewNoteBlocks" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия, время и кнопка съёмки лежат на отдельных плашках неба и стекла."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conditions, time and the shoot button sit on separate glass plates over the sky."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las condiciones, la hora y el botón de sesión van en placas de cristal sobre el cielo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "条件・時間・撮影ボタンが、空の上のガラスの板に分かれて並びます。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "条件、时间和拍摄按钮分别放在天空之上的玻璃板上。"
+          }
+        }
+      }
+    },
+    "set.lightViewNoteFlat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плоский экран на ровном фоне: без плашек и без неба за шапкой, кнопка съёмки под «Подробно»."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A flat screen on a plain background: no plates and no sky behind the header, the shoot button under “Details”."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla plana sobre fondo liso: sin placas ni cielo tras la cabecera, el botón de sesión bajo «Detalles»."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無地の背景に平らに並べた画面。板も見出し裏の空もなく、撮影ボタンは「詳細」の下にあります。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平整的纯色背景屏幕：没有板块，标题后也没有天空，拍摄按钮在“详情”下方。"
+          }
+        }
+      }
+    },
     "set.manualEnd" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -82,6 +82,10 @@ struct SettingsChapterView: View {
                 // Подпись «Тема» у веба — не первая в разметке главы даже в
                 // «Просто» (лента и прорезь скрыты, но стоят раньше), поле 30.
                 note: t.t("set.themeNote"), index: s.pro ? (slotShown ? 2 : 1) : 0)
+        // 30з.2а: два вида «Света» — только у нас, пары с вебом нет (узлов `sec.N` нет). До релиза Алексей тестирует оба.
+        segment("set.lightView", \.lightBlocks, [(true, "set.lightViewBlocks"), (false, "set.lightViewFlat")],
+                note: t.t(s.lightBlocks ? "set.lightViewNoteBlocks" : "set.lightViewNoteFlat"))
+            .shotNode("sec.lightView")
     }
 
     // MARK: - Карта и места

@@ -47,17 +47,22 @@ public struct AppSettings: Sendable, Equatable {
     public var musicApp: MusicApp?
     /// С какого дня неделя (`WeekStartChoice`; нет в снимке — понедельник, как у веба).
     public var weekStart: WeekStartChoice
+    /// Вид экрана «Свет» (30з.2а): `true` — плашки («С блоками», умолчание), `false` — плоский вид 30з.1 («Без блоков»). Ключ снимка
+    /// `lightView` (`"flat"`); умолчание — нет ключа, файл прежних версий не меняется.
+    public var lightBlocks: Bool
 
     public init(mode: AppMode = .simple, astro: AstroSwitches = .allOn, theme: Theme = .dark, ribbonMode: RibbonMode = .drum,
                 drumSlot: DrumSlot = .paper, timeStep: Int = 5, travelMin: Int = 40,
                 tempUnit: TempUnit = .c, clock: Clock = .auto, currency: Currency = .rub,
                 practice: Practice = .ru, practicePicked: Bool = false, home: HomeCity = HomeCity(),
-                manualEnd: Bool = false, musicApp: MusicApp? = nil, weekStart: WeekStartChoice = .standard) {
+                manualEnd: Bool = false, musicApp: MusicApp? = nil, weekStart: WeekStartChoice = .standard,
+                lightBlocks: Bool = true) {
         self.mode = mode; self.astro = astro; self.theme = theme; self.ribbonMode = ribbonMode; self.drumSlot = drumSlot
         self.timeStep = timeStep; self.travelMin = travelMin; self.tempUnit = tempUnit
         self.clock = clock; self.currency = currency; self.practice = practice
         self.practicePicked = practicePicked; self.home = home
         self.manualEnd = manualEnd; self.musicApp = musicApp; self.weekStart = weekStart
+        self.lightBlocks = lightBlocks
     }
 
     /// Прочитать из снимка по правилам веба. `zone` — пояс телефона, по
@@ -85,6 +90,7 @@ public struct AppSettings: Sendable, Equatable {
         manualEnd = s.manualEnd
         musicApp = s.musicApp.flatMap(MusicApp.init(rawValue:))
         weekStart = s.weekStart.flatMap(WeekStartChoice.init(rawValue:)) ?? .standard
+        lightBlocks = s.lightView != "flat"
     }
 
     /// Записать в снимок. Прочие поля снимка и прочие ключи `me` (номер,
@@ -113,6 +119,7 @@ public struct AppSettings: Sendable, Equatable {
         if (s.weekStart.flatMap(WeekStartChoice.init(rawValue:)) ?? .standard) != weekStart {
             s.weekStart = weekStart == .standard ? nil : weekStart.rawValue
         }
+        s.lightView = lightBlocks ? nil : "flat"
     }
 
     /// Видно ли сейчас то, что прячет переключатель: только в «Астро» и только включённый (опись 30г.2 § 2).

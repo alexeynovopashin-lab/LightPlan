@@ -103,46 +103,37 @@ private struct BlockShadowModifier: ViewModifier {
 }
 
 public extension View {
-    /// 30з.2 (макет 4 Алексея 12.11: «плашки … из матового нативного стекла», кант «тиснение»): плашка «Света» — системное стекло
-    /// `.glassEffect(.regular)` в скруглённой рамке, кант даёт само стекло. Светлая тема — токены 28к.3: белая вуаль `glassVeil` над
-    /// стеклом, светлый кант и мягкая тень `plateStyle`. Тёмная: тонкая светлая вуаль `darkVeil`, чтобы матовая плашка читалась на сером
-    /// фоне, как на макете (там плашка в 1,6 раза светлее фона). Нарисованного блика нет (`Tools/check_glass.sh`).
+    /// 30з.2а (слово Алексея 13.11: «плашка календаря мне нравится больше, на экране свет плашки слишком светлые»): плашка «Света» —
+    /// того же вида, что подложка месяца на «Съёмках» (`PlannerMonthView`): заливка `pal.sheetGlass` над системным стеклом
+    /// `.glassEffect(.regular)`, скругление 22, край — волосок `pal.hairline` в тёмной и белый кант `PlateTokens.rimColor` в светлой.
+    /// Тени снаружи нет в обеих темах (в светлой — слово Алексея 13.11; в тёмной у месяца тень есть, здесь её не взяли: плашки стоят
+    /// впритык друг к другу и к кромке экрана). Нарисованного блика нет (`Tools/check_glass.sh`).
     ///
     /// `hush` (0…1): под стеклом тон страницы с такой плотностью — плашка, под которой прокручивается чужое содержимое («время» на «Свете»,
     /// 30з.2), не показывает его резко сквозь стекло.
-    func glassPlate(_ pal: Palette, radius: CGFloat = 22, hush: Double = 0) -> some View {
+    func glassPlate(_ pal: Palette, radius: CGFloat = GlassPlateTokens.radius, hush: Double = 0) -> some View {
         let r = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        return modifier(GlassPlateModifier(pal: pal, shape: r, radius: radius, hush: hush))
+        return modifier(GlassPlateModifier(pal: pal, shape: r, hush: hush))
     }
 }
 
 public enum GlassPlateTokens {
-    /// Белая вуаль матовой плашки в тёмной теме.
-    public static let darkVeil = 0.04
+    /// Скругление — то же, что у подложки месяца (`MonthMetrics.plateRadius`).
     public static let radius: CGFloat = 22
 }
 
 private struct GlassPlateModifier: ViewModifier {
     let pal: Palette
     let shape: RoundedRectangle
-    let radius: CGFloat
     let hush: Double
 
     func body(content: Content) -> some View {
-        inner(content).background { if hush > 0 { shape.fill(pal.surface.opacity(hush)) } }
-    }
-
-    @ViewBuilder
-    private func inner(_ content: Content) -> some View {
-        if pal.dark {
-            content
-                .background { shape.fill(Color.white.opacity(GlassPlateTokens.darkVeil)) }
-                .background { Color.clear.glassEffect(.regular, in: shape) }
-        } else {
-            content
-                .background { shape.fill(Color.white.opacity(PlateTokens.glassVeil)) }
-                .plateStyle(pal, radius: radius, glass: true)
-        }
+        content
+            .background { shape.fill(pal.sheetGlass) }
+            // Тень у встроенного стекла своя и падает наружу: срез по контуру её убирает (и в светлой, и в тёмной).
+            .background { Color.clear.glassEffect(.regular, in: shape).clipShape(shape) }
+            .background { if hush > 0 { shape.fill(pal.surface.opacity(hush)) } }
+            .overlay { shape.strokeBorder(pal.dark ? pal.hairline : PlateTokens.rimColor, lineWidth: pal.dark ? 1 : PlateTokens.rimWidth).allowsHitTesting(false) }
     }
 }
 
