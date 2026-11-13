@@ -70,10 +70,11 @@ public final class TimebarState {
 
     public init(place: Place, date: CivilDate, weather: WeatherStore? = nil,
                 language: String = "ru", ribbonMode: RibbonMode = .drum,
-                clockPreference: ClockPreference = .auto, now: @escaping @Sendable () -> Date = { Date() }) {
+                clockPreference: ClockPreference = .auto, scale: DayScale = .solar,
+                now: @escaping @Sendable () -> Date = { Date() }) {
         self.place = place
         self.now = now
-        self.machine = TimelineMachine(date: date, place: place, ribbonMode: ribbonMode)
+        self.machine = TimelineMachine(date: date, place: place, ribbonMode: ribbonMode, scale: scale)
         self.weather = weather
         self.language = language
         self.lexicon = Lexicon(language)
@@ -84,6 +85,17 @@ public final class TimebarState {
 
     /// Часы из настроек (итерация 19а): края и подписи ленты читают их на
     /// следующем кадре, выбранная минута не трогается.
+    /// Шкала ползунка (30з.4): окно, риски и цифры. Окно — то же, что у машины (`machine.mint…maxt`), ползунок, рельс, риски и купол
+    /// читают его отсюда, а не из `solarDay`.
+    public var scale: DayScale { machine.scale }
+    public var scaleStart: Minutes { machine.mint }
+    public var scaleEnd: Minutes { machine.maxt }
+    var scaleMarks: [DayScale.Mark] { machine.scale.marks(start: machine.mint, end: machine.maxt) }
+
+    /// Час, в котором стоит минута `m`, для щелчков: через `floor`, а не `Int(m) / 60` — тот усекает к нулю, и все минуты −59…59
+    /// вместе были бы «часом 0»: переход через 00:00 слева (из часа до полуночи) не щёлкал бы.
+    static func hourIndex(_ m: Minutes) -> Int { Int((m / 60).rounded(.down)) }
+
     public func setClockPreference(_ preference: ClockPreference) {
         clock = ClockText(language: language, preference: preference)
     }
@@ -172,11 +184,11 @@ public final class TimebarState {
         drumGlide = nil
         machine.show(day: day, minute: minute)
         syncSolarDay()
-        hourMark = Int(machine.viewMinute) / 60
+        hourMark = Self.hourIndex(machine.viewMinute)
     }
 
     private func checkHourMark() {
-        let hour = Int(machine.viewMinute) / 60
+        let hour = Self.hourIndex(machine.viewMinute)
         guard hourMark != hour else { return }
         if hourMark >= 0 { haptics.detent() }
         hourMark = hour

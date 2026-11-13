@@ -92,17 +92,20 @@ struct LightPlanShootButtonTests {
         #expect(app.form?.day == day.adding(days: 1) && app.form?.start == 30)
     }
 
-    @Test("ползунок до полуночи там, где шкала начинается раньше 00:00 — съёмка прошлого дня")
+    @Test("ползунок в часе до полуночи — съёмка прошлого дня (30з.4: левый край шкалы — 23:00, в любом городе)")
     func beforeMidnightIsPreviousDay() throws {
         let app = app()
-        // Анадырь в ноябре: солнечный полдень раньше 12:00, шкала начинается ещё вчера.
+        // Анадырь в ноябре — там прежняя шкала начиналась ещё вчера; теперь окно −60…1500 одно на всех.
         app.light.timebar.setPlace(Place(latitude: 64.73, longitude: 177.5, zone: ZoneID("Asia/Anadyr")!))
         let day = CivilDate(year: 2026, month: 11, day: 3)
         app.light.timebar.show(day: day, minute: 600)
-        try #require(app.light.timebar.machine.mint < -1)
+        try #require(app.light.timebar.machine.mint == -60)
         drag(app, to: app.light.timebar.machine.mint + 0.6)
         let r = app.light.planShoot
-        #expect(r.day == day.adding(days: -1) && r.start >= 1430 && r.start < 1440)
+        #expect(r.day == day.adding(days: -1) && r.start >= 1380 && r.start < 1390)
+        drag(app, to: -40)
+        #expect(app.light.planShoot.day == day.adding(days: -1) && app.light.planShoot.start == 1400)
+        #expect(app.light.planShootTime == "23:20")
     }
 
     @Test("у свадьбы время с ползунка тоже не подменяется полднем")

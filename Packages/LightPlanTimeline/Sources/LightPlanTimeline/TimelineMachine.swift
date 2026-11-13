@@ -28,9 +28,13 @@ public struct TimelineMachine: Sendable, Equatable {
 
     private var place: Place
 
+    /// Какое окно суток ходит ползунок (30з.4): календарное −60…1500 («Свет», «Карта») или солнечное `SolarDay.mint…maxt` (AR).
+    public let scale: DayScale
+
     public private(set) var selectedDate: CivilDate
     public private(set) var viewMinute: Minutes
-    /// Окно текущих суток: солнечная полночь и следующая за ней (`SolarDay`).
+    /// Окно шкалы текущих суток: у `.calendar` — час до полуночи и час после следующей; у `.solar` — солнечная полночь и следующая
+    /// за ней (`SolarDay`).
     public private(set) var mint: Minutes
     public private(set) var maxt: Minutes
 
@@ -56,21 +60,30 @@ public struct TimelineMachine: Sendable, Equatable {
     /// Сколько ячеек барабана видно по каждую сторону от выбранной.
     public static let drumSpan = 4
 
-    public init(date: CivilDate, minute: Minutes? = nil, place: Place, ribbonMode: RibbonMode = .drum) {
+    public init(date: CivilDate, minute: Minutes? = nil, place: Place, ribbonMode: RibbonMode = .drum, scale: DayScale = .solar) {
         self.place = place
+        self.scale = scale
         self.selectedDate = date
         let day = SolarDay(date: date, place: place)
-        self.mint = day.mint
-        self.maxt = day.maxt
-        self.viewMinute = TimelineMachine.clamp(minute ?? day.solarNoon, day.mint, day.maxt)
+        let window = scale.window(for: day)
+        self.mint = window.start
+        self.maxt = window.end
+        self.viewMinute = TimelineMachine.clamp(minute ?? day.solarNoon, window.start, window.end)
         self.ribbonMode = ribbonMode
     }
 
     private mutating func setDay(_ date: CivilDate) {
         selectedDate = date
-        let day = SolarDay(date: date, place: place)
-        mint = day.mint
-        maxt = day.maxt
+        // Календарное окно от суток не зависит — солнце для него не считаем (экономит `SolarDay` на каждый шаг барабана).
+        switch scale {
+        case .calendar:
+            mint = DayScale.calendarStart
+            maxt = DayScale.calendarEnd
+        case .solar:
+            let day = SolarDay(date: date, place: place)
+            mint = day.mint
+            maxt = day.maxt
+        }
     }
 
     /// Место сменилось (геокодер, ручной выбор) — окно суток пересчитывается
@@ -171,8 +184,16 @@ public struct TimelineMachine: Sendable, Equatable {
     private mutating func fireDay(_ dir: Int) -> TimelineOutcome {
         wind.fired()
         setDay(selectedDate.adding(days: dir))
-        // Встаём на противоположный край новых суток — как в вебе.
-        viewMinute = dir > 0 ? mint : maxt
+        switch scale {
+        case .solar:
+            // Встаём на противоположный край новых суток — как в вебе: солнечные сутки стыкуются встык (`maxt` этих = `mint` тех).
+            viewMinute = dir > 0 ? mint : maxt
+        case .calendar:
+            // Окна соседних суток перекрываются на два часа, поэтому стоим в **том же моменте**: 01:00 следующего дня справа от
+            // этих суток — это 01:00 в новых (минута 60), 23:00 предыдущего дня — 23:00 (минута 1380). Край в край отбросил бы
+            // ползунок на сутки назад.
+            viewMinute -= Double(dir) * 1440
+        }
         dayShift = dir
         return .fired(direction: dir)
     }

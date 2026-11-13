@@ -32,17 +32,17 @@ struct ScrubView: View {
                 ZStack(alignment: .topLeading) {
                     Capsule()
                         .fill(pal.rail)
-                        .overlay(Capsule().fill(LinearGradient(gradient: PathStops.railGradient(day: state.solarDay),
+                        .overlay(Capsule().fill(LinearGradient(gradient: PathStops.railGradient(day: state.solarDay, from: state.scaleStart, to: state.scaleEnd),
                                                                startPoint: .leading, endPoint: .trailing)))
                         .frame(width: w, height: 4)
                         .padding(.top, 16)
 
                     // 30з.1: цифры часов — в том же слое, что рельс и риски: бегунок закрывает их и гнёт кольцом.
-                    RulerDigits(solarDay: state.solarDay)
+                    RulerDigits(marks: state.scaleMarks, start: state.scaleStart, end: state.scaleEnd)
                         .frame(width: w, height: 16)
                         .shotNode("ruler.digits")
 
-                    RulerView(solarDay: state.solarDay)
+                    RulerView(marks: state.scaleMarks, start: state.scaleStart, end: state.scaleEnd)
                         .frame(width: max(0, w - 26), height: 10)
                         .shotNode("ruler")
                         .padding(.leading, 13).padding(.top, 24)
@@ -121,9 +121,7 @@ struct ScrubView: View {
     static let ring = 3.0
 
     private func position() -> Double {
-        let span = state.solarDay.maxt - state.solarDay.mint
-        guard span > 0 else { return 0 }
-        return min(max((state.machine.viewMinute - state.solarDay.mint) / span, 0), 1)
+        DayScale.fraction(of: state.machine.viewMinute, start: state.scaleStart, end: state.scaleEnd)
     }
 
     /// Разогрев конца дорожки (`.rail-heat`): латунная полоска 34×4 поверх

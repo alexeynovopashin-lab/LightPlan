@@ -81,8 +81,12 @@ public final class LightScreenModel {
     func domeMinute(at p: CGPoint, in size: CGSize) -> Minutes? {
         guard let f = DomeDrag.fraction(at: DomeDrag.viewPoint(p, in: size)) else { return nil }
         let m = timebar.machine
-        let arc = DomeDrag.arc(moon: moonMode, sun: timebar.solarDay, date: m.selectedDate, place: timebar.place,
-                               at: m.viewMinute, mint: m.mint, maxt: m.maxt)
+        // 30з.4: дуга, по которой ведёт палец, — та же, что рисует купол: у луны без дуги купол кладёт её на солнечные сутки
+        // (`DomeView.paintMoon`: `posOn(t, sun.mint, sun.maxt)`), поэтому и палец считает по ним. А вот границы, в которые
+        // прижимается итоговая минута, — окно шкалы ползунка (`m.mint…m.maxt`): палец и ручка приходят в одну и ту же минуту.
+        let sun = timebar.solarDay
+        let arc = DomeDrag.arc(moon: moonMode, sun: sun, date: m.selectedDate, place: timebar.place,
+                               at: m.viewMinute, mint: sun.mint, maxt: sun.maxt)
         return DomeDrag.minute(fraction: f, arcStart: arc.start, arcEnd: arc.end, mint: m.mint, maxt: m.maxt)
     }
 

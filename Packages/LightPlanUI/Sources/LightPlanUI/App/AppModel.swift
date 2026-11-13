@@ -652,7 +652,7 @@ public final class AppModel {
         self.glowSource = glowSource
         let timebar = TimebarState(place: place.place, date: Self.today(in: place.place, now: now()), weather: weather,
                                    language: language, ribbonMode: Self.ribbon(settings.ribbonMode),
-                                   clockPreference: Self.clock(settings.clock), now: now)
+                                   clockPreference: Self.clock(settings.clock), scale: .calendar, now: now)   // 30з.4: «Свет» и «Карта» — календарная шкала
         // Экран открывается на нынешней минуте, как веб (`viewMin` на старте
         // — «сейчас»), а не на солнечном полдне, которым машина времени
         // встаёт без минуты (найдено 19а, исправлено 19б).

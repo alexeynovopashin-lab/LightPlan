@@ -54,19 +54,26 @@ enum PathStops {
         return Stop(rgb: last.rgb, a: last.a, w: last.w)
     }
 
-    /// Остановки рельса: каждые 10 минут окна `mint…maxt`, место — доля окна
-    /// (`drawRail`). Прозрачность округляется до сотых, как `toFixed(2)`.
-    static func railGradient(day: SolarDay) -> Gradient {
-        let span = day.maxt - day.mint
+    /// Остановки рельса: каждые 10 минут окна шкалы `from…to` (30з.4: окно задаёт шкала ползунка, а не `SolarDay.mint…maxt`),
+    /// место — доля окна (`drawRail`). Высота солнца — суток `day` и в часе до полуночи, и в часе после следующей.
+    /// Прозрачность округляется до сотых, как `toFixed(2)`.
+    static func railGradient(day: SolarDay, from start: Minutes, to end: Minutes) -> Gradient {
+        let span = end - start
         guard span > 0 else { return Gradient(colors: [.clear]) }
         var stops: [Gradient.Stop] = []
-        var t = day.mint
-        while t <= day.maxt {
+        var t = start
+        while t <= end {
             let c = at(day.elevation(at: t))
             let color = Color(.sRGB, red: Double(c.rgb.0) / 255, green: Double(c.rgb.1) / 255,
                               blue: Double(c.rgb.2) / 255, opacity: (c.a * 100).rounded() / 100)
-            stops.append(Gradient.Stop(color: color, location: (t - day.mint) / span))
+            stops.append(Gradient.Stop(color: color, location: (t - start) / span))
             t += 10
+        }
+        if let last = stops.last, last.location < 1 {
+            let c = at(day.elevation(at: end))
+            let color = Color(.sRGB, red: Double(c.rgb.0) / 255, green: Double(c.rgb.1) / 255,
+                              blue: Double(c.rgb.2) / 255, opacity: (c.a * 100).rounded() / 100)
+            stops.append(Gradient.Stop(color: color, location: 1))
         }
         return Gradient(stops: stops)
     }

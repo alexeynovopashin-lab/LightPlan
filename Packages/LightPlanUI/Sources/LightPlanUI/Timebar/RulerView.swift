@@ -1,24 +1,33 @@
 import SwiftUI
 import LightPlanCore
 
-/// Гравировка над дорожкой ползунка: риски каждый час, крупные каждые
-/// шесть. Порт `drawRuler` (веб): часовые метки идут по настенным часам
-/// (`h·60`), а не по окну суток, и рисуются только там, где час укладывается
-/// в `mint…maxt` — окно бывает уже или шире полных суток.
+/// Гравировка под дорожкой ползунка. Метки и их ярусы даёт шкала (`DayScale.marks`): у «Света» и «Карты» (30з.4) — три яруса,
+/// длинные под 0, 6, 12, 18, 24, средние под 3, 9, 15, 21, короткие на остальных часах и на обоих краях (23:00 и 01:00);
+/// у AR — прежние два яруса по окну истинного полудня. Место риски — доля окна `start…end` на ширине холста; холст стоит с полем
+/// 13 с каждого края (центр ручки на упоре), цифры (`RulerDigits`) считают `x` той же формулой.
 struct RulerView: View {
-    let solarDay: SolarDay
+    let marks: [DayScale.Mark]
+    let start: Minutes
+    let end: Minutes
     @Environment(\.colorScheme) private var colorScheme
+
+    /// Доля высоты холста, которую занимает риска яруса.
+    static func height(of tier: DayScale.Tier) -> Double {
+        switch tier {
+        case .long: 1
+        case .medium: 0.7
+        case .short: 0.4
+        }
+    }
 
     var body: some View {
         let pal = Palette(colorScheme)
         Canvas { context, size in
-            for h in 0..<48 {
-                let t = Double(h) * 60
-                guard t >= solarDay.mint, t <= solarDay.maxt else { continue }
-                let x = (t - solarDay.mint) / 1440 * size.width
-                let major = h % 6 == 0
+            for mark in marks {
+                let x = DayScale.fraction(of: mark.minute, start: start, end: end) * size.width
+                let major = mark.tier != .short
                 var path = Path()
-                path.move(to: CGPoint(x: x, y: major ? 0 : size.height * 0.4))
+                path.move(to: CGPoint(x: x, y: size.height * (1 - Self.height(of: mark.tier))))
                 path.addLine(to: CGPoint(x: x, y: size.height))
                 // `.ruler line` — `--rail-5`, крупная — `--ink-7`.
                 context.stroke(path, with: .color(major ? pal.ink7 : pal.rail5), lineWidth: 1)
@@ -28,28 +37,30 @@ struct RulerView: View {
     }
 }
 
-/// 30з.1: цифры часов над рельсом, как на макете Алексея (12.11). Цифра — час риски по модулю 24: шкала идёт от истинного
-/// полудня ±12 ч (`mint…maxt`), левого «0» у неё нет, полночь стоит там, где час 24 → «0». Каждые три часа, в тех же `x`, что риски
-/// (`RulerView`: поле 13 с каждого края). Лежат в слое, который гнёт кольцо бегунка, — под пальцем их закрывает и искажает стекло,
-/// цифры не прячутся и не поднимаются (Алексей: «бегунок должен закрывать цифры»). Поле 16 над рельсом уже было пустым — высота шкалы не растёт.
+/// Цифры над рельсом (30з.1, макет Алексея 12.11; 30з.4 — шкала суток 0…24). Цифра — метка шкалы с `digit`: у «Света» 0, 3, 6, …, 24
+/// (над двумя краевыми часами цифр нет), стоят в тех же `x`, что риски (`RulerView`: поле 13 с каждого края, доля окна шкалы).
+/// Лежат в слое, который гнёт кольцо бегунка, — под пальцем их закрывает и искажает стекло, цифры не прячутся и не поднимаются
+/// (Алексей: «бегунок должен закрывать цифры»). Поле 16 над рельсом уже было пустым — высота шкалы не растёт.
 struct RulerDigits: View {
-    let solarDay: SolarDay
+    let marks: [DayScale.Mark]
+    let start: Minutes
+    let end: Minutes
     @Environment(\.colorScheme) private var colorScheme
 
-    /// Час на цифре: каждые три, включая крайние, если те лежат на целом часе окна.
-    static func hours(mint: Double, maxt: Double) -> [Int] {
-        (0..<48).filter { h in h % 3 == 0 && Double(h) * 60 >= mint && Double(h) * 60 <= maxt }
-    }
+    /// Подписи цифр слева направо — то, что видно над рельсом.
+    static func labels(_ marks: [DayScale.Mark]) -> [String] { marks.compactMap(\.digit) }
 
-    static func label(_ h: Int) -> String { String(h % 24) }
+    /// Поле с каждого края: половина ширины ручки (13). Центр ручки на упоре стоит в первой и последней риске.
+    static let inset: CGFloat = 13
 
     var body: some View {
         let pal = Palette(colorScheme)
         Canvas { context, size in
-            let track = size.width - 26
-            for h in Self.hours(mint: solarDay.mint, maxt: solarDay.maxt) {
-                let x = 13 + (Double(h) * 60 - solarDay.mint) / 1440 * track
-                let text = Text(Self.label(h))
+            let track = size.width - 2 * Self.inset
+            for mark in marks {
+                guard let digit = mark.digit else { continue }
+                let x = Self.inset + DayScale.fraction(of: mark.minute, start: start, end: end) * track
+                let text = Text(digit)
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundColor(pal.ink4)
                 context.draw(context.resolve(text), at: CGPoint(x: x, y: 8), anchor: .center)

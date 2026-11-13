@@ -13,13 +13,13 @@ struct LightLayout30z1Tests {
                             date: CivilDate(year: 2026, month: 11, day: 12), ribbonMode: .drum)
     }
 
-    /// Окно ±12 ч от истинного полудня: левого «0» нет, цифра = час по модулю 24, полночь — «0» там, где час 24.
-    @Test func digitsAreTheHourOfTheTickModulo24() {
+    /// Прежняя (солнечная) шкала, которую держит AR: окно ±12 ч от истинного полудня, левого «0» нет, цифра = час по модулю 24,
+    /// полночь — «0» там, где час 24. 30з.4 её не меняет.
+    @Test func solarScaleDigitsAreTheHourOfTheTickModulo24() {
         let day = SolarDay(date: CivilDate(year: 2026, month: 11, day: 12), place: Place(latitude: 56.49, longitude: 84.95, zone: ZoneID(fixedOffsetHours: 7)))
-        let hours = RulerDigits.hours(mint: day.mint, maxt: day.maxt)
-        #expect(hours.first.map { $0 * 60 >= Int(day.mint.rounded(.up)) } == true)
-        #expect(hours == hours.sorted() && hours.allSatisfy { $0 % 3 == 0 })
-        let labels = hours.map(RulerDigits.label)
+        let marks = DayScale.solar.marks(start: day.mint, end: day.maxt)
+        #expect(marks.first.map { $0.minute >= day.mint } == true)
+        let labels = RulerDigits.labels(marks)
         #expect(labels == ["3", "6", "9", "12", "15", "18", "21", "0"], "\(labels) mint=\(day.mint) maxt=\(day.maxt)")
     }
 
