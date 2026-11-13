@@ -292,6 +292,9 @@ public struct LightScreenView: View {
 
     /// 30з.2: промежуток между плашками и от плашек до краёв — 8 pt, поля плашки по бокам 8 (содержимое внутри стоит на прежних 24).
     static let plateGap: CGFloat = 8
+    /// Знак рассвета и заката у оснований дуги (было 19) и высота стопки «знак → время → подпись»: 26 + 2 + 15 + 2 + 13.
+    static let baseIconSize: CGFloat = 26
+    static let baseStackHeight: CGFloat = 26 + 2 + 15 + 2 + 13
     /// Низ плашки «сейчас» ниже блока «до …».
     private static let nowPlateBottom: CGFloat = 10
 
@@ -352,27 +355,34 @@ public struct LightScreenView: View {
     private func baseTimes(pal: Palette, rise: CGFloat) -> some View {
         let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
         let g = DomeGeometry.self
-        let y = 6 + 17.5 - rise
+        // Стопка на сторону (слово Алексея 16.11): знак → время → подпись; верх стопки на 6 pt ниже горизонта.
+        let y = 6 + Self.baseStackHeight / 2 - rise
         let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x - 8
         let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x - 8
         let tb = model.timebar
         return ZStack(alignment: .topLeading) {
-            baseLabel(tb.baseRiseEdge, pal).shotNode("edge.rise").position(x: left, y: y)
-            if let setEdge = tb.setEdge { baseLabel(setEdge, pal).shotNode("edge.set").position(x: right, y: y) }
+            baseLabel(tb.baseRiseEdge, pal, caption: model.lexiconWord("light.baseRise")).shotNode("edge.rise").position(x: left, y: y)
+            if let setEdge = tb.setEdge { baseLabel(setEdge, pal, caption: model.lexiconWord("light.baseSet")).shotNode("edge.set").position(x: right, y: y) }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .allowsHitTesting(false)
     }
 
     @ViewBuilder
-    private func baseLabel(_ content: TimebarState.EdgeContent, _ pal: Palette) -> some View {
+    private func baseLabel(_ content: TimebarState.EdgeContent, _ pal: Palette, caption: String) -> some View {
         switch content {
         case .time(let icon, let minutes):
+            // Знак 19 → 26 pt (×1,37), подпись под временем цветом акцента (текст — `brassInk`), время серое как было.
             VStack(spacing: 2) {
-                Icon(icon, size: 19, line: 1.6).foregroundStyle(pal.brassDeep)
+                Icon(icon, size: Self.baseIconSize, line: 1.6).foregroundStyle(pal.brassDeep)
                 Text(model.timebar.clockString(minutes))
                     .font(.system(size: 12, weight: .medium).monospacedDigit())
                     .foregroundStyle(pal.ink4)
+                Text(caption)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(pal.brassInk)
+                    .lineLimit(1)
+                    .shotNode("edge.cap", text: caption)
             }
         case .text(let text):
             Text(text)
