@@ -170,6 +170,8 @@ enum ArcG1 {
     static let discRingFill: Double = 0.18
     static let discRingStroke: Double = 0.34
     /// Диск: кромка шире ядра на 1,2 pt, персиковое кольцо уже на 0,4, белая середина уже на 2 (`DomeGeometry.coreRadius` = 6,5).
+    /// Во сколько раз светлый диск крупнее листа (слово Алексея 14.11: «увеличить диаметр солнца, саму серединку»): кромка 7,7 → 10,0 pt, белая середина 4,5 → 5,9 pt. 1 = как на листе.
+    static let discScale: Double = 1.3
     static let discRimExtra: Double = 1.2
     static let discPeachInset: Double = 0.4
     static let discWhiteInset: Double = 2
@@ -198,9 +200,9 @@ enum ArcG1 {
         guard core > 0.002 else { return }
         context.drawLayer { layer in
             layer.opacity = core
-            layer.fill(disc(r + discRimExtra), with: .color(orange.color))
-            layer.fill(disc(r - discPeachInset), with: .color(peach.color))
-            layer.fill(disc(r - discWhiteInset), with: .color(white.color))
+            layer.fill(disc((r + discRimExtra) * discScale), with: .color(orange.color))
+            layer.fill(disc((r - discPeachInset) * discScale), with: .color(peach.color))
+            layer.fill(disc((r - discWhiteInset) * discScale), with: .color(white.color))
         }
     }
 }
