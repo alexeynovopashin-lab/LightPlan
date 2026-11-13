@@ -21,6 +21,10 @@ struct LightSpoilerView: View {
     /// Подпись строки «Ветер» (`pro.wind`): её значение получает узел `spoiler.wind` — прибор `make lightfit` проверяет, что
     /// перенесённый из закрытой части «Ветер» лежит в раскрытом списке с тем же текстом.
     var windLabel: String? = nil
+    /// 30з.2: список условий — внутри той же плашки, что и кнопка; плашка кончается кнопкой «Подробно» / «Свернуть».
+    var above: AnyView = AnyView(EmptyView())
+    /// `true` — «Свет» (30з.2): условия и кнопка на одной плашке, каждая рубрика на своей. `false` — как было («Карта»: рубрики подряд без плашек).
+    var plated = false
 
     /// Пара снимков (28е): `-LPShotSpoiler 1` — раскрыт сразу и прокручен к плашке неба; `2` (прибор `make lightfit`) —
     /// раскрыт и стоит в начале, без прокрутки.
@@ -52,40 +56,62 @@ struct LightSpoilerView: View {
         }
     }
 
+    /// Плашка «Света» (30з.2): стекло, поля как у плашек «сейчас»/«время» — 8 от края, внутри 16 (содержимое стоит на 24).
+    private func plate<C: View>(_ pal: Palette, @ViewBuilder _ content: () -> C) -> some View {
+        content()
+            .padding(.horizontal, 16).padding(.vertical, 4)
+            .glassPlate(pal)
+            .padding(.horizontal, 8)
+    }
+
     var body: some View {
         let pal = Palette(colorScheme)
+        if !plated { classic(pal) } else {
+        // Плашка «условия»: список и кнопка (в «Просто» кнопки нет). Раскрытые рубрики — каждая своя плашка ниже, через 8 pt.
+        ScrollViewReader { proxy in
+        VStack(spacing: 0) {
+            plate(pal) {
+                VStack(spacing: 0) {
+                    above
+                    if open { button(pal) }
+                }
+            }
+            if open, mounted {
+                VStack(spacing: 0) {
+                    ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
+                        // Узлы только для прибора `make lightfit` (рамка списка и первого ряда); вид не меняют.
+                        let plateView = plate(pal) { groupView(group, pal) }.padding(.top, Self.plateGap)
+                        if index == 0 { plateView.shotNode("spoiler.g0") } else { plateView }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bodyHeight = $0 }
+                .frame(height: SpoilerReveal.visibleHeight(natural: bodyHeight, reveal: reveal), alignment: .top)
+                .clipped()
+                .allowsHitTesting(expanded)
+                .accessibilityHidden(!expanded)
+                .shotNode("spoiler.list")
+            }
+        }
+        .task {
+            guard open, Self.shotMode == 1 else { return }
+            try? await Task.sleep(for: .seconds(1))
+            withAnimation(nil) { proxy.scrollTo("swatch", anchor: .center) }
+        }
+        }
+        }
+    }
+
+    /// Прежний вид (карта): кнопка, под ней рубрики подряд без плашек.
+    @ViewBuilder
+    private func classic(_ pal: Palette) -> some View {
         if open {
             ScrollViewReader { proxy in
             VStack(spacing: 0) {
-                // `#spoilerBtn`: отступ 6 сверху, поле 13, по центру столбики
-                // 17 (`--ink-4`), подпись 14/600 (`--ink-2`), шеврон 16 вниз
-                // (`--ink-4`, линия 2,4), зазоры 8.
-                Button(action: toggle) {
-                    HStack(spacing: 8) {
-                        BarsGlyph()
-                            .stroke(pal.ink4, style: StrokeStyle(lineWidth: 1.6 * 17 / 24, lineCap: .round, lineJoin: .round))
-                            .frame(width: 17, height: 17)
-                        Text(SpoilerReveal.label(expanded: expanded, closed: title, open: openTitle)).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.ink2)
-                        // Как у беты: вниз 90°, раскрытый — ещё +180° по часовой (вниз → влево → вверх).
-                        Icon("chevron", size: 16, line: 2.4)
-                            .foregroundStyle(pal.ink4)
-                            .rotationEffect(.degrees(SpoilerReveal.chevronAngle(expanded: expanded)))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(13)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .shotNode("spoiler")
-                .onGeometryChange(for: LightCollapsedList.Measurement.self) { [measureTag] in
-                    LightCollapsedList.Measurement(bottom: $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY, layout: measureTag)
-                } action: { onMeasure($0) }
-                .padding(.top, 6)
-
+                button(pal)
                 if mounted {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
-                            // Узлы только для прибора `make lightfit` (рамка списка и первого ряда); вид не меняют.
                             if index == 0 { groupView(group, pal).shotNode("spoiler.g0") } else { groupView(group, pal) }
                         }
                     }
@@ -107,6 +133,34 @@ struct LightSpoilerView: View {
         }
     }
 
+    static var plateGap: CGFloat { 8 }
+
+    /// `#spoilerBtn`: отступ 6 сверху, поле 13, по центру столбики 17 (`--ink-4`), подпись 14/600 (`--ink-2`), шеврон 16 вниз
+    /// (`--ink-4`, линия 2,4), зазоры 8.
+    private func button(_ pal: Palette) -> some View {
+        Button(action: toggle) {
+            HStack(spacing: 8) {
+                BarsGlyph()
+                    .stroke(pal.ink4, style: StrokeStyle(lineWidth: 1.6 * 17 / 24, lineCap: .round, lineJoin: .round))
+                    .frame(width: 17, height: 17)
+                Text(SpoilerReveal.label(expanded: expanded, closed: title, open: openTitle)).font(.system(size: 14, weight: .semibold)).foregroundStyle(pal.ink2)
+                // Как у беты: вниз 90°, раскрытый — ещё +180° по часовой (вниз → влево → вверх).
+                Icon("chevron", size: 16, line: 2.4)
+                    .foregroundStyle(pal.ink4)
+                    .rotationEffect(.degrees(SpoilerReveal.chevronAngle(expanded: expanded)))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .shotNode("spoiler")
+        .onGeometryChange(for: LightCollapsedList.Measurement.self) { [measureTag] in
+            LightCollapsedList.Measurement(bottom: $0.frame(in: .named(LightCollapsedList.contentSpace)).maxY, layout: measureTag)
+        } action: { onMeasure($0) }
+        .padding(.top, 6)
+    }
+
     /// `.sky-swatch`: высота 92, скругление 14, 20 сверху, поля 12/14, слово
     /// 13/600 с разрядкой 0,2 цветом `--overlay` и тенью `0 1px 0 --hair-5`;
     /// градиент сверху вниз: зенит 0, высокий 38 %, средний 72 %, горизонт 100 %.
@@ -126,7 +180,7 @@ struct LightSpoilerView: View {
             }
             .shotNode("spoiler.swatch")
             .id("swatch")
-            .padding(.top, 20)
+            .padding(.top, plated ? 12 : 20)
     }
 
     /// `.pro-group`: 20 сверху, 4 снизу, знак 15 (`--ink-4`), подпись 10/600
@@ -141,7 +195,7 @@ struct LightSpoilerView: View {
                 Text(group.title).font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)
                     .foregroundStyle(pal.ink7)
             }
-            .padding(.top, 20).padding(.bottom, 4)
+            .padding(.top, plated && group.swatch == nil ? 12 : 20).padding(.bottom, 4)
 
             ForEach(Array(group.rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: 12) {
