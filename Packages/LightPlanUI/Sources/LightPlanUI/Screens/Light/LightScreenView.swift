@@ -70,12 +70,6 @@ public struct LightScreenView: View {
                         .padding(.top, 2)
                         .frame(height: 72, alignment: .top)
 
-                    actionButton(pal)
-                        #if DEBUG
-                        // Замер шага 30д: `-LPShotNoAction 1` — кнопки не видно, место то же.
-                        .opacity(UserDefaults.standard.string(forKey: "LPShotNoAction") == nil ? 1 : 0)
-                        #endif
-
                     telemetryList(telemetry, pal)
                         .padding(.horizontal, 24)
 
@@ -90,10 +84,24 @@ public struct LightScreenView: View {
                 }
                 .tabRise()
             }
-            .frame(minHeight: visibleHeight, alignment: .top)
+            .frame(minHeight: max(0, visibleHeight - Self.actionReserve), alignment: .top)
             .coordinateSpace(.named(LightCollapsedList.contentSpace))
         }
         .scrollBounceBehavior(.basedOnSize)
+        // 30з.1 (слово Алексея 13.11: «под большой палец, … парящей, над интерфейсом»): кнопка съёмки — парящая капсула над лентой дат и
+        // шкалой; список уходит под неё, низ прокрутки отступает на её высоту, чтобы последняя строка доставалась.
+        .safeAreaPadding(.bottom, Self.actionReserve)
+        .overlay(alignment: .bottom) {
+            actionButton(pal)
+                #if DEBUG
+                // Замер шага 30д: `-LPShotNoAction 1` — кнопки не видно, место то же.
+                .opacity(UserDefaults.standard.string(forKey: "LPShotNoAction") == nil ? 1 : 0)
+                #endif
+                // «↺ Сейчас» плавает над кромкой таймбара (`TimebarView`): пока он есть, капсула стоит выше него.
+                .padding(.bottom, model.timebar.nowButtonVisible ? Self.nowLift : 0)
+                .animation(.easeOut(duration: 0.2), value: model.timebar.nowButtonVisible)
+                .tabRise()
+        }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { visibleHeight = $0; refreshCollapsedRows() }
         .onChange(of: model.proMode) { _, pro in
             // В «Просто» спойлера нет и ничего не прячется; в «Астро» число строк решит новое измерение.
@@ -314,7 +322,7 @@ public struct LightScreenView: View {
         // Низ «Подробно» приводится к базе: без необязательных строк, полоса 22 — как была бы раскладка, не зная, какая из них сейчас
         // на экране (иначе решение мигало бы). Шапка «Астро» сжата всегда, в базу входит сжатой.
         let baseline = spoilerBottom - heights.prefix(spoilerRows).reduce(CGFloat(0), +) + spoilerExtraTuck
-        let plan = LightCollapsedList.plan(visibleHeight: visibleHeight, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
+        let plan = LightCollapsedList.plan(visibleHeight: visibleHeight - Self.actionReserve, baselineBottom: baseline, actionHeight: 0, rowHeights: heights)
         if plan.rows != fitRows { fitRows = plan.rows }
         if plan.extraTuck != extraTuck { extraTuck = plan.extraTuck }
     }
@@ -497,10 +505,8 @@ public struct LightScreenView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 40)
-            // Вуаль, а не заливка: светило под горизонтом идёт сквозь кнопку («светило не исчезает»).
-            // Замер 04.11: сплошное поле глушило его в 5–6 раз.
-            .background(Self.actionVeil(colorScheme), in: Capsule())
-            .raisedStyle(Palette(colorScheme), radius: 20)
+            // Парящая: системное стекло, как у других плавающих кнопок (30з.1).
+            .glassEffect(.regular, in: Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -512,6 +518,9 @@ public struct LightScreenView: View {
     /// Кнопка шириной по дуге и подтянута к горизонту (схема А, 04.11). Дуга — 326 из 390 единиц купола,
     /// а купол мельче единицы только на экранах уже 390 (`DomeView`, «масштаб по меньшей стороне»).
     static func actionWidth(dome width: CGFloat) -> CGFloat { 326 * min(max(width, 1) / 390, 1) }
+    /// Высота капсулы (40 + поля 3 · 2) — на столько отступает низ прокрутки; над «↺ Сейчас» капсула поднимается ещё на `nowLift`.
+    static let actionReserve: CGFloat = 46
+    static let nowLift: CGFloat = 28
     static func actionVeil(_ scheme: ColorScheme) -> Color {
         // 28к.3: в светлой кнопка поднята — белая вуаль (светлее фона) и тень под ней (`raisedStyle`); в тёмной — как была.
         scheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(PlateTokens.glassVeil)
