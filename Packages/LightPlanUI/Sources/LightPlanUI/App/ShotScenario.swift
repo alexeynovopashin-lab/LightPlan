@@ -143,6 +143,11 @@ extension AppModel {
             app.update { $0.astro[sw] = false }
             app.update { $0.astro[sw] = true }
         }
+        // 30з.4: `-LPShotKnob <минута>` — ползунок «Света» стоит на этой минуте выбранного дня (−60…1500), как после пальца: проверка полей
+        // шкалы (−40 = 23:20 предыдущего дня, 1480 = 00:40 следующего), которых «сейчас» приложения не достаёт.
+        if let raw = UserDefaults.standard.string(forKey: "LPShotKnob"), let minute = Double(raw.trimmingCharacters(in: .whitespaces)) {   // минус перед числом — с пробелом: `-LPShotKnob " -40"`
+            app.light.timebar.show(day: app.light.timebar.machine.selectedDate, minute: minute)
+        }
         // `-LPShotEnterAstro 1` — нажат «Астро» (сид в «Просто» или «Про»): первый вход включает слои неба.
         if UserDefaults.standard.bool(forKey: "LPShotEnterAstro") { app.update { $0.mode = .astro } }
         #endif
