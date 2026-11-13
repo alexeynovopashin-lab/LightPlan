@@ -169,15 +169,16 @@ enum ArcG1 {
     /// вдвое мельче тёмного (слово Алексея 14.11): видимый поперечник 15 pt против 32 pt.
     static let discRingFill: Double = 0.18
     static let discRingStroke: Double = 0.34
-    /// Диск: кромка шире ядра на 1,2 pt, персиковое кольцо уже на 0,4, белая середина уже на 2 (`DomeGeometry.coreRadius` = 6,5).
-    static let discRimExtra: Double = 1.2
-    static let discPeachInset: Double = 0.4
-    static let discWhiteInset: Double = 2
+    /// Диск как в вебе (слово Алексея 14.11: «в центре белым, окантовку оранжевым и ободок как в web»): радиус `DomeGeometry.coreRadius` (6,5),
+    /// ободок цвета страницы шириной 2,5 pt посажен на его край (виден оранжевый круг радиусом 5,25), белая середина радиусом 3,3.
+    static let discRimWidth: Double = 2.5
+    static let discWhiteRadius: Double = 3.3
 
-    /// Диск солнца светлой темы: оранжевая кромка, персиковое кольцо, белая середина, под ним мягкое оранжевое свечение.
-    /// `ringColor` — цвет состояния света в эту минуту. `halo`, `ring` и `core` — доли силы 0…1 (над линией горизонта обе равны доле светила; под линией — размытая копия, см. `paintBody`).
-    static func paintDisc(_ context: inout GraphicsContext, at pos: CGPoint, halo: Double, ring: Double, ringColor: Color, core: Double) {
-        let r = DomeGeometry.coreRadius
+    /// Диск солнца светлой темы: оранжевый круг с белой серединой, ободок цвета страницы (`rimColor`), под ним мягкое оранжевое свечение и
+    /// внешнее кольцо цвета состояния света (`ringColor`). `halo`, `ring` и `core` — доли силы 0…1 (над линией горизонта обе равны доле
+    /// светила; под линией — размытая копия, см. `paintBody`).
+    static func paintDisc(_ context: inout GraphicsContext, at pos: CGPoint, halo: Double, ring: Double, ringColor: Color,
+                          rimColor: Color, core: Double) {
         func disc(_ radius: Double) -> Path {
             Path(ellipseIn: CGRect(x: pos.x - CGFloat(radius), y: pos.y - CGFloat(radius), width: CGFloat(radius * 2), height: CGFloat(radius * 2)))
         }
@@ -198,9 +199,10 @@ enum ArcG1 {
         guard core > 0.002 else { return }
         context.drawLayer { layer in
             layer.opacity = core
-            layer.fill(disc(r + discRimExtra), with: .color(orange.color))
-            layer.fill(disc(r - discPeachInset), with: .color(peach.color))
-            layer.fill(disc(r - discWhiteInset), with: .color(white.color))
+            let r = DomeGeometry.coreRadius
+            layer.fill(disc(r), with: .color(orange.color))
+            layer.fill(disc(discWhiteRadius), with: .color(white.color))
+            layer.stroke(disc(r), with: .color(rimColor), lineWidth: CGFloat(discRimWidth))
         }
     }
 }

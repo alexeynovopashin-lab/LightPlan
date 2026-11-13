@@ -358,7 +358,10 @@ public struct DomeView: View {
             paintBody(&context, at: p, eD: e, weight: 1, color: state.color, deepColor: deepColor)
         }
 
-        if let nowMinute, sun.elevation(at: nowMinute) > 0.5 {
+        // 28к.5 (слово Алексея 14.11, «серое кольцо не нужно», в вебе его нет): светлая тема не рисует кольцо «сейчас» вокруг самого солнца —
+        // пока светило стоит на текущей минуте, кольцо r 11 серым венчало бы диск; сдвинули время — кольцо остаётся отметкой «сейчас».
+        let sunIsAtNow = colorScheme == .light && nowMinute.map { abs($0 - t) < 1 } == true
+        if let nowMinute, !sunIsAtNow, sun.elevation(at: nowMinute) > 0.5 {
             paintNowRing(&context, at: g.posAt(nowMinute, sun: sun))
         }
     }
@@ -443,7 +446,7 @@ public struct DomeView: View {
 
         // 28к.5: светлая тема — диск листа Г1 (кромка, персиковое кольцо, белая середина, мягкое свечение) вместо кольца, тени и выреза.
         if colorScheme == .light {
-            ArcG1.paintDisc(&context, at: pos, halo: ring, ring: ring, ringColor: ink, core: core)
+            ArcG1.paintDisc(&context, at: pos, halo: ring, ring: ring, ringColor: ink, rimColor: surfaceColor, core: core)
             return
         }
 
