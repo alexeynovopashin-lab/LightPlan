@@ -64,8 +64,10 @@ struct PlannerConsole: View {
             focused = true
         }
         #if DEBUG
-        // Стенд и тесты: `-LPSearchQuery <слово>` вводит запрос без клавиатуры.
-        .onAppear { if nav.searchOpen, let q = UserDefaults.standard.string(forKey: "LPSearchQuery") { nav.searchQuery = q } }
+        // Стенд и тесты: `-LPSearchQuery <слово>` вводит запрос без клавиатуры, как только плашка развернулась.
+        .onChange(of: nav.searchOpen, initial: true) { _, open in
+            if open, nav.searchQuery.isEmpty, let q = UserDefaults.standard.string(forKey: "LPSearchQuery") { nav.searchQuery = q }
+        }
         #endif
     }
 

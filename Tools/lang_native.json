@@ -604,7 +604,8 @@
     "loc.markYours": "уже у вас",
     "loc.markFromList": "из общего списка",
     "plan.mbSet": "Подборка",
-    "plan.mbRef": "Референс"
+    "plan.mbRef": "Референс",
+    "plan.stackMore": "ещё {n}"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1207,7 +1208,8 @@
     "loc.markYours": "already yours",
     "loc.markFromList": "from the shared list",
     "plan.mbSet": "Set",
-    "plan.mbRef": "Reference"
+    "plan.mbRef": "Reference",
+    "plan.stackMore": "{n} more"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1810,7 +1812,8 @@
     "loc.markYours": "ya está en los tuyos",
     "loc.markFromList": "de la lista común",
     "plan.mbSet": "Set",
-    "plan.mbRef": "Referencia"
+    "plan.mbRef": "Referencia",
+    "plan.stackMore": "{n} más"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2409,7 +2412,8 @@
     "loc.markYours": "登録済み",
     "loc.markFromList": "共有リストから",
     "plan.mbSet": "セット",
-    "plan.mbRef": "参考"
+    "plan.mbRef": "参考",
+    "plan.stackMore": "他{n}件"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -3008,6 +3012,7 @@
     "loc.markYours": "已在你的列表",
     "loc.markFromList": "来自公共列表",
     "plan.mbSet": "集合",
-    "plan.mbRef": "参考"
+    "plan.mbRef": "参考",
+    "plan.stackMore": "另{n}项"
   }
 }

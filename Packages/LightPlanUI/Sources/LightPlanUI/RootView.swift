@@ -86,7 +86,7 @@ private struct Shell: View {
             if let s = app.card {
                 CardScreen(app: app, s: s)
                     .edgeBack(app, z: BackZ.card) { app.closeCard() }
-                    .transition(.move(edge: .bottom))
+                    .transition(app.cardGrowFrom.map { AnyTransition.cardGrow($0) } ?? AnyTransition.move(edge: .bottom))
                     .zIndex(BackZ.card)
                 // Список долгов (К5, вид 2) — над карточкой долга; свайп от края и «✕» возвращают к ней.
                 if app.debtsListOpen {

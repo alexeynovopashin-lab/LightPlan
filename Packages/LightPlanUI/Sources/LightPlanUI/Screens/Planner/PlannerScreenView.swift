@@ -60,7 +60,7 @@ public struct PlannerScreenView: View {
             .tabRise()
         }
         // Пульт висит над панелью вкладок (30и.4): низ ленты получает запас под него, «Наверх» стоит над пультом.
-        .scrollJump(app.lexicon, node: "sj.planner", look: ConsoleMetrics.jumpLook, enabled: app.planner.scope != .day, position: $position)
+        .scrollJump(app.lexicon, node: "sj.planner", look: ConsoleMetrics.jumpLook, enabled: app.planner.scope != .day, hidden: nav.searchOpen, position: $position)
         .coordinateSpace(name: Self.windowSpace)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windowH = $0 }
         #if DEBUG && os(iOS)
