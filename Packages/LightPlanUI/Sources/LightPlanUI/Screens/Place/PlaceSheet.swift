@@ -28,6 +28,10 @@ struct PlaceSheet: View {
     @State private var hits: [PlaceHit] = []
     /// Строка вместо ответов: «Ничего не нашлось» или «без сети».
     @State private var hitsNote: String?
+    /// Быстрое поле развилки (30и.1): свои строка, ответы и заметка — путь «Место» не видит набранного здесь.
+    @State private var quick = ""
+    @State private var quickHits: [PlaceHit] = []
+    @State private var quickNote: String?
     @State private var detecting = false
     /// Строка «Моих мест», раскрытая карандашом.
     @State private var editing: String?
@@ -36,7 +40,7 @@ struct PlaceSheet: View {
     @State private var studioEdit: String?
     @FocusState private var focus: Field?
 
-    private enum Field: Hashable { case query, lat, lon, name, address, spotName, spotAddress }
+    private enum Field: Hashable { case quick, query, lat, lon, name, address, spotName, spotAddress }
 
     init(app: AppModel, windowHeight: CGFloat) {
         self.app = app
@@ -172,15 +176,85 @@ struct PlaceSheet: View {
     /// «Фотостудии» с шапки нет — месту приложения студия не нужна.
     private func ways(_ t: Lexicon, _ pal: Palette) -> some View {
         VStack(spacing: 0) {
+            quickBlock(t, pal)
             // Место приложения — сперва «где я»; у точки маршрута формы этого вопроса нет.
-            if stop == nil { hereBlock(t, pal) }
+            if stop == nil { hereBlock(t, pal).padding(.top, 16) }
             wayRow(.addr, icon: "city", title: t.t("loc.wayAddr"), sub: t.t("loc.wayPlaceSub"), pal)
             if stop != nil {
                 wayRow(.studio, icon: "studio", title: t.t("loc.wayStudio"), sub: t.t("loc.wayStudioSub"), pal)
             }
             wayRow(.geo, icon: "route", title: t.t("loc.wayCoords"), sub: t.t("loc.wayCoordsSub"), pal)
         }
-        .padding(.top, 16)
+        .padding(.top, 6)
+    }
+
+    // MARK: - Быстрое поле (30и.1)
+
+    /// Поле над «Я здесь» (слово Алексея 13.11, вариант Б — выбор 14.11): ответы выпадают карточкой прямо
+    /// под ним и закрывают всё, что ниже; высота листа не меняется. Нажатие на ответ или «Поиск» на
+    /// клавиатуре — место переезжает, лист закрывается (`AppModel.takeQuickHit`).
+    private func quickBlock(_ t: Lexicon, _ pal: Palette) -> some View {
+        HStack(spacing: 10) {
+            PlaceGlyphView(glyph: .search, size: 17, line: 1.8).foregroundStyle(pal.ink6)
+            TextField("", text: $quick, prompt: Text(t.t("loc.queryPh")).foregroundStyle(pal.ink8))
+                .font(.system(size: 16)).foregroundStyle(pal.ink)
+                .textFieldStyle(.plain)
+                .autocorrectionDisabled()
+                .focused($focus, equals: .quick)
+                .submitLabel(.search)
+                .onSubmit { if let h = quickHits.first { app.takeQuickHit(h) } }
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 46)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(focus == .quick ? pal.press : pal.press.opacity(0.6)))
+        .shotNode("loc.quick")
+        .padding(.top, 12)
+        .overlay(alignment: .topLeading) {
+            if !quickHits.isEmpty || quickNote != nil { quickDrop(pal).offset(y: 12 + 46 + 6) }
+        }
+        .zIndex(1)
+        .task(id: quick) {
+            let q = quick.trimmingCharacters(in: .whitespaces)
+            guard PlaceQuery.isAskable(q) else { quickHits = []; quickNote = nil; return }
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+            let (found, note) = await lookup(q, t)
+            guard !Task.isCancelled else { return }
+            quickHits = Array(found.prefix(3)); quickNote = note
+        }
+    }
+
+    /// Карточка ответов: не больше трёх строк (места между полем и клавиатурой на маленьком телефоне
+    /// хватает на три), первая подсвечена — её берёт «Поиск» на клавиатуре.
+    private func quickDrop(_ pal: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let quickNote {
+                Text(quickNote).font(.system(size: 13)).foregroundStyle(pal.ink6)
+                    .padding(.vertical, 12).padding(.horizontal, 14)
+                    .shotNode("loc.quick.note", text: quickNote)
+            }
+            ForEach(Array(quickHits.enumerated()), id: \.offset) { i, h in
+                Button { app.takeQuickHit(h) } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(h.name).font(.system(size: 15)).foregroundStyle(pal.ink)
+                        if !h.area.isEmpty { Text(h.area).font(.system(size: 12)).foregroundStyle(pal.ink4) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 11).padding(.horizontal, 14)
+                    .background(i == 0 ? pal.press : .clear)
+                    .overlay(alignment: .bottom) {
+                        if i < quickHits.count - 1 { Rectangle().fill(pal.hair2).frame(height: 1).padding(.horizontal, 14) }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressFade())
+                .shotNode("loc.quick.hit.\(i)", text: h.name)
+            }
+        }
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(pal.sheet))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(pal.edge, lineWidth: 1))
+        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
     }
 
     // MARK: - «Я здесь» и «Следовать за мной» (29.8в.12)
@@ -332,18 +406,22 @@ struct PlaceSheet: View {
             // Пауза веба 450 мс: не спрашивать геокодер на каждую букву.
             try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled else { return }
-            do {
-                let found = try await app.placeSearch.places(matching: q)
-                guard !Task.isCancelled else { return }
-                hits = found
-                hitsNote = found.isEmpty ? t.t("loc.nothingFound") : nil
-            } catch {
-                guard !Task.isCancelled else { return }
-                // Apple отвечает «не нашёл» ошибкой (`geocodeFoundNoResult`),
-                // а не пустым списком; без сети — кодом `network`.
-                hits = []
-                hitsNote = t.t((error as? CLError)?.code == .network ? "loc.searchOffline" : "loc.nothingFound")
-            }
+            let (found, note) = await lookup(q, t)
+            guard !Task.isCancelled else { return }
+            hits = found; hitsNote = note
+        }
+    }
+
+    /// Вопрос поиску и строка вместо ответов («Ничего не нашлось», «без сети»): общий для поля пути «Место»
+    /// и быстрого поля развилки.
+    private func lookup(_ q: String, _ t: Lexicon) async -> ([PlaceHit], String?) {
+        do {
+            let found = try await app.placeSearch.places(matching: q)
+            return (found, found.isEmpty ? t.t("loc.nothingFound") : nil)
+        } catch {
+            // Apple отвечает «не нашёл» ошибкой (`geocodeFoundNoResult`),
+            // а не пустым списком; без сети — кодом `network`.
+            return ([], t.t((error as? CLError)?.code == .network ? "loc.searchOffline" : "loc.nothingFound"))
         }
     }
 

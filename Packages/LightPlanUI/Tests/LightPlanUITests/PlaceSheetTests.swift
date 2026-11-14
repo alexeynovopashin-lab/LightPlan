@@ -197,4 +197,42 @@ struct PlaceSheetTests {
         await app.place.settled()
         #expect(app.place.name?.city == "Синдзюку")
     }
+
+    // MARK: - Быстрое поле (30и.1, вариант Б)
+
+    @Test func quickHitMovesThePlaceAndClosesTheSheet() async {
+        let app = model(geocoder: DistrictGeocoder())
+        let tokyo = GeoCoordinate(latitude: 35.6895, longitude: 139.6917)
+        app.placeSheetOpen = true
+        app.takeQuickHit(PlaceHit(name: "Токио", area: "Япония", coordinate: tokyo, city: PlaceName(city: "Токио", sub: "")))
+        #expect(!app.placeSheetOpen && app.placeSheetStop == nil)        // «Готово» не нужно
+        #expect(app.place.coordinate == tokyo)
+        await app.place.settled()
+        #expect(app.place.name?.city == "Токио")                         // не район обратного геокодера
+        #expect(app.spots.isEmpty)                                       // «Мои места» не тронуты
+    }
+
+    @Test func quickHitWithoutACityStillMoves() async {
+        // Ответ без города (поиск его не назвал): имя спросят у обратного геокодера, как у «Я здесь».
+        let app = model(geocoder: DistrictGeocoder())
+        let tokyo = GeoCoordinate(latitude: 35.6895, longitude: 139.6917)
+        app.placeSheetOpen = true
+        app.takeQuickHit(PlaceHit(name: "Токио", area: "", coordinate: tokyo))
+        await app.place.settled()
+        #expect(app.place.coordinate == tokyo && app.place.name?.city == "Синдзюку" && !app.placeSheetOpen)
+    }
+
+    @Test func quickHitOnAFormStopBecomesItsSpot() {
+        let app = model()
+        app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
+        app.pickFormGenre(.wedding)
+        app.openStopPlace(0, way: .fork)
+        let garden = GeoCoordinate(latitude: 56.45361, longitude: 84.94889)
+        app.takeQuickHit(PlaceHit(name: "Лагерный сад", area: "Томск, Томская область", coordinate: garden,
+                                  city: PlaceName(city: "Томск", sub: "Томская область")))
+        #expect(app.placeSheetStop == nil && !app.placeSheetOpen)
+        #expect(app.spots.count == 1 && app.spots[0].name == "Лагерный сад")
+        #expect(app.form?.route[0].placeText == "Лагерный сад")
+        #expect(app.place.coordinate != garden)                          // место приложения точка маршрута не трогает
+    }
 }
