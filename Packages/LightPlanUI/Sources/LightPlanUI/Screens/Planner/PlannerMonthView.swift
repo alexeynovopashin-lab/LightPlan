@@ -40,7 +40,6 @@ struct PlannerMonthBody: View {
             if hasShoots { legend(pal) }
             PlannerDayPanel(app: app, f: f).pinGeo("mpanel")
             PlannerDayList(app: app, f: f, fan: $fan)
-            PlannerDayStates(f: f)
         }
     }
 
@@ -440,33 +439,85 @@ struct PlannerDayList: View {
     let f: PlannerFacts
     @Binding var fan: FanTarget?
     @Environment(\.colorScheme) private var scheme
+    /// День, чья стопка раскрыта веером (30и.5); смена выбранного дня снова собирает стопку.
+    @State private var fanned: CivilDate?
+
+    /// Что стоит в списке: строка или стопка съёмок дня (30и.5: от двух съёмок в дне — стопка, одна остаётся строкой;
+    /// встречи, события и занятость — строками, как были).
+    enum Entry: Identifiable {
+        case row(DayItem, Int)
+        case stack([DayItem], Int)
+        var id: String {
+            switch self {
+            case .row(let it, _): it.id
+            case .stack(let its, _): "stack." + (its.first?.id ?? "")
+            }
+        }
+    }
+
+    /// Раскладка дня. Стопка встаёт на место первой съёмки; веер раскрыт — все строки на месте.
+    static func entries(_ items: [DayItem], fanned: Bool) -> [Entry] {
+        let shoots = items.filter { $0.kind == .shoot && $0.session != nil }
+        guard shoots.count >= 2, !fanned else { return items.enumerated().map { .row($0.element, $0.offset) } }
+        var out: [Entry] = []
+        for (i, it) in items.enumerated() {
+            if it.id == shoots[0].id { out.append(.stack(shoots, i)) }
+            else if !shoots.contains(where: { $0.id == it.id }) { out.append(.row(it, i)) }
+        }
+        return out
+    }
 
     var body: some View {
         let pal = Palette(scheme)
-        let items = f.items(on: app.planner.selected)
+        let day = app.planner.selected
+        let items = f.items(on: day)
+        let entries = Self.entries(items, fanned: fanned == day)
         VStack(spacing: 0) {
             PlannerLoadLabel(f: f, items: items)
             VStack(spacing: 5) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { i, it in
-                    row(it, pal).shotNode("row.\(i)")
+                ForEach(entries) { e in
+                    switch e {
+                    case .row(let it, let i): row(it, pal, fromStack: fanned == day && items.filter { $0.kind == .shoot && $0.session != nil }.count >= 2).shotNode("row.\(i)")
+                    case .stack(let its, let i): stack(its, day, pal).shotNode("row.\(i)")
+                    }
                 }
                 if items.isEmpty { free(pal) }
             }
+            .animation(PlanMotion.pick(PlanMotion.stackFan), value: fanned)
             .padding(EdgeInsets(top: 8, leading: 24, bottom: 20, trailing: 24))
             .shotNode("line")
         }
     }
 
     /// Строка записи — со свайпом влево «Удалить» (29.3г); у занятости свайпа нет (как и веера).
-    @ViewBuilder private func row(_ it: DayItem, _ pal: Palette) -> some View {
+    @ViewBuilder private func row(_ it: DayItem, _ pal: Palette, fromStack: Bool = false) -> some View {
         if let s = it.session {
-            line(it, pal).rowSwipe(app, key: "m." + s.id, id: s.id, corner: 12, word: f.t.t("swipe.del"))
+            line(it, pal, fromStack: fromStack).rowSwipe(app, key: "m." + s.id, id: s.id, corner: 12, word: f.t.t("swipe.del"))
+                .transition(.opacity.combined(with: .offset(y: -6)))
         } else {
             line(it, pal)
         }
     }
 
-    private func line(_ it: DayItem, _ pal: Palette) -> some View {
+    /// Стопка съёмок дня (30и.5): верхняя съёмка строкой и два края под ней, на 7 pt ниже и уже на 5 pt с каждой стороны
+    /// (схема: `left/right 6 → 11 → 16`, прозрачность 1 · 0,8 · 0,55). В строке вместо длительности — «ещё N». Нажатие раскрывает веер.
+    private func stack(_ its: [DayItem], _ day: CivilDate, _ pal: Palette) -> some View {
+        let edge = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        return ZStack(alignment: .top) {
+            edge.fill(pal.sheet4).plateStyle(pal, radius: 12, glass: true).frame(height: 40).opacity(0.55)
+                .padding(.horizontal, 10).padding(.top, 14)
+            edge.fill(pal.sheet4).plateStyle(pal, radius: 12, glass: true).frame(height: 40).opacity(0.8)
+                .padding(.horizontal, 5).padding(.top, 7)
+            line(its[0], pal, stackMore: its.count - 1)
+                .onTapGesture { withAnimation(PlanMotion.pick(PlanMotion.stackFan)) { fanned = day } }
+        }
+        .padding(.bottom, 14)
+        .shotNode("stack", text: "\(its.count)")
+        .transition(.opacity)
+    }
+
+    /// `stackMore` — строка стоит на стопке: вместо длительности «ещё N», тап не открывает карточку.
+    private func line(_ it: DayItem, _ pal: Palette, stackMore: Int? = nil, fromStack: Bool = false) -> some View {
         HStack(spacing: 10) {
             if let b = it.block {
                 // Занятость тише съёмки (`.plan-row.busy`).
@@ -486,7 +537,9 @@ struct PlannerDayList: View {
                 }
                 Text(name(s, it)).font(webFont(16, 500)).foregroundStyle(pal.ink).lineLimit(1)
                 Spacer(minLength: 0)
-                if soft {
+                if let more = stackMore {
+                    Text(f.t.t("plan.stackMore", ["n": "\(more)"])).font(webFont(12)).foregroundStyle(pal.ink4)
+                } else if soft {
                     Text(f.t.t(it.kind == .meet ? "plan.meet" : "plan.event").lowercased())
                         .font(webFont(12)).foregroundStyle(pal.ink)
                 } else if past {
@@ -511,8 +564,12 @@ struct PlannerDayList: View {
         .contentShape(Rectangle())
         // Занятость — тапом в свой лист; запись — удержанием в веер (у
         // занятости веера нет, веб `if (b.dataset.b) return`).
-        .modifier(RowAct(app: app, it: it, fan: $fan, swipeKey: it.session.map { "m." + $0.id }))
+        .modifier(RowAct(app: app, it: it, fan: $fan, swipeKey: it.session.map { "m." + $0.id },
+                         grow: it.session.map { s in (past(s, it) ? "" : f.fmt(Double(it.start)), name(s, it)) },
+                         fromStack: fromStack, off: stackMore != nil))
     }
+
+    private func past(_ s: Session, _ it: DayItem) -> Bool { it.kind == .shoot && app.phase(of: s) == .after }
 
     private func icon(_ s: Session, _ it: DayItem, _ pal: Palette) -> some View {
         Group {
@@ -553,59 +610,7 @@ struct PlannerDayList: View {
     }
 }
 
-/// Три действия дня (веб `#dayStates`) — в месяце, под списком. «Занять» —
-/// лист занятости на весь выбранный день (22); «Съёмка» и «Встреча» открывают
-/// форму дня (28, шаг 7).
-struct PlannerDayStates: View {
-    let f: PlannerFacts
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        let pal = Palette(scheme)
-        HStack(spacing: 6) {
-            state(.add, "plan.shortShoot", on: true, ink: pal.brass, label: pal.ink, weight: 600, node: "st.shoot", pal)
-            state(.meet, "plan.shortMeet", on: false, ink: pal.brass, label: pal.ink2, weight: 500, node: "st.meet", pal)
-            state(.lock, "plan.shortBlock", on: false, ink: pal.ink5, label: pal.ink4, weight: 500, node: "st.block", pal)
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 14)
-        .padding(.bottom, 20)
-    }
-
-    private func state(_ k: PlanGlyph.Kind, _ key: String, on: Bool, ink: Color, label: Color, weight: Int,
-                       node: String, _ pal: Palette) -> some View {
-        Button {
-            let day = f.app.planner.selected
-            switch k {
-            case .lock: f.app.openBlockSheet(day: day)
-            // «Съёмка» — форма дня со временем от света; «Встреча» — та же форма в режиме встречи, 14:00
-            // («в кафе идут к двум», не свет; веб `#planMeet`).
-            case .add: f.app.openForm(day: day)
-            case .meet: f.app.openForm(day: day, start: 14 * 60, fromLight: false, mode: .meet)
-            default: break
-            }
-        } label: {
-            // 28к.3: «Съёмка» в светлой — сплошная чёрная; 28к.4 (палитра Д): знак и подпись белые, оранжевый на чёрном читался красным.
-            let black = on && !pal.dark
-            VStack(spacing: 2) {
-                PlanGlyph(kind: k)
-                    .stroke(black ? Color.white : ink, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-                    .frame(width: 18, height: 18)
-                Text(f.t.t(key)).font(webFont(11, weight)).foregroundStyle(black ? Color.white : label).lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 44)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(black ? PlateTokens.blackFill : on ? pal.sheet4 : .clear)
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(black ? .clear : pal.hairline, lineWidth: 1))
-            }
-            .raisedStyle(pal, radius: 14, on: on)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .shotNode(node)
-    }
-}
+// Три действия дня («Съёмка · Встреча · Занять», веб `#dayStates`) с 30и.4 живут в пульте над панелью вкладок: `PlannerConsole`.
 
 /// Действие строки дня: занятость открывается тапом; запись — тап открывает
 /// карточку (25), удержание — веер. На ленте дня (`grip`) тап после жеста
@@ -620,9 +625,17 @@ struct RowAct: ViewModifier {
     var lane = false
     /// Строка со свайпом (29.3г): тап по открытой кнопке только закрывает её.
     var swipeKey: String? = nil
+    /// Строка списка дня (30и.5): карточка вырастает из неё. Даёт время и имя строки; `fromStack` — день разложен из стопки.
+    var grow: ((String, String))? = nil
+    var fromStack = false
+    /// Строка — верх стопки: её нажатие раскрывает веер, своего действия нет.
+    var off = false
+    @State private var frame: CGRect = .zero
 
     func body(content: Content) -> some View {
-        if let b = it.block {
+        if off {
+            content
+        } else if let b = it.block {
             content.onTapGesture {
                 if grip?.swallows == true { return }
                 app.openBlockSheet(editing: b.id)
@@ -634,8 +647,10 @@ struct RowAct: ViewModifier {
                     if grip?.swallows == true { DayGripLog.note("swallow card \(s.id)"); return }
                     if let k = swipeKey, app.rowSwipe.takesTap(k) { return }
                     DayGripLog.note("tap card \(s.id)")
-                    PlanMotion.openFromCalendar(app, id: s.id)
+                    let src = grow.map { CardGrowSource(frame: frame, time: $0.0, name: $0.1) }
+                    PlanMotion.openFromCalendar(app, id: s.id, grow: frame == .zero ? nil : src, fromStack: fromStack)
                 }
+                .onGeometryChange(for: CGRect.self) { grow == nil ? .zero : $0.frame(in: .global) } action: { frame = $0 }
                 .modifier(FanHold(id: s.id, fan: $fan, off: lane))
                 // Плашка, что улетает в корзину из веера, формы или карточки (29.7).
                 .binSubject(app, s.id)

@@ -58,6 +58,7 @@ struct CardScreen: View {
                 // Карточка долга (К5): остальные долги — стопкой внизу экрана, как в Wallet; лист листается над ней.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if app.cardStackMode == .debts { DebtPile(app: app, s: s, pal: pal) }
+                    if app.cardStackMode == .fan { DayPile(app: app, s: s, pal: pal) }
                 }
                 // Сосед из стопки открывается листом сверху, как у веба
                 // (`openCard(i, false, …)` сбрасывает прокрутку).

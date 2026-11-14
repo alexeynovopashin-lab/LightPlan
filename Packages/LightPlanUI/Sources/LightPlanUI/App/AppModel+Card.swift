@@ -15,12 +15,16 @@ extension AppModel {
     }
 
     /// - Parameter stack: стопка над листом; всё, кроме календаря и края стопки долгов, открывает стопку дня.
-    public func openCard(id: String, stack: CardStackMode = .day) {
+    public func openCard(id: String, stack: CardStackMode = .day) { openCard(id: id, stack: stack, grow: nil) }
+
+    /// `grow` — рамка строки, из которой карточка растёт (30и.5); без неё карточка въезжает снизу.
+    func openCard(id: String, stack: CardStackMode, grow: CardGrowSource?) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
-        guard passPhoneGate(then: { [weak self] in self?.openCard(id: id, stack: stack) }) else { return }
+        guard passPhoneGate(then: { [weak self] in self?.openCard(id: id, stack: stack, grow: grow) }) else { return }
         if cardId != id { cardFolds = []; cardTuning = false; cardDocMessage = nil; refsFull = nil }
         cardId = id
         cardStackMode = stack
+        cardGrowFrom = grow
         debtsListOpen = false
         askCardWeather(s)
         Task { await learnZone(of: s) }

@@ -2,73 +2,54 @@ import SwiftUI
 import LightPlanCore
 import LightPlanDomain
 
-/// Поиск по съёмкам (веб `#searchOverlay`, итерация 22): клиент, имя съёмки,
-/// место, город. Ищет на каждой букве. Тап по найденному открывает карточку
-/// (25); «Съёмки» под ней встают на день записи.
+/// Результаты поиска по съёмкам (веб `#searchOverlay`, итерация 22): клиент, имя съёмки, место, город. Ищет на каждой букве.
+/// С 30и.4 отдельного окна нет: запрос вводят в плашку пульта (`PlannerConsole`), а найденное лежит стеклянной панелью над
+/// плашкой — календарь под ней не пропадает. Тап по найденному открывает карточку (25); «Съёмки» под ней встают на день записи.
 struct PlannerSearchView: View {
     @Bindable var app: AppModel
     let f: PlannerFacts
     @Bindable var nav: PlannerNav
     @Environment(\.colorScheme) private var scheme
-    @State private var query = ""
-    @FocusState private var focused: Bool
-    @State private var position = ScrollPosition(edge: .top)
+    /// Высота списка, как он есть: панель по ней не выше `maxHeight` и не пустая.
+    @State private var listHeight: CGFloat = 0
+
+    /// Выше панель не растёт: дальше список листается внутри неё.
+    static let maxHeight: CGFloat = 340
 
     var body: some View {
         let pal = Palette(scheme)
         let words = f.words
-        let hits = YearMath.search(query, in: app.sessions, eventsLayer: app.eventsLayer, typeName: words.typeName)
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                OverlayBack(title: f.t.t("nav.back"), node: "se.back") { close() }
-                TextField("", text: $query, prompt: Text(f.t.t("search.ph")).foregroundStyle(pal.ink8))
-                    .font(webFont(16)).foregroundStyle(pal.ink)
-                    .focused($focused)
-                    .autocorrectionDisabled()
-                    .tint(pal.ink) // каретка веба — цвет текста, не системный синий
-                    .padding(.vertical, 14).padding(.horizontal, 15)
-                    .background(focused ? pal.press : pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .shotNode("se.field")
-                    .padding(.top, 14)
-                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    empty("search.startTyping", pal)
-                } else if hits.isEmpty {
-                    empty("search.nothing", pal)
-                } else {
-                    ForEach(Array(hits.enumerated()), id: \.element.id) { i, s in row(s, words, pal).shotNode("se.row.\(i)") }
+        let query = nav.searchQuery
+        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let hits = YearMath.search(query, in: app.sessions, eventsLayer: app.eventsLayer, typeName: words.typeName)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if hits.isEmpty {
+                        Text(f.t.t("search.nothing")).font(webFont(14)).foregroundStyle(pal.ink7)
+                            .padding(.vertical, 8)
+                            .shotNode("se.empty")
+                    } else {
+                        ForEach(Array(hits.enumerated()), id: \.element.id) { i, s in row(s, words, pal).shotNode("se.row.\(i)") }
+                    }
                 }
+                .padding(.horizontal, 16).padding(.vertical, 6)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 14)
-            .padding(.bottom, 40)
-        }
-        .scrollJump(app.lexicon, node: "sj.search", position: $position)
-        .scrollDismissesKeyboard(.interactively)
-        .background(pal.surface.ignoresSafeArea())
-        #if os(iOS)
-        // Касание мимо строк закрывает открытую кнопку «Удалить» (29.3г), как в «Съёмках».
-        .gesture(TouchProbe { stamp in Task { @MainActor in app.rowSwipe.outsideTouch(stamp: stamp) } })
-        #endif
-        #if DEBUG
-        // Стенд и тесты (30.2): `-LPSearchQuery <слово>` вводит запрос без клавиатуры — длинный список для кадров кнопки прыжка.
-        .onAppear { if let q = UserDefaults.standard.string(forKey: "LPSearchQuery") { query = q } }
-        #endif
-        .task {
-            // Клавиатура — когда слой почти доехал (веб: 350 мс).
-            try? await Task.sleep(for: .milliseconds(350))
-            focused = true
+            .frame(height: min(max(listHeight, 44), Self.maxHeight))
+            .scrollDismissesKeyboard(.interactively)
+            .glassPlate(pal, radius: 22, hush: 0.7)
+            .padding(.horizontal, ConsoleMetrics.margin)
+            .shotNode("se.panel", text: "\(hits.count)")
+            #if os(iOS)
+            // Касание мимо строк закрывает открытую кнопку «Удалить» (29.3г), как в «Съёмках».
+            .gesture(TouchProbe { stamp in Task { @MainActor in app.rowSwipe.outsideTouch(stamp: stamp) } })
+            #endif
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
     }
 
     private func close() {
-        focused = false
         PlanMotion.search(nav, open: false)
-    }
-
-    private func empty(_ key: String, _ pal: Palette) -> some View {
-        Text(f.t.t(key)).font(webFont(14)).foregroundStyle(pal.ink7)
-            .padding(.vertical, 8).padding(.top, 0)
-            .shotNode("se.empty")
     }
 
     /// `.plan-row`: дата латунью и «кто · часы», волосок снизу (у веба белый
@@ -94,7 +75,7 @@ struct PlannerSearchView: View {
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 9)
-            .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.04)).frame(height: 1) }
+            .overlay(alignment: .bottom) { Rectangle().fill(pal.hairline).frame(height: 1) }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

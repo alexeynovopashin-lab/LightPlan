@@ -60,20 +60,34 @@ enum PlanMotion {
     }
 
     /// Нажатие на запись в календаре (месяц, неделя, лента дня): несданная съёмка открывается со стопкой долгов (К5).
-    @MainActor static func openFromCalendar(_ app: AppModel, id: String) {
-        withAnimation(pick(overlay)) { app.openCardFromCalendar(id: id) }
+    @MainActor static func openFromCalendar(_ app: AppModel, id: String, grow: CardGrowSource? = nil, fromStack: Bool = false) {
+        withAnimation(pick(grow == nil ? overlay : growCard)) { app.openCardFromCalendar(id: id, grow: grow, fromStack: fromStack) }
+    }
+
+    /// Нажатие на кромку внизу карточки из стопки дня: сосед открывается листом, стопка остаётся.
+    @MainActor static func openFromPile(_ app: AppModel, id: String) {
+        withAnimation(pick(overlay)) { app.openCard(id: id, stack: .fan, grow: nil) }
     }
 
     @MainActor static func closeCard(_ app: AppModel) {
-        withAnimation(pick(overlay)) { app.closeCard() }
+        withAnimation(pick(app.cardGrowFrom == nil ? overlay : growCard)) { app.closeCard() }
     }
+
+    /// Строка вырастает в карточку и уходит назад в строку (30и.5, схема: ≈ 0,35 с).
+    static let growCard = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.35)
+    /// Стопка дня раскрывается веером.
+    static let stackFan = Animation.timingCurve(0.25, 1, 0.4, 1, duration: 0.3)
 
     @MainActor static func stats(_ nav: PlannerNav, open: Bool) {
         withAnimation(pick(stats)) { nav.statsOpen = open }
     }
 
+    /// Лупа пульта разворачивается в плашку поиска, «✕» сворачивает её в круг (30и.4: 0,3 с). Запрос не переживает закрытие.
     @MainActor static func search(_ nav: PlannerNav, open: Bool) {
-        withAnimation(pick(overlay)) { nav.searchOpen = open }
+        withAnimation(pick(ConsoleMetrics.morph)) {
+            nav.searchOpen = open
+            if !open { nav.searchQuery = "" }
+        }
     }
 
     @MainActor static func lenta(_ app: AppModel, _ nav: PlannerNav, open: Bool) {

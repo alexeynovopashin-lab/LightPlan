@@ -29,9 +29,15 @@ public struct PlannerScreenView: View {
     @State private var grip = DayGrip()
     /// Разрез месяца при входе в день (29.2а).
     @State private var part = PartDay()
+    /// Набор кнопок пульта (30и.8): верх полосы мудборда в окне прокрутки и высота окна.
+    @State private var stripTop: CGFloat = .infinity
+    @State private var windowH: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var still
 
     public init(app: AppModel) { self.app = app }
+
+    /// Пространство окна ленты: в нём меряется верх полосы мудборда.
+    static let windowSpace = "plannerWindow"
 
     public var body: some View {
         let pal = Palette(scheme)
@@ -46,13 +52,17 @@ public struct PlannerScreenView: View {
                 }
                 // Полоса мудборда — внизу «Съёмок», под лентой дня и кнопками (28); под ней — «Документы» (28д).
                 MoodboardStrip(app: app, f: f, day: st.scope == .day ? st.selected : nil)
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.windowSpace)).minY } action: { stripTop = $0 }
                 DocsStrip(app: app).padding(.bottom, 30)
             }
             .frame(maxWidth: .infinity, alignment: .top)
             // Содержимое под шапкой проявляется при смене вкладки (S1); шапка (`PlanTop`) не мигает.
             .tabRise()
         }
-        .scrollJump(app.lexicon, node: "sj.planner", enabled: app.planner.scope != .day, position: $position)
+        // Пульт висит над панелью вкладок (30и.4): низ ленты получает запас под него, «Наверх» стоит над пультом.
+        .scrollJump(app.lexicon, node: "sj.planner", look: ConsoleMetrics.jumpLook, enabled: app.planner.scope != .day, hidden: nav.searchOpen, position: $position)
+        .coordinateSpace(name: Self.windowSpace)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windowH = $0 }
         #if DEBUG && os(iOS)
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in MonthPinBench.scroll(y) }
         .task { await MonthPinBench.run(app, nav: nav, scrollTo: { position.scrollTo(y: $0) }, scrollEdge: { position.scrollTo(edge: $0) }) }
@@ -85,8 +95,11 @@ public struct PlannerScreenView: View {
                 }
                 .buttonStyle(.plain)
                 .shotNode("plan.now")
-                .padding(.bottom, 12)
+                .padding(.bottom, 12 + ConsoleMetrics.height)
             }
+        }
+        .overlay(alignment: .bottom) {
+            PlannerConsole(app: app, f: f, nav: nav, set: ConsoleMetrics.set(stripTop: stripTop, window: windowH))
         }
         .overlay { PartDayLayer(app: app, f: f, part: part) }
         .overlay(alignment: .topLeading) { scopeMenu(pal, f) }
@@ -126,7 +139,7 @@ public struct PlannerScreenView: View {
             off.disablesAnimations = true
             withTransaction(off) {
                 nav.lentaOpen = false; nav.year12Open = false
-                nav.statsOpen = false; nav.searchOpen = false
+                nav.statsOpen = false; nav.searchOpen = false; nav.searchQuery = ""
                 fan = nil
                 grip.deselect()
             }
@@ -473,12 +486,9 @@ private struct PlanTop: View {
                 } label: { action(.stats, pal.brass, "plan.stats") }
                     .buttonStyle(.plain)
                     .accessibilityLabel(f.t.t("plan.stats"))
-                Button { PlanMotion.search(nav, open: true) } label: { action(.search, pal.ink, "plan.search") }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(f.t.t("plan.search"))
             }
         }
-        .overlay { titleButton(pal, rightButtons: app.questWaiting.count > 0 ? 4 : 3) }
+        .overlay { titleButton(pal, rightButtons: app.questWaiting.count > 0 ? 3 : 2) }
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { topW = $0 }

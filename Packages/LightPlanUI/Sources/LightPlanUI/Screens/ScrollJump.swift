@@ -36,6 +36,8 @@ struct ScrollJump: ViewModifier {
     var reserves = true
     /// `false` — кнопки нет (вид, где прокрутка не страница: лента дня).
     var enabled = true
+    /// Кнопка спрятана, а запас низа остался (на «Съёмках» пока развёрнута плашка поиска: страница не прыгает).
+    var hidden = false
     /// Позиция прокрутки самого экрана. Если экран листает программно (`scrollTo`), он отдаёт её сюда: два `.scrollPosition` на одной
     /// прокрутке не уживаются — внутренний, этот, перекрывал внешнюю, и экранный `scrollTo` молча не доходил (30.1: лента года
     /// открывалась на январе, лента дня — на 00:00).
@@ -73,7 +75,7 @@ struct ScrollJump: ViewModifier {
     }
 
     @ViewBuilder private func jump(_ pal: Palette) -> some View {
-        if enabled, Moodboard.jumpVisible(scrollable: scrollable, screen: window) {
+        if enabled, !hidden, Moodboard.jumpVisible(scrollable: scrollable, screen: window) {
             let down = Moodboard.jumpGoesDown(offset: offset, scrollable: scrollable)
             Button {
                 Self.logTap(node, down: down, offset: offset, topY: topY, bottomY: bottomY)
@@ -124,7 +126,7 @@ extension View {
     /// Кнопка прыжка на длинную прокрутку; `node` — имя узла для снимков и отчёта высот; `reserve: false` — без запаса низа
     /// (мудборд). Экран со своим `scrollTo` отдаёт позицию сюда (`position:`), а не вешает свой `.scrollPosition` рядом.
     func scrollJump(_ lexicon: Lexicon, node: String, look: ScrollJump.Look = .standard, reserve: Bool = true,
-                    enabled: Bool = true, position: Binding<ScrollPosition>? = nil) -> some View {
-        modifier(ScrollJump(lexicon: lexicon, node: node, look: look, reserves: reserve, enabled: enabled, screenPosition: position))
+                    enabled: Bool = true, hidden: Bool = false, position: Binding<ScrollPosition>? = nil) -> some View {
+        modifier(ScrollJump(lexicon: lexicon, node: node, look: look, reserves: reserve, enabled: enabled, hidden: hidden, screenPosition: position))
     }
 }

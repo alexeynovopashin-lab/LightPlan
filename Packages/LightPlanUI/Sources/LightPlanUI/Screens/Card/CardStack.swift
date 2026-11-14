@@ -10,6 +10,8 @@ public enum CardStackMode: Sendable {
     case day
     /// Все несданные съёмки (`Debts`): так открывает календарь нажатие на несданную.
     case debts
+    /// Карточка выросла из стопки дня на «Съёмках» (30и.5): остальные съёмки дня — краями внизу экрана (`DayPile`), над листом пусто.
+    case fan
 }
 
 extension AppModel {
@@ -25,9 +27,11 @@ extension AppModel {
 
     /// Вход из календаря (месяц, неделя, лента дня): нажали несданную съёмку — под её карточкой стопка всех долгов;
     /// сданную, будущую, встречу — обычная стопка дня. Отдельной кнопки «Долги» нет (Алексей, 21.10).
-    public func openCardFromCalendar(id: String) {
+    public func openCardFromCalendar(id: String) { openCardFromCalendar(id: id, grow: nil, fromStack: false) }
+
+    func openCardFromCalendar(id: String, grow: CardGrowSource?, fromStack: Bool) {
         guard let s = snapshot.sessions.first(where: { $0.id == id }) else { return }
-        openCard(id: id, stack: isDebt(s) ? .debts : .day)
+        openCard(id: id, stack: isDebt(s) ? .debts : fromStack ? .fan : .day, grow: grow)
     }
 
     /// Соседи карточки в стопке. В стопке долгов — все долги, кроме самой карточки, старый первым (стопка внизу экрана,
@@ -35,7 +39,7 @@ extension AppModel {
     /// открыли следующий.
     func stack(of s: Session) -> [Session] {
         switch cardStackMode {
-        case .day: dayStack(of: s)
+        case .day, .fan: dayStack(of: s)
         case .debts: debts().filter { $0.id != s.id }
         }
     }
@@ -136,7 +140,7 @@ struct CardStack<Sheet: View>: View {
     /// Края над листом. В стопке долгов их нет (К5, Алексей 23.10: «подобно стопкам Wallet»): другие долги лежат
     /// стопкой внизу экрана (`DebtPile`), над листом — пусто.
     static func edges(_ app: AppModel, of s: Session) -> [Session] {
-        app.cardStackMode == .debts ? [] : app.stack(of: s)
+        app.cardStackMode == .debts || app.cardStackMode == .fan ? [] : app.stack(of: s)
     }
 
     var body: some View {
