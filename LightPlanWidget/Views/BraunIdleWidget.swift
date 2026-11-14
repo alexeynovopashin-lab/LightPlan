@@ -124,21 +124,32 @@ private struct NotchBand: Shape {
     }
 }
 
+/// Тело окошка Braun: чёрное (в светлой — серое) стекло, утопленное — тень у верхней кромки, светлая кромка снизу, в тёмной тонкая обводка.
+/// Одно на всех: окошко со флажком (`BraunNotchWindow`, виджет) и окошко отсчёта на плашке экрана активности (`ActivityCountdownWindow`, 30и.9).
+struct BraunWindowFace: View {
+    let pal: BraunPalette
+    var corner: CGFloat = 4
+
+    var body: some View {
+        let box = RoundedRectangle(cornerRadius: corner, style: .continuous)
+        ZStack {
+            box.fill(pal.win)
+            box.fill(LinearGradient(colors: [pal.winTopShadow, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.22)))
+            box.fill(LinearGradient(colors: [.clear, pal.winBottomRim], startPoint: UnitPoint(x: 0.5, y: 0.9), endPoint: .bottom))
+            if let ring = pal.winRing { box.strokeBorder(ring, lineWidth: 0.5) }
+        }
+    }
+}
+
 /// Окошко Braun «осталось свадьбы» с красным флажком по левому краю. Цифры рисует вид поверх (живой таймер последним). Утоплено, как у А:
 /// тень у верхней кромки, светлая кромка снизу, в тёмной тонкая обводка — всё это по прямоугольнику, который вырез обрезает.
 struct BraunNotchWindow: View {
     let pal: BraunPalette
 
     var body: some View {
-        let box = RoundedRectangle(cornerRadius: 4, style: .continuous)
         ZStack(alignment: .topLeading) {
-            ZStack {
-                box.fill(pal.win)
-                box.fill(LinearGradient(colors: [pal.winTopShadow, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.22)))
-                box.fill(LinearGradient(colors: [.clear, pal.winBottomRim], startPoint: UnitPoint(x: 0.5, y: 0.9), endPoint: .bottom))
-                if let ring = pal.winRing { box.strokeBorder(ring, lineWidth: 0.5) }
-            }
-            .clipShape(NotchOutline())
+            BraunWindowFace(pal: pal)
+                .clipShape(NotchOutline())
             // Полоса — левый край окошка по всей высоте, но не выше его видимого тела: в тёмной обводка 0,5 сверху срезана. Те же слои блика, что у окошка
             // (тень сверху, кромка снизу, обводка), идут по полосе до её внешнего края, по её контуру: флажок — торец окошка, а не красная фигура рядом (30.10).
             let inset = BraunWindow.notchBandInsetTop(ringed: pal.winRing != nil)
