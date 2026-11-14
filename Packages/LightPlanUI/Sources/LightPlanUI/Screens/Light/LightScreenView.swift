@@ -25,6 +25,8 @@ public struct LightScreenView: View {
     /// Рамка купола и показаний в ней — светило пальцем (19в).
     @State private var domeSize = CGSize(width: 0, height: DomeView.height)
     @State private var readoutFrame = CGRect.null
+    /// 30з.6: время заката у основания дуги в виде «Без блоков» — кнопка; купол её касания не берёт.
+    @State private var flatSetFrame = CGRect.null
     /// 29.8в.27: сколько необязательных строк («Тени», «Небо», «Ветер») поместилось в закрытый список «Астро» (`LightCollapsedList`).
     @State private var fitRows = 0
     /// На сколько pt (0…12) поднята полоса под дугой сверх 22: только когда без этого не помещается важный набор. Выбирает
@@ -388,7 +390,7 @@ public struct LightScreenView: View {
                     }
                 }
             }
-            .overlay { if flatTimes { flatBaseTimes(pal: Palette(colorScheme)) } }
+            .overlay { if flatTimes { flatBaseTimes(t, pal: Palette(colorScheme)) } }
             .coordinateSpace(.named(Self.domeSpace))
             .onGeometryChange(for: CGSize.self) { $0.size } action: { domeSize = $0 }
             .contentShape(Rectangle())
@@ -465,7 +467,7 @@ public struct LightScreenView: View {
             .padding(.top, 2)
             .frame(height: 72, alignment: .top)
             .frame(maxWidth: .infinity)
-            .overlay(alignment: .topLeading) { baseTimes(pal: pal, rise: rise) }
+            .overlay(alignment: .topLeading) { baseTimes(t, pal: pal, rise: rise) }
             .padding(.bottom, Self.nowPlateBottom)
             .background(alignment: .top) {
                 Color.clear.glassPlate(pal).padding(.top, -rise)
@@ -475,7 +477,7 @@ public struct LightScreenView: View {
     }
 
     /// Времена у оснований дуги: координаты блока «до …» (его левый край — x = 8 экрана, верх — `rise` ниже горизонта). Касаний не ловят.
-    private func baseTimes(pal: Palette, rise: CGFloat) -> some View {
+    private func baseTimes(_ t: LightTelemetry, pal: Palette, rise: CGFloat) -> some View {
         let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
         let g = DomeGeometry.self
         // Стопка на сторону (слово Алексея 16.11): знак → время → подпись; верх стопки на `baseStackTop` ниже горизонта.
@@ -487,10 +489,21 @@ public struct LightScreenView: View {
         let tb = model.timebar
         return ZStack(alignment: .topLeading) {
             baseLabel(tb.baseRiseEdge, pal, caption: model.lexiconWord("light.baseRise")).shotNode("edge.rise").position(x: left, y: y)
-            if let setEdge = tb.setEdge { baseLabel(setEdge, pal, caption: model.lexiconWord("light.baseSet")).shotNode("edge.set").position(x: right, y: y) }
+                .allowsHitTesting(false)
+            if let setEdge = tb.setEdge {
+                // 30з.6: закат — кнопка: ползунок встаёт на закат, небо становится прогнозом заката. Подпись — слово балла вместо «закат»
+                // (знак и так заката; «закат · спокойный» не влезало: 93 pt при 84 доступных, обрезалось). Нет прогноза — «закат», как было.
+                let caption = t.sunset.word ?? model.lexiconWord("light.baseSet")
+                Button { model.timebar.jumpToSunset() } label: {
+                    baseLabel(setEdge, pal, caption: caption)
+                        .padding(8).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .shotNode("edge.set")
+                .position(x: right, y: y)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -506,7 +519,8 @@ public struct LightScreenView: View {
                 Text(caption)
                     .font(.system(size: 12, weight: .medium)).tracking(0.2)
                     .foregroundStyle(pal.brassInk)
-                    .lineLimit(1)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .frame(maxWidth: 84)   // подпись не шире 84 pt: на 390 pt основание дуги у самого края плашки
                     .shotNode("edge.cap", text: caption)
             }
         case .text(let text):
@@ -521,7 +535,7 @@ public struct LightScreenView: View {
     /// Вид «Без блоков» (30з.1, `e6a5ccd`): время рассвета и заката — у оснований дуги, знак над временем, в пустой полосе купола под
     /// горизонтом. Основания — концы дуги на горизонте (`cx ∓ rx`, `cy` в `viewBox` купола), через `DomeFit`. После заката слева
     /// завтрашний рассвет (`baseRiseEdge`). Не ловят касаний; рамку купола не меняют.
-    private func flatBaseTimes(pal: Palette) -> some View {
+    private func flatBaseTimes(_ t: LightTelemetry, pal: Palette) -> some View {
         let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
         let g = DomeGeometry.self
         let y = fit.point(CGPoint(x: 0, y: g.horizonY)).y + 6
@@ -529,11 +543,25 @@ public struct LightScreenView: View {
         let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x
         let tb = model.timebar
         return ZStack(alignment: .topLeading) {
-            flatBaseLabel(tb.baseRiseEdge, pal).shotNode("edge.rise").position(x: left, y: y + 17.5)
-            if let setEdge = tb.setEdge { flatBaseLabel(setEdge, pal).shotNode("edge.set").position(x: right, y: y + 17.5) }
+            flatBaseLabel(tb.baseRiseEdge, pal).shotNode("edge.rise").position(x: left, y: y + 17.5).allowsHitTesting(false)
+            if let setEdge = tb.setEdge {
+                // 30з.6: как в виде с блоками — тап ставит ползунок на закат, под временем короткое слово балла; купол этот прямоугольник не берёт.
+                Button { model.timebar.jumpToSunset() } label: {
+                    VStack(spacing: 2) {
+                        flatBaseLabel(setEdge, pal)
+                        if let word = t.sunset.word {
+                            Text(word).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.brassInk).lineLimit(1)
+                        }
+                    }
+                    .padding(8).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.domeSpace)) } action: { flatSetFrame = $0 }
+                .shotNode("edge.set")
+                .position(x: right, y: y + 17.5 + (t.sunset.word == nil ? 0 : 7))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -645,7 +673,7 @@ public struct LightScreenView: View {
     /// Тумблер — 52×26 с полем 7, на 26 от верха и 12 от правого края.
     private func domeAccepts(_ p: CGPoint) -> Bool {
         let swap = CGRect(x: domeSize.width - 12 - 66, y: 26, width: 66, height: 40)
-        if swap.contains(p) || readoutFrame.contains(p) { return false }
+        if swap.contains(p) || readoutFrame.contains(p) || flatSetFrame.contains(p) { return false }
         return model.domeMinute(at: p, in: domeSize) != nil
     }
 
@@ -738,8 +766,8 @@ public struct LightScreenView: View {
         LightCollapsedList.present(hasForecast: t.sky != nil || t.wind != nil).filter { $0 != .shadow }
     }
 
-    /// Строк в плашке «условия» «Просто» без «Неба» и «Ветра»: «Условия», «Закат», «Золотой час», «Свет», «Тени» и «Воздух», если он есть.
-    private func simpleBaseRows(_ t: LightTelemetry) -> Int { 5 + (t.air != nil ? 1 : 0) }
+    /// Строк в плашке «условия» «Просто» без «Неба» и «Ветра»: «Условия», «Золотой час», «Свет», «Тени» и «Воздух», если он есть.
+    private func simpleBaseRows(_ t: LightTelemetry) -> Int { 4 + (t.air != nil ? 1 : 0) }
 
     /// На сколько pt «Просто» сейчас выше своей базы (без «Неба» и «Ветра», строки по 35) помимо `skyShift`: поля строк и высота стоящих
     /// «Неба», «Ветра». Идёт в пробу вместе с `skyShift`, чтобы низ плашки приводился к базе, как бы ни стояла раскладка.
@@ -765,7 +793,8 @@ public struct LightScreenView: View {
                 .fontWeight(.semibold)
                 .shotNode("tele.rec", text: t.condition.text)
             }
-            plainRow(labelKey: "tele.sunset", value: t.sunset.text, color: LightScreenTheme.sunsetColor(t.sunset.tone, scheme: colorScheme))
+            // 30з.6: строки «Закат» нет — закат на дуге (время у правого основания с коротким словом балла, тап ставит ползунок на закат);
+            // балл и ярусы — в «Подробно», группа «Прогноз заката». Нет прогноза — надпись в шапке (`forecastNote`).
             plainRow(labelKey: "tele.golden", value: t.golden)
             plainRow(labelKey: "tele.light", value: t.light)
             // «Тени», «Небо», «Ветер» — необязательные строки: в «Астро» стоит столько первых, сколько помещается (`LightCollapsedList`).

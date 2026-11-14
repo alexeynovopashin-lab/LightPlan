@@ -57,6 +57,8 @@ public struct LightTelemetry: Equatable, Sendable {
     public struct Sunset: Equatable, Sendable {
         public let text: String
         public let tone: SunsetTone
+        /// 30з.6: короткое слово балла («с цветом», «спокойный») — подпись у времени заката на дуге. `nil` — прогноза заката нет.
+        public var word: String? = nil
     }
 
     public struct SkyRow: Equatable, Sendable {
@@ -179,8 +181,9 @@ public struct LightTelemetry: Equatable, Sendable {
         // Закат — главная фича, вынесена наверх: не искать её в астро-деталях.
         let sunset: Sunset
         if let score = weather?.sunset {
-            sunset = Sunset(text: "\(sunsetWord(score, short: true, lexicon: lexicon)) · \(score) / 100",
-                             tone: score >= 75 ? .brass : score >= 50 ? .green : score >= 28 ? .ink : .blue)
+            let word = sunsetWord(score, short: true, lexicon: lexicon)
+            sunset = Sunset(text: "\(word) · \(score) / 100",
+                            tone: score >= 75 ? .brass : score >= 50 ? .green : score >= 28 ? .ink : .blue, word: word)
         } else {
             // Прогноза нет вовсе — честная надпись; прогноз есть, а часа заката в нём нет — «нет данных на этот день».
             sunset = Sunset(text: forecastNote ?? lexicon.t("card.noDataDay"), tone: .muted)

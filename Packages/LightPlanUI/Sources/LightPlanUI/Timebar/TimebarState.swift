@@ -181,6 +181,16 @@ public final class TimebarState {
         checkHourMark()
     }
 
+    /// 30з.6: тап по времени заката у правого основания дуги — ползунок встаёт на закат смотримого дня (небо — прогноз заката: `DomeSky`).
+    /// Полярный день и ночь заката не имеют — ничего не делает.
+    public func jumpToSunset() {
+        guard let set = solarDay.set, solarDay.polar == .normal else { return }
+        stopGlide()
+        drumGlide = nil
+        withAnimation(.easeOut(duration: 0.2)) { machine.setViewMinute(set) }
+        checkHourMark()
+    }
+
     /// Момент из листа выбора: день и время суток, как `applyDate` веба —
     /// без анимации ленты, барабан встаёт на новый день сразу.
     public func show(day: CivilDate, minute: Minutes) {

@@ -78,6 +78,19 @@ struct LightTelemetryTests {
         #expect(missing.sunset.text == Self.lexicon.t("card.noDataDay"))
     }
 
+    /// 30з.6: у времени заката на дуге — короткое слово балла (те же пороги, что у цвета); нет прогноза — слова нет, остаётся надпись.
+    @Test func sunsetCarriesItsShortWordForTheArc() {
+        let sun = Self.barnaul(CivilDate(year: 2026, month: 6, day: 21))
+        func word(_ score: Int?) -> String? {
+            Self.build(sun: sun, t: sun.solarNoon, weather: Self.day(quality: .good, sunset: score)).sunset.word
+        }
+        #expect(word(80) == Self.lexicon.t("sunsetS.beautiful"))
+        #expect(word(60) == Self.lexicon.t("sunsetS.color"))
+        #expect(word(30) == Self.lexicon.t("sunsetS.calm"))
+        #expect(word(10) == Self.lexicon.t("sunsetS.none"))
+        #expect(word(nil) == nil)
+    }
+
     // MARK: - «Что дальше»: слово тренда облачности
 
     @Test func nextLightTrendWord() {
