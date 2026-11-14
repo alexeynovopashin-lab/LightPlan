@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>30и.1 — поле быстрого ввода места: было → станет</title>
+<style>
+:root{
+  --page:#E6E6E7; --sheet:#F3F3F5; --ink:#000; --ink3:#5C5C62; --ink5:#85858B; --ink8:#B4B4B9;
+  --hair:rgba(0,0,0,.09); --press:rgba(0,0,0,.06); --warm:rgba(242,146,48,.14); --brass:#F29230; --brassInk:#C9741A;
+  --kb:#D2D4DA; --key:#FFFFFF; --dim:rgba(0,0,0,.38); --doc:#fff; --docInk:#111; --docSub:#555; --card:#fff;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --page:#0B0B0C; --sheet:#1C1C1F; --ink:#F4F4F5; --ink3:#A5A5AB; --ink5:#7E7E85; --ink8:#55555B;
+  --hair:rgba(255,255,255,.10); --press:rgba(255,255,255,.07); --warm:rgba(242,146,48,.16); --brassInk:#F0A04A;
+  --kb:#2A2A2D; --key:#4A4A4E; --dim:rgba(0,0,0,.55); --doc:#121214; --docInk:#eee; --docSub:#a0a0a6; --card:#232327;
+}}
+:root[data-theme="dark"]{
+  --page:#0B0B0C; --sheet:#1C1C1F; --ink:#F4F4F5; --ink3:#A5A5AB; --ink5:#7E7E85; --ink8:#55555B;
+  --hair:rgba(255,255,255,.10); --press:rgba(255,255,255,.07); --warm:rgba(242,146,48,.16); --brassInk:#F0A04A;
+  --kb:#2A2A2D; --key:#4A4A4E; --dim:rgba(0,0,0,.55); --doc:#121214; --docInk:#eee; --docSub:#a0a0a6; --card:#232327;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--doc);color:var(--docInk);font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 16px 80px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.3px}
+h2{font-size:20px;margin:0 0 4px}
+p{margin:6px 0}
+.lead{color:var(--docSub);max-width:760px}
+.bar{display:flex;gap:10px;align-items:center;margin:14px 0 6px;flex-wrap:wrap}
+button.t{border:1px solid var(--hair);background:transparent;color:var(--docInk);border-radius:10px;padding:7px 12px;font:inherit;cursor:pointer}
+section.v{margin-top:44px;padding-top:22px;border-top:1px solid var(--hair)}
+.tag{display:inline-block;font-size:12px;font-weight:650;letter-spacing:.8px;text-transform:uppercase;color:var(--brassInk);margin-bottom:4px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:12px 0 18px}
+.fact{background:var(--card);border:1px solid var(--hair);border-radius:14px;padding:10px 14px}
+.fact b{display:block;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--docSub);margin-bottom:3px;font-weight:650}
+.fact.pro b{color:#2f9e5b}.fact.con b{color:#c0572b}
+.frames{display:flex;gap:18px;flex-wrap:wrap}
+figure{margin:0}
+figcaption{font-size:13px;color:var(--docSub);margin-top:6px;max-width:290px}
+figcaption b{color:var(--docInk)}
+.shell{width:275px;height:596px;position:relative;border-radius:34px;overflow:hidden;border:1px solid var(--hair);background:#000}
+.phone{width:393px;height:852px;transform:scale(.7);transform-origin:0 0;position:absolute;left:0;top:0;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+/* фон — экран «Свет», только как подложка */
+.sky{position:absolute;inset:0;background:linear-gradient(#86BAEC,#DCEBF9 62%,var(--page) 62%)}
+.sky .hdr{position:absolute;left:24px;top:64px;font-size:22px;font-weight:650;color:#0a1a33;display:flex;gap:6px;align-items:center}
+.sky .hdr small{font-size:13px;font-weight:400;color:#2d4466}
+.sky .arc{position:absolute;left:40px;right:40px;top:230px;height:150px;border-top:3px solid #E5A93A;border-radius:50% 50% 0 0/100% 100% 0 0}
+.sky .tabs{position:absolute;left:0;right:0;bottom:0;height:84px;background:var(--sheet);border-top:1px solid var(--hair)}
+.dim{position:absolute;inset:0;background:var(--dim)}
+/* лист */
+.sheet{position:absolute;left:0;right:0;background:var(--sheet);border-radius:30px 30px 0 0;padding:0 24px;overflow:hidden;color:var(--ink);box-shadow:0 -6px 30px rgba(0,0,0,.18)}
+.sheet.kbd{bottom:336px;border-radius:30px 30px 0 0}
+.sheet:not(.kbd){bottom:0;padding-bottom:30px}
+.grip{width:38px;height:4px;border-radius:2px;background:var(--hair);margin:10px auto 18px;opacity:1;background:var(--ink8)}
+.ttl{font-size:19px;font-weight:650;letter-spacing:-.2px;height:22px}
+.sub{font-size:13px;color:var(--ink5);margin-top:5px;height:16px}
+.field{display:flex;align-items:center;gap:10px;height:46px;padding:0 14px;border-radius:12px;background:var(--press);margin-top:14px;font-size:16px}
+.field.on{outline:2px solid var(--brass);outline-offset:-2px;background:transparent}
+.field svg{flex:none}
+.field .ph{color:var(--ink8)}.field .cur{display:inline-block;width:1.5px;height:19px;background:var(--brass);margin-left:1px;vertical-align:middle}
+.here{margin-top:16px;height:52px;border-radius:14px;background:var(--warm);color:var(--brassInk);display:flex;gap:9px;align-items:center;justify-content:center;font-size:16px;font-weight:650}
+.fix{font-size:12px;color:var(--ink5);text-align:center;margin-top:8px}
+.follow{display:flex;align-items:center;gap:12px;padding:12px 2px;margin-top:14px;border-bottom:1px solid var(--hair)}
+.follow .t1{font-size:16px}.follow .t2{font-size:12px;color:var(--ink5);margin-top:3px}
+.sw{margin-left:auto;width:51px;height:31px;border-radius:16px;background:var(--ink8);position:relative;flex:none}
+.sw::after{content:"";position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff}
+.row{display:flex;align-items:center;gap:13px;padding:15px 2px;border-bottom:1px solid var(--hair)}
+.row .t1{font-size:16px;line-height:19px}.row .t2{font-size:12px;color:var(--ink5);margin-top:2px;line-height:14px}
+.row .chev{margin-left:auto;color:var(--ink3)}
+.hit{padding:11px 2px;border-bottom:1px solid var(--hair)}
+.hit .n{font-size:15px}.hit .a{font-size:12px;color:var(--ink3);margin-top:2px}
+.hit.first{background:var(--press);border-radius:10px;padding-left:10px;padding-right:10px;margin:0 -8px}
+.cap{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink8);margin:22px 0 6px}
+.spot{padding:11px 2px;font-size:15px;border-bottom:1px solid var(--hair);display:flex;gap:10px;align-items:center}
+.spot i{width:8px;height:8px;border-radius:50%;background:var(--brass);display:inline-block}
+.dd{position:absolute;left:12px;right:12px;background:var(--sheet);border-radius:16px;padding:4px 14px;box-shadow:0 10px 34px rgba(0,0,0,.28);border:1px solid var(--hair)}
+.veil{position:absolute;inset:0;background:var(--dim)}
+.kbd-ui{position:absolute;left:0;right:0;bottom:0;height:336px;background:var(--kb)}
+.kbd-ui .keys{position:absolute;left:5px;right:5px;top:10px;display:grid;grid-template-columns:repeat(11,1fr);gap:7px 5px}
+.kbd-ui .keys span{height:50px;border-radius:7px;background:var(--key);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.kbd-ui .keys span.w{grid-column:span 3}.kbd-ui .keys span.sp{grid-column:span 5}
+.note{position:absolute;left:14px;right:14px;top:14px;background:rgba(255,235,200,.96);color:#4a3200;font-size:12.5px;line-height:1.35;border-radius:10px;padding:7px 10px}
+.legend{margin-top:26px;font-size:14px;color:var(--docSub)}
+.q{margin-top:40px;background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:16px 18px}
+.q li{margin:6px 0}
+.was{opacity:.98}
+.after{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Выбор места: поле быстрого ввода над «Я здесь»</h1>
+  <p class="lead">Шаг 30и.1, часть C. Слово Алексея 13.11: «Выбор места, добавить поле для быстрого ввода места над кнопкой я здесь». Это изменение устройства экрана, поэтому — сначала лист «было → станет», кода пока нет. Ниже три варианта: где стоит поле, как появляются ответы, что делает клавиатура. Картинки — зарисовки на цветах светлой темы, не снимки приложения.</p>
+  <div class="bar">
+    <button class="t" onclick="document.documentElement.dataset.theme='light'">Светлая</button>
+    <button class="t" onclick="document.documentElement.dataset.theme='dark'">Тёмная</button>
+  </div>
+
+  <section class="v" id="was">
+    <span class="tag">Сейчас</span>
+    <h2>Чтобы найти место по названию, нужно два экрана</h2>
+    <p class="lead">Лист открывается развилкой: «Я здесь», «Следовать за мной», строки «Место» и «Координаты». Поиск спрятан за строкой «Место»: касание, новый экран с полем, набрать, выбрать ответ, нажать «Готово». Это четыре касания и один переход.</p>
+    <div class="frames" id="f-was"></div>
+  </section>
+
+  <section class="v" id="A">
+    <span class="tag">Вариант А · рекомендую</span>
+    <h2>Поле сверху, ответы заменяют остальное</h2>
+    <div class="facts">
+      <div class="fact"><b>Где поле</b>В самом верху листа, сразу под заголовком, над «Я здесь». Высота 46, как поле на экране «Место».</div>
+      <div class="fact"><b>Как появляются ответы</b>Пока поле пустое — лист как сейчас. С третьей буквы «Я здесь», «Следовать» и строки уезжают, на их месте до четырёх ответов. Нажал на ответ — место сразу переехало, лист закрылся, в шапке «Токио».</div>
+      <div class="fact"><b>Клавиатура</b>Лист поднимается над клавиатурой и не растёт: всё, что ниже поля, пока ничего не набрано, остаётся на месте (низ уходит под клавиатуру и прокручивается).</div>
+      <div class="fact pro"><b>Плюс</b>Ничего не прыгает вбок, места под ответы больше всего, строка «Место» остаётся для «Моих мест» и адресов с номерами домов.</div>
+      <div class="fact con"><b>Минус</b>Пока набираешь, «Я здесь» не видно: чтобы нажать, надо стереть набранное.</div>
+    </div>
+    <div class="frames" id="f-A"></div>
+  </section>
+
+  <section class="v" id="B">
+    <span class="tag">Вариант Б</span>
+    <h2>Поле сверху, ответы выпадают поверх</h2>
+    <div class="facts">
+      <div class="fact"><b>Где поле</b>То же место: под заголовком, над «Я здесь».</div>
+      <div class="fact"><b>Как появляются ответы</b>Лист не меняется. Ответы выпадают карточкой прямо под полем и закрывают «Я здесь» и строки (они остаются за ней, затемнённые). До трёх ответов. Нажал — место переехало, лист закрылся.</div>
+      <div class="fact"><b>Клавиатура</b>Лист поднимается над клавиатурой, содержимое не двигается. Карточка ответов не выше места между полем и клавиатурой.</div>
+      <div class="fact pro"><b>Плюс</b>Видно, где ты: «Я здесь» никуда не делась, вернуть её можно стерев букву.</div>
+      <div class="fact con"><b>Минус</b>Тесно: на маленьких телефонах места хватит на два-три ответа, а плавающая карточка поверх листа — новый для приложения приём.</div>
+    </div>
+    <div class="frames" id="f-B"></div>
+  </section>
+
+  <section class="v" id="C">
+    <span class="tag">Вариант В</span>
+    <h2>Поле вместо строки «Место», в фокусе — «Мои места»</h2>
+    <div class="facts">
+      <div class="fact"><b>Где поле</b>То же, сверху. Строка «Место» с развилки уходит: поле делает её работу.</div>
+      <div class="fact"><b>Как появляются ответы</b>Коснулся поля — лист тянется вверх (до 86 % экрана) и показывает «Мои места». Набираешь — вместо них ответы поиска. Нажал на ответ или на своё место — место переехало, лист закрылся.</div>
+      <div class="fact"><b>Клавиатура</b>Лист вырастает до потолка и садится на клавиатуру; «Мои места» и ответы прокручиваются внутри него.</div>
+      <div class="fact pro"><b>Плюс</b>Один вход вместо двух; «Мои места» в одном касании от поля, а не за экраном.</div>
+      <div class="fact con"><b>Минус</b>Самое большое изменение: пропадает привычная строка, на развилке остаются «Я здесь», «Следовать» и «Координаты»; лист при касании поля прыгает по высоте.</div>
+    </div>
+    <div class="frames" id="f-C"></div>
+  </section>
+
+  <section class="v" id="after">
+    <span class="tag">Во всех вариантах одинаково</span>
+    <h2>Что происходит после нажатия на ответ</h2>
+    <div class="after">
+      <figure><div class="shell"><div class="phone" id="done"></div></div>
+        <figcaption><b>Токио</b> в шапке (не «Синдзюку» — это исправлено в этом же шаге отдельно от поля). Свет и погода пересчитаны на новую точку. Лист закрыт.</figcaption></figure>
+      <div style="max-width:420px">
+        <p><b>Для точки маршрута в форме съёмки</b> (там у листа нет «Я здесь»): поле встаёт на то же место, под заголовок. Ответ ложится в «Мои места» и сразу становится местом точки.</p>
+        <p><b>Страна в подписи</b> ответа — только если она не ваша: «Токио · Япония», «Томск · Томская область».</p>
+        <p><b>Ничего не нашлось</b> — одна серая строка «Ничего не нашлось» на месте ответов, как сейчас.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="q">
+    <b>Что нужно от тебя</b>
+    <ol>
+      <li>Какой вариант строим — А, Б или В? Моя рекомендация — А: проще всего, ничего не ломает, а нажать «Я здесь» после набора и так не нужно.</li>
+      <li>Нажатие на ответ — место сразу переезжает и лист закрывается (как нарисовано, быстро), или ответ только заполняет поле, а переезд — по «Готово» (как на экране «Место» сейчас, на одно касание дольше)? Рекомендую «сразу»: поле называется «быстрый ввод».</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const I = {
+  loupe:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink5)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+  arrow:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2-8z"/></svg>',
+  city:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.6"><path d="M4 21V9l6-3v15M10 21V4l10 4v13M2 21h20"/></svg>',
+  route:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7c8 0 2 10 8 10"/></svg>',
+  chev:'<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>',
+};
+const hits = [['Токио','Япония'],['Токи','Гифу, Япония'],['Токио-Сити','Санкт-Петербург'],['Токсово','Ленинградская область']];
+const spots = ['Лагерный сад','Набережная Ушайки','Студия «Томсон»'];
+
+const grip = '<div class="grip"></div>';
+const head = (t,s)=>`<div class="ttl">${t}</div><div class="sub">${s}</div>`;
+const field = (state,txt)=>`<div class="field ${state==='on'?'on':''}">${I.loupe}${txt?`<span>${txt}<i class="cur"></i></span>`:(state==='on'?'<span><i class="cur" style="margin:0"></i><span class="ph" style="margin-left:2px">Лагерный сад, Томск</span></span>':'<span class="ph">Лагерный сад, Томск</span>')}</div>`;
+const here = `<div class="here">${I.arrow}Я здесь</div><div class="fix">Томск, Томская область · обновлено 3 мин назад</div>
+<div class="follow"><div><div class="t1">Следовать за мной</div><div class="t2">Выключено: место стоит, где выбрали</div></div><div class="sw"></div></div>`;
+const rowPlace = `<div class="row">${I.city}<div><div class="t1">Место</div><div class="t2">улица и дом, поиск по названию</div></div>${I.chev}</div>`;
+const rowCoord = `<div class="row">${I.route}<div><div class="t1">Координаты</div><div class="t2">широта и долгота, где адресов нет</div></div>${I.chev}</div>`;
+const hitRows = (n)=>hits.slice(0,n).map((h,i)=>`<div class="hit ${i===0?'first':''}"><div class="n">${h[0]}</div><div class="a">${h[1]}</div></div>`).join('');
+const keyboard = `<div class="kbd-ui"><div class="keys">${'<span></span>'.repeat(10)}<span></span>${'<span></span>'.repeat(9)}<span></span>${'<span></span>'.repeat(9)}<span></span><span class="w"></span><span class="sp"></span><span class="w"></span></div></div>`;
+const bg = `<div class="sky"><div class="hdr">Томск <small>Томская область</small></div><div class="arc"></div><div class="tabs"></div></div><div class="dim"></div>`;
+
+function frame(inner, cap){
+  return `<figure><div class="shell"><div class="phone">${inner}</div></div><figcaption>${cap}</figcaption></figure>`;
+}
+function sheet(content, kbd, extra=''){
+  return bg + `<div class="sheet ${kbd?'kbd':''}" ${extra}>${grip}${content}</div>` + (kbd?keyboard:'');
+}
+
+// было
+document.getElementById('f-was').innerHTML =
+ frame(sheet(head('Где снимаем','Фотостудия, адрес или координаты')+here+rowPlace+rowCoord,false),'<b>1.</b> Лист открыт. Поиска нет, он за строкой «Место».')+
+ frame(sheet(head('Место','улица и дом, поиск по названию')+field('on','')+`<div class="cap">Мои места</div>`+spots.map(s=>`<div class="spot"><i></i>${s}</div>`).join(''),true),'<b>2.</b> Касание «Место» — новый экран, в нём поле и «Мои места».')+
+ frame(sheet(head('Место','улица и дом, поиск по названию')+field('on','Токио')+hitRows(3)+`<div style="height:12px"></div>`,true),'<b>3.</b> Набрал, выбрал ответ, потом ещё «Готово» — и лист закрывается.');
+
+// А
+document.getElementById('f-A').innerHTML =
+ frame(sheet(head('Где снимаем','Фотостудия, адрес или координаты')+field('off','')+here+rowPlace+rowCoord,false),'<b>1. Лист открыт.</b> Поле над «Я здесь». Всё остальное как было.')+
+ frame(sheet(head('Где снимаем','Фотостудия, адрес или координаты')+field('on','')+here+rowPlace+rowCoord,true),'<b>2. Коснулся поля.</b> Клавиатура поднялась, лист сел на неё. Низ (строки) ушёл под клавиатуру, прокручивается.')+
+ frame(sheet(head('Где снимаем','Фотостудия, адрес или координаты')+field('on','Токио')+hitRows(4),true),'<b>3. Набрал «Токио».</b> «Я здесь» и строки уехали, до четырёх ответов. Нажал на ответ — готово.');
+
+// Б
+document.getElementById('f-B').innerHTML =
+ frame(sheet(head('Где снимаем','Фотостудия, адрес или координаты')+field('off','')+here+rowPlace+rowCoord,false),'<b>1. Лист открыт.</b> Такой же, как в А.')+
+ frame(sheet(head('Где снимаем','Фотостудия, адрес или координаты')+field('on','')+here+rowPlace+rowCoord,true),'<b>2. Коснулся поля.</b> Так же, как в А.')+
+ (()=>{
+   const body = head('Где снимаем','Фотостудия, адрес или координаты')+field('on','Токио')+here+rowPlace+rowCoord;
+   return frame(bg + `<div class="sheet kbd">${grip}${body}</div><div class="dd">${hitRows(3)}</div>`+keyboard,
+     '<b>3. Набрал «Токио».</b> Карточка ответов выпала под полем и закрыла «Я здесь» и строки, они за ней. Три ответа.');
+ })();
+
+// В
+document.getElementById('f-C').innerHTML =
+ frame(sheet(head('Где снимаем','Фотостудия, адрес или координаты')+field('off','')+here+rowCoord,false),'<b>1. Лист открыт.</b> Строки «Место» нет, поле её заменило.')+
+ frame(bg + `<div class="sheet kbd" style="top:76px">${grip}${head('Где снимаем','Фотостудия, адрес или координаты')+field('on','')+`<div class="cap">Мои места</div>`+spots.map(s=>`<div class="spot"><i></i>${s}</div>`).join('')}</div>`+keyboard,
+   '<b>2. Коснулся поля.</b> Лист вырос до потолка и сел на клавиатуру. Под полем «Мои места».')+
+ frame(bg + `<div class="sheet kbd" style="top:76px">${grip}${head('Где снимаем','Фотостудия, адрес или координаты')+field('on','Токио')+hitRows(4)}</div>`+keyboard,
+   '<b>3. Набрал «Токио».</b> «Мои места» сменились ответами поиска.');
+
+// карточка ответов вариантa Б встаёт под поле
+document.querySelectorAll('.dd').forEach(dd=>{
+  const sh = dd.parentElement.querySelector('.sheet'), f = sh.querySelector('.field');
+  dd.style.top = (sh.offsetTop + f.offsetTop + f.offsetHeight + 6) + 'px';
+});
+
+// после выбора
+document.getElementById('done').innerHTML = `<div class="sky"><div class="hdr">Токио</div><div class="arc"></div><div class="tabs"></div></div>`;
+</script>
+</body>
+</html>
