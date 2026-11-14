@@ -9,7 +9,7 @@ struct ShootActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ShootActivityAttributes.self) { context in
             ActivityLockView(frame: context.state)
-                .activityBackgroundTint(Color(red: 0x0F / 255, green: 0x0E / 255, blue: 0x0C / 255).opacity(0.92))
+                .activityBackgroundTint(ActivityMetrics.tint)
                 .activitySystemActionForegroundColor(WidgetStyle(dark: true).ink)
                 .widgetURL(WidgetFeed.shootURL(context.state.shootId))
         } dynamicIsland: { context in

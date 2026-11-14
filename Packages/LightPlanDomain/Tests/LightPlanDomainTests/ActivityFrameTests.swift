@@ -288,4 +288,108 @@ struct ActivityFrameTests {
         #expect(ActivityLink.of(URL(string: "lightplan://day/2026-10-24")!) == nil)
         #expect(ActivityLink.of(URL(string: "https://activity/admin")!) == nil)
     }
+
+    // MARK: Окно ленты из четырёх точек (30и.3, эскиз 14.11)
+
+    /// Восемь точек с 12:00 каждый час: точка k стоит в 12+k часов.
+    private func eight(open: Bool = false) -> WidgetFeed.Shoot {
+        wedding(open: open, stops: (0..<8).map { stop(12 + $0, 0, "Точка \($0)", sign: "camera") })
+    }
+
+    @Test func windowOnTheFirstPointIsNowAndTheThreeNextWithAMoreTail() {
+        let w = make(eight(), at: tsk(12, 10)).laneWindow
+        #expect(w.range == 0..<4 && w.now == 0 && w.more == 4, Comment(rawValue: "\(w)"))
+    }
+
+    @Test func windowInTheMiddleIsOnePastNowTwoNextAndTheTail() {
+        let f = make(eight(), at: tsk(15, 10))   // «сейчас» — точка 3 (15:00)
+        let w = f.laneWindow
+        #expect(f.current == 3)
+        #expect(w.range == 2..<6 && w.now == 3 && w.more == 2, Comment(rawValue: "\(w)"))
+        #expect(f.points[w.range.lowerBound].time == "14:00", "прошедшая точка одна")
+    }
+
+    @Test func windowOnTheLastPointIsThePreviousAndNowWithoutATail() {
+        let f = make(eight(), at: tsk(19, 30))   // последняя — 19:00
+        let w = f.laneWindow
+        #expect(f.current == 7 && w.range == 6..<8 && w.now == 7 && w.more == 0, Comment(rawValue: "\(w)"))
+    }
+
+    @Test func windowBeforeTheFirstPointShowsTheFirstFourWithoutNow() {
+        let w = make(eight(), at: tsk(11, 0)).laneWindow
+        #expect(w.range == 0..<4 && w.now == nil && w.more == 4, Comment(rawValue: "\(w)"))
+    }
+
+    @Test func fourPointsOrFewerStandWhole() {
+        // Свадьба из четырёх точек: на любой точке все четыре, без хвоста.
+        for (h, m) in [(11, 0), (12, 30), (15, 0), (20, 0)] {
+            let w = make(wedding(), at: tsk(h, m)).laneWindow
+            #expect(w.range == 0..<4 && w.more == 0, Comment(rawValue: "\(h):\(m) \(w)"))
+        }
+        let two = make(wedding(stops: [stop(12, 0, "А", sign: "camera"), stop(18, 0, "Б", sign: "camera")]), at: tsk(13)).laneWindow
+        #expect(two.range == 0..<2 && two.now == 0 && two.more == 0)
+        let none = make(wedding(stops: []), at: tsk(13)).laneWindow
+        #expect(none.range == 0..<0 && none.now == nil && none.more == 0)
+    }
+
+    @Test func theMoreWordComesFromTheTemplateWithoutTheNumber() {
+        #expect(make(eight(), at: tsk(15)).moreWord == "и ещё")
+        var w = ActivityWords(); w.more = "{n} more"
+        let s = eight()
+        let f = ActivityFrame.make(feed: feed(s), shoot: s, now: tsk(15), words: w)
+        #expect(f.moreWord == "more")
+    }
+
+    @Test func aFrameWithoutTheMoreWordStillDecodes() throws {
+        var f = make(eight(), at: tsk(15))
+        f.moreWord = nil
+        let back = try JSONDecoder().decode(ActivityFrame.self, from: JSONEncoder().encode(f))
+        #expect(back.moreWord == nil && back == f)
+    }
+
+    // MARK: Правая половина свёрнутого острова не бывает пустой
+
+    /// Съёмка 00:00–23:59, как у Алексея на телефоне 14.11.
+    private func allDay(open: Bool, stops: [WidgetFeed.Stop]) -> WidgetFeed.Shoot {
+        WidgetFeed.Shoot(id: "d1", start: ms(tsk(0, 0)), end: ms(tsk(23, 59)), open: open, title: "Свадьба", place: "Томск", stops: stops, genre: "wedding")
+    }
+
+    @Test func onTheLastPointTheIslandCountsToTheEndOfTheShoot() {
+        let s = allDay(open: false, stops: [stop(0, 0, "Сборы", sign: "home"), stop(10, 0, "Церемония", sign: "ring")])
+        let f = ActivityFrame.make(feed: feed(s), shoot: s, now: tsk(11, 0))
+        #expect(f.current == 1)
+        #expect(f.island == .init(label: "до конца свадьбы", to: ms(tsk(23, 59))))
+        #expect(f.islandTimer == .down(.init(label: "до конца свадьбы", to: ms(tsk(23, 59)))))
+    }
+
+    @Test func aShootWithoutAnEndCountsUpFromItsStartInsteadOfLeavingTheIslandEmpty() {
+        let s = allDay(open: true, stops: [stop(0, 0, "Сборы", sign: "home"), stop(10, 0, "Церемония", sign: "ring")])
+        let f = ActivityFrame.make(feed: feed(s), shoot: s, now: tsk(11, 0))
+        #expect(f.island == nil, "считать вниз не к чему")
+        #expect(f.islandTimer == .up(since: tsk(0, 0)))
+    }
+
+    @Test func aFinishedShootShowsATickNotNothing() {
+        let s = allDay(open: false, stops: [stop(0, 0, "Сборы", sign: "home")])
+        let f = ActivityFrame.make(feed: feed(s), shoot: s, now: tsk(23, 59).addingTimeInterval(60))
+        #expect(f.islandTimer == .done)
+    }
+
+    @Test func noPointsAtAllStillGivesTheIslandATimer() {
+        let s = allDay(open: false, stops: [])
+        let f = ActivityFrame.make(feed: feed(s), shoot: s, now: tsk(11, 0))
+        #expect(f.islandTimer == .down(.init(label: "до конца свадьбы", to: ms(tsk(23, 59)))))
+    }
+
+    @Test func theIslandIsNeverEmptyAtAnyMinuteOfTheDay() {
+        for open in [false, true] {
+            let s = allDay(open: open, stops: [stop(0, 0, "Сборы", sign: "home"), stop(10, 0, "Церемония", sign: "ring")])
+            for minute in stride(from: 0, to: 24 * 60 + 5, by: 7) {
+                let f = ActivityFrame.make(feed: feed(s), shoot: s, now: tsk(0, 0).addingTimeInterval(Double(minute) * 60))
+                switch f.islandTimer {
+                case .down, .up, .done: break
+                }
+            }
+        }
+    }
 }
