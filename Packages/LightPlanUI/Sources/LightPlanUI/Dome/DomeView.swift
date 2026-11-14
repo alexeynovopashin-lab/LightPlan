@@ -140,7 +140,6 @@ public struct DomeView: View {
         return colorScheme == .light ? Color(red: 0x17 / 255, green: 0x15 / 255, blue: 0x0F / 255)
                                : Color(red: 0xEF / 255, green: 0xEA / 255, blue: 0xE0 / 255)
     }
-    private var moonDark: Color { Color(red: 0x16 / 255, green: 0x16 / 255, blue: 0x1A / 255) }
 
     private var astroSky: DomeSky? {
         DomeSky(astro: astro, elevation: sun.elevation(at: t), morning: t < sun.solarNoon,
@@ -512,7 +511,9 @@ public struct DomeView: View {
         guard visibility > 0.002 else { return }
 
         let mirrored = phase.cycle >= 0.5
-        let discRadius: CGFloat = 7.5
+        let light = colorScheme == .light
+        let discRadius = DomeMoonLook.discRadius(light: light)
+        let moonDisc = DomeMoonLook.disc(light: light), moonLit = DomeMoonLook.lit(light: light)
         let discRect = CGRect(x: pos.x - discRadius, y: pos.y - discRadius, width: discRadius * 2, height: discRadius * 2)
 
         context.drawLayer { layer in
@@ -521,7 +522,7 @@ public struct DomeView: View {
             if colorScheme == .light {
                 layer.drawLayer { shadowLayer in
                     shadowLayer.addFilter(.shadow(color: .black.opacity(0.16), radius: 4, x: 0, y: 2))
-                    shadowLayer.fill(Path(ellipseIn: discRect), with: .color(moonDark))
+                    shadowLayer.fill(Path(ellipseIn: discRect), with: .color(moonDisc))
                 }
             }
 
@@ -531,8 +532,8 @@ public struct DomeView: View {
             layer.fill(Path(ellipseIn: haloRect), with: .color(Color(red: 0xA8 / 255, green: 0xBD / 255, blue: 0xD8 / 255).opacity(0.10)))
             layer.opacity = visibility
 
-            layer.fill(Path(ellipseIn: discRect), with: .color(moonDark))
-            layer.stroke(Path(ellipseIn: discRect), with: .color(surfaceColor), lineWidth: 2.5)
+            layer.fill(Path(ellipseIn: discRect), with: .color(moonDisc))
+            if !light { layer.stroke(Path(ellipseIn: discRect), with: .color(surfaceColor), lineWidth: 2.5) }
 
             // Освещённая доля: растущая луна светит справа, убывающая —
             // зеркалится (`MoonGlyph`, тот же знак, что в ячейке барабана).
@@ -542,13 +543,13 @@ public struct DomeView: View {
                     lit.translateBy(x: pos.x, y: pos.y)
                     lit.scaleBy(x: -1, y: 1)
                     lit.translateBy(x: -pos.x, y: -pos.y)
-                    lit.fill(MoonGlyph(fraction: phase.fraction).path(in: litRect),
-                             with: .color(Color(red: 0xCF / 255, green: 0xD6 / 255, blue: 0xDE / 255)))
+                    lit.fill(MoonGlyph(fraction: phase.fraction).path(in: litRect), with: .color(moonLit))
                 }
             } else {
-                layer.fill(MoonGlyph(fraction: phase.fraction).path(in: litRect),
-                           with: .color(Color(red: 0xCF / 255, green: 0xD6 / 255, blue: 0xDE / 255)))
+                layer.fill(MoonGlyph(fraction: phase.fraction).path(in: litRect), with: .color(moonLit))
             }
+            // М2: белая кромка поверх диска и светлой части — держит форму на любом небе.
+            if light { layer.stroke(Path(ellipseIn: discRect), with: .color(.white), lineWidth: DomeMoonLook.lightRim) }
         }
 
         if let nowMinute, let arc, MoonSample(date: date, minutes: nowMinute, place: place).altitude > 0.5 {
