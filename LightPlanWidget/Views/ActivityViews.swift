@@ -131,6 +131,9 @@ struct ActivityLane: View {
         // Прошедшая бледнее всех (эскиз: .38 кружка, .45 подписей).
         let fade: Double = past ? 0.4 : 1
         return ZStack {
+            // Подложка непрозрачная и вне бледнения: прошедшая точка не пропускает линию сквозь кружок.
+            Circle().fill(st.surfaceOnPlate).frame(width: ActivityMetrics.ring, height: ActivityMetrics.ring)
+                .position(x: x, y: ActivityMetrics.ring / 2)
             ZStack {
                 Circle().fill(now ? st.amber : st.surfaceOnPlate)
                 Circle().strokeBorder(st.amber, lineWidth: 1.5)
