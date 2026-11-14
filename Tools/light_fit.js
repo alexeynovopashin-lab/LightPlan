@@ -78,7 +78,11 @@ function astroState(n) {
 function windProblems(astro, view, n) {
   const why = [];
   if (!astro) {
-    for (const k of OPT_ROWS) if (!n[k]) why.push(`${OPT_NAMES[k]} пропал из закрытой части в «Просто»`);
+    /* 30з.5: «Просто» раздаёт остаток высоты строкам; «Тени» стоят всегда, «Небо» и «Ветер» — по порядку, сколько помещается (первым уходит
+       «Ветер», потом «Небо»): место им даёт и подъём купола до 48 pt. Ветер без Неба — сбой порядка. Отсутствие «Неба» и «Ветра» само по себе
+       не красное: так «Просто» ведёт себя на низких экранах и при строке «Воздух». */
+    if (!n['tele.shadow']) why.push(`${OPT_NAMES['tele.shadow']} пропал из закрытой части в «Просто»`);
+    if (n['tele.wind'] && !n['tele.sky']) why.push('«Ветер» стоит без «Неба»');
     if (!n['header.sub']) why.push('шапка «Просто» сжата');
     return why;
   }
@@ -136,7 +140,10 @@ if (args.selftest) {
   const full = { 'header.sub': fr };
   cases.push(
     ['Просто: три строки на месте', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky', 'tele.wind'), ...full }), false],
-    ['Просто: ветер пропал', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky'), ...full }), true],
+    ['Просто: ветер ушёл первым', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.sky'), ...full }), false],
+    ['Просто: небо и ветер ушли', windProblems(false, 'closed', { ...rows('tele.shadow'), ...full }), false],
+    ['Просто: ветер без неба', windProblems(false, 'closed', { ...rows('tele.shadow', 'tele.wind'), ...full }), true],
+    ['Просто: тени пропали', windProblems(false, 'closed', { ...rows('tele.sky'), ...full }), true],
     ['Просто: шапка сжата', windProblems(false, 'closed', rows('tele.shadow', 'tele.sky', 'tele.wind')), true],
     ['Астро: шапка не сжата', windProblems(true, 'closed', { ...base(11), ...full }), true],
     ['Астро, запас 11: строк нет', windProblems(true, 'closed', base(11)), false],
