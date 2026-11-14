@@ -176,7 +176,7 @@ extension AppModel {
 
 #if DEBUG
 extension AppModel {
-    /// Снимки и замеры (`-LPActivityDemo wedding|rent|studio|many`, итог запроса — в файл `-LPActivityLog`): настоящая плашка на экране
+    /// Снимки и замеры (`-LPActivityDemo wedding|rent|studio|many|last`, итог запроса — в файл `-LPActivityLog`): настоящая плашка на экране
     /// блокировки с кадром, собранным вне данных — съёмка «шла три часа назад»: Сборы, Церемония, Прогулка, Банкет; у `rent`/`studio`
     /// ещё идёт аренда студии с администратором и плейлистом. Сверка с данными, пока демонстрация включена, плашку не трогает.
     func debugActivityDemo() {
@@ -192,9 +192,11 @@ extension AppModel {
         if kind == "many" {
             stops = (0..<16).map { WidgetFeed.Stop(at: at(Double($0) * 30 - 240), name: "Достопримечательность \($0 + 1)", place: "", sign: "camera") }
         }
+        // `last`: все четыре точки позади (Банкет начался час назад), до конца съёмки три часа — свёрнутый остров на последней точке (30и.2).
+        if kind == "last" { stops = stops.enumerated().map { i, st in var t = st; t.at = at([-420, -300, -180, -60][i]); return t } }
         let rents = kind == "rent" || kind == "studio"
             ? [WidgetFeed.Rent(from: at(-40), to: at(80), deadline: at(75), studio: "Томсон")] : []
-        let shoot = WidgetFeed.Shoot(id: "demo", start: at(-180), end: at(420), title: "Свадьба", place: "Томск", wantsSunset: false,
+        let shoot = WidgetFeed.Shoot(id: "demo", start: at(kind == "last" ? -420 : -180), end: at(kind == "last" ? 180 : 420), title: "Свадьба", place: "Томск", wantsSunset: false,
                                      rents: rents, stops: stops, genre: "wedding")
         var feed = makeWidgetFeed()
         feed.shoots = [shoot]
