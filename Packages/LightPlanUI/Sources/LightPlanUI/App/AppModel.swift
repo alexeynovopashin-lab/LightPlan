@@ -844,9 +844,12 @@ public final class AppModel {
     /// приложения, свет, погода, имя шапки и камера карты едут за ней. Выбор
     /// руками выключает слежение и помнится после перезапуска (29.8в.12;
     /// решение 19 сентября «живёт до перезапуска» отменено словом Алексея 18.10).
-    public func movePlace(to c: GeoCoordinate) {
+    ///
+    /// `chosenName` (30и.1) — город, который нашёл поиск места: шапка зовёт место так, как его выбрали,
+    /// а не так, как обратный геокодер назовёт точку («Токио», не «Синдзюку»).
+    public func movePlace(to c: GeoCoordinate, chosenName: PlaceName? = nil) {
         choseByHand()
-        place.move(to: c)
+        if let chosenName { place.move(to: c, chosenName: chosenName) } else { place.move(to: c) }
         citySource = .saved
         remember()
     }

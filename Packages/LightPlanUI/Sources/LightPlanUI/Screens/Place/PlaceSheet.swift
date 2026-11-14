@@ -328,7 +328,7 @@ struct PlaceSheet: View {
         .shotNode("loc.search")
         .task(id: query) {
             let q = query.trimmingCharacters(in: .whitespaces)
-            guard q.count >= 3 else { hits = []; hitsNote = nil; return }
+            guard PlaceQuery.isAskable(q) else { hits = []; hitsNote = nil; return }
             // Пауза веба 450 мс: не спрашивать геокодер на каждую букву.
             try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled else { return }
@@ -612,7 +612,7 @@ struct PlaceSheet: View {
                     app.saveSpot(at: c, name: form.name, address: form.way == .addr ? form.address : "",
                                  fromHit: form.fromHit)
                 }
-                app.movePlace(to: c)
+                app.movePlace(to: c, chosenName: form.fromHit ? form.pickedCity : nil)
                 close()
             }
         } label: {

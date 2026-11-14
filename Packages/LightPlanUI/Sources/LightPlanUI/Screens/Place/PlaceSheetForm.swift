@@ -28,6 +28,9 @@ struct PlaceSheetForm: Equatable {
     /// Числа принёс поиск, а не рука (`locFromHit`): сохранённая точка
     /// получает полую булавку.
     private(set) var fromHit = false
+    /// Город выбранного ответа поиска (30и.1): с ним место приложения встаёт в шапку под тем же именем.
+    /// Числа поправили руками — имя прежней точки новой не подходит.
+    private(set) var pickedCity: PlaceName?
     /// Ключ словаря строки ошибки над «Готово» (`#locErr`); `nil` — пусто.
     var errorKey: String?
 
@@ -48,6 +51,7 @@ struct PlaceSheetForm: Equatable {
         lat = JSNumber.fixed(hit.coordinate.latitude, 4)
         lon = JSNumber.fixed(hit.coordinate.longitude, 4)
         fromHit = true
+        pickedCity = hit.city
         if !nameTyped { name = hit.name }
         errorKey = nil
     }
@@ -64,6 +68,7 @@ struct PlaceSheetForm: Equatable {
         if let la { lat = la }
         if let lo { lon = lo }
         fromHit = false
+        pickedCity = nil
         if !nameTyped { name = "" }
     }
 
