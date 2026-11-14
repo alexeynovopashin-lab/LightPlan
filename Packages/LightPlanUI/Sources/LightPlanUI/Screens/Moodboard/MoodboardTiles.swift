@@ -52,7 +52,27 @@ struct MbCover: View {
                     }
                 }
                 .overlay { shape.strokeBorder(pal.hairline, lineWidth: 1) }
-                .plateStyle(pal, radius: radius)
+                .modifier(CoverRim(shape: shape, pal: pal, radius: radius, uneven: corners != nil))
+        }
+    }
+}
+
+/// Светлый кант обложки (светлая тема, 28к.3/30з.2). Мозаика «Все» (30и.2) даёт ячейке свои радиусы по углам: кант тогда идёт по той же
+/// фигуре, а не по `RoundedRectangle(radius: 6)` — иначе на внешнем углу (радиус 12) он торчит острее заливки (после сведения ветки
+/// 30з с 30и.2: разброс силуэта углов 2,6 pt вместо ≤ 0,6, `MoodboardMosaicCornersTests`). В тёмной теме ничего не добавляется.
+private struct CoverRim<S: InsettableShape>: ViewModifier {
+    let shape: S
+    let pal: Palette
+    let radius: CGFloat
+    let uneven: Bool
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if uneven {
+            content.overlay {
+                if !pal.dark { shape.strokeBorder(PlateTokens.rimColor, lineWidth: PlateTokens.rimWidth).allowsHitTesting(false) }
+            }
+        } else {
+            content.plateStyle(pal, radius: radius)
         }
     }
 }
