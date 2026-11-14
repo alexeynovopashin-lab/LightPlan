@@ -63,6 +63,29 @@ struct TestSeedTodayTests {
         }
     }
 
+    /// 30и.9 (Алексей 14.11: «почему у нас свадьба в 00:00 начинается?»): рамки свадьбы «сегодня» — не сутки с нуля. Она начинается с первой
+    /// точки маршрута, и строка плашки экрана блокировки читает именно эти рамки: «Сейчас: Букет невесты» над «08:00 – 02:00 · 18 ч».
+    /// Код плашки верен (диапазон — рамки самой съёмки, `ActivityFrame.range`), неверной была запись засева: `min 0`, `end 1439`.
+    @Test func theWeddingOfTodayStartsWithItsFirstStepNotAtMidnight() throws {
+        let snap = try #require(TestSeed.snapshot())
+        let s = try #require(snap.sessions.first { $0.id == "sd_today_wed" })
+        let first = try #require(s.timedRoute.first?.start)
+        #expect(s.start == first, "свадьба начинается в \(s.start), первая точка — в \(first)")
+        #expect(s.start > 0, "начало в полночь — заготовка «сутки целиком», не свадьба")
+        #expect(s.endMinute - s.start < 20 * 60, "свадьба «23 ч 59 мин» — тоже не свадьба")
+        #expect(s.endMinute >= (s.timedRoute.compactMap(\.end).max() ?? 0), "последняя точка выходит за конец съёмки")
+    }
+
+    /// Та же запись, как её читает плашка: диапазон под «Сейчас: …» — рамки свадьбы, часы настоящие.
+    @Test func theActivityLineOfTheSeedWeddingReadsBelievableHours() throws {
+        let a = try app("2026-09-29T20:08:00+07:00")
+        let feed = a.makeWidgetFeed()
+        let shoot = try #require(feed.shoots.first { $0.id == "sd_today_wed" })
+        let frame = a.activityFrame(feed, shoot, at: a.now())
+        #expect(frame.status.contains("Букет"), "«сейчас» — \(frame.status)")
+        #expect(frame.range == "08:00 – 02:00 · 18 ч", "диапазон — \(frame.range)")
+    }
+
     /// «Заполнить»: в форме столько же строк, сколько точек в записи. Веб (`loadRoute`) ставит
     /// первой строкой место записи, если оно не начало первой точки, — засев держит их согласованными.
     @Test func fillFormShowsExactlyTheRoutePoints() throws {
