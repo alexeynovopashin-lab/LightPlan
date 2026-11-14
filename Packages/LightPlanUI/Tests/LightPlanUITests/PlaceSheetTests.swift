@@ -235,4 +235,16 @@ struct PlaceSheetTests {
         #expect(app.form?.route[0].placeText == "Лагерный сад")
         #expect(app.place.coordinate != garden)                          // место приложения точка маршрута не трогает
     }
+
+    @Test func chosenNameSurvivesARestart() async {
+        // Выбрали «Токио», закрыли приложение, открыли: запомненное имя не заменяется районом «Синдзюку»
+        // (замер 14.11.2026: так и было, обратный геокодер при запуске перебивал запомненное имя).
+        var rec = PlaceMemoryRecord()
+        rec.place = .init(latitude: 35.6895, longitude: 139.6917, name: "Токио", sub: nil, zone: "Asia/Tokyo")
+        let app = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
+                           locator: Locator(), geocoder: DistrictGeocoder(), cityLookup: NoCities(),
+                           weatherSource: NoWeather(), placeMemory: InMemoryPlaceMemory(rec))
+        await app.place.settled()
+        #expect(app.place.name?.city == "Токио")
+    }
 }

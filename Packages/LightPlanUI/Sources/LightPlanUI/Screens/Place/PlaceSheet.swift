@@ -206,7 +206,7 @@ struct PlaceSheet: View {
         }
         .padding(.horizontal, 14)
         .frame(height: 46)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(focus == .quick ? pal.press : pal.press.opacity(0.6)))
+        .background { quickFieldFill(pal) }
         .shotNode("loc.quick")
         .padding(.top, 12)
         .overlay(alignment: .topLeading) {
@@ -222,6 +222,14 @@ struct PlaceSheet: View {
             guard !Task.isCancelled else { return }
             quickHits = Array(found.prefix(3)); quickNote = note
         }
+    }
+
+    /// Заливка поля: цвет полей формы (`field`) — в тёмной теме не он, а цвет страницы (`surface`): лист там
+    /// стекло ≈ #1F1F1F, и `field` #1C1A16 на нём — 1,05:1, поле сливается (замер 14.11.2026, слово Алексея);
+    /// `surface` — 1,17:1. В фокусе — янтарный тон полей формы. Линий нет: поля отделяются заливкой.
+    private func quickFieldFill(_ pal: Palette) -> some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(focus == .quick ? Color(hex: 0xE2A44C, alpha: 0.16) : (pal.dark ? pal.surface : pal.field))
     }
 
     /// Карточка ответов: не больше трёх строк (места между полем и клавиатурой на маленьком телефоне

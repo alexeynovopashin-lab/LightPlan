@@ -683,9 +683,11 @@ public final class AppModel {
         } else if resolved.source == .capital, access == .granted {
             Task { await self.useDeviceLocationIfNoCity() }
         } else if resolved.source == .settings || resolved.source == .saved {
-            // Имя и настоящая зона для города настроек и запомненного места — от геокодера.
+            // Город настроек и запомненное место: имя — как запомнили, настоящая зона — от геокодера.
             if let n = resolved.name {
-                place.move(to: resolved.coordinate, knownName: PlaceName(city: n, sub: saved?.sub ?? ""))
+                // Имя, с которым место запомнили, держится и после запуска: выбранное «Токио» не становится районом
+                // «Синдзюку» от обратного геокодера (30и.1; замер 14.11.2026: так и было после перезапуска).
+                place.move(to: resolved.coordinate, chosenName: PlaceName(city: n, sub: saved?.sub ?? ""))
             } else {
                 place.move(to: resolved.coordinate)
             }
