@@ -21,29 +21,31 @@ struct PlannerLooseEndsTests {
         try String(contentsOf: sourceDir().appendingPathComponent(name), encoding: .utf8)
     }
 
-    // MARK: - 2. Одна кнопка прыжка в поиске
+    // MARK: - 2. Результаты поиска без своей кнопки прыжка
 
-    /// Экран поиска листается общей кнопкой `.scrollJump`; второй, своей, у него нет (раньше рядом висел дубль «шеврон-стекло»).
-    @Test func searchHasOnlyTheSharedJumpButton() throws {
+    /// Поиск стал панелью над плашкой пульта (30и.4): листается внутри панели, а общая кнопка «Наверх» лежит на самих «Съёмках»
+    /// и пока плашка развёрнута спрятана. Своей, второй, у панели нет (раньше рядом висел дубль «шеврон-стекло»).
+    @Test func searchPanelHasNoJumpButtonOfItsOwn() throws {
         let src = try source("PlannerSearchView.swift")
         let code = src.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
-        #expect(code.components(separatedBy: ".scrollJump(").count - 1 == 1, "ровно одна общая кнопка")
+        #expect(!code.contains(".scrollJump("), "кнопку прыжка рисует экран «Съёмок», не панель")
         #expect(!code.contains("se.jump"), "своя кнопка стояла под узлом se.jump")
-        #expect(!code.contains("mb.jumpEnd") && !code.contains("mb.jumpTop"), "слова прыжка — только в общем компоненте")
-        #expect(!code.contains(".glassEffect"), "стеклянный круг рисует общий компонент")
+        let screen = try source("PlannerScreenView.swift")
+        #expect(screen.contains("hidden: nav.searchOpen"), "пока плашка поиска развёрнута, «Наверх» спрятана")
     }
 
     // MARK: - 3. Цвет значка поиска
 
-    /// Три значка шапки одного вида: «+» и статистика — латунь, поиск — чернила; в «Съёмках» и в ленте года одинаково.
-    @Test func theSearchGlyphIsInkInBothHeaders() throws {
+    /// Лупа — чернила: в пульте «Съёмок» и в ленте года одинаково; в шапке «Съёмок» её больше нет (30и.4).
+    @Test func theSearchGlyphIsInkOnTheConsoleAndTheYearHeader() throws {
         func searchColour(_ file: String, _ call: String) throws -> String? {
             let src = try source(file)
             guard let r = src.range(of: call) else { return nil }
             let tail = src[r.upperBound...]
             return tail.prefix(60).components(separatedBy: CharacterSet(charactersIn: ",)")).first.map { $0.trimmingCharacters(in: .whitespaces) }
         }
-        #expect(try searchColour("PlannerScreenView.swift", "action(.search, ") == "pal.ink")
+        #expect(try source("PlannerScreenView.swift").contains("action(.search, ") == false, "лупа ушла из шапки в пульт")
+        #expect(try searchColour("PlannerConsole.swift", ".stroke(") == "pal.ink")
         #expect(try searchColour("PlannerYearView.swift", "OverlayIconButton(kind: .search, color: ") == "pal.ink")
         // Остальные кнопки ленты не тронуты.
         #expect(try searchColour("PlannerYearView.swift", "OverlayIconButton(kind: .add, color: ") == "pal.brass")
@@ -107,31 +109,47 @@ struct PlannerLooseEndsTests {
         return try JSONDecoder().decode(Report.self, from: Data(contentsOf: url)).nodes
     }
 
-    /// На настоящем экране поиска: после ввода букв список длинный, и кнопка прыжка одна — общая (`sj.search`), своя (`se.jump`)
-    /// не рисуется. Раньше рядом висела вторая: два шеврона-стекла.
-    @Test func searchShowsOneJumpButton() async throws {
+    /// Панель результатов на настоящем экране: после ввода букв она нарисована, листается внутри себя (кнопки прыжка в ней нет) и не
+    /// выше `PlannerSearchView.maxHeight`.
+    @Test func searchPanelShowsHitsAndStaysShort() async throws {
         try await ProbeLock.run {
             ShotProbe.shared.start(report: nil, screen: .planner)
-            UserDefaults.standard.set("а", forKey: "LPSearchQuery")   // запрос без клавиатуры (Debug-ввод экрана)
-            defer { UserDefaults.standard.removeObject(forKey: "LPSearchQuery") }
             let app = seededApp()
+            let nav = PlannerNav()
+            nav.searchOpen = true
+            nav.searchQuery = "а"
             let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 393, height: 700))
-            window.rootViewController = UIHostingController(rootView: PlannerSearchView(app: app, f: PlannerFacts(app: app, dark: true), nav: PlannerNav()))
+            window.rootViewController = UIHostingController(rootView: PlannerSearchView(app: app, f: PlannerFacts(app: app, dark: true), nav: nav))
             window.makeKeyAndVisible()
             defer { window.isHidden = true }
             try await Task.sleep(for: .milliseconds(500))
             try await Task.sleep(for: .milliseconds(500))
-            let scroll = try #require(descendants(window).compactMap { $0 as? UIScrollView }.max { $0.contentSize.height < $1.contentSize.height })
-            // Список длиннее окна. Порог кнопки (0,6 окна) здесь не пересчитываем: раньше высоту прокрутки ужимала полоса кнопки
-            // (555 из 700 pt), без полосы она 700, а окно правила считает сама кнопка — его проверяет то, что `sj.search` нарисована.
-            let range = scroll.contentSize.height - scroll.bounds.height
-            try #require(range > 0, "список вышел коротким: прокрутки \(range) pt")
             let n = try await probe()
-            let shared = try #require(n["sj.search"], "общая кнопка прыжка не нарисована")
-            #expect(shared.text == "down", "от начала кнопка ведёт вниз: \(shared.text ?? "-")")
-            #expect(n["se.jump"] == nil, "вторая, своя кнопка прыжка ещё рисуется")
-            #expect(shared.y > 400, "кнопка внизу экрана: y \(shared.y)")
+            let panel = try #require(n["se.panel"], "панель результатов не нарисована")
+            #expect(panel.h <= PlannerSearchView.maxHeight + 1, "панель выше предела: \(panel.h)")
+            #expect(panel.h > 44, "панель пустая: \(panel.h)")
+            #expect(n["se.row.0"] != nil, "нет первой строки результата")
+            #expect(n["se.jump"] == nil && n["sj.search"] == nil, "в панели нет кнопки прыжка")
         }
+    }
+
+    /// Из стопки дня карточка открывается с краями дня внизу (`.fan`, 30и.5), из одиночной строки — как раньше (`.day`).
+    @Test func fanStackKeepsTheOthersBelow() throws {
+        let app = seededApp()
+        // Долг открывается со стопкой долгов (К5) и от стопки дня не зависит: берём два будущих дня.
+        let day = CivilDate(year: 2026, month: 12, day: 1)
+        app.snapshot.sessions.append(Session(id: "fan1", kind: .shoot, day: day, start: 600, duration: 60))
+        app.snapshot.sessions.append(Session(id: "fan2", kind: .shoot, day: day, start: 900, duration: 60))
+        let two = app.sessions.filter { $0.day == day }
+        let id = two[0].id
+        app.openCardFromCalendar(id: id, grow: nil, fromStack: true)
+        #expect(app.cardStackMode == .fan)
+        #expect(CardStack<EmptyView>.edges(app, of: try #require(app.card)).isEmpty, "над листом пусто")
+        #expect(!app.stack(of: try #require(app.card)).isEmpty, "соседи дня — внизу")
+        app.closeCard()
+        app.openCardFromCalendar(id: id, grow: nil, fromStack: false)
+        #expect(app.cardStackMode == .day)
+        #expect(!CardStack<EmptyView>.edges(app, of: try #require(app.card)).isEmpty, "обычная карточка — края над листом, как было")
     }
     #endif
 }

@@ -77,7 +77,8 @@ struct ScrollJumpTests {
     /// Без запаса — только два экрана мудборда (их вид сохранён как был); остальные длинные страницы берут запас.
     @Test func onlyTheMoodboardSkipsTheReserve() throws {
         let all = try calls()
-        #expect(all.count >= 13, "экраны с кнопкой прыжка: \(all.count)")
+        // 30и.4: у поиска своей прокрутки с кнопкой больше нет (результаты — панель над плашкой пульта): было 13, стало 12.
+        #expect(all.count >= 12, "экраны с кнопкой прыжка: \(all.count)")
         let bare = Set(all.filter { $0.line.contains("reserve: false") }.map(\.file))
         #expect(bare == ["MoodboardGallery.swift", "MoodboardFolder.swift"])
     }
