@@ -91,4 +91,56 @@ struct LightCollapsedListTests {
         #expect(LightCollapsedList.shown(astro: false, fit: 0, hasForecast: true) == [.shadow, .sky, .wind])
         #expect(LightCollapsedList.shown(astro: false, fit: 0, hasForecast: false) == [.shadow])
     }
+
+    // MARK: - 30з.5 «Просто»: остаток высоты — строкам
+
+    private static func simple(_ spare: CGFloat, base: Int = 5, hasAir: Bool = false) -> LightCollapsedList.SimplePlan {
+        LightCollapsedList.planSimple(spare: spare, baseRows: base + (hasAir ? 1 : 0), optionalHeights: [35, 35])
+    }
+
+    /// Нехватка даже на пять строк: «Небо» и «Ветер» не встают, купол поднимается как раньше (сдвиг отрицательный, режет `setShift`).
+    @Test func simpleDropsWindFirstThenSky() {
+        // Подъём купола общий на все строки: k строк нужны запас ≥ 35k + 1 − maxDomeLift (48), то есть 23 для двух, −12 для одной.
+        #expect(Self.simple(23).optionalRows == 2)
+        #expect(Self.simple(22.9).optionalRows == 1)    // «Ветер» уходит первым
+        #expect(Self.simple(-12).optionalRows == 1)
+        #expect(Self.simple(-12.1).optionalRows == 0)   // «Небо» уходит вторым
+        #expect(Self.simple(-100).optionalRows == 0)
+        #expect(Self.simple(-100).rowExtra == 0)
+    }
+
+    /// Пока строки помещаются, купол не опускается ниже базы и поля строк не отрицательные; запас строки не отдают небу.
+    @Test func simpleSpareGoesToRowsNotToTheSky() {
+        let p = Self.simple(120)                              // 70 на «Небо» и «Ветер», 50 остаётся на семь строк
+        #expect(p.optionalRows == 2)
+        #expect(p.rowExtra > 6.5 && p.rowExtra <= 50 / 7)
+        #expect(p.shift >= 0 && p.shift < 7 * (1.0 / 3) + 0.001)   // небу — только то, что не делится на 1/3 pt
+        #expect(abs(7 * p.rowExtra + p.shift - 50) < 0.001)
+    }
+
+    @Test func simpleRowGrowthIsCapped() {
+        let p = Self.simple(1000)
+        #expect(p.rowExtra == LightCollapsedList.maxRowExtra)
+        #expect(abs(7 * p.rowExtra + p.shift - 930) < 0.001)
+    }
+
+    /// Строки не растут из нехватки, а запас считается от базы: лишний «Воздух» делит остаток на восемь.
+    @Test func simpleAirIsOneMoreRow() {
+        let p = Self.simple(120, hasAir: true)
+        #expect(abs(8 * p.rowExtra + p.shift - 50) < 0.001)
+    }
+
+    /// Больше высоты — не меньше строк и не меньше полей; небо не растёт, пока поля не упёрлись в предел.
+    @Test func simpleSweepIsMonotone() {
+        var prev: LightCollapsedList.SimplePlan?
+        for spare in stride(from: CGFloat(-120), through: 400, by: 1) {
+            let p = Self.simple(spare)
+            if let q = prev {
+                #expect(p.optionalRows >= q.optionalRows, "\(spare)")
+                #expect(p.optionalRows > q.optionalRows || p.rowExtra >= q.rowExtra - 0.001, "\(spare)")
+            }
+            if p.rowExtra < LightCollapsedList.maxRowExtra { #expect(p.shift < 8 * (1.0 / 3) + 0.001 || p.shift < 0, "\(spare)") }
+            prev = p
+        }
+    }
 }
