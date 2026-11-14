@@ -13,7 +13,9 @@ final class PlannerNav {
     var lentaOpen = false
     var year12Open = false
     var statsOpen = false
+    /// Плашка поиска развёрнута (30и.4): пульт «Съёмок» стал строкой ввода над клавиатурой.
     var searchOpen = false
+    var searchQuery = ""
     var binOpen = false
     /// Лента должна встать на этот месяц (первое число): имя месяца — на 8 ниже
     /// верха прокрутки (веб `scrollYearTo`).
@@ -318,6 +320,8 @@ struct YearLentaView: View {
                         }
                     }
                     OverlayIconButton(kind: .search, color: pal.ink, label: f.t.t("plan.search"), node: "year.search") {
+                        // Поиск живёт в пульте «Съёмок» (30и.4): лента года уходит, под ней разворачивается плашка.
+                        PlanMotion.lenta(app, nav, open: false)
                         PlanMotion.search(nav, open: true)
                     }
                 }

@@ -72,8 +72,12 @@ enum PlanMotion {
         withAnimation(pick(stats)) { nav.statsOpen = open }
     }
 
+    /// Лупа пульта разворачивается в плашку поиска, «✕» сворачивает её в круг (30и.4: 0,3 с). Запрос не переживает закрытие.
     @MainActor static func search(_ nav: PlannerNav, open: Bool) {
-        withAnimation(pick(overlay)) { nav.searchOpen = open }
+        withAnimation(pick(ConsoleMetrics.morph)) {
+            nav.searchOpen = open
+            if !open { nav.searchQuery = "" }
+        }
     }
 
     @MainActor static func lenta(_ app: AppModel, _ nav: PlannerNav, open: Bool) {

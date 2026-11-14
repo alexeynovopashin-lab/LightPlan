@@ -15,12 +15,6 @@ struct PlannerLayers: View {
     var body: some View {
         ZStack {
             YearStage(app: app, f: f, nav: nav, part: part).zIndex(1)
-            if nav.searchOpen {
-                PlannerSearchView(app: app, f: f, nav: nav)
-                    .edgeBack(app, z: BackZ.search) { nav.searchOpen = false }
-                    .transition(.move(edge: .bottom))
-                    .zIndex(2)
-            }
             if nav.statsOpen {
                 PlannerStatsView(app: app, f: f, nav: nav)
                     .edgeBack(app, z: BackZ.stats) { nav.statsOpen = false }

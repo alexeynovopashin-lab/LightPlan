@@ -40,7 +40,6 @@ struct PlannerMonthBody: View {
             if hasShoots { legend(pal) }
             PlannerDayPanel(app: app, f: f).pinGeo("mpanel")
             PlannerDayList(app: app, f: f, fan: $fan)
-            PlannerDayStates(f: f)
         }
     }
 
@@ -553,59 +552,7 @@ struct PlannerDayList: View {
     }
 }
 
-/// Три действия дня (веб `#dayStates`) — в месяце, под списком. «Занять» —
-/// лист занятости на весь выбранный день (22); «Съёмка» и «Встреча» открывают
-/// форму дня (28, шаг 7).
-struct PlannerDayStates: View {
-    let f: PlannerFacts
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        let pal = Palette(scheme)
-        HStack(spacing: 6) {
-            state(.add, "plan.shortShoot", on: true, ink: pal.brass, label: pal.ink, weight: 600, node: "st.shoot", pal)
-            state(.meet, "plan.shortMeet", on: false, ink: pal.brass, label: pal.ink2, weight: 500, node: "st.meet", pal)
-            state(.lock, "plan.shortBlock", on: false, ink: pal.ink5, label: pal.ink4, weight: 500, node: "st.block", pal)
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 14)
-        .padding(.bottom, 20)
-    }
-
-    private func state(_ k: PlanGlyph.Kind, _ key: String, on: Bool, ink: Color, label: Color, weight: Int,
-                       node: String, _ pal: Palette) -> some View {
-        Button {
-            let day = f.app.planner.selected
-            switch k {
-            case .lock: f.app.openBlockSheet(day: day)
-            // «Съёмка» — форма дня со временем от света; «Встреча» — та же форма в режиме встречи, 14:00
-            // («в кафе идут к двум», не свет; веб `#planMeet`).
-            case .add: f.app.openForm(day: day)
-            case .meet: f.app.openForm(day: day, start: 14 * 60, fromLight: false, mode: .meet)
-            default: break
-            }
-        } label: {
-            // 28к.3: «Съёмка» в светлой — сплошная чёрная; 28к.4 (палитра Д): знак и подпись белые, оранжевый на чёрном читался красным.
-            let black = on && !pal.dark
-            VStack(spacing: 2) {
-                PlanGlyph(kind: k)
-                    .stroke(black ? Color.white : ink, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-                    .frame(width: 18, height: 18)
-                Text(f.t.t(key)).font(webFont(11, weight)).foregroundStyle(black ? Color.white : label).lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 44)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(black ? PlateTokens.blackFill : on ? pal.sheet4 : .clear)
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(black ? .clear : pal.hairline, lineWidth: 1))
-            }
-            .raisedStyle(pal, radius: 14, on: on)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .shotNode(node)
-    }
-}
+// Три действия дня («Съёмка · Встреча · Занять», веб `#dayStates`) с 30и.4 живут в пульте над панелью вкладок: `PlannerConsole`.
 
 /// Действие строки дня: занятость открывается тапом; запись — тап открывает
 /// карточку (25), удержание — веер. На ленте дня (`grip`) тап после жеста
