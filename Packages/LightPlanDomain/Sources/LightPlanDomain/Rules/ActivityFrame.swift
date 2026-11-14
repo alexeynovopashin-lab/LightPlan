@@ -102,10 +102,12 @@ public struct ActivityFrame: Codable, Hashable, Sendable {
     public var endsAt: Int64?
     /// Когда собрано, мс: по нему видно, насколько кадр отстал.
     public var asOf: Int64
+    /// Слово под кружком «+N» окна ленты («и ещё»); `nil` в кадре старого вида — вид берёт своё.
+    public var moreWord: String?
 
     public init(mode: Mode, shootId: String, status: String, range: String, points: [Point], current: Int, next: Countdown?,
                 exit: Countdown?, rentActive: Bool, studio: String, call: String?, playlist: String?, island: Countdown?,
-                endsAt: Int64?, asOf: Int64) {
+                endsAt: Int64?, asOf: Int64, moreWord: String? = nil) {
         self.mode = mode
         self.shootId = shootId
         self.status = status
@@ -121,11 +123,12 @@ public struct ActivityFrame: Codable, Hashable, Sendable {
         self.island = island
         self.endsAt = endsAt
         self.asOf = asOf
+        self.moreWord = moreWord
     }
 
     private enum CodingKeys: String, CodingKey {
         case mode = "m", shootId = "id", status = "st", range = "r", points = "p", current = "c", next = "n", exit = "x"
-        case rentActive = "ra", studio = "sn", call = "cl", playlist = "pl", island = "i", endsAt = "e", asOf = "o"
+        case rentActive = "ra", studio = "sn", call = "cl", playlist = "pl", island = "i", endsAt = "e", asOf = "o", moreWord = "mw"
     }
 
     /// Потолок системы на состояние и свойства активности вместе (ActivityKit, документация Apple; не мерено).
@@ -152,6 +155,8 @@ public struct ActivityWords: Codable, Equatable, Sendable {
     public var exit = "Выход из зала"
     public var callAdmin = "Позвонить админу"
     public var playlist = "Плейлист"
+    /// Подпись под кружком «+N» окна ленты: из шаблона «и ещё {n}» остаётся слово без числа.
+    public var more = "и ещё {n}"
     public var hourShort = "ч"
     public var minShort = "мин"
 
@@ -246,13 +251,52 @@ extension ActivityFrame {
             range: range(s, tz: tz, clock: clock, words: w), points: points, current: current, next: next, exit: exit,
             rentActive: active != nil, studio: clip(rent?.studio ?? ""),
             call: studioOn && reach.admin ? w.callAdmin : nil, playlist: studioOn && reach.playlist ? w.playlist : nil,
-            island: island, endsAt: s.open ? nil : s.end, asOf: nowMs)
+            island: island, endsAt: s.open ? nil : s.end, asOf: nowMs,
+            moreWord: w.more.replacingOccurrences(of: "{n}", with: "").trimmingCharacters(in: .whitespaces))
         // Потолок системы на состояние: длинные слова клиента не должны молча лишить съёмку плашки — лента худеет с дальнего края.
         while frame.encodedSize + propertiesReserve > limit, frame.points.count > 2 {
             let dropFirst = frame.current > frame.points.count / 2
             if dropFirst { frame.points.removeFirst(); frame.current -= 1 } else { frame.points.removeLast(); frame.current = min(frame.current, frame.points.count - 1) }
         }
         return frame
+    }
+
+    /// Сколько точек плашка показывает разом (эскиз 14.11, «окно из четырёх точек»).
+    public static let windowSize = 4
+
+    /// Окно ленты: что из `points` стоит на плашке и сколько точек осталось за его правым краем («+N ещё»).
+    public struct LaneWindow: Equatable, Sendable {
+        /// Индексы в `points`.
+        public var range: Range<Int>
+        /// Точек после окна.
+        public var more: Int
+        /// Подсвеченная точка («сейчас»), если она в окне.
+        public var now: Int?
+    }
+
+    /// Не больше четырёх точек: одна прошедшая (бледная), «сейчас», две-три следующие и «ещё N», если за окном есть продолжение.
+    /// Маршрут из четырёх точек и короче стоит весь. До первой точки — первые четыре, ни одной «сейчас»; на последней — предыдущая и она.
+    public var laneWindow: LaneWindow {
+        let n = points.count
+        guard n > Self.windowSize else { return LaneWindow(range: 0..<n, more: 0, now: current >= 0 && current < n ? current : nil) }
+        let start = max(0, min(current - 1, n - 1))
+        let end = min(n, start + Self.windowSize)
+        return LaneWindow(range: start..<end, more: n - end, now: current >= start && current < end ? current : nil)
+    }
+
+    /// Правая половина свёрнутого острова. Пустой она не бывает (на телефоне Алексея 14.11 на съёмке 00:00–23:59 справа было пусто):
+    /// есть часы до точки / до конца — `.down`; конца нет (съёмка закрывается руками) — часы идут вверх от начала (`.up`);
+    /// съёмка уже закончена — галочка (`.done`).
+    public enum IslandTimer: Equatable, Sendable {
+        case down(Countdown)
+        case up(since: Date)
+        case done
+    }
+
+    public var islandTimer: IslandTimer {
+        if let t = island { return .down(t) }
+        if let e = endsAt, e <= asOf { return .done }
+        return .up(since: startDate ?? asOfDate)
     }
 
     /// Запас на свойства активности (id съёмки и момент запуска) и служебное системы.

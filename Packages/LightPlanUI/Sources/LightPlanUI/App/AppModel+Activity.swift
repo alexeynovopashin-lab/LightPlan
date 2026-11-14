@@ -145,6 +145,7 @@ extension AppModel {
         w.exit = lexicon.t("activity.exit")
         w.callAdmin = lexicon.t("studio.callAdmin")
         w.playlist = lexicon.t("activity.playlist")
+        w.more = lexicon.t("widget.more")
         w.hourShort = lexicon.t("widget.hourShort")
         w.minShort = lexicon.t("widget.minShort")
         return w

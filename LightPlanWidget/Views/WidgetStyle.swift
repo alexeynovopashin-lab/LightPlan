@@ -10,6 +10,8 @@ struct WidgetStyle {
     var surface: Color { dark ? Color(red: 0x0F / 255, green: 0x0E / 255, blue: 0x0C / 255) : Color(red: 0xFA / 255, green: 0xF8 / 255, blue: 0xF3 / 255) }
     /// Янтарь света; на светлой подложке темнее, чтобы читался.
     var amber: Color { dark ? Color(red: 0xE2 / 255, green: 0xA4 / 255, blue: 0x4C / 255) : Color(red: 0x9A / 255, green: 0x5F / 255, blue: 0x0A / 255) }
+    /// Заливка кружков ленты экрана активности (эскиз 14.11, `--app-bg`): тёмная #121110 на светлее подложке плашки.
+    var surfaceOnPlate: Color { Color(red: 0x12 / 255, green: 0x11 / 255, blue: 0x10 / 255) }
     /// Латунь бирки «α» — как на значке тестовых сборок (`Tools/app_icon_alpha.py`): #E2A44C, буква #0F0E0C.
     static let brass = Color(red: 0xE2 / 255, green: 0xA4 / 255, blue: 0x4C / 255)
     static let brassInk = Color(red: 0x0F / 255, green: 0x0E / 255, blue: 0x0C / 255)

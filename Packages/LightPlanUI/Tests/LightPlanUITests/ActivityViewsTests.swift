@@ -101,9 +101,9 @@ struct ActivityViewsTests {
     @Test func laneCentresRunFromEdgeToEdge() {
         #expect(ActivityLane.xs(count: 0, width: 300) == [])
         #expect(ActivityLane.xs(count: 1, width: 300) == [150])
-        #expect(ActivityLane.xs(count: 2, width: 300) == [13, 287])
+        #expect(ActivityLane.xs(count: 2, width: 300) == [14, 286])
         let five = ActivityLane.xs(count: 5, width: 300)
-        #expect(five.first == 13 && five.last == 287 && abs(five[2] - 150) < 0.001)
+        #expect(five.first == 14 && five.last == 286 && abs(five[2] - 150) < 0.001)
     }
 
     /// Картинки для глаз: в `$LP_ACTIVITY_SHOTS` или `/tmp/lp-activity-shots`, если папка есть.
