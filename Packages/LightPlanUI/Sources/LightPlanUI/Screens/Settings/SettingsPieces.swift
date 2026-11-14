@@ -116,11 +116,20 @@ struct FeedbackSection: View {
 /// на входе в планировщик (Алексей 05.11, шаг 30ж.1).
 struct StartSheet: View {
     @Bindable var app: AppModel
+    /// 30и.6: сколько раз выбран город из подсказки — каждый выбор рисует линию города заново (`CityOutlineView`).
+    @State private var cityPicks = 0
 
     var body: some View {
         let t = app.lexicon
         NavigationStack {
             List {
+                // 30и.6: линия крыш города одной линией над полем: общий силуэт, для Москвы, Петербурга, Новосибирска и Томска — своя.
+                Section {
+                    CityOutlineView(outline: CityOutline.of(city: app.settings.home.name), drawn: cityPicks)
+                        .padding(.vertical, 6)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                }
                 Section {
                     CitySearchField(app: app)
                 } header: {
@@ -130,6 +139,10 @@ struct StartSheet: View {
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 8)
                 }
+            }
+            .onChange(of: app.settings.home.name) { _, _ in
+                // Выбор из подсказки приносит координаты; набранное руками имя их сбрасывает — тогда линия не рисуется заново.
+                if app.settings.home.coordinate != nil { cityPicks += 1 }
             }
             .navigationTitle(t.t("start.title"))
             .toolbar {
