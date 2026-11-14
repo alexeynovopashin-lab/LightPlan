@@ -258,7 +258,7 @@ struct ActivityLockView: View {
             if compact, let exit = frame.exit {
                 // Без второй строки подпись часов стоит перед ними.
                 Text(exit.label).font(.system(size: 12.5)).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.7)
-                ActivityTimer(to: exit.date).font(.system(size: 15, weight: .semibold)).foregroundStyle(st.amber)
+                ActivityTimer(to: exit.date, align: .trailing).font(.system(size: 15, weight: .semibold)).foregroundStyle(st.amber)
                     .frame(width: 70, alignment: .trailing)
             } else if let main {
                 ActivityCountdownWindow(to: main.date, color: inStudio ? st.amber : nil)
