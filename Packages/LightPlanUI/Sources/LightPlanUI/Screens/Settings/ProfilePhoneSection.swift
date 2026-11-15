@@ -19,6 +19,8 @@ struct ProfilePhoneSection: View {
         let t = app.lexicon
         SecLabel(text: t.t("set.myPhone"))
         MyPhoneField(app: app, focused: $focused)
+        .padding(.vertical, 8).padding(.horizontal, 10)
+        .background(Palette(scheme).sheet, in: Capsule())
         .padding(.horizontal, 24).padding(.vertical, 8)
         .onChange(of: focused) { _, on in if !on { app.commitMyPhone() } }
         .onChange(of: phase) { _, _ in app.commitMyPhone() }
@@ -164,7 +166,7 @@ struct CountrySheet: View {
                 TextField("", text: $query, prompt: Text(t.t("tel.ccFind")).foregroundStyle(pal.ink8))
                     .font(.system(size: 16)).foregroundStyle(pal.ink)
                     .autocorrectionDisabled()   // подсказка автокоррекции ложилась на первую строку списка (кадр 30ж.2)
-                    .padding(12).background(pal.field, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.vertical, 12).padding(.horizontal, 18).background(pal.field, in: Capsule())
                 ForEach(rows, id: \.0.iso) { c, name in
                     Button { choose(c) } label: {
                         HStack {

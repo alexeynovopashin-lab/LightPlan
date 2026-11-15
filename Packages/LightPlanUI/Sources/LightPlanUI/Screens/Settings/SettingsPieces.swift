@@ -85,7 +85,7 @@ struct FeedbackSection: View {
             TextField(t.t("fb.textPh"), text: $text, axis: .vertical)
                 .lineLimit(2...8)
                 .lineSpacing(24 - 19.1)
-                .modifier(SetInputStyle())
+                .modifier(SetInputStyle(multiline: true))
                 .padding(.top, 2)
             ShareLink(item: message) {
                 Text(t.t("fb.send"))

@@ -138,13 +138,13 @@ public struct SettingsView: View {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
-                    SetHeader(title: "Light Plan", sub: t.t("set.proto"))
+                    AccountPoster(app: app) { path = [.profile] }
                     // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                     Group {
                     VStack(spacing: 0) {
                         WebSeg(options: [(t.t("set.modeSimple"), AppMode.simple), (t.t("set.modePro"), .pro), (t.t("set.modeAstro"), .astro)],
                                selection: modeBinding, nodes: ["mode.simple", "mode.pro", "mode.astro"],
-                               sky: app.seesStars && !skyWaiting)
+                               sky: app.seesStars && !skyWaiting, pill: true)
                             .shotNode("mode")
                             .padding(.horizontal, 24)
                             .padding(.top, 12)
@@ -157,7 +157,7 @@ public struct SettingsView: View {
                         SimpleSettingsSheet(app: app)
                     case .chapters(let astroSwitches):
                         if astroSwitches { AstroSwitchRows(app: app) }
-                        chapterRows
+                        SettingsRubrics(app: app)
                     }
                     if app.showsBuildLine { BuildLine(info: BuildInfo.current(), lexicon: t) }
                     }

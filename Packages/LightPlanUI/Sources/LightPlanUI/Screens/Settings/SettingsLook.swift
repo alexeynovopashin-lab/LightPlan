@@ -41,6 +41,10 @@ struct WebSeg<V: Hashable>: View {
     var sky: Bool = false
     /// Сколько строк позволено подписи кнопки: у веба «Apple Music» в четвёртой части переносится на две.
     var lines = 1
+    /// Цвет дорожки: по умолчанию `sheet`; внутри блока на `sheet` (30и.11) — `field`, иначе дорожка не видна.
+    var track: Color? = nil
+    /// Круглые концы у дорожки и кнопки (30и.11: переключатель режима на корне настроек).
+    var pill = true
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -59,7 +63,7 @@ struct WebSeg<V: Hashable>: View {
                         .lineLimit(lines).multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity, maxHeight: lines > 1 ? .infinity : nil)
                         .padding(11)
-                        .background(on ? (pal.dark ? pal.segOn : PlateTokens.blackFill) : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .background(on ? (pal.dark ? pal.segOn : PlateTokens.blackFill) : .clear, in: pill ? AnyShape(Capsule()) : AnyShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -69,7 +73,7 @@ struct WebSeg<V: Hashable>: View {
         // Кнопки одной высоты: переносится одна — вровень с ней встают остальные (`flex` растягивает).
         .fixedSize(horizontal: false, vertical: lines > 1)
         .padding(3)
-        .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(track ?? pal.sheet, in: pill ? AnyShape(Capsule()) : AnyShape(RoundedRectangle(cornerRadius: 12, style: .continuous)))
         .overlay(alignment: .trailing) {
             if sky {
                 GeometryReader { g in SegSky().frame(width: g.size.width / CGFloat(options.count)).frame(maxWidth: .infinity, alignment: .trailing) }
@@ -165,6 +169,8 @@ struct SetItemRow: View {
     let value: String
     var chevron = true
     var dim = false
+    /// Строка внутри блока `SettingsGroup` (30и.11): поле 16, волоска нет — разделитель-прорезь рисует блок.
+    var grouped = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -186,9 +192,9 @@ struct SetItemRow: View {
             }
         }
         .frame(minHeight: 18)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, grouped ? 16 : 24)
         .padding(.top, 15).padding(.bottom, 16)
-        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+        .overlay(alignment: .bottom) { if !grouped { Rectangle().fill(pal.hair2).frame(height: 1) } }
         .opacity(dim ? 0.4 : 1)
         .contentShape(Rectangle())
     }
@@ -313,14 +319,16 @@ struct ChapterPage<Content: View>: View {
 /// `.set-in`: поле 16 pt на `--sheet`, поле 14 · 15, скругление 12, отступ
 /// 12 сверху.
 struct SetInputStyle: ViewModifier {
+    /// Многострочное поле остаётся прямоугольником со скруглением; однострочное — круглые концы (30и.11, слово Алексея 16.11).
+    var multiline = false
     @Environment(\.colorScheme) private var colorScheme
     func body(content: Content) -> some View {
         let pal = Palette(colorScheme)
         content
             .font(.system(size: 16))
             .foregroundStyle(pal.ink)
-            .padding(.vertical, 14).padding(.horizontal, 15)
-            .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.vertical, 14).padding(.horizontal, multiline ? 15 : 20)
+            .background(pal.sheet, in: multiline ? AnyShape(RoundedRectangle(cornerRadius: 12, style: .continuous)) : AnyShape(Capsule()))
             .padding(.horizontal, 24)
             .padding(.top, 12)
     }
@@ -336,8 +344,8 @@ struct DataButtonStyle: ButtonStyle {
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(pal.brassInk)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 13).padding(.horizontal, 15)
-            .background(pal.pressWarm, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.vertical, 13).padding(.horizontal, 20)
+            .background(pal.pressWarm, in: Capsule())
             .opacity(configuration.isPressed ? 0.6 : 1)
             .padding(.horizontal, 24)
             .padding(.top, 10)

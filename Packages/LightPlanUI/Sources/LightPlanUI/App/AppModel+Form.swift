@@ -483,10 +483,12 @@ extension AppModel {
 
     /// Тап по плитке листа включает и выключает жанр; последний не выключается
     /// (веб `renderGenreList`). Пустой список снимка значит «включены все».
-    public func toggleGenre(_ g: Genre) {
+    /// Возвращает `false`, когда выключить нельзя: жанр последний (30и.11 — шторка говорит об этом словами).
+    @discardableResult
+    public func toggleGenre(_ g: Genre) -> Bool {
         var on = enabledGenres
         if let i = on.firstIndex(of: g) {
-            guard on.count > 1 else { return }
+            guard on.count > 1 else { return false }
             on.remove(at: i)
         } else {
             on.append(g)
@@ -502,6 +504,7 @@ extension AppModel {
             form = f
             formChanged()
         }
+        return true
     }
 
     /// Длительность, которую жанр подставляет новой съёмке; `nil` — «по свету» (веб `rememberGenre("dur")`).

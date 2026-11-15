@@ -605,7 +605,19 @@
     "loc.markFromList": "из общего списка",
     "plan.mbSet": "Подборка",
     "plan.mbRef": "Референс",
-    "plan.stackMore": "ещё {n}"
+    "plan.stackMore": "ещё {n}",
+    "set.myName": "Имя",
+    "set.myNamePh": "Как вас зовут",
+    "set.myNameNone": "Добавьте имя",
+    "set.accEdit": "Изм.",
+    "set.rubWork": "Работа",
+    "set.rubCal": "Календарь и оповещения",
+    "set.rubLook": "Вид и регион",
+    "set.rubSystem": "Система",
+    "gen.editOff": "Жанр выключен: в форме его нет",
+    "gen.turnOn": "Включить",
+    "gen.lastOne": "Должен остаться хотя бы один жанр",
+    "gen.paySec": "Оплата"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1209,7 +1221,19 @@
     "loc.markFromList": "from the shared list",
     "plan.mbSet": "Set",
     "plan.mbRef": "Reference",
-    "plan.stackMore": "{n} more"
+    "plan.stackMore": "{n} more",
+    "set.myName": "Name",
+    "set.myNamePh": "Your name",
+    "set.myNameNone": "Add your name",
+    "set.accEdit": "Edit",
+    "set.rubWork": "Work",
+    "set.rubCal": "Calendar and alerts",
+    "set.rubLook": "Appearance and region",
+    "set.rubSystem": "System",
+    "gen.editOff": "Genre is off: it is not in the form",
+    "gen.turnOn": "Turn on",
+    "gen.lastOne": "At least one genre must stay on",
+    "gen.paySec": "Payment"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1813,7 +1837,19 @@
     "loc.markFromList": "de la lista común",
     "plan.mbSet": "Set",
     "plan.mbRef": "Referencia",
-    "plan.stackMore": "{n} más"
+    "plan.stackMore": "{n} más",
+    "set.myName": "Nombre",
+    "set.myNamePh": "Su nombre",
+    "set.myNameNone": "Añada su nombre",
+    "set.accEdit": "Editar",
+    "set.rubWork": "Trabajo",
+    "set.rubCal": "Calendario y avisos",
+    "set.rubLook": "Aspecto y región",
+    "set.rubSystem": "Sistema",
+    "gen.editOff": "Género desactivado: no está en el formulario",
+    "gen.turnOn": "Activar",
+    "gen.lastOne": "Debe quedar al menos un género",
+    "gen.paySec": "Pago"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2413,7 +2449,19 @@
     "loc.markFromList": "共有リストから",
     "plan.mbSet": "セット",
     "plan.mbRef": "参考",
-    "plan.stackMore": "他{n}件"
+    "plan.stackMore": "他{n}件",
+    "set.myName": "名前",
+    "set.myNamePh": "お名前",
+    "set.myNameNone": "名前を追加",
+    "set.accEdit": "編集",
+    "set.rubWork": "仕事",
+    "set.rubCal": "カレンダーと通知",
+    "set.rubLook": "表示と地域",
+    "set.rubSystem": "システム",
+    "gen.editOff": "ジャンルはオフ：フォームには表示されません",
+    "gen.turnOn": "オンにする",
+    "gen.lastOne": "ジャンルは1つ以上必要です",
+    "gen.paySec": "お支払い"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -3013,6 +3061,18 @@
     "loc.markFromList": "来自公共列表",
     "plan.mbSet": "集合",
     "plan.mbRef": "参考",
-    "plan.stackMore": "另{n}项"
+    "plan.stackMore": "另{n}项",
+    "set.myName": "姓名",
+    "set.myNamePh": "您的姓名",
+    "set.myNameNone": "添加姓名",
+    "set.accEdit": "编辑",
+    "set.rubWork": "工作",
+    "set.rubCal": "日历与提醒",
+    "set.rubLook": "外观与地区",
+    "set.rubSystem": "系统",
+    "gen.editOff": "类型已关闭：表单中不显示",
+    "gen.turnOn": "开启",
+    "gen.lastOne": "至少保留一个类型",
+    "gen.paySec": "付款"
   }
 }
