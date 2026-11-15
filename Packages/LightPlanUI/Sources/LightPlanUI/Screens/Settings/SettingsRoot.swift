@@ -137,16 +137,12 @@ struct SettingsRubrics: View {
             RubricLabel(text: t.t("set.rubCal"))
             SettingsGroup { chapter(.calendar); chapter(.alerts) }
             RubricLabel(text: t.t("set.rubLook"))
-            SettingsGroup {
-                VStack(alignment: .leading, spacing: 0) {
-                    WebSeg(options: [(t.t("set.themeDark"), AppSettings.Theme.dark), (t.t("set.themeLight"), .light), (t.t("set.themeAuto"), .auto)],
-                           selection: Binding(get: { app.settings.theme }, set: { v in app.update { $0.theme = v } }),
-                           track: Palette(colorScheme).field)
-                }
-                .padding(.horizontal, 10).padding(.vertical, 8)
+            // Тема — отдельный переключатель, как «Просто / Про / Астро» (слово Алексея 16.11): не строка блока.
+            WebSeg(options: [(t.t("set.themeDark"), AppSettings.Theme.dark), (t.t("set.themeLight"), .light), (t.t("set.themeAuto"), .auto)],
+                   selection: Binding(get: { app.settings.theme }, set: { v in app.update { $0.theme = v } }), pill: true)
+                .padding(.horizontal, 16).padding(.bottom, 12)
                 .shotNode("root.theme")
-                chapter(.view); chapter(.locale)
-            }
+            SettingsGroup { chapter(.view); chapter(.locale) }
             RubricLabel(text: t.t("set.rubSystem"))
             SettingsGroup {
                 chapter(.places); chapter(.network); chapter(.data)
