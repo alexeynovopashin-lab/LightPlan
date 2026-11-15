@@ -44,7 +44,7 @@ struct WebSeg<V: Hashable>: View {
     /// Цвет дорожки: по умолчанию `sheet`; внутри блока на `sheet` (30и.11) — `field`, иначе дорожка не видна.
     var track: Color? = nil
     /// Круглые концы у дорожки и кнопки (30и.11: переключатель режима на корне настроек).
-    var pill = false
+    var pill = true
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -319,14 +319,16 @@ struct ChapterPage<Content: View>: View {
 /// `.set-in`: поле 16 pt на `--sheet`, поле 14 · 15, скругление 12, отступ
 /// 12 сверху.
 struct SetInputStyle: ViewModifier {
+    /// Многострочное поле остаётся прямоугольником со скруглением; однострочное — круглые концы (30и.11, слово Алексея 16.11).
+    var multiline = false
     @Environment(\.colorScheme) private var colorScheme
     func body(content: Content) -> some View {
         let pal = Palette(colorScheme)
         content
             .font(.system(size: 16))
             .foregroundStyle(pal.ink)
-            .padding(.vertical, 14).padding(.horizontal, 15)
-            .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.vertical, 14).padding(.horizontal, multiline ? 15 : 20)
+            .background(pal.sheet, in: multiline ? AnyShape(RoundedRectangle(cornerRadius: 12, style: .continuous)) : AnyShape(Capsule()))
             .padding(.horizontal, 24)
             .padding(.top, 12)
     }
@@ -342,8 +344,8 @@ struct DataButtonStyle: ButtonStyle {
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(pal.brassInk)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 13).padding(.horizontal, 15)
-            .background(pal.pressWarm, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.vertical, 13).padding(.horizontal, 20)
+            .background(pal.pressWarm, in: Capsule())
             .opacity(configuration.isPressed ? 0.6 : 1)
             .padding(.horizontal, 24)
             .padding(.top, 10)
