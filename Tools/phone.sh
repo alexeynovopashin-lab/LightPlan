@@ -5,7 +5,7 @@
 # а основной идентификатор скрипт даёт только из `main`.
 #
 #   Tools/phone.sh install [--main] [--dry-run]   собрать, поставить, запустить (--dry-run: слот и адреса, без сборки)
-#   Tools/phone.sh uninstall [--main|slotA|<ветка>|<старый слаг>]   снять приложение (ветка закрыта)
+#   Tools/phone.sh uninstall [--main|slotA|A|<ветка>|<старый слаг>]   снять приложение (ветка закрыта)
 #   Tools/phone.sh list                           слот, ветка, sha, что стоит на телефоне; свободные слоты
 #   make phone ARGS="install"
 #
@@ -301,6 +301,7 @@ $alt"
     elif [ -n "$slug_arg" ]; then
       case "$slug_arg" in
         slot[A-D]) bid="$MAIN_BID.$slug_arg" ;;
+        [A-D])     bid="$MAIN_BID.slot$slug_arg" ;;   # буква слота: «uninstall A» = slotA
         *)
           if bid="$(holder_of "$slug_arg")"; then :
           else
@@ -320,6 +321,10 @@ $alt"
     fi
     [ "$dry" = 1 ] && echo "dry-run: снять $bid" && exit 0
     need_phone
+    # devicectl снимает несуществующее приложение без ошибки — проверяем, что оно на телефоне.
+    if ! xcrun devicectl device info apps --device "$DEVICE_ID" 2>/dev/null | grep -qE "(^|[[:space:]])${bid//./\\.}([[:space:]]|$)"; then
+      die "нет на телефоне: $bid — нечего снимать (слот пишется slotA или A; Tools/phone.sh list)" 6
+    fi
     xcrun devicectl device uninstall app --device "$DEVICE_ID" "$bid" > /tmp/cc-phone-uninstall.log 2>&1 \
       || { tail -3 /tmp/cc-phone-uninstall.log; die "не снято: $bid (devicectl вернул ошибку)" 5; }
     case "$bid" in "$MAIN_BID".slot[A-D]) printf '%s\t-\t-\t%s\n' "$bid" "$(date '+%Y-%m-%d %H:%M')" >> "$RECORD" ;; esac   # слот свободен
