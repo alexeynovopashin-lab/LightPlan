@@ -14,8 +14,9 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
     public static let fileName = "widget.json"
     /// На сколько дней вперёд приложение кладёт съёмки: дальше этого виджет без приложения не заглядывает.
     public static let horizonDays = 7
-    /// Сколько дней (сегодня и дальше) получают оценку заката: средний показывает сегодняшнюю, большой дальше.
-    public static let ratingDays = 3
+    /// Сколько дней (сегодня и дальше) получают оценку заката: сегодня плюс `WidgetFrame.aheadDays` следующих — их закаты средний вид
+    /// показывает при пустой неделе (Алексей 16.11), большой — под куполом. Было 3: у третьего дня оценки не было никогда.
+    public static let ratingDays = 1 + WidgetFrame.aheadDays
 
     /// Место «Света»: имя для подписи, координаты и зона IANA (или `fixed:<секунды>` — запасная зона без сети).
     public struct Spot: Codable, Sendable, Equatable {

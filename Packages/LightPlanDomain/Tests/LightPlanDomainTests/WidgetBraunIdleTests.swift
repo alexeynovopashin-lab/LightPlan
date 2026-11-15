@@ -231,6 +231,13 @@ struct WidgetBraunIdleTests {
         #expect(BraunIdle.sunsetRows(busy).isEmpty, "съёмки на неделе есть — закатов нет, там список")
     }
 
+    @Test func theForecastWindowCoversEveryDayTheEmptyWeekShows() {
+        #expect(WidgetFeed.ratingDays == 1 + WidgetFrame.aheadDays, "сегодня плюс три следующих дня")
+        let fc = (0..<WidgetFeed.ratingDays).map { WidgetFeed.Rating(day: "2026-10-\(25 + $0)", score: 50 + $0, quality: .good) }
+        let rows = BraunIdle.sunsetRows(feed(forecast: fc).frame(at: tsk(14)))
+        #expect(rows.map(\.score) == [51, 52, 53], "у третьего дня оценка есть: раньше окно кончалось на втором")
+    }
+
     @Test func anEmptyWeekIsOneLineUntilTheLastDay() {
         let f = feed().frame(at: tsk(14))
         #expect(BraunIdle.emptyWeekLine(f) == "до сб 31 съёмок нет", "25.10 + 6 суток = суббота 31.10 — слово доски")
