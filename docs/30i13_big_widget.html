@@ -346,6 +346,22 @@ function headShoot(sign,name,timer){return `<div style="position:relative;height
 const ROUTE=[['12:00','Пара в студии','backdrop'],['14:00','Обед','feast'],['15:00','Прогулка','park'],['17:00','Церемония','rings'],['19:00','Банкет','feast'],['22:00','Танцы','dance']];
 function timeline(rows,cur,rh,until){return rows.map((r,i)=>{const past=i<cur,now=i===cur;return `<div style="height:${rh}px;display:flex;align-items:center;gap:8px;position:relative;${now?'background:var(--pill);border-radius:9px;':''}padding:0 8px 0 4px"><span style="width:12px;align-self:stretch;position:relative;flex:none"><span style="position:absolute;left:5px;top:${i===0?'50%':'0'};bottom:${i===rows.length-1?'50%':'0'};width:2px;background:${past||now?'var(--amber)':'var(--slit)'};opacity:${past?.55:1}"></span><span style="position:absolute;left:${now?1:2.5}px;top:50%;margin-top:${now?-5:-3.5}px;width:${now?10:7}px;height:${now?10:7}px;border-radius:50%;background:${now?'var(--amber)':past?'var(--amber)':'var(--bg)'};${!now&&!past?'box-shadow:0 0 0 1.2px var(--ink2) inset':''};opacity:${past?.55:1}"></span></span><span class="ink" style="display:inline-flex;color:${now?'var(--amberT)':'var(--ink2)'}">${ic(r[2],15)}</span><span class="ink t13 sb mono" style="opacity:${past?.5:1}">${r[0]}</span><span class="ink t13" style="min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:${past?.5:1};${now?'font-weight:600;color:var(--amberT)':''}">${r[1]}</span>${now?`<span class="ink t11 sb" style="flex:none">${until}</span>`:''}</div>`}).join('')}
 function lightStrip(s){return footRow(s*1.0,{mid:'золотой час'})}
+/* Риски-таймер = правило Braun (BraunTicks, BraunTickLayer): 150 рисок по периметру плашки, от середины верха по часовой = вся съёмка;
+   прошедшие гаснут, длинные — ровные часы по часам места. Не украшение: каждая риска — 1/150 съёмки. */
+function tickTimer(W,H,th,o){const dark=th.startsWith('braunD');const off=dark?'#303030':'#CBCBC9',minor=dark?'#8C8C8C':'#6E6E6E',hour=dark?'#ECECEA':'#111';
+ const ins=3,x0=ins,y0=ins,w=W-2*ins,h=H-2*ins,r=22-ins,straightT=w-2*r,straightS=h-2*r,arc=Math.PI*r/2,Ltot=2*straightT+2*straightS+4*arc;
+ const seg=[[straightT/2,'t1'],[arc,'a1'],[straightS,'s1'],[arc,'a2'],[straightT,'t2'],[arc,'a3'],[straightS,'s2'],[arc,'a4'],[straightT/2,'t3']];
+ function at(d){for(const [len,k] of seg){if(d<=len+1e-9){const f=len?d/len:0;switch(k){
+  case't1':return[x0+w/2+d,y0,0,1];case'a1':{const a=-Math.PI/2+f*Math.PI/2,cx=x0+w-r,cy=y0+r;return[cx+r*Math.cos(a),cy+r*Math.sin(a),-Math.cos(a),-Math.sin(a)]}
+  case's1':return[x0+w,y0+r+d,-1,0];case'a2':{const a=f*Math.PI/2,cx=x0+w-r,cy=y0+h-r;return[cx+r*Math.cos(a),cy+r*Math.sin(a),-Math.cos(a),-Math.sin(a)]}
+  case't2':return[x0+w-r-d,y0+h,0,-1];case'a3':{const a=Math.PI/2+f*Math.PI/2,cx=x0+r,cy=y0+h-r;return[cx+r*Math.cos(a),cy+r*Math.sin(a),-Math.cos(a),-Math.sin(a)]}
+  case's2':return[x0,y0+h-r-d,1,0];case'a4':{const a=Math.PI+f*Math.PI/2,cx=x0+r,cy=y0+r;return[cx+r*Math.cos(a),cy+r*Math.sin(a),-Math.cos(a),-Math.sin(a)]}
+  case't3':return[x0+r+d,y0,0,1]}}d-=len}return[x0+w/2,y0,0,1]}
+ const N=150,dur=o.end-o.start,el=o.now-o.start,hrs=new Set();for(let m=Math.ceil(o.start/60)*60;m<=o.end;m+=60)hrs.add(Math.round((m-o.start)/dur*N));
+ let out='';for(let i=0;i<N;i++){const [x,y,nx,ny]=at(i/N*Ltot),big=hrs.has(i),past=i/N*dur<el,L=big?7.5:4,sw=big?1.75:1.25;
+  out+=`<line x1="${(x+nx*sw/2).toFixed(2)}" y1="${(y+ny*sw/2).toFixed(2)}" x2="${(x+nx*(L-sw/2)).toFixed(2)}" y2="${(y+ny*(L-sw/2)).toFixed(2)}" stroke="${past?off:big?hour:minor}" stroke-width="${sw}" stroke-linecap="round"/>`}
+ return `<svg class="tk" width="${W}" height="${H}" style="position:absolute;left:0;top:0;pointer-events:none">${out}</svg>`}
+const WED={start:12*60,end:24*60+30,now:14*60+38}; // свадьба 12:00–00:30, сейчас 14:38: прошло 2 ч 38 из 12 ч 30 (21 %), осталось 9:52:00 — то же число в окошке
 const S9={
  a1:{title:'а · Съёмки сегодня нет, на неделе есть',build({iw,ih,s,push}){
   push('шапка',16,`<span class="ink t12 sb c2">${SC.date} · ${SC.name}</span>`,'c');push('зазор',4,'','gap');
@@ -365,13 +381,15 @@ const S9={
   push('ножки + оценка',38,footRow(s,{mid:'золотой час'}),'c');push('зазор',8,'','gap');
   const avail=ih-(20+4+boxH+2+38+8),dia=Math.min(avail-16,104);
   push('блок: вся съёмка кругом + что дальше',avail,`<div class="blk" data-ink style="height:${avail}px;display:flex;align-items:center;gap:12px;padding:0 10px 0 8px">${dialBox(dia,72/120,'portrait','72','мин','до конца съёмки')}<div style="flex:1;min-width:0"><div class="t11 c2" style="margin-bottom:4px">дальше</div>${SC.shoots.slice(2,4).map(sh=>shootRow(sh,36,{merge:true,sg:16})).join('')}</div></div>`,'c');}},
- c:{title:'в · Свадьба: маршрут и таймер (идея таймлайна main)',build({iw,ih,s,push}){
+ c:{title:'в · Свадьба: маршрут и таймер (идея таймлайна main)',build:(...a)=>S9c(...a)},
+ c2:{title:'в, вариант · то же + риски-таймер свадьбы, как у Braun',build:(...a)=>S9c(...a)}};
+function S9c({iw,ih,s,push}){
   push('шапка: жанр, имена, окошко Braun до конца свадьбы',20,headShoot('wedding','Свадьба · Анна+Игорь','9:52:00'),'c');
   push('строка дня',18,`<span class="ink t12 c2" style="padding-top:2px;display:inline-block">12:00–00:30 · 6 точек</span>`,'c');push('зазор',8,'','gap');
   const avail=ih-(20+18+8+8+1+8+38),dia=Math.min(92,Math.round(iw*.26)),n=Math.min(6,Math.floor(avail/34)),rh=Math.floor(avail/n);
   push('блок: часы точки + маршрут',avail,`<div class="blk" data-ink style="height:${avail}px;display:flex;align-items:center;gap:10px;padding:0 8px"><div style="align-self:flex-start;margin-top:8px">${dialBox(dia,22/60,'feast','22','мин','до конца точки')}</div><div style="flex:1;min-width:0;padding:4px 0">${timeline(ROUTE.slice(0,n),1,Math.floor((avail-8)/n),'до 15:00')}${ROUTE.length>n?`<div class="t11 c2" style="padding-left:24px">и ещё ${ROUTE.length-n}</div>`:''}</div></div>`,'c');
   push('зазор',8,'','gap');push('щель',1,slit(),'gap');push('зазор',8,'','gap');
-  push('свет: рассвет · золотой час · закат с оценкой',38,`<div style="position:relative">${footRow(s,{mid:'золотой час'})}</div>`,'c');}}};
+  push('свет: рассвет · золотой час · закат с оценкой',38,`<div style="position:relative">${footRow(s,{mid:'золотой час'})}</div>`,'c');}
 const sec9=document.createElement('section');sec9.id='states';
 sec9.innerHTML=`<div class="tag">9 · Три состояния большого виджета (эскиз, 16.11)</div>
 <p class="lead">Слова Алексея 16.11: «риски я не просил добавить, я просил оставить там где мы их намеренно добавили… У него должно быть несколько видов: без съемки, во время фотосессии, во время свадьбы с маршрутом и таймером». Подложка и цвета Braun, рисков на большом нет — они только у Braun. Блок отсчёта — его содержимое (кольцо точек, знак, срок, строки), без рамки из рисков.</p>
@@ -381,6 +399,7 @@ sec9.innerHTML=`<div class="tag">9 · Три состояния большого
 <div class="fact"><b>в · свадьба с маршрутом и таймером</b>Идея таймлайна main: шапка «12:00–00:30 · 6 точек» и окошко «до конца свадьбы»; блок — слева часы точки (знак точки, «22 мин до конца точки»), справа точки с золотой рельсой: прошедшие приглушены, текущая подсвечена, «до 15:00»; не влезли — «и ещё N». Купола нет — внизу щель и свет тремя столбцами по ширине (рассвет, золотой час, закат с оценкой), как было.</div>
 </div>
 <div class="facts"><div class="fact pro"><b>Плюс</b>Таймлайн свадьбы, который был на main, возвращается и получает часы точки Braun; фотосессия и свободный день — свои виды, купол не занимает место там, где нужен маршрут.</div><div class="fact con"><b>Минус</b>Три разных раскладки — три набора проверок на двух размерах; в «в» купола нет (свет — только строкой), в «б» купол чуть меньше, чем в приложении.</div></div>
+<div class="facts"><div class="fact"><b>Риски (Алексей 16.11: «риски для красоты не нужны, а в Брауне они являтся таймером»)</b>Риски бывают только таймером. В «а» и «б» рисок нет. В «в» — вариант, внизу раздела: по краю плашки 150 рисок, это вся свадьба от начала (середина верха) по часовой до конца; прошедшие гаснут, длинные риски — ровные часы по часам места. Правило то же, что у Braun (<code>BraunTicks</code>), одна риска на свадьбе 12:00–00:30 = 5 мин. На картинке 14:38: погасло 32 риски из 150 (2 ч 38 мин), горит остаток — те же 9:52:00, что в окошке. Риски с рамки блока в § 8 (Б2) были украшением — отменены.</div><div class="fact pro"><b>Плюс варианта</b>Длина всей свадьбы и сколько осталось видны издалека, без цифр, тем же языком, что у Braun.</div><div class="fact con"><b>Минус варианта</b>Повторяет число в окошке; если рядом стоит и Braun, на экране два одинаковых таймера. Периметр большого длиннее (≈ 1 350 против ≈ 1 000 pt у среднего), риски реже — шаг ≈ 9 pt.</div></div>
 <div class="obs"><b>Недочёты купольного варианта (сборка 159378af) — мои наблюдения по снимкам и картинкам симулятора, не слова Алексея:</b><ul>
 <li>Во время съёмки большой перестал показывать маршрут (таймлайн main с золотой рельсой и «до 02:00») — это потеря, а не только вид. Чинится состоянием «в».</li>
 <li>Без съёмок на неделе нижний блок — большое пустое тёмное поле с одной строкой (≈ 60 % блока пусто).</li>
@@ -394,7 +413,7 @@ sec9.innerHTML=`<div class="tag">9 · Три состояния большого
 <div id="s9f"></div>`;
 document.getElementById('variants').appendChild(sec9);
 const s9f=document.getElementById('s9f');
-['a1','a2','b','c'].forEach(k=>{const v=S9[k];const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${v.title}</b></div>`;s9f.appendChild(row);
- [[0,'braunD'],[0,'braunL'],[1,'braunD'],[1,'braunL']].forEach(([si,th])=>{const f=frame(v,SIZES[si],th+' nt','full');const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${SIZES[si].W} × ${SIZES[si].H} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption>`;row.appendChild(fig);
+['a1','a2','b','c','c2'].forEach(k=>{const v=S9[k];const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${v.title}</b></div>`;s9f.appendChild(row);
+ [[0,'braunD'],[0,'braunL'],[1,'braunD'],[1,'braunL']].forEach(([si,th])=>{const f=frame(v,SIZES[si],th+' nt','full');if(k==='c2')f.el=f.el.replace(/<\/div>$/,tickTimer(f.W,f.H,th,WED)+'</div>');const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${SIZES[si].W} × ${SIZES[si].H} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption>`;row.appendChild(fig);
   const pct=measure(fig.firstChild,f.W,f.H);fig.querySelector('figcaption').insertAdjacentHTML('beforeend',` · заполнено ${pct.toFixed(0)} %`)})});
 </script></body></html>
