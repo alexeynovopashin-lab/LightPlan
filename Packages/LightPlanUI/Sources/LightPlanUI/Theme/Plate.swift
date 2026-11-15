@@ -112,8 +112,15 @@ public extension View {
     /// `hush` (0…1): под стеклом тон страницы с такой плотностью — плашка, под которой прокручивается чужое содержимое («время» на «Свете»,
     /// 30з.2), не показывает его резко сквозь стекло.
     func glassPlate(_ pal: Palette, radius: CGFloat = GlassPlateTokens.radius, hush: Double = 0) -> some View {
+        glassPlate(pal, radius: radius, hush: hush, glow: nil)
+    }
+}
+
+extension View {
+    /// `glow` (30з.3): свет из-под верхней кромки плашки — лежит над тоном и под содержимым, в скруглении плашки (`PlateGlow`).
+    func glassPlate(_ pal: Palette, radius: CGFloat = GlassPlateTokens.radius, hush: Double = 0, glow: PlateGlowSpec?) -> some View {
         let r = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        return modifier(GlassPlateModifier(pal: pal, shape: r, hush: hush))
+        return modifier(GlassPlateModifier(pal: pal, shape: r, hush: hush, glow: glow))
     }
 }
 
@@ -126,9 +133,12 @@ private struct GlassPlateModifier: ViewModifier {
     let pal: Palette
     let shape: RoundedRectangle
     let hush: Double
+    let glow: PlateGlowSpec?
 
     func body(content: Content) -> some View {
         content
+            // Первый `.background` ближе всех к содержимому: свет над тоном плашки, под её кантом.
+            .background { if let glow { PlateGlow(spec: glow).clipShape(shape) } }
             .background { shape.fill(pal.sheetGlass) }
             // Тень у встроенного стекла своя и падает наружу: срез по контуру её убирает (и в светлой, и в тёмной).
             .background { Color.clear.glassEffect(.regular, in: shape).clipShape(shape) }

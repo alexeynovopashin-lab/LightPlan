@@ -99,7 +99,7 @@ public struct LightScreenView: View {
                 // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                 Group {
                     // 30з.2: «сейчас» — плашка стекла от линии горизонта, времена у оснований дуги внутри неё.
-                    nowPlate(telemetry, pal, tuck: Self.domeTuck(extra: tuckNow))
+                    nowPlate(telemetry, pal, tuck: Self.domeTuck(extra: tuckNow), sky: skyNow)
 
                     // 30з.2: плашка «условия» (список + ручка «Подробно») и под ней каждая рубрика «Подробно» — своя плашка (`LightSpoilerView`).
                     LightSpoilerView(groups: telemetry.proGroups, open: model.proMode, title: model.lexiconWord("today.details"),
@@ -459,10 +459,11 @@ public struct LightScreenView: View {
     /// Плашка «сейчас» (30з.2): от линии горизонта вниз; внутри — «до …» по центру и время рассвета и заката у оснований дуги, знак над
     /// временем. Основания — концы дуги на горизонте (`cx ∓ rx`, `cy` в `viewBox` купола), через `DomeFit` — на любой ширине. После
     /// заката слева завтрашний рассвет (`baseRiseEdge`). Кнопки в плашке нет: она парит над лентой.
-    private func nowPlate(_ t: LightTelemetry, _ pal: Palette, tuck: CGFloat) -> some View {
+    private func nowPlate(_ t: LightTelemetry, _ pal: Palette, tuck: CGFloat, sky: DomeSky?) -> some View {
         let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
         // От верха блока «до …» (низ рамки «шапка + купол») вверх до горизонта: купол 240 − подъём 22 − горизонт у 196 → 22 pt.
         let rise = max(0, DomeView.height - tuck - fit.point(CGPoint(x: 0, y: CGFloat(DomeGeometry.horizonY))).y)
+        let glow = plateGlow(sky: sky, fit: fit, pal: pal)
         return nextLight(t, pal)
             .padding(.top, 2)
             .frame(height: 72, alignment: .top)
@@ -470,10 +471,27 @@ public struct LightScreenView: View {
             .overlay(alignment: .topLeading) { baseTimes(t, pal: pal, rise: rise) }
             .padding(.bottom, Self.nowPlateBottom)
             .background(alignment: .top) {
-                Color.clear.glassPlate(pal).padding(.top, -rise)
+                Color.clear.glassPlate(pal, glow: glow).padding(.top, -rise)
             }
             .shotNode("plate.now")
+            .shotNode("plate.glow", text: glow.map { String(format: "%02X%02X%02X|%.3f|%.3f", $0.color.r, $0.color.g, $0.color.b, $0.peak, $0.centre) } ?? "none")
             .padding(.horizontal, 8)
+    }
+
+    /// 30з.3: свет из-под верхней кромки плашки «сейчас». Источник — солнце под горизонтом: центр света по ширине плашки стоит там, где
+    /// зарево купола (`paintHorizonGlow`: x солнца на дуге, не ближе 60 и не дальше 330 из 390); цвет и сила — зарево неба (`DomeSky`).
+    private func plateGlow(sky: DomeSky?, fit: DomeFit, pal: Palette) -> PlateGlowSpec? {
+        #if DEBUG
+        // Сравнение «с светом / без» по пикселям (`Tools/shots/plate_glow.py`).
+        if UserDefaults.standard.bool(forKey: "LPPlateGlowOff") { return nil }
+        #endif
+        let sun = model.timebar.solarDay
+        let minute = model.timebar.machine.viewMinute
+        let g = DomeGeometry.self
+        let sunX = g.clamp(Double(g.posAt(minute, sun: sun).x), 60, 330)
+        let blockWidth = max(1, domeSize.width - 16)
+        let centre = (fit.point(CGPoint(x: sunX, y: 0)).x - 8) / blockWidth
+        return PlateGlowSpec.make(sky: sky, elevation: sun.elevation(at: minute), centre: Double(centre), lightTheme: !pal.dark)
     }
 
     /// Времена у оснований дуги: координаты блока «до …» (его левый край — x = 8 экрана, верх — `rise` ниже горизонта). Касаний не ловят.
