@@ -1,15 +1,18 @@
 import SwiftUI
 import LightPlanDomain
 
-/// Цвета и мелочи виджета. Те же значения, что у `Palette` приложения (тёмная: подложка 0F0E0C, чернила EFEAE0;
-/// светлая: FAF8F3 / 17150F), янтарь — свет; расширение не тянет `LightPlanUI`, поэтому числа здесь свои.
+/// Цвета и мелочи виджета. С 30и.13 (слово Алексея 15.11: «у всех виджетов разный цвет и подложка, надо как у Braun») — палитра Braun
+/// (`BraunPalette`: тёмная #161616 / ECECEA / жёлтый F4B400, светлая «Braun белый» #E4E4E2 / 111111, акцент чёрный); раньше была тёплая
+/// 0F0E0C/FAF8F3. Расширение не тянет `LightPlanUI`, поэтому числа здесь свои. Подложку рисует сам вид (`WidgetRoot`), не `containerBackground`:
+/// на «Домой» система его осветляет (26.10, #161616 → #2E2E2E).
 struct WidgetStyle {
     let dark: Bool
-    var ink: Color { dark ? Color(red: 0xEF / 255, green: 0xEA / 255, blue: 0xE0 / 255) : Color(red: 0x17 / 255, green: 0x15 / 255, blue: 0x0F / 255) }
-    var ink2: Color { ink.opacity(0.62) }
-    var surface: Color { dark ? Color(red: 0x0F / 255, green: 0x0E / 255, blue: 0x0C / 255) : Color(red: 0xFA / 255, green: 0xF8 / 255, blue: 0xF3 / 255) }
-    /// Янтарь света; на светлой подложке темнее, чтобы читался.
-    var amber: Color { dark ? Color(red: 0xE2 / 255, green: 0xA4 / 255, blue: 0x4C / 255) : Color(red: 0x9A / 255, green: 0x5F / 255, blue: 0x0A / 255) }
+    private var pal: BraunPalette { BraunPalette(dark: dark) }
+    var ink: Color { pal.text }
+    var ink2: Color { pal.muted }
+    var surface: Color { pal.bg }
+    /// Акцент: жёлтый Braun на тёмной, чёрный на светлой (там жёлтым стоит только таблетка).
+    var amber: Color { pal.amber }
     /// Заливка кружков ленты экрана активности (эскиз 14.11, `--app-bg`): тёмная #121110 на светлее подложке плашки.
     var surfaceOnPlate: Color { Color(red: 0x12 / 255, green: 0x11 / 255, blue: 0x10 / 255) }
     /// Латунь бирки «α» — как на значке тестовых сборок (`Tools/app_icon_alpha.py`): #E2A44C, буква #0F0E0C.

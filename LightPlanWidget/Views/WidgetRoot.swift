@@ -17,8 +17,18 @@ struct WidgetRoot: View {
 
     /// Системные поля плашки «Домой», когда вид их не отключает.
     static let margin: CGFloat = 16
+    @Environment(\.colorScheme) private var scheme
+
+    /// Подложка всех домашних видов — Braun (30и.13), нарисованная самим видом: `containerBackground` система на «Домой» осветляет.
+    private var plate: some View { Rectangle().fill(BraunPalette(dark: scheme == .dark).bg).ignoresSafeArea() }
 
     var body: some View {
+        content.background(plate.opacity(isHome ? 1 : 0))
+    }
+
+    private var isHome: Bool { shape == .small || shape == .medium || shape == .large }
+
+    @ViewBuilder private var content: some View {
         switch shape {
         case .small:
             if frame.kind == .live { SmallLiveView(frame: frame, alpha: alpha) }
