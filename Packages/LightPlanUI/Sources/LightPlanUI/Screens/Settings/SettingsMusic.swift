@@ -191,8 +191,8 @@ private struct PlaylistFrame<Name: View, URL: View, Trailing: View>: View {
 private func field(_ placeholder: String, text: Binding<String>, pal: Palette) -> some View {
     TextField("", text: text, prompt: Text(placeholder).foregroundStyle(pal.ink8))
         .font(.system(size: 14)).foregroundStyle(pal.ink)
-        .padding(12)
-        .background(pal.sheet, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(.vertical, 12).padding(.horizontal, 18)
+        .background(pal.sheet, in: Capsule())
 }
 
 /// Адрес: без автозаглавных, без поправок, клавиатура для адресов.
