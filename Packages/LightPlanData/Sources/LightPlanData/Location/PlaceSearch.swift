@@ -23,11 +23,14 @@ public struct PlaceMark: Sendable, Hashable {
     public var locality: String?
     public var region: String?
     public var country: String?
+    /// Две буквы ISO (30и.12: подсказка города хранит код страны).
+    public var isoCode: String?
     public var coordinate: GeoCoordinate
 
-    public init(name: String?, locality: String?, region: String?, country: String? = nil, coordinate: GeoCoordinate) {
+    public init(name: String?, locality: String?, region: String?, country: String? = nil,
+                isoCode: String? = nil, coordinate: GeoCoordinate) {
         self.name = name; self.locality = locality; self.region = region
-        self.country = country; self.coordinate = coordinate
+        self.country = country; self.isoCode = isoCode; self.coordinate = coordinate
     }
 }
 
@@ -137,23 +140,30 @@ public struct ApplePlaceSearch: PlaceSearch {
     public func places(matching query: String) async throws -> [PlaceHit] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard PlaceQuery.isAskable(q) else { return [] }
-        var marks: [PlaceMark] = []
-        var failure: Error?
-        do { marks = try await ask(q) } catch { failure = error }
-        if let latin = PlaceQuery.transliteration(of: q), !marks.contains(where: { PlaceQuery.names($0, query: q) }) {
-            do { marks += try await ask(latin) } catch { failure = failure ?? error }
-        }
-        let found = Self.hits(PlaceQuery.exactFirst(marks, query: q), homeCountry: homeCountry)
-        if found.isEmpty, let failure { throw failure }
-        return found
+        let marks = try await Self.marks(matching: q, locale: locale)
+        return Self.hits(marks, homeCountry: homeCountry)
     }
 
-    private func ask(_ text: String) async throws -> [PlaceMark] {
+    /// Метки по набранной строке — один путь и для «Где снимаем», и для поиска города (30и.12): вопрос как
+    /// набрано, при нужде второй — латиницей; названные как набрано идут первыми. Все ответы пусты и был
+    /// сбой — сбой выбрасывается.
+    public static func marks(matching q: String, locale: Locale) async throws -> [PlaceMark] {
+        var marks: [PlaceMark] = []
+        var failure: Error?
+        do { marks = try await ask(q, locale: locale) } catch { failure = error }
+        if let latin = PlaceQuery.transliteration(of: q), !marks.contains(where: { PlaceQuery.names($0, query: q) }) {
+            do { marks += try await ask(latin, locale: locale) } catch { failure = failure ?? error }
+        }
+        if marks.isEmpty, let failure { throw failure }
+        return PlaceQuery.exactFirst(marks, query: q)
+    }
+
+    private static func ask(_ text: String, locale: Locale) async throws -> [PlaceMark] {
         // Один `CLGeocoder` на запрос: на одном экземпляре второй запрос отменяет первый.
         let marks = try await CLGeocoder().geocodeAddressString(text, in: nil, preferredLocale: locale)
         return marks.compactMap { p in
             p.location.map { PlaceMark(name: p.name, locality: p.locality, region: p.administrativeArea,
-                                       country: p.country,
+                                       country: p.country, isoCode: p.isoCountryCode,
                                        coordinate: GeoCoordinate(latitude: $0.coordinate.latitude,
                                                                  longitude: $0.coordinate.longitude)) }
         }
