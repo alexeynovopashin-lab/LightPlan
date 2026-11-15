@@ -138,7 +138,7 @@ public struct SettingsView: View {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
-                    SetHeader(title: "Light Plan", sub: t.t("set.proto"))
+                    AccountPoster(app: app) { path = [.profile] }
                     // Всё под шапкой проявляется при смене вкладки (S1); шапка не мигает.
                     Group {
                     VStack(spacing: 0) {
@@ -157,7 +157,7 @@ public struct SettingsView: View {
                         SimpleSettingsSheet(app: app)
                     case .chapters(let astroSwitches):
                         if astroSwitches { AstroSwitchRows(app: app) }
-                        chapterRows
+                        SettingsRubrics(app: app)
                     }
                     if app.showsBuildLine { BuildLine(info: BuildInfo.current(), lexicon: t) }
                     }

@@ -43,7 +43,13 @@ struct SettingsChapterView: View {
     // MARK: - Профиль
 
     @ViewBuilder private var profile: some View {
-        SecLabel(text: t.t("set.myCity"), first: true)
+        // Имя (30и.11): шапка настроек показывает его под аватаром; пишется сразу, как город.
+        SecLabel(text: t.t("set.myName"), first: true)
+        TextField("", text: Binding(get: { app.myName }, set: { app.setMyName($0) }),
+                  prompt: Text(t.t("set.myNamePh")).foregroundStyle(Palette(colorScheme).ink8))
+            .modifier(SetInputStyle())
+            .shotNode("profile.name")
+        SecLabel(text: t.t("set.myCity"))
         CitySearchField(app: app, style: .web)
         SetNote(text: t.t("set.myCityNote"))
         // «Мой телефон», «ID приложения», «Прежние ID» — итерация 23; контакты — 28.

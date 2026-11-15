@@ -41,6 +41,8 @@ struct WebSeg<V: Hashable>: View {
     var sky: Bool = false
     /// Сколько строк позволено подписи кнопки: у веба «Apple Music» в четвёртой части переносится на две.
     var lines = 1
+    /// Цвет дорожки: по умолчанию `sheet`; внутри блока на `sheet` (30и.11) — `field`, иначе дорожка не видна.
+    var track: Color? = nil
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -69,7 +71,7 @@ struct WebSeg<V: Hashable>: View {
         // Кнопки одной высоты: переносится одна — вровень с ней встают остальные (`flex` растягивает).
         .fixedSize(horizontal: false, vertical: lines > 1)
         .padding(3)
-        .background(pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(track ?? pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(alignment: .trailing) {
             if sky {
                 GeometryReader { g in SegSky().frame(width: g.size.width / CGFloat(options.count)).frame(maxWidth: .infinity, alignment: .trailing) }
@@ -165,6 +167,8 @@ struct SetItemRow: View {
     let value: String
     var chevron = true
     var dim = false
+    /// Строка внутри блока `SettingsGroup` (30и.11): поле 16, волоска нет — разделитель-прорезь рисует блок.
+    var grouped = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -186,9 +190,9 @@ struct SetItemRow: View {
             }
         }
         .frame(minHeight: 18)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, grouped ? 16 : 24)
         .padding(.top, 15).padding(.bottom, 16)
-        .overlay(alignment: .bottom) { Rectangle().fill(pal.hair2).frame(height: 1) }
+        .overlay(alignment: .bottom) { if !grouped { Rectangle().fill(pal.hair2).frame(height: 1) } }
         .opacity(dim ? 0.4 : 1)
         .contentShape(Rectangle())
     }

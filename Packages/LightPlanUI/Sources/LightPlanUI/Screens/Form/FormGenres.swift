@@ -98,6 +98,13 @@ struct GenreSheet: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
 
+    /// Жанр, который правят (30и.11, вариант A): тап по плитке выбирает его, блок ниже всегда про него. Не выбран — жанр формы,
+    /// если он включён, иначе первый включённый.
+    @State private var editing: Genre?
+    /// Пояснение «должен остаться хотя бы один жанр» после тапа по кружку последнего.
+    @State private var lastNotice = false
+    @State private var noticeTask: Task<Void, Never>?
+
     /// Ряд длительностей (веб `GEN_DURS`) и сроков сдачи (веб `DELV_DAYS`).
     static let durations = [30, 60, 90, 120, 180, 240, 360, 480, 600]
     static let deliveryDays = [3, 7, 14, 30, 90]
@@ -105,7 +112,7 @@ struct GenreSheet: View {
     var body: some View {
         let pal = Palette(scheme)
         let t = app.lexicon
-        let g = app.form?.genre ?? .portrait
+        let g = Self.edited(editing, form: app.form?.genre, enabled: app.enabledGenres)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Capsule().fill(pal.edge).frame(width: 38, height: 4).frame(maxWidth: .infinity)
@@ -114,20 +121,33 @@ struct GenreSheet: View {
                     .shotNode("gen.title")
                 Text(t.t("gen.sub")).font(.system(size: 13)).foregroundStyle(pal.ink4).padding(.top, 5)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
-                    ForEach(Genre.allCases, id: \.self) { x in
-                        let on = app.enabledGenres.contains(x)
-                        GenreTile(genre: x, name: t.t("genre." + x.rawValue), on: on) { app.toggleGenre(x) }
-                            .opacity(on ? 1 : 0.4)
-                    }
+                    ForEach(Genre.allCases, id: \.self) { x in tile(x, selected: x == g, pal, t) }
                 }
                 .padding(.top, 18)
                 .shotNode("gen.list")
+                if lastNotice {
+                    Text(t.t("gen.lastOne")).font(.system(size: 12)).foregroundStyle(pal.brassInk)
+                        .padding(.top, 10).padding(.horizontal, 4).shotNode("gen.lastOne")
+                }
+                if !app.enabledGenres.contains(g) {
+                    HStack(spacing: 10) {
+                        Text(t.t("gen.editOff")).font(.system(size: 13)).foregroundStyle(pal.ink)
+                        Spacer(minLength: 0)
+                        Button { app.toggleGenre(g) } label: {
+                            Text(t.t("gen.turnOn")).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brassInk)
+                        }.buttonStyle(.plain)
+                    }
+                    .padding(.vertical, 12).padding(.horizontal, 14)
+                    .background(pal.sheet, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.top, 12).shotNode("gen.offPlate")
+                }
                 HStack(spacing: 4) {
                     Text(t.t("form.genre"))
                     Text("· " + t.t("genre." + g.rawValue).lowercased())
                 }
                 .font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)
                 .foregroundStyle(pal.ink7)
+                .shotNode("gen.presetHead", text: g.rawValue)
                 .padding(.top, 22).padding(.horizontal, 4).padding(.bottom, 9)
                 FormGroup {
                     VStack(alignment: .leading, spacing: 0) {
@@ -148,6 +168,7 @@ struct GenreSheet: View {
                         .padding(.horizontal, 15).padding(.vertical, 12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                paymentBlock(g, pal, t)
                 Button { dismiss() } label: {
                     Text(t.t("pick.done")).font(.system(size: 16, weight: .semibold)).foregroundStyle(pal.onBrass)
                         .frame(maxWidth: .infinity).padding(16)
@@ -160,6 +181,93 @@ struct GenreSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.hidden)
+    }
+
+    /// Дефолт оплаты жанра (30и.11, просили в листе): ставка часа и пакеты — те же данные, что правятся в блоке оплаты формы.
+    @ViewBuilder private func paymentBlock(_ g: Genre, _ pal: Palette, _ t: Lexicon) -> some View {
+        let nt = NumberText(language: app.language)
+        Text(t.t("gen.paySec")).font(.system(size: 10, weight: .semibold)).tracking(1.2).textCase(.uppercase)
+            .foregroundStyle(pal.ink7).padding(.top, 22).padding(.horizontal, 4).padding(.bottom, 9)
+            .shotNode("gen.paySec")
+        FormGroup {
+            HStack(spacing: 12) {
+                Text(t.t("gen.rateLbl", ["genre": t.t("genre." + g.rawValue).lowercased(),
+                                         "sign": nt.currencySign(app.settings.currency.rawValue)]))
+                    .font(.system(size: 15)).foregroundStyle(pal.ink).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                FormMoneyField(value: app.genreRate(g)) { app.setGenreRate(g, $0) }
+            }
+            .padding(.vertical, 13).padding(.horizontal, 15).frame(minHeight: 50)
+            .id("rate-" + g.rawValue)
+            .shotNode("gen.rate")
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text(t.t("gen.packs")).font(.system(size: 15)).foregroundStyle(pal.ink)
+                    Spacer()
+                    Button {
+                        var list = app.genrePacks(g)
+                        guard list.count < Pack.limit else { return }
+                        list.append(Pack(name: "", price: 0))
+                        app.setGenrePacks(g, list)
+                    } label: {
+                        Text(t.t("gen.packAdd")).font(.system(size: 13, weight: .semibold)).foregroundStyle(pal.brassInk).padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(app.genrePacks(g).count >= Pack.limit)
+                }
+                .padding(.horizontal, 15).padding(.top, 13).padding(.bottom, 9)
+                PackEditor(app: app, genre: g)
+            }
+            .shotNode("gen.packs")
+            Text(t.t("gen.paySub")).font(.system(size: 12)).foregroundStyle(pal.ink6)
+                .padding(.horizontal, 15).padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Плитка шторки: тап выбирает жанр для правки (рамка), кружок в углу включает и выключает.
+    private func tile(_ x: Genre, selected: Bool, _ pal: Palette, _ t: Lexicon) -> some View {
+        let on = app.enabledGenres.contains(x)
+        let isLast = on && app.enabledGenres.count == 1
+        return GenreTile(genre: x, name: t.t("genre." + x.rawValue), on: on) { editing = x }
+            .opacity(on ? 1 : 0.4)
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(pal.brass, lineWidth: 2).opacity(selected ? 1 : 0).allowsHitTesting(false)
+            }
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    if app.toggleGenre(x) { lastNotice = false } else { showLastNotice() }
+                } label: {
+                    ZStack {
+                        Circle().fill(on ? pal.brass : pal.press).frame(width: 18, height: 18)
+                        if on { Icon("check", size: 11, line: 2.4).foregroundStyle(pal.onBrass) }
+                    }
+                    .frame(width: 34, height: 34).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .opacity(isLast ? 0.55 : 1)
+                .accessibilityLabel(t.t("genre." + x.rawValue))
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .shotNode("gen.check." + x.rawValue, text: on ? "on" : "off")
+            }
+            .shotNode("gen.tile." + x.rawValue, text: (on ? "on" : "off") + (selected ? "|edit" : ""))
+    }
+
+    private func showLastNotice() {
+        lastNotice = true
+        noticeTask?.cancel()
+        noticeTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2.5))
+            if !Task.isCancelled { lastNotice = false }
+        }
+    }
+
+    /// Какой жанр правят: выбранный тапом; нет выбора — жанр формы, если включён, иначе первый включённый.
+    static func edited(_ picked: Genre?, form: Genre?, enabled: [Genre]) -> Genre {
+        if let picked { return picked }
+        if let form, enabled.contains(form) { return form }
+        return enabled.first ?? .portrait
     }
 
     /// «По свету» — только там, где оно и есть заводское (у пейзажа длительность считается по окну дня).

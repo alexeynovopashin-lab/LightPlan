@@ -23,6 +23,25 @@ extension AppModel {
         return ""
     }
 
+    /// Имя владельца (30и.11): `me.name`, как написал человек; пусто — не задано. Нужно шапке настроек и, позже, ядру.
+    public var myName: String {
+        if case .string(let n)? = meObject["name"] { return n }
+        return ""
+    }
+
+    public func setMyName(_ v: String) {
+        // Как набрано (пробел в конце — часть набора); пустое и из одних пробелов — «не задано».
+        setMe("name", v.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : .string(v))
+        persist()
+    }
+
+    /// Инициалы для заглушки аватара: первые буквы первых двух слов имени; пусто, если имени нет.
+    public var myInitials: String { Self.initials(of: myName) }
+
+    nonisolated static func initials(of name: String) -> String {
+        name.split(whereSeparator: { $0.isWhitespace }).prefix(2).compactMap { $0.first.map { String($0).uppercased() } }.joined()
+    }
+
     /// ID приложения: «id» и международные цифры мобильного; пусто — номера нет или он не мобильный.
     public var myAppId: String { TelFormat.appId(myPhone, country: telCountry) }
 
