@@ -72,6 +72,9 @@ struct MyPhoneField: View {
     var focused: FocusState<Bool>.Binding
     @Environment(\.colorScheme) private var scheme
     @State private var countrySheet = false
+    /// Текст поля держим у себя (30и.12): подсказка iOS вставляет номер «в обход» привязки, и «8» уходила из поля, только когда
+    /// оно теряло фокус. Своё состояние + повторная запись на следующем такте убирают её сразу.
+    @State private var text = ""
 
     var body: some View {
         let pal = Palette(scheme)
@@ -87,17 +90,22 @@ struct MyPhoneField: View {
                 .background(pal.field, in: Capsule())
             }
             .buttonStyle(.plain)
-            TextField("", text: national, prompt: Text(TelFormat.nationalFormatted(country.example, country: country)).foregroundStyle(pal.ink8))
+            TextField("", text: $text, prompt: Text(TelFormat.nationalFormatted(country.example, country: country)).foregroundStyle(pal.ink8))
                 .font(.system(size: 16).monospacedDigit()).foregroundStyle(pal.ink)
                 .focused(focused)
                 .phoneKeyboard()
+                .onAppear { text = TelFormat.national(of: app.myPhone, country: app.telCountry) }
+                .onChange(of: text) { _, v in
+                    app.typeMyNational(v)
+                    let shown = TelFormat.national(of: app.myPhone, country: app.telCountry)
+                    if shown != v { DispatchQueue.main.async { text = shown } }
+                }
+                .onChange(of: app.myPhone) { _, _ in
+                    let shown = TelFormat.national(of: app.myPhone, country: app.telCountry)
+                    if shown != text { text = shown }
+                }
         }
         .sheet(isPresented: $countrySheet) { CountrySheet(app: app) }
-    }
-
-    /// Поле: национальная часть; вставка с кодом другой страны переставляет и блок кода.
-    private var national: Binding<String> {
-        Binding(get: { TelFormat.national(of: app.myPhone, country: app.telCountry) }, set: { app.typeMyNational($0) })
     }
 }
 

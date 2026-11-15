@@ -19,6 +19,16 @@
       "web": "你居住或当前所在的城市，以及你的电话号码。新拍摄默认在该城市，前往其他城市应用会自己判断。两项都可在设置中修改。",
       "app": "你居住或当前所在的城市。新拍摄默认在该城市，前往其他城市应用会自己判断。可在设置中修改。",
       "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
+    },
+    "form.draftReset": {
+      "web": "重新开始",
+      "app": "删除",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
+    },
+    "form.draftGone": {
+      "web": "草稿已删除 - 从头开始",
+      "app": "草稿已删除",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
     }
   },
   "ru": {
@@ -36,6 +46,16 @@
       "web": "Город, где вы живёте или сейчас находитесь, и номер телефона. Новые съёмки заводятся в этом городе, а поездку в другой приложение узнаёт само. Оба ответа меняются в настройках.",
       "app": "Город, где вы живёте или сейчас находитесь. Новые съёмки заводятся в этом городе, а поездку в другой приложение узнаёт само. Ответ меняется в настройках.",
       "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
+    },
+    "form.draftReset": {
+      "web": "Начать заново",
+      "app": "Стереть",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
+    },
+    "form.draftGone": {
+      "web": "Черновик стёрт — начинаем с чистого листа",
+      "app": "Черновик стёрт",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
     }
   },
   "en": {
@@ -53,6 +73,16 @@
       "web": "The city you live in or are staying in now, and your phone number. New shoots start in that city, and a trip to another one the app works out by itself. Both answers can be changed in settings.",
       "app": "The city you live in or are staying in now. New shoots start in that city, and a trip to another one the app works out by itself. You can change it in settings.",
       "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
+    },
+    "form.draftReset": {
+      "web": "Start over",
+      "app": "Erase",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
+    },
+    "form.draftGone": {
+      "web": "Draft cleared — starting fresh",
+      "app": "Draft erased",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
     }
   },
   "es": {
@@ -70,6 +100,16 @@
       "web": "La ciudad donde vives o donde estás ahora, y tu número de teléfono. Las nuevas sesiones se crean en esa ciudad, y un viaje a otra la app lo deduce sola. Ambas respuestas se cambian en los ajustes.",
       "app": "La ciudad donde vives o donde estás ahora. Las nuevas sesiones se crean en esa ciudad, y un viaje a otra la app lo deduce sola. Se cambia en los ajustes.",
       "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
+    },
+    "form.draftReset": {
+      "web": "Empezar de nuevo",
+      "app": "Borrar",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
+    },
+    "form.draftGone": {
+      "web": "Borrador borrado — arrancamos de cero",
+      "app": "Borrador borrado",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
     }
   },
   "ja": {
@@ -87,6 +127,16 @@
       "web": "住んでいる、または今滞在している都市と電話番号。新しい撮影はその都市から始まり、他の都市への移動はアプリが自動で判断します。どちらも設定で変更できます。",
       "app": "住んでいる、または今滞在している都市。新しい撮影はその都市から始まり、他の都市への移動はアプリが自動で判断します。設定で変更できます。",
       "why": "30ж.1: the first-launch sheet asks only for the city; the number moved to the sheet at the planner's door (Alexey 05.11). The web keeps its word and still asks for both."
+    },
+    "form.draftReset": {
+      "web": "最初からやり直す",
+      "app": "消去",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
+    },
+    "form.draftGone": {
+      "web": "下書きを消去しました — 最初から始めます",
+      "app": "下書きを消去しました",
+      "why": "Alexey 15.11: «Черновик начать заново, заменить на простую фразу - стереть»: the action is «Стереть», the sign after it is short."
     }
   }
 }

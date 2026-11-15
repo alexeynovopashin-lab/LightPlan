@@ -21313,31 +21313,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Черновик стёрт — начинаем с чистого листа"
+            "value" : "Черновик стёрт"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Draft cleared — starting fresh"
+            "value" : "Draft erased"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Borrador borrado — arrancamos de cero"
+            "value" : "Borrador borrado"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "下書きを消去しました — 最初から始めます"
+            "value" : "下書きを消去しました"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "草稿已删除 - 从头开始"
+            "value" : "草稿已删除"
           }
         }
       }
@@ -21348,31 +21348,31 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Начать заново"
+            "value" : "Стереть"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Start over"
+            "value" : "Erase"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Empezar de nuevo"
+            "value" : "Borrar"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "最初からやり直す"
+            "value" : "消去"
           }
         },
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重新开始"
+            "value" : "删除"
           }
         }
       }

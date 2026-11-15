@@ -30,7 +30,10 @@ import LightPlanDomain
             let fit = TelFormat.countriesFitting(r.v).map(\.iso).filter(Self.webIsos.contains), nat = TelFormat.national(of: r.v, country: sp)
             let join = TelFormat.join(national: r.v, country: sp), real = TelFormat.isReal(r.v, country: sp)
             let nin = TelFormat.natIn(r.v, country: sp)
-            if fit != r.fit || nat != r.nat || join != r.join || real != r.real || nin.national != r.in.nat || nin.country?.iso != r.in.cc {
+            // 30и.12, намеренно не как веб: одна голова («8») в пустом поле пропадает сразу (веб оставляет «8»).
+            let loneTrunk = !sp.trunk.isEmpty && TelFormat.digits(r.v) == sp.trunk && !r.v.contains("+") && nin.national.isEmpty
+            if fit != r.fit || nat != r.nat || join != r.join || real != r.real
+                || (!loneTrunk && (nin.national != r.in.nat || nin.country?.iso != r.in.cc)) {
                 bad.append("\(r.c) «\(r.v)» nat: web fit=\(r.fit) nat=\(r.nat) join=\(r.join) real=\(r.real) in=\(r.in) swift fit=\(fit) nat=\(nat) join=\(join) real=\(real) in=\(nin)")
             }
             if f != r.f || p != r.p || full != r.full || mob != r.mob || id != r.id {

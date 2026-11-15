@@ -272,6 +272,9 @@ extension TelFormat {
             if let fit = countriesFitting("+" + d).first { return (fit, String(d.dropFirst(fit.cc.count))) }
             return (nil, d)
         }
+        // 30и.12: голова одна, и больше в поле ничего нет — это «8» (или «0») из привычки, а не цифра номера:
+        // она пропадает сразу, не дожидаясь второй цифры (Алексей 15.11: «иначе не понятно удалять ее или нет»).
+        if !sp.trunk.isEmpty, d == sp.trunk { return (nil, "") }
         if !sp.trunk.isEmpty, d.count > sp.trunk.count, d.hasPrefix(sp.trunk), sp.nsnFits(String(d.dropFirst(sp.trunk.count))) {
             return (nil, String(d.dropFirst(sp.trunk.count)))
         }

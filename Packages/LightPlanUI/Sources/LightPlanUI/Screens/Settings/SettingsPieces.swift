@@ -33,7 +33,7 @@ struct CitySearchField: View {
             }
             .task(id: text) {
                 let q = text.trimmingCharacters(in: .whitespaces)
-                guard q != picked, q.count >= 3 else { hits = []; return }
+                guard q != picked, PlaceQuery.isAskable(q) else { hits = []; return }
                 // Пауза веба — 450 мс: спрашиваем, когда перестали набирать.
                 try? await Task.sleep(for: .milliseconds(450))
                 guard !Task.isCancelled else { return }

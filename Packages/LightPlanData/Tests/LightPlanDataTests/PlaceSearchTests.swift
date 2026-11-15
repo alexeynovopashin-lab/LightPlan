@@ -185,3 +185,37 @@ struct ChosenNameTests {
         #expect(here.name?.city == "Синдзюку")
     }
 }
+
+/// 30и.12: поиск города («Город» в Настройках, «Откуда вы работаете») берёт метки тем же путём, что «Где снимаем».
+struct CitySearchTests {
+    private let tokyo = GeoCoordinate(latitude: 35.6895, longitude: 139.6917)
+
+    private func hits(_ marks: [PlaceMark], _ q: String) -> [CityHit] {
+        AppleCityLookup.hits(marks, query: q, deviceRegion: "RU", locale: Locale(identifier: "ru_RU"))
+    }
+
+    // Записанный ответ: у Токио нет locality, имя смешанными буквами.
+    @Test func tokyoWithoutLocalityIsACityInAnyAlphabet() {
+        let mark = PlaceMark(name: "Toкиo", locality: nil, region: "Toкиo", country: "Япония", isoCode: "JP", coordinate: tokyo)
+        for q in ["Токио", "Tokyo", "東京"] {
+            let h = hits([mark], q)
+            #expect(h.map(\.name) == ["Токио"], "запрос \(q)")
+            #expect(h.first?.countryCode == "jp")
+        }
+    }
+
+    @Test func aStreetOrCafeWithoutCityIsStillNotACity() {
+        let lake = PlaceMark(name: "Озеро Байкал", locality: nil, region: "Иркутская область", country: "Россия", coordinate: tokyo)
+        #expect(hits([lake], "Байкал").isEmpty)
+    }
+
+    @Test func aMarkWithLocalityStaysAsBefore() {
+        let m = PlaceMark(name: "Барнаул", locality: "Барнаул", region: "Алтайский край", country: "Россия", isoCode: "RU", coordinate: tokyo)
+        #expect(hits([m], "Барнаул").map(\.name) == ["Барнаул"])
+    }
+
+    @Test func twoCharacterCJKAndCyrillicFallbackAreAskable() {
+        #expect(PlaceQuery.isAskable("東京"))
+        #expect(PlaceQuery.transliteration(of: "Бали") == "Bali")
+    }
+}
