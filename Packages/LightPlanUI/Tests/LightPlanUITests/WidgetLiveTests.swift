@@ -195,23 +195,20 @@ struct WidgetLiveTests {
         #expect(try plan(14, 20, next).pointEnd == tsk(14, 30) && (try plan(14, 35, next).pointEnd == tsk(14, 30)))
     }
 
-    /// Ревью GPT к d52f3e3: накануне вечером (суббота 20:00, свадьба в воскресенье в 12:00) большой вид рисует воскресную съёмку, и свет
-    /// под ней должен быть воскресным. По пикселям: всё ниже шапки в субботу вечером — то же изображение, что воскресным утром (точки те же,
-    /// светила ещё не взошли), а у той же свадьбы в субботу — другое (проверка не пустая).
-    @Test func theLargeViewBeforeTheShootDrawsTheLightOfTheShootsDay() throws {
-        func below(_ f: WidgetFrame) throws -> Data {
-            let r = ImageRenderer(content: LargeView(frame: f).frame(width: 364, height: 382).background(Color.white).environment(\.colorScheme, .light))
+    /// 30и.13 (Б2): под щелью большого — блок отсчёта Braun. Со съёмкой в нём кольцо и строки, без съёмок — одна строка: нижняя часть плашки
+    /// в этих двух случаях разная, а верх (купол, ножки) при одном и том же моменте — один и тот же.
+    @Test func theLargeViewHasTheCountdownBlockUnderTheDomeOnly() throws {
+        func png(_ f: WidgetFrame, top: Bool) throws -> Data {
+            let r = ImageRenderer(content: LargeView(frame: f).frame(width: 364, height: 382).background(Color.white).environment(\.colorScheme, .dark))
             r.scale = 2
             let cg = try #require(r.uiImage?.cgImage)
-            let crop = try #require(cg.cropping(to: CGRect(x: 0, y: 120, width: cg.width, height: cg.height - 120)))
+            let y = top ? 0 : 250 * 2
+            let crop = try #require(cg.cropping(to: CGRect(x: 0, y: y, width: cg.width, height: top ? 150 * 2 : cg.height - y)))
             return try #require(UIImage(cgImage: crop).pngData())
         }
-        let sunday = sundayWedding
-        let eve = frame(at: tsk(20), shoots: [sunday])
-        #expect(eve.kind == .upcoming && eve.primary?.dayOffset == 1, "накануне вечером на плашке воскресная съёмка")
-        let sundayLight = try below(frame(at: tsk(5, day: 25), shoots: [sunday]))
-        #expect(try below(eve) == sundayLight, "свет под воскресной съёмкой — воскресный")
-        #expect(try below(frame(at: tsk(5), shoots: [wedding])) != sundayLight, "субботний свет от воскресного отличается")
+        let with = frame(at: tsk(20), shoots: [sundayWedding]), without = frame(at: tsk(20), shoots: [])
+        #expect(try png(with, top: false) != png(without, top: false), "блок отсчёта: со съёмкой одно, без неё — другое")
+        #expect(try png(with, top: true) == png(without, top: true), "верх (шапка и купол) от съёмок не зависит")
     }
 
     @Test func aShootWithoutStopsHasNoRingForThePointButDoesNotCrash() throws {
@@ -286,18 +283,20 @@ struct WidgetLiveTests {
                                ("без съёмок, вечер", frame(at: tsk(20), shoots: [])), ("полярный день", polar)]
     }
 
-    @Test func largeFitsInThreeTextSizes() {
-        var report: [String] = []
+    /// Большой — шесть полос фиксированной высоты (шрифты `.system(size:)`, Dynamic Type обрезан до xxxLarge, но размеры не от него зависят):
+    /// плашка не может вырасти или обрезаться от размера текста. Проверка — картинки при трёх размерах текста совпадают байт в байт.
+    @Test func largeDoesNotDependOnTheTextSize() throws {
         for (w, h) in [(338.0, 354.0), (364.0, 382.0)] {
             for (name, f) in largeFrames() {
-                for (tn, t) in Self.types {
-                    let size = ideal(LargeView(frame: f, alpha: true), width: w, type: t)
-                    report.append(String(format: "большой %.0f «%@» %@: высота %.1f из %.0f", w, name, tn, size.height, h))
-                    #expect(size.height <= h, Comment(rawValue: report.last!))
+                var shots: [Data] = []
+                for (_, t) in Self.types {
+                    let r = ImageRenderer(content: LargeView(frame: f, alpha: true).frame(width: w, height: h).environment(\.dynamicTypeSize, t))
+                    r.scale = 2
+                    shots.append(try #require(r.uiImage?.pngData(), "большой \(w) «\(name)» рисуется"))
                 }
+                #expect(Set(shots).count == 1, "большой \(w) «\(name)»: от размера текста не зависит")
             }
         }
-        print(report.joined(separator: "\n"))
     }
 
     @Test func lockWidgetsFitTheirPlates() {

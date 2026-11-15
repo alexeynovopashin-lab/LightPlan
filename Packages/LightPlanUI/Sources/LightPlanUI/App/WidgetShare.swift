@@ -1,4 +1,5 @@
 import Foundation
+import LightPlanCore
 import LightPlanDomain
 #if canImport(WidgetKit)
 import WidgetKit
@@ -111,6 +112,10 @@ extension AppModel {
             .skyGrey: "widget.skyGrey", .skyFog: "widget.skyFog", .skyRise: "widget.skyRise", .skySet: "widget.skySet",
         ]
         var words = WidgetFeed.Words(keys.mapValues { lex.t($0) })
+        // 30и.13, большой виджет: слова оценки заката (как на «Свете»), слова света под временем на куполе, «через {t}».
+        for (k, key) in ["beautiful": "sunsetS.beautiful", "color": "sunsetS.color", "calm": "sunsetS.calm", "none": "sunsetS.none"] { words.table["score.\(k)"] = lex.t(key) }
+        for code in LightCode.allCases { words.table["phase.\(code.rawValue)"] = lex.t(LightTelemetry.phaseKey(code, terms: false)) }
+        words.table["in"] = lex.t("widget.in")
         // «через 3 дня»: падеж зависит от числа, у расширения склонений нет — фразы на каждое число готовит приложение.
         for n in 2..<WidgetFrame.weekDays { words.table["inDays.\(n)"] = lex.t("when.inDays", ["n": lex.count("unit.day", n)]) }
         return words

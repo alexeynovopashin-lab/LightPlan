@@ -321,12 +321,9 @@ extension WidgetFeed {
                 return Self.marks(max(midnight, now), min(g, end), step: 60)
             }
         case .large:
-            // Точка «сейчас» на дуге солнца ходит от восхода к закату; без съёмок это весь вид (со съёмкой дуги нет).
-            guard let today = place.today(at: now) else { return [] }
-            return (0...2).flatMap { off -> [Date] in
-                guard let l = place.light(on: today.adding(days: off)), let r = l.sunrise, let s = l.sunset else { return [] }
-                return Self.marks(max(r, now), min(s, end), step: 600).filter { frame(at: $0).kind == .light }
-            }
+            // 30и.13 (Б2): на куполе ходят Солнце и Луна, у съёмок «через N», у блока отсчёта — кольцо точек; всё это статичные цифры, их
+            // меняет лента: раз в 5 минут. 180 записей — 15 часов, дальше просит новую ленту (`Schedule.reload`): ≈ 1,6 перезагрузки в сутки.
+            return Self.marks(now, end, step: 300)
         }
     }
 }
