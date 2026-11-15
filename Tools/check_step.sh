@@ -7,8 +7,7 @@
 #
 #   1. коммит в ветке впереди базы (база по умолчанию — main);
 #   2. дифф без сгенерированного не пустой (N файлов) — тот же отбор, что у ревью GPT;
-#   3. ревью GPT к последнему ОТПРАВЛЕННОМУ коммиту есть, запуск не красный
-#      (открытый API GitHub через curl, без gh; GITHUB_TOKEN — если упрётесь в лимит);
+#   3. ревью GPT — «н/п» (не применимо): оно закончилось навсегда (15.11), строка не «нет» и не «не проверялась»;
 #   4. новые тесты падают на родительском коммите — это сборка, поэтому по флагу
 #      --tests. Без флага строка «не проверялась», а не «да».
 #   5. полный набор тестов не краснее базы (общий предок ветки и базы): упавшие на ветке против упавших на базе,
@@ -55,7 +54,7 @@ cleanup() {
 }
 trap cleanup EXIT
 row() { # да|нет|?  текст
-  case "$1" in да) ;; нет) fails=$((fails + 1)) ;; *) skipped=$((skipped + 1)) ;; esac
+  case "$1" in да|н/п) ;; нет) fails=$((fails + 1)) ;; *) skipped=$((skipped + 1)) ;; esac
   printf '%-3s %s\n' "$1" "$2"
 }
 
@@ -74,54 +73,10 @@ nfiles="$(git diff --name-only "$mb" "$branch" -- . "${excl[@]}" | wc -l | tr -d
 if [ "$nfiles" -gt 0 ]; then row да "2. дифф без сгенерированного: $nfiles файлов"
 else row нет "2. дифф без сгенерированного пустой (в ветке только данные или ничего)"; fi
 
-# 3. Ревью GPT к последнему отправленному коммиту.
-remote_url="$(git remote get-url origin 2>/dev/null)"
-repo="$(printf '%s' "$remote_url" | sed -E 's#^.*github\.com[:/]##; s#\.git$##')"
-pushed="$(git ls-remote origin "refs/heads/$branch" 2>/dev/null | awk '{print $1}' | head -1)"
-if [ -z "$pushed" ]; then
-  row нет "3. ветка не отправлена в GitHub — ревью GPT ещё не было"
-else
-  short="${pushed:0:7}"
-  extra=""; unpushed=0
-  if [ "$pushed" != "$(git rev-parse "$branch")" ]; then
-    unpushed=1; extra=" (локально ветка впереди отправленного: $(git rev-list --count "$pushed..$branch" 2>/dev/null || echo '?') коммитов без ревью)"
-  fi
-  auth=(); [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
-  api() { curl -sS -m 30 ${auth[@]+"${auth[@]}"} -H 'Accept: application/vnd.github+json' -o "$2" -w '%{http_code}' "https://api.github.com/repos/$repo/$1" 2>/dev/null; }
-  tmp="$(mktemp -d)"; TMPS+=("$tmp")
-  c1="$(api "commits/$pushed/comments?per_page=100" "$tmp/c.json")"
-  c2="$(api "actions/runs?head_sha=$pushed&per_page=20" "$tmp/r.json")"
-  if [ "$unpushed" = 1 ]; then
-    row нет "3. в ветке есть неотправленные коммиты — ревью GPT смотрело только $short$extra"
-  elif [ "$c1" != 200 ] || [ "$c2" != 200 ]; then
-    row нет "3. GitHub ответил $c1/$c2 (лимит без ключа? задать GITHUB_TOKEN) — ревью к $short не проверено"
-  else
-    body="$(jq -r '[.[] | select(.body | test("^(### Второе мнение OpenAI|ℹ️ Ревью не нужно|⛔ Ревью не было)"))] | last | .body // empty' "$tmp/c.json" | head -1)"
-    run="$(jq -r '[.workflow_runs[] | select(.name=="OpenAI review")] | first | "\(.status // "-") \(.conclusion // "-")"' "$tmp/r.json")"
-    rstatus="${run%% *}"; rconc="${run##* }"
-    case "$body" in
-      "### Второе мнение"*) kind=review ;;
-      "ℹ️"*) kind=yellow ;;
-      "⛔"*) kind=lost ;;
-      *) kind=none ;;
-    esac
-    if [ "$rstatus" = "-" ] || [ "$rstatus" = "null" ]; then
-      row нет "3. запуска ревью GPT к $short нет$extra"
-    elif [ "$rstatus" != "completed" ]; then
-      row нет "3. ревью GPT к $short ещё идёт ($rstatus) — подождать комментария$extra"
-    elif [ "$rconc" = "failure" ] || [ "$rconc" = "cancelled" ] || [ "$rconc" = "timed_out" ] || [ "$kind" = lost ]; then
-      row нет "3. запуск ревью GPT к $short красный ($rconc)$extra"
-    else
-      case "$kind" in
-        review) row да "3. ревью GPT к $short есть, запуск зелёный$extra" ;;
-        yellow)
-          if [ "$type" = "код" ]; then row нет "3. запуск ревью к $short жёлтый («ревью не нужно, только данные») — для шага «код» это «нет»$extra"
-          else row да "3. запуск ревью к $short жёлтый — для типа «$type» допустимо$extra"; fi ;;
-        *) row нет "3. запуск зелёный, а комментария ревью к $short нет$extra" ;;
-      esac
-    fi
-  fi
-fi
+# 3. Ревью GPT закончилось навсегда (баланс, Алексей 15.11): строка нейтральная — не «нет» и не «не проверялась».
+row н/п "3. не применимо: ревью GPT закончилось навсегда, проверять нечего (30и.12)"
+# Старая проверка (комментарий и запуск «OpenAI review» к последнему отправленному коммиту через открытый API GitHub)
+# жива в истории: git show 150adc68:Tools/check_step.sh
 
 # 4. Новые тесты падают на родительском коммите.
 if [ "$type" != "код" ]; then
@@ -302,7 +257,7 @@ else
 fi
 
 echo "---"
-if [ "$fails" -gt 0 ]; then echo "итог: нет ($fails из 5) — шаг не принят"; exit 1; fi
+if [ "$fails" -gt 0 ]; then echo "итог: нет ($fails из 4 применимых) — шаг не принят"; exit 1; fi
 if [ "$skipped" -gt 0 ]; then echo "итог: «нет» нет, но $skipped строк не проверялось — не «всё да»"; exit 2; fi
-echo "итог: да, все пять"
+echo "итог: да, все четыре применимых (строка 3 не применима)"
 exit 0
