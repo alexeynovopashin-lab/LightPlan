@@ -169,6 +169,26 @@ public enum BraunIdle {
         return f.words[.noShootsUntil].replacingOccurrences(of: "{d}", with: dayAndNumber(end, in: f.zone, f))
     }
 
+    /// Строка заката следующего дня под «съёмок нет»: «пн 26», время заката, балл или (часа в прогнозе нет) слово неба.
+    public struct SunsetRow: Equatable, Sendable {
+        public var day: String
+        public var time: String
+        public var score: Int?
+        public var word: String?
+    }
+
+    /// Закаты на три дня вперёд — только когда неделя пуста (Алексей 16.11). Прогноза на день нет — строка с одним временем:
+    /// время заката считается на месте, оценку не выдумываем. Ровно столько дней, сколько есть в `ahead`.
+    public static func sunsetRows(_ f: WidgetFrame) -> [SunsetRow] {
+        guard emptyWeekLine(f) != nil else { return [] }
+        return f.ahead.map { a in
+            SunsetRow(day: dayAndNumber(a.noon, in: f.zone, f),
+                      time: a.sunset.map { f.clock($0, in: f.zone) } ?? "—",
+                      score: a.rating?.score,
+                      word: a.rating?.score == nil ? a.rating?.category.map { f.words.sky($0) } : nil)
+        }
+    }
+
     // MARK: Что оценивает виджет (30б.2в-6)
 
     /// Событие, которое оценивает средний вид, и его оценка. Слова Алексея 27.10: «виджет до конца утреннего золотого часа показывает

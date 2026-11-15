@@ -218,6 +218,19 @@ struct WidgetBraunIdleTests {
         #expect(BraunIdle.weekRows(anon).first?.names == "Свадьба")
     }
 
+    @Test func anEmptyWeekShowsTheNextThreeSunsets() throws {
+        let fc: [WidgetFeed.Rating] = [.init(day: "2026-10-25", score: 40, quality: .plain), .init(day: "2026-10-26", score: 82, quality: .excellent),
+                                       .init(day: "2026-10-27", score: nil, quality: .poor)]
+        let f = feed(forecast: fc).frame(at: tsk(14))
+        let rows = BraunIdle.sunsetRows(f)
+        #expect(rows.map(\.day) == ["пн 26", "вт 27", "ср 28"], "с завтрашнего дня, сегодняшний закат стоит слева")
+        #expect(rows.map(\.score) == [82, nil, nil] && rows.map(\.word) == [nil, "серый", nil], "балл; нет часа — слово; нет прогноза — ничего")
+        let sun = try #require(f.ahead.first?.sunset)
+        #expect(rows.first?.time == f.clock(sun, in: f.zone) && rows.allSatisfy { $0.time.contains(":") }, "время заката есть у всех трёх дней")
+        let busy = feed([shoot("a", from: tsk(11, day: 28), to: tsk(13, day: 28))], forecast: fc).frame(at: tsk(14))
+        #expect(BraunIdle.sunsetRows(busy).isEmpty, "съёмки на неделе есть — закатов нет, там список")
+    }
+
     @Test func anEmptyWeekIsOneLineUntilTheLastDay() {
         let f = feed().frame(at: tsk(14))
         #expect(BraunIdle.emptyWeekLine(f) == "до сб 31 съёмок нет", "25.10 + 6 суток = суббота 31.10 — слово доски")

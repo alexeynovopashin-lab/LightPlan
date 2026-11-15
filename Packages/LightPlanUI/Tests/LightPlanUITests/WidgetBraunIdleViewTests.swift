@@ -40,7 +40,8 @@ struct WidgetBraunIdleViewTests {
         case .g: return feed([wedding, ivanov, masha]).frame(at: tsk(9, 30))
         case .d: return feed([ivanov, masha]).frame(at: tsk(14))
         case .e: return feed([ivanov, masha], []).frame(at: tsk(21))
-        case .z: return feed([]).frame(at: tsk(14))
+        // Пустая неделя: прогноз и на следующие дни — под строкой «съёмок нет» закаты с баллом, со словом (часа нет) и без оценки.
+        case .z: return feed([], rating + [.init(day: "2026-10-26", score: 82, quality: .excellent), .init(day: "2026-10-27", score: nil, quality: .fog)]).frame(at: tsk(14))
         }
     }
 
@@ -359,6 +360,46 @@ struct WidgetBraunIdleViewTests {
         #expect(BraunIdle.weekRows(g).count == 3 && 16 + h.near + 2 * h.other + 2 * BraunIdle.weekRowGap <= 158 - 16)
     }
 
+    /// Пустая неделя (Алексей 16.11: «чтобы пространство не пустовало»): под «до сб 31 съёмок нет» — три заката. Самые широкие строки
+    /// (балл «100», слово «туманный») рисуются в правой колонке и не заходят в поле 16 справа и снизу, на обоих размерах и в обеих темах.
+    @Test func anEmptyWeekFillsTheRightSideWithTheNextSunsets() throws {
+        let fc: [WidgetFeed.Rating] = [.init(day: "2026-10-26", score: 100, quality: .excellent), .init(day: "2026-10-27", score: nil, quality: .fog),
+                                       .init(day: "2026-10-28", score: 8, quality: .poor)]
+        let f = WidgetFeed(place: Self.tomsk, shoots: [], forecast: fc).frame(at: Self.tsk(14))
+        #expect(BraunIdle.sunsetRows(f).map(\.day) == ["пн 26", "вт 27", "ср 28"])
+        for p in [Plate.pro, Plate.regular] {
+            for dark in [true, false] {
+                let bg: UInt32 = dark ? 0x161616 : 0xE4E4E2
+                let v = BraunIdleView(frame: f, alpha: false)
+                    .frame(width: p.size.width, height: p.size.height).background(BraunPalette(dark: dark).bg)
+                    .clipShape(RoundedRectangle(cornerRadius: BraunPlate.cornerRadius(plateHeight: p.size.height), style: .continuous))
+                    .environment(\.colorScheme, dark ? .dark : .light)
+                let px = try render(v, scale: 4)
+                let W = Double(p.size.width), H = Double(p.size.height)
+                var rows = 0.0, margin = 0.0, badge = 0.0
+                var y = 4.0
+                while y < H - 4 {
+                    var x = 4.0
+                    while x < W - 4 {
+                        let d = dist(px.rgb(x, y), hex(bg))
+                        if x > 180, x < W - 16, y > 42, y < H - 16, d > 60 { rows += 1 }
+                        // Бирка «α» (12…28 pt от правого нижнего угла) — строки кончаются выше неё: под ней только подложка.
+                        if x > W - 30, y > H - 30, y < H - 16, d > 60, !(x > W - 28 && x < W - 12 && y > H - 28) { badge += 1 }
+                        let right = x > W - 16 + 0.5 && y > 22 && y < H - 22, bottom = y > H - 16 + 0.5 && x > 22 && x < W - 22
+                        if right || bottom { margin = max(margin, d) }
+                        x += 0.5
+                    }
+                    y += 0.5
+                }
+                #expect(rows > 400, "\(p.size.width) \(dark ? "чёрный" : "белый"): строк закатов не видно (\(rows) точек чернил)")
+                #expect(margin <= 8, "\(p.size.width) \(dark ? "чёрный" : "белый"): чернила в поле 16 (\(margin))")
+                #expect(badge == 0, "\(p.size.width) \(dark ? "чёрный" : "белый"): строка у бирки «α» (\(badge))")
+            }
+        }
+        // Съёмки на неделе есть — закатов нет, справа список.
+        #expect(BraunIdle.sunsetRows(Self.frame(.d)).isEmpty)
+    }
+
     /// Имена и вторые строки сначала мельчают и только потом режутся «…»: строки доски влезают целиком на обоих размерах плашки, а
     /// «Анна-Мария и Константин Ковалёвы-Ивановы» уходит до 11 и режется.
     @Test func longNamesStepDownThenTruncate() {
@@ -499,7 +540,8 @@ struct WidgetBraunIdleViewTests {
             r.scale = 1.35
             let png = try #require(r.uiImage?.pngData(), "картинка \(tag) не отрисована")
             try png.write(to: URL(fileURLWithPath: "\(dir)/medium_idle_\(tag).png"))
-            #expect(png.count <= 300 * 1024, "medium_idle_\(tag).png: \(png.count / 1024) КБ, предел 300")
+            // Предел 320 КБ (был 300): пустая неделя с 16.11 рисует три строки закатов, лист Pro Max вырос с 297 до 307 КБ.
+            #expect(png.count <= 320 * 1024, "medium_idle_\(tag).png: \(png.count / 1024) КБ, предел 320")
         }
     }
 
