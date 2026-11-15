@@ -1,9 +1,9 @@
 import SwiftUI
 import LightPlanDomain
 
-/// Нижнее поле большого виджета (30и.13, Б2): блок отсчёта Braun — тёмный (светлый) циферблат с рамкой из рисков, слева кольцо точек до ближайшей
-/// съёмки (или её хода, если идёт) со знаком жанра и сроком, справа строки съёмок недели. Риски — только на рамке блока: Алексей 15.11 «большому
-/// виджету риски не нужны, оставляем только там, где мы их задумали». Съёмок нет — слева одна строка «до сб 21 съёмок нет» и длина дня.
+/// Нижнее поле большого виджета (30и.13, Б2): блок отсчёта Braun — тёмный (светлый) циферблат, слева кольцо точек до ближайшей
+/// съёмки (или её хода, если идёт) со знаком жанра и сроком, справа строки съёмок недели. **Рисков нет** (Алексей 16.11: «риски я не просил добавить,
+/// я просил оставить там где мы их намеренно добавили» — они только у Braun). Съёмок нет — одна строка «до сб 21 съёмок нет» и длина дня.
 struct CountdownBlock: View {
     let frame: WidgetFrame
     let pal: BraunPalette
@@ -15,7 +15,6 @@ struct CountdownBlock: View {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.dial)
                 RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(pal.dialEdge, lineWidth: 0.5)
-                BlockTicks(pal: pal)
                 if let first = frame.week.first { shoots(first, size: g.size) } else { empty }
             }
         }
@@ -104,29 +103,5 @@ struct CountdownBlock: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-    }
-}
-
-/// Рамка из рисков по периметру блока: шаг 9 pt, каждая шестая — часовая (длиннее и ярче). Цвета — `tickMinor` / `tickHour` Braun.
-struct BlockTicks: View {
-    let pal: BraunPalette
-    var body: some View {
-        Canvas { ctx, size in
-            var minor = Path(), hour = Path()
-            func add(_ x: CGFloat, _ y: CGFloat, dx: CGFloat, dy: CGFloat, major: Bool) {
-                let len: CGFloat = major ? 7 : 3.5
-                var p = Path(); p.move(to: CGPoint(x: x, y: y)); p.addLine(to: CGPoint(x: x + dx * len, y: y + dy * len))
-                if major { hour.addPath(p) } else { minor.addPath(p) }
-            }
-            var i = 0
-            var x: CGFloat = 14
-            while x < size.width - 12 { let m = i % 6 == 0; add(x, 3, dx: 0, dy: 1, major: m); add(x, size.height - 3, dx: 0, dy: -1, major: m); x += 9; i += 1 }
-            i = 0
-            var y: CGFloat = 14
-            while y < size.height - 12 { let m = i % 6 == 0; add(3, y, dx: 1, dy: 0, major: m); add(size.width - 3, y, dx: -1, dy: 0, major: m); y += 9; i += 1 }
-            ctx.stroke(minor, with: .color(pal.tickMinor), lineWidth: 1)
-            ctx.stroke(hour, with: .color(pal.tickHour), lineWidth: 1.4)
-        }
-        .allowsHitTesting(false)
     }
 }
