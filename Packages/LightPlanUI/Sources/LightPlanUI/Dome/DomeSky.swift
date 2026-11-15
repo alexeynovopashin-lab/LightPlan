@@ -34,30 +34,50 @@ struct DomeSky: Sendable, Equatable {
         let colourStart = lightTheme ? 6.0 : 12.0
         let forecastShare = evening == nil ? 0 : Self.clamp((colourStart - e) / colourStart) * Self.clamp((e + 12) / 8)
         forecastOpacity = forecastShare * 0.62
-        if lightTheme, let evening {
-            // Alexey, 05.11: «закат пусть просто обесцвечивается». No colour promised: the
-            // whole sky loses its colour, and lead is not painted over it as an oval.
-            let drain = forecastShare * (1 - evening.life)
-            top = Self.drained(top, drain)
-            bottom = Self.drained(bottom, drain)
+        // 30з.3г (Алексей 15.11: «небо, становясь серым, становится светлее основы — мне это не нравится»): бесцветный прогноз не рисует
+        // ничего — вместо «свинца» в смеси само небо на этой высоте (`SkyPalette.over`), в обеих темах. Раньше в тёмной свинец
+        // (92, 92, 96) ложился серым пятном светлее тёмно-синего неба.
+        if let evening {
+            if lightTheme {
+                // Alexey, 05.11: «закат пусть просто обесцвечивается». No colour promised: the
+                // whole sky loses its colour, and lead is not painted over it as an oval.
+                let drain = forecastShare * (1 - evening.life)
+                top = Self.drained(top, drain)
+                bottom = Self.drained(bottom, drain)
+            }
             forecast = evening.over(zenith: top, high: LightPalette.lerp(top, bottom, 0.38),
                                     mid: LightPalette.lerp(top, bottom, 0.72), horizon: bottom)
         } else {
-            forecast = evening
+            forecast = nil
         }
         zenith = top
         horizon = bottom
 
-        let state = LightState(elevation: e, morning: morning)
-        let near = Self.clamp((8 - e) / 14)
-        // Like `HorizonGlow.paint`: the forecast tints only the sun's glow, not the moon's.
-        let pal = e < 8 && !moon ? forecast : nil
-        glowColor = pal.map { LightPalette.lerp(state.color, $0.horizon, near * 0.75) } ?? state.color
+        // 30з.3г (Алексей 15.11: «зарево от солнца есть всегда, это красиво, а визуализация будет небом»): зарево — от самого солнца, по его
+        // высоте; прогноз красит небо (`forecast`), а не зарево. Цвет и сила — плавные по высоте (`smoothSun`): ступеням `LightState`
+        // («Нет плавности. Зарево может появиться мгновенно, воспринимается рывками») здесь места нет.
+        let sun = Self.smoothSun(elevation: e)
+        glowColor = sun.color
         let themeGain = lightTheme ? 0.65 + 0.35 * Self.clamp((6 - e) / 12) : 1
         // Astronomical night is the screen's backing in both themes (28е). Fade the
         // residual horizon glow too, otherwise it still paints a patch over it.
         let nightFade = Self.clamp((e + 18) / 6)
-        glowOpacity = state.glow * (pal.map { 0.35 + $0.life * 0.85 } ?? 1) * themeGain * nightFade
+        glowOpacity = sun.glow * themeGain * nightFade
+    }
+
+    /// Цвет и сила зарева солнца на высоте `e` без ступеней: `LightState` и `LightPalette.skyColor` меняются скачком на порогах (+40°, +20°,
+    /// +6,05°, −0,833°, −6°, −12° …), а зарево глаз видит рывком. Среднее по окну ±2,5° (51 отсчёт через 0,1°) превращает каждую
+    /// ступень в плавный склон шириной 5° — это ≈ 20 минут хода солнца у горизонта.
+    static func smoothSun(elevation e: Degrees) -> (color: SkyColor, glow: Double) {
+        var r = 0.0, g = 0.0, b = 0.0, glow = 0.0
+        let n = 51
+        for i in 0..<n {
+            let state = LightState(elevation: e + (Double(i) - 25) * 0.1, morning: false)
+            r += Double(state.color.r); g += Double(state.color.g); b += Double(state.color.b)
+            glow += state.glow
+        }
+        let k = Double(n)
+        return (SkyColor(Int((r / k).rounded()), Int((g / k).rounded()), Int((b / k).rounded())), glow / k)
     }
 
     /// Centre-line sample of the same gradient and elliptical forecast mask as Canvas.

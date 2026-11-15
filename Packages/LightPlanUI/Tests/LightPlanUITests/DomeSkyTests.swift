@@ -8,6 +8,13 @@ struct DomeSkyTests {
         DomeSky(astro: true, elevation: e, morning: morning, lightTheme: light, palette: palette)!
     }
 
+    private func palette(score: Int) -> SkyPalette {
+        let hour = HourRecord(cloud: 0, code: 0, temperature: 10, low: 5, mid: 40, high: 50,
+                              humidity: 60, windSpeed: 0, windDirection: nil, windGusts: nil)
+        return SkyPalette(weather: WeatherDay(quality: .good, cloud: 0, sunset: score, layers: hour,
+                          temperatureBase: 10, wind: 0, windDirection: nil, gust: 0, trend: [], real: true))!
+    }
+
     private var bright: SkyPalette {
         let hour = HourRecord(cloud: 0, code: 0, temperature: 10, low: 10, mid: 40, high: 50,
                               humidity: 60, windSpeed: 0, windDirection: nil, windGusts: nil)
@@ -31,7 +38,7 @@ struct DomeSkyTests {
             for e in stride(from: -20.0, through: 7, by: 1) {
                 let moon = DomeSky(astro: true, elevation: e, morning: false, lightTheme: light, palette: bright, moon: true)!
                 let plain = sky(e, light: light)
-                #expect(moon.glowColor == LightState(elevation: e, morning: false).color)
+                #expect(moon.glowColor == plain.glowColor)
                 #expect(moon.glowOpacity == plain.glowOpacity)
                 #expect(moon.forecastOpacity == sky(e, light: light, palette: bright).forecastOpacity)
             }
@@ -187,12 +194,14 @@ struct DomeSkyTests {
         #expect(spread(paint.horizon) > spread(dome.horizon))
     }
 
-    /// The dark theme keeps the forecast as the web computes it: lead stays lead.
-    @Test func darkThemeForecastIsUntouched() {
+    /// 30з.3г (Алексей 15.11): в тёмной теме свинец («серый прогноз») не ложится на небо светлым пятном — бесцветный прогноз
+    /// это само небо, как в светлой теме. Раньше здесь стояло «свинец остаётся свинцом» (92, 92, 96) — светлее тёмно-синего неба.
+    @Test func darkThemeLeadForecastIsTheSkyItself() {
         let lead = forecast(score: 5, low: 90, mid: 0, high: 0, humidity: 95)
-        #expect(sky(-3, light: false, palette: lead).forecast == lead)
-        #expect(sky(-3, light: false, palette: lead).forecast?.horizon == SkyColor(92,92,96))
-        #expect(sky(-3, light: false, palette: bright).forecast == bright)
+        let plain = sky(-3, light: false), grey = sky(-3, light: false, palette: lead)
+        #expect(grey.forecast?.horizon == plain.horizon)
+        #expect(grey.forecast?.zenith == plain.zenith)
+        #expect(grey.forecast?.horizon != SkyColor(92,92,96))
     }
 
     /// A colourful sunset keeps its colour: only the lead part of the mix turns pale.
@@ -275,6 +284,48 @@ struct DomeSkyTests {
         #expect(sky(6, palette: bright).forecastOpacity == 0)
         #expect(sky(0, palette: bright).forecastOpacity == 0.62)
         #expect(abs(sky(-6, palette: bright).forecastOpacity - 0.465) < 1e-12)
+    }
+
+    /// 30з.3г: «зарево от солнца есть всегда» — прогноз его не гасит и не красит; зарево — функция высоты солнца.
+    @Test func glowIsTheSunsAndIgnoresTheForecast() {
+        let lead = palette(score: 2)
+        for light in [false, true] {
+            for e in stride(from: -30.0, through: 20, by: 0.5) {
+                let plain = sky(e, light: light), withLead = sky(e, light: light, palette: lead), withBright = sky(e, light: light, palette: bright)
+                #expect(withLead.glowOpacity == plain.glowOpacity && withBright.glowOpacity == plain.glowOpacity, "e=\(e)")
+                #expect(withLead.glowColor == plain.glowColor && withBright.glowColor == plain.glowColor, "e=\(e)")
+            }
+        }
+    }
+
+    /// 30з.3г: «нет плавности, зарево появляется рывками» — ни сила, ни цвет зарева не прыгают при сдвиге солнца на 0,1°.
+    @Test func glowMovesSmoothlyWithTheSun() {
+        for light in [false, true] {
+            var previous = sky(-40, light: light)
+            for e in stride(from: -39.9, through: 90, by: 0.1) {
+                let next = sky(e, light: light)
+                #expect(abs(next.glowOpacity - previous.glowOpacity) <= 0.01, "e=\(e) light=\(light)")
+                for (a, b) in [(previous.glowColor.r, next.glowColor.r), (previous.glowColor.g, next.glowColor.g), (previous.glowColor.b, next.glowColor.b)] {
+                    #expect(abs(a - b) <= 6, "e=\(e) light=\(light)")
+                }
+                previous = next
+            }
+        }
+    }
+
+    /// 30з.3г: «небо, становясь серым, становится светлее основы — мне это не нравится». Бесцветный прогноз ничего не рисует поверх неба:
+    /// ни в одной точке небо с серым прогнозом не светлее неба без него.
+    @Test func greyForecastNeverLightensTheSky() {
+        let lead = palette(score: 2)
+        for light in [false, true] {
+            for e in stride(from: -17.0, through: 6, by: 0.5) {
+                let plain = sky(e, light: light), grey = sky(e, light: light, palette: lead)
+                for f in stride(from: 0.0, through: 1, by: 0.1) {
+                    #expect(DomeSky.luminance(grey.background(at: f)) <= DomeSky.luminance(plain.background(at: f)) + 0.004,
+                            "e=\(e) f=\(f) light=\(light)")
+                }
+            }
+        }
     }
 
     @Test func readoutInkFollowsEachRowsBackground() {

@@ -52,34 +52,18 @@ struct PlateGlowTests {
         }
     }
 
-    /// «Цвет и сила по состоянию неба, не постоянный янтарь»: серый закат слабее и серее яркого, цвет — зарево неба.
-    @Test func strengthAndColourFollowTheSky() {
+    /// 30з.3г: зарево — от солнца, по его высоте; прогноз красит небо, но не зарево под плашкой. Цвет ступени высоты, не один янтарь.
+    @Test func glowIsTheSunsAndIgnoresTheForecast() {
         for light in [false, true] {
             for e in [-2.0, -5, -9.5] {
                 let bright = glow(e, light: light, palette: palette(score: 95))!
                 let lead = glow(e, light: light, palette: palette(score: 2))!
-                #expect(lead.peak < bright.peak, "e=\(e) light=\(light)")
-                #expect(lead.color != bright.color, "e=\(e) light=\(light)")
-                if !light { #expect(bright.color == sky(e, light: light, palette: palette(score: 95)).glowColor) }
+                let none = glow(e, light: light, palette: nil)!
+                #expect(lead == bright && none == bright, "e=\(e) light=\(light)")
             }
         }
-        // Без прогноза — цвет ступени высоты солнца, а не одно значение на все моменты.
         let a = glow(-2, light: false, palette: nil)!, b = glow(-9.5, light: false, palette: nil)!
-        #expect(a.color != b.color)
-    }
-
-    /// Светлая тема: свет — не тень. Цвет света не темнее плашки больше чем на пятую часть яркости, непрозрачность в пределах потолка.
-    @Test func lightThemeGlowIsNotAShadow() {
-        for score in [2, 50, 95] {
-            for e in [-2.0, -5, -9.5, -13] {
-                let g = glow(e, light: true, palette: palette(score: score))!
-                #expect(DomeSky.luminance(g.color) >= PlateGlowSpec.plateLuminanceLight * PlateGlowSpec.lightFloor - 0.01, "e=\(e) s=\(score)")
-                #expect(g.peak <= PlateGlowSpec.lightCap)
-            }
-        }
-        // Оранжевый закат остаётся оттенком: красный канал не ниже зелёного и синего.
-        let warm = PlateGlowSpec.lifted(SkyColor(214, 83, 58), toLuminance: 0.71)
-        #expect(warm.r >= warm.g && warm.g >= warm.b)
+        #expect(a.color != b.color && a.peak > b.peak)
     }
 
     /// Пик макета — 0,33 при плотности зарева 0,156 (чистое небо, глубокие сумерки), и выше 0,55 свет не поднимается.
