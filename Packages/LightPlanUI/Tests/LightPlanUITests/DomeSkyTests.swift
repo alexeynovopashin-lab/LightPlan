@@ -258,14 +258,17 @@ struct DomeSkyTests {
         }
     }
 
-    @Test func forecastColoursOnlyEveningAndFadesBeforeNight() {
+    /// 30з.3в: рассвет и закат — один процесс наоборот, прогноз ведёт оба одной формулой по высоте солнца.
+    @Test func forecastColoursDawnAndDuskAlikeAndFadesBeforeNight() {
         for light in [true, false] {
             for e in stride(from: -90.0, through: 90, by: 1) {
                 #expect(sky(e, light: light).forecastOpacity == 0)
                 let dawn = sky(e, light: light, morning: true, palette: bright)
-                #expect(dawn.forecast == nil && dawn.forecastOpacity == 0)
-                #expect(dawn.zenith == sky(e, light: light).zenith)
-                #expect(dawn.glowColor == LightState(elevation: e, morning: true).color)
+                let dusk = sky(e, light: light, morning: false, palette: bright)
+                #expect(dawn.forecastOpacity == dusk.forecastOpacity)
+                #expect(dawn.glowOpacity == dusk.glowOpacity)
+                #expect(dawn.glowColor == dusk.glowColor)
+                #expect(dawn.zenith == dusk.zenith && dawn.horizon == dusk.horizon)
                 if e <= -12 { #expect(sky(e, light: light, palette: bright).forecastOpacity == 0) }
             }
         }

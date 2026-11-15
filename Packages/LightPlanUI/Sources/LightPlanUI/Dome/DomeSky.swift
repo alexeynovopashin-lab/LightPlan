@@ -27,7 +27,10 @@ struct DomeSky: Sendable, Equatable {
         let b = lightTheme ? upper.light : upper.dark
         var top = LightPalette.lerp(a.0, b.0, k)
         var bottom = LightPalette.lerp(a.1, b.1, k)
-        let evening = morning ? nil : palette
+        // 30з.3в (Алексей 15.11: «рассвет и закат — одинаковые процессы, просто инвертированные; если рассвет имитирует зарево согласно
+        // погоде, то и закат»): палитра прогноза ведёт и утро, и вечер — одной и той же формулой по высоте солнца. Своего балла рассвета у
+        // данных нет, берётся палитра дня (балл и ярусы облаков в час заката): «из кода, не мерено». Раньше утро её не знало (как у веба).
+        let evening = palette
         let colourStart = lightTheme ? 6.0 : 12.0
         let forecastShare = evening == nil ? 0 : Self.clamp((colourStart - e) / colourStart) * Self.clamp((e + 12) / 8)
         forecastOpacity = forecastShare * 0.62
