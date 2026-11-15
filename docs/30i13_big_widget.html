@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>30и.13 — большой виджет: было → станет</title>
+<style>
+:root{--doc:#fff;--docInk:#111;--docSub:#555;--card:#f6f6f7;--hair:rgba(0,0,0,.1);--brassInk:#C9741A}
+@media (prefers-color-scheme:dark){:root{--doc:#121214;--docInk:#eee;--docSub:#a0a0a6;--card:#1c1c1f;--hair:rgba(255,255,255,.12);--brassInk:#F0A04A}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--doc);color:var(--docInk);font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+.wrap{max-width:1500px;margin:0 auto;padding:26px 16px 80px}
+h1{font-size:25px;margin:0 0 6px}h2{font-size:20px;margin:0 0 4px}
+p{margin:6px 0}.lead{color:var(--docSub);max-width:820px}
+section{margin-top:40px;padding-top:20px;border-top:1px solid var(--hair)}
+.tag{font-size:12px;font-weight:650;letter-spacing:.8px;text-transform:uppercase;color:var(--brassInk)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0}
+.fact{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:10px 14px}
+.fact b{display:block;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--docSub)}
+.pro b{color:#2f9e5b}.con b{color:#c0572b}
+.frames{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin:14px 0}
+figure{margin:0}figcaption{font-size:12.5px;color:var(--docSub);margin-top:6px;max-width:364px}
+table{border-collapse:collapse;font-size:13px;margin:8px 0}td,th{border:1px solid var(--hair);padding:3px 9px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+code{background:var(--card);padding:1px 5px;border-radius:5px;font-size:12.5px}
+.budget{display:flex;gap:24px;flex-wrap:wrap}
+/* виджет */
+.w{position:relative;border-radius:22px;overflow:hidden;font-family:-apple-system,"SF Pro Text",system-ui,sans-serif}
+.w.light{--bg:#F3F3F5;--ink:#000;--ink2:#5C5C62;--amber:#F29230;--amberT:#E8861F;--hair:rgba(0,0,0,.12);--slit:rgba(0,0,0,.12);background:var(--bg);color:var(--ink);box-shadow:0 0 0 1.5px #fff inset,0 0 0 1px rgba(0,0,0,.05)}
+.w.dark{--bg:#1C1C1F;--ink:#F4F4F5;--ink2:#A5A5AB;--amber:#F0A04A;--amberT:#F0A04A;--hair:rgba(255,255,255,.12);--slit:rgba(255,255,255,.12);background:var(--bg);color:var(--ink)}
+.b{position:absolute;left:16px;right:16px;overflow:visible}
+.ink{display:inline-block;white-space:nowrap}
+.row{display:flex;align-items:center;gap:8px}
+.t12{font-size:12px}.t11{font-size:11px}.t13{font-size:13px}.t14{font-size:14px}.t15{font-size:15px}.t17{font-size:17px}
+.sb{font-weight:600}.c2{color:var(--ink2)}.am{color:var(--amberT)}.mono{font-variant-numeric:tabular-nums}
+.slit{height:1px;background:var(--slit)}
+.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.alpha{color:var(--amber);font-weight:700}
+
+.w.braunD{--bg:#161616;--ink:#ECECEA;--ink2:#9B9B9B;--amber:#F4B400;--amberT:#F4B400;--slit:rgba(255,255,255,.12);background:var(--bg);color:var(--ink)}
+.w.braunL{--bg:#E4E4E2;--ink:#111;--ink2:#5B5B5B;--amber:#111;--amberT:#111;--slit:rgba(0,0,0,.14);background:var(--bg);color:var(--ink)}
+.w.braunL .bz,.bz{--dial:#FAFAFA}.w.braunD .bz{--dial:#0D0D0D}
+.tk{position:absolute;inset:0;pointer-events:none}
+.sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-3px;border:1px solid var(--hair);margin-right:4px}
+.pair{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 22px;align-items:flex-start}
+
+.w.braunD{--dial:#0D0D0D;--win:#0A0A0A;--flag:#C8102E;--pill:rgba(255,255,255,.07);--dot:#ECECEA;--dotOff:#2E2E2E}
+.w.braunL{--dial:#FAFAFA;--win:#D3D3D1;--flag:#AD0A15;--pill:#F4B400;--dot:#111;--dotOff:#DCDCDA}
+.blk{position:relative;border-radius:14px;background:var(--dial);box-shadow:0 0 0 .5px var(--slit) inset}
+.notch{position:absolute;right:0;top:0;height:18px;border-radius:4px;background:var(--win);display:flex;align-items:center;justify-content:center;padding:0 6px 0 14px;font:600 13px/1 -apple-system,system-ui;font-variant-numeric:tabular-nums;color:var(--ink)}
+/* флажок = код BraunWindow.notchBandPoints: шеврон 9 × h, (0,0)→(4,0)→(9,h/2)→(4,h)→(0,h)→(5,h/2); окошко с тем же V-вырезом слева (notchWindowPoints) */
+.notch{border-radius:0 4px 4px 0;clip-path:polygon(0 0,100% 0,100% 100%,0 100%,5px 50%)}
+.w.braunD .notch{box-shadow:0 0 0 .5px rgba(255,255,255,.12) inset}
+.notch:before{content:"";position:absolute;left:0;top:0;bottom:0;width:9px;background:var(--flag);clip-path:polygon(0 0,4px 0,9px 50%,4px 100%,0 100%,5px 50%)}
+.obs{background:var(--card);border:1px dashed var(--hair);border-radius:12px;padding:10px 16px;margin:12px 0}
+.obs li{margin:4px 0}
+</style></head><body><div class="wrap">
+<h1>30и.13 — большой виджет: было → станет</h1>
+<p class="lead">Эскиз до кода. Слова Алексея 15.11: «Место большого виджета используется не рационально… на дуге всегда и солнце, и луна… строки предстоящих съёмок… рассвет и закат под дугу как в приложении… оценку заката и рассвета… совместить функции двух экранов Свет и Съёмки». Размеры в pt как у настоящей плашки: <b>364 × 382</b> (iPhone Pro Max, внутри полей 332 × 350) и <b>338 × 354</b> (iPhone 14, внутри 306 × 322). Поля 16 pt со всех сторон — как в коде. Сцена та же, что на скриншоте Алексея: Томск, 14 нояб, 20:02, ночь.</p>
+
+<section id="finding">
+<div class="tag">1 · Слово «РАССВЕТ» после заката</div>
+<p><b>Не опечатка и не сбой расчёта — запасной вариант в коде.</b> <code>LargeView.lightWord</code> идёт по тройке «рассвет → золотой час → закат» и берёт первое событие, которое ещё впереди; когда все три сегодня позади, возвращает «рассвет» (завтрашний). Комментарий в коде это признаёт: состояния света («вечереет», «ночь») виджет не получает, поэтому берёт «то, что есть». Беда в подаче: рядом стоит текущее время «20:02», и слово читается как «сейчас рассвет». Вторая особенность: <code>SunArc</code> знает только сегодняшние рассвет/закат, поэтому серая точка стоит на правой ноге дуги, а не на ночной дорожке.</p>
+<p><b>Отдельным коммитом не чинил:</b> честная правка — это выбор слова, а не баг. Во всех вариантах ниже слово в куполе заменено на то, что показывает приложение (<code>sun.night.label</code> «НОЧЬ», днём — «ДЕНЬ», в сумерки «ВЕЧЕРЕЕТ»/«СУМЕРКИ»); его можно посчитать из тех же координат и времени в расширении (<code>SolarDay</code> лежит в Domain, виджет его уже линкует). Следующий восход при этом остаётся на левой ноге: «рассвет 08:57» с оценкой — завтрашней.</p>
+</section>
+
+<section id="limits">
+<div class="tag">2 · Что умеет и чего не умеет WidgetKit, и какие данные уже есть</div>
+<div class="facts">
+<div class="fact"><b>Перезагрузки ленты</b>40–70 в сутки на виджет (Apple). Наш потолок — 180 записей в ленте (<code>entryLimit</code>). Точка солнца двигается записями «раз в 10 минут дня» — луна медленнее, отдельных записей не просит (раз в 10 минут она сдвигается на ≈0,1° — глазом не видно).</div>
+<div class="fact"><b>Прокрутки нет</b>Список съёмок не листается: показываем столько строк, сколько влезло, и «и ещё N». Число строк считается от высоты плашки и размера шрифта (при крупном шрифте строк меньше, это уже так в коде: 6/5/4).</div>
+<div class="fact"><b>Ловушка живого таймера</b>«<code>.fixedSize()</code> и <code>.lineLimit</code> рядом с <code>Text(timerInterval:)</code> обрывают всё, что нарисовано после него» (замер 26.10, <code>ActivityViews.swift:76</code>). Поэтому «через N ч» в строках съёмок — <b>статичный текст из ленты</b>, не системный таймер: меняется записью ленты, раз в минуту только последний час.</div>
+<div class="fact"><b>Жидкое стекло и тени</b>Тени и стекло в виджете не рисуем (ImageRenderer не умеет стекло, а плашка плоская). Разделители — щели, как договорено.</div>
+</div>
+<table><tr><th>Данные</th><th>Уже в <code>widget.json</code></th><th>Нужно добавить</th></tr>
+<tr><td>Восход, золотой час, закат, длина дня, полярные сутки</td><td>да (<code>DayLight</code>, считает расширение)</td><td>—</td></tr>
+<tr><td>Оценка заката и рассвета 0…100 + категория дня</td><td>да, на 3 дня (<code>Rating</code>, <code>ratingDays = 3</code>; рассвет — поле <code>sunrise</code>)</td><td>слово «красивый / с цветом / спокойный / серый» — по порогам 75/50/28 из <code>LightTelemetry.sunsetWord</code>, это 4 слова в словарь виджета (сейчас там «слово неба» яркий/тёплый/… — другая лестница)</td></tr>
+<tr><td>Съёмки на 7 дней: жанр, время, места, имена</td><td>да (<code>Shoot</code>, на «Домой» имена разрешены)</td><td>—</td></tr>
+<tr><td>Луна: положение, фаза, восход/заход</td><td><b>нет</b></td><td>считает расширение само: <code>MoonSample</code> лежит в Core, а Core виджет линкует. Новых данных в файле не нужно</td></tr>
+<tr><td>Слово света («Ночь», «Вечереет»)</td><td>нет</td><td>считает расширение: высота солнца → ключ слова. Словарь: добавить 5–6 слов в <code>Words</code></td></tr>
+<tr><td>Положение тел под горизонтом (призрак)</td><td>нет</td><td>правило купола приложения: <code>deepOf</code> — плотность призрака, пол 2/3, глубина ≤ 3° → гаснет. Копия констант в <code>DomeFit</code>, сверка тестом</td></tr>
+</table>
+</section>
+
+<section id="summary"><div class="tag">3 · Заполнение плашки (сводка)</div>
+<p>Считаю по настоящим габаритам: сумма прямоугольников, в которых что-то нарисовано (текст по ширине надписи, знак, купол по прямоугольнику <code>2rx × (ry + пояс)</code>, строка съёмки — по её надписям), делённая на площадь плашки 364 × 382 (338 × 354). Купол считаю по прямоугольнику, хотя полуэллипс занимает лишь ≈ 79 % его — для «было» и «станет» одинаково, так что сравнение честное, а абсолютные числа завышены.</p>
+<div id="sumtable"></div></section>
+
+<div id="variants"></div>
+</div>
+<script>
+const ICONS={"sunrise": "M2.5 16.5L21.5 16.5M7.4 16.5C7.4 13.9595 9.4595 11.9 12 11.9C14.5405 11.9 16.6 13.9595 16.6 16.5M4.6 9.4L6.3 11.1M19.4 9.4L17.7 11.1M12 4L12 8.6M9.8 6.2L12 4L14.2 6.2", "sunset": "M2.5 16.5L21.5 16.5M7.4 16.5C7.4 13.9595 9.4595 11.9 12 11.9C14.5405 11.9 16.6 13.9595 16.6 16.5M4.6 9.4L6.3 11.1M19.4 9.4L17.7 11.1M12 4L12 8.6M9.8 6.4L12 8.6L14.2 6.4", "sun": "M16.2 12C16.2 14.3196 14.3196 16.2 12 16.2C9.6804 16.2 7.8 14.3196 7.8 12C7.8 9.6804 9.6804 7.8 12 7.8C14.3196 7.8 16.2 9.6804 16.2 12ZM12 6L12 3.4M12 18L12 20.6M6 12L3.4 12M18 12L20.6 12M7.8 7.8L5.9 5.9M16.2 7.8L18.1 5.9M7.8 16.2L5.9 18.1M16.2 16.2L18.1 18.1", "sunset_glow": "M2.5 14.5L21.5 14.5M7.4 14.5C7.4 11.9595 9.4595 9.9 12 9.9C14.5405 9.9 16.6 11.9595 16.6 14.5M4.6 7.4L6.3 9.1M19.4 7.4L17.7 9.1M12 2L12 6.6M7.6 18L16.4 18M9.8 21L14.2 21", "wedding": "M14.1 13.4C14.1 16.1062 11.9062 18.3 9.2 18.3C6.4938 18.3 4.3 16.1062 4.3 13.4C4.3 10.6938 6.4938 8.5 9.2 8.5C11.9062 8.5 14.1 10.6938 14.1 13.4ZM19.7 13.4C19.7 16.1062 17.5062 18.3 14.8 18.3C12.0938 18.3 9.9 16.1062 9.9 13.4C9.9 10.6938 12.0938 8.5 14.8 8.5C17.5062 8.5 19.7 10.6938 19.7 13.4ZM10.2 5.2L13.8 5.2L12 7.4Z", "family": "M8 5.2C8 6.5255 6.9255 7.6 5.6 7.6C4.2745 7.6 3.2 6.5255 3.2 5.2C3.2 3.8745 4.2745 2.8 5.6 2.8C6.9255 2.8 8 3.8745 8 5.2ZM2.4 21.4L2.4 12C2.4 10.5641 3.5641 9.4 5 9.4L6.6 9.4M20.8 5.2C20.8 6.5255 19.7255 7.6 18.4 7.6C17.0745 7.6 16 6.5255 16 5.2C16 3.8745 17.0745 2.8 18.4 2.8C19.7255 2.8 20.8 3.8745 20.8 5.2ZM21.6 21.4L20.2 11.8C20.0011 10.5221 18.8932 9.5846 17.6 9.6L16.2 9.6M14.4 9.4C14.4 10.7255 13.3255 11.8 12 11.8C10.6745 11.8 9.6 10.7255 9.6 9.4C9.6 8.0745 10.6745 7 12 7C13.3255 7 14.4 8.0745 14.4 9.4ZM8.6 21.4L8.6 14.8C8.6 13.3641 9.7641 12.2 11.2 12.2L12.8 12.2C14.2359 12.2 15.4 13.3641 15.4 14.8L15.4 21.4", "portrait": "M15.4 8.3C15.4 10.1778 13.8778 11.7 12 11.7C10.1222 11.7 8.6 10.1778 8.6 8.3C8.6 6.4222 10.1222 4.9 12 4.9C13.8778 4.9 15.4 6.4222 15.4 8.3ZM5.6 20C5.6 16.4654 8.4654 13.6 12 13.6C15.5346 13.6 18.4 16.4654 18.4 20", "couple": "M12 3.4C11.4 2.1 9.4 2.3 9.4 4C9.4 5.2 11 6.3 12 7.1C13 6.3 14.6 5.2 14.6 4C14.6 2.3 12.6 2.1 12 3.4ZM10 11.4C10 12.7255 8.9255 13.8 7.6 13.8C6.2745 13.8 5.2 12.7255 5.2 11.4C5.2 10.0745 6.2745 9 7.6 9C8.9255 9 10 10.0745 10 11.4ZM3.8 20.6C3.8 18.5013 5.5013 16.8 7.6 16.8C9.6987 16.8 11.4 18.5013 11.4 20.6M18.8 11.4C18.8 12.7255 17.7255 13.8 16.4 13.8C15.0745 13.8 14 12.7255 14 11.4C14 10.0745 15.0745 9 16.4 9C17.7255 9 18.8 10.0745 18.8 11.4ZM13.2 13.6L13.21 13.6M19.6 13.6L19.61 13.6M12.6 20.6C12.6 18.5013 14.3013 16.8 16.4 16.8C18.4987 16.8 20.2 18.5013 20.2 20.6", "backdrop": "M2.6 3.8L21.4 3.8M4 3.8L4 10.2M20 3.8L20 10.2M2 13.6L4 10.2L6 13.6M18 13.6L20 10.2L22 13.6M7 4.2L7 13.8C7 16.8 5.6 19 3.4 20.4L20.6 20.4C18.4 19 17 16.8 17 13.8L17 4.2", "feast": "M3.5 17L20.5 17M5 17C5 13.134 8.134 10 12 10C15.866 10 19 13.134 19 17M12 6.5L12 4.5", "park": "M12 2.6C14.7 2.6 16.6 4.8 16.6 7.6C16.6 10.4 14.7 12.8 12 12.8C9.3 12.8 7.4 10.4 7.4 7.6C7.4 4.8 9.3 2.6 12 2.6ZM12 8.4L12 20.4M12 11.4L14.3 9.1M12 13.8L9.7 11.5M7.7 9.6C7.7 11.0912 6.4912 12.3 5 12.3C3.5088 12.3 2.3 11.0912 2.3 9.6C2.3 8.1088 3.5088 6.9 5 6.9C6.4912 6.9 7.7 8.1088 7.7 9.6ZM5 12.3L5 20.4M5 14.6L6.7 12.9M21.5 11C21.5 12.3807 20.3807 13.5 19 13.5C17.6193 13.5 16.5 12.3807 16.5 11C16.5 9.6193 17.6193 8.5 19 8.5C20.3807 8.5 21.5 9.6193 21.5 11ZM19 13.5L19 20.4M19 15.6L17.4 14M2.4 20.4L21.6 20.4", "rings": "M14.4 15.2C14.4 18.0719 12.0719 20.4 9.2 20.4C6.3281 20.4 4 18.0719 4 15.2C4 12.3281 6.3281 10 9.2 10C12.0719 10 14.4 12.3281 14.4 15.2ZM20 15.2C20 18.0719 17.6719 20.4 14.8 20.4C11.9281 20.4 9.6 18.0719 9.6 15.2C9.6 12.3281 11.9281 10 14.8 10C17.6719 10 20 12.3281 20 15.2ZM12.4 5.4L17.2 5.4L14.8 8.6Z", "dance": "M9.6 4.4C9.6 5.3941 8.7941 6.2 7.8 6.2C6.8059 6.2 6 5.3941 6 4.4C6 3.4059 6.8059 2.6 7.8 2.6C8.7941 2.6 9.6 3.4059 9.6 4.4ZM7.8 6.2L7.8 11.6M7.8 11.6L5.6 18.2M7.8 11.6L9.9 15.2L9.2 18.2M7.8 8.4L12.4 9.8M17.5 5.4C17.5 6.3389 16.7389 7.1 15.8 7.1C14.8611 7.1 14.1 6.3389 14.1 5.4C14.1 4.4611 14.8611 3.7 15.8 3.7C16.7389 3.7 17.5 4.4611 17.5 5.4ZM15.8 7.1L15.8 10.7M15.8 8.6L12.4 9.8M13 18.4L15.8 10.7L18.6 18.4Z", "camera": "M5.5 6.5L18.5 6.5C19.8807 6.5 21 7.6193 21 9L21 17C21 18.3807 19.8807 19.5 18.5 19.5L5.5 19.5C4.1193 19.5 3 18.3807 3 17L3 9C3 7.6193 4.1193 6.5 5.5 6.5ZM15.8 13C15.8 15.0987 14.0987 16.8 12 16.8C9.9013 16.8 8.2 15.0987 8.2 13C8.2 10.9013 9.9013 9.2 12 9.2C14.0987 9.2 15.8 10.9013 15.8 13ZM8.5 6.5L9.9 4.3L14.1 4.3L15.5 6.5"};
+const SC={name:'Томск',date:'Сб 14 нояб',clock:'20:02',rise:'08:56',golden:'16:07',set:'17:12',dayLen:'8 ч 17 мин',
+ risR:{w:'спокойный',n:34},setR:{w:'с цветом',n:62},
+ fc:[{d:'Вс 15',n:71,w:'красивый'},{d:'Пн 16',n:55,w:'с цветом'},{d:'Вт 17',n:23,w:'серый'}],
+ shoots:[
+  {g:'wedding',t:'Свадьба · Анна+Игорь',when:'Вс 15 · 12:00',left:'через 16 ч'},
+  {g:'portrait',t:'Портрет · Мария',when:'Вс 15 · 17:00',left:'через 21 ч'},
+  {g:'family',t:'Семья · Орловы',when:'Пн 16 · 11:00',left:'через 1 д 15 ч'},
+  {g:'wedding',t:'Свадьба · Ольга+Паша',when:'Ср 18 · 10:00',left:'через 3 д 14 ч'},
+  {g:'portrait',t:'Портрет · Ирина',when:'Пт 20 · 15:30',left:'через 5 д 19 ч'},
+  {g:'family',t:'Семья · Седовы',when:'Сб 21 · 12:00',left:'через 6 д 16 ч'}],
+ emptyUntil:'до сб 21 съёмок нет'};
+const SIZES=[{W:364,H:382},{W:338,H:354}];
+function ic(n,sz,extra=''){const d=ICONS[n]||'';return `<svg class="ic ${extra}" style="width:${sz}px;height:${sz}px" viewBox="0 0 24 24"><path d="${d}"/></svg>`}
+function sunsetGlowIc(sz){return ic('sunset_glow',sz)}
+/* купол: холст 390 × 158 (y 44…202), масштаб s */
+function dome(s,o){
+ const rx=163,ry=148,cx=195,hy=196;const id='g'+Math.random().toString(36).slice(2,7);
+ const arc=[];for(let i=0;i<=60;i++){const a=Math.PI*(1-i/60);arc.push((cx+rx*Math.cos(a)).toFixed(1)+','+(hy-ry*Math.sin(a)).toFixed(1))}
+ const sky='<linearGradient id="'+id+'s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+(o.day?'#3F78B5':'#0E1A3A')+'"/><stop offset="1" stop-color="'+(o.day?'#E8B07A':'#1E2B4A')+'"/></linearGradient>';
+ const gr='<linearGradient id="'+id+'a" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="var(--amber)"/><stop offset=".5" stop-color="#8A8A92"/><stop offset="1" stop-color="var(--amber)"/></linearGradient>';
+ let body=`<polygon points="${arc.join(' ')}" fill="url(#${id}s)"/><polyline points="${arc.join(' ')}" fill="none" stroke="url(#${id}a)" stroke-width="${3/Math.max(s,.8)*.8}" stroke-linecap="round"/><line x1="${cx-rx-14}" x2="${cx+rx+14}" y1="${hy}" y2="${hy}" stroke="var(--ink)" stroke-opacity=".35" stroke-dasharray="3 3" stroke-width="${1/s}"/>`;
+ if(o.was) body+=`<circle cx="358" cy="196" r="9.4" fill="#0C0B0A"/><circle cx="358" cy="196" r="6.5" fill="#8A8A92" opacity=".4"/>`;
+ else if(o.day){ // золотой час: солнце низко справа, луна-призрак под горизонтом слева
+  body+=`<circle cx="338" cy="176" r="10.5" fill="#0C0B0A"/><circle cx="338" cy="176" r="7.5" fill="#F7B24A"/>`;
+  body+=`<g opacity=".5"><circle cx="70" cy="199" r="9.4" fill="#0C0B0A"/><circle cx="70" cy="199" r="6.5" fill="#E9E5D3"/></g>`}
+ else{ // призраки: солнце под горизонтом (пол 2/3), луна у правого края
+  body+=`<g opacity=".67"><circle cx="333" cy="199" r="9.4" fill="#0C0B0A"/><circle cx="333" cy="199" r="6.5" fill="#F0A04A"/></g>`;
+  body+=`<circle cx="346" cy="142" r="9.4" fill="#0C0B0A"/><circle cx="346" cy="142" r="6.5" fill="#E9E5D3"/><circle cx="349.2" cy="140.4" r="5.6" fill="#16223F"/>`}
+ const fs=n=>n; // размеры в единицах холста
+ body+=`<text x="${cx}" y="${hy-ry*0.40+14}" text-anchor="middle" font-size="40" font-weight="200" fill="#fff" style="font-variant-numeric:tabular-nums">${o.clock||SC.clock}</text><text x="${cx}" y="${hy-ry*0.40+34}" text-anchor="middle" font-size="13" font-weight="600" letter-spacing="1.6" fill="#fff">${o.word}</text>`;
+ return `<svg width="${390*s}" height="${158*s}" viewBox="0 44 390 158"><defs>${sky}${gr}</defs>${body}</svg>`}
+const TXT={sb:'sb'};
+function foot(kind,align,o){ // ножка купола: знак + время (+ оценка)
+ const sign=kind==='rise'?'sunrise':kind==='set'?'sunset':'golden';
+ const time=kind==='rise'?SC.rise:kind==='set'?SC.set:SC.golden;
+ const r=kind==='rise'?SC.risR:kind==='set'?SC.setR:null;
+ const jc=align==='l'?'flex-start':align==='r'?'flex-end':'center';
+ let h=`<div style="display:flex;flex-direction:column;align-items:${jc}"><span class="ink row ${kind==='gold'?'am':''}" style="gap:5px"><span style="display:inline-flex">${ic(sign==='golden'?'sun':sign,o.ics||15)}</span><span class="t${o.tf||17} sb mono">${time}</span></span>`;
+ if(r){ if(o.stack) h+=`<span class="ink t11 c2">${r.w}</span><span class="ink t11 sb">${r.n} / 100</span>`; else h+=`<span class="ink t11 c2" style="margin-top:1px">${r.w} · <b style="color:var(--ink)">${r.n} / 100</b></span>`}
+ else if(o.mid) h+=`<span class="ink t11 c2" style="margin-top:1px">${o.mid}</span>`;
+ return h+'</div>'}
+function footRow(s,o){ // три колонки по ширине дуги: от (32−14)·s до (358+14)·s холста; на узкой плашке (338) оценки по ширине дуги не влезают —
+ // колонки берут всё поле (до 16 от края плашки, риски-таймер кончаются в 10,5): текст не заходит на риски (Алексей 16.11)
+ const narrow=s<0.85,x0=narrow?0:(32-14)*s,w=narrow?390*s:(358+14)*s-x0;
+ return `<div style="position:absolute;left:${x0}px;width:${w}px;top:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:start">${foot('rise','l',o)}<div style="padding:0 ${narrow?4:8}px">${foot('gold','c',o)}</div>${foot('set','r',o)}</div>`}
+function shootRow(sh,rh,o){
+ if(o.merge) return `<div style="height:${rh}px;display:flex;align-items:center;gap:8px;min-width:0"><span class="ink" style="display:inline-flex;color:var(--amber)">${ic(sh.g,o.sg||18)}</span><span style="display:flex;flex-direction:column;min-width:0;flex:1"><span class="ink t13 sb" style="overflow:hidden;text-overflow:ellipsis;max-width:100%">${sh.t}</span><span class="ink t11 c2">${sh.when.split(' · ')[1]} · <b class="am">${sh.left}</b></span></span></div>`;
+ return `<div style="height:${rh}px;display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="row" style="gap:9px;min-width:0"><span class="ink" style="display:inline-flex;color:var(--amber)">${ic(sh.g,o.sg||20)}</span><span style="display:flex;flex-direction:column;min-width:0"><span class="ink t14 sb">${sh.t}</span>${o.one?'':`<span class="ink t11 c2">${sh.when}</span>`}</span></span><span style="text-align:right;display:flex;flex-direction:${o.one?'row':'column'};gap:${o.one?8:0}px;align-items:flex-end">${o.one?`<span class="ink t11 c2">${sh.when}</span>`:''}<span class="ink t12 sb am">${sh.left}</span></span></div>`}
+function slit(){return '<div class="slit"></div>'}
+function pickRows(avail,min,max,nAll){ // сколько строк и какой высоты влезает
+ for(let n=Math.min(nAll,7);n>=1;n--){const more=nAll>n?15:0;const rh=Math.floor((avail-more)/n);if(rh>=min)return{n,rh:Math.min(rh,max),more}}
+ return{n:0,rh:0,more:0}}
+function forecast(w,o){ // оценка закатов на 3 дня (ratingDays)
+ return SC.fc.map(f=>`<div class="row" style="justify-content:space-between;height:${o.h}px"><span class="row" style="gap:6px"><span class="ink c2" style="display:inline-flex">${sunsetGlowIc(14)}</span><span class="ink t12 c2">${f.d}</span></span><span class="ink t12 sb mono">${f.n}<span class="c2" style="font-weight:400"> / 100</span></span></div>`).join('')}
+/* каркас: полосы сверху вниз, сумма высот = H */
+function frame(variant,size,theme,state){
+ const {W,H}=size,iw=W-32,ih=H-32,s=iw/390;
+ const bands=[];const push=(n,h,html,k)=>bands.push({n,h,html,k});
+ push('поле сверху',16,'','pad');
+ variant.build({iw,ih,s,push,state,W,H});
+ let used=bands.reduce((a,b)=>a+b.h,0)+16;const free=H-used;
+ if(Math.abs(free)>0.001) push(free>0?'свободно (пусто)':'ПЕРЕБОР',free,'','free');
+ push('поле снизу',16,'','pad');
+ let y=0;const parts=bands.map(b=>{const t=y;y+=b.h;return b.html?`<div class="b" style="top:${t}px;height:${b.h}px">${b.html}</div>`:''}).join('');
+ const el=`<div class="w ${theme}" style="width:${W}px;height:${H}px">${parts}</div>`;
+ return {el,bands,W,H}}
+function measure(node,W,H){let a=0;node.querySelectorAll('.ink,[data-ink]').forEach(e=>{if(e.closest('svg')&&!e.hasAttribute('data-ink'))return;const r=e.getBoundingClientRect();a+=r.width*r.height});return a/(W*H)*100}
+function budgetTable(bands,W,H){let c=0,g=0,f=0,p=0;const rows=bands.map(b=>{if(b.k==='c')c+=b.h;else if(b.k==='gap')g+=b.h;else if(b.k==='free')f+=b.h;else p+=b.h;return `<tr><td>${b.n}</td><td>${b.h%1?b.h.toFixed(1):b.h}</td></tr>`}).join('');
+ const sum=bands.reduce((a,b)=>a+b.h,0);
+ return `<table><tr><th>полоса</th><th>pt</th></tr>${rows}<tr><td><b>итого по высоте</b></td><td><b>${sum.toFixed(1)}${Math.abs(sum-H)<.05?' = '+H+' ✓':' ≠ '+H}</b></td></tr><tr><td>из них: содержимое / зазоры / поля / пусто</td><td>${c.toFixed(0)} / ${g.toFixed(0)} / ${p.toFixed(0)} / ${f.toFixed(1)}</td></tr></table>`}
+
+/* ---------- варианты ---------- */
+const WAS={id:'was',title:'Было',sub:'Что сейчас стоит в коде (<code>LargeView.lightOnly</code>)',
+ build({iw,ih,s,push,state}){
+  push('дата',15,`<span class="ink t12 sb c2">${SC.date}</span>`+`<span class="ink alpha t12" style="position:absolute;right:0">α</span>`,'c');
+  push('место (подзаголовок 15)',20,`<span class="ink t15 sb" style="display:block;padding-top:2px">${SC.name}</span>`,'c');
+  push('зазор',6,'','gap');
+  const fixed=15+20+6+6+43+10+16+32;const dh=ih-(15+20+6+6+43+10+16);
+  const boxH=158*s;const ex=(dh-boxH)/2;
+  push('пусто над куполом',ex,'','free');
+  push('купол (габарит)',boxH,`<div data-ink style="width:${390*s}px;height:${boxH}px;position:relative"><div style="position:absolute;left:${(32)*s}px;width:${326*s}px;top:0;height:${boxH}px;opacity:0" ></div>${dome(s,{was:true,word:'РАССВЕТ'})}</div>`,'c');
+  push('пусто под куполом',ex,'','free');
+  push('зазор',6,'','gap');
+  push('щель + 3 столбца (сдвинуты влево)',43,`<div class="slit" style="margin-bottom:6px"></div><div style="display:flex;gap:0"><span class="ink" style="margin-right:0"><span class="row" style="gap:4px;color:var(--ink2)">${ic('sunrise',13)}<span class="t12">Рассвет</span></span><br><span class="t15 sb mono">${SC.rise}</span></span><span class="ink" style="margin-left:34px"><span class="row am" style="gap:4px">${ic('sun',13)}<span class="t12">Золотой час</span></span><br><span class="t15 sb mono">${SC.golden}</span></span><span class="ink" style="margin-left:34px"><span class="row c2" style="gap:4px">${ic('sunset',13)}<span class="t12">Закат</span></span><br><span class="t15 sb mono">${SC.set}</span></span></div>`,'c');
+  push('зазор',10,'','gap');
+  push('«День 8 ч 17 мин»',16,`<span class="ink t13 c2">День ${SC.dayLen}</span>`,'c');
+ }};
+/* A */
+const A={id:'a',title:'А · «Купол над строками»',sub:'Свет сверху целиком (купол, ножки с оценкой), съёмки — строками на нижней половине',
+ pro:'Ничего не прыгает: купол и ножки стоят на тех же местах, что в приложении; строки съёмок получают всю нижнюю треть. Оценка рассвета и заката видна сразу, не надо открывать приложение.',
+ con:'На 364 и 338 влезает три съёмки (на 338 строки плотнее, 36 pt); в дни с плотным графиком «и ещё N» — главная часть списка уходит за край.',
+ build({iw,ih,s,push,state}){
+  push('шапка: дата · место',16,`<span class="ink t12 sb c2">${SC.date} · ${SC.name}</span><span class="ink alpha t12" style="position:absolute;right:0">α</span>`,'c');
+  push('зазор',4,'','gap');
+  const boxH=158*s;push('купол с Солнцем и Луной',boxH,`<div data-ink style="width:${390*s}px;height:${boxH}px;margin-left:0">${dome(s,{word:'НОЧЬ'})}</div>`,'c');
+  push('зазор',2,'','gap');
+  push('ножки: время + оценка',38,footRow(s,{mid:'золотой час'}),'c');
+  push('зазор',8,'','gap');push('щель',1,slit(),'gap');push('зазор',6,'','gap');
+  const avail=ih-(4+16+boxH+2+38+8+1+6);
+  if(state==='empty'){
+   push('«до сб 21 съёмок нет»',22,`<span class="ink t14 sb">${SC.emptyUntil}</span>`,'c');
+   push('зазор',6,'','gap');
+   push('закаты на 3 дня',Math.min(avail-28-18,3*24),forecast(0,{h:24}),'c');
+   const left=avail-22-6-Math.min(avail-28-18,72);
+   push('день 8 ч 17 мин',18,`<span class="ink t13 c2">День ${SC.dayLen}</span>`,'c');
+  }else{
+   const {n,rh,more}=pickRows(avail,36,46,SC.shoots.length);
+   SC.shoots.slice(0,n).forEach((sh,i)=>push('съёмка '+(i+1)+' ('+rh+')',rh,shootRow(sh,rh,{}),'c'));
+   if(more)push('«и ещё '+(SC.shoots.length-n)+'»',more,`<span class="ink t11 c2">и ещё ${SC.shoots.length-n}</span>`,'c');
+  }}};
+/* B */
+const B={id:'b',title:'Б · «Купол и две колонки»',sub:'Под куполом: слева закаты на 3 дня (данные уже в файле), справа строки съёмок; щель между колонками',
+ pro:'Прогноз света на три дня и съёмки на одном экране — это и есть «совместить Свет и Съёмки»: видно, на какой день падает красивый закат и есть ли в него съёмка.',
+ con:'Строки съёмок узкие (≈ 190 pt): день недели уходит («через 16 ч» вместо «Вс 15 · через 16 ч»), длинные имена обрезаются многоточием. Жанр вместо имён — выход, но тогда пропадает привычное «кто».',
+ build({iw,ih,s,push,state}){
+  push('шапка: дата · место',16,`<span class="ink t12 sb c2">${SC.date} · ${SC.name}</span><span class="ink alpha t12" style="position:absolute;right:0">α</span>`,'c');
+  push('зазор',4,'','gap');
+  const boxH=158*s;push('купол с Солнцем и Луной',boxH,`<div data-ink style="width:${390*s}px;height:${boxH}px">${dome(s,{word:'НОЧЬ'})}</div>`,'c');
+  push('зазор',2,'','gap');
+  push('ножки: время + оценка',38,footRow(s,{mid:'день '+SC.dayLen.replace(' мин','м').replace(' ч ','ч ')}),'c');
+  push('зазор',8,'','gap');push('щель',1,slit(),'gap');push('зазор',6,'','gap');
+  const avail=ih-(4+16+boxH+2+38+8+1+6);
+  const lw=Math.round((390-2*(32-14))*s*0.36), gapw=9;
+  const {n,rh,more}=pickRows(avail,34,42,SC.shoots.length);
+  const rows=state==='empty'?`<div style="padding-top:2px"><span class="ink t14 sb">${SC.emptyUntil}</span></div><div style="margin-top:4px"><span class="ink t12 c2">день свободен для света</span></div>`
+   :SC.shoots.slice(0,n).map(sh=>shootRow(sh,rh,{merge:true,sg:18})).join('')+(more?`<div style="height:${more}px"><span class="ink t11 c2">и ещё ${SC.shoots.length-n}</span></div>`:'');
+  const fc=`<div class="ink t11 c2" style="padding-bottom:3px">закат · 3 дня</div>`+forecast(0,{h:Math.min(40,Math.floor((avail-18)/3))});
+  push('низ: закаты (слева) | съёмки (справа)',avail,`<div style="display:flex;height:${avail}px"><div style="width:${lw}px;flex:none"><span data-ink style="display:block;width:${lw}px;height:${avail}px;position:absolute;opacity:0"></span>${fc}</div><div style="width:1px;background:var(--slit);margin:0 ${gapw}px"></div><div style="flex:1;min-width:0">${rows}</div></div>`,'c');
+ }};
+/* C */
+const C={id:'c',title:'В · «Съёмки главные, купол компактный»',sub:'Купол на 72 % ширины (ножки ровно по его дуге), под ним пять строк съёмок в одну строку',
+ pro:'Пять съёмок вместо трёх: на 338 — четыре. Подходит тем, у кого неделя набита; оценка по-прежнему на ножках.',
+ con:'Купол меньше, чем в приложении (по дуге 232 pt вместо 277): Солнце и Луна — мелкие, подпись в центре мельчает (время 29 pt вместо 34). Это третья форма дома купола — ещё одна пара скриншотов к сверке.',
+ build({iw,ih,s,push,state}){
+  const sc=s*0.72;
+  push('шапка: дата · место',16,`<span class="ink t12 sb c2">${SC.date} · ${SC.name}</span><span class="ink alpha t12" style="position:absolute;right:0">α</span>`,'c');
+  push('зазор',4,'','gap');
+  const boxH=158*sc;
+  push('купол (72 %) с Солнцем и Луной',boxH,`<div data-ink style="width:${390*sc}px;height:${boxH}px;margin:0 auto">${dome(sc,{word:'НОЧЬ'})}</div>`,'c');
+  push('зазор',2,'','gap');
+  push('ножки по дуге: время + слово + балл',52,`<div style="width:${390*sc}px;margin:0 auto;position:relative;height:52px">${footRow(sc,{stack:true,tf:15,ics:14})}</div>`,'c');
+  push('зазор',8,'','gap');push('щель',1,slit(),'gap');push('зазор',4,'','gap');
+  const avail=ih-(4+16+boxH+2+52+8+1+4);
+  if(state==='empty'){
+   push('«до сб 21 съёмок нет»',22,`<span class="ink t14 sb">${SC.emptyUntil}</span>`,'c');
+   const fh=Math.min(26,Math.floor((avail-22-6-18)/3));
+   push('зазор',6,'','gap');
+   push('закаты на 3 дня',fh*3,forecast(0,{h:fh}),'c');
+   push('день 8 ч 17 мин',18,`<span class="ink t13 c2">День ${SC.dayLen}</span>`,'c');
+  }else{
+   const {n,rh,more}=pickRows(avail,28,34,SC.shoots.length);
+   SC.shoots.slice(0,n).forEach((sh,i)=>push('съёмка '+(i+1)+' ('+rh+')',rh,shootRow(sh,rh,{one:true,sg:17}),'c'));
+   if(more)push('«и ещё '+(SC.shoots.length-n)+'»',more,`<span class="ink t11 c2">и ещё ${SC.shoots.length-n}</span>`,'c');
+  }}};
+
+const V=[WAS,A,B,C],host=document.getElementById('variants'),sum=[];
+V.forEach(v=>{
+ const sec=document.createElement('section');sec.id=v.id;
+ sec.innerHTML=`<div class="tag">${v.id==='was'?'4 · ':''}${v.title}</div><p class="lead">${v.sub}</p>`+(v.pro?`<div class="facts"><div class="fact pro"><b>Плюс</b>${v.pro}</div><div class="fact con"><b>Минус</b>${v.con}</div></div>`:'');
+ host.appendChild(sec);const fr=document.createElement('div');fr.className='frames';sec.appendChild(fr);
+ const jobs=[[0,'light','full','364 × 382 · светлая'],[0,'dark','full','364 × 382 · тёмная'],[1,'light','full','338 × 354 · светлая']];
+ if(v.id!=='was')jobs.push([0,'light','empty','364 × 382 · светлая · съёмок нет'],[0,'dark','empty','364 × 382 · тёмная · съёмок нет']);
+ const budg=document.createElement('div');budg.className='budget';
+ jobs.forEach(([si,th,st,cap],i)=>{
+  const f=frame(v,SIZES[si],th,st);const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${cap}</figcaption>`;fr.appendChild(fig);
+  const node=fig.firstChild;const pct=measure(node,f.W,f.H);
+  fig.querySelector('figcaption').insertAdjacentHTML('beforeend',` · <b>заполнено ${pct.toFixed(0)} %</b>`);
+  if(th==='light'&&(st==='full')) sum.push({v:v.title,size:si,pct});
+  if(th==='light'&&(st==='full'||st==='empty')&&(si===0)&&(i===0||st==='empty')){
+   if(st==='empty')sum.push({v:v.title,size:2,pct});
+   budg.insertAdjacentHTML('beforeend',`<div><b style="font-size:13px">Бюджет высоты · ${cap}</b>${budgetTable(f.bands,f.W,f.H)}</div>`);}
+  if(th==='light'&&si===1&&i===2)budg.insertAdjacentHTML('beforeend',`<div><b style="font-size:13px">Бюджет высоты · ${cap}</b>${budgetTable(f.bands,f.W,f.H)}</div>`);
+ });
+ sec.appendChild(budg)});
+const names=[...new Set(sum.map(r=>r.v))];
+document.getElementById('sumtable').innerHTML='<table><tr><th>Вариант</th><th>364 × 382, есть съёмки</th><th>338 × 354, есть съёмки</th><th>364 × 382, съёмок нет</th></tr>'+names.map(n=>{const g=k=>{const r=sum.find(x=>x.v===n&&x.size===k);return r?r.pct.toFixed(0)+' %':'—'};return `<tr><td>${n}</td><td>${g(0)}</td><td>${g(1)}</td><td>${g(2)}</td></tr>`}).join('')+'</table>';
+
+/* ---------- Braun: подложка, риски, окошко ---------- */
+function ticks(W,H,th){const dark=th.startsWith('braunD');const minor=dark?'#8C8C8C':'#6E6E6E',hour=dark?'#ECECEA':'#111';let o='';
+ const put=(x,y,hz,major)=>{const L=major?7:3.5,w=major?1.4:1;o+=hz?`<line x1="${x}" x2="${x}" y1="${y}" y2="${y+L}" stroke="${major?hour:minor}" stroke-width="${w}"/>`:`<line y1="${y}" y2="${y}" x1="${x}" x2="${x+L}" stroke="${major?hour:minor}" stroke-width="${w}"/>`};
+ for(let x=22,i=0;x<W-20;x+=9,i++){const m=i%6===0;put(x,3,true,m);put(x,H-3-(m?7:3.5),true,m)}
+ for(let y=22,i=0;y<H-20;y+=9,i++){const m=i%6===0;put(3,y,false,m);put(W-3-(m?7:3.5),y,false,m)}
+ return `<svg class="tk" width="${W}" height="${H}">${o}</svg>`}
+const _frame=frame;
+frame=function(v,size,th,st){const f=_frame(v,size,th,st);if(th.startsWith('braun')&&!th.includes('nt'))f.el=f.el.replace(/<\/div>$/,ticks(f.W,f.H,th)+'</div>');return f};
+function pillTime(t,th,sz){return th==='braunL'?`<span style="background:#F4B400;color:#111;border-radius:7px;padding:1px 7px;font-weight:600;font-size:${sz}px">${t}</span>`:`<span style="color:#F4B400;font-weight:600;font-size:${sz}px">${t}</span>`}
+function mock(kind,th,braun){ // упрощённые макеты малого и среднего; цвета — из кода
+ const sz=kind==='s'?{W:158,H:158}:{W:338,H:158};
+ const cls=braun?(th==='dark'?'braunD':'braunL'):th;
+ let c;
+ const wasDark=th==='dark';
+ const own=!braun?{bg:wasDark?'#0F0E0C':'#FAF8F3',ink:wasDark?'#EFEAE0':'#17150F',am:wasDark?'#E2A44C':'#9A5F0A'}:null;
+ const st=own?`background:${own.bg};color:${own.ink};--amberT:${own.am};--amber:${own.am};--ink2:${own.ink}a0;`:'';
+ if(kind==='s') c=`<div class="b" style="top:16px"><span class="ink t13 sb" style="opacity:.62">Рассвет</span></div><div class="b" style="top:76px"><span class="ink sb mono" style="font-size:34px;font-weight:300">09:00</span><br><span class="ink t13" style="opacity:.62">Томск</span></div>`;
+ else c=`<div class="b" style="top:16px"><span class="ink t12" style="opacity:.62">Томск</span></div><div class="b" style="top:40px"><span class="row" style="gap:6px"><span style="display:inline-flex;color:var(--amberT)">${ic('sunrise',24)}</span><span class="ink mono" style="font-size:26px;font-weight:600;color:var(--amberT)">09:00</span></span><span class="ink t13" style="opacity:.62">рассвет · серый</span><div style="margin-top:8px;opacity:.55" class="t13 mono">16:05<br>17:10</div></div><div class="b" style="left:180px;top:16px;bottom:16px;border-left:1px solid var(--slit);padding-left:12px"><span class="ink t13" style="opacity:.62">до сб 21 съёмок нет</span></div>`;
+ return `<figure><div class="w ${cls}" style="width:${sz.W}px;height:${sz.H}px;${st}">${c}${braun?ticks(sz.W,sz.H,cls):''}</div></figure>`}
+const hostV=document.getElementById('variants');
+const extra=document.createElement('div');
+extra.innerHTML=`
+<section id="palette"><div class="tag">5 · Подложки и цвета: все виджеты приложения (по коду и по снимку 57)</div>
+<p class="lead">Решение Алексея: «у всех виджетов разный цвет и подложка, надо как у Braun» (дополнение к шагу, 15.11). Ниже — что стоит сейчас. Источники: <code>LightPlanWidget.swift</code> (подложка по виду), <code>WidgetStyle.swift</code>, <code>BraunPalette</code>, <code>ActivityViews.swift</code>.</p>
+<table><tr><th>Виджет</th><th>Подложка</th><th>Текст / акцент</th><th>Что на снимке</th></tr>
+<tr><td>Малый, без съёмки (идёт свет)</td><td><span class="sw" style="background:#0F0E0C"></span>#0F0E0C тёмная · <span class="sw" style="background:#FAF8F3"></span>#FAF8F3 светлая (<code>WidgetBackground</code>)</td><td>#EFEAE0 / #17150F; янтарь #E2A44C / #9A5F0A</td><td>«Рассвет 09:00 Томск»: система осветлила подложку до ≈#222 — теплее и светлее среднего</td></tr>
+<tr><td>Малый, съёмка идёт</td><td><span class="sw" style="background:#161616"></span>#161616 / <span class="sw" style="background:#E4E4E2"></span>#E4E4E2 (Braun, <code>WidgetBackgroundBraun</code> + свой прямоугольник в виде)</td><td>#ECECEA / #111; акцент #F4B400 (в светлой — чёрный на жёлтой таблетке)</td><td>—</td></tr>
+<tr><td>Средний (кроме «пустой» плашки)</td><td>Braun, как выше; <code>.medium where kind != .blank</code></td><td>Braun: основной #ECECEA, приглушённый #9B9B9B, тусклый #6B6B6B</td><td>«Томск · рассвет · серый · до сб 21 съёмок нет»: тёмно-серый #161616, холоднее малого</td></tr>
+<tr><td>Средний, «пустая» плашка (<code>blank</code>)</td><td>как малый без съёмки: #0F0E0C / #FAF8F3</td><td>как малый</td><td>—</td></tr>
+<tr><td><b>Большой</b></td><td>#0F0E0C / #FAF8F3 (ветка <code>default</code>)</td><td>#EFEAE0 / #17150F; янтарь #E2A44C / #9A5F0A; небо купола синее</td><td>скриншот Алексея 14.11: тёмно-коричневая подложка, не как у Braun</td></tr>
+<tr><td>Экран блокировки (круг, прямоугольник, строка)</td><td>прозрачная, красит система</td><td><code>Color.primary</code></td><td>—</td></tr>
+<tr><td>Активность на экране блокировки</td><td>#2E2A26 с прозрачностью 0,90 поверх системной</td><td>окошко и флажок Braun (тёмные); янтарь #E2A44C</td><td>снимок 58: тёмная, с рисками</td></tr>
+<tr><td>Dynamic Island</td><td>чёрный системный</td><td>знак латунный #E2A44C, часы белые</td><td>снимок 57 и 58</td></tr></table>
+<p><b>Итог:</b> четыре разные подложки: тёплая #0F0E0C/#FAF8F3 (малый без съёмки, большой), холодная Braun #161616/#E4E4E2 (малый в съёмке, средний), #2E2A26 (активность), прозрачная (замок). Три разных «серых» текста и два «янтарных» (#E2A44C и #F4B400). Ловушка из кода: <code>containerBackground</code> на «Домой» система осветляет (26.10: #161616 стал #2E2E2E), поэтому Braun рисует подложку <b>внутри вида</b>, а не через <code>containerBackground</code> — общую подложку нужно делать так же.</p>
+</section>
+<section id="braun"><div class="tag">6 · «Было → станет» в подложке и палитре Braun</div>
+<p class="lead">Тёмная — <code>braunDark</code> (#161616, текст #ECECEA, акцент #F4B400), светлая — «Braun белый» (#E4E4E2, текст #111, акцент чёрный; жёлтый #F4B400 только в таблетке). Риски по периметру — как у Braun: 9 pt шаг, каждая шестая длинная. Малый и средний — макеты в масштабе пт, показывают только подложку, цвета и риски (разметку содержимого их шагов 30б.2в я не трогаю). Правило для всех: подложку рисует сам вид, на одном прямоугольнике, без <code>containerBackground</code>.</p>
+<p><b>Малый, без съёмки</b>: было (тёплая) → станет (Braun)</p><div class="pair" id="m-s"></div>
+<p><b>Средний</b>: было → станет</p><div class="pair" id="m-m"></div>
+<p><b>Большой — вариант А, Б, В уже в Braun</b> (364 × 382 и 338 × 354, обе темы). Состав и цифры — как в разделах выше; поменялись подложка, акцент и появились риски: оранжевый «через N» стал жёлтым (тёмная) или чёрным (светлая), дуга — жёлто-серо-жёлтая в тёмной и чёрно-серо-чёрная в светлой.</p><div id="bigb"></div>
+<div class="facts"><div class="fact pro"><b>Плюс единой подложки</b>Один цвет, одни риски и одна пара текстовых серых на всех домашних видах: виджеты рядом выглядят одной семьёй; один набор констант вместо трёх.</div><div class="fact con"><b>Минус</b>Купол «Света» синий и остаётся единственным цветным пятном; в светлой теме акцент чёрный — «через N» отличается от серого только насыщенностью, а не цветом (как у Braun в светлой).</div></div>
+</section>
+<section id="island"><div class="tag">7 · «0:00» в Dynamic Island (снимок 57, 18:41)</div>
+<p><b>Что это.</b> Правая часть свернутого острова — <code>ActivityIslandTimer</code>: системные часы <code>Text(timerInterval:)</code> «до следующей точки». Когда момент прошёл, система показывает «0:00» и больше ничего не пересчитывает. Знак слева — знак той же точки (на снимке — колпак «банкет»).</p>
+<p><b>Откуда.</b> Не ошибка отрисовки, а известное ограничение, записанное в <code>CLAUDE.md</code> («Activity screen 30б.3»): без платных push обновляет плашку только приложение; пока оно закрыто, точка, шагнувшая вперёд, остаётся подсвеченной, а часы дошли до нуля. Плашка при этом «живая»: <code>staleDate: nil</code> (<code>ActivityHost.swift:53,67</code>), поэтому система её не гасит и не помечает устаревшей. На снимке 58 (18:06, приложение открыто) остров показывает 13:47 — работает.</p>
+<p><b>Очевидная ошибка?</b> Нет, это цена решения «без push» — не правил. Что можно сделать отдельным шагом: выставить <code>staleDate</code> на момент точки и по <code>context.isStale</code> рисовать вместо «0:00» прочерк или «открой»; цена — до 8–10 строк в <code>ShootActivity.swift</code>.</p>
+</section>`;
+hostV.appendChild(extra);
+for(const th of ['dark','light']){document.getElementById('m-s').insertAdjacentHTML('beforeend',mock('s',th,false)+mock('s',th,true));document.getElementById('m-m').insertAdjacentHTML('beforeend',mock('m',th,false)+mock('m',th,true))}
+const bigb=document.getElementById('bigb');
+[A,B,C].forEach(v=>{const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${v.title}</b></div>`;bigb.appendChild(row);
+ [[0,'braunD'],[0,'braunL'],[1,'braunD']].forEach(([si,th])=>{const f=frame(v,SIZES[si],th,'full');const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${SIZES[si].W} × ${SIZES[si].H} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption>`;row.appendChild(fig)})});
+
+/* ---------- Б1 и Б2 (выбор Алексея: Б, риски — только где задуманы) ---------- */
+const B2={id:'b2',title:'Б2',
+ build({iw,ih,s,push,state,W}){
+  push('шапка: дата · место',16,`<span class="ink t12 sb c2">${SC.date} · ${SC.name}</span>`,'c');
+  push('зазор',4,'','gap');
+  const boxH=158*s;push('купол с Солнцем и Луной',boxH,`<div data-ink style="width:${390*s}px;height:${boxH}px">${dome(s,{word:'НОЧЬ'})}</div>`,'c');
+  push('зазор',2,'','gap');
+  push('ножки: время + оценка',38,footRow(s,{mid:'день '+SC.dayLen.replace(' мин','м').replace(' ч ','ч ')}),'c');
+  push('зазор',8,'','gap');
+  const avail=ih-(4+16+boxH+2+38+8);const dark=true;
+  const n=Math.max(2,Math.min(3,Math.floor((avail-16)/34)));const rh=Math.floor((avail-16)/n);
+  const rows=SC.shoots.slice(0,n).map((sh,i)=>shootRow(sh,rh,{merge:true,sg:18})).join('');
+  const dia=Math.min(avail-16,96);
+  const dots=Array.from({length:36},(_,i)=>{const a=i/36*2*Math.PI-Math.PI/2,r=dia/2-5;return `<circle cx="${dia/2+r*Math.cos(a)}" cy="${dia/2+r*Math.sin(a)}" r="${i<9?1.7:1.3}" fill="${i<9?'var(--ink)':'var(--ink2)'}" opacity="${i<9?1:.5}"/>`}).join('');
+  push('блок отсчёта Braun (рамка с рисками)',avail,`<div data-ink style="position:relative;height:${avail}px;border-radius:14px;background:var(--dial,#0D0D0D)" class="bz"><div style="position:absolute;inset:0">${ticks(iw,avail,'bz')}</div><div style="position:absolute;left:8px;top:8px;width:${dia}px;height:${dia}px"><svg width="${dia}" height="${dia}">${dots}</svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="display:inline-flex;color:var(--amberT)">${ic('wedding',18)}</span><span class="ink sb mono" style="font-size:22px;line-height:1.05">16<span style="font-size:11px;font-weight:500"> ч</span></span><span class="ink t11 c2">до съёмки</span></div></div><div style="position:absolute;left:${dia+22}px;right:12px;top:8px;bottom:8px;display:flex;flex-direction:column;justify-content:center">${rows}</div></div>`,'c');
+ }};
+const sec8=document.createElement('section');sec8.id='b12';
+sec8.innerHTML=`<div class="tag">8 · Б1 и Б2 — два «либо» Алексея</div><p class="lead">«Большому виджету риски не нужны, оставляем только там, где задумали, либо в большом виджете поле снизу меняется на виджет с отсчётом Браун.» Верх (шапка, купол с Солнцем и Луной, ножки с оценкой) во всех кадрах тот же, что в Б; цвета — Braun.</p><div class="facts"><div class="fact pro"><b>Б1 · без рисков</b>Чистая плашка Braun, всё место у съёмок и закатов на три дня. Минус: больше не похоже на Braun, кроме цвета; в светлой акцент чёрный — «через N» не выделяется цветом.</div><div class="fact con"><b>Б2 · снизу блок отсчёта</b>Низ — тот самый Braun-блок: тёмный циферблат с кольцом точек до ближайшей съёмки и её знаком, риски только на его рамке, справа съёмки. Минус: прогноз закатов на три дня уходит (места нет), строк съёмок 2–3 вместо трёх плюс «и ещё N»; блок — ещё одна форма Braun, которую нужно сверять с настоящим окном отсчёта.</div></div><div id="b12f"></div>`;
+document.getElementById('variants').appendChild(sec8);
+const b12f=document.getElementById('b12f');
+[['Б1 · без рисков',B,'nt'],['Б2 · блок отсчёта Braun',B2,'nt']].forEach(([t,v,nt])=>{const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${t}</b></div>`;b12f.appendChild(row);
+ [[0,'braunD'],[0,'braunL'],[1,'braunD'],[1,'braunL']].forEach(([si,th])=>{const f=frame(v,SIZES[si],th+(nt?' '+nt:''),'full');const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${SIZES[si].W} × ${SIZES[si].H} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption>`;row.appendChild(fig)})});
+
+/* ---------- 9 · Три состояния большого (16.11) ---------- */
+function dialSVG(dia,frac){return `<svg width="${dia}" height="${dia}">`+Array.from({length:60},(_,i)=>{const a=i/60*2*Math.PI-Math.PI/2,r=dia/2-5,lit=i<Math.round(frac*60);return `<circle cx="${dia/2+r*Math.cos(a)}" cy="${dia/2+r*Math.sin(a)}" r="${i%5===0?1.8:1.2}" fill="var(${lit?'--dot':'--dotOff'})"/>`}).join('')+'</svg>'}
+function dialBox(dia,frac,sign,num,unit,sub){return `<div data-ink style="position:relative;width:${dia}px;height:${dia}px;flex:none;border-radius:50%;background:var(--dial)">${dialSVG(dia,frac)}<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px"><span style="display:inline-flex;color:var(--amberT)">${ic(sign,20)}</span><span class="sb mono" style="font-size:${Math.round(dia*.2)}px;line-height:1">${num}<span class="c2" style="font-size:11px;font-weight:500"> ${unit}</span></span>${sub?`<span class="t11 c2" style="max-width:${dia-24}px;text-align:center;line-height:1.1">${sub}</span>`:''}</div></div>`}
+function headShoot(sign,name,timer){return `<div style="position:relative;height:20px"><span class="ink row" style="gap:6px"><span style="display:inline-flex">${ic(sign,16)}</span><span class="t15 sb">${name}</span></span><span class="notch" data-ink>${timer}</span></div>`}
+const ROUTE=[['12:00','Пара в студии','backdrop'],['14:00','Обед','feast'],['15:00','Прогулка','park'],['17:00','Церемония','rings'],['19:00','Банкет','feast'],['22:00','Танцы','dance']];
+function timeline(rows,cur,rh,until){return rows.map((r,i)=>{const past=i<cur,now=i===cur;return `<div style="height:${rh}px;display:flex;align-items:center;gap:8px;position:relative;${now?'background:var(--pill);border-radius:9px;':''}padding:0 8px 0 4px"><span style="width:12px;align-self:stretch;position:relative;flex:none"><span style="position:absolute;left:5px;top:${i===0?'50%':'0'};bottom:${i===rows.length-1?'50%':'0'};width:2px;background:${past||now?'var(--amber)':'var(--slit)'};opacity:${past?.55:1}"></span><span style="position:absolute;left:${now?1:2.5}px;top:50%;margin-top:${now?-5:-3.5}px;width:${now?10:7}px;height:${now?10:7}px;border-radius:50%;background:${now?'var(--amber)':past?'var(--amber)':'var(--bg)'};${!now&&!past?'box-shadow:0 0 0 1.2px var(--ink2) inset':''};opacity:${past?.55:1}"></span></span><span class="ink" style="display:inline-flex;color:${now?'var(--amberT)':'var(--ink2)'}">${ic(r[2],15)}</span><span class="ink t13 sb mono" style="opacity:${past?.5:1}">${r[0]}</span><span class="ink t13" style="min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:${past?.5:1};${now?'font-weight:600;color:var(--amberT)':''}">${r[1]}</span>${now?`<span class="ink t11 sb" style="flex:none">${until}</span>`:''}</div>`}).join('')}
+function lightStrip(s){return footRow(s*1.0,{mid:'золотой час'})}
+/* Риски-таймер = правило Braun (BraunTicks, BraunTickLayer): 150 рисок по периметру плашки, от середины верха по часовой = вся съёмка;
+   прошедшие гаснут, длинные — ровные часы по часам места. Не украшение: каждая риска — 1/150 съёмки. */
+function tickTimer(W,H,th,o){const dark=th.startsWith('braunD');const off=dark?'#303030':'#CBCBC9',minor=dark?'#8C8C8C':'#6E6E6E',hour=dark?'#ECECEA':'#111';
+ const ins=3,x0=ins,y0=ins,w=W-2*ins,h=H-2*ins,r=22-ins,straightT=w-2*r,straightS=h-2*r,arc=Math.PI*r/2,Ltot=2*straightT+2*straightS+4*arc;
+ const seg=[[straightT/2,'t1'],[arc,'a1'],[straightS,'s1'],[arc,'a2'],[straightT,'t2'],[arc,'a3'],[straightS,'s2'],[arc,'a4'],[straightT/2,'t3']];
+ function at(d){for(const [len,k] of seg){if(d<=len+1e-9){const f=len?d/len:0;switch(k){
+  case't1':return[x0+w/2+d,y0,0,1];case'a1':{const a=-Math.PI/2+f*Math.PI/2,cx=x0+w-r,cy=y0+r;return[cx+r*Math.cos(a),cy+r*Math.sin(a),-Math.cos(a),-Math.sin(a)]}
+  case's1':return[x0+w,y0+r+d,-1,0];case'a2':{const a=f*Math.PI/2,cx=x0+w-r,cy=y0+h-r;return[cx+r*Math.cos(a),cy+r*Math.sin(a),-Math.cos(a),-Math.sin(a)]}
+  case't2':return[x0+w-r-d,y0+h,0,-1];case'a3':{const a=Math.PI/2+f*Math.PI/2,cx=x0+r,cy=y0+h-r;return[cx+r*Math.cos(a),cy+r*Math.sin(a),-Math.cos(a),-Math.sin(a)]}
+  case's2':return[x0,y0+h-r-d,1,0];case'a4':{const a=Math.PI+f*Math.PI/2,cx=x0+r,cy=y0+r;return[cx+r*Math.cos(a),cy+r*Math.sin(a),-Math.cos(a),-Math.sin(a)]}
+  case't3':return[x0+r+d,y0,0,1]}}d-=len}return[x0+w/2,y0,0,1]}
+ const N=150,dur=o.end-o.start,el=o.now-o.start,hrs=new Set();for(let m=Math.ceil(o.start/60)*60;m<=o.end;m+=60)hrs.add(Math.round((m-o.start)/dur*N));
+ let out='';for(let i=0;i<N;i++){const [x,y,nx,ny]=at(i/N*Ltot),big=hrs.has(i),past=i/N*dur<el,L=big?7.5:4,sw=big?1.75:1.25;
+  out+=`<line x1="${(x+nx*sw/2).toFixed(2)}" y1="${(y+ny*sw/2).toFixed(2)}" x2="${(x+nx*(L-sw/2)).toFixed(2)}" y2="${(y+ny*(L-sw/2)).toFixed(2)}" stroke="${past?off:big?hour:minor}" stroke-width="${sw}" stroke-linecap="round"/>`}
+ return `<svg class="tk" width="${W}" height="${H}" style="position:absolute;left:0;top:0;pointer-events:none">${out}</svg>`}
+const WED={start:12*60,end:24*60+30,now:14*60+38}; // свадьба 12:00–00:30, сейчас 14:38: прошло 2 ч 38 из 12 ч 30 (21 %), осталось 9:52:00 — то же число в окошке
+const S9={
+ a1:{title:'а · Съёмки сегодня нет, на неделе есть',build({iw,ih,s,push}){
+  push('шапка',16,`<span class="ink t12 sb c2">${SC.date} · ${SC.name}</span>`,'c');push('зазор',4,'','gap');
+  const boxH=158*s;push('купол',boxH,`<div data-ink style="width:${390*s}px;height:${boxH}px">${dome(s,{word:'НОЧЬ'})}</div>`,'c');push('зазор',2,'','gap');
+  push('ножки + оценка',38,footRow(s,{mid:'золотой час'}),'c');push('зазор',8,'','gap');
+  const avail=ih-(16+4+boxH+2+38+8),dia=Math.min(avail-16,96),n=Math.min(3,Math.floor((avail-16)/34)),rh=Math.floor((avail-16)/n);
+  push('блок отсчёта (без рисков)',avail,`<div class="blk" data-ink style="height:${avail}px;display:flex;align-items:center;gap:12px;padding:0 10px 0 8px">${dialBox(dia,1-16/24,'wedding','16','ч','')}<div style="flex:1;min-width:0">${SC.shoots.slice(0,n).map(sh=>shootRow(sh,rh,{merge:true,sg:16})).join('')}</div></div>`,'c');}},
+ a2:{title:'а · Съёмок на неделе нет',build({iw,ih,s,push}){
+  push('шапка',16,`<span class="ink t12 sb c2">${SC.date} · ${SC.name}</span>`,'c');push('зазор',4,'','gap');
+  const boxH=158*s;push('купол',boxH,`<div data-ink style="width:${390*s}px;height:${boxH}px">${dome(s,{word:'НОЧЬ'})}</div>`,'c');push('зазор',2,'','gap');
+  push('ножки + оценка',38,footRow(s,{mid:'золотой час'}),'c');push('зазор',8,'','gap');
+  const avail=ih-(16+4+boxH+2+38+8),fh=Math.floor((avail-16-24)/3);
+  push('блок: «съёмок нет» + закаты на 3 дня',avail,`<div class="blk" data-ink style="height:${avail}px;padding:10px 14px"><div class="row" style="justify-content:space-between;height:22px"><span class="ink t14 sb">${SC.emptyUntil}</span><span class="ink t12 c2">день ${SC.dayLen}</span></div>${forecast(0,{h:fh})}</div>`,'c');}},
+ b:{title:'б · Идёт фотосессия (без маршрута)',build({iw,ih,s,push}){
+  push('шапка: жанр, имя, окошко Braun до конца',20,headShoot('portrait','Портрет · Мария','1:12:00'),'c');push('зазор',4,'','gap');
+  const boxH=158*s*.9;push('купол (90 %)',boxH,`<div data-ink style="width:${390*s*.9}px;height:${boxH}px;margin:0 auto">${dome(s*.9,{word:'ЗОЛОТОЙ ЧАС',day:true,clock:'16:48'})}</div>`,'c');push('зазор',2,'','gap');
+  push('ножки + оценка',38,footRow(s,{mid:'золотой час'}),'c');push('зазор',8,'','gap');
+  const avail=ih-(20+4+boxH+2+38+8),dia=Math.min(avail-16,104);
+  push('блок: вся съёмка кругом + что дальше',avail,`<div class="blk" data-ink style="height:${avail}px;display:flex;align-items:center;gap:12px;padding:0 10px 0 8px">${dialBox(dia,72/120,'portrait','72','мин','до конца съёмки')}<div style="flex:1;min-width:0"><div class="t11 c2" style="margin-bottom:4px">дальше</div>${SC.shoots.slice(2,4).map(sh=>shootRow(sh,36,{merge:true,sg:16})).join('')}</div></div>`,'c');}},
+ c:{title:'в · Свадьба: маршрут и таймер (идея таймлайна main)',build:(...a)=>S9c(...a)},
+ c2:{title:'в, вариант · то же + риски-таймер свадьбы, как у Braun',build:(...a)=>S9c(...a)}};
+function S9c({iw,ih,s,push}){
+  push('шапка: жанр, имена, окошко Braun до конца свадьбы',20,headShoot('wedding','Свадьба · Анна+Игорь','9:52:00'),'c');
+  push('строка дня',18,`<span class="ink t12 c2" style="padding-top:2px;display:inline-block">12:00–00:30 · 6 точек</span>`,'c');push('зазор',8,'','gap');
+  const avail=ih-(20+18+8+8+1+8+38),dia=Math.min(92,Math.round(iw*.26)),n=Math.min(6,Math.floor(avail/34)),rh=Math.floor(avail/n);
+  push('блок: часы точки + маршрут',avail,`<div class="blk" data-ink style="height:${avail}px;display:flex;align-items:center;gap:10px;padding:0 8px"><div style="align-self:flex-start;margin-top:8px">${dialBox(dia,22/60,'feast','22','мин','до конца точки')}</div><div style="flex:1;min-width:0;padding:4px 0">${timeline(ROUTE.slice(0,n),1,Math.floor((avail-8)/n),'до 15:00')}${ROUTE.length>n?`<div class="t11 c2" style="padding-left:24px">и ещё ${ROUTE.length-n}</div>`:''}</div></div>`,'c');
+  push('зазор',8,'','gap');push('щель',1,slit(),'gap');push('зазор',8,'','gap');
+  push('свет: рассвет · золотой час · закат с оценкой',38,`<div style="position:relative">${footRow(s,{mid:'золотой час'})}</div>`,'c');}
+const sec9=document.createElement('section');sec9.id='states';
+sec9.innerHTML=`<div class="tag">9 · Три состояния большого виджета (эскиз, 16.11)</div>
+<p class="lead">Слова Алексея 16.11: «риски я не просил добавить, я просил оставить там где мы их намеренно добавили… У него должно быть несколько видов: без съемки, во время фотосессии, во время свадьбы с маршрутом и таймером». Подложка и цвета Braun, рисков на большом нет — они только у Braun. Блок отсчёта — его содержимое (кольцо точек, знак, срок, строки), без рамки из рисков.</p>
+<div class="facts">
+<div class="fact"><b>а · без съёмки сегодня</b>Купол «Света» с Солнцем и Луной, ножки с оценкой. Внизу: есть съёмки на неделе — кольцо до ближайшей и строки «через N»; нет — строка «до сб 21 съёмок нет», длина дня и закаты на 3 дня (числа уже в файле, нужно одно поле кадра). Пустого тёмного поля больше нет.</div>
+<div class="fact"><b>б · идёт фотосессия без маршрута</b>Как состояние Б у Braun: шапка с именем и окошко Braun «осталось» с красным флажком. Купол на 90 % — свет нужен во время съёмки (золотой час). Внизу кольцо всей съёмки «1 ч 12 мин до конца съёмки» и следующие съёмки.</div>
+<div class="fact"><b>в · свадьба с маршрутом и таймером</b>Идея таймлайна main: шапка «12:00–00:30 · 6 точек» и окошко «до конца свадьбы»; блок — слева часы точки (знак точки, «22 мин до конца точки»), справа точки с золотой рельсой: прошедшие приглушены, текущая подсвечена, «до 15:00»; не влезли — «и ещё N». Купола нет — внизу щель и свет тремя столбцами по ширине (рассвет, золотой час, закат с оценкой), как было.</div>
+</div>
+<div class="facts"><div class="fact pro"><b>Плюс</b>Таймлайн свадьбы, который был на main, возвращается и получает часы точки Braun; фотосессия и свободный день — свои виды, купол не занимает место там, где нужен маршрут.</div><div class="fact con"><b>Минус</b>Три разных раскладки — три набора проверок на двух размерах; в «в» купола нет (свет — только строкой), в «б» купол чуть меньше, чем в приложении.</div></div>
+<div class="facts"><div class="fact"><b>Риски (Алексей 16.11: «риски для красоты не нужны, а в Брауне они являтся таймером»)</b>Риски бывают только таймером. В «а» и «б» рисок нет. В «в» — вариант, внизу раздела: по краю плашки 150 рисок, это вся свадьба от начала (середина верха) по часовой до конца; прошедшие гаснут, длинные риски — ровные часы по часам места. Правило то же, что у Braun (<code>BraunTicks</code>), одна риска на свадьбе 12:00–00:30 = 5 мин. На картинке 14:38: погасло 32 риски из 150 (2 ч 38 мин), горит остаток — те же 9:52:00, что в окошке. Риски с рамки блока в § 8 (Б2) были украшением — отменены.</div><div class="fact pro"><b>Плюс варианта</b>Длина всей свадьбы и сколько осталось видны издалека, без цифр, тем же языком, что у Braun.</div><div class="fact con"><b>Минус варианта</b>Повторяет число в окошке; если рядом стоит и Braun, на экране два одинаковых таймера. Периметр большого длиннее (≈ 1 350 против ≈ 1 000 pt у среднего), риски реже — шаг ≈ 9 pt. Риски занимают 10,5 pt от края — весь текст держится в поле 16 (на листе проверено замером: правый край текста ≥ 16 pt от края плашки на обоих размерах).</div></div>
+<div class="obs"><b>Недочёты купольного варианта (сборка 159378af) — мои наблюдения по снимкам и картинкам симулятора, не слова Алексея:</b><ul>
+<li>Во время съёмки большой перестал показывать маршрут (таймлайн main с золотой рельсой и «до 02:00») — это потеря, а не только вид. Чинится состоянием «в».</li>
+<li>Без съёмок на неделе нижний блок — большое пустое тёмное поле с одной строкой (≈ 60 % блока пусто).</li>
+<li>Оценка под ножками видна только когда приложение уже записало прогноз; без него ножки голые, слов «красивый / с цветом / …» нет вовсе, а в средней плашке рядом стоит другое слово неба («серый») — два разных словаря оценки на одном экране.</li>
+<li>Луна ставится по азимуту, обрезанному до ножек: ночью Луна с азимутом больше 270° прилипает к правому краю купола, хотя стоит высоко; под горизонтом и Солнце, и Луна падают к одним и тем же ножкам и налезают друг на друга.</li>
+<li>Слово света днём: в 12:00 написано «УТРО» (граница — середина между восходом и закатом, в ноябре это ≈ 13:00).</li>
+<li>Кольцо блока считает «сутки до съёмки»: за 30 часов оно пустое, за 16 — треть; без подписи непонятно, что оно значит.</li>
+<li>В светлой теме строки съёмок «через N» чёрные, как имена: акцент не отличается от текста.</li>
+<li>Риски на рамке блока — их не просили (убраны в этом шаге).</li>
+</ul></div>
+<div id="s9f"></div>`;
+document.getElementById('variants').appendChild(sec9);
+const s9f=document.getElementById('s9f');
+['a1','a2','b','c','c2'].forEach(k=>{const v=S9[k];const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${v.title}</b></div>`;s9f.appendChild(row);
+ [[0,'braunD'],[0,'braunL'],[1,'braunD'],[1,'braunL']].forEach(([si,th])=>{const f=frame(v,SIZES[si],th+' nt','full');if(k==='c2')f.el=f.el.replace(/<\/div>$/,tickTimer(f.W,f.H,th,WED)+'</div>');const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${SIZES[si].W} × ${SIZES[si].H} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption>`;row.appendChild(fig);
+  const pct=measure(fig.firstChild,f.W,f.H);fig.querySelector('figcaption').insertAdjacentHTML('beforeend',` · заполнено ${pct.toFixed(0)} %`)})});
+</script></body></html>

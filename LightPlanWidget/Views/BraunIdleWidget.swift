@@ -428,6 +428,16 @@ struct BraunIdleContent: View {
             let size = [13.0, 12, 11].first { BraunText.width(line, size: $0, semibold: false) <= w } ?? 11
             Text(line).font(.system(size: size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
                 .frame(width: w, height: 18, alignment: .leading).offset(x: x, y: 16)
+            // Под строкой — закаты трёх следующих дней (Алексей 16.11: «чтобы пространство не пустовало»). Кончаются выше бирки «α» (её квадрат —
+            // 12…28 pt от правого нижнего угла), на всех сборках одинаково: 3 × 32 на 170 pt, 3 × 28 на 158 pt.
+            let sunsets = BraunIdle.sunsetRows(frame)
+            if !sunsets.isEmpty {
+                let top = 40.0, rowH = min(34, (H - 30 - top - BraunIdle.weekRowGap * Double(sunsets.count - 1)) / Double(sunsets.count))
+                VStack(spacing: BraunIdle.weekRowGap) {
+                    ForEach(sunsets.indices, id: \.self) { i in BraunSunsetRow(row: sunsets[i], pal: pal, width: w, height: rowH) }
+                }
+                .frame(width: w, alignment: .topLeading).offset(x: x, y: top)
+            }
         } else {
             let h = BraunIdle.weekRowHeights(plateHeight: H)
             VStack(spacing: BraunIdle.weekRowGap) {
@@ -437,6 +447,42 @@ struct BraunIdleContent: View {
             }
             .frame(width: w, alignment: .topLeading).offset(x: x, y: 16)
         }
+    }
+}
+
+/// Закат следующего дня (пустая неделя): знак заката 14, «пн 26» 11, время 13 semibold; справа балл числом, как в линзе столбика слева («82»,
+/// без «/ 100»: с ним на 338 pt строка выходила в поле), или слово неба. Без полей: знак стоит на x строки «до сб 31 съёмок нет». День, время и
+/// балл не режутся; мельчает (11 → 9, `wordSize`) и режется только слово неба. Балл от 75 («красивый», `BigWidget.scoreWord`) — янтарём: такой закат стоит заметить.
+struct BraunSunsetRow: View {
+    let row: BraunIdle.SunsetRow
+    let pal: BraunPalette
+    let width: Double
+    let height: Double
+
+    /// Кегль слова неба: 11 → 10 → 9, первый, что влезает в остаток строки после знака, дня и времени; не влез и 9 — режется «…».
+    static func wordSize(_ row: BraunIdle.SunsetRow, width: Double) -> Double {
+        guard let word = row.word else { return 11 }
+        let rest = width - 14 - BraunText.width(row.day, size: 11, semibold: false) - BraunText.width(row.time, size: 13, semibold: true, mono: true) - 5 * 3 - 4
+        return [11.0, 10, 9].first { BraunText.width(word, size: $0, semibold: false) <= rest } ?? 9
+    }
+
+    var body: some View {
+        let good = (row.score ?? 0) >= 75
+        HStack(spacing: 5) {
+            WidgetIcon(name: BraunSign.light(.sunset), size: 14, line: 1.5).frame(width: 14, height: 14).foregroundStyle(good ? pal.amber : pal.muted)
+            Text(row.day).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1).fixedSize()
+            Text(row.time).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(pal.text).lineLimit(1).fixedSize()
+            // Хвост берёт весь остаток строки и прижат вправо: со `Spacer` остаток делился пополам и слово резалось при свободном месте.
+            Group {
+                if let score = row.score {
+                    Text("\(score)").font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(good ? pal.amber : pal.text)
+                } else if let word = row.word {
+                    Text(word).font(.system(size: Self.wordSize(row, width: width), weight: .medium)).foregroundStyle(pal.muted)
+                }
+            }
+            .lineLimit(1).padding(.leading, 4).frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .frame(width: width, height: height, alignment: .leading)
     }
 }
 

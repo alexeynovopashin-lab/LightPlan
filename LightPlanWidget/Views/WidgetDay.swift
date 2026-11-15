@@ -57,6 +57,28 @@ struct DayPlan {
     }
 
     var current: WidgetFeed.Stop? { currentIndex.map { stops[$0] } }
+
+    // MARK: Что считают часы Braun, когда текущей точки нет (30и.13)
+
+    /// Съёмка уже идёт, а первая точка маршрута ещё впереди: обычный случай «съёмка с 12:00, первая точка в 12:30», и сломанный
+    /// (Алексей 16.11: съёмка 00:00–00:35, точки с 08:00 — маршрут целиком за окном съёмки). Раньше часы считали «текущую точку», её не было —
+    /// круг пустой, знака и цифр нет, на месте только барабан. Теперь: первая точка начнётся до конца съёмки — часы ждут её;
+    /// иначе — считают всю съёмку, как без маршрута.
+    var waitingStop: WidgetFeed.Stop? {
+        guard current == nil, let next = upcomingStops.first, next.date <= shoot.endDate else { return nil }
+        return next
+    }
+
+    /// Сколько осталось тому, что считают часы: точке, ожиданию первой точки или всей съёмке.
+    var dialLeft: TimeInterval {
+        if current != nil { return pointLeft ?? 0 }
+        if let w = waitingStop { return max(0, w.date.timeIntervalSince(frame.now)) }
+        return shootLeft
+    }
+
+    /// Знак в центре часов: текущей точки, ожидаемой точки или жанра (`dialSignIsGenre`).
+    var dialSign: String? { current?.sign ?? waitingStop?.sign ?? shoot.genre }
+    var dialSignIsGenre: Bool { current == nil && waitingStop == nil }
     var upcomingStops: [WidgetFeed.Stop] { stops.filter { $0.date > frame.now } }
     var pointStart: Date? { current?.date }
 

@@ -325,11 +325,14 @@ struct ActivityGlyph: View {
 /// Пустой она не бывает (`ActivityFrame.islandTimer`): без конца съёмки часы идут вверх от начала, у законченной — галочка.
 struct ActivityIslandTimer: View {
     let frame: ActivityFrame
+    /// `ActivityViewContext.isStale`: срок плашки (`staleDate`) — момент точки, к которой идут часы. Когда он прошёл, а приложение
+    /// плашку не обновило (закрыто, платных push нет), системные часы показали бы «0:00» (снимок 15.11, 18:41): вместо них прочерк.
+    var stale = false
     var body: some View {
         Group {
             switch frame.islandTimer {
             case .down(let t):
-                ActivityTimer(to: t.date)
+                if stale { Text("–") } else { ActivityTimer(to: t.date) }
             case .up(let since):
                 // Конца нет: считаем, сколько уже идёт. Системные часы вверх — диапазон «от начала», хвост с запасом на неделю.
                 Text(timerInterval: since...since.addingTimeInterval(7 * 86_400), pauseTime: nil, countsDown: false, showsHours: true).monospacedDigit()

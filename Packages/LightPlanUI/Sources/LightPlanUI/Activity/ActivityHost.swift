@@ -50,7 +50,7 @@ final class ActivityKitHost: ActivityHosting {
 
     func start(_ frame: ActivityFrame, startedAt: Date) throws {
         let a = try Activity.request(attributes: ShootActivityAttributes(shootId: frame.shootId, startedAt: startedAt),
-                                     content: .init(state: frame, staleDate: nil), pushType: nil)
+                                     content: .init(state: frame, staleDate: frame.island?.date), pushType: nil)
         watch(a)
     }
 
@@ -64,7 +64,7 @@ final class ActivityKitHost: ActivityHosting {
     }
 
     nonisolated private static func updateAll(_ frame: ActivityFrame) async {
-        for a in live { await a.update(.init(state: frame, staleDate: nil)) }
+        for a in live { await a.update(.init(state: frame, staleDate: frame.island?.date)) }
     }
 
     nonisolated private static func endAll() async {

@@ -94,6 +94,17 @@ public struct WidgetFrame: Equatable, Sendable {
     /// Сколько суток и строк занимает неделя среднего вида: семь суток от сегодняшних, три строки (больше в высоту не влезает).
     public static let weekDays = 7, weekRows = 3
 
+    /// Закат одного из следующих дней: полдень дня (от него день недели и число), время заката (`nil` — полярные сутки) и оценка, если она есть.
+    public struct SunsetAhead: Equatable, Sendable {
+        public var noon: Date
+        public var sunset: Date?
+        public var rating: WidgetFeed.Rating?
+    }
+    /// Закаты дней с завтрашнего: ими средний вид заполняет пустую неделю (Алексей 16.11: «чтобы пространство не пустовало»).
+    public var ahead: [SunsetAhead] = []
+    /// Сколько дней: столько строк влезает под строку «съёмок нет» (три, как строк недели).
+    public static let aheadDays = 3
+
     /// Время на плашке в часах `tz`, по привычке приложения (24 или 12 часов, язык приложения).
     public func clock(_ date: Date, in tz: TimeZone) -> String {
         Self.clock(date, in: tz, lang: lang, clock12: clock12)
@@ -179,6 +190,11 @@ extension WidgetFeed {
         f.tomorrowRating = rating(on: today.adding(days: 1))
         f.week = Array(unfinished(at: now).map { shootFrame($0, at: now) }.filter { $0.dayOffset < WidgetFrame.weekDays }.prefix(WidgetFrame.weekRows))
         f.weekEnd = Self.noon(of: today.adding(days: WidgetFrame.weekDays - 1), in: tz)
+        f.ahead = (1...WidgetFrame.aheadDays).compactMap { off in
+            let d = today.adding(days: off)
+            guard let noon = Self.noon(of: d, in: tz) else { return nil }
+            return WidgetFrame.SunsetAhead(noon: noon, sunset: spot.light(on: d)?.sunset, rating: rating(on: d))
+        }
         f.url = Self.dayURL(today)
 
         if let live = unfinished(at: now).first(where: { $0.startDate <= now }) {
@@ -321,12 +337,9 @@ extension WidgetFeed {
                 return Self.marks(max(midnight, now), min(g, end), step: 60)
             }
         case .large:
-            // Точка «сейчас» на дуге солнца ходит от восхода к закату; без съёмок это весь вид (со съёмкой дуги нет).
-            guard let today = place.today(at: now) else { return [] }
-            return (0...2).flatMap { off -> [Date] in
-                guard let l = place.light(on: today.adding(days: off)), let r = l.sunrise, let s = l.sunset else { return [] }
-                return Self.marks(max(r, now), min(s, end), step: 600).filter { frame(at: $0).kind == .light }
-            }
+            // 30и.13 (Б2): на куполе ходят Солнце и Луна, у съёмок «через N», у блока отсчёта — кольцо точек; всё это статичные цифры, их
+            // меняет лента: раз в 5 минут. 180 записей — 15 часов, дальше просит новую ленту (`Schedule.reload`): ≈ 1,6 перезагрузки в сутки.
+            return Self.marks(now, end, step: 300)
         }
     }
 }

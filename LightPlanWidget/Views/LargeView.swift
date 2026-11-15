@@ -1,151 +1,113 @@
 import SwiftUI
+import LightPlanCore
 import LightPlanDomain
 
-/// Большой виджет (30б.2в, `systemLarge`; выбор Алексея 26.10: «большой день со съёмкой»). Слова Алексея 25.10: «Таймлайн дня» — дата и «12:00–22:00 · жанр · N точек»,
-/// точки с временем и названием как в блоке маршрута карточки, внизу свет (рассвет, золотой час, закат); в день без съёмок — только свет.
-/// Плашка 364 × 382 на Pro Max, 338 × 354 на iPhone 14.
+/// Большой виджет (30и.13, вариант Б2; выбор Алексея 15.11: «Большой виджет Б… поле снизу меняется на виджет с отсчётом Браун»).
+/// Сверху «Свет» как в приложении: шапка, купол с Солнцем **и** Луной (ушедшие под горизонт — призраки по правилу купола), ножки с временем и оценкой
+/// рассвета и заката; под щелью — блок отсчёта Braun: циферблат с кольцом точек до ближайшей съёмки и её строки. Подложка и цвета — Braun
+/// (`WidgetStyle`); рисков на большом нет — они только у Braun (Алексей 16.11). Эскиз: `docs/30i13_big_widget.html` § 8.
+/// Плашка 364 × 382 (Pro Max) и 338 × 354 (iPhone 14); поля 16, высоты полос: 16 + 4 + купол 158·s + 2 + ножки 38 + 8 + блок.
 struct LargeView: View {
     let frame: WidgetFrame
     var alpha = false
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        Inner(frame: frame, alpha: alpha, st: WidgetStyle(dark: scheme == .dark))
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        GeometryReader { g in
+            Inner(frame: frame, alpha: alpha, pal: BraunPalette(dark: scheme == .dark), st: WidgetStyle(dark: scheme == .dark), size: g.size)
+        }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
-    private struct Inner: View {
+    struct Inner: View {
         let frame: WidgetFrame
         let alpha: Bool
+        let pal: BraunPalette
         let st: WidgetStyle
-        @Environment(\.dynamicTypeSize) private var type
+        let size: CGSize
+        static let pad: CGFloat = 16
 
-        var body: some View {
-            VStack(alignment: .leading, spacing: 0) {
-                if let plan = DayPlan(frame) { day(plan) } else { lightOnly }
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
+        private var iw: CGFloat { size.width - 2 * Self.pad }
+        private var s: CGFloat { iw / DomeFit.canvasWidth }
+        private var domeH: CGFloat { (DomeFit.bottomUnits - DomeFit.topUnits) * s }
+        private var zone: TimeZone { frame.zone }
 
-        // MARK: День со съёмкой: таймлайн и свет
-
-        private func dateLine(_ zone: TimeZone) -> String {
+        private func dateLine() -> String {
             let f = DateFormatter()
             f.locale = Locale(identifier: frame.lang)
             f.timeZone = zone
             f.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
-            return f.string(from: frame.now).prefix(1).uppercased() + f.string(from: frame.now).dropFirst()
+            let t = f.string(from: frame.now)
+            return t.prefix(1).uppercased() + t.dropFirst()
         }
 
-        /// Дата и свет — того дня, который рисует съёмка (`DayPlan.dateLine`, `ShootFrame.day`): накануне это завтрашний день.
-        @ViewBuilder private func day(_ plan: DayPlan) -> some View {
-            HStack(alignment: .firstTextBaseline) {
-                Text(plan.dateLine).font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
-                Spacer(minLength: 0)
-                if alpha { AlphaBadge() }
-            }
-            Text("\(plan.shootRange) · \(plan.title) · \(plan.stops.count) \(plan.words[.points])")
-                .font(.subheadline.weight(.semibold)).foregroundStyle(st.ink).lineLimit(1).minimumScaleFactor(0.7).padding(.top, 2)
-            timeline(plan).padding(.top, 10)
-            Spacer(minLength: 6)
-            if let d = plan.primary.day { lightStrip(d, in: plan.zone) }
-        }
-
-        /// Вертикальная линия дня: пройденное тусклое, текущая точка — янтарная, будущее — серое; линия заполнена до «сейчас».
-        private func timeline(_ plan: DayPlan) -> some View {
-            let rows = type.rows(normal: 6, large: 5, huge: 4)
-            let first = max(0, min(plan.currentIndex ?? 0, plan.stops.count - rows))
-            let shown = Array(plan.stops.enumerated()).dropFirst(first).prefix(rows)
-            return VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(shown), id: \.offset) { i, s in
-                    let isCurrent = i == plan.currentIndex
-                    let past = plan.currentIndex.map { i < $0 } ?? false
-                    HStack(alignment: .center, spacing: 8) {
-                        ZStack {
-                            Rectangle().fill(past || isCurrent ? st.amber.opacity(0.55) : st.ink.opacity(0.15)).frame(width: 2)
-                            Circle().fill(isCurrent ? st.amber : (past ? st.amber.opacity(0.55) : st.surface))
-                                .overlay(Circle().strokeBorder(isCurrent || past ? Color.clear : st.ink.opacity(0.3), lineWidth: 1.2))
-                                .frame(width: isCurrent ? 10 : 7, height: isCurrent ? 10 : 7)
-                        }
-                        .frame(width: 12)
-                        StopLine(plan: plan, stop: s, isCurrent: isCurrent, past: past, signSize: 16, withPlace: true, st: st)
-                        Spacer(minLength: 0)
-                        if isCurrent, let end = plan.pointEnd {
-                            Text(plan.words[.until].replacingOccurrences(of: "{t}", with: plan.frame.clock(end, in: plan.zone))).font(.caption2.weight(.semibold)).foregroundStyle(st.amber)
-                        }
-                    }
-                    .frame(maxHeight: .infinity)
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("\(dateLine()) · \(frame.place.name.isEmpty ? "Light Plan" : frame.place.name)")
+                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    if alpha { AlphaBadge() }
                 }
-                if plan.stops.count > first + rows {
-                    Text(plan.words[.more].replacingOccurrences(of: "{n}", with: "\(plan.stops.count - first - rows)")).font(.caption2).foregroundStyle(st.ink2).padding(.leading, 20)
-                }
+                .frame(height: 16)
+                Spacer().frame(height: 4)
+                dome
+                Spacer().frame(height: 2)
+                feet.frame(height: 38)
+                Spacer().frame(height: 8)
+                CountdownBlock(frame: frame, pal: pal)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .padding(Self.pad)
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
         }
 
-        // MARK: Свет
+        // MARK: Купол
 
-        private func lightStrip(_ d: WidgetFeed.DayLight, in zone: TimeZone) -> some View {
-            VStack(spacing: 6) {
-                Rectangle().fill(st.ink.opacity(0.12)).frame(height: 1)
-                if d.sunrise == nil && d.sunset == nil {
-                    Text(d.polar == .night ? frame.words[.polarNight] : frame.words[.polarDay])
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(st.ink).frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    HStack(alignment: .top, spacing: 0) {
-                        lightCell(frame.words[.sunrise], d.sunrise, in: zone, sign: "sunrise", accent: false)
-                        lightCell(frame.words[.golden], d.golden, in: zone, sign: "sun", accent: true)
-                        lightCell(frame.words[.sunset], d.sunset, in: zone, sign: "sunset", accent: false)
-                    }
-                }
-            }
-        }
-
-        private func lightCell(_ name: String, _ at: Date?, in zone: TimeZone, sign: String, accent: Bool) -> some View {
-            let passed = at.map { $0 < frame.now } ?? false
-            return VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
-                    WidgetIcon(name: sign, size: 13).foregroundStyle(accent ? st.amber : st.ink2)
-                    Text(name).font(.caption).foregroundStyle(accent ? st.amber : st.ink2).lineLimit(1).minimumScaleFactor(0.7)
-                }
-                Text(at.map { frame.clock($0, in: zone) } ?? "—")
-                    .font(.system(.subheadline, design: .rounded).weight(.semibold)).monospacedDigit()
-                    .foregroundStyle(st.ink.opacity(passed ? 0.5 : 1))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-
-        // MARK: День без съёмок: только свет
-
-        /// Слово в центре купола: ближайшее событие света дня (рассвет → золотой час → закат), после заката — снова рассвет.
-        /// Эскиз 14.11 ставит сюда слово «Света» («ВЕЧЕРЕЕТ»), но состояния света виджет не получает — берём то, что в его данных есть.
-        private func lightWord(_ d: WidgetFeed.DayLight) -> String {
-            let next: [(Date?, WidgetFeed.Words.Key)] = [(d.sunrise, .sunrise), (d.golden, .golden), (d.sunset, .sunset)]
-            for (t, key) in next where (t.map { $0 > frame.now } ?? false) { return frame.words[key].uppercased() }
-            return frame.words[.sunrise].uppercased()
-        }
-
-        @ViewBuilder private var lightOnly: some View {
-            let zone = frame.zone
-            HStack(alignment: .firstTextBaseline) {
-                Text(dateLine(zone)).font(.caption.weight(.semibold)).foregroundStyle(st.ink2).lineLimit(1)
-                Spacer(minLength: 0)
-                if alpha { AlphaBadge() }
-            }
-            Text(frame.place.name.isEmpty ? "Light Plan" : frame.place.name)
-                .font(.subheadline.weight(.semibold)).foregroundStyle(st.ink).lineLimit(1).padding(.top, 2)
+        @ViewBuilder private var dome: some View {
             if let d = frame.day, let rise = d.sunrise, let set = d.sunset {
-                SunArc(rise: rise, set: set, now: frame.now, clock: frame.clock(frame.now, in: zone), word: lightWord(d), st: st)
-                    .frame(minHeight: 90, maxHeight: .infinity).padding(.top, 6)
-                lightStrip(d, in: zone).padding(.top, 6)
-                Text("\(frame.words[.dayLength]) \(RemainText(words: frame.words).long(set.timeIntervalSince(rise)))")
-                    .font(.footnote).foregroundStyle(st.ink2).lineLimit(1).padding(.top, 10)
-            } else if let d = frame.day {
-                Spacer(minLength: 0)
-                lightStrip(d, in: zone)
+                let sky = BigWidget.sky(frame)
+                SunArc(rise: rise, set: set, now: frame.now, clock: frame.clock(frame.now, in: zone),
+                       word: sky.map { BigWidget.phaseWord($0.code, frame.words) } ?? frame.words[.sunrise].uppercased(), st: st, skyNow: sky)
+                    .frame(width: iw, height: domeH)
             } else {
-                Spacer(minLength: 0)
-                Text("—").font(.title).foregroundStyle(st.ink)
+                // Полярные сутки/ночь: купола нет, слово места.
+                Text(frame.day?.polar == .night ? frame.words[.polarNight] : frame.words[.polarDay])
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(pal.text).frame(width: iw, height: domeH)
+            }
+        }
+
+        // MARK: Ножки купола: восход · золотой час · закат, ширина — по дуге (от (32 − 14)·s до (358 + 14)·s холста)
+
+        private var feet: some View {
+            let inset = 18 * s
+            let rating = frame.rating
+            return ZStack(alignment: .top) {
+                HStack(alignment: .top, spacing: 0) {
+                    cell(frame.words[.sunrise], "sunrise", frame.day?.sunrise, score: rating?.sunrise, accent: false, align: .leading)
+                    Spacer(minLength: 0)
+                    cell(frame.words[.sunset], "sunset", frame.day?.sunset, score: rating?.score, accent: false, align: .trailing)
+                }
+                cell(frame.words[.golden], "sun", frame.day?.golden, score: nil, accent: true, align: .center)
+            }
+            .padding(.horizontal, inset)
+            .frame(width: iw, alignment: .top)
+        }
+
+        private func cell(_ name: String, _ sign: String, _ at: Date?, score: Int?, accent: Bool, align: HorizontalAlignment) -> some View {
+            let passed = at.map { $0 < frame.now } ?? false
+            return VStack(alignment: align, spacing: 1) {
+                HStack(spacing: 5) {
+                    WidgetIcon(name: sign, size: 15).foregroundStyle(accent ? pal.amber : pal.muted)
+                    Text(at.map { frame.clock($0, in: zone) } ?? "—")
+                        .font(.system(size: 17, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(accent ? pal.amber : pal.text.opacity(passed ? 0.55 : 1))
+                }
+                if let line = BigWidget.scoreLine(score, frame.words) {
+                    Text(line).font(.system(size: 11)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.7)
+                } else if accent {
+                    Text(name).font(.system(size: 11)).foregroundStyle(pal.muted).lineLimit(1)
+                }
             }
         }
     }
@@ -189,10 +151,15 @@ struct SunArc: View {
     let clock: String
     let word: String
     let st: WidgetStyle
+    /// 30и.13: небо момента (Луна, слово света, ночная дорожка Солнца). `nil` — как было (тесты купола).
+    var skyNow: BigWidget.Sky? = nil
+    private var night: Bool { (skyNow?.sunElevation ?? 1) < -0.833 }
+    /// Ночью небо тёмно-синее в обеих темах (как «Свет»: `DomeSky.nightLight`), слова поверх белые.
+    private var onSky: Color { (st.dark || night) ? Color(red: 0xEC / 255, green: 0xEC / 255, blue: 0xEA / 255) : Color.black }
 
     /// Небо: тёмная плашка — синее из эскиза (#101B33 → #2A3550), светлая — дневное небо палитры Д (#86BAEC → #DCEBF9).
     private var sky: Gradient {
-        st.dark ? Gradient(colors: [Color(red: 0x10 / 255, green: 0x1B / 255, blue: 0x33 / 255), Color(red: 0x2A / 255, green: 0x35 / 255, blue: 0x50 / 255)])
+        (st.dark || night) ? Gradient(colors: [Color(red: 0x10 / 255, green: 0x1B / 255, blue: 0x33 / 255), Color(red: 0x2A / 255, green: 0x35 / 255, blue: 0x50 / 255)])
                 : Gradient(colors: [Color(red: 0x86 / 255, green: 0xBA / 255, blue: 0xEC / 255), Color(red: 0xDC / 255, green: 0xEB / 255, blue: 0xF9 / 255)])
     }
     private var grey: Color { Color(red: 0x8A / 255, green: 0x8A / 255, blue: 0x92 / 255) }
@@ -203,9 +170,9 @@ struct SunArc: View {
             ZStack {
                 Canvas { ctx, size in draw(ctx, fit: fit, size: size) }
                 VStack(spacing: 2 * fit.scale) {
-                    Text(clock).font(.system(size: 40 * fit.scale, weight: .ultraLight)).monospacedDigit().foregroundStyle(st.dark ? st.ink : Color.black)
+                    Text(clock).font(.system(size: 40 * fit.scale, weight: .ultraLight)).monospacedDigit().foregroundStyle(onSky)
                     Text(word).font(.system(size: 13 * fit.scale, weight: .semibold)).tracking(1.6).lineLimit(1).minimumScaleFactor(0.6)
-                        .foregroundStyle(st.dark ? st.ink : Color.black)
+                        .foregroundStyle(onSky)
                 }
                 .frame(width: fit.rx * 1.1)
                 .position(x: fit.centerX, y: fit.horizonY - fit.ry * 0.40)
@@ -233,13 +200,40 @@ struct SunArc: View {
         let pad = 14 * fit.scale
         horizon.move(to: CGPoint(x: max(0, left.x - pad), y: fit.horizonY)); horizon.addLine(to: CGPoint(x: min(size.width, right.x + pad), y: fit.horizonY))
         ctx.stroke(horizon, with: .color(st.ink.opacity(0.35)), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-        // Солнце: ореол, тёмное кольцо, ядро; до восхода и после заката стоит у края серым.
-        let p = fit.point(frac(now))
+        // Солнце: ореол, тёмное кольцо, ядро; до восхода и после заката стоит у края серым (прежний вид) или, если известно небо, призраком на ночной дорожке.
         let day = now >= rise && now <= set
-        let core = day ? st.amber : st.ink.opacity(0.4)
-        func disc(_ r: CGFloat, _ c: Color) { ctx.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: 2 * r, height: 2 * r)), with: .color(c)) }
-        if day { disc(16.5 * fit.scale, st.amber.opacity(0.18)) }
-        disc(9.4 * fit.scale, st.dark ? Color(red: 0x0C / 255, green: 0x0B / 255, blue: 0x0A / 255) : Color.white)
-        disc(6.5 * fit.scale, core)
+        var p = fit.point(frac(now))
+        var core = day ? st.amber : st.ink.opacity(0.4)
+        var sunAlpha = 1.0
+        if let sky = skyNow, !day {
+            let nextRise = sky.nextRise ?? rise.addingTimeInterval(86_400)
+            let th: Double
+            if now > set { th = -min(1, now.timeIntervalSince(set) / max(1, nextRise.timeIntervalSince(set))) * .pi }
+            else { th = .pi + min(1, rise.timeIntervalSince(now) / max(1, rise.timeIntervalSince(set.addingTimeInterval(-86_400)))) * .pi }
+            p = CGPoint(x: fit.centerX + fit.rx * CGFloat(cos(th)), y: fit.horizonY + 4 * fit.scale * CGFloat(abs(sin(th))))
+            core = st.amber
+            sunAlpha = BigWidget.ghostOpacity(elevation: sky.sunElevation)
+        }
+        func disc(_ r: CGFloat, _ c: Color, at q: CGPoint, alpha: Double = 1) { ctx.fill(Path(ellipseIn: CGRect(x: q.x - r, y: q.y - r, width: 2 * r, height: 2 * r)), with: .color(c.opacity(alpha))) }
+        if day { disc(16.5 * fit.scale, st.amber.opacity(0.18), at: p) }
+        disc(9.4 * fit.scale, st.dark ? Color(red: 0x0C / 255, green: 0x0B / 255, blue: 0x0A / 255) : Color.white, at: p, alpha: sunAlpha)
+        disc(6.5 * fit.scale, core, at: p, alpha: sunAlpha)
+        // Луна — всегда на небе: над горизонтом диском с фазой, под ним призраком (то же правило плотности, что у Солнца).
+        if let sky = skyNow {
+            let f = min(1, max(0, (sky.moonAzimuth - 90) / 180))
+            var q = fit.point(f)
+            let up = sky.moonAltitude >= 0
+            if !up { q.y = fit.horizonY + 4 * fit.scale * CGFloat(abs(sin(f * .pi))) }
+            let a = up ? 1 : BigWidget.ghostOpacity(elevation: sky.moonAltitude)
+            let r = 6.5 * fit.scale
+            disc(9.4 * fit.scale, st.dark ? Color(red: 0x0C / 255, green: 0x0B / 255, blue: 0x0A / 255) : Color.white, at: q, alpha: a)
+            disc(r, Color(red: 0xE9 / 255, green: 0xE5 / 255, blue: 0xD3 / 255), at: q, alpha: a)
+            // Тень неосвещённой части: круг того же радиуса, сдвинутый в сторону тени на освещённую долю, обрезан по диску.
+            let d = CGFloat(sky.moonFraction) * 2 * r * (sky.moonWaxing ? -1 : 1)
+            ctx.drawLayer { l in
+                l.clip(to: Path(ellipseIn: CGRect(x: q.x - r, y: q.y - r, width: 2 * r, height: 2 * r)))
+                l.fill(Path(ellipseIn: CGRect(x: q.x - r + d, y: q.y - r, width: 2 * r, height: 2 * r)), with: .color(Color(red: 0x16 / 255, green: 0x22 / 255, blue: 0x3F / 255).opacity(a)))
+            }
+        }
     }
 }

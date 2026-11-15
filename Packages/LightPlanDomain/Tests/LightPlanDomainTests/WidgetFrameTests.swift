@@ -298,17 +298,17 @@ struct WidgetFrameTests {
         #expect(Set(line.dates.filter { $0 > tsk(0, day: 25) }.prefix(3)).contains(tsk(0, 1, day: 25)), "с полуночи считается завтрашний")
     }
 
-    @Test func theLargeDayArcMovesEveryTenMinutesOnlyWithoutAShoot() throws {
-        let l = try #require(tomsk.light(on: day))
-        let rise = try #require(l.sunrise), set = try #require(l.sunset)
-        let free = feed().timeline(from: rise.addingTimeInterval(-60), limit: 1000, shape: .large)
-        let arc = free.dates.filter { $0 > rise && $0 < set }
-        #expect(arc.count >= Int(set.timeIntervalSince(rise) / 600) - 1, "десять минут между восходом и закатом: \(arc.count)")
-        // Съёмка занимает вид — дуги нет, её минуты не нужны.
-        let busy = feed([shoot(from: tsk(9), to: tsk(17))]).timeline(from: tsk(8), limit: 1000, shape: .large)
-        let plain = feed([shoot(from: tsk(9), to: tsk(17))]).timeline(from: tsk(8), limit: 1000)
-        #expect(busy.dates.filter { $0 > tsk(9) && $0 < tsk(17) } == plain.dates.filter { $0 > tsk(9) && $0 < tsk(17) },
-                "пока съёмка идёт, большой виджет меняется только на событиях")
+    /// 30и.13 (Б2): на большом всегда идут Солнце и Луна, «через N» и кольцо блока отсчёта — раз в 5 минут, со съёмкой и без, днём и ночью.
+    @Test func theLargeWidgetMovesEveryFiveMinutesAlways() throws {
+        for shoots in [[], [shoot(from: tsk(9), to: tsk(17))]] {
+            let line = feed(shoots).timeline(from: tsk(8), limit: 1000, shape: .large)
+            let gaps = zip(line.dates, line.dates.dropFirst()).map { $1.timeIntervalSince($0) }
+            #expect(gaps.allSatisfy { $0 <= 300 }, "между записями не больше пяти минут: \(gaps.max() ?? 0)")
+            #expect(line.dates.count > 400, "36 часов по 5 минут — лента длинная: \(line.dates.count)")
+        }
+        let capped = feed().timeline(from: tsk(8), shape: .large)
+        #expect(capped.dates.count == WidgetFeed.entryLimit, "лента режется на пределе записей")
+        #expect(capped.reload == capped.dates.last, "и просит новую на последней показанной записи: ≈ 1,6 перезагрузки в сутки")
     }
 
     /// Бюджет: день свадьбы с минутным кольцом — сколько раз виджет просит новую ленту, если каждый раз перезагружается ровно в срок.
