@@ -22,6 +22,13 @@ struct PlaceSheetTests {
         }
     }
 
+    /// Обратный геокодер, который называет точку Токио районом (замер 14.11.2026).
+    private struct DistrictGeocoder: ReverseGeocoding {
+        func answer(for c: GeoCoordinate) async throws -> GeocodeAnswer {
+            GeocodeAnswer(locality: "Синдзюку", region: "Токио", country: "Япония", zoneIdentifier: "Asia/Tokyo")
+        }
+    }
+
     private struct NoCities: CityLookup {
         func cities(matching query: String) async throws -> [CityHit] { [] }
     }
@@ -37,9 +44,10 @@ struct PlaceSheetTests {
     private let barnaul = GeoCoordinate(latitude: 53.35481, longitude: 83.76982)
     private let elbrus = GeoCoordinate(latitude: 43.3499, longitude: 42.4453)
 
-    private func model(_ snapshot: Snapshot = Snapshot(), locator: Locator = Locator()) -> AppModel {
+    private func model(_ snapshot: Snapshot = Snapshot(), locator: Locator = Locator(),
+                       geocoder: any ReverseGeocoding = SilentGeocoder()) -> AppModel {
         AppModel(snapshot: snapshot, store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
-                 locator: locator, geocoder: SilentGeocoder(), cityLookup: NoCities(), weatherSource: NoWeather())
+                 locator: locator, geocoder: geocoder, cityLookup: NoCities(), weatherSource: NoWeather())
     }
 
     // MARK: - Поля и «Готово»
@@ -165,18 +173,78 @@ struct PlaceSheetTests {
 
     // MARK: - Поиск места
 
-    @Test func searchHitsNameAreaAndCap() {
-        let c = GeoCoordinate(latitude: 56.45, longitude: 84.95)
-        let marks: [(name: String?, locality: String?, region: String?, coordinate: GeoCoordinate)] =
-            [("Лагерный сад", "Томск", "Томская область", c),
-             ("Лагерный сад", "Томск", "Томская область", c),          // дубль
-             (nil, "Томск", "Томская область", c),                      // без имени — город
-             ("  ", nil, nil, c)]                                       // пустое — мимо
-            + (0..<8).map { ("Улица \($0)", "Томск", nil, c) }
-        let hits = ApplePlaceSearch.hits(marks)
-        #expect(hits.count == 6)
-        #expect(hits[0] == PlaceHit(name: "Лагерный сад", area: "Томск, Томская область", coordinate: c))
-        #expect(hits[1] == PlaceHit(name: "Томск", area: "Томская область", coordinate: c))
-        #expect(hits[2].name == "Улица 0" && hits[2].area == "Томск")
+    // Разбор ответов поиска — в `PlaceSearchTests` пакета данных (сети там тоже нет).
+
+    @Test func pickedCityRidesWithTheHitAndGoesWhenNumbersAreTyped() {
+        var f = PlaceSheetForm(here: barnaul)
+        let tokyo = GeoCoordinate(latitude: 35.6895, longitude: 139.6917)
+        f.pick(PlaceHit(name: "Токио", area: "Япония", coordinate: tokyo, city: PlaceName(city: "Токио", sub: "")))
+        #expect(f.pickedCity == PlaceName(city: "Токио", sub: "") && f.fromHit)
+        f.typeCoords(lat: "35.7")
+        #expect(f.pickedCity == nil && !f.fromHit)                    // «Токио» не подписывает другие числа
+    }
+
+    @Test func searchedCityIsNotRenamedToItsDistrict() async {
+        // Обратный геокодер называет точку Токио районом «Синдзюку» (замер 14.11.2026); выбранное имя держится.
+        let app = model(geocoder: DistrictGeocoder())
+        let tokyo = GeoCoordinate(latitude: 35.6895, longitude: 139.6917)
+        app.movePlace(to: tokyo, chosenName: PlaceName(city: "Токио", sub: ""))
+        await app.place.settled()
+        #expect(app.place.name?.city == "Токио")
+        #expect(app.place.coordinate == tokyo)
+        // «Я здесь» в Синдзюку остаётся Синдзюку: район там — то, что нужно.
+        app.movePlace(to: tokyo)
+        await app.place.settled()
+        #expect(app.place.name?.city == "Синдзюку")
+    }
+
+    // MARK: - Быстрое поле (30и.1, вариант Б)
+
+    @Test func quickHitMovesThePlaceAndClosesTheSheet() async {
+        let app = model(geocoder: DistrictGeocoder())
+        let tokyo = GeoCoordinate(latitude: 35.6895, longitude: 139.6917)
+        app.placeSheetOpen = true
+        app.takeQuickHit(PlaceHit(name: "Токио", area: "Япония", coordinate: tokyo, city: PlaceName(city: "Токио", sub: "")))
+        #expect(!app.placeSheetOpen && app.placeSheetStop == nil)        // «Готово» не нужно
+        #expect(app.place.coordinate == tokyo)
+        await app.place.settled()
+        #expect(app.place.name?.city == "Токио")                         // не район обратного геокодера
+        #expect(app.spots.isEmpty)                                       // «Мои места» не тронуты
+    }
+
+    @Test func quickHitWithoutACityStillMoves() async {
+        // Ответ без города (поиск его не назвал): имя спросят у обратного геокодера, как у «Я здесь».
+        let app = model(geocoder: DistrictGeocoder())
+        let tokyo = GeoCoordinate(latitude: 35.6895, longitude: 139.6917)
+        app.placeSheetOpen = true
+        app.takeQuickHit(PlaceHit(name: "Токио", area: "", coordinate: tokyo))
+        await app.place.settled()
+        #expect(app.place.coordinate == tokyo && app.place.name?.city == "Синдзюку" && !app.placeSheetOpen)
+    }
+
+    @Test func quickHitOnAFormStopBecomesItsSpot() {
+        let app = model()
+        app.openForm(day: CivilDate(year: 2026, month: 10, day: 3))
+        app.pickFormGenre(.wedding)
+        app.openStopPlace(0, way: .fork)
+        let garden = GeoCoordinate(latitude: 56.45361, longitude: 84.94889)
+        app.takeQuickHit(PlaceHit(name: "Лагерный сад", area: "Томск, Томская область", coordinate: garden,
+                                  city: PlaceName(city: "Томск", sub: "Томская область")))
+        #expect(app.placeSheetStop == nil && !app.placeSheetOpen)
+        #expect(app.spots.count == 1 && app.spots[0].name == "Лагерный сад")
+        #expect(app.form?.route[0].placeText == "Лагерный сад")
+        #expect(app.place.coordinate != garden)                          // место приложения точка маршрута не трогает
+    }
+
+    @Test func chosenNameSurvivesARestart() async {
+        // Выбрали «Токио», закрыли приложение, открыли: запомненное имя не заменяется районом «Синдзюку»
+        // (замер 14.11.2026: так и было, обратный геокодер при запуске перебивал запомненное имя).
+        var rec = PlaceMemoryRecord()
+        rec.place = .init(latitude: 35.6895, longitude: 139.6917, name: "Токио", sub: nil, zone: "Asia/Tokyo")
+        let app = AppModel(snapshot: Snapshot(), store: nil, language: "ru", zone: TimeZone(identifier: "Asia/Barnaul")!,
+                           locator: Locator(), geocoder: DistrictGeocoder(), cityLookup: NoCities(),
+                           weatherSource: NoWeather(), placeMemory: InMemoryPlaceMemory(rec))
+        await app.place.settled()
+        #expect(app.place.name?.city == "Токио")
     }
 }

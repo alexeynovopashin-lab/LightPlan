@@ -683,9 +683,11 @@ public final class AppModel {
         } else if resolved.source == .capital, access == .granted {
             Task { await self.useDeviceLocationIfNoCity() }
         } else if resolved.source == .settings || resolved.source == .saved {
-            // Имя и настоящая зона для города настроек и запомненного места — от геокодера.
+            // Город настроек и запомненное место: имя — как запомнили, настоящая зона — от геокодера.
             if let n = resolved.name {
-                place.move(to: resolved.coordinate, knownName: PlaceName(city: n, sub: saved?.sub ?? ""))
+                // Имя, с которым место запомнили, держится и после запуска: выбранное «Токио» не становится районом
+                // «Синдзюку» от обратного геокодера (30и.1; замер 14.11.2026: так и было после перезапуска).
+                place.move(to: resolved.coordinate, chosenName: PlaceName(city: n, sub: saved?.sub ?? ""))
             } else {
                 place.move(to: resolved.coordinate)
             }
@@ -844,9 +846,12 @@ public final class AppModel {
     /// приложения, свет, погода, имя шапки и камера карты едут за ней. Выбор
     /// руками выключает слежение и помнится после перезапуска (29.8в.12;
     /// решение 19 сентября «живёт до перезапуска» отменено словом Алексея 18.10).
-    public func movePlace(to c: GeoCoordinate) {
+    ///
+    /// `chosenName` (30и.1) — город, который нашёл поиск места: шапка зовёт место так, как его выбрали,
+    /// а не так, как обратный геокодер назовёт точку («Токио», не «Синдзюку»).
+    public func movePlace(to c: GeoCoordinate, chosenName: PlaceName? = nil) {
         choseByHand()
-        place.move(to: c)
+        if let chosenName { place.move(to: c, chosenName: chosenName) } else { place.move(to: c) }
         citySource = .saved
         remember()
     }

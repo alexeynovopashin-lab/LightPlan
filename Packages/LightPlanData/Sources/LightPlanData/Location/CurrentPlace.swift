@@ -39,6 +39,10 @@ public final class CurrentPlace {
     /// Имя, выданное вместе с точкой (`move(to:knownName:)`): пустой ответ
     /// геокодера его не стирает.
     private var knownName: PlaceName?
+    /// Имя выбрал человек (`move(to:chosenName:)`): ответ обратного геокодера его не заменяет — только
+    /// даёт зону. Иначе «Токио», выбранное в поиске, становится «Синдзюку»: точка Токио — ратуша в
+    /// этом районе (замер 14.11.2026), и обратный геокодер называет район.
+    private var knownNameWins = false
 
     /// - Parameters:
     ///   - initial: последнее сохранённое место.
@@ -61,6 +65,7 @@ public final class CurrentPlace {
         coordinate = c
         zone = zones.zoneOrEstimate(at: c)
         knownName = nil
+        knownNameWins = false
         isNameStale = true
         scheduleNaming(for: c)
     }
@@ -75,6 +80,13 @@ public final class CurrentPlace {
         name = knownName
         nameOrigin = c
         isNameStale = false
+    }
+
+    /// Переезд в место, которое человек выбрал по имени в поиске (30и.1): имя остаётся таким, каким его
+    /// выбрали, что бы ни ответил обратный геокодер; от него берётся только зона.
+    public func move(to c: GeoCoordinate, chosenName: PlaceName) {
+        move(to: c, knownName: chosenName)
+        knownNameWins = true
     }
 
     /// Ручной ввод. Ошибка ввода место не трогает.
@@ -138,7 +150,7 @@ public final class CurrentPlace {
 
     private func apply(_ found: PlaceLookup, for c: GeoCoordinate) {
         guard c == coordinate else { return }
-        name = found.name ?? knownName
+        name = knownNameWins ? (knownName ?? found.name) : (found.name ?? knownName)
         nameOrigin = name == nil ? nil : c
         isNameStale = false
         if let z = found.zone {
