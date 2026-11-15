@@ -63,6 +63,23 @@ struct TestSeedTodayTests {
         }
     }
 
+    /// 30и.12: в день первого запуска ничто другое из засева не стоит на свадьбе «сегодня» (08:00–02:00). Раньше «День города»
+    /// 12:00–18:00 лежал на 14.11 и форма свадьбы писала «Время пересекается».
+    @Test func nothingElseSitsOnTheWeddingOfTodayWhateverTheLaunchDay() throws {
+        let zone = TimeZone(identifier: "Asia/Tomsk")!
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = zone
+        let raw = try #require(TestSeed.rawData())
+        let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        for iso in ["2026-11-14T12:00:00+07:00", "2026-09-25T12:00:00+07:00", "2026-10-17T09:00:00+07:00"] {
+            let launch = ISO8601DateFormatter().date(from: iso)!
+            let root = try #require(try JSONSerialization.jsonObject(with: TestSeed.rebased(raw, now: launch)) as? [String: Any])
+            let all = try #require(root["sessions"] as? [[String: Any]])
+            func day(_ r: [String: Any]) -> Bool { cal.isDate(f.date(from: r["date"] as! String)!, inSameDayAs: launch) }
+            let onWedding = all.filter { ($0["id"] as? String) != "sd_today_wed" && day($0) }.map { $0["id"] as! String }
+            #expect(onWedding.isEmpty, "на дне свадьбы \(iso) стоит \(onWedding)")
+        }
+    }
+
     /// 30и.9 (Алексей 14.11: «почему у нас свадьба в 00:00 начинается?»): рамки свадьбы «сегодня» — не сутки с нуля. Она начинается с первой
     /// точки маршрута, и строка плашки экрана блокировки читает именно эти рамки: «Сейчас: Букет невесты» над «08:00 – 02:00 · 18 ч».
     /// Код плашки верен (диапазон — рамки самой съёмки, `ActivityFrame.range`), неверной была запись засева: `min 0`, `end 1439`.
