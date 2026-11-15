@@ -36,6 +36,7 @@ code{background:var(--card);padding:1px 5px;border-radius:5px;font-size:12.5px}
 
 .w.braunD{--bg:#161616;--ink:#ECECEA;--ink2:#9B9B9B;--amber:#F4B400;--amberT:#F4B400;--slit:rgba(255,255,255,.12);background:var(--bg);color:var(--ink)}
 .w.braunL{--bg:#E4E4E2;--ink:#111;--ink2:#5B5B5B;--amber:#111;--amberT:#111;--slit:rgba(0,0,0,.14);background:var(--bg);color:var(--ink)}
+.w.braunL .bz,.bz{--dial:#FAFAFA}.w.braunD .bz{--dial:#0D0D0D}
 .tk{position:absolute;inset:0;pointer-events:none}
 .sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-3px;border:1px solid var(--hair);margin-right:4px}
 .pair{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 22px;align-items:flex-start}
@@ -249,13 +250,13 @@ const names=[...new Set(sum.map(r=>r.v))];
 document.getElementById('sumtable').innerHTML='<table><tr><th>Вариант</th><th>364 × 382, есть съёмки</th><th>338 × 354, есть съёмки</th><th>364 × 382, съёмок нет</th></tr>'+names.map(n=>{const g=k=>{const r=sum.find(x=>x.v===n&&x.size===k);return r?r.pct.toFixed(0)+' %':'—'};return `<tr><td>${n}</td><td>${g(0)}</td><td>${g(1)}</td><td>${g(2)}</td></tr>`}).join('')+'</table>';
 
 /* ---------- Braun: подложка, риски, окошко ---------- */
-function ticks(W,H,th){const dark=th==='braunD';const minor=dark?'#8C8C8C':'#6E6E6E',hour=dark?'#ECECEA':'#111';let o='';
+function ticks(W,H,th){const dark=th.startsWith('braunD');const minor=dark?'#8C8C8C':'#6E6E6E',hour=dark?'#ECECEA':'#111';let o='';
  const put=(x,y,hz,major)=>{const L=major?7:3.5,w=major?1.4:1;o+=hz?`<line x1="${x}" x2="${x}" y1="${y}" y2="${y+L}" stroke="${major?hour:minor}" stroke-width="${w}"/>`:`<line y1="${y}" y2="${y}" x1="${x}" x2="${x+L}" stroke="${major?hour:minor}" stroke-width="${w}"/>`};
  for(let x=22,i=0;x<W-20;x+=9,i++){const m=i%6===0;put(x,3,true,m);put(x,H-3-(m?7:3.5),true,m)}
  for(let y=22,i=0;y<H-20;y+=9,i++){const m=i%6===0;put(3,y,false,m);put(W-3-(m?7:3.5),y,false,m)}
  return `<svg class="tk" width="${W}" height="${H}">${o}</svg>`}
 const _frame=frame;
-frame=function(v,size,th,st){const f=_frame(v,size,th,st);if(th.startsWith('braun'))f.el=f.el.replace(/<\/div>$/,ticks(f.W,f.H,th)+'</div>');return f};
+frame=function(v,size,th,st){const f=_frame(v,size,th,st);if(th.startsWith('braun')&&!th.includes('nt'))f.el=f.el.replace(/<\/div>$/,ticks(f.W,f.H,th)+'</div>');return f};
 function pillTime(t,th,sz){return th==='braunL'?`<span style="background:#F4B400;color:#111;border-radius:7px;padding:1px 7px;font-weight:600;font-size:${sz}px">${t}</span>`:`<span style="color:#F4B400;font-weight:600;font-size:${sz}px">${t}</span>`}
 function mock(kind,th,braun){ // упрощённые макеты малого и среднего; цвета — из кода
  const sz=kind==='s'?{W:158,H:158}:{W:338,H:158};
@@ -300,4 +301,27 @@ for(const th of ['dark','light']){document.getElementById('m-s').insertAdjacentH
 const bigb=document.getElementById('bigb');
 [A,B,C].forEach(v=>{const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${v.title}</b></div>`;bigb.appendChild(row);
  [[0,'braunD'],[0,'braunL'],[1,'braunD']].forEach(([si,th])=>{const f=frame(v,SIZES[si],th,'full');const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${SIZES[si].W} × ${SIZES[si].H} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption>`;row.appendChild(fig)})});
+
+/* ---------- Б1 и Б2 (выбор Алексея: Б, риски — только где задуманы) ---------- */
+const B2={id:'b2',title:'Б2',
+ build({iw,ih,s,push,state,W}){
+  push('шапка: дата · место',16,`<span class="ink t12 sb c2">${SC.date} · ${SC.name}</span>`,'c');
+  push('зазор',4,'','gap');
+  const boxH=158*s;push('купол с Солнцем и Луной',boxH,`<div data-ink style="width:${390*s}px;height:${boxH}px">${dome(s,{word:'НОЧЬ'})}</div>`,'c');
+  push('зазор',2,'','gap');
+  push('ножки: время + оценка',38,footRow(s,{mid:'день '+SC.dayLen.replace(' мин','м').replace(' ч ','ч ')}),'c');
+  push('зазор',8,'','gap');
+  const avail=ih-(4+16+boxH+2+38+8);const dark=true;
+  const n=Math.max(2,Math.min(3,Math.floor((avail-16)/34)));const rh=Math.floor((avail-16)/n);
+  const rows=SC.shoots.slice(0,n).map((sh,i)=>shootRow(sh,rh,{merge:true,sg:18})).join('');
+  const dia=Math.min(avail-16,96);
+  const dots=Array.from({length:36},(_,i)=>{const a=i/36*2*Math.PI-Math.PI/2,r=dia/2-5;return `<circle cx="${dia/2+r*Math.cos(a)}" cy="${dia/2+r*Math.sin(a)}" r="${i<9?1.7:1.3}" fill="${i<9?'var(--ink)':'var(--ink2)'}" opacity="${i<9?1:.5}"/>`}).join('');
+  push('блок отсчёта Braun (рамка с рисками)',avail,`<div data-ink style="position:relative;height:${avail}px;border-radius:14px;background:var(--dial,#0D0D0D)" class="bz"><div style="position:absolute;inset:0">${ticks(iw,avail,'bz')}</div><div style="position:absolute;left:8px;top:8px;width:${dia}px;height:${dia}px"><svg width="${dia}" height="${dia}">${dots}</svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="display:inline-flex;color:var(--amberT)">${ic('wedding',18)}</span><span class="ink sb mono" style="font-size:22px;line-height:1.05">16<span style="font-size:11px;font-weight:500"> ч</span></span><span class="ink t11 c2">до съёмки</span></div></div><div style="position:absolute;left:${dia+22}px;right:12px;top:8px;bottom:8px;display:flex;flex-direction:column;justify-content:center">${rows}</div></div>`,'c');
+ }};
+const sec8=document.createElement('section');sec8.id='b12';
+sec8.innerHTML=`<div class="tag">8 · Б1 и Б2 — два «либо» Алексея</div><p class="lead">«Большому виджету риски не нужны, оставляем только там, где задумали, либо в большом виджете поле снизу меняется на виджет с отсчётом Браун.» Верх (шапка, купол с Солнцем и Луной, ножки с оценкой) во всех кадрах тот же, что в Б; цвета — Braun.</p><div class="facts"><div class="fact pro"><b>Б1 · без рисков</b>Чистая плашка Braun, всё место у съёмок и закатов на три дня. Минус: больше не похоже на Braun, кроме цвета; в светлой акцент чёрный — «через N» не выделяется цветом.</div><div class="fact con"><b>Б2 · снизу блок отсчёта</b>Низ — тот самый Braun-блок: тёмный циферблат с кольцом точек до ближайшей съёмки и её знаком, риски только на его рамке, справа съёмки. Минус: прогноз закатов на три дня уходит (места нет), строк съёмок 2–3 вместо трёх плюс «и ещё N»; блок — ещё одна форма Braun, которую нужно сверять с настоящим окном отсчёта.</div></div><div id="b12f"></div>`;
+document.getElementById('variants').appendChild(sec8);
+const b12f=document.getElementById('b12f');
+[['Б1 · без рисков',B,'nt'],['Б2 · блок отсчёта Braun',B2,'nt']].forEach(([t,v,nt])=>{const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${t}</b></div>`;b12f.appendChild(row);
+ [[0,'braunD'],[0,'braunL'],[1,'braunD'],[1,'braunL']].forEach(([si,th])=>{const f=frame(v,SIZES[si],th+(nt?' '+nt:''),'full');const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${SIZES[si].W} × ${SIZES[si].H} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption>`;row.appendChild(fig)})});
 </script></body></html>
