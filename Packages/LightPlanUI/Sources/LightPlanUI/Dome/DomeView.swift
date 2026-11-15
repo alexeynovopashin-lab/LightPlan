@@ -160,12 +160,16 @@ public struct DomeView: View {
         let p = g.posAt(t, sun: sun)
 
         let sky = astroSky
-        if let sky { paintSky(&context, sky: sky) }
+        // 30з.3б (Алексей 15.11: «перестать ограничивать градиент куполом, это теперь не актуально»): небо за куполом общее
+        // (`LightSkyBackdrop`), поэтому зарево и цвет прогноза идут по всей ширине холста, а не режутся по дуге. Без подложки
+        // (`skyFill`: купол рисует небо сам) резать по дуге по-прежнему нужно — иначе цвет ляжет на страницу.
+        let reach = skyReach(size: size, fit: fit)
+        if let sky { paintSky(&context, sky: sky, reach: reach) }
         paintStarsAndMeteors(&context, e: e, now: now)
         let glow = HorizonGlow.paint(state: state, elevation: e, palette: skyPalette,
                                      moon: moon, lightTheme: colorScheme == .light)
         paintHorizonGlow(&context, atX: Double(p.x), color: sky?.glowColor ?? glow.color,
-                         opacity: sky?.glowOpacity ?? glow.opacity)
+                         opacity: sky?.glowOpacity ?? glow.opacity, reach: reach)
         paintHorizonLine(&context)
 
         if moon {
@@ -183,7 +187,26 @@ public struct DomeView: View {
         return path
     }
 
-    private func paintSky(_ context: inout GraphicsContext, sky: DomeSky) {
+    /// Куда небо может лечь: весь холст по ширине (в единицах `viewBox`) от верха до горизонта. `-LPDomeClip 1` (Debug) — как было до 30з.3б:
+    /// по `viewBox` и, в «Астро», по контуру купола.
+    private func skyReach(size: CGSize, fit: DomeFit) -> CGRect {
+        let g = DomeGeometry.self
+        if !astro { return CGRect(x: 0, y: 0, width: CGFloat(g.viewWidth), height: CGFloat(g.horizonY)) }
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "LPDomeClip") { return CGRect(x: 0, y: 0, width: CGFloat(g.viewWidth), height: CGFloat(g.horizonY)) }
+        #endif
+        return CGRect(x: -fit.origin.x / fit.scale, y: 0, width: size.width / fit.scale, height: CGFloat(g.horizonY))
+    }
+
+    /// Резать ли небо по дуге: только пока купол рисует своё небо сам (нет подложки) или включён `-LPDomeClip 1` (Debug).
+    private var clipsToDome: Bool {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "LPDomeClip") { return true }
+        #endif
+        return skyFill
+    }
+
+    private func paintSky(_ context: inout GraphicsContext, sky: DomeSky, reach: CGRect) {
         let g = DomeGeometry.self
         let top = CGPoint(x: CGFloat(g.cx), y: CGFloat(g.cy - g.ry))
         let bottom = CGPoint(x: CGFloat(g.cx), y: CGFloat(g.cy))
@@ -192,8 +215,9 @@ public struct DomeView: View {
                                                          startPoint: top, endPoint: bottom))
         }
         guard let palette = sky.forecast, sky.forecastOpacity > 0 else { return }
+        let area = clipsToDome ? skyPath() : Path(reach)
         context.drawLayer { layer in
-            layer.clip(to: skyPath())
+            layer.clip(to: area)
             layer.clipToLayer { mask in
                 mask.translateBy(x: CGFloat(g.cx), y: CGFloat(g.cy))
                 mask.scaleBy(x: 175.0 / 158.0, y: 1)
@@ -204,7 +228,7 @@ public struct DomeView: View {
                           ]), center: .zero, startRadius: 0, endRadius: 158))
             }
             layer.opacity = sky.forecastOpacity
-            layer.fill(skyPath(), with: .linearGradient(Gradient(stops: [
+            layer.fill(area, with: .linearGradient(Gradient(stops: [
                 .init(color: Color(palette.zenith), location: 0), .init(color: Color(palette.high), location: 0.38),
                 .init(color: Color(palette.mid), location: 0.72), .init(color: Color(palette.horizon), location: 1)
             ]), startPoint: top, endPoint: bottom))
@@ -251,13 +275,13 @@ public struct DomeView: View {
         context.stroke(line, with: .color(hairColor), style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
     }
 
-    private func paintHorizonGlow(_ context: inout GraphicsContext, atX x: Double, color: SkyColor, opacity: Double) {
+    private func paintHorizonGlow(_ context: inout GraphicsContext, atX x: Double, color: SkyColor, opacity: Double, reach: CGRect) {
         let g = DomeGeometry.self
         let cx = g.clamp(x, 60, 330)
         guard opacity > 0.002 else { return }
         context.drawLayer { layer in
-            layer.clip(to: Path(CGRect(x: 0, y: 0, width: CGFloat(g.viewWidth), height: CGFloat(g.horizonY))))
-            if astro { layer.clip(to: skyPath()) }
+            layer.clip(to: Path(reach))
+            if astro && clipsToDome { layer.clip(to: skyPath()) }
             layer.translateBy(x: CGFloat(cx), y: CGFloat(g.horizonY))
             layer.scaleBy(x: 130.0 / 62.0, y: 1)
             let r: CGFloat = 62

@@ -21,7 +21,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // 30з.3: моменты 23 сентября 2026 по Барнаулу (+07:00). Высота солнца (расчёт Meeus, ±0,2°): день +36°, закат 19:30 −2,1°,
 // синий час 19:50 −5,0°, глубокие сумерки 20:20 −9,5°, астрономические 20:50 −13,8°, ночь 23:00 −29,8°.
-const AT = { day: '2026-09-23T13:00', set: '2026-09-23T19:30', blue: '2026-09-23T19:50', deep: '2026-09-23T20:20', astro: '2026-09-23T20:50', night: '2026-09-23T23:00' };
+const AT = { morning: '2026-09-23T06:58', day: '2026-09-23T13:00', set: '2026-09-23T19:30', blue: '2026-09-23T19:50', deep: '2026-09-23T20:20', astro: '2026-09-23T20:50', night: '2026-09-23T23:00' };
 
 const CASES = {};
 for (const theme of ['light', 'dark']) {
@@ -32,8 +32,10 @@ for (const theme of ['light', 'dark']) {
     CASES[`glow-${m}-nowx-${theme}`] = { theme, mode: 'astro', at: AT[m], screen: 'light', noWeather: true };
   }
 }
+// 30з.3б: небо не режется по куполу. `-clip` — как было (`-LPDomeClip 1`), разность по линии дуги — `Tools/shots/dome_clip.py`.
+for (const k of Object.keys(CASES)) CASES[k + '-clip'] = { ...CASES[k], extra: ['-LPDomeClip', '1'] };
 // Те же кадры без света (`-LPPlateGlowOff 1`): разность с ними — это и есть свет.
-for (const k of Object.keys(CASES)) CASES[k + '-off'] = { ...CASES[k], extra: ['-LPPlateGlowOff', '1'] };
+for (const k of Object.keys(CASES).filter(k => !k.endsWith('-clip'))) CASES[k + '-off'] = { ...CASES[k], extra: ['-LPPlateGlowOff', '1'] };
 
 (async () => {
   if (args.list) { console.log(Object.keys(CASES).join('\n')); return; }
