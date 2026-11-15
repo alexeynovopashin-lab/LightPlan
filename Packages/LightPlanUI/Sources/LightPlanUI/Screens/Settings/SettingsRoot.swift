@@ -19,18 +19,25 @@ struct SettingsGroup<Content: View>: View {
 
     var body: some View {
         let pal = Palette(colorScheme)
-        let r = RoundedRectangle(cornerRadius: SettingsRoot.radius, style: .continuous)
-        VStack(spacing: 0) {
-            Group(subviews: content()) { subs in
+        Group(subviews: content()) { subs in
+            let rows = VStack(spacing: 0) {
                 ForEach(Array(subs.enumerated()), id: \.offset) { i, v in
                     if i > 0 { Rectangle().fill(pal.surface).frame(height: 1).padding(.leading, SettingsRoot.slitInset) }
                     v
                 }
             }
+            if subs.count == 1 {
+                // Однострочный блок — полностью круглые концы (слово Алексея 16.11: «не сквирклы, как строка «Мой профиль» в Телеге»).
+                rows.background(pal.sheet, in: Capsule())
+                    .clipShape(Capsule())
+                    .overlay { if !pal.dark { Capsule().strokeBorder(PlateTokens.rimColor, lineWidth: PlateTokens.rimWidth).allowsHitTesting(false) } }
+            } else {
+                let r = RoundedRectangle(cornerRadius: SettingsRoot.radius, style: .continuous)
+                rows.background(pal.sheet, in: r)
+                    .clipShape(r)
+                    .plateStyle(pal, radius: SettingsRoot.radius)
+            }
         }
-        .background(pal.sheet, in: r)
-        .clipShape(r)
-        .plateStyle(pal, radius: SettingsRoot.radius)
         .padding(.horizontal, 16)
     }
 }

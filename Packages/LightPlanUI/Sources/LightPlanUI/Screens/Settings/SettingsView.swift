@@ -144,7 +144,7 @@ public struct SettingsView: View {
                     VStack(spacing: 0) {
                         WebSeg(options: [(t.t("set.modeSimple"), AppMode.simple), (t.t("set.modePro"), .pro), (t.t("set.modeAstro"), .astro)],
                                selection: modeBinding, nodes: ["mode.simple", "mode.pro", "mode.astro"],
-                               sky: app.seesStars && !skyWaiting)
+                               sky: app.seesStars && !skyWaiting, pill: true)
                             .shotNode("mode")
                             .padding(.horizontal, 24)
                             .padding(.top, 12)

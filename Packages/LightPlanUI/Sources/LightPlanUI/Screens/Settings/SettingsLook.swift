@@ -43,6 +43,8 @@ struct WebSeg<V: Hashable>: View {
     var lines = 1
     /// Цвет дорожки: по умолчанию `sheet`; внутри блока на `sheet` (30и.11) — `field`, иначе дорожка не видна.
     var track: Color? = nil
+    /// Круглые концы у дорожки и кнопки (30и.11: переключатель режима на корне настроек).
+    var pill = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -61,7 +63,7 @@ struct WebSeg<V: Hashable>: View {
                         .lineLimit(lines).multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity, maxHeight: lines > 1 ? .infinity : nil)
                         .padding(11)
-                        .background(on ? (pal.dark ? pal.segOn : PlateTokens.blackFill) : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .background(on ? (pal.dark ? pal.segOn : PlateTokens.blackFill) : .clear, in: pill ? AnyShape(Capsule()) : AnyShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -71,7 +73,7 @@ struct WebSeg<V: Hashable>: View {
         // Кнопки одной высоты: переносится одна — вровень с ней встают остальные (`flex` растягивает).
         .fixedSize(horizontal: false, vertical: lines > 1)
         .padding(3)
-        .background(track ?? pal.sheet, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(track ?? pal.sheet, in: pill ? AnyShape(Capsule()) : AnyShape(RoundedRectangle(cornerRadius: 12, style: .continuous)))
         .overlay(alignment: .trailing) {
             if sky {
                 GeometryReader { g in SegSky().frame(width: g.size.width / CGFloat(options.count)).frame(maxWidth: .infinity, alignment: .trailing) }
