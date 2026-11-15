@@ -33,6 +33,12 @@ code{background:var(--card);padding:1px 5px;border-radius:5px;font-size:12.5px}
 .slit{height:1px;background:var(--slit)}
 .ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .alpha{color:var(--amber);font-weight:700}
+
+.w.braunD{--bg:#161616;--ink:#ECECEA;--ink2:#9B9B9B;--amber:#F4B400;--amberT:#F4B400;--slit:rgba(255,255,255,.12);background:var(--bg);color:var(--ink)}
+.w.braunL{--bg:#E4E4E2;--ink:#111;--ink2:#5B5B5B;--amber:#111;--amberT:#111;--slit:rgba(0,0,0,.14);background:var(--bg);color:var(--ink)}
+.tk{position:absolute;inset:0;pointer-events:none}
+.sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-3px;border:1px solid var(--hair);margin-right:4px}
+.pair{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 22px;align-items:flex-start}
 </style></head><body><div class="wrap">
 <h1>30и.13 — большой виджет: было → станет</h1>
 <p class="lead">Эскиз до кода. Слова Алексея 15.11: «Место большого виджета используется не рационально… на дуге всегда и солнце, и луна… строки предстоящих съёмок… рассвет и закат под дугу как в приложении… оценку заката и рассвета… совместить функции двух экранов Свет и Съёмки». Размеры в pt как у настоящей плашки: <b>364 × 382</b> (iPhone Pro Max, внутри полей 332 × 350) и <b>338 × 354</b> (iPhone 14, внутри 306 × 322). Поля 16 pt со всех сторон — как в коде. Сцена та же, что на скриншоте Алексея: Томск, 14 нояб, 20:02, ночь.</p>
@@ -241,4 +247,57 @@ V.forEach(v=>{
  sec.appendChild(budg)});
 const names=[...new Set(sum.map(r=>r.v))];
 document.getElementById('sumtable').innerHTML='<table><tr><th>Вариант</th><th>364 × 382, есть съёмки</th><th>338 × 354, есть съёмки</th><th>364 × 382, съёмок нет</th></tr>'+names.map(n=>{const g=k=>{const r=sum.find(x=>x.v===n&&x.size===k);return r?r.pct.toFixed(0)+' %':'—'};return `<tr><td>${n}</td><td>${g(0)}</td><td>${g(1)}</td><td>${g(2)}</td></tr>`}).join('')+'</table>';
+
+/* ---------- Braun: подложка, риски, окошко ---------- */
+function ticks(W,H,th){const dark=th==='braunD';const minor=dark?'#8C8C8C':'#6E6E6E',hour=dark?'#ECECEA':'#111';let o='';
+ const put=(x,y,hz,major)=>{const L=major?7:3.5,w=major?1.4:1;o+=hz?`<line x1="${x}" x2="${x}" y1="${y}" y2="${y+L}" stroke="${major?hour:minor}" stroke-width="${w}"/>`:`<line y1="${y}" y2="${y}" x1="${x}" x2="${x+L}" stroke="${major?hour:minor}" stroke-width="${w}"/>`};
+ for(let x=22,i=0;x<W-20;x+=9,i++){const m=i%6===0;put(x,3,true,m);put(x,H-3-(m?7:3.5),true,m)}
+ for(let y=22,i=0;y<H-20;y+=9,i++){const m=i%6===0;put(3,y,false,m);put(W-3-(m?7:3.5),y,false,m)}
+ return `<svg class="tk" width="${W}" height="${H}">${o}</svg>`}
+const _frame=frame;
+frame=function(v,size,th,st){const f=_frame(v,size,th,st);if(th.startsWith('braun'))f.el=f.el.replace(/<\/div>$/,ticks(f.W,f.H,th)+'</div>');return f};
+function pillTime(t,th,sz){return th==='braunL'?`<span style="background:#F4B400;color:#111;border-radius:7px;padding:1px 7px;font-weight:600;font-size:${sz}px">${t}</span>`:`<span style="color:#F4B400;font-weight:600;font-size:${sz}px">${t}</span>`}
+function mock(kind,th,braun){ // упрощённые макеты малого и среднего; цвета — из кода
+ const sz=kind==='s'?{W:158,H:158}:{W:338,H:158};
+ const cls=braun?(th==='dark'?'braunD':'braunL'):th;
+ let c;
+ const wasDark=th==='dark';
+ const own=!braun?{bg:wasDark?'#0F0E0C':'#FAF8F3',ink:wasDark?'#EFEAE0':'#17150F',am:wasDark?'#E2A44C':'#9A5F0A'}:null;
+ const st=own?`background:${own.bg};color:${own.ink};--amberT:${own.am};--amber:${own.am};--ink2:${own.ink}a0;`:'';
+ if(kind==='s') c=`<div class="b" style="top:16px"><span class="ink t13 sb" style="opacity:.62">Рассвет</span></div><div class="b" style="top:76px"><span class="ink sb mono" style="font-size:34px;font-weight:300">09:00</span><br><span class="ink t13" style="opacity:.62">Томск</span></div>`;
+ else c=`<div class="b" style="top:16px"><span class="ink t12" style="opacity:.62">Томск</span></div><div class="b" style="top:40px"><span class="row" style="gap:6px"><span style="display:inline-flex;color:var(--amberT)">${ic('sunrise',24)}</span><span class="ink mono" style="font-size:26px;font-weight:600;color:var(--amberT)">09:00</span></span><span class="ink t13" style="opacity:.62">рассвет · серый</span><div style="margin-top:8px;opacity:.55" class="t13 mono">16:05<br>17:10</div></div><div class="b" style="left:180px;top:16px;bottom:16px;border-left:1px solid var(--slit);padding-left:12px"><span class="ink t13" style="opacity:.62">до сб 21 съёмок нет</span></div>`;
+ return `<figure><div class="w ${cls}" style="width:${sz.W}px;height:${sz.H}px;${st}">${c}${braun?ticks(sz.W,sz.H,cls):''}</div></figure>`}
+const hostV=document.getElementById('variants');
+const extra=document.createElement('div');
+extra.innerHTML=`
+<section id="palette"><div class="tag">5 · Подложки и цвета: все виджеты приложения (по коду и по снимку 57)</div>
+<p class="lead">Решение Алексея: «у всех виджетов разный цвет и подложка, надо как у Braun» (дополнение к шагу, 15.11). Ниже — что стоит сейчас. Источники: <code>LightPlanWidget.swift</code> (подложка по виду), <code>WidgetStyle.swift</code>, <code>BraunPalette</code>, <code>ActivityViews.swift</code>.</p>
+<table><tr><th>Виджет</th><th>Подложка</th><th>Текст / акцент</th><th>Что на снимке</th></tr>
+<tr><td>Малый, без съёмки (идёт свет)</td><td><span class="sw" style="background:#0F0E0C"></span>#0F0E0C тёмная · <span class="sw" style="background:#FAF8F3"></span>#FAF8F3 светлая (<code>WidgetBackground</code>)</td><td>#EFEAE0 / #17150F; янтарь #E2A44C / #9A5F0A</td><td>«Рассвет 09:00 Томск»: система осветлила подложку до ≈#222 — теплее и светлее среднего</td></tr>
+<tr><td>Малый, съёмка идёт</td><td><span class="sw" style="background:#161616"></span>#161616 / <span class="sw" style="background:#E4E4E2"></span>#E4E4E2 (Braun, <code>WidgetBackgroundBraun</code> + свой прямоугольник в виде)</td><td>#ECECEA / #111; акцент #F4B400 (в светлой — чёрный на жёлтой таблетке)</td><td>—</td></tr>
+<tr><td>Средний (кроме «пустой» плашки)</td><td>Braun, как выше; <code>.medium where kind != .blank</code></td><td>Braun: основной #ECECEA, приглушённый #9B9B9B, тусклый #6B6B6B</td><td>«Томск · рассвет · серый · до сб 21 съёмок нет»: тёмно-серый #161616, холоднее малого</td></tr>
+<tr><td>Средний, «пустая» плашка (<code>blank</code>)</td><td>как малый без съёмки: #0F0E0C / #FAF8F3</td><td>как малый</td><td>—</td></tr>
+<tr><td><b>Большой</b></td><td>#0F0E0C / #FAF8F3 (ветка <code>default</code>)</td><td>#EFEAE0 / #17150F; янтарь #E2A44C / #9A5F0A; небо купола синее</td><td>скриншот Алексея 14.11: тёмно-коричневая подложка, не как у Braun</td></tr>
+<tr><td>Экран блокировки (круг, прямоугольник, строка)</td><td>прозрачная, красит система</td><td><code>Color.primary</code></td><td>—</td></tr>
+<tr><td>Активность на экране блокировки</td><td>#2E2A26 с прозрачностью 0,90 поверх системной</td><td>окошко и флажок Braun (тёмные); янтарь #E2A44C</td><td>снимок 58: тёмная, с рисками</td></tr>
+<tr><td>Dynamic Island</td><td>чёрный системный</td><td>знак латунный #E2A44C, часы белые</td><td>снимок 57 и 58</td></tr></table>
+<p><b>Итог:</b> четыре разные подложки: тёплая #0F0E0C/#FAF8F3 (малый без съёмки, большой), холодная Braun #161616/#E4E4E2 (малый в съёмке, средний), #2E2A26 (активность), прозрачная (замок). Три разных «серых» текста и два «янтарных» (#E2A44C и #F4B400). Ловушка из кода: <code>containerBackground</code> на «Домой» система осветляет (26.10: #161616 стал #2E2E2E), поэтому Braun рисует подложку <b>внутри вида</b>, а не через <code>containerBackground</code> — общую подложку нужно делать так же.</p>
+</section>
+<section id="braun"><div class="tag">6 · «Было → станет» в подложке и палитре Braun</div>
+<p class="lead">Тёмная — <code>braunDark</code> (#161616, текст #ECECEA, акцент #F4B400), светлая — «Braun белый» (#E4E4E2, текст #111, акцент чёрный; жёлтый #F4B400 только в таблетке). Риски по периметру — как у Braun: 9 pt шаг, каждая шестая длинная. Малый и средний — макеты в масштабе пт, показывают только подложку, цвета и риски (разметку содержимого их шагов 30б.2в я не трогаю). Правило для всех: подложку рисует сам вид, на одном прямоугольнике, без <code>containerBackground</code>.</p>
+<p><b>Малый, без съёмки</b>: было (тёплая) → станет (Braun)</p><div class="pair" id="m-s"></div>
+<p><b>Средний</b>: было → станет</p><div class="pair" id="m-m"></div>
+<p><b>Большой — вариант А, Б, В уже в Braun</b> (364 × 382 и 338 × 354, обе темы). Состав и цифры — как в разделах выше; поменялись подложка, акцент и появились риски: оранжевый «через N» стал жёлтым (тёмная) или чёрным (светлая), дуга — жёлто-серо-жёлтая в тёмной и чёрно-серо-чёрная в светлой.</p><div id="bigb"></div>
+<div class="facts"><div class="fact pro"><b>Плюс единой подложки</b>Один цвет, одни риски и одна пара текстовых серых на всех домашних видах: виджеты рядом выглядят одной семьёй; один набор констант вместо трёх.</div><div class="fact con"><b>Минус</b>Купол «Света» синий и остаётся единственным цветным пятном; в светлой теме акцент чёрный — «через N» отличается от серого только насыщенностью, а не цветом (как у Braun в светлой).</div></div>
+</section>
+<section id="island"><div class="tag">7 · «0:00» в Dynamic Island (снимок 57, 18:41)</div>
+<p><b>Что это.</b> Правая часть свернутого острова — <code>ActivityIslandTimer</code>: системные часы <code>Text(timerInterval:)</code> «до следующей точки». Когда момент прошёл, система показывает «0:00» и больше ничего не пересчитывает. Знак слева — знак той же точки (на снимке — колпак «банкет»).</p>
+<p><b>Откуда.</b> Не ошибка отрисовки, а известное ограничение, записанное в <code>CLAUDE.md</code> («Activity screen 30б.3»): без платных push обновляет плашку только приложение; пока оно закрыто, точка, шагнувшая вперёд, остаётся подсвеченной, а часы дошли до нуля. Плашка при этом «живая»: <code>staleDate: nil</code> (<code>ActivityHost.swift:53,67</code>), поэтому система её не гасит и не помечает устаревшей. На снимке 58 (18:06, приложение открыто) остров показывает 13:47 — работает.</p>
+<p><b>Очевидная ошибка?</b> Нет, это цена решения «без push» — не правил. Что можно сделать отдельным шагом: выставить <code>staleDate</code> на момент точки и по <code>context.isStale</code> рисовать вместо «0:00» прочерк или «открой»; цена — до 8–10 строк в <code>ShootActivity.swift</code>.</p>
+</section>`;
+hostV.appendChild(extra);
+for(const th of ['dark','light']){document.getElementById('m-s').insertAdjacentHTML('beforeend',mock('s',th,false)+mock('s',th,true));document.getElementById('m-m').insertAdjacentHTML('beforeend',mock('m',th,false)+mock('m',th,true))}
+const bigb=document.getElementById('bigb');
+[A,B,C].forEach(v=>{const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${v.title}</b></div>`;bigb.appendChild(row);
+ [[0,'braunD'],[0,'braunL'],[1,'braunD']].forEach(([si,th])=>{const f=frame(v,SIZES[si],th,'full');const fig=document.createElement('figure');fig.innerHTML=f.el+`<figcaption>${SIZES[si].W} × ${SIZES[si].H} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption>`;row.appendChild(fig)})});
 </script></body></html>
