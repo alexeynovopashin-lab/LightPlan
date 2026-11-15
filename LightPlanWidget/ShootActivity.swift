@@ -19,7 +19,7 @@ struct ShootActivityWidget: Widget {
                     ActivityGlyph(frame: frame, size: 20).foregroundStyle(WidgetStyle.brass)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    ActivityIslandTimer(frame: frame)
+                    ActivityIslandTimer(frame: frame, stale: context.isStale)
                 }
                 DynamicIslandExpandedRegion(.center) {
                     Text(frame.status).font(.system(size: 14)).lineLimit(1)
@@ -30,7 +30,7 @@ struct ShootActivityWidget: Widget {
             } compactLeading: {
                 ActivityGlyph(frame: frame).foregroundStyle(WidgetStyle.brass)
             } compactTrailing: {
-                ActivityIslandTimer(frame: frame)
+                ActivityIslandTimer(frame: frame, stale: context.isStale)
             } minimal: {
                 ActivityGlyph(frame: frame, size: 14).foregroundStyle(WidgetStyle.brass)
             }
