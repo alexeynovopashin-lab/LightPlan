@@ -24,15 +24,62 @@ enum ActivityMetrics {
 
 /// Часы до `to`, идущие сами. Один `now` на сборку, и цель проверяется: прошедшая — перевёрнутый диапазон, а он валит расширение
 /// при следующей перерисовке (разбор GPT спайка 30б).
+///
+/// Системный `Text(timerInterval:)` занимает всю ширину, что ему дали, и прижимает цифры влево, а не к краю рамки (30и.9: часы «22:16»
+/// стояли на 38 pt левее «Далее: Торт»), поэтому где цифрам нужен край или середина, `align` ставят явно.
 struct ActivityTimer: View {
     let to: Date
+    var align: TextAlignment?
+
+    /// С часами («1:22:16») — пока до цели час и больше; дальше «59:59». Формат системные часы выбирают раз, на сборке.
+    static func showsHours(remaining: TimeInterval) -> Bool { remaining >= 3600 }
+
+    /// Та же строка, что рисует система, статично (стоп-кадр, мерка ширины окошка).
+    static func text(remaining: TimeInterval) -> String {
+        let s = Int(max(0, remaining).rounded(.down))
+        return showsHours(remaining: remaining) ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60)
+    }
+
     var body: some View {
         let now = Date()
         if to > now {
-            Text(timerInterval: now...to, countsDown: true, showsHours: to.timeIntervalSince(now) >= 3600).monospacedDigit()
+            Text(timerInterval: now...to, countsDown: true, showsHours: Self.showsHours(remaining: to.timeIntervalSince(now)))
+                .monospacedDigit().multilineTextAlignment(align ?? .leading)
         } else {
             Text("0:00").monospacedDigit()
         }
+    }
+}
+
+/// Окошко отсчёта Braun на плашке (30и.9, слова Алексея 14.11: «мы же делали в стиле браун»): те же цвета и тело, что окошко «осталось свадьбы»
+/// в виджете (`BraunPalette(dark: true).win`, `BraunWindowFace`), только без красного флажка — его Алексей на плашке не хочет. Правый край окошка —
+/// правый край плашки, на нём же стоит «Далее: …» строкой ниже. Ширина — по цифрам (как у виджета: ширина текста + поля), потому что
+/// системные часы сами ширины не знают. 16 pt вместо 13: плашка крупнее виджета, окошко выше в тех же долях (22 против 18).
+struct ActivityCountdownWindow: View {
+    let to: Date
+    /// Цвет цифр: по умолчанию — белый окошка Braun.
+    var color: Color?
+    @Environment(\.activityStill) private var still
+
+    static let fontSize: CGFloat = 16, height: CGFloat = 22, pad: CGFloat = 9
+
+    var body: some View {
+        let pal = BraunPalette(dark: true)
+        let remaining = max(0, to.timeIntervalSince(still ?? Date()))
+        let text = ActivityTimer.text(remaining: remaining)
+        let width = ceil(BraunText.width(text, size: Double(Self.fontSize), semibold: true, mono: true)) + 2 * Self.pad
+        Group {
+            if still != nil {
+                // Стоп-кадр (`ImageRenderer`): системные часы в нём не рисуются.
+                Text(text).monospacedDigit()
+            } else {
+                // Без `.fixedSize()` и `.lineLimit`: с ними живой таймер на телефоне обрывает всё, что нарисовано после него (замер 26.10).
+                ActivityTimer(to: to, align: .center)
+            }
+        }
+        .font(.system(size: Self.fontSize, weight: .semibold)).foregroundStyle(color ?? pal.text)
+        .frame(width: width, height: Self.height)
+        .background(BraunWindowFace(pal: pal))
     }
 }
 
@@ -211,12 +258,10 @@ struct ActivityLockView: View {
             if compact, let exit = frame.exit {
                 // Без второй строки подпись часов стоит перед ними.
                 Text(exit.label).font(.system(size: 12.5)).foregroundStyle(st.ink2).lineLimit(1).minimumScaleFactor(0.7)
-                ActivityTimer(to: exit.date).font(.system(size: 15, weight: .semibold)).foregroundStyle(st.amber)
+                ActivityTimer(to: exit.date, align: .trailing).font(.system(size: 15, weight: .semibold)).foregroundStyle(st.amber)
                     .frame(width: 70, alignment: .trailing)
             } else if let main {
-                ActivityTimer(to: main.date).font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(inStudio ? st.amber : st.ink)
-                    .frame(width: 84, alignment: .trailing)
+                ActivityCountdownWindow(to: main.date, color: inStudio ? st.amber : nil)
             }
         }
     }
