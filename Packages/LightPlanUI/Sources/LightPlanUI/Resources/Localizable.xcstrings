@@ -57663,7 +57663,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Añada su nombre"
+            "value" : "Añade tu nombre"
           }
         },
         "ja" : {
@@ -57698,7 +57698,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Su nombre"
+            "value" : "Tu nombre"
           }
         },
         "ja" : {
@@ -57710,7 +57710,7 @@
         "zh" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您的姓名"
+            "value" : "你的姓名"
           }
         }
       }
