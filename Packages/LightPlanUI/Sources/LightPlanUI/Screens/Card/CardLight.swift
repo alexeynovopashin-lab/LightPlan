@@ -100,7 +100,7 @@ struct CardWeatherBlock: View {
         let lightRow = cols.contains { $0.light != nil }
         let clock = PlannerFacts(app: app, dark: pal.dark)
         let even = cols.count <= 5
-        return HStack(alignment: .top, spacing: 0) {
+        let spread = HStack(alignment: .top, spacing: 0) {
             ForEach(Array(cols.enumerated()), id: \.offset) { i, c in
                 if even || i > 0 { Spacer(minLength: even ? 0 : 10) }
                 column(c, lightRow: lightRow, clock: clock)
@@ -108,7 +108,18 @@ struct CardWeatherBlock: View {
             if even { Spacer(minLength: 0) }
         }
         .frame(maxWidth: .infinity)
-        .shotNode("card.wxCols", text: "\(cols.count)")
+        // Длинная съёмка (24 часа — 13 колонок) не помещается в карточку:
+        // колонки остаются своей ширины, ряд листается вбок внутри блока.
+        let scrolled = ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(Array(cols.enumerated()), id: \.offset) { _, c in
+                    column(c, lightRow: lightRow, clock: clock)
+                }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        return ViewThatFits(in: .horizontal) { spread; scrolled }
+            .shotNode("card.wxCols", text: "\(cols.count)")
     }
 
     /// Колонка: время 10,5, знак неба 20 (солнце `--brass-soft`, дождь
@@ -117,6 +128,7 @@ struct CardWeatherBlock: View {
     private func column(_ c: WxColumn, lightRow: Bool, clock: PlannerFacts) -> some View {
         VStack(spacing: 0) {
             Text(clock.fmt(Double(c.minute))).font(webFont(10.5)).monospacedDigit().foregroundStyle(pal.ink4)
+                .lineLimit(1).fixedSize()
             Group {
                 if let sky = c.sky {
                     Icon(sky, size: 20, line: 1.4)
@@ -126,8 +138,8 @@ struct CardWeatherBlock: View {
                 }
             }
             .frame(width: 20, height: 20).padding(.vertical, 4)
-            Text(c.temp).font(webFont(11.5)).foregroundStyle(pal.ink)
-            Text(c.cloud).font(webFont(10)).foregroundStyle(pal.ink7)
+            Text(c.temp).font(webFont(11.5)).foregroundStyle(pal.ink).lineLimit(1).fixedSize()
+            Text(c.cloud).font(webFont(10)).foregroundStyle(pal.ink7).lineLimit(1).fixedSize()
             if lightRow {
                 Group {
                     if let l = c.light { Icon(l, size: 16, line: 1.5).foregroundStyle(c.blue ? pal.blue : pal.brass) }
