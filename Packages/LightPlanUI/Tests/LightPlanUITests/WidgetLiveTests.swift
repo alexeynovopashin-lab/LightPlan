@@ -211,6 +211,32 @@ struct WidgetLiveTests {
         #expect(try png(with, top: true) == png(without, top: true), "верх (шапка и купол) от съёмок не зависит")
     }
 
+    /// Алексей 16.11 проверял прочерк острова и сломал свадьбу нарочно: начало 00:00, конец 00:35, а маршрут с утра — точки за окном съёмки.
+    /// Braun пустел: текущей точки нет — круг без точек, без знака и цифр, один барабан. Теперь часы считают всю съёмку (знак жанра),
+    /// а если первая точка начнётся до конца съёмки — ждут её (обычное «съёмка с 11:30, первая точка в 12:00»).
+    @Test func braunIsNotBlankWhenNoPointHasStartedYet() throws {
+        var broken = wedding
+        broken.start = ms(tsk(0)); broken.end = ms(tsk(0, 35))
+        let b = try #require(DayPlan(frame(at: tsk(0, 10), shoots: [broken])))
+        #expect(b.current == nil && b.waitingStop == nil, "маршрут целиком после конца съёмки")
+        #expect(abs(b.dialLeft - 25 * 60) < 0.01, "часы считают остаток съёмки: 00:10 → 00:35")
+        #expect(b.dialSign == "wedding" && b.dialSignIsGenre, "в центре знак жанра")
+
+        var early = wedding
+        early.start = ms(tsk(11, 30))
+        let e = try #require(DayPlan(frame(at: tsk(11, 40), shoots: [early])))
+        #expect(e.current == nil && e.waitingStop?.name == "Пара в студии", "съёмка идёт, первая точка в 12:00 — часы ждут её")
+        #expect(abs(e.dialLeft - 20 * 60) < 0.01 && !e.dialSignIsGenre)
+
+        let n = try #require(DayPlan(now))
+        #expect(n.waitingStop == nil && n.dialLeft == n.pointLeft, "точка идёт — как было")
+
+        // Вид рисуется и в малом, и в среднем.
+        for (f, size) in [(frame(at: tsk(0, 10), shoots: [broken]), CGSize(width: 364, height: 170)), (frame(at: tsk(0, 10), shoots: [broken]), CGSize(width: 170, height: 170))] {
+            #expect(ImageRenderer(content: BraunWidgetView(frame: f, medium: size.width > 200).frame(width: size.width, height: size.height)).uiImage != nil)
+        }
+    }
+
     @Test func aShootWithoutStopsHasNoRingForThePointButDoesNotCrash() throws {
         let bare = WidgetFeed.Shoot(id: "b", start: ms(tsk(12)), end: ms(tsk(15)), title: "Портрет", place: "Парк")
         let f = frame(at: tsk(13), shoots: [bare])

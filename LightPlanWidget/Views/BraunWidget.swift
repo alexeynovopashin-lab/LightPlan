@@ -306,8 +306,9 @@ struct BraunContent: View {
                 WidgetIcon(name: plan.shoot.genre, size: 20, line: 1.5, genre: true).foregroundStyle(pal.amber)
                     .frame(width: 20, height: 20).offset(x: L.cx - 10, y: L.cy - 25)
                 countdown.offset(x: L.cx - BraunDial.dotRadius(diameter: L.diameter), y: L.cy - 1)
-            } else if plan.current != nil {
-                WidgetIcon(name: plan.current?.sign, size: 20, line: 1.5).foregroundStyle(pal.amber)
+            } else {
+                // Точка идёт — её знак; съёмка идёт, а первая точка впереди — знак этой точки; маршрут за окном съёмки — знак жанра (`DayPlan.dialSign`).
+                WidgetIcon(name: plan.dialSign, size: 20, line: 1.5, genre: plan.dialSignIsGenre).foregroundStyle(pal.amber)
                     .frame(width: 20, height: 20).offset(x: L.cx - 10, y: L.cy - 25)
                 countdown.offset(x: L.cx - BraunDial.dotRadius(diameter: L.diameter), y: L.cy - 1)
             }
@@ -394,7 +395,7 @@ struct BraunContent: View {
         // Б: горят `round(60 × осталось / вся съёмка)` точек; иначе — минуты точки, как в А.
         let minutes = layout.bare
             ? BraunIdle.wholeShootLit(left: plan.shootLeft, total: plan.shoot.endDate.timeIntervalSince(plan.shoot.startDate))
-            : Int(((plan.pointLeft ?? 0) / 60).rounded(.up))
+            : Int((plan.dialLeft / 60).rounded(.up))
         return ZStack {
             Circle().fill(pal.dial)
             Circle().strokeBorder(pal.dialEdge, lineWidth: 0.5)
@@ -407,7 +408,7 @@ struct BraunContent: View {
     /// «12 мин» / «1 ч 42 мин»; ноль приглушён.
     private var countdown: some View {
         let d = layout.diameter
-        let minutes = Int(((layout.bare ? plan.shootLeft : (plan.pointLeft ?? 0)) / 60).rounded(.up))
+        let minutes = Int(((layout.bare ? plan.shootLeft : plan.dialLeft) / 60).rounded(.up))
         let parts = BraunDial.countdown(minutes: minutes)
         let sizes = layout.bare ? BraunIdle.countdownSizes(diameter: d, parts: parts) : (BraunDial.numberSize(diameter: d), BraunDial.unitSize(diameter: d))
         return HStack(alignment: .firstTextBaseline, spacing: 4) {
