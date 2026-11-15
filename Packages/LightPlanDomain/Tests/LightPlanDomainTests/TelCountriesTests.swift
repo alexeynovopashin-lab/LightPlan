@@ -133,3 +133,35 @@ import LightPlanDomain
         #expect(fit < 5000 && gate < 1000)
     }
 }
+
+/// 30и.12: «Ваш номер», подсказка iOS кладёт «8 (9xx) …» при выбранном +7 — восьмёрка не остаётся в поле.
+/// Номера вымышленные (диапазон 900).
+struct TrunkPrefixTests {
+    private let ru = TelCountry.of("RU")!
+
+    @Test func wholeValueDropsTheTrunkOrThePlusSeven() {
+        for s in ["8 (900) 000-12-34", "89000001234", "+7 900 000-12-34", "7 900 000-12-34"] {
+            #expect(TelFormat.natIn(s, country: ru).national == "9000001234", "\(s)")
+        }
+    }
+
+    /// iOS отдаёт номер по цифре и «+7» теряет: поле повторяет то, что показывает, плюс новая цифра.
+    @Test func digitByDigitTheLeadingEightIsGoneAtOnce() {
+        var stored = ""
+        var shownAfterFirst = "?"
+        for (i, ch) in "89000001234".enumerated() {
+            let r = TelFormat.natIn(TelFormat.national(of: stored, country: ru) + String(ch), country: ru)
+            stored = TelFormat.join(national: r.national, country: r.country ?? ru)
+            if i == 0 { shownAfterFirst = TelFormat.national(of: stored, country: ru) }
+            #expect(!TelFormat.national(of: stored, country: ru).hasPrefix("8"), "шаг \(i)")
+        }
+        #expect(shownAfterFirst == "")
+        #expect(TelFormat.national(of: stored, country: ru) == "900 000-12-34")
+    }
+
+    @Test func zeroTrunkCountryDropsItToo() {
+        let gb = TelCountry.of("GB")!
+        #expect(TelFormat.natIn("0", country: gb).national == "")
+        #expect(TelFormat.natIn("07911123456", country: gb).national == "7911123456")
+    }
+}
