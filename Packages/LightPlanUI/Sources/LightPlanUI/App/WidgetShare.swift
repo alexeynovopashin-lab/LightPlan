@@ -79,7 +79,8 @@ extension AppModel {
         return (0..<WidgetFeed.ratingDays).compactMap { off in
             let day = today.adding(days: off)
             guard let w = light.weather.day(for: day), w.real else { return nil }
-            return WidgetFeed.Rating(day: WidgetFeed.Rating.key(day), score: w.sunset, quality: w.quality, sunrise: w.sunrise)
+            return WidgetFeed.Rating(day: WidgetFeed.Rating.key(day), score: w.sunset, quality: w.quality, sunrise: w.sunrise,
+                                     clouds: w.layers.map { Int($0.cloud.rounded()) })
         }
     }
 
@@ -116,6 +117,14 @@ extension AppModel {
         for (k, key) in ["beautiful": "sunsetS.beautiful", "color": "sunsetS.color", "calm": "sunsetS.calm", "none": "sunsetS.none"] { words.table["score.\(k)"] = lex.t(key) }
         for code in LightCode.allCases { words.table["phase.\(code.rawValue)"] = lex.t(LightTelemetry.phaseKey(code, terms: false)) }
         words.table["in"] = lex.t("widget.in")
+        // 30и.16, «свет сейчас» большого: слово прибора экрана «Свет» (`sun.<code>.rec`, «Небо закрыто»), подпись отсчёта (`next.*`) и шаблоны
+        // короткой длительности (`durS.*`, переменные оставлены в шаблоне — подставляет виджет).
+        for code in LightCode.allCases { words.table["rec.\(code.rawValue)"] = lex.t("sun.\(code.rawValue).rec") }
+        words.table["rec.overcast"] = lex.t("sun.overcast.rec")
+        for key in BigWidget.nextKeys { words.table["next.\(key.rawValue)"] = lex.t("next.\(key.rawValue)") }
+        words.table["durS.minutes"] = lex.t("durS.minutes", ["m": "{m}"])
+        words.table["durS.hours"] = lex.t("durS.hours", ["h": "{h}"])
+        words.table["durS.hoursMins"] = lex.t("durS.hoursMins", ["h": "{h}", "m": "{m}"])
         // «через 3 дня»: падеж зависит от числа, у расширения склонений нет — фразы на каждое число готовит приложение.
         for n in 2..<WidgetFrame.weekDays { words.table["inDays.\(n)"] = lex.t("when.inDays", ["n": lex.count("unit.day", n)]) }
         return words

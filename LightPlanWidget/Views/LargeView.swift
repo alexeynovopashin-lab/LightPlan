@@ -46,6 +46,8 @@ struct LargeIdleView: View {
 
     private var iw: CGFloat { size.width - 2 * Self.pad }
     private var zone: TimeZone { frame.zone }
+    /// Свет сейчас (30и.16): оценка «Условия» в шапке и отсчёт «до золотого часа» на куполе — правила экрана «Свет» (`BigWidget.lightNow`).
+    private var now: BigWidget.LightNow? { BigWidget.lightNow(frame) }
 
     private func dateLine() -> String {
         let f = DateFormatter()
@@ -58,15 +60,17 @@ struct LargeIdleView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center, spacing: 6) {
                 Text("\(dateLine()) · \(frame.place.name.isEmpty ? "Light Plan" : frame.place.name)")
-                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.8)
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
+                // «Условия» экрана «Свет»: деления прибора и слово («▂▃▅▇ Мягкий свет»), 30и.16.
+                if let now { LightNowCondition(now: now, pal: pal) }
                 if alpha { AlphaBadge() }
             }
             .frame(height: 16)
             Spacer().frame(height: 4)
-            LargeDome(frame: frame, pal: pal, st: st, iw: iw, scale: 1)
+            LargeDome(frame: frame, pal: pal, st: st, iw: iw, scale: 1, lightNow: now)
             Spacer().frame(height: 2)
             LargeFeet(frame: frame, pal: pal, iw: iw, inset: 18 * iw / DomeFit.canvasWidth).frame(height: 38)
             Spacer().frame(height: 8)
@@ -87,6 +91,8 @@ struct LargeDome: View {
     let st: WidgetStyle
     let iw: CGFloat
     var scale: CGFloat = 1
+    /// Вид без идущей съёмки: под словом света — отсчёт «до золотого часа 1 ч 13 м» (30и.16). `nil` — отсчёта нет (вид фотосессии).
+    var lightNow: BigWidget.LightNow? = nil
 
     static func height(iw: CGFloat, scale: CGFloat) -> CGFloat { (DomeFit.bottomUnits - DomeFit.topUnits) * (iw / DomeFit.canvasWidth) * scale }
 
@@ -95,7 +101,9 @@ struct LargeDome: View {
         if let d = frame.day, let rise = d.sunrise, let set = d.sunset {
             let sky = BigWidget.sky(frame)
             SunArc(rise: rise, set: set, now: frame.now, clock: frame.clock(frame.now, in: frame.zone),
-                   word: sky.map { BigWidget.phaseWord($0.code, frame.words) } ?? frame.words[.sunrise].uppercased(), st: st, skyNow: sky)
+                   word: sky.map { BigWidget.phaseWord($0.code, frame.words) } ?? frame.words[.sunrise].uppercased(), st: st, skyNow: sky,
+                   skyKind: SmallSky.look(frame).sky,
+                   countdown: lightNow.map { SunArc.Countdown(label: $0.nextLabel.uppercased(), value: $0.nextValue) })
                 .frame(width: iw, height: h)
         } else {
             // Полярные сутки/ночь: купола нет, слово места.
@@ -205,16 +213,35 @@ struct SunArc: View {
     let st: WidgetStyle
     /// 30и.13: небо момента (Луна, слово света, ночная дорожка Солнца). `nil` — как было (тесты купола).
     var skyNow: BigWidget.Sky? = nil
+    /// 30и.16: небо по правилу малого виджета (`SmallSky.look`, цвета `SkyInk.sky`) — днём голубое, у заката тёплое, ночью тёмное, в обеих темах
+    /// (Алексей 16.11: «цвет неба как у малого»; до этого тёмная плашка рисовала тёмно-синий купол и в 11:30). `nil` — прежнее небо (тесты купола).
+    var skyKind: SmallSky.Sky? = nil
+    /// Отсчёт под словом света: «ДО ЗОЛОТОГО ЧАСА» и «1 ч 13 м».
+    struct Countdown: Equatable { var label: String; var value: String? }
+    var countdown: Countdown? = nil
     private var night: Bool { (skyNow?.sunElevation ?? 1) < -0.833 }
-    /// Ночью небо тёмно-синее в обеих темах (как «Свет»: `DomeSky.nightLight`), слова поверх белые.
-    private var onSky: Color { (st.dark || night) ? Color(red: 0xEC / 255, green: 0xEC / 255, blue: 0xEA / 255) : Color.black }
+    /// Слова на небе. Дневное небо светлое снизу (#BBD9F6) — на нём тёмные чернила в обеих темах; закатное и ночное — светлые.
+    private var onSky: Color {
+        if let skyKind { return skyKind == .day ? Self.dayInk : Self.lightInk }
+        return (st.dark || night) ? Self.lightInk : Color.black
+    }
+    static let lightInk = Color(red: 0xEC / 255, green: 0xEC / 255, blue: 0xEA / 255)
+    static let dayInk = Color(red: 0x11 / 255, green: 0x1A / 255, blue: 0x2C / 255)
 
-    /// Небо: тёмная плашка — синее из эскиза (#101B33 → #2A3550), светлая — дневное небо палитры Д (#86BAEC → #DCEBF9).
+    /// Небо: по `skyKind` — цвета малого; без него — прежнее: тёмная плашка синее из эскиза (#101B33 → #2A3550), светлая — дневное палитры Д.
     private var sky: Gradient {
-        (st.dark || night) ? Gradient(colors: [Color(red: 0x10 / 255, green: 0x1B / 255, blue: 0x33 / 255), Color(red: 0x2A / 255, green: 0x35 / 255, blue: 0x50 / 255)])
+        if let skyKind {
+            let c = SkyInk.sky(skyKind)
+            return Gradient(colors: [SkyInk.c(c.0), SkyInk.c(c.1)])
+        }
+        return (st.dark || night) ? Gradient(colors: [Color(red: 0x10 / 255, green: 0x1B / 255, blue: 0x33 / 255), Color(red: 0x2A / 255, green: 0x35 / 255, blue: 0x50 / 255)])
                 : Gradient(colors: [Color(red: 0x86 / 255, green: 0xBA / 255, blue: 0xEC / 255), Color(red: 0xDC / 255, green: 0xEB / 255, blue: 0xF9 / 255)])
     }
+    /// Тёплое закатное небо светлеет к горизонту (#E58F66): белым словам там нужна мягкая тень, чтобы не таять.
+    private var textShadow: Color { skyKind == .twilight ? .black.opacity(0.35) : .clear }
     private var grey: Color { Color(red: 0x8A / 255, green: 0x8A / 255, blue: 0x92 / 255) }
+    /// Центры строк над горизонтом в долях высоты купола: часы и слово выше (0,62), отсчёт ниже (0,19) — между ними 10–12 pt.
+    static let clockAt: CGFloat = 0.62, countdownAt: CGFloat = 0.19
 
     var body: some View {
         GeometryReader { g in
@@ -222,12 +249,27 @@ struct SunArc: View {
             ZStack {
                 Canvas { ctx, size in draw(ctx, fit: fit, size: size) }
                 VStack(spacing: 2 * fit.scale) {
-                    Text(clock).font(.system(size: 40 * fit.scale, weight: .ultraLight)).monospacedDigit().foregroundStyle(onSky)
+                    Text(clock).font(.system(size: (countdown == nil ? 40 : 36) * fit.scale, weight: .ultraLight)).monospacedDigit().foregroundStyle(onSky)
                     Text(word).font(.system(size: 13 * fit.scale, weight: .semibold)).tracking(1.6).lineLimit(1).minimumScaleFactor(0.6)
                         .foregroundStyle(onSky)
                 }
+                .shadow(color: textShadow, radius: 2)
                 .frame(width: fit.rx * 1.1)
-                .position(x: fit.centerX, y: fit.horizonY - fit.ry * 0.40)
+                .position(x: fit.centerX, y: fit.horizonY - fit.ry * (countdown == nil ? 0.40 : Self.clockAt))
+                if let countdown {
+                    // Как под куполом «Света»: подпись прописными с разрядкой и время тонким («ДО ЗОЛОТОГО ЧАСА» / «1 ч 13 м»).
+                    VStack(spacing: 1 * fit.scale) {
+                        Text(countdown.label).font(.system(size: 9.5 * fit.scale, weight: .semibold)).tracking(1.2).lineLimit(1).minimumScaleFactor(0.6)
+                            .foregroundStyle(onSky.opacity(0.85))
+                        if let value = countdown.value {
+                            Text(value).font(.system(size: 19 * fit.scale, weight: .light)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                                .foregroundStyle(onSky)
+                        }
+                    }
+                    .shadow(color: textShadow, radius: 2)
+                    .frame(width: fit.rx * 1.3)
+                    .position(x: fit.centerX, y: fit.horizonY - fit.ry * Self.countdownAt)
+                }
             }
         }
     }
@@ -286,6 +328,39 @@ struct SunArc: View {
                 l.clip(to: Path(ellipseIn: CGRect(x: q.x - r, y: q.y - r, width: 2 * r, height: 2 * r)))
                 l.fill(Path(ellipseIn: CGRect(x: q.x - r + d, y: q.y - r, width: 2 * r, height: 2 * r)), with: .color(Color(red: 0x16 / 255, green: 0x22 / 255, blue: 0x3F / 255).opacity(a)))
             }
+        }
+    }
+}
+
+// MARK: - Свет сейчас: «Условия» в шапке (30и.16)
+
+/// Деления прибора и слово экрана «Свет» («▂▃▅▇ Мягкий свет»; ночью — звезда и «Звёздная ночь»). Цвет по тону, как у «Условий»:
+/// отличный свет — янтарь, хороший — чернила, ровный и закрытое небо — приглушённые.
+struct LightNowCondition: View {
+    let now: BigWidget.LightNow
+    let pal: BraunPalette
+
+    private var tone: Color {
+        switch now.tone {
+        case .excellent: pal.amber
+        case .good: pal.text
+        case .neutral, .stars: pal.muted
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 5) {
+            if let level = now.level {
+                HStack(alignment: .bottom, spacing: 1.6) {
+                    ForEach(0..<5, id: \.self) { i in
+                        RoundedRectangle(cornerRadius: 0.8).fill(i < level ? tone : pal.ink(0.18)).frame(width: 2.6, height: 5 + CGFloat(i) * 1.8)
+                    }
+                }
+                .frame(height: 13, alignment: .bottom)
+            } else {
+                StarShape().fill(tone).frame(width: 10, height: 10)
+            }
+            Text(now.text).font(.system(size: 12, weight: .semibold)).foregroundStyle(tone).lineLimit(1).fixedSize()
         }
     }
 }

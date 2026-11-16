@@ -131,12 +131,16 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         public var sunrise: Int?
         /// Код `DayQuality`. Строкой: незнакомый код из будущего файла не должен ронять весь файл.
         public var quality: String
+        /// Облачность в час заката, % (30и.16: строки закатов большого виджета — «полоски оценок и облачность», Алексей 16.11). Из того же часа
+        /// прогноза, что и балл (`WeatherDay.layers`); `nil` — часа заката в прогнозе нет или файл старого вида: процент не выдумывается.
+        public var clouds: Int?
 
-        public init(day: String, score: Int?, quality: DayQuality, sunrise: Int? = nil) {
+        public init(day: String, score: Int?, quality: DayQuality, sunrise: Int? = nil, clouds: Int? = nil) {
             self.day = day
             self.score = score
             self.sunrise = sunrise
             self.quality = quality.rawValue
+            self.clouds = clouds
         }
 
         public var category: DayQuality? { DayQuality(rawValue: quality) }

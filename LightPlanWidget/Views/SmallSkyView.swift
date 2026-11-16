@@ -37,6 +37,8 @@ struct SmallSkyCanvas: View {
     static let sunOrbit: CGFloat = 68, sunR: CGFloat = 9
     static let moonOrbit: CGFloat = 50, moonR: CGFloat = 24
     static let window = CGRect(x: 14, y: 114, width: 142, height: 42)
+    /// Знак заката в окошке пустой недели (30и.16: было 14).
+    static let sunsetSign: CGFloat = 21
 
     private var look: SmallSky.Look { SmallSky.look(frame) }
     private var gold: Color { SkyInk.c(0xF4B400) }
@@ -55,13 +57,7 @@ struct SmallSkyCanvas: View {
 
     // MARK: Небо
 
-    private static func skyColors(_ s: SmallSky.Sky) -> (UInt32, UInt32) {
-        switch s {
-        case .day: (0x4F8FD8, 0xBBD9F6)
-        case .twilight: (0x2B3664, 0xE58F66)
-        case .night: (0x0F1C50, 0x22408C)
-        }
-    }
+    private static func skyColors(_ s: SmallSky.Sky) -> (UInt32, UInt32) { SkyInk.sky(s) }
 
     /// Звёзды: доля ширины, доля высоты неба, крупная ли (золотая звезда) — рисунок постоянный.
     static let stars: [(Double, Double, Bool)] = [(0.06, 0.46, true), (0.2, 0.66, false), (0.29, 0.2, false), (0.36, 0.47, true), (0.47, 0.08, false),
@@ -202,7 +198,9 @@ struct SmallSkyCanvas: View {
             }
         case .sunsets(let cells, let best):
             ZStack(alignment: .topLeading) {
-                WidgetIcon(name: BraunSign.light(.sunset), size: 14, line: 1.5).foregroundStyle(pal.muted).position(x: 14, y: 21)
+                // Знак заката — крупный и золотой, как Солнце в окне (30и.16, Алексей 16.11: «солнышко надо сделать крупнее и цветным»): 14 → 21 pt,
+                // серые чернила → золото Солнца; занимает клетку до первой черты (x 28) с полями 3,5.
+                WidgetIcon(name: BraunSign.light(.sunset), size: Self.sunsetSign, line: 1.7).foregroundStyle(gold).position(x: 14, y: 21)
                 ForEach([28.0, 66, 104], id: \.self) { divider(x: $0) }
                 ForEach(cells.indices, id: \.self) { i in
                     let cx = 47.0 + 38 * Double(i), c = cells[i], good = (c.score ?? 0) >= 75
@@ -308,5 +306,15 @@ struct MoonPhaseDot: View {
 enum SkyInk {
     static func c(_ v: UInt32) -> Color {
         Color(.sRGB, red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255, opacity: 1)
+    }
+
+    /// Небо виджетов сверху вниз — одно на малый «окно неба» и купол большого (30и.16, Алексей 16.11: «цвет неба как у малого»). Какое небо —
+    /// решает высота Солнца (`SmallSky.look`: выше +6° день, −6…+6° закатное, ниже ночь), тема плашки на него не влияет.
+    static func sky(_ s: SmallSky.Sky) -> (UInt32, UInt32) {
+        switch s {
+        case .day: (0x4F8FD8, 0xBBD9F6)
+        case .twilight: (0x2B3664, 0xE58F66)
+        case .night: (0x0F1C50, 0x22408C)
+        }
     }
 }

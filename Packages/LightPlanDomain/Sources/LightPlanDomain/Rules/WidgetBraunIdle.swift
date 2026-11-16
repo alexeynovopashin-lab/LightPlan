@@ -175,6 +175,8 @@ public enum BraunIdle {
         public var time: String
         public var score: Int?
         public var word: String?
+        /// Облачность в час заката, % (большой виджет рисует её рядом с полоской балла); `nil` — нет в прогнозе.
+        public var clouds: Int? = nil
     }
 
     /// Закаты на три дня вперёд — только когда неделя пуста (Алексей 16.11). Прогноза на день нет — строка с одним временем:
@@ -185,7 +187,8 @@ public enum BraunIdle {
             SunsetRow(day: dayAndNumber(a.noon, in: f.zone, f),
                       time: a.sunset.map { f.clock($0, in: f.zone) } ?? "—",
                       score: a.rating?.score,
-                      word: a.rating?.score == nil ? a.rating?.category.map { f.words.sky($0) } : nil)
+                      word: a.rating?.score == nil ? a.rating?.category.map { f.words.sky($0) } : nil,
+                      clouds: a.rating?.clouds)
         }
     }
 

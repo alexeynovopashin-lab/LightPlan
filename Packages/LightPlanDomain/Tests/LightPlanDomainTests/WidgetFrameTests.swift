@@ -299,17 +299,19 @@ struct WidgetFrameTests {
         #expect(Set(line.dates.filter { $0 > tsk(0, day: 25) }.prefix(3)).contains(tsk(0, 1, day: 25)), "с полуночи считается завтрашний")
     }
 
-    /// 30и.13 (Б2): на большом всегда идут Солнце и Луна, «через N» и кольцо блока отсчёта — раз в 5 минут, со съёмкой и без, днём и ночью.
-    @Test func theLargeWidgetMovesEveryFiveMinutesAlways() throws {
+    /// 30и.13 (Б2): на большом всегда идут Солнце и Луна, «через N» и кольцо блока отсчёта; 30и.16 — ещё и отсчёт «до золотого часа 1 ч 13 м»
+    /// по минутам, как экран «Свет»: запись каждую минуту, со съёмкой и без, днём и ночью.
+    @Test func theLargeWidgetMovesEveryMinuteAlways() throws {
         for shoots in [[], [shoot(from: tsk(9), to: tsk(17))]] {
-            let line = feed(shoots).timeline(from: tsk(8), limit: 1000, shape: .large)
+            let line = feed(shoots).timeline(from: tsk(8), limit: 3000, shape: .large)
             let gaps = zip(line.dates, line.dates.dropFirst()).map { $1.timeIntervalSince($0) }
-            #expect(gaps.allSatisfy { $0 <= 300 }, "между записями не больше пяти минут: \(gaps.max() ?? 0)")
-            #expect(line.dates.count > 400, "36 часов по 5 минут — лента длинная: \(line.dates.count)")
+            #expect(gaps.allSatisfy { $0 <= 60 }, "между записями не больше минуты: \(gaps.max() ?? 0)")
+            #expect(line.dates.count > 2000, "36 часов по минуте — лента длинная: \(line.dates.count)")
         }
         let capped = feed().timeline(from: tsk(8), shape: .large)
         #expect(capped.dates.count == WidgetFeed.entryLimit, "лента режется на пределе записей")
-        #expect(capped.reload == capped.dates.last, "и просит новую на последней показанной записи: ≈ 1,6 перезагрузки в сутки")
+        #expect(capped.reload == capped.dates.last, "и просит новую на последней показанной записи: ≈ 8 перезагрузок в сутки")
+        #expect(capped.reload.timeIntervalSince(tsk(8)) >= 2.9 * 3600, "одна лента — три часа: \(capped.reload.timeIntervalSince(tsk(8)) / 3600) ч")
     }
 
     /// Бюджет: день свадьбы с минутным кольцом — сколько раз виджет просит новую ленту, если каждый раз перезагружается ровно в срок.

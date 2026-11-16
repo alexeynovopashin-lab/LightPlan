@@ -366,6 +366,13 @@
   themes). Feet scores shrink (≤ 0.7) instead of running under «золотой час» on 338 pt (`LargeFeet.sideWidth`). Forecast window `WidgetFeed.ratingDays` = today + `WidgetFrame.aheadDays` (4).
   `DayPlan.dialLeft/dialSign/waitingStop`: a shoot whose route lies outside its time window (Alexey's broken wedding 00:00–00:35) counts the whole shoot, never a blank Braun. Large pace = 5 minutes.
   Sheet pictures: `WidgetLargeStatesTests.writesTheStateSheetsWhenAsked` → `docs/30b2v_sketches/built/large_states_{pro,regular}.png`; sketch: `docs/30i13_big_widget.html` § 9.
+- **Widgets after the phone check (30и.16, Alexey 16.11).** Big widget without a running shoot shows **the light now** by the Light screen's rules
+  (`BigWidget.lightNow`, Domain `Rules/WidgetLightNow.swift`: `SolarDay.state(at:)` + day `poor` → «Небо закрыто», `nextLight(at:)`, `durS.*`; words
+  `rec.*`, `next.*`, `durS.*` put into `widget.json` by `AppModel.widgetWords`): «▂▃▅▇ Мягкий свет» on the right of the header (`LightNowCondition`), «ДО ЗОЛОТОГО
+  ЧАСА / 1 ч 13 м» under the phase word in the dome. Large pace is now **every minute** (≈ 8 reloads a day). **One sky** for small and big: `SkyInk.sky(SmallSky.look(f).sky)`
+  (day / twilight / night by the sun height, both themes; dark ink on the day sky). Sunset rows of the big empty week: score bar in the gauge colours (`BraunGauge.scale`)
+  + clouds of the sunset hour (`Rating.clouds` = `WeatherDay.layers.cloud`, `nil` = not in the forecast). Medium gauge runs 16…H−16 (no empty cell above it); its lens is a
+  flat plate — `.glassEffect` is not drawn on the Home screen at all (neither plate nor number). Small: the window's sunset sign is 21 pt gold.
 - **Activity screen (30б.3).** Live Activity on the lock screen and in Dynamic Island while a shoot runs (words of Alexey 25–26.10). Rules in Domain:
   `ActivityFrame` (the state the system keeps — ≤ 4 KB, ≤ 16 points, short coding keys; `ActivityFrame.make(feed:shoot:now:mode:words:reach:)` from the same
   `WidgetFeed` the widget reads) and `ActivityRules` (`wanted` = the widget's `.live` shoot, `decide` start / update / restart / end; a day > 8 h is restarted on every

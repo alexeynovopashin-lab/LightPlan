@@ -95,10 +95,10 @@ struct WidgetRatedViewTests {
     }
 
     /// Уровень на столбике (линза с числом, 28.10) стоит на баллах события: 81 утром, 62 днём, 44 вечером (завтрашний рассвет). Столбик теперь
-    /// 25 pt: x 129…154, центр 141,5; линза 14 pt высотой, верх её кромки — на 7 pt выше середины, там под пиксели число не заходит.
+    /// 25 pt: x 129…154, центр 141,5, по высоте 16…154 (30и.16); линза 14 pt высотой, верх её кромки — на 7 pt выше середины, там под пиксели число не заходит.
     @Test func theGaugeLevelFollowsTheRatedEvent() throws {
         let lens = (246.0, 243.0, 236.0), cx = BraunGauge.x + BraunGauge.width / 2
-        func lensTop(_ score: Int) -> Double { 38 + BraunGauge.lensCenterY(score: score, height: 116) - BraunGauge.lensHeight / 2 + 1.5 }
+        func lensTop(_ score: Int) -> Double { BraunGauge.top + BraunGauge.lensCenterY(score: score, height: BraunGauge.height(plate: 170)) - BraunGauge.lensHeight / 2 + 1.5 }
         for (h, score) in [(5, 81), (9, 81), (14, 62), (21, 44)] {
             let px = try render(plate(.free, h, .pro, dark: true), scale: 4)
             let y = lensTop(score)

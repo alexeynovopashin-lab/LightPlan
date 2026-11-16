@@ -48,15 +48,16 @@ struct WidgetLargeStatesTests {
     }
     /// Оценки закатов четырёх дней: сегодня, завтра, дальше (у третьего часа заката нет — слово неба).
     static let forecast: [WidgetFeed.Rating] = [
-        .init(day: "2026-10-24", score: 62, quality: .good, sunrise: 34), .init(day: "2026-10-25", score: 82, quality: .excellent),
-        .init(day: "2026-10-26", score: nil, quality: .fog), .init(day: "2026-10-27", score: 41, quality: .plain),
+        .init(day: "2026-10-24", score: 62, quality: .good, sunrise: 34), .init(day: "2026-10-25", score: 82, quality: .excellent, clouds: 18),
+        .init(day: "2026-10-26", score: nil, quality: .fog, clouds: 100), .init(day: "2026-10-27", score: 41, quality: .plain, clouds: 64),
     ]
 
     static func frame(at now: Date, shoots: [WidgetFeed.Shoot], forecast: [WidgetFeed.Rating] = forecast) -> WidgetFrame {
         WidgetFeed(place: tomsk, shoots: shoots, forecast: forecast).frame(at: now)
     }
 
-    enum Case: CaseIterable { case weekWithShoots, emptyWeek, photo, route, broken }
+    /// 30и.16: `dayNow` — пустая неделя днём (до золотого часа, голубое небо), `duskNow` — у заката (тёплое небо, «Синий час, ещё»).
+    enum Case: CaseIterable { case weekWithShoots, emptyWeek, photo, route, broken, dayNow, duskNow }
     static func frame(_ c: Case) -> WidgetFrame {
         switch c {
         case .weekWithShoots: frame(at: tsk(20), shoots: [family, maria])
@@ -64,6 +65,8 @@ struct WidgetLargeStatesTests {
         case .photo: frame(at: tsk(16, 48), shoots: [photo, family])
         case .route: frame(at: tsk(14, 38), shoots: [wedding])
         case .broken: frame(at: tsk(0, 10, day: 24), shoots: [broken])
+        case .dayNow: frame(at: tsk(13, 20), shoots: [])
+        case .duskNow: frame(at: tsk(18, 5), shoots: [])
         }
     }
 
@@ -126,7 +129,7 @@ struct WidgetLargeStatesTests {
 
     @Test func eachCaseGetsItsView() {
         let states = Case.allCases.map { BigWidget.state(Self.frame($0)) }
-        #expect(states == [.idle, .idle, .photo, .route, .route], "неделя со съёмками, пустая неделя, фотосессия, свадьба, сломанная свадьба")
+        #expect(states == [.idle, .idle, .photo, .route, .route, .idle, .idle], "неделя со съёмками, пустая неделя, фотосессия, свадьба, сломанная свадьба, день, закат")
     }
 
     // MARK: Риски — только у маршрута
@@ -234,7 +237,8 @@ struct WidgetLargeStatesTests {
         let dir = ProcessInfo.processInfo.environment["LP_BUILT_DIR"] ?? "/tmp/lp-built-out"
         guard FileManager.default.fileExists(atPath: dir) else { return }
         let captions: [Case: String] = [.weekWithShoots: "съёмок сегодня нет, на неделе есть · 20:00", .emptyWeek: "съёмок на неделе нет · 20:00",
-                                        .photo: "идёт фотосессия · 16:48", .route: "идёт свадьба с маршрутом · 14:38", .broken: "сломанная свадьба 00:00–00:35 · 00:10"]
+                                        .photo: "идёт фотосессия · 16:48", .route: "идёт свадьба с маршрутом · 14:38", .broken: "сломанная свадьба 00:00–00:35 · 00:10",
+                                        .dayNow: "съёмок нет, день · 13:20", .duskNow: "съёмок нет, у заката · 18:05"]
         for (tag, size) in [("pro", Self.sizes[0]), ("regular", Self.sizes[1])] {
             let rows: [[AnyView]] = Case.allCases.map { c in
                 [true, false].map { dark in

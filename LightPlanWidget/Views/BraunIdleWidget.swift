@@ -357,7 +357,7 @@ struct BraunIdleContent: View {
                 Text(rating.text).font(.system(size: rating.size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
                     .frame(width: rating.width, height: 16, alignment: .leading).offset(x: rating.x, y: y(128, 122))
             }
-            if let gauge { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: BraunGauge.x, y: 38) }
+            if let gauge { BraunGauge(pal: pal, score: gauge, height: BraunGauge.height(plate: H)).offset(x: BraunGauge.x, y: BraunGauge.top) }
         }
     }
 
@@ -405,7 +405,7 @@ struct BraunIdleContent: View {
                 Text(rating.text).font(.system(size: rating.size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
                     .frame(width: rating.width, height: 14, alignment: .leading).offset(x: rating.x, y: 76)
             }
-            if let gauge = BraunIdle.ratedEvent(frame)?.score { BraunGauge(pal: pal, score: gauge, height: H - 54).offset(x: BraunGauge.x, y: 38) }
+            if let gauge = BraunIdle.ratedEvent(frame)?.score { BraunGauge(pal: pal, score: gauge, height: BraunGauge.height(plate: H)).offset(x: BraunGauge.x, y: BraunGauge.top) }
             dim(BraunSign.light(.golden), golden, signY: y(106, 102), textY: y(104, 100))
             dim(BraunSign.light(.sunset), set, signY: y(128, 122), textY: y(126, 120))
         }
@@ -474,6 +474,7 @@ struct BraunSunsetRow: View {
             WidgetIcon(name: BraunSign.light(.sunset), size: 14, line: 1.5).frame(width: 14, height: 14).foregroundStyle(good ? pal.amber : pal.muted)
             Text(row.day).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1).fixedSize()
             Text(row.time).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(pal.text).lineLimit(1).fixedSize()
+            if wide { middle }
             // Хвост берёт весь остаток строки и прижат вправо: со `Spacer` остаток делился пополам и слово резалось при свободном месте.
             Group {
                 if let score = row.score {
@@ -483,10 +484,43 @@ struct BraunSunsetRow: View {
                     Text(word).font(.system(size: Self.wordSize(row, width: width), weight: .medium)).foregroundStyle(pal.muted)
                 }
             }
-            .lineLimit(1).padding(.leading, 4).frame(maxWidth: .infinity, alignment: .trailing)
+            .lineLimit(1).padding(.leading, 4).frame(maxWidth: wide && row.score != nil ? nil : .infinity, alignment: .trailing).fixedSize(horizontal: wide && row.score != nil, vertical: false)
         }
         .frame(width: width, height: height, alignment: .leading)
     }
+
+    /// Середина строки большого (30и.16, Алексей 16.11: «полоски оценок и облачность»): полоска балла цветами шкалы (как трубка среднего —
+    /// `BraunGauge.scale`, длина по `BraunIdle.gaugeLevel`) и облачность часа заката «☁ 40 %». Нет балла — полоски нет, остаётся слово неба
+    /// справа; нет облачности — нет и её.
+    @ViewBuilder private var middle: some View {
+        if let score = row.score {
+            GeometryReader { g in
+                let w = g.size.width, h = Self.barHeight
+                ZStack(alignment: .leading) {
+                    Capsule().fill(pal.ink(0.10))
+                    LinearGradient(stops: BraunGauge.scale, startPoint: .leading, endPoint: .trailing)
+                        .frame(width: w, height: h)
+                        .mask(alignment: .leading) { Capsule().frame(width: max(h, w * BraunIdle.gaugeLevel(score: score)), height: h) }
+                }
+                .frame(width: w, height: h).clipShape(Capsule())
+                .frame(maxHeight: .infinity)
+            }
+            .frame(minWidth: 24, maxWidth: .infinity)
+            .padding(.leading, 6)
+        } else {
+            Spacer(minLength: 0)
+        }
+        if let clouds = row.clouds {
+            HStack(spacing: 2) {
+                WidgetIcon(name: "cloud", size: 14, line: 1.5).frame(width: 14, height: 14)
+                Text("\(clouds) %").font(.system(size: 11, weight: .medium)).monospacedDigit().lineLimit(1).fixedSize()
+            }
+            .foregroundStyle(pal.muted)
+            .padding(.leading, 4)
+        }
+    }
+
+    static let barHeight = 6.0
 }
 
 /// Строка недели: знак жанра 14 + имена 13 (ближайшая semibold), ниже «ср 28 · 11:00» 11 medium. Ближайшая на подложке радиуса 9, как центр барабана.
@@ -552,6 +586,10 @@ struct BraunGauge: View {
     /// Зазор линзы до стенки трубки и самая узкая линза (для «0»…«9»).
     static let lensInset = 1.5
     static let lensMinWidth = 16.0
+    /// Трубка во всю высоту колонки, от верхнего поля 16 до нижнего (30и.16, Алексей 16.11: «пустое место, оно осталось от первых версий шкалы,
+    /// когда сверху были проценты оценки»): раньше она начиналась на y 38, и над ней стояла пустая клетка в 22 pt.
+    static let top = 16.0
+    static func height(plate h: Double) -> Double { h - 2 * top }
 
     static func lensWidth(score: Int) -> Double {
         min(width - 2 * lensInset, max(lensMinWidth, BraunText.width("\(score)", size: numberSize, semibold: true, mono: true) + 2))
@@ -565,25 +603,24 @@ struct BraunGauge: View {
 
     private static func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double) -> Color { Color(.sRGB, red: r / 255, green: g / 255, blue: b / 255, opacity: a) }
 
-    @Environment(\.widgetFlatGlass) private var flatGlass
+    /// Цвета шкалы балла от 0 к 100 (рейка света: синий час → сирень → золото → янтарь). Одни на трубку среднего и полоски закатов большого (30и.16).
+    static let scale: [Gradient.Stop] = [
+        .init(color: rgb(64, 92, 140, 0.75), location: 0), .init(color: rgb(150, 110, 170, 0.9), location: 0.2),
+        .init(color: rgb(226, 164, 76, 0.95), location: 0.45), .init(color: rgb(244, 180, 0, 1), location: 1),
+    ]
 
-    /// Линза: на телефоне — системное стекло (`.glassEffect`, Алексей 28.10: «на телефоне нативное стекло»), подкрашенное в светлое, чтобы тёмное число
-    /// читалось на любой теме. `ImageRenderer` стекло не рисует, поэтому тесты и снимки (`widgetFlatGlass`) берут плоскую плашку того же размера и цвета.
-    @ViewBuilder
+    /// Линза — плоская светлая пластинка с тонкой кромкой (30и.16). Системное стекло (`.glassEffect`, 28.10) виджет на «Домой» не рисует вовсе —
+    /// ни пластинку, ни число внутри (снимок Алексея 16.11: «нет числовой оценки, в концепте была»); снимки `ImageRenderer` его тоже не рисовали,
+    /// поэтому на картинках число было, а на телефоне — нет. Теперь телефон и снимки рисуют одно и то же.
     private func lens(width lw: Double, height lh: Double) -> some View {
         let shape = RoundedRectangle(cornerRadius: Self.lensCorner, style: .continuous)
-        let number = Text("\(score)").font(.system(size: Self.numberSize, weight: .semibold)).monospacedDigit().foregroundStyle(pal.lensText)
-            .fixedSize().frame(width: lw, height: lh)
-        if flatGlass {
-            ZStack {
-                shape.fill(pal.lens)
-                shape.strokeBorder(pal.lensEdge, lineWidth: 0.5)
-                number
-            }
-            .frame(width: lw, height: lh)
-        } else {
-            number.frame(width: lw, height: lh).glassEffect(.regular.tint(pal.lens), in: shape)
+        return ZStack {
+            shape.fill(pal.lens)
+            shape.strokeBorder(pal.lensEdge, lineWidth: 0.5)
+            Text("\(score)").font(.system(size: Self.numberSize, weight: .semibold)).monospacedDigit().foregroundStyle(pal.lensText)
+                .fixedSize().frame(width: lw, height: lh)
         }
+        .frame(width: lw, height: lh)
     }
 
     var body: some View {
@@ -592,10 +629,7 @@ struct BraunGauge: View {
         ZStack(alignment: .topLeading) {
             ZStack(alignment: .bottom) {
                 Capsule().fill(pal.ink(0.10))
-                LinearGradient(stops: [
-                    .init(color: Self.rgb(64, 92, 140, 0.75), location: 0), .init(color: Self.rgb(150, 110, 170, 0.9), location: 0.2),
-                    .init(color: Self.rgb(226, 164, 76, 0.95), location: 0.45), .init(color: Self.rgb(244, 180, 0, 1), location: 1),
-                ], startPoint: .bottom, endPoint: .top)
+                LinearGradient(stops: Self.scale, startPoint: .bottom, endPoint: .top)
                     .frame(width: w, height: h)
                     .mask(alignment: .bottom) { Rectangle().frame(width: w, height: fill) }
             }
