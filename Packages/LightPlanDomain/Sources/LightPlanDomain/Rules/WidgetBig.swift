@@ -18,6 +18,8 @@ public enum BigWidget {
         public var moonWaxing: Bool
         /// Восход завтрашнего дня, если известен: на ночной дорожке под куполом Солнце идёт к нему.
         public var nextRise: Date?
+        /// Положение Луны в цикле 0…1 (0 — новолуние, 0,5 — полнолуние): по нему малый виджет ставит Луну в окне, как часы (30и.15).
+        public var moonCycle: Double = 0
     }
 
     /// `nil` — у места нет координат/зоны (файл старого вида): купол рисуется без Луны, слово света берётся запасное.
@@ -39,7 +41,7 @@ public enum BigWidget {
         return Sky(code: LightState(elevation: e, morning: morning).code, sunElevation: e,
                    moonAltitude: moon.altitude, moonAzimuth: moon.azimuth,
                    moonFraction: phase.fraction, moonWaxing: phase.cycle < 0.5,
-                   nextRise: f.tomorrow?.sunrise)
+                   nextRise: f.tomorrow?.sunrise, moonCycle: phase.cycle)
     }
 
     /// Слово света под временем на куполе (заглавными): «НОЧЬ», «ВЕЧЕРЕЕТ»… Слова — словарь приложения (`sun.<code>.label`), запасные русские.

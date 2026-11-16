@@ -317,6 +317,15 @@ extension WidgetFeed {
                 if !s.open, boundary > now, boundary >= s.startDate, boundary <= end { moments.append(boundary) }
                 return moments
             }
+            // 30и.15: малый «окно неба» — Солнце идёт между холмами, небо меняет цвет на ±6°: раз в 10 минут от двух часов до восхода
+            // до двух часов после заката (за этим окном ночь — Луна по возрасту, её двигает запись полуночи).
+            if shape == .small, let today = place.today(at: now) {
+                let sky = (0...1).flatMap { off -> [Date] in
+                    guard let l = place.light(on: today.adding(days: off)), let r = l.sunrise, let s = l.sunset else { return [] }
+                    return Self.marks(max(r.addingTimeInterval(-7200), now), min(s.addingTimeInterval(7200), end), step: 600)
+                }
+                return running + sky
+            }
             // 30б.2в-5: средний в день съёмки впереди рисует риски по световому дню (150 на ~10 ч, риска — 4 минуты): пока он идёт,
             // кольцо двигает лента, раз в 10 минут. Без съёмки сегодня периметр чист, и записи не нужны.
             guard shape == .medium, let today = place.today(at: now) else { return running }

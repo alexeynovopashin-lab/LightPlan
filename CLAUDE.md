@@ -342,6 +342,17 @@
   by it at the top (`BraunWindow.notchBandInsetTop`). The window's bevel runs over the band to its outer edge (Alexey 30.10: «продли блики/тень до краёв флажка»): top shadow, bottom rim and the dark ring, clipped to the chevron outline;
   on the red the shadow is ≤ 0.3 and the rim ≤ 0.25 (`BraunPalette.flagTopShadow/flagBottomRim` — the window's 0.7 / 0.8 blacken the top and whiten the bottom of the red). Held by `WidgetFlagFlushTests` (pixels: gap 0, top and bottom within 1 px, bevel visible on the red and not heavier than 35 % / +20 levels; 2×/3×/4×, both plates, both themes).
   Pictures: `docs/30b2v_sketches/built/` (`WidgetLiveTests.writesTheBuiltSheetsWhenAsked`, folder `/tmp/lp-built-out` must exist).
+- **Small widget «sky window» (30и.15, sketch `docs/30i13_big_widget.html` § 12, variant Н2; Alexey 16.11: «мы делаем не часы, мы вдохновляемся
+  этим дизайном… задача не показывать текущее время и дату… окошко календаря — взять»).** Small without a running shoot and with a place = `SmallSkyView`
+  (`LightPlanWidget/Views/SmallSkyView.swift`, canvas 170 × 170 scaled to the plate); running → the ring as before; no place (`.blank`) → old `SmallView`.
+  Rules `SmallSky` (Domain `Rules/WidgetSmallSky.swift`): sky by sun height (≥ 6° day, −6…6° twilight, below night); by day/twilight the Sun walks between
+  the hills by time (0 = left crest at sunrise, 1 = right crest at sunset, ±0.3 behind them); at night the Moon stands **by age, like a moon-phase watch**
+  (`BigWidget.Sky.moonCycle`: new moon hidden behind the left hill, full in the middle) — not by its place on the sky (that is the large dome's job); exact
+  phase = «60 %» in a sky corner, «α» in the other. Hills: left = sunrise, right = sunset, time + score / 100 (today's; after today's sunset — tomorrow's).
+  Window (Braun calendar window, red flag): nearest shoot of the week — date wheel (neighbour numbers cut by the window edge), «вс · 12:00», names + genre;
+  empty week — sunsets of 3 days with scores, the flag over the best (tie → earlier, no scores → no flag). No ticks (ticks are only a timer).
+  Timeline: small adds 10-minute entries from sunrise − 2 h to sunset + 2 h. Tests `WidgetSmallSkyTests`, `WidgetSmallSkyViewTests` (pixels, hill-crest
+  geometry); sheet `docs/30b2v_sketches/built/small_sky.png` (`writesTheSheetWhenAsked`, folder `/tmp/lp-built-out`).
 - **Big widget, three views (30и.13–14, Alexey 16.11: «большой виджет с рисками-таймером»).** Braun plate and colours on every home widget (the view draws its own `BraunPalette.bg`:
   `containerBackground` is lightened by the system on Home). `LargeView` picks by `BigWidget.state(frame)` (Domain `Rules/WidgetBig.swift`): **idle** (no shoot running) `LargeIdleView` —
   Light-screen dome with Sun **and** Moon (`SunArc.skyNow`, ghosts by `BigWidget.ghostOpacity`), feet with sunrise/sunset scores, block `CountdownBlock` (week shoots: ring + rows; empty week:

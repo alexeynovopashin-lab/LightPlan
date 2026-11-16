@@ -3,8 +3,8 @@ import LightPlanDomain
 
 /// Какой вид стоит на какой форме виджета (30б.2в) — одним местом, чтобы расширение и тесты видели одно и то же.
 ///
-/// - Малый и средний: идёт съёмка — демка Алексея 26.10, палитра Braun (`SmallLiveView`, `MediumLiveView` → `BraunWidget.swift`); иначе у малого то,
-///   что было в 30б.2: свет и ближайшие съёмки (идущей съёмки нет — нечего считать). Средний с 30б.2в-5 и без идущей съёмки — Braun
+/// - Малый и средний: идёт съёмка — демка Алексея 26.10, палитра Braun (`SmallLiveView`, `MediumLiveView` → `BraunWidget.swift`); иначе у малого
+///   «окно неба» (`SmallSkyView`, 30и.15): небо с холмами восхода и заката, окошко календаря с ближайшей съёмкой или закатами трёх дней. Средний с 30б.2в-5 и без идущей съёмки — Braun
 ///   (`BraunIdleView`, «Семья виджетов» 27.10): слева свет, справа неделя съёмок; прежний `MediumView` остался для плашки без места. Рискам нужны все поля плашки, поэтому виджет
 ///   отключает системные поля (`.contentMarginsDisabled()`), а остальным видам их ставит этот корень.
 /// - Большой: день со съёмкой, а без съёмок — дуга солнца.
@@ -31,7 +31,9 @@ struct WidgetRoot: View {
     @ViewBuilder private var content: some View {
         switch shape {
         case .small:
+            // 30и.15: без идущей съёмки — «окно неба» (Н2, Алексей 16.11); места нет — прежний вид с «—».
             if frame.kind == .live { SmallLiveView(frame: frame, alpha: alpha) }
+            else if SmallSky.shows(frame) { SmallSkyView(frame: frame, alpha: alpha) }
             else { SmallView(frame: frame, alpha: alpha).padding(Self.margin) }
         case .medium:
             switch frame.kind {

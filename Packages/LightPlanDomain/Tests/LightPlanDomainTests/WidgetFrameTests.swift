@@ -246,10 +246,11 @@ struct WidgetFrameTests {
         }
         // До начала съёмки минут нет: плашка до того не кольцо.
         // Средний с 30б.2в-5 в день съёмки впереди рисует риски по световому дню и просит записи раз в 10 минут (`WidgetBraunIdleTests`),
-        // но не по минуте; малый до начала съёмки не просит ничего.
+        // но не по минуте; малый с 30и.15 («окно неба») тоже раз в 10 минут светлого дня — Солнце идёт между холмами, — и тоже не по минуте.
         let early = f.timeline(from: tsk(9), shape: .medium)
         #expect(!early.dates.contains(tsk(9, 1)) && !early.dates.contains(tsk(11, 31)))
-        #expect(!f.timeline(from: tsk(9), shape: .small).dates.contains(tsk(11, 30)))
+        let smallEarly = f.timeline(from: tsk(9), shape: .small).dates
+        #expect(smallEarly.contains(tsk(11, 30)) && !smallEarly.contains(tsk(11, 31)), "малый до съёмки — раз в 10 минут, не по минуте")
         #expect(early.dates.contains(tsk(12)) && early.dates.contains(tsk(12, 1)), "с начала съёмки — по минуте")
     }
 
