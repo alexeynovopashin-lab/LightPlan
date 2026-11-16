@@ -440,4 +440,77 @@ document.getElementById('variants').appendChild(sec10);
 const s10f=document.getElementById('s10f');
 ['was','a','b','c'].forEach(k=>{const v=SM[k];const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%"><b>${v.title}</b></div>`;s10f.appendChild(row);
  SMS.forEach(sz=>['braunD','braunL'].forEach(th=>{const wrap=document.createElement('div');wrap.innerHTML=smFigure(v,sz.W,sz.H,th);row.appendChild(wrap.firstChild)}))});
+
+/* ---------- 11 · Малый виджет «как на часах» (17.11) ---------- */
+/* Своя геометрия, холст 140 × 140 (содержимое плашки 138 / 126 pt масштабируется), тексты — HTML поверх SVG. Ничего из чужих изображений: окно-полукруг,
+   диск неба, холмы, луна по фазе, шкала и окошко внизу нарисованы заново. */
+const WT={rise:8.933,set:17.2,riseS:'08:56',setS:'17:12',risN:34,setN:62,lit:.6,moonF:.55,shoot:{d:'вс 15',t:'12:00',n:'Свадьба'}};
+const WMOM=[{k:'day',lab:'день · 13:00',now:13.0,sky:'day'},{k:'dusk',lab:'около заката · 16:50',now:16.83,sky:'dusk'},{k:'night',lab:'ночь · 20:30',now:20.5,sky:'night'},{k:'day',lab:'без съёмки · 13:00',now:13.0,sky:'day',no:true}];
+const WSKY={day:['#3E79BD','#A9CBEE'],dusk:['#2B3664','#E58F66'],night:['#0A1230','#1C2852']};
+const WSTARS=[[.12,.62],[.25,.3],[.38,.55],[.5,.2],[.62,.5],[.74,.28],[.86,.6],[.3,.8],[.7,.78],[.93,.35],[.07,.3],[.55,.82]];
+let _wid=0;
+function wMoon(x,y,r,lit,bg){const d=-2*r*lit;return `<circle cx="${x}" cy="${y}" r="${r}" fill="#E9E5D3"/><clipPath id="mc${++_wid}"><circle cx="${x}" cy="${y}" r="${r}"/></clipPath><circle cx="${x+d}" cy="${y}" r="${r}" fill="${bg}" clip-path="url(#mc${_wid})"/>`}
+function wSun(x,y,r){return `<circle cx="${x}" cy="${y}" r="${r*1.7}" fill="#F4B400" opacity=".25"/><circle cx="${x}" cy="${y}" r="${r}" fill="#F4B400"/>`}
+/* окно-полукруг с диском неба: небо, звёзды, светило на дуге, холмы-горизонт, золотое кольцо. f — доля пути светила (0 — левый холм, 1 — правый) */
+function wAperture(cx,cy,R,m,o){const id='ap'+(++_wid),sk=WSKY[m.sky],night=m.sky==='night',dusk=m.sky==='dusk';
+ let b=`<defs><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sk[0]}"/><stop offset="1" stop-color="${sk[1]}"/></linearGradient><clipPath id="${id}c"><path d="M${cx-R} ${cy}A${R} ${R} 0 0 1 ${cx+R} ${cy}Z"/></clipPath></defs><g clip-path="url(#${id}c)"><rect x="${cx-R}" y="${cy-R}" width="${2*R}" height="${R}" fill="url(#${id}g)"/>`;
+ if(night||dusk)WSTARS.forEach(([a,c],i)=>{if(dusk&&i%3)return;b+=`<circle cx="${cx-R+a*2*R}" cy="${cy-R*.15-c*R*.8}" r="${i%4===0?1.3:.9}" fill="#F4C84A" opacity="${dusk?.55:.95}"/>`});
+ const pos=f=>{const a=Math.PI*(1-f);return [cx+R*.68*Math.cos(a),cy-R*.68*Math.sin(a)]};
+ if(night){const [x,y]=pos(WT.moonF);b+=wMoon(x,y,R*.13,WT.lit,sk[0])}
+ else{const f=(m.now-WT.rise)/(WT.set-WT.rise),[x,y]=pos(f);b+=wSun(x,y,R*.11)}
+ b+=`<path d="M${cx-R} ${cy}L${cx-R} ${cy-R*.12}Q${cx-R*.62} ${cy-R*.30} ${cx-R*.22} ${cy-R*.09}Q${cx+R*.28} ${cy-R*.26} ${cx+R} ${cy-R*.14}L${cx+R} ${cy}Z" fill="#0C0C0E"/></g>`;
+ b+=`<path d="M${cx-R} ${cy}A${R} ${R} 0 0 1 ${cx+R} ${cy}Z" fill="none" stroke="#F4B400" stroke-width="2.6" stroke-linejoin="round"/>`;
+ return b}
+function wTri(x,y,deg){return `<path d="M0 0L-3.6 -6.2L3.6 -6.2Z" fill="var(--flag)" transform="translate(${x} ${y}) rotate(${deg})"/>`}
+/* окошко внизу, как окошко даты: красный флажок слева, время и название съёмки или «съёмок нет до …» */
+function wWindow(k,y,h,no){const t=no?`<span class="c2">съёмок нет до </span><b>вс 22</b>`:`<b>${WT.shoot.d} · ${WT.shoot.t}</b> <span class="c2">${WT.shoot.n}</span>`;
+ return `<div data-ink style="position:absolute;left:0;right:0;top:${y*k}px;height:${h*k}px;border-radius:${h*k/2.4}px;background:var(--dial);box-shadow:0 0 0 .5px var(--slit) inset;display:flex;align-items:center;padding:0 ${6*k}px 0 ${14*k}px;overflow:hidden;white-space:nowrap;font-size:${10.5*k}px;line-height:1;text-overflow:ellipsis"><span style="position:absolute;left:${4*k}px;top:50%;margin-top:${-4*k}px;width:${5*k}px;height:${8*k}px;background:var(--flag);clip-path:polygon(0 0,100% 50%,0 100%)"></span><span class="ink" style="overflow:hidden;text-overflow:ellipsis">${t}</span></div>`}
+function wT(k,x,y,html,o){o=o||{};return `<div data-ink style="position:absolute;left:${x*k}px;top:${y*k}px;${o.w?`width:${o.w*k}px;`:''}${o.right?'text-align:right;':''}${o.center?'text-align:center;':''}white-space:nowrap;font-size:${(o.fs||12)*k}px;line-height:1.15;${o.sb?'font-weight:600;':''}" class="ink ${o.c2?'c2':''} mono">${html}</div>`}
+function wScore(n,fs,sz){return `<span class="${n>=75?'am':''}" style="font-weight:600;${n<75?'color:var(--ink)':''}">${n}</span><span class="c2" style="font-size:${fs*.75}px;font-weight:500"> / 100</span>`}
+function wMoonMini(cx,cy,r){return `<circle cx="${cx}" cy="${cy}" r="${r+1.6}" fill="none" stroke="var(--slit)" stroke-width="1"/>`+wMoon(cx,cy,r,WT.lit,'#161616')}
+/* Ч1: окно со шкалой. Шкала вокруг окна — часы дня (днём от восхода до заката, ночью — от заката до восхода): риска = час, пройденные тусклые, красный флажок — сейчас. */
+function wV1(k,m){const cx=70,cy=74,R=54,Rs=R+7,night=m.sky==='night';
+ const span=night?(24-WT.set+WT.rise):(WT.set-WT.rise),el=night?(m.now-WT.set):(m.now-WT.rise),N=Math.round(span);let sc='';
+ for(let i=0;i<=N;i++){const a=Math.PI*(1-i/N),big=i===0||i===N,L=big?6:3.5,past=(i/N*span)<el;sc+=`<line x1="${cx+Rs*Math.cos(a)}" y1="${cy-Rs*Math.sin(a)}" x2="${cx+(Rs+L)*Math.cos(a)}" y2="${cy-(Rs+L)*Math.sin(a)}" stroke="${past?'var(--slit)':'var(--ink)'}" stroke-width="${big?1.6:1.1}" stroke-linecap="round" ${past&&!big?'opacity=".9"':''}/>`}
+ const fa=Math.PI*(1-Math.min(1,el/span)),fx=cx+(Rs-1)*Math.cos(fa),fy=cy-(Rs-1)*Math.sin(fa);
+ const svg=`<svg width="${140*k}" height="${140*k}" viewBox="0 0 140 140" style="position:absolute;left:0;top:0">${wAperture(cx,cy,R,m)}${sc}${wTri(fx,fy,(90-fa*180/Math.PI)+180+0)}${wMoonMini(70,96,7.5)}</svg>`;
+ return svg+wT(k,0,82,`<span class="ink" style="display:inline-flex;vertical-align:-2px;color:var(--ink2)">${ic('sunrise',13)}</span> ${WT.riseS}`,{fs:13,sb:true})+wT(k,0,98,wScore(WT.risN,11),{fs:11})
+ +wT(k,0,82,`${WT.setS} <span class="ink" style="display:inline-flex;vertical-align:-2px;color:var(--ink2)">${ic('sunset',13)}</span>`,{fs:13,sb:true,right:true,w:140})+wT(k,0,98,wScore(WT.setN,11),{fs:11,right:true,w:140})
+ +wT(k,50,107,`${Math.round(WT.lit*100)} %`,{fs:9,c2:true,center:true,w:40})+wWindow(k,119,21,m.no)}
+/* Ч2: диск 24 часа. Кольцо = сутки, повёрнуто так, чтобы «сейчас» было вверху (флажок неподвижен); день и ночь — дуги, границы — восход и закат; риска = час. */
+function wV2(k,m){const cx=70,cy=60,Ro=51,Ri=37,id='dk'+(++_wid),h2a=h=>(h-m.now)*15;
+ const P=(r,deg)=>[cx+r*Math.sin(deg*Math.PI/180),cy-r*Math.cos(deg*Math.PI/180)];
+ const arc=(a0,a1,r0,r1,fill)=>{const [x0,y0]=P(r1,a0),[x1,y1]=P(r1,a1),[x2,y2]=P(r0,a1),[x3,y3]=P(r0,a0),large=(a1-a0)>180?1:0;return `<path d="M${x0} ${y0}A${r1} ${r1} 0 ${large} 1 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 ${large} 0 ${x3} ${y3}Z" fill="${fill}"/>`};
+ const ar=h2a(WT.rise),as=h2a(WT.set);let b=arc(ar,as,Ri,Ro,'url(#'+id+'d)')+arc(as,ar+360,Ri,Ro,'#0F1838');
+ const mid=(a,c)=>{const r=(Ri+Ro)/2;return P(r,(a+c)/2)};
+ WSTARS.forEach(([a,c],i)=>{const th=as+(ar+360-as)*a,r=Ri+3+c*(Ro-Ri-6),[x,y]=P(r,th);b+=`<circle cx="${x}" cy="${y}" r="${i%4===0?1.1:.8}" fill="#F4C84A"/>`});
+ const [sx,sy]=mid(ar,as),[mx,my]=mid(as,ar+360);b+=wSun(sx,sy,3.6)+wMoon(mx,my,4.6,WT.lit,'#0F1838');
+ let tk='';for(let h=0;h<24;h++){const a=(h-m.now)*15,big=(h%6===0),[x0,y0]=P(Ro+1.5,a),[x1,y1]=P(Ro+(big?6.5:4),a);tk+=`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--ink)" stroke-width="${big?1.6:1}" stroke-linecap="round" opacity="${big?1:.65}"/>`}
+ const svg=`<svg width="${140*k}" height="${140*k}" viewBox="0 0 140 140" style="position:absolute;left:0;top:0"><defs><linearGradient id="${id}d" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${WSKY.dusk[1]}"/><stop offset=".25" stop-color="#8DB7E3"/><stop offset=".75" stop-color="#8DB7E3"/><stop offset="1" stop-color="${WSKY.dusk[1]}"/></linearGradient></defs><circle cx="${cx}" cy="${cy}" r="${Ri-1.5}" fill="var(--dial)" stroke="var(--slit)" stroke-width=".8"/>${b}${tk}<path d="M${cx} ${cy-Ri+0.5}L${cx-4} ${cy-Ri+8}L${cx+4} ${cy-Ri+8}Z" fill="var(--flag)"/></svg>`;
+ return svg+wT(k,cx-30,cy-14,`<span class="ink" style="display:inline-flex;vertical-align:-2px;color:var(--ink2)">${ic('sunrise',12)}</span> ${WT.riseS} <span class="${WT.risN>=75?'am':'c2'}" style="font-weight:600">${WT.risN}</span>`,{fs:12,sb:true,w:60,center:true})
+ +wT(k,cx-30,cy+4,`<span class="ink" style="display:inline-flex;vertical-align:-2px;color:var(--ink2)">${ic('sunset',12)}</span> ${WT.setS} <span class="${WT.setN>=75?'am':'c2'}" style="font-weight:600">${WT.setN}</span>`,{fs:12,sb:true,w:60,center:true})
+ +wWindow(k,122,18,m.no)}
+/* Ч3: окно и два регистра. Регистры — маленькие циферблаты: слева восход, справа закат; шкала по краю — балл 0…100 (24 риски, горят по баллу). */
+function wReg(cx,cy,r,time,n,sign){let t='';for(let i=0;i<24;i++){const a=i/24*2*Math.PI,lit=i<Math.round(n/100*24);t+=`<line x1="${cx+(r-3)*Math.sin(a)}" y1="${cy-(r-3)*Math.cos(a)}" x2="${cx+(r-6)*Math.sin(a)}" y2="${cy-(r-6)*Math.cos(a)}" stroke="${lit?(n>=75?'#F4B400':'var(--ink)'):'var(--slit)'}" stroke-width="1.3" stroke-linecap="round"/>`}
+ return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--dial)" stroke="var(--slit)" stroke-width=".8"/>${t}`}
+function wV3(k,m){const cx=70,cy=50,R=42,rr=24;
+ const svg=`<svg width="${140*k}" height="${140*k}" viewBox="0 0 140 140" style="position:absolute;left:0;top:0">${wAperture(cx,cy,R,m)}${wReg(27,90,rr,'',WT.risN)}${wReg(113,90,rr,'',WT.setN)}${wMoonMini(70,86,8)}</svg>`;
+ const reg=(x,time,n,sign)=>wT(k,x-22,90-19,`<span class="ink" style="display:inline-flex;color:var(--ink2)">${ic(sign,11)}</span>`,{w:44,center:true,fs:11})+wT(k,x-22,90-9,time,{fs:12.5,sb:true,w:44,center:true})+wT(k,x-22,90+6,`<span class="${n>=75?'am':'c2'}" style="font-weight:600">${n}</span>`,{fs:10.5,w:44,center:true});
+ return svg+reg(27,WT.riseS,WT.risN,'sunrise')+reg(113,WT.setS,WT.setN,'sunset')+wT(k,50,97,`${Math.round(WT.lit*100)} %`,{fs:9,c2:true,center:true,w:40})+wWindow(k,118,22,m.no)}
+const WV=[{n:'Ч1 · Окно со шкалой дня',f:wV1},{n:'Ч2 · Диск на 24 часа',f:wV2},{n:'Ч3 · Окно и два регистра',f:wV3}];
+function wFig(v,m,W,th){const S=W-32,k=S/140;return `<figure><div class="w ${th}" style="width:${W}px;height:${W}px;border-radius:${W>165?22:20.5}px"><div style="position:absolute;left:16px;top:16px;width:${S}px;height:${S}px">${v.f(k,m)}</div></div><figcaption>${W} × ${W} · ${th==='braunD'?'braunDark':'Braun белый'}</figcaption></figure>`}
+const sec11=document.createElement('section');sec11.id='watch';
+sec11.innerHTML=`<div class="tag">11 · Малый виджет «как на часах» (эскиз, 17.11)</div>
+<p class="lead">Идея Алексея: «стильный виджет, который показывает смену дня и ночи, закат, рассвет, луну, оценку заката и рассвета и информацию о предстоящей съёмке» — в духе классического циферблата с окном лунной фазы. Здесь всё нарисовано заново: окно-полукруг в золотом кольце, диск неба за ним (синяя ночь с золотыми звёздами, голубой день, закатный оранжево-фиолетовый), два холма-горизонта, луна по настоящей фазе, окошко внизу. Ниже три варианта в Braun, обе темы, 170 и 158 pt; у каждого три момента — день (13:00), около заката (16:50), ночь (20:30) — и ещё кадр «без съёмки». Для примера луна 60 % и растёт.</p>
+<div class="facts">
+<div class="fact"><b>Механизм</b>Диск делает оборот за сутки. В окне виден текущий кусок неба: днём — солнце на дуге, ночью — луна на дуге со своей фазой (положение и фаза луны уже считает <code>BigWidget.sky</code> для большого). Холмы по краям окна — горизонт: солнце садится и луна встаёт ровно за ними, восход и закат — это моменты, когда светило пересекает холм. Время восхода и заката с оценкой стоят рядом с окном, будущая съёмка — в окошке внизу. Красный флажок окошка — тот же шеврон, что у окошка Braun.</div>
+<div class="fact"><b>Риски</b>Только как шкала. Ч1: час дня или ночи (одна риска = час; пройденные тусклые; флажок — сейчас; ночью шкала — от заката до восхода). Ч2: сутки (24 риски = 24 часа, длинные — 0, 6, 12, 18). Ч3: балл 0…100 в регистрах (24 риски горят по баллу). Украшения нет.</div>
+<div class="fact"><b>Как это живёт в WidgetKit</b>Диск не крутится сам: положение светила и поворот кольца задают записи ленты, как точка солнца на куполе большого (раз в 10 минут; 5 минут во время съёмки). Окно и диск — векторные фигуры SwiftUI (<code>Shape</code>), звёзды и холмы — фиксированный рисунок; картинок из чужих источников нет. Места: тексты на 158 pt — 9–10 pt, предел читаемости.</div>
+</div><div id="s11f"></div>`;
+document.getElementById('variants').appendChild(sec11);
+const s11f=document.getElementById('s11f');
+const WPROS={'Ч1 · Окно со шкалой дня':['Плюс: ближе всего к образцу — окно, холмы, шкала вокруг; видно и «где светило», и «сколько до заката» по рискам.','Минус: два слоя информации вокруг окна (шкала и времена по бокам) — тесно; фаза луны днём — маленькая отметка в центре.'],'Ч2 · Диск на 24 часа':['Плюс: один взгляд на сутки целиком: день и ночь дугами, сколько до заката видно по углу; оригинальнее образца.','Минус: ночью звёзды и луна мелкие (кольцо 14 pt), окно с небом как в образце здесь отсутствует — «окна с холмами» нет.'],'Ч3 · Окно и два регистра':['Плюс: читается как часы — окно и два циферблата; оценка восхода и заката крупно и по шкале 0–100.','Минус: самое плотное; на 158 pt регистры 22 pt, цифры 12 pt, окно с небом меньше (радиус 42).']};
+WV.forEach(v=>{const blk=document.createElement('div');blk.innerHTML=`<h3 style="margin:22px 0 4px;font-size:16px">${v.n}</h3><p style="margin:2px 0 8px;font-size:13px">${WPROS[v.n][0]}<br>${WPROS[v.n][1]}</p>`;s11f.appendChild(blk);
+ WMOM.forEach(m=>{const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%;font-size:12.5px;color:var(--docSub)">${m.lab}</div>`;blk.appendChild(row);
+  [170,158].forEach(W=>['braunD','braunL'].forEach(th=>{const wrap=document.createElement('div');wrap.innerHTML=wFig(v,m,W,th);row.appendChild(wrap.firstChild)}))})});
 </script></body></html>
