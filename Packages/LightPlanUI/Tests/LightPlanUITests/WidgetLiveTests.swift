@@ -565,8 +565,7 @@ struct WidgetLiveTests {
         }
         try write(sheet([two("средний · свет (съёмок нет)", 364, 170, .medium, free), two("средний · съёмка впереди · 11:00", 364, 170, .medium, soon)], scale: 1.5), dir, "medium_no_ring")
         try write(sheet([two("малый · свет", 170, 170, .small, free) + two("малый · съёмка впереди", 170, 170, .small, soon)], scale: 2.2), dir, "small_no_ring")
-        try write(sheet([two("большой · день со съёмкой · 12:52", 364, 382, .large, live), two("большой · день без съёмок", 364, 382, .large, free)], scale: 1.8), dir, "large")
-        try write(sheet([two("большой · накануне вечером · суббота 20:00, свадьба в воскресенье", 364, 382, .large, frame(at: tsk(20), shoots: [sundayWedding]))], scale: 1.8), dir, "large_eve")
+        // Большой виджет в трёх видах рисует `WidgetLargeStatesTests.writesTheStateSheetsWhenAsked` (30и.14): large_states_pro / large_states_regular.
         let night = frame(at: tsk(18, 30))
         func lockCells(_ caption: String, _ f: WidgetFrame) -> [AnyView] {
             [true, false].flatMap { dark -> [AnyView] in

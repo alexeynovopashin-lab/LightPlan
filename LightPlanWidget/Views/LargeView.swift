@@ -2,11 +2,14 @@ import SwiftUI
 import LightPlanCore
 import LightPlanDomain
 
-/// Большой виджет (30и.13, вариант Б2; выбор Алексея 15.11: «Большой виджет Б… поле снизу меняется на виджет с отсчётом Браун»).
-/// Сверху «Свет» как в приложении: шапка, купол с Солнцем **и** Луной (ушедшие под горизонт — призраки по правилу купола), ножки с временем и оценкой
-/// рассвета и заката; под щелью — блок отсчёта Braun: циферблат с кольцом точек до ближайшей съёмки и её строки. Подложка и цвета — Braun
-/// (`WidgetStyle`); рисков на большом нет — они только у Braun (Алексей 16.11). Эскиз: `docs/30i13_big_widget.html` § 8.
-/// Плашка 364 × 382 (Pro Max) и 338 × 354 (iPhone 14); поля 16, высоты полос: 16 + 4 + купол 158·s + 2 + ножки 38 + 8 + блок.
+/// Большой виджет в трёх видах (30и.14; выбор Алексея 16.11 из эскиза 30и.13 § 9: «большой виджет с рисками-таймером»). Подложка и цвета — Braun
+/// (`WidgetStyle`, `BraunPalette`); какой вид — решает `BigWidget.state`:
+/// - **idle** (съёмка не идёт): «Свет» как в приложении — шапка с датой, купол с Солнцем и Луной, ножки с оценкой рассвета и заката — и блок Braun:
+///   съёмки недели (кольцо до ближайшей и строки) или, если их нет, «съёмок нет», длина дня и закаты трёх дней. **Рисков нет**;
+/// - **photo** (идёт съёмка без маршрута, `LargePhotoView`): окошко Braun «осталось» с красным флажком, купол чуть меньше, блок с кольцом на всю съёмку;
+/// - **route** (идёт съёмка с маршрутом, `LargeRouteView`): таймлайн точек из прежнего большого, часы текущей точки и **риски-таймер по краю плашки** —
+///   тот же таймер всей съёмки, что у среднего Braun (`BraunTicksView`). Рисков больше нигде на большом нет: они не украшение.
+/// Плашка 364 × 382 (Pro Max) и 338 × 354 (iPhone 14); поля 16 (риски занимают 3…10,5 от края — текст в них не заходит).
 struct LargeView: View {
     let frame: WidgetFrame
     var alpha = false
@@ -14,100 +17,149 @@ struct LargeView: View {
 
     var body: some View {
         GeometryReader { g in
-            Inner(frame: frame, alpha: alpha, pal: BraunPalette(dark: scheme == .dark), st: WidgetStyle(dark: scheme == .dark), size: g.size)
+            let pal = BraunPalette(dark: scheme == .dark), st = WidgetStyle(dark: scheme == .dark)
+            Group {
+                switch BigWidget.state(frame) {
+                case .route:
+                    if let plan = DayPlan(frame) { LargeRouteView(plan: plan, alpha: alpha, pal: pal, st: st, size: g.size) } else { LargeIdleView(frame: frame, alpha: alpha, pal: pal, st: st, size: g.size) }
+                case .photo:
+                    if let plan = DayPlan(frame) { LargePhotoView(plan: plan, alpha: alpha, pal: pal, st: st, size: g.size) } else { LargeIdleView(frame: frame, alpha: alpha, pal: pal, st: st, size: g.size) }
+                case .idle:
+                    LargeIdleView(frame: frame, alpha: alpha, pal: pal, st: st, size: g.size)
+                }
+            }
         }
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
+}
 
-    struct Inner: View {
-        let frame: WidgetFrame
-        let alpha: Bool
-        let pal: BraunPalette
-        let st: WidgetStyle
-        let size: CGSize
-        static let pad: CGFloat = 16
+// MARK: - Съёмка не идёт
 
-        private var iw: CGFloat { size.width - 2 * Self.pad }
-        private var s: CGFloat { iw / DomeFit.canvasWidth }
-        private var domeH: CGFloat { (DomeFit.bottomUnits - DomeFit.topUnits) * s }
-        private var zone: TimeZone { frame.zone }
+/// Вид «съёмки нет»: купол «Света» и блок Braun под ним (Б2, 30и.13). Раньше `LargeView.Inner`.
+struct LargeIdleView: View {
+    let frame: WidgetFrame
+    let alpha: Bool
+    let pal: BraunPalette
+    let st: WidgetStyle
+    let size: CGSize
+    static let pad: CGFloat = 16
 
-        private func dateLine() -> String {
-            let f = DateFormatter()
-            f.locale = Locale(identifier: frame.lang)
-            f.timeZone = zone
-            f.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
-            let t = f.string(from: frame.now)
-            return t.prefix(1).uppercased() + t.dropFirst()
-        }
+    private var iw: CGFloat { size.width - 2 * Self.pad }
+    private var zone: TimeZone { frame.zone }
 
-        var body: some View {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(dateLine()) · \(frame.place.name.isEmpty ? "Light Plan" : frame.place.name)")
-                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.8)
-                    Spacer(minLength: 0)
-                    if alpha { AlphaBadge() }
-                }
-                .frame(height: 16)
-                Spacer().frame(height: 4)
-                dome
-                Spacer().frame(height: 2)
-                feet.frame(height: 38)
-                Spacer().frame(height: 8)
-                CountdownBlock(frame: frame, pal: pal)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private func dateLine() -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: frame.lang)
+        f.timeZone = zone
+        f.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
+        let t = f.string(from: frame.now)
+        return t.prefix(1).uppercased() + t.dropFirst()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("\(dateLine()) · \(frame.place.name.isEmpty ? "Light Plan" : frame.place.name)")
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                if alpha { AlphaBadge() }
             }
-            .padding(Self.pad)
-            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .frame(height: 16)
+            Spacer().frame(height: 4)
+            LargeDome(frame: frame, pal: pal, st: st, iw: iw, scale: 1)
+            Spacer().frame(height: 2)
+            LargeFeet(frame: frame, pal: pal, iw: iw, inset: 18 * iw / DomeFit.canvasWidth).frame(height: 38)
+            Spacer().frame(height: 8)
+            CountdownBlock(frame: frame, pal: pal)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .padding(Self.pad)
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+    }
+}
 
-        // MARK: Купол
+// MARK: - Купол и ножки (общие для видов со «Светом»)
 
-        @ViewBuilder private var dome: some View {
-            if let d = frame.day, let rise = d.sunrise, let set = d.sunset {
-                let sky = BigWidget.sky(frame)
-                SunArc(rise: rise, set: set, now: frame.now, clock: frame.clock(frame.now, in: zone),
-                       word: sky.map { BigWidget.phaseWord($0.code, frame.words) } ?? frame.words[.sunrise].uppercased(), st: st, skyNow: sky)
-                    .frame(width: iw, height: domeH)
-            } else {
-                // Полярные сутки/ночь: купола нет, слово места.
-                Text(frame.day?.polar == .night ? frame.words[.polarNight] : frame.words[.polarDay])
-                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(pal.text).frame(width: iw, height: domeH)
+/// Купол дня: небо, дуга, Солнце и Луна, время и слово света. `scale` < 1 уменьшает купол по высоте и ширине (вид фотосессии оставляет место блоку).
+struct LargeDome: View {
+    let frame: WidgetFrame
+    let pal: BraunPalette
+    let st: WidgetStyle
+    let iw: CGFloat
+    var scale: CGFloat = 1
+
+    static func height(iw: CGFloat, scale: CGFloat) -> CGFloat { (DomeFit.bottomUnits - DomeFit.topUnits) * (iw / DomeFit.canvasWidth) * scale }
+
+    var body: some View {
+        let h = Self.height(iw: iw, scale: scale)
+        if let d = frame.day, let rise = d.sunrise, let set = d.sunset {
+            let sky = BigWidget.sky(frame)
+            SunArc(rise: rise, set: set, now: frame.now, clock: frame.clock(frame.now, in: frame.zone),
+                   word: sky.map { BigWidget.phaseWord($0.code, frame.words) } ?? frame.words[.sunrise].uppercased(), st: st, skyNow: sky)
+                .frame(width: iw, height: h)
+        } else {
+            // Полярные сутки/ночь: купола нет, слово места.
+            Text(frame.day?.polar == .night ? frame.words[.polarNight] : frame.words[.polarDay])
+                .font(.system(size: 15, weight: .semibold)).foregroundStyle(pal.text).frame(width: iw, height: h)
+        }
+    }
+}
+
+/// Ножки: восход · золотой час · закат со временем и оценкой. `inset` — отступ колонок от краёв: у купола ширина — по дуге
+/// (от (32 − 14)·s до (358 + 14)·s холста), у вида с маршрутом купола нет, и колонки берут всю ширину.
+struct LargeFeet: View {
+    let frame: WidgetFrame
+    let pal: BraunPalette
+    let iw: CGFloat
+    let inset: CGFloat
+
+    private var zone: TimeZone { frame.zone }
+
+    /// Ширина, которую может занять строка оценки левой или правой ножки, чтобы не наползать на среднюю («золотой час»): половина того, что остаётся
+    /// от колонки между ножками, минус зазор 8. На 364 pt строки помещаются как есть; на 338 строка мельчает (до 0,7, как задано), а не заходит
+    /// под соседнюю (Алексей 16.11: «будь внимателен к текстам, чтобы не наползали»).
+    static func sideWidth(frame: WidgetFrame, iw: CGFloat, inset: CGFloat) -> CGFloat {
+        let time = frame.day?.golden.map { frame.clock($0, in: frame.zone) } ?? "—"
+        let centre = max(BraunText.width(time, size: 17, semibold: true, mono: true) + 15 + 5, BraunText.width(frame.words[.golden], size: 11, semibold: false))
+        return max(0, (iw - 2 * inset - CGFloat(centre)) / 2 - 8)
+    }
+
+    /// Самая широкая из строк оценки при кегле 11 — сколько она хочет; влезает, если `scale` от неё не меньше 0,7 (`minimumScaleFactor` ножки).
+    static func fits(frame: WidgetFrame, iw: CGFloat, inset: CGFloat) -> Bool {
+        let side = sideWidth(frame: frame, iw: iw, inset: inset)
+        let lines = [frame.rating?.sunrise, frame.rating?.score].compactMap { BigWidget.scoreLine($0, frame.words) }
+        return lines.allSatisfy { CGFloat(BraunText.width($0, size: 11, semibold: false)) * 0.7 <= side }
+    }
+
+    var body: some View {
+        let rating = frame.rating
+        ZStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 0) {
+                cell(frame.words[.sunrise], "sunrise", frame.day?.sunrise, score: rating?.sunrise, accent: false, align: .leading)
+                Spacer(minLength: 0)
+                cell(frame.words[.sunset], "sunset", frame.day?.sunset, score: rating?.score, accent: false, align: .trailing)
             }
+            cell(frame.words[.golden], "sun", frame.day?.golden, score: nil, accent: true, align: .center)
         }
+        .padding(.horizontal, inset)
+        .frame(width: iw, alignment: .top)
+    }
 
-        // MARK: Ножки купола: восход · золотой час · закат, ширина — по дуге (от (32 − 14)·s до (358 + 14)·s холста)
-
-        private var feet: some View {
-            let inset = 18 * s
-            let rating = frame.rating
-            return ZStack(alignment: .top) {
-                HStack(alignment: .top, spacing: 0) {
-                    cell(frame.words[.sunrise], "sunrise", frame.day?.sunrise, score: rating?.sunrise, accent: false, align: .leading)
-                    Spacer(minLength: 0)
-                    cell(frame.words[.sunset], "sunset", frame.day?.sunset, score: rating?.score, accent: false, align: .trailing)
-                }
-                cell(frame.words[.golden], "sun", frame.day?.golden, score: nil, accent: true, align: .center)
+    private func cell(_ name: String, _ sign: String, _ at: Date?, score: Int?, accent: Bool, align: HorizontalAlignment) -> some View {
+        let passed = at.map { $0 < frame.now } ?? false
+        let side = align == .center ? CGFloat.infinity : Self.sideWidth(frame: frame, iw: iw, inset: inset)
+        return VStack(alignment: align, spacing: 1) {
+            HStack(spacing: 5) {
+                WidgetIcon(name: sign, size: 15).foregroundStyle(accent ? pal.amber : pal.muted)
+                Text(at.map { frame.clock($0, in: zone) } ?? "—")
+                    .font(.system(size: 17, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(accent ? pal.amber : pal.text.opacity(passed ? 0.55 : 1))
             }
-            .padding(.horizontal, inset)
-            .frame(width: iw, alignment: .top)
-        }
-
-        private func cell(_ name: String, _ sign: String, _ at: Date?, score: Int?, accent: Bool, align: HorizontalAlignment) -> some View {
-            let passed = at.map { $0 < frame.now } ?? false
-            return VStack(alignment: align, spacing: 1) {
-                HStack(spacing: 5) {
-                    WidgetIcon(name: sign, size: 15).foregroundStyle(accent ? pal.amber : pal.muted)
-                    Text(at.map { frame.clock($0, in: zone) } ?? "—")
-                        .font(.system(size: 17, weight: .semibold)).monospacedDigit()
-                        .foregroundStyle(accent ? pal.amber : pal.text.opacity(passed ? 0.55 : 1))
-                }
-                if let line = BigWidget.scoreLine(score, frame.words) {
-                    Text(line).font(.system(size: 11)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.7)
-                } else if accent {
-                    Text(name).font(.system(size: 11)).foregroundStyle(pal.muted).lineLimit(1)
-                }
+            if let line = BigWidget.scoreLine(score, frame.words) {
+                Text(line).font(.system(size: 11)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.7)
+                    .frame(maxWidth: side, alignment: align == .trailing ? .trailing : .leading)
+            } else if accent {
+                Text(name).font(.system(size: 11)).foregroundStyle(pal.muted).lineLimit(1)
             }
         }
     }

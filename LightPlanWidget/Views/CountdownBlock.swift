@@ -3,7 +3,7 @@ import LightPlanDomain
 
 /// Нижнее поле большого виджета (30и.13, Б2): блок отсчёта Braun — тёмный (светлый) циферблат, слева кольцо точек до ближайшей
 /// съёмки (или её хода, если идёт) со знаком жанра и сроком, справа строки съёмок недели. **Рисков нет** (Алексей 16.11: «риски я не просил добавить,
-/// я просил оставить там где мы их намеренно добавили» — они только у Braun). Съёмок нет — одна строка «до сб 21 съёмок нет» и длина дня.
+/// я просил оставить там где мы их намеренно добавили» — они только у Braun). Съёмок нет — «до сб 21 съёмок нет», длина дня и закаты трёх дней.
 struct CountdownBlock: View {
     let frame: WidgetFrame
     let pal: BraunPalette
@@ -15,7 +15,7 @@ struct CountdownBlock: View {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 14, style: .continuous).fill(pal.dial)
                 RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(pal.dialEdge, lineWidth: 0.5)
-                if let first = frame.week.first { shoots(first, size: g.size) } else { empty }
+                if let first = frame.week.first { shoots(first, size: g.size) } else { empty(size: g.size) }
             }
         }
     }
@@ -75,7 +75,7 @@ struct CountdownBlock: View {
         .frame(width: diameter, height: diameter)
     }
 
-    private func shootRow(_ row: BraunIdle.WeekRow, _ s: WidgetFrame.ShootFrame, height: CGFloat) -> some View {
+    func shootRow(_ row: BraunIdle.WeekRow, _ s: WidgetFrame.ShootFrame, height: CGFloat) -> some View {
         let until = BigWidget.untilText(frame, to: s.shoot.startDate, dayOffset: s.dayOffset)
         return HStack(spacing: 7) {
             WidgetIcon(name: row.genre, size: 16, line: 1.5, genre: true).foregroundStyle(row.near ? pal.amber : pal.muted).frame(width: 16, height: 16)
@@ -93,15 +93,28 @@ struct CountdownBlock: View {
 
     // MARK: Съёмок нет
 
-    private var empty: some View {
-        VStack(alignment: .center, spacing: 6) {
-            Text(BraunIdle.emptyWeekLine(frame) ?? "").font(.system(size: 17, weight: .semibold)).foregroundStyle(pal.text).lineLimit(1).minimumScaleFactor(0.7)
-            if let d = frame.day, let r = d.sunrise, let s = d.sunset {
-                Text("\(frame.words[.dayLength]) \(RemainText(words: frame.words).long(s.timeIntervalSince(r)))")
-                    .font(.system(size: 13)).foregroundStyle(pal.muted).lineLimit(1)
+    /// Строка «до сб 21 съёмок нет» с длиной дня справа и закаты трёх следующих дней под ней (Алексей 16.11: «чтобы пространство не пустовало»;
+    /// закаты — то же правило, что у среднего: `BraunIdle.sunsetRows`, строка `BraunSunsetRow`, на большом с «/ 100»).
+    private func empty(size: CGSize) -> some View {
+        let sunsets = BraunIdle.sunsetRows(frame)
+        let rowH = sunsets.isEmpty ? 0 : min(36, (size.height - 24 - 26 - 8) / CGFloat(sunsets.count))
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(BraunIdle.emptyWeekLine(frame) ?? "").font(.system(size: 15, weight: .semibold)).foregroundStyle(pal.text).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 8)
+                if let d = frame.day, let r = d.sunrise, let s = d.sunset {
+                    Text("\(frame.words[.dayLength]) \(RemainText(words: frame.words).long(s.timeIntervalSince(r)))")
+                        .font(.system(size: 12)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.7)
+                }
             }
+            .frame(height: 26)
+            Spacer(minLength: 0)
+            VStack(spacing: 0) {
+                ForEach(sunsets.indices, id: \.self) { i in BraunSunsetRow(row: sunsets[i], pal: pal, width: size.width - 28, height: rowH, wide: true) }
+            }
+            Spacer(minLength: 0)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
     }
 }

@@ -289,7 +289,6 @@ struct BraunContent: View {
     let layout: BraunLayout
     let alpha: Bool
     let pal: BraunPalette
-    @Environment(\.widgetFrozenTimer) private var frozen
 
     var body: some View {
         let L = layout
@@ -329,7 +328,7 @@ struct BraunContent: View {
             if L.medium {
                 // Текст стоит после полосы флажка: рамка таймера уже на 9 слева.
                 let inset = BraunWindow.notchExtra
-                timerText(max(0, plan.shoot.endDate.timeIntervalSince(plan.frame.now)))
+                BraunWindowTimer(end: plan.shoot.endDate, now: plan.frame.now, pal: pal)
                     .frame(width: L.windowWidth - inset, height: 18).offset(x: w - pad - L.windowWidth + inset, y: pad)
             }
         }
@@ -339,21 +338,7 @@ struct BraunContent: View {
     // MARK: Риски по периметру — вся съёмка
 
     private var ticks: some View {
-        let shoot = plan.shoot
-        let duration = shoot.endDate.timeIntervalSince(shoot.startDate)
-        let elapsed = plan.frame.now.timeIntervalSince(shoot.startDate)
-        let startLocal = shoot.startDate.timeIntervalSince1970 + Double(plan.zone.secondsFromGMT(for: shoot.startDate))
-        let hours = BraunTicks.hourIndexes(start: startLocal, duration: duration)
-        func layer(_ past: Bool, _ hour: Bool) -> some View {
-            BraunTickLayer(radius: layout.radius, past: past, hour: hour, duration: duration, elapsed: elapsed, hours: hours)
-                .stroke(past ? pal.tickOff : (hour ? pal.tickHour : pal.tickMinor),
-                        style: StrokeStyle(lineWidth: hour ? BraunTicks.hourWidth : BraunTicks.minorWidth, lineCap: .round))
-        }
-        return ZStack {
-            layer(true, false); layer(true, true); layer(false, false); layer(false, true)
-        }
-        .frame(width: layout.size.width, height: layout.size.height)
-        .allowsHitTesting(false)
+        BraunTicksView(shoot: plan.shoot, now: plan.frame.now, zone: plan.zone, size: layout.size, radius: layout.radius, pal: pal)
     }
 
     // MARK: Шапка: знак жанра и имена
@@ -369,22 +354,6 @@ struct BraunContent: View {
                 .lineLimit(step.lines).multilineTextAlignment(.leading)
                 .foregroundStyle(pal.text)
                 .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    // MARK: Окошко Braun: сколько осталось свадьбы
-
-    /// От часа «10:42:00», меньше часа «42:00»; тикает сама (`Text(timerInterval:)`), без обновления виджета.
-    @ViewBuilder private func timerText(_ remaining: TimeInterval) -> some View {
-        let font = Font.system(size: 13, weight: .semibold).monospacedDigit()
-        if frozen {
-            Text(BraunWindow.text(remaining: remaining)).font(font).foregroundStyle(pal.text).lineLimit(1).fixedSize()
-        } else {
-            let now = plan.frame.now
-            // Как таймер студии, что на телефоне рисуется (`WidgetStyle`): без `.fixedSize()` и `lineLimit` — с ними 26.10 на телефоне
-            // таймер не рисовался и обрывал всё, что виджет строил после него (значок «α», подложку). Ширину задаёт рамка окошка снаружи.
-            Text(timerInterval: now...max(plan.shoot.endDate, now.addingTimeInterval(1)), countsDown: true, showsHours: BraunWindow.showsHours(remaining: remaining))
-                .font(font).foregroundStyle(pal.text).multilineTextAlignment(.center)
         }
     }
 
@@ -455,6 +424,58 @@ struct BraunContent: View {
         .padding(.horizontal, BraunDrum.rowPadding)
         .frame(width: layout.drum.width, height: row.slot.height)
         .background { if o == 0 { RoundedRectangle(cornerRadius: BraunDrum.pillRadius, style: .continuous).fill(pal.pill) } }
+    }
+}
+
+// MARK: - Общие части: окошко-таймер и риски-таймер (средний, малый и большой)
+
+/// Окошко Braun «осталось до конца съёмки»: от часа «10:42:00», меньше часа «42:00»; тикает сама (`Text(timerInterval:)`), без обновления
+/// виджета. Рамку и ширину задаёт вид снаружи (`BraunNotchWindow`); у снимков и тестов часы кадра стоят — тогда та же строка статично.
+struct BraunWindowTimer: View {
+    let end: Date
+    let now: Date
+    let pal: BraunPalette
+    @Environment(\.widgetFrozenTimer) private var frozen
+
+    var body: some View {
+        let remaining = max(0, end.timeIntervalSince(now))
+        let font = Font.system(size: 13, weight: .semibold).monospacedDigit()
+        if frozen {
+            Text(BraunWindow.text(remaining: remaining)).font(font).foregroundStyle(pal.text).lineLimit(1).fixedSize()
+        } else {
+            // Как таймер студии, что на телефоне рисуется (`WidgetStyle`): без `.fixedSize()` и `lineLimit` — с ними 26.10 на телефоне
+            // таймер не рисовался и обрывал всё, что виджет строил после него (значок «α», подложку). Ширину задаёт рамка окошка снаружи.
+            Text(timerInterval: now...max(end, now.addingTimeInterval(1)), countsDown: true, showsHours: BraunWindow.showsHours(remaining: remaining))
+                .font(font).foregroundStyle(pal.text).multilineTextAlignment(.center)
+        }
+    }
+}
+
+/// Риски по периметру плашки — таймер всей съёмки (правило `BraunTicks`): 150 штук от середины верха по часовой, пройденные гаснут, длинные —
+/// ровные часы по часам места съёмки. Не украшение (Алексей 16.11: «в Брауне они являются таймером»): один вид у среднего Braun и у большого со свадьбой.
+struct BraunTicksView: View {
+    let shoot: WidgetFeed.Shoot
+    let now: Date
+    let zone: TimeZone
+    let size: CGSize
+    let radius: Double
+    let pal: BraunPalette
+
+    var body: some View {
+        let duration = shoot.endDate.timeIntervalSince(shoot.startDate)
+        let elapsed = now.timeIntervalSince(shoot.startDate)
+        let startLocal = shoot.startDate.timeIntervalSince1970 + Double(zone.secondsFromGMT(for: shoot.startDate))
+        let hours = BraunTicks.hourIndexes(start: startLocal, duration: duration)
+        func layer(_ past: Bool, _ hour: Bool) -> some View {
+            BraunTickLayer(radius: radius, past: past, hour: hour, duration: duration, elapsed: elapsed, hours: hours)
+                .stroke(past ? pal.tickOff : (hour ? pal.tickHour : pal.tickMinor),
+                        style: StrokeStyle(lineWidth: hour ? BraunTicks.hourWidth : BraunTicks.minorWidth, lineCap: .round))
+        }
+        return ZStack {
+            layer(true, false); layer(true, true); layer(false, false); layer(false, true)
+        }
+        .frame(width: size.width, height: size.height)
+        .allowsHitTesting(false)
     }
 }
 

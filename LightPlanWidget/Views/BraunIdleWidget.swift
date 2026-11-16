@@ -458,6 +458,8 @@ struct BraunSunsetRow: View {
     let pal: BraunPalette
     let width: Double
     let height: Double
+    /// Большой виджет: места хватает на «82 / 100», как в ножках купола; средний — одно число.
+    var wide = false
 
     /// Кегль слова неба: 11 → 10 → 9, первый, что влезает в остаток строки после знака, дня и времени; не влез и 9 — режется «…».
     static func wordSize(_ row: BraunIdle.SunsetRow, width: Double) -> Double {
@@ -475,7 +477,8 @@ struct BraunSunsetRow: View {
             // Хвост берёт весь остаток строки и прижат вправо: со `Spacer` остаток делился пополам и слово резалось при свободном месте.
             Group {
                 if let score = row.score {
-                    Text("\(score)").font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(good ? pal.amber : pal.text)
+                    (Text("\(score)").font(.system(size: 13, weight: .semibold)).foregroundStyle(good ? pal.amber : pal.text)
+                     + Text(wide ? " / 100" : "").font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted)).monospacedDigit()
                 } else if let word = row.word {
                     Text(word).font(.system(size: Self.wordSize(row, width: width), weight: .medium)).foregroundStyle(pal.muted)
                 }

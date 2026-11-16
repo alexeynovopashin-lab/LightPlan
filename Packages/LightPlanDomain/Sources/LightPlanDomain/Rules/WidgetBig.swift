@@ -90,6 +90,26 @@ public enum BigWidget {
         return f.words.inDays(max(2, dayOffset))
     }
 
+    // MARK: Три вида большого (30и.14, выбор Алексея: «большой виджет с рисками-таймером»; эскиз 30и.13 § 9)
+
+    /// Какой из трёх видов рисует большой: `idle` — съёмка не идёт (купол «Света» и блок со съёмками недели или закатами), `photo` — идёт
+    /// съёмка без маршрута (окошко Braun, кольцо на всю съёмку), `route` — идёт съёмка с маршрутом (таймлайн точек и риски-таймер по краю).
+    public enum State: Equatable, Sendable { case idle, photo, route }
+
+    public static func state(_ f: WidgetFrame) -> State {
+        guard f.kind == .live, let shoot = f.primary?.shoot else { return .idle }
+        return shoot.stops.isEmpty ? .photo : .route
+    }
+
+    /// Какие точки маршрута стоят в таймлайне, если помещается `rows`: окно из `rows` строк с одной прошедшей точкой над текущей (контекст),
+    /// сдвинутое так, чтобы не выйти за список. Текущей точки ещё нет (съёмка идёт, а первая точка впереди) — с начала.
+    public static func routeWindow(count: Int, current: Int?, rows: Int) -> Range<Int> {
+        guard count > 0, rows > 0 else { return 0..<0 }
+        let n = min(rows, count)
+        let first = max(0, min((current ?? 1) - 1, count - n))
+        return first..<(first + n)
+    }
+
     /// Кольцо точек блока отсчёта: доля зажжённых. Съёмка идёт — сколько прошло; впереди — сколько осталось до начала из суток (дальше суток кольцо пусто).
     public static func ringFill(_ s: WidgetFrame.ShootFrame, now: Date) -> Double {
         let start = s.shoot.startDate, end = s.shoot.endDate

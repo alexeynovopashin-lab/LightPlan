@@ -342,6 +342,16 @@
   by it at the top (`BraunWindow.notchBandInsetTop`). The window's bevel runs over the band to its outer edge (Alexey 30.10: «продли блики/тень до краёв флажка»): top shadow, bottom rim and the dark ring, clipped to the chevron outline;
   on the red the shadow is ≤ 0.3 and the rim ≤ 0.25 (`BraunPalette.flagTopShadow/flagBottomRim` — the window's 0.7 / 0.8 blacken the top and whiten the bottom of the red). Held by `WidgetFlagFlushTests` (pixels: gap 0, top and bottom within 1 px, bevel visible on the red and not heavier than 35 % / +20 levels; 2×/3×/4×, both plates, both themes).
   Pictures: `docs/30b2v_sketches/built/` (`WidgetLiveTests.writesTheBuiltSheetsWhenAsked`, folder `/tmp/lp-built-out` must exist).
+- **Big widget, three views (30и.13–14, Alexey 16.11: «большой виджет с рисками-таймером»).** Braun plate and colours on every home widget (the view draws its own `BraunPalette.bg`:
+  `containerBackground` is lightened by the system on Home). `LargeView` picks by `BigWidget.state(frame)` (Domain `Rules/WidgetBig.swift`): **idle** (no shoot running) `LargeIdleView` —
+  Light-screen dome with Sun **and** Moon (`SunArc.skyNow`, ghosts by `BigWidget.ghostOpacity`), feet with sunrise/sunset scores, block `CountdownBlock` (week shoots: ring + rows; empty week:
+  «до сб 31 съёмок нет», day length, sunsets of the next 3 days = `BraunIdle.sunsetRows`, the same rule as the medium); **photo** (running, no stops) `LargePhotoView` — notch window with the live
+  timer, dome at 90 %, 60-dot ring over the whole shoot; **route** (running, stops) `LargeRouteView` — timeline of points (rail, current on the pill, «до 15:00», `BigWidget.routeWindow` keeps one past
+  point above the current) and **150 ticks around the plate = the whole-shoot timer, the same `BraunTicksView` as the medium Braun**. **Ticks are a timer, never decoration** (Alexey 16.11: «риски для красоты
+  не нужны, а в Брауне они являются таймером»): only Braun and the route view have them; text stays out of their 3…10.5 pt band (`WidgetLargeStatesTests` checks 11.5…15.5 is clean, both sizes, both
+  themes). Feet scores shrink (≤ 0.7) instead of running under «золотой час» on 338 pt (`LargeFeet.sideWidth`). Forecast window `WidgetFeed.ratingDays` = today + `WidgetFrame.aheadDays` (4).
+  `DayPlan.dialLeft/dialSign/waitingStop`: a shoot whose route lies outside its time window (Alexey's broken wedding 00:00–00:35) counts the whole shoot, never a blank Braun. Large pace = 5 minutes.
+  Sheet pictures: `WidgetLargeStatesTests.writesTheStateSheetsWhenAsked` → `docs/30b2v_sketches/built/large_states_{pro,regular}.png`; sketch: `docs/30i13_big_widget.html` § 9.
 - **Activity screen (30б.3).** Live Activity on the lock screen and in Dynamic Island while a shoot runs (words of Alexey 25–26.10). Rules in Domain:
   `ActivityFrame` (the state the system keeps — ≤ 4 KB, ≤ 16 points, short coding keys; `ActivityFrame.make(feed:shoot:now:mode:words:reach:)` from the same
   `WidgetFeed` the widget reads) and `ActivityRules` (`wanted` = the widget's `.live` shoot, `decide` start / update / restart / end; a day > 8 h is restarted on every
