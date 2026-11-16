@@ -513,4 +513,95 @@ const WPROS={'Ч1 · Окно со шкалой дня':['Плюс: ближе �
 WV.forEach(v=>{const blk=document.createElement('div');blk.innerHTML=`<h3 style="margin:22px 0 4px;font-size:16px">${v.n}</h3><p style="margin:2px 0 8px;font-size:13px">${WPROS[v.n][0]}<br>${WPROS[v.n][1]}</p>`;s11f.appendChild(blk);
  WMOM.forEach(m=>{const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%;font-size:12.5px;color:var(--docSub)">${m.lab}</div>`;blk.appendChild(row);
   [170,158].forEach(W=>['braunD','braunL'].forEach(th=>{const wrap=document.createElement('div');wrap.innerHTML=wFig(v,m,W,th);row.appendChild(wrap.firstChild)}))})});
+
+/* ---------- 12 · Малый виджет «окно неба» по образцам часов (16.11) ---------- */
+/* Холст — вся плашка 170 × 170 (158 — тот же рисунок в масштабе). Всё нарисовано заново; с часов взяты приёмы, не картинки:
+   окно с двумя холмами, диск неба за ним, золотая линия, окошко-календарь с красным указателем. */
+const NG='#F4B400';
+const N={rise:8.933,set:17.2,riseS:'08:56',setS:'17:12',risN:34,setN:62,age:8.3,shoot:{wd:'вс',d:15,t:'12:00',n:'Свадьба',wds:['пт','сб','вс','пн','вт']},days:[{wd:'вс',n:71},{wd:'пн',n:82},{wd:'вт',n:23}],until:'вс 22'};
+const NSKY={day:['#4F8FD8','#BBD9F6'],dusk:['#2B3664','#E58F66'],night:['#0F1C50','#22408C']};
+const NST=[[.06,.46,1],[.2,.66,0],[.29,.2,0],[.36,.47,1],[.47,.08,0],[.55,.36,0],[.62,.33,1],[.72,.54,0],[.84,.4,0],[.93,.52,1],[.97,.3,0],[.4,.72,0],[.58,.12,0],[.5,.6,1]];
+const nFrac=a=>(1-Math.cos(2*Math.PI*a/29.53))/2;
+function nStar(cx,cy,r){let d='';for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,q=i%2?r*.42:r;d+=(i?'L':'M')+(cx+q*Math.cos(a)).toFixed(2)+' '+(cy+q*Math.sin(a)).toFixed(2)}return d+'Z'}
+function nTx(x,y,s,fs,o){o=o||{};return `<text x="${x}" y="${y}" font-size="${fs}" text-anchor="${o.a||'middle'}" font-weight="${o.w||400}" fill="${o.c||'var(--ink)'}"${o.op?` opacity="${o.op}"`:''}${o.tr?` transform="${o.tr}"`:''} style="font-variant-numeric:tabular-nums">${s}</text>`}
+function nIc(n,x,y,sz,c){return `<svg x="${x}" y="${y}" width="${sz}" height="${sz}" viewBox="0 0 24 24"><path d="${ICONS[n]}" fill="none" stroke="${c||'var(--ink2)'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`}
+function nScore(n){return `<tspan font-weight="600" fill="${n>=75?'var(--amberT)':'var(--ink)'}">${n}</tspan><tspan font-size=".8em" fill="var(--ink2)"> / 100</tspan>`}
+function nPtr(x,y){return `<path d="M${x} ${y+8}L${x-4.6} ${y}L${x+4.6} ${y}Z" fill="var(--flag)"/>`}
+/* небо за окном: градиент, звёзды, светило, холмы с тенью на диск. Днём солнце идёт от левого холма к правому (выходит из-за холма на восходе,
+   уходит за правый на закате); ночью луна стоит по возрасту, как на часах: новолуние — за левым холмом, полнолуние — в центре. */
+function nSky(g,m){const id='n'+(++_wid),sk=NSKY[m.sky],[x0,y0,x1,y1]=g.box;
+ let b=`<defs><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sk[0]}"/><stop offset="1" stop-color="${sk[1]}"/></linearGradient><radialGradient id="${id}m" cx=".38" cy=".34" r=".8"><stop offset="0" stop-color="#FBDD77"/><stop offset="1" stop-color="#E0A21A"/></radialGradient><clipPath id="${id}c"><path d="${g.clip}"/></clipPath><filter id="${id}s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="-1" stdDeviation="1.7" flood-color="#000" flood-opacity=".5"/></filter></defs><g clip-path="url(#${id}c)"><rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" fill="url(#${id}g)"/>`;
+ if(m.sky!=='day')NST.forEach(([a,c,big],i)=>{if(m.sky==='dusk'&&i%2)return;const x=x0+a*(x1-x0),y=y0+c*(y1-y0),o=m.sky==='dusk'?.5:1;b+=big?`<path d="${nStar(x,y,g.star||3.1)}" fill="${NG}" opacity="${o}"/>`:`<circle cx="${x}" cy="${y}" r="1" fill="${NG}" opacity="${o*.9}"/>`});
+ if(m.sky==='night'){const th=Math.PI*(m.age??N.age)/29.53,x=g.cx-g.mo*Math.cos(th),y=g.cy-g.mo*Math.sin(th),r=g.mr;b+=`<circle cx="${x}" cy="${y}" r="${r}" fill="url(#${id}m)"/><circle cx="${x-r*.3}" cy="${y-r*.18}" r="${r*.2}" fill="#C48A12" opacity=".3"/><circle cx="${x+r*.28}" cy="${y+r*.32}" r="${r*.15}" fill="#C48A12" opacity=".3"/><circle cx="${x+r*.22}" cy="${y-r*.42}" r="${r*.09}" fill="#C48A12" opacity=".3"/>`}
+ else{const t0=Math.acos(g.so/(2*g.hr)),f=Math.min(1,Math.max(0,(m.now-N.rise)/(N.set-N.rise))),th=t0+f*(Math.PI-2*t0),x=g.cx-g.so*Math.cos(th),y=g.cy-g.so*Math.sin(th);b+=`<circle cx="${x}" cy="${y}" r="${g.sr*2.3}" fill="#FFD75A" opacity=".3"/><circle cx="${x}" cy="${y}" r="${g.sr}" fill="${NG}" stroke="#D99A00" stroke-width=".8"/>`}
+ b+=`<g filter="url(#${id}s)"><circle cx="${g.cx-g.hr}" cy="${g.cy}" r="${g.hr}" fill="var(--bg)"/><circle cx="${g.cx+g.hr}" cy="${g.cy}" r="${g.hr}" fill="var(--bg)"/></g></g>`;
+ return b}
+function nMoonMini(cx,cy,r,age,bg){const id='nm'+(++_wid),f=nFrac(age),wax=age<14.77,d=2*r*f*(wax?-1:1);return `<clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath><circle cx="${cx}" cy="${cy}" r="${r}" fill="#FBDD77"/><circle cx="${cx+d}" cy="${cy}" r="${r}" fill="${bg}" clip-path="url(#${id})"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width=".7"/>`}
+/* подпись луны в углу неба: значок фазы и процент; ночью встаёт в тот угол, где луны нет */
+function nMoonCap(m,age){const t=`${Math.round(nFrac(age)*100)} %`,right=m.sky==='night'&&age<14.77,bg=NSKY[m.sky][0];
+ return right?nMoonMini(150-t.length*5.3-7,16.5,4.2,age,bg)+nTx(154,20,t,9.5,{a:'end',c:'#fff',op:.9,w:500}):nMoonMini(19,16.5,4.2,age,bg)+nTx(26.5,20,t,9.5,{a:'start',c:'#fff',op:.9,w:500})}
+/* Н1 · окно-полукруг в золотом кольце и окошко-дуга под ним (одна окружность, как на «Луче») */
+function nV1(m){const cx=85,cy=78,g={cx,cy,hr:31,clip:'M23 78A62 62 0 0 1 147 78Z',box:[23,16,147,78],mo:38,mr:19,so:50,sr:7.5,star:2.8};
+ const P=(r,f)=>[cx+r*Math.sin(f*Math.PI/180),cy+r*Math.cos(f*Math.PI/180)],r0=50,r1=76,sp=48;
+ let s=nSky(g,m)+`<path d="M23 78A62 62 0 0 1 147 78A31 31 0 0 0 85 78A31 31 0 0 0 23 78Z" fill="none" stroke="${NG}" stroke-width="1.8" stroke-linejoin="round"/>`;
+ s+=nIc('sunrise',48.5,49.5,11)+nTx(54,73.5,N.riseS,12.5,{w:600})+nIc('sunset',110.5,49.5,11)+nTx(116,73.5,N.setS,12.5,{w:600});
+ s+=nTx(54,91,nScore(N.risN),10.5)+nTx(116,91,nScore(N.setN),10.5);
+ const [ax,ay]=P(r0,-sp),[bx,by]=P(r0,sp),[ex,ey]=P(r1,sp),[fx,fy]=P(r1,-sp);
+ s+=`<path d="M${ax} ${ay}A${r0} ${r0} 0 0 0 ${bx} ${by}L${ex} ${ey}A${r1} ${r1} 0 0 1 ${fx} ${fy}Z" fill="var(--dial)" stroke="var(--dial)" stroke-width="4" stroke-linejoin="round"/><path d="M${P(r0+.5,-sp)}A${r0+.5} ${r0+.5} 0 0 0 ${P(r0+.5,sp)}" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="1.6" stroke-linecap="round"/><path d="M${ax} ${ay}A${r0} ${r0} 0 0 0 ${bx} ${by}L${ex} ${ey}A${r1} ${r1} 0 0 1 ${fx} ${fy}Z" fill="none" stroke="var(--slit)" stroke-width=".6" transform="translate(0 0)"/>`;
+ const cell=(f,top,num,o)=>{const [x1,y1]=P(60.5,f),[x2,y2]=P(72,f);return nTx(x1,y1,top,7.5,{c:'var(--ink2)',tr:`rotate(${-f} ${x1} ${y1})`,op:o.op})+nTx(x2,y2,num,o.fs||12,{w:o.w||400,c:o.c,tr:`rotate(${-f} ${x2} ${y2})`,op:o.op})};
+ const div=f=>{const [x1,y1]=P(54.5,f),[x2,y2]=P(72.5,f);return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--slit)" stroke-width=".8"/>`};
+ if(m.no){s+=nTx(85,106,`до ${N.until} съёмок нет`,10.5,{c:'var(--ink2)'});const fs=[-36,-12,12,36];let best=0;N.days.forEach((d,i)=>{if(d.n>N.days[best].n)best=i});
+  const [ix,iy]=P(64,-36);s+=`<g transform="rotate(36 ${ix} ${iy})">${nIc('sunset',ix-6.5,iy-6.5,13)}</g>`;
+  N.days.forEach((d,i)=>{s+=cell(fs[i+1],d.wd,d.n,{w:600,fs:12.5,c:d.n>=75?'var(--amberT)':'var(--ink)'})});s+=div(-24)+div(0)+div(24);
+  s+=`<g transform="rotate(${-fs[best+1]} ${cx} ${cy})">${nPtr(cx,cy+r0-6)}</g>`}
+ else{s+=nTx(85,106,`<tspan font-weight="600">${N.shoot.t}</tspan><tspan fill="var(--ink2)"> · ${N.shoot.n}</tspan>`,11);
+  for(let i=0;i<5;i++){const f=(i-2)*19.2,me=i===2;s+=cell(f,N.shoot.wds[i],N.shoot.d-2+i,{w:me?700:400,fs:me?13:11.5,op:me?1:(Math.abs(i-2)===1?.55:.3)})}
+  s+=div(-28.8)+div(-9.6)+div(9.6)+div(28.8)+nPtr(cx,cy+r0-6)}
+ return s}
+/* Н2 · небо во всю ширину плашки, холмы — сама плашка, окошко-барабан внизу */
+function nV2(m){const g={cx:85,cy:90,hr:42.5,clip:'M0 0H170V90H0Z',box:[0,0,170,90],mo:50,mr:24,so:68,sr:9,star:3.4},id='nw'+(++_wid);
+ const age=m.age??N.age;
+ let s=nSky(g,m)+`<path d="M0 90A42.5 42.5 0 0 1 85 90A42.5 42.5 0 0 1 170 90" fill="none" stroke="${NG}" stroke-width="1.6"/>`+nMoonCap(m,age);
+ s+=nIc('sunrise',36.5,52,12)+nTx(42.5,81,N.riseS,15.5,{w:600})+nIc('sunset',121.5,52,12)+nTx(127.5,81,N.setS,15.5,{w:600});
+ s+=nTx(42.5,105,nScore(N.risN),10.5)+nTx(127.5,105,nScore(N.setN),10.5);
+ const X=14,Y=114,Wd=142,Hd=42;
+ s+=`<defs><clipPath id="${id}"><rect x="${X}" y="${Y}" width="${Wd}" height="${Hd}" rx="8"/></clipPath><linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient></defs><rect x="${X}" y="${Y}" width="${Wd}" height="${Hd}" rx="8" fill="var(--dial)"/><g clip-path="url(#${id})"><rect x="${X}" y="${Y}" width="${Wd}" height="7" fill="url(#${id}h)"/>`;
+ const dv=x=>`<line x1="${x}" y1="${Y+7}" x2="${x}" y2="${Y+Hd-7}" stroke="var(--slit)" stroke-width=".8"/>`;let ptr;
+ if(m.no){let best=0;N.days.forEach((d,i)=>{if(d.n>N.days[best].n)best=i});const cs=[61,99,137];
+  s+=nIc('sunset',21,127.5,14)+dv(42)+dv(80)+dv(118);N.days.forEach((d,i)=>{s+=nTx(cs[i],129,d.wd,9,{c:'var(--ink2)'})+nTx(cs[i],148,d.n,16,{w:600,c:d.n>=75?'var(--amberT)':'var(--ink)'})});ptr=nPtr(cs[best],110)}
+ else{s+=nTx(38,120.5,N.shoot.d-1,15,{op:.3})+nTx(38,142,N.shoot.d,19,{w:700})+nTx(38,163,N.shoot.d+1,15,{op:.3})+dv(58)
+  +nTx(66,133,`${N.shoot.wd} · ${N.shoot.t}`,15,{a:'start',w:600})+nIc('rings',65.5,138.5,11.5)+nTx(80.5,148,N.shoot.n,11,{a:'start',c:'var(--ink2)'});ptr=`<path d="M${X+1} ${Y+15}L${X+1} ${Y+27}L${X+9} ${Y+21}Z" fill="var(--flag)"/>`}
+ s+=`</g><rect x="${X}" y="${Y}" width="${Wd}" height="${Hd}" rx="8" fill="none" stroke="var(--slit)" stroke-width=".6"/>`+ptr;
+ return s}
+const NV=[{n:'Н1 · Окно в золотом кольце и календарь-дуга',f:nV1,pro:'Плюс: ближе всего к образцам — полукруглое окно, под ним дуга календаря на той же окружности, как у «Луча»; золотое кольцо держит рисунок.',con:'Минус: рисунок круглый на прямоугольной плашке — углы пустые; окно неба меньше (луна ⌀ 38 pt, время 12,5 pt); числа в дуге повёрнуты; днём про луну ничего нет.'},
+ {n:'Н2 · Небо во всю плашку и окошко-барабан',f:nV2,pro:'Плюс: прямоугольный перевод того же приёма — небо от края до края, холмы — сама плашка; луна ⌀ 48 pt, время 15,5 pt; окошко читается без поворота, в нём видно колесо дат; луна с процентом есть и днём.',con:'Минус: дальше от образца — кольца-окна нет, вместо него золотая линия горизонта; небо обрезано скруглением плашки.'}];
+const NM=[{lab:'день · 13:00 · ближайшая съёмка в воскресенье',now:13,sky:'day'},{lab:'перед закатом · 16:50',now:16.83,sky:'dusk'},{lab:'ночь · 20:30 · луна 60 %, растёт',sky:'night'},{lab:'ночь · на неделе съёмок нет — в окошке закаты трёх дней, указатель на лучшем',sky:'night',no:true}];
+function nFig(v,m,W,th,cap){return `<figure><div class="w ${th}" style="width:${W}px;height:${W}px;border-radius:${W>165?22:20.5}px"><svg width="${W}" height="${W}" viewBox="0 0 170 170" style="position:absolute;left:0;top:0;font-family:inherit">${v.f(m)}</svg></div><figcaption>${cap||`${W} × ${W} · ${th==='braunD'?'braunDark':'Braun белый'}`}</figcaption></figure>`}
+const sec12=document.createElement('section');sec12.id='skywindow';
+sec12.innerHTML=`<div class="tag">12 · Малый виджет «окно неба» — по фото часов (эскиз, 16.11)</div>
+<p class="lead">Слова Алексея 16.11: «мы делаем не часы, мы вдохновляемся этим дизайном, как Braun до этого. Наш виджет прямоугольный и его задача не показывать текущее время и дату. Под стрелками на фото есть окошко календаря, это тоже сильный визуальный элемент, который можно взять». В § 11 получились маленькие круглые часы; здесь циферблата, стрелок и часовой шкалы нет — взяты два приёма с фото и переведены на наши данные. Подложка и цвета Braun, обе темы, 170 и 158 pt.</p>
+<div class="facts">
+<div class="fact"><b>Приём 1 · окно с двумя холмами</b>За окном диск неба: синяя ночь с золотыми звёздами, голубой день, закатный градиент. <b>Ночью</b> луна стоит как на часах — по возрасту: новолуние спрятано за левым холмом, растущая выходит слева, полная в центре, убывающая уходит за правый (ряд из четырёх фаз — внизу раздела). <b>Днём</b> в том же окне солнце: выходит из-за левого холма на восходе, уходит за правый на закате. Поэтому холмы подписаны: в левом — восход, в правом — закат, под ними оценка из 100.</div>
+<div class="fact"><b>Приём 2 · окошко календаря</b>Утопленное окошко с колесом и красным указателем. Показывает не сегодняшнее число, а <b>дату ближайшей съёмки</b> (соседние числа уходят за край, как на колесе), рядом время и название. Когда на неделе съёмок нет — в окошке закаты трёх следующих дней с баллом, указатель стоит на лучшем (то же, что средний и большой показывают при пустой неделе).</div>
+<div class="fact"><b>Чего нет намеренно</b>Текущего времени и даты, стрелок, шкалы часов. Рисок нет: риски остаются только таймером идущей съёмки. Этот вид — для спокойных состояний (съёмки нет или она впереди); идущую съёмку малый по-прежнему показывает кольцом-таймером.</div>
+<div class="fact"><b>Как живёт в WidgetKit</b>Всё — векторные фигуры (<code>Shape</code>), чужих картинок нет. Солнце двигают записи ленты раз в 10 минут светлого дня, как точку на куполе большого; луна меняется раз в сутки. Данные уже есть в файле виджета (восход, закат, оценки на 4 дня, съёмки); добавить нужно одно — возраст луны (большой его уже считает, <code>BigWidget.sky</code>). Луна в окне — как на механике: диск целиком, фазу даёт холм; точный процент — числом (в Н2).</div>
+</div><div id="s12f"></div>`;
+document.getElementById('variants').appendChild(sec12);
+const s12f=document.getElementById('s12f');
+NV.forEach(v=>{const blk=document.createElement('div');blk.innerHTML=`<h3 style="margin:22px 0 4px;font-size:16px">${v.n}</h3><p style="margin:2px 0 8px;font-size:13px">${v.pro}<br>${v.con}</p>`;s12f.appendChild(blk);
+ NM.forEach(m=>{const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%;font-size:12.5px;color:var(--docSub)">${m.lab}</div>`;blk.appendChild(row);
+  [170,158].forEach(W=>['braunD','braunL'].forEach(th=>{const wrap=document.createElement('div');wrap.innerHTML=nFig(v,m,W,th);row.appendChild(wrap.firstChild)}))});
+ const row=document.createElement('div');row.className='pair';row.innerHTML=`<div style="width:100%;font-size:12.5px;color:var(--docSub)">луна за месяц: 1-й день (новолуние) · 8-й (растёт) · 15-й (полнолуние) · 23-й (убывает)</div>`;blk.appendChild(row);
+ [1,8.3,14.77,23].forEach((a,i)=>{const wrap=document.createElement('div');wrap.innerHTML=nFig(v,{sky:'night',age:a},170,i%2?'braunL':'braunD',`возраст ${Math.round(a)} дн · освещено ${Math.round(nFrac(a)*100)} %`);row.appendChild(wrap.firstChild)})});
+
+/* ---------- 13 · Средний и большой: что заметил по пути (16.11) ---------- */
+const sec13=document.createElement('section');sec13.id='notes13';
+sec13.innerHTML=`<div class="tag">13 · Средний и большой: что заметил по пути (16.11)</div>
+<div class="obs"><b>Наблюдения исполнителя по коду и готовым картинкам (<code>docs/30b2v_sketches/built/</code>), не слова Алексея; в коде ничего не менял:</b><ul>
+<li><b>Два словаря оценки.</b> Один и тот же закат на 62 балла средний называет «тёплый» (слова неба виджета: яркий / тёплый / мягкий / серый), большой — «с цветом» (слова приложения: красивый / с цветом / спокойный / серый). На одном экране «Домой» это читается как два разных прогноза. Предложение: всем виджетам слова приложения. Малому из § 12 слова не нужны — там только балл.</li>
+<li><b>Кольцо «39 ч» у большого.</b> Когда до съёмки больше суток, кольцо — ровный пунктир без заполнения: выглядит как таймер, но ничего не показывает. Предложение: дальше суток кольцо не рисовать, оставить знак жанра и срок.</li>
+<li><b>Луна в семье виджетов будет жить по двум правилам.</b> На куполе большого она стоит по месту на небе (точка ≈ 5 pt, фаза почти не читается), в малом из § 12 — по возрасту, как на часах. Это разные вопросы («где луна» и «какая луна»), путаницы не жду, но решение стоит принять осознанно.</li>
+<li><b>Картинки среднего с оценкой устарели.</b> <code>medium_rated_*.png</code> сняты 27.10 — на них при пустой неделе правая половина пустая, а в коде с 16.11 там закаты трёх дней (это видно на <code>medium_idle_*.png</code>). Нужно переснять, иначе лист показывает прошлый вид.</li>
+</ul></div>`;
+document.getElementById('variants').appendChild(sec13);
 </script></body></html>
