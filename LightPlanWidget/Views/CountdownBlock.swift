@@ -97,6 +97,7 @@ struct CountdownBlock: View {
     /// закаты — то же правило, что у среднего: `BraunIdle.sunsetRows`, строка `BraunSunsetRow`, на большом с «/ 100»).
     private func empty(size: CGSize) -> some View {
         let sunsets = BraunIdle.sunsetRows(frame)
+        let cols = BraunSunsetRow.Cols.of(sunsets)
         let rowH = sunsets.isEmpty ? 0 : min(36, (size.height - 24 - 26 - 8) / CGFloat(sunsets.count))
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
@@ -110,7 +111,7 @@ struct CountdownBlock: View {
             .frame(height: 26)
             Spacer(minLength: 0)
             VStack(spacing: 0) {
-                ForEach(sunsets.indices, id: \.self) { i in BraunSunsetRow(row: sunsets[i], pal: pal, width: size.width - 28, height: rowH, wide: true) }
+                ForEach(sunsets.indices, id: \.self) { i in BraunSunsetRow(row: sunsets[i], pal: pal, width: size.width - 28, height: rowH, wide: true, cols: cols) }
             }
             Spacer(minLength: 0)
         }

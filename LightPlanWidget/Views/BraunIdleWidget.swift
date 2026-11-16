@@ -460,6 +460,24 @@ struct BraunSunsetRow: View {
     let height: Double
     /// Большой виджет: места хватает на «82 / 100», как в ножках купола; средний — одно число.
     var wide = false
+    /// Колонки большого, общие на все строки (30и.16б, Алексей 16.11: «полоски разной длинны»): без них полоска брала остаток строки,
+    /// а «вт 17» шире «чт 19», «99 %» шире «0 %» — полоски начинались и кончались на разных x.
+    var cols: Cols? = nil
+
+    struct Cols: Equatable {
+        var day: Double, time: Double, clouds: Double, score: Double
+
+        /// Ширина колонки — самая широкая строка из всех; облачность и балл — по самым широким возможным («100 %», «100 / 100»),
+        /// чтобы полоска не прыгала от дня к дню. Нет облачности ни в одной строке — её колонки нет.
+        static func of(_ rows: [BraunIdle.SunsetRow]) -> Cols {
+            let day = rows.map { BraunText.width($0.day, size: 11, semibold: false) }.max() ?? 0
+            let time = rows.map { BraunText.width($0.time, size: 13, semibold: true, mono: true) }.max() ?? 0
+            let clouds = rows.contains { $0.clouds != nil } ? 13 + 2 + BraunText.width("100 %", size: 11, semibold: false, mono: true) : 0
+            // Балл — по «100 / 100»; слово неба (строка без балла) уже этого не бывает, иначе мельчает до 0,75.
+            let score = BraunText.width("100", size: 13, semibold: true, mono: true) + BraunText.width(" / 100", size: 11, semibold: false, mono: true)
+            return Cols(day: ceil(day) + 1, time: ceil(time) + 1, clouds: ceil(clouds) + 1, score: ceil(score) + 1)
+        }
+    }
 
     /// Кегль слова неба: 11 → 10 → 9, первый, что влезает в остаток строки после знака, дня и времени; не влез и 9 — режется «…».
     static func wordSize(_ row: BraunIdle.SunsetRow, width: Double) -> Double {
@@ -469,8 +487,68 @@ struct BraunSunsetRow: View {
     }
 
     var body: some View {
+        if let cols { columns(cols) } else { free }
+    }
+
+    /// Большой: строка в колонках общей ширины — знак · день · время · полоска (остаток) · облачность · балл или слово неба. Края полосок
+    /// у всех строк на одних x; строка без балла держит пустое место полоски, облачность стоит в своей колонке.
+    private func columns(_ c: Cols) -> some View {
         let good = (row.score ?? 0) >= 75
-        HStack(spacing: 5) {
+        return HStack(spacing: Self.gap) {
+            WidgetIcon(name: BraunSign.light(.sunset), size: 14, line: 1.5).frame(width: 14, height: 14).foregroundStyle(good ? pal.amber : pal.muted)
+            Text(row.day).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1).fixedSize()
+                .frame(width: CGFloat(c.day), alignment: .leading)
+            Text(row.time).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(pal.text).lineLimit(1).fixedSize()
+                .frame(width: CGFloat(c.time), alignment: .leading)
+            Group {
+                if let score = row.score { bar(score) } else { Color.clear.frame(height: Self.barHeight) }
+            }
+            .frame(minWidth: 24, maxWidth: .infinity)
+            if c.clouds > 1 {
+                Group {
+                    if let clouds = row.clouds {
+                        HStack(spacing: 2) {
+                            WidgetIcon(name: "cloud", size: 13, line: 1.5).frame(width: 13, height: 13)
+                            Text("\(clouds) %").font(.system(size: 11, weight: .medium)).monospacedDigit().lineLimit(1).fixedSize()
+                        }
+                        .foregroundStyle(pal.muted)
+                    } else { Color.clear }
+                }
+                .frame(width: CGFloat(c.clouds), alignment: .leading)
+            }
+            Group {
+                if let score = row.score {
+                    (Text("\(score)").font(.system(size: 13, weight: .semibold)).foregroundStyle(good ? pal.amber : pal.text)
+                     + Text(" / 100").font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted)).monospacedDigit()
+                } else if let word = row.word {
+                    Text(word).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted).minimumScaleFactor(0.75)
+                }
+            }
+            .lineLimit(1)
+            .frame(width: CGFloat(c.score), alignment: .trailing)
+        }
+        .frame(width: width, height: height, alignment: .leading)
+    }
+
+    private func bar(_ score: Int) -> some View {
+        GeometryReader { g in
+            let w = g.size.width, h = Self.barHeight
+            ZStack(alignment: .leading) {
+                Capsule().fill(pal.ink(0.10))
+                LinearGradient(stops: BraunGauge.scale, startPoint: .leading, endPoint: .trailing)
+                    .frame(width: w, height: h)
+                    .mask(alignment: .leading) { Capsule().frame(width: max(h, w * BraunIdle.gaugeLevel(score: score)), height: h) }
+            }
+            .frame(width: w, height: h).clipShape(Capsule())
+            .frame(maxHeight: .infinity)
+        }
+    }
+
+    static let gap = 4.0
+
+    private var free: some View {
+        let good = (row.score ?? 0) >= 75
+        return HStack(spacing: 5) {
             WidgetIcon(name: BraunSign.light(.sunset), size: 14, line: 1.5).frame(width: 14, height: 14).foregroundStyle(good ? pal.amber : pal.muted)
             Text(row.day).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1).fixedSize()
             Text(row.time).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(pal.text).lineLimit(1).fixedSize()
@@ -484,7 +562,9 @@ struct BraunSunsetRow: View {
                     Text(word).font(.system(size: Self.wordSize(row, width: width), weight: .medium)).foregroundStyle(pal.muted)
                 }
             }
-            .lineLimit(1).padding(.leading, 4).frame(maxWidth: wide && row.score != nil ? nil : .infinity, alignment: .trailing).fixedSize(horizontal: wide && row.score != nil, vertical: false)
+            .lineLimit(1).padding(.leading, 4)
+            .frame(maxWidth: wide && row.score != nil ? nil : .infinity, alignment: .trailing)
+            .fixedSize(horizontal: wide && row.score != nil, vertical: false)
         }
         .frame(width: width, height: height, alignment: .leading)
     }
@@ -510,7 +590,20 @@ struct BraunSunsetRow: View {
         } else {
             Spacer(minLength: 0)
         }
-        if let clouds = row.clouds {
+        if let cols, cols.clouds > 1 {
+            // Колонка облачности стоит и в строке без неё: иначе полоска этой строки была бы длиннее.
+            Group {
+                if let clouds = row.clouds {
+                    HStack(spacing: 2) {
+                        WidgetIcon(name: "cloud", size: 14, line: 1.5).frame(width: 14, height: 14)
+                        Text("\(clouds) %").font(.system(size: 11, weight: .medium)).monospacedDigit().lineLimit(1).fixedSize()
+                    }
+                    .foregroundStyle(pal.muted)
+                } else { Color.clear }
+            }
+            .frame(width: cols.clouds, alignment: .leading)
+            .padding(.leading, 6)
+        } else if let clouds = row.clouds {
             HStack(spacing: 2) {
                 WidgetIcon(name: "cloud", size: 14, line: 1.5).frame(width: 14, height: 14)
                 Text("\(clouds) %").font(.system(size: 11, weight: .medium)).monospacedDigit().lineLimit(1).fixedSize()

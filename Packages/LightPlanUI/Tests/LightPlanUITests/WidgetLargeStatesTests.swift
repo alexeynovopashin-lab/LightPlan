@@ -229,6 +229,55 @@ struct WidgetLargeStatesTests {
         }
     }
 
+    // MARK: Полоски закатов одной длины (30и.16б)
+
+    /// Снимок Алексея 16.11 («полоски разной длинны»): облачность 99 % / 0 % / 80 % и дни «вт 17» / «ср 18» / «чт 19» двигали края полосок.
+    /// Теперь колонки общие: у трёх полосок одно начало и один конец (±0,5 pt), на обоих размерах и в обеих темах. Полоска — самый длинный
+    /// сплошной отрезок дорожки или заливки в строке (текст ни того ни другого цвета не бывает). Длина полоски на 338 pt — не меньше 48 pt.
+    @Test func theSunsetBarsHaveOneLength() throws {
+        let fc: [WidgetFeed.Rating] = [.init(day: "2026-10-24", score: 61, quality: .good),
+                                       .init(day: "2026-10-25", score: 61, quality: .good, clouds: 99),
+                                       .init(day: "2026-10-26", score: 38, quality: .plain, clouds: 0),
+                                       .init(day: "2026-10-27", score: 58, quality: .good, clouds: 80)]
+        let f = Self.frame(at: Self.tsk(16, 28), shoots: [], forecast: fc)
+        for size in Self.sizes {
+            for dark in [true, false] {
+                let px = try render(plate(f, size, dark: dark), scale: 4)
+                // Полоска — дорожка (чернила × 0,10 по подложке блока) или цветная заливка; серый текст ни тем ни другим не бывает длиннее 50 pt.
+                let track = dark ? 13 + (236 - 13) * 0.10 : 250 + (17 - 250) * 0.10
+                func isBar(_ c: (Double, Double, Double)) -> Bool {
+                    let sat = max(c.0, c.1, c.2) - min(c.0, c.1, c.2)
+                    return sat > 25 || (sat < 4 && abs(c.0 - track) < 5)
+                }
+                var bars: [(y: Double, from: Double, to: Double)] = []
+                var y = Double(size.height) * 0.6
+                while y < Double(size.height) - 16 {
+                    var best = (0.0, 0.0), runStart: Double? = nil, x = 20.0
+                    while x < Double(size.width) - 20 {
+                        let ink = isBar(px.rgb(x, y))
+                        if ink, runStart == nil { runStart = x }
+                        if !ink, let a = runStart { if x - a > best.1 - best.0 { best = (a, x) }; runStart = nil }
+                        x += 0.25
+                    }
+                    if best.1 - best.0 > 30, best.1 - best.0 < Double(size.width) * 0.5 {
+                        // Соседние строки пикселей одной полоски — одна полоска (y — последняя найденная строка).
+                        if let last = bars.last, y - last.y < 1 { bars[bars.count - 1] = (y, min(last.from, best.0), max(last.to, best.1)) }
+                        else { bars.append((y, best.0, best.1)) }
+                    }
+                    y += 0.25
+                }
+                let name = "\(Int(size.width)) \(dark ? "тёмная" : "светлая")"
+                #expect(bars.count == 3, "\(name): полосок \(bars.count): \(bars)")
+                #expect(bars.allSatisfy { $0.to - $0.from >= (size.width < 364 ? 48 : 70) }, "\(name): полоски короткие \(bars.map { $0.to - $0.from })")
+                if let a = bars.first {
+                    for b in bars.dropFirst() {
+                        #expect(abs(b.from - a.from) <= 0.5 && abs(b.to - a.to) <= 0.5, "\(name): полоски \(bars.map { ($0.from, $0.to) })")
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: Картинки для проверки глазом
 
     /// Листы видов в `$LP_BUILT_DIR` или `/tmp/lp-built-out`, если папка заведена: `large_states_pro.png` (364 × 382) и `large_states_regular.png` (338 × 354);
