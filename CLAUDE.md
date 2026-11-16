@@ -46,6 +46,7 @@
   Core — measured). `Tools/check_boundaries.sh` enforces them; it runs as a
   build phase of both apps. Rules are in its two functions.
   Drawn glass shine (`glassShine`) is allowed outside `Timebar/` only in `Screens/Planner/PlannerMonthView.swift` (month plate; Alexey, DECISIONS 03.10), held by `Tools/check_glass.sh`.
+- Shared functions (Alexey 06.11: «проекты должны знать, что у них есть свой "магазин функций"»): ready shared parts come from the core catalog `event_os:15_Core_Modules.md`; a new function other apps could use is proposed to the core through the hub (`platform_hub/hub.sh new lightplan eventos "…"`) before it is written inside Light Plan.
 - Structure changes to `LightPlan.xcodeproj` (targets, phases, package refs):
   propose in text, Alexey does them in Xcode. Never read the pbxproj in full.
 - Devices: first priority is regular iPhones, 14 through 17 Pro Max, portrait
