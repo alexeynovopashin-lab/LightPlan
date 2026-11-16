@@ -93,7 +93,11 @@ public actor Store {
     /// риск потери живых данных лечится и так, и тем, что импорт вообще
     /// не пишет исходник (итерация 12, «Риски»).
     public func importArchive(from url: URL) throws -> Snapshot {
-        let raw = try Data(contentsOf: url)
+        try importArchive(data: Data(contentsOf: url))
+    }
+
+    /// То же из байтов — копия, забранная из облака (31.1): свой снимок сначала уходит в `backups/`.
+    public func importArchive(data raw: Data) throws -> Snapshot {
         let snapshot = try ImportedFile.decode(raw)
         try backupCurrentFileIfPresent()
         try saveNow(snapshot)
@@ -118,8 +122,11 @@ public actor Store {
 
     /// Файл «Поделиться копией» — тот же конверт, что пишет веб.
     public func exportArchive() throws -> Data {
-        let snapshot = try load()
-        let backup = BackupFile(snapshot: snapshot)
-        return try JSONEncoder().encode(backup)
+        try Self.archive(load())
+    }
+
+    /// Конверт копии из готового снимка (облако, 31.1: снимок в памяти правдивее файла под отложенной записью).
+    public static func archive(_ snapshot: Snapshot, exportedAt: Date = Date()) throws -> Data {
+        try JSONEncoder().encode(BackupFile(snapshot: snapshot, exportedAt: exportedAt))
     }
 }

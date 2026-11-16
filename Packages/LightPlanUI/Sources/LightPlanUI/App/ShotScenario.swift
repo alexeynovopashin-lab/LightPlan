@@ -128,6 +128,8 @@ extension AppModel {
         #endif
         // Клиенты в Контактах (К7): `-LPShotContacts past|on|no|limited|denied|test` — подставная книга; без аргумента части «Контакты» нет.
         if let kind = UserDefaults.standard.string(forKey: "LPShotContacts") { app.shotContacts(kind) }
+        // Облако (31.1): `-LPShotCloud off|on|pushing|error|ask` — блок «Облако» в «Данных и облаке» без сети и без входа.
+        if let kind = UserDefaults.standard.string(forKey: "LPShotCloud") { app.shotCloud(kind) }
         app.mapOffline = !UserDefaults.standard.bool(forKey: "LPShotLiveMap")
         // Купол на луне (30г.6): `-LPShotDomeMoon 1` — как будто нажата «Солнце или луна»; без «Луны» купол всё равно на солнце.
         if UserDefaults.standard.bool(forKey: "LPShotDomeMoon") { app.light.moonMode = true }

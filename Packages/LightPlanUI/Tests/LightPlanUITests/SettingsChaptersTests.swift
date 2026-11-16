@@ -24,7 +24,7 @@ struct SettingsChaptersTests {
         #expect(!Chapter.shoots.parts.contains(.calendarSection))
         #expect(!Chapter.data.parts.contains(.calendarSection))
         #expect(!Chapter.data.parts.contains(.foreign("set.icsImport")))
-        #expect(Chapter.data.parts == [.foreign("set.data"), .foreign("cloud.title")])      // остальное «Данных» на месте
+        #expect(Chapter.data.parts == [.foreign("set.data"), .cloud])      // остальное «Данных» на месте
     }
 
     @Test func theChapterIsNamedCalendarInEveryLanguageWithAnIconFromTheLibrary() throws {

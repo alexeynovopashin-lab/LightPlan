@@ -56,6 +56,8 @@ public struct SettingsView: View {
             case moodboardRow
             /// Строка «Корзина» в «Хранилище».
             case binRow
+            /// Раздел «Облако» (31.1): Яндекс.Диск — подключить, сохранить копию, восстановить, отключить.
+            case cloud
         }
 
         var parts: [Part] {
@@ -63,7 +65,7 @@ public struct SettingsView: View {
             case .calendar: [.calendarSection, .foreign("set.icsImport")]
             case .clients: [.clientsLayer]
             case .store: [.moodboardRow, .binRow]
-            case .data: [.foreign("set.data"), .foreign("cloud.title")]
+            case .data: [.foreign("set.data"), .cloud]
             default: [.body]
             }
         }

@@ -9,7 +9,7 @@ import UIKit
 /// Страница одной главы настроек. Свои разделы итерации 19а работают;
 /// «Сдача материала» и «Корзина» — итерация 22; разделы, содержимое которых
 /// делает другая итерация (карта — 20, мудборды и организации — 28, знакомство — 29, уведомления — 30,
-/// копия и облако — 31), стоят на своём месте в главе приглушённой строкой:
+/// копия файлом — 31; облако — 31.1, `CloudSection`), стоят на своём месте в главе приглушённой строкой:
 /// свою работу они добавят сами.
 struct SettingsChapterView: View {
     @Bindable var app: AppModel
@@ -231,6 +231,7 @@ struct SettingsChapterView: View {
             case .clientsLayer: clientsRow
             case .moodboardRow: moodboardRow
             case .binRow: binRow
+            case .cloud: CloudSection(app: app)
             case .body: EmptyView()
             }
         }

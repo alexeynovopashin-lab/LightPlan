@@ -55,6 +55,8 @@ dir="${TARGET_BUILD_DIR:-}/${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}"
 "$root/Tools/carto_key.sh" "$dir"
 # Общий список студий (30е.1) — свой файл; нет файла — приложение без списка, как до 30е.
 "$root/Tools/places_served.sh" "$dir"
+# ClientID Яндекс ID (31.1) — свой файл; нет файла — в «Облаке» Яндекс «не настроен в этой сборке».
+"$root/Tools/yandex_key.sh" "$dir"
 
 out="$dir/build_stamp.plist"
 pb=/usr/libexec/PlistBuddy

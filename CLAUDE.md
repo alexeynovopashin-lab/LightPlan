@@ -465,6 +465,16 @@
   Tests/shots have no list unless `usePlaceCatalog` / `FixedPlaceCatalog`; the real file: `LP_PLACES_FILE=<file> swift test --filter realServedFileReadsWhole`.
   Shots: `node Tools/shots/studio_list.js` (Debug `-LPShotCatalog demo` = Tomson + invented places, never the real file;
   `-LPShotCatalogQuery <text>`, `-LPShotCatalogPick 1`; row nodes `loc.catalog.here|other.<i>` carry «name|mark[|выбрана]»).
+- **Cloud: Yandex Disk (31.1).** Extra copy and export gateway, never the main storage (DECISIONS «Курс на серверы»). Data `Cloud/`: `CloudProvider`
+  (`YandexDisk`; Google/Dropbox are `CloudKind.ready == false` → «скоро»), `CloudBackup` (copy `light-plan-iphone.json` = the web's envelope, images
+  `iphone-images/<im>` — only missing/different-size go up, only missing come down; never touches the web's `light-plan.json`), `PKCE`, token in Keychain
+  (`KeychainCloudTokenStore`, per bundle id, this-device-only), connection/last upload in UserDefaults (`CloudRecord`). Sign-in = authorization code + PKCE,
+  **no client secret**, `ASWebAuthenticationSession` (`App/CloudSignIn.swift`) on scheme `lightplan-oauth` (not in Info.plist); redirect `lightplan-oauth://yandex`
+  must sit in the web's Yandex registration below the web URL (Yandex silently falls back to the first URI = the web site). One registration serves main and
+  all slots. ClientID from `~/.config/lightplan/yandex_client_id` → `yandex_disk.plist` (`Tools/yandex_key.sh`, build phase); none → «не настроен в этой сборке».
+  Disconnect = forget locally (`/revoke_token` needs the secret). Restore writes the file via `Store.importArchive(data:)` (own copy to `backups/`), then
+  `storeFrozen` stops every write and `after` callback, and a full-screen plate asks to reopen the app. UI `CloudSection` (chapter «Данные и облако», Pro/Astro
+  only — Simple sheet has no data chapter). Tests `CloudYandexTests` (fake Disk: PKCE, `OAuth` header, 401/507, refresh), `CloudAppTests`; shots `-LPShotCloud off|on|pushing|pushed|error|ask|soon|restored` with `-LPShotChapter data`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

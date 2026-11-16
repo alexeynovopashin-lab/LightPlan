@@ -373,7 +373,12 @@ public final class AppModel {
     var snapshot: Snapshot
     /// Снимок как есть — для тестов записи (могилы, ссылки маршрутов).
     var snapshotForTests: Snapshot { snapshot }
-    private let store: Store?
+    let store: Store?
+    /// Файл данных больше не пишется: в него только что легла копия из облака (31.1), а в памяти — прежние данные.
+    @ObservationIgnored var storeFrozen = false
+    /// Блок «Облако» в «Данных и облаке» (31.1) и его проводка; без проводки (тесты, снимки) облака нет.
+    var cloud = CloudState()
+    @ObservationIgnored var cloudWiring: CloudWiring?
     /// Файлы картинок мудборда (шаг 5г); `nil` — в тестах без диска и до `live()`.
     var refImages: RefImageStore?
     /// Читалка Pinterest (28м); `nil` — в этой сборке нет ключа, и Pinterest выключен с надписью.
@@ -777,6 +782,7 @@ public final class AppModel {
         model.watchWidgetForecast() // и оценка заката, когда придёт прогноз (30б.2в-5)
         model.debugContactsProbe()  // замер на настоящей книге симулятора (`-LPContactsProbe`, Debug)
         model.attachPlaceCatalog(BundledPlaceCatalog())  // общий список студий из сборки, если он там есть (30е.1)
+        model.attachCloud()         // Яндекс.Диск: копия данных и картинок туда и обратно (31.1)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)
@@ -976,6 +982,9 @@ public final class AppModel {
         publishWidget()         // и виджет на главном экране: съёмки ближайших дней (30б.2)
         syncActivity()          // и плашка на экране блокировки: идёт ли съёмка, на какой она точке (30б.3)
         guard let store else { after?(); return }
+        // После восстановления из облака (31.1) не пишем и не зовём `after`: оно стирает файлы картинок, ушедших из
+        // данных в памяти, а легшая на диск копия на них, может быть, ссылается.
+        guard !storeFrozen else { return }
         let snap = snapshot, prev = saving
         saving = Task {
             await prev?.value
