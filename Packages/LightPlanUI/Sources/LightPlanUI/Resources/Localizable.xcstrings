@@ -12105,7 +12105,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurado desde Disk. Cierra la app (deslízala hacia arriba en el selector de apps) y ábrela de nuevo: los datos de la copia ya están en su sitio."
+            "value" : "Restaurado desde Disk. Cierra la app (deslízala hacia arriba en el selector de apps) y ábrela de nuevo: los datos de la copia ya están cargados."
           }
         },
         "ja" : {

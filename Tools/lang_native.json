@@ -1913,7 +1913,7 @@
     "cloud.n.pullAskNote": "Los datos actuales del teléfono se guardan como un archivo aparte dentro de la app.",
     "cloud.n.pullYes": "Sustituir",
     "cloud.n.pullingImages": "Descargando imágenes: {n} de {total}",
-    "cloud.n.restored": "Restaurado desde Disk. Cierra la app (deslízala hacia arriba en el selector de apps) y ábrela de nuevo: los datos de la copia ya están en su sitio.",
+    "cloud.n.restored": "Restaurado desde Disk. Cierra la app (deslízala hacia arriba en el selector de apps) y ábrela de nuevo: los datos de la copia ya están cargados.",
     "cloud.n.errRevoked": "El acceso a Disk se revocó o caducó. Vuelve a conectar Disk.",
     "cloud.n.errOffline": "Sin conexión con Yandex. Revisa internet y vuelve a intentarlo.",
     "cloud.n.errNoSpace": "No hay espacio suficiente en Disk. Libera espacio en Yandex Disk y vuelve a intentarlo.",
