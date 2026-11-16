@@ -63,15 +63,12 @@ public enum BigWidget {
 
     // MARK: Оценка
 
-    /// Слово оценки как в приложении (`LightTelemetry.sunsetWord`, пороги 75 / 50 / 28).
-    public static func scoreWord(_ s: Int, _ w: WidgetFeed.Words) -> String {
-        s >= 75 ? w.extra("score.beautiful", "красивый") : s >= 50 ? w.extra("score.color", "с цветом")
-            : s >= 28 ? w.extra("score.calm", "спокойный") : w.extra("score.none", "серый")
-    }
-
-    /// «спокойный · 34 / 100»; `nil` — оценки нет (нет прогноза): числа не выдумываются.
-    public static func scoreLine(_ s: Int?, _ w: WidgetFeed.Words) -> String? {
-        s.map { "\(scoreWord($0, w)) · \($0) / 100" }
+    /// Слово ножки — шкала неба виджета (DECISIONS 30.10: «яркий · тёплый · мягкий · серый · туманный»), то же, что у среднего:
+    /// `BraunIdle.quality`. До 30и.15 здесь стояли слова экрана «Свет» («с цветом»), и средний с большим называли один закат по-разному.
+    /// «мягкий · 34 / 100»; `nil` — оценки нет (нет прогноза): числа не выдумываются.
+    public static func scoreLine(_ kind: BraunIdle.LightKind, _ r: WidgetFeed.Rating?, _ w: WidgetFeed.Words) -> String? {
+        guard let s = kind == .sunset ? r?.score : r?.sunrise else { return nil }
+        return "\(w.sky(BraunIdle.quality(kind, r) ?? SunsetScore.category(s))) · \(s) / 100"
     }
 
     // MARK: Съёмки
@@ -117,6 +114,12 @@ public enum BigWidget {
         let start = s.shoot.startDate, end = s.shoot.endDate
         if start <= now { return end > start ? min(1, max(0, now.timeIntervalSince(start) / end.timeIntervalSince(start))) : 1 }
         return 1 - min(1, start.timeIntervalSince(now) / 86_400)
+    }
+
+    /// Рисовать ли кольцо: съёмка идёт или до неё не больше суток. Дальше суток кольцо было бы пустым пунктиром вокруг «39 ч» (30и.15) —
+    /// его нет, знак жанра и срок стоят одни.
+    public static func showsRing(_ s: WidgetFrame.ShootFrame, now: Date) -> Bool {
+        s.shoot.startDate.timeIntervalSince(now) <= 86_400
     }
 }
 

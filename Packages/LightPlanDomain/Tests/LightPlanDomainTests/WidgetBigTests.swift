@@ -5,19 +5,23 @@ import LightPlanCore
 
 /// 30и.13: правила большого виджета (Б2) — слова оценки, призрак светила, запасные слова.
 struct WidgetBigTests {
-    @Test func scoreWordsFollowTheThresholdsOfTheLightScreen() {
+    /// 30и.15 (Алексей 16.11, «шкала неба»): ножки большого говорят теми же словами, что средний, — одним правилом `BraunIdle.quality`.
+    @Test func theFeetSpeakTheSkyScaleLikeTheMedium() {
         let w = WidgetFeed.Words()
-        #expect(BigWidget.scoreWord(75, w) == "красивый" && BigWidget.scoreWord(74, w) == "с цветом")
-        #expect(BigWidget.scoreWord(50, w) == "с цветом" && BigWidget.scoreWord(49, w) == "спокойный")
-        #expect(BigWidget.scoreWord(28, w) == "спокойный" && BigWidget.scoreWord(27, w) == "серый")
-        #expect(BigWidget.scoreLine(34, w) == "спокойный · 34 / 100")
-        #expect(BigWidget.scoreLine(nil, w) == nil, "оценки нет — строки нет, числа не выдумываются")
+        let r = WidgetFeed.Rating(day: "2026-10-24", score: 62, quality: .good, sunrise: 34)
+        #expect(BigWidget.scoreLine(.sunset, r, w) == "тёплый · 62 / 100", "закат — категория дня")
+        #expect(BigWidget.scoreLine(.sunrise, r, w) == "\(w.sky(SunsetScore.category(34))) · 34 / 100", "рассвет — категория своего балла")
+        for kind in [BraunIdle.LightKind.sunrise, .sunset] {
+            #expect(BigWidget.scoreLine(kind, r, w)?.hasPrefix(w.sky(BraunIdle.quality(kind, r)!)) == true, "то же слово, что у среднего")
+        }
+        let fog = WidgetFeed.Rating(day: "2026-10-26", score: 20, quality: .fog, sunrise: 15)
+        #expect(BigWidget.scoreLine(.sunrise, fog, w) == "туманный · 15 / 100", "утренний туман сильнее балла")
+        #expect(BigWidget.scoreLine(.sunset, WidgetFeed.Rating(day: "2026-10-26", score: nil, quality: .fog), w) == nil, "балла нет — строки нет, числа не выдумываются")
+        #expect(BigWidget.scoreLine(.sunset, nil, w) == nil)
     }
 
     @Test func theAppsWordWinsOverTheFallback() {
-        var w = WidgetFeed.Words()
-        w.table["score.calm"] = "calm"
-        #expect(BigWidget.scoreWord(30, w) == "calm")
+        let w = WidgetFeed.Words()
         #expect(BigWidget.phaseWord(.astroNight, w) == "НОЧЬ" && BigWidget.phaseWord(.evening, w) == "ВЕЧЕРЕЕТ")
     }
 
@@ -63,5 +67,20 @@ struct WidgetBigTests {
         #expect(BigWidget.routeWindow(count: 6, current: nil, rows: 4) == 0..<4, "первая точка впереди — с начала")
         #expect(BigWidget.routeWindow(count: 2, current: 1, rows: 6) == 0..<2)
         #expect(BigWidget.routeWindow(count: 0, current: nil, rows: 6).isEmpty)
+    }
+
+    /// 30и.15: дальше суток до съёмки кольцо было пустым пунктиром вокруг «39 ч» — его нет; с суток и ближе и во время съёмки — есть.
+    @Test func theRingShowsOnlyWithinADayOfTheShoot() throws {
+        let photo = Self.shoot("p", Self.tsk(16, day: 26), Self.tsk(18, day: 26))
+        func first(at now: Date) throws -> WidgetFrame.ShootFrame { try #require(WidgetFeed(place: Self.tomsk, shoots: [photo]).frame(at: now).week.first) }
+        let far = try first(at: Self.tsk(1, day: 25))
+        #expect(!BigWidget.showsRing(far, now: Self.tsk(1, day: 25)), "39 ч до съёмки — кольца нет")
+        #expect(BigWidget.ringFill(far, now: Self.tsk(1, day: 25)) == 0, "и было бы оно пустым")
+        let day = try first(at: Self.tsk(16, day: 25))
+        #expect(BigWidget.showsRing(day, now: Self.tsk(16, day: 25)), "ровно сутки — кольцо есть")
+        let near = try first(at: Self.tsk(10, day: 26))
+        #expect(BigWidget.showsRing(near, now: Self.tsk(10, day: 26)) && BigWidget.ringFill(near, now: Self.tsk(10, day: 26)) == 0.75, "6 ч из суток — три четверти горят")
+        let live = try first(at: Self.tsk(17, day: 26))
+        #expect(BigWidget.showsRing(live, now: Self.tsk(17, day: 26)), "съёмка идёт — кольцо её хода")
     }
 }

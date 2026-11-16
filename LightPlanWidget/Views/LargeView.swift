@@ -127,7 +127,7 @@ struct LargeFeet: View {
     /// Самая широкая из строк оценки при кегле 11 — сколько она хочет; влезает, если `scale` от неё не меньше 0,7 (`minimumScaleFactor` ножки).
     static func fits(frame: WidgetFrame, iw: CGFloat, inset: CGFloat) -> Bool {
         let side = sideWidth(frame: frame, iw: iw, inset: inset)
-        let lines = [frame.rating?.sunrise, frame.rating?.score].compactMap { BigWidget.scoreLine($0, frame.words) }
+        let lines = [BraunIdle.LightKind.sunrise, .sunset].compactMap { BigWidget.scoreLine($0, frame.rating, frame.words) }
         return lines.allSatisfy { CGFloat(BraunText.width($0, size: 11, semibold: false)) * 0.7 <= side }
     }
 
@@ -135,17 +135,17 @@ struct LargeFeet: View {
         let rating = frame.rating
         ZStack(alignment: .top) {
             HStack(alignment: .top, spacing: 0) {
-                cell(frame.words[.sunrise], "sunrise", frame.day?.sunrise, score: rating?.sunrise, accent: false, align: .leading)
+                cell(frame.words[.sunrise], "sunrise", frame.day?.sunrise, line: BigWidget.scoreLine(.sunrise, rating, frame.words), accent: false, align: .leading)
                 Spacer(minLength: 0)
-                cell(frame.words[.sunset], "sunset", frame.day?.sunset, score: rating?.score, accent: false, align: .trailing)
+                cell(frame.words[.sunset], "sunset", frame.day?.sunset, line: BigWidget.scoreLine(.sunset, rating, frame.words), accent: false, align: .trailing)
             }
-            cell(frame.words[.golden], "sun", frame.day?.golden, score: nil, accent: true, align: .center)
+            cell(frame.words[.golden], "sun", frame.day?.golden, line: nil, accent: true, align: .center)
         }
         .padding(.horizontal, inset)
         .frame(width: iw, alignment: .top)
     }
 
-    private func cell(_ name: String, _ sign: String, _ at: Date?, score: Int?, accent: Bool, align: HorizontalAlignment) -> some View {
+    private func cell(_ name: String, _ sign: String, _ at: Date?, line: String?, accent: Bool, align: HorizontalAlignment) -> some View {
         let passed = at.map { $0 < frame.now } ?? false
         let side = align == .center ? CGFloat.infinity : Self.sideWidth(frame: frame, iw: iw, inset: inset)
         return VStack(alignment: align, spacing: 1) {
@@ -155,7 +155,7 @@ struct LargeFeet: View {
                     .font(.system(size: 17, weight: .semibold)).monospacedDigit()
                     .foregroundStyle(accent ? pal.amber : pal.text.opacity(passed ? 0.55 : 1))
             }
-            if let line = BigWidget.scoreLine(score, frame.words) {
+            if let line {
                 Text(line).font(.system(size: 11)).foregroundStyle(pal.muted).lineLimit(1).minimumScaleFactor(0.7)
                     .frame(maxWidth: side, alignment: align == .trailing ? .trailing : .leading)
             } else if accent {

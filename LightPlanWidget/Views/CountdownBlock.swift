@@ -46,7 +46,7 @@ struct CountdownBlock: View {
         let t = s.shoot.startDate.timeIntervalSince(frame.now)
         let r = diameter / 2 - 5
         return ZStack {
-            Canvas { ctx, size in
+            if BigWidget.showsRing(s, now: frame.now) { Canvas { ctx, size in
                 let c = CGPoint(x: size.width / 2, y: size.height / 2)
                 for i in 0..<36 {
                     let a = Double(i) / 36 * 2 * .pi - .pi / 2
@@ -55,7 +55,7 @@ struct CountdownBlock: View {
                     let p = CGPoint(x: c.x + r * CGFloat(cos(a)), y: c.y + r * CGFloat(sin(a)))
                     ctx.fill(Path(ellipseIn: CGRect(x: p.x - rad, y: p.y - rad, width: 2 * rad, height: 2 * rad)), with: .color(lit ? pal.dot : pal.dotOff))
                 }
-            }
+            } }
             VStack(spacing: 1) {
                 WidgetIcon(name: s.shoot.genre, size: 18, line: 1.5, genre: true).foregroundStyle(pal.amber).frame(width: 18, height: 18)
                 if running {

@@ -353,6 +353,9 @@
   empty week — sunsets of 3 days with scores, the flag over the best (tie → earlier, no scores → no flag). No ticks (ticks are only a timer).
   Timeline: small adds 10-minute entries from sunrise − 2 h to sunset + 2 h. Tests `WidgetSmallSkyTests`, `WidgetSmallSkyViewTests` (pixels, hill-crest
   geometry); sheet `docs/30b2v_sketches/built/small_sky.png` (`writesTheSheetWhenAsked`, folder `/tmp/lp-built-out`).
+  Same step, big widget (Alexey 16.11 «Шкала неба»): its feet speak the medium's sky scale «тёплый · 62 / 100» (`BigWidget.scoreLine(kind, rating, words)`,
+  word = `BraunIdle.quality` — the one rule of both; the Light screen's «красивый / с цветом / спокойный» are gone from widgets), and the countdown block draws no ring
+  more than a day before the shoot (`BigWidget.showsRing`: it was an empty dotted circle round «39 ч»); genre sign and time stay.
 - **Big widget, three views (30и.13–14, Alexey 16.11: «большой виджет с рисками-таймером»).** Braun plate and colours on every home widget (the view draws its own `BraunPalette.bg`:
   `containerBackground` is lightened by the system on Home). `LargeView` picks by `BigWidget.state(frame)` (Domain `Rules/WidgetBig.swift`): **idle** (no shoot running) `LargeIdleView` —
   Light-screen dome with Sun **and** Moon (`SunArc.skyNow`, ghosts by `BigWidget.ghostOpacity`), feet with sunrise/sunset scores, block `CountdownBlock` (week shoots: ring + rows; empty week:
