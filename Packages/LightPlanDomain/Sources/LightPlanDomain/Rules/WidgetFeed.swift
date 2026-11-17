@@ -134,13 +134,17 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         /// Облачность в час заката, % (30и.16: строки закатов большого виджета — «полоски оценок и облачность», Алексей 16.11). Из того же часа
         /// прогноза, что и балл (`WeatherDay.layers`); `nil` — часа заката в прогнозе нет или файл старого вида: процент не выдумывается.
         public var clouds: Int?
+        /// Туман в окне рассвета (31.4, `WeatherDay.dawnFog`): категория дня судит туман у заката, утро — своим окном.
+        /// Нет в файле старого вида — `nil`: тогда, как раньше, туман утра — это категория дня «туман».
+        public var dawnFog: Bool?
 
-        public init(day: String, score: Int?, quality: DayQuality, sunrise: Int? = nil, clouds: Int? = nil) {
+        public init(day: String, score: Int?, quality: DayQuality, sunrise: Int? = nil, clouds: Int? = nil, dawnFog: Bool? = nil) {
             self.day = day
             self.score = score
             self.sunrise = sunrise
             self.quality = quality.rawValue
             self.clouds = clouds
+            self.dawnFog = dawnFog
         }
 
         public var category: DayQuality? { DayQuality(rawValue: quality) }

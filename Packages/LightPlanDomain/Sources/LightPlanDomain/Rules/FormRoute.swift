@@ -290,9 +290,12 @@ public struct WishSky: Sendable, Equatable {
     public var moonFraction: Double
     /// Луна во время самой съёмки (30г.12); `nil` — времени нет, и «Луна» проверяется по-вебовски, фазой в 22:00.
     public var shootMoon: ShootMoon?
+    /// Туман в окне рассвета (31.4, `WeatherDay.dawnFog`): категория дня судит туман у заката, а пожелание «Туман» сбывается и утром.
+    public var dawnFog: Bool
 
     public init(quality: DayQuality?, sunsetScore: Int?, astroNight: Bool, moonLevel: Int?,
-                moonPercent: Int?, moonFraction: Double, shootMoon: ShootMoon? = nil) {
+                moonPercent: Int?, moonFraction: Double, shootMoon: ShootMoon? = nil, dawnFog: Bool = false) {
+        self.dawnFog = dawnFog
         self.quality = quality
         self.sunsetScore = sunsetScore
         self.astroNight = astroNight
@@ -388,6 +391,8 @@ public enum WishCheck {
             return q == .poor ? WishClash(key: "moonCloud", params: [:], sky: q) : nil
         case .clear, .cloudy, .fog:
             guard let q else { return nil }
+            // 31.4: туман у рассвета — тоже туман (веб считал «Туманом» весь день по туману 5–9 ч).
+            if w == .fog && sky.dawnFog { return nil }
             return q != want[w] ? WishClash(key: "wrongWx", params: [:], sky: q, wish: w) : nil
         }
     }

@@ -232,11 +232,12 @@ public enum BraunIdle {
     }
 
     /// Ступень шкалы неба события — одно правило для всех виджетов (30и.15: большой говорит теми же словами, что средний, DECISIONS 30.10):
-    /// у заката — категория дня; у рассвета — «туман», если утром туман, иначе категория рассветного балла. Прогноза нет — `nil`.
+    /// у заката — категория дня; у рассвета — «туман», если туман в окне рассвета (31.4: `dawnFog`; файл старого вида — категория дня
+    /// «туман»), иначе категория рассветного балла. Прогноза нет — `nil`.
     public static func quality(_ kind: LightKind, _ rating: WidgetFeed.Rating?) -> DayQuality? {
         guard let rating else { return nil }
         if kind == .sunset { return rating.category }
-        return rating.category == .fog ? .fog : rating.sunrise.map(SunsetScore.category)
+        return (rating.dawnFog ?? (rating.category == .fog)) ? .fog : rating.sunrise.map(SunsetScore.category)
     }
 
     /// Слово неба; нет прогноза на это событие — `nil`, строки нет.

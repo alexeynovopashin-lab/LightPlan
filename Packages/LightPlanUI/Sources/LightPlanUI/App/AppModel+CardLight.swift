@@ -339,7 +339,8 @@ extension AppModel {
         guard phase != .after, !wishes.isEmpty, let day = pointDay(anchor(s), s.day)?.day else { return nil }
         let q = day.quality
         guard q == .poor || q == .fog else { return nil }
-        if q == .fog && wishes.contains(.fog) { return nil }
+        // 31.4: туман у рассвета сбывает пожелание «Туман», хотя категория дня (окно заката) — уже не туман.
+        if wishes.contains(.fog) && (q == .fog || day.dawnFog) { return nil }
         if q == .poor && wishes.contains(.rain) { return nil }
         let words = wishes.enumerated().map { i, w in
             let x = lexicon.t("wish.was." + w.rawValue)
