@@ -47,10 +47,10 @@ extension DayQuality {
         }
     }
 
-    /// Знак погоды строки недели (веб `wxSign`) — не тот, что у сводки дня.
-    var weekSignName: String {
+    /// Знак погоды строки недели (веб `wxSign`) — не тот, что у сводки дня. `.poor`: капли — только дождь (31.2).
+    func weekSignName(_ precip: Precip?) -> String {
         switch self {
-        case .poor: "rain"
+        case .poor: signIconName(precip)
         case .fog: "cloud"
         case .good: "part"
         case .excellent, .plain: "clear"
@@ -95,9 +95,9 @@ struct PlannerFacts {
         t.t(app.light.weather.status == .loading ? "wx.loading" : "wx.unavailable")
     }
 
-    /// Градусы дня в 15:00 (веб `tempOut(wx.tempBase, 900)`); `nil` — прогноза нет.
+    /// Градусы дня в 15:00 из часов прогноза (31.2; веб `tempOut(wx.tempBase, 900)` — синус от средней); `nil` — прогноза нет.
     func temp(_ d: CivilDate, at minute: Double = 900) -> Int? {
-        weather(d).map { LightTelemetry.tempOut($0.temperatureBase, minute, app.settings.tempUnit == .f) }
+        weather(d)?.temperature(at: minute).map { LightTelemetry.degrees($0, app.settings.tempUnit == .f) }
     }
 
     /// Записи с частью в этих сутках, видимые в планировщике (веб `onDay` +

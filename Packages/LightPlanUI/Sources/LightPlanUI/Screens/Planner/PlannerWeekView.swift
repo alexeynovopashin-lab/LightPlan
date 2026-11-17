@@ -67,7 +67,7 @@ private struct WeekRow: View {
                     // Знак и градусы — из прогноза; без него колонка пуста (надпись — в раскрытом дне).
                     if let wx, let deg = f.temp(day) {
                         VStack(spacing: 1) {
-                            Icon(wx.quality.weekSignName, size: 17).foregroundStyle(pal.ink4)
+                            Icon(wx.quality.weekSignName(wx.precip), size: 17).foregroundStyle(pal.ink4)
                             Text("\(deg)°").font(webFont(11)).monospacedDigit().foregroundStyle(pal.ink4)
                                 .frame(height: 13)
                         }

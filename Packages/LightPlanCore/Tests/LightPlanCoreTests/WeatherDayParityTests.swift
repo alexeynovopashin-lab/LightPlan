@@ -71,7 +71,7 @@ struct WeatherDayParityTests {
                     continue
                 }
                 let want = entry.v
-                let same = day.quality.rawValue == want.q && day.cloud == want.cloud && day.sunset == want.sunset
+                let same = day.webQuality.rawValue == want.q && day.cloud == want.cloud && day.sunset == want.sunset
                     && Self.sameRecord(day.layers, want.layers) && day.temperatureBase == want.tempBase
                     && day.wind == want.wind && day.windDirection == want.windDir && day.gust == want.gust
                     && day.trend == want.trend && day.real == want.real
@@ -81,7 +81,7 @@ struct WeatherDayParityTests {
                         Issue.record("""
                             \(c.name) \(entry.key): JS q=\(want.q) cloud=\(want.cloud) sunset=\(String(describing: want.sunset)) \
                             temp=\(want.tempBase) wind=\(want.wind) windDir=\(String(describing: want.windDir)) gust=\(want.gust) trend=\(want.trend); \
-                            Swift q=\(day.quality.rawValue) cloud=\(day.cloud) sunset=\(String(describing: day.sunset)) \
+                            Swift q=\(day.webQuality.rawValue) cloud=\(day.cloud) sunset=\(String(describing: day.sunset)) \
                             temp=\(day.temperatureBase) wind=\(day.wind) windDir=\(String(describing: day.windDirection)) gust=\(day.gust) trend=\(day.trend)
                             """)
                     }

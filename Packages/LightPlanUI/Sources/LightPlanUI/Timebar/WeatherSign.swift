@@ -19,3 +19,37 @@ extension DayQuality {
         }
     }
 }
+
+/// 31.2 «Погода по правде»: `.poor` — это и осадки, и просто низкий закатный балл (сплошные низкие облака). Словом «Дождь» и каплями
+/// называется только дождь; снег (коды 71–77, 85–86) — «Снег» и снежинка; «плохо» без осадков — «Пасмурно» и облако.
+extension DayQuality {
+    /// Окончание ключа слова `qualCond.*` / `qualSky.*`.
+    func wordKey(_ precip: Precip?) -> String {
+        guard self == .poor else { return rawValue }
+        switch precip {
+        case .rain?: return rawValue
+        case .snow?: return "snow"
+        case nil: return "overcast"
+        }
+    }
+
+    func signIconName(_ precip: Precip?) -> String {
+        guard self == .poor else { return signIconName }
+        switch precip {
+        case .rain?: return "rain"
+        case .snow?: return "snow"
+        case nil: return "cloud"
+        }
+    }
+}
+
+extension WeatherDay {
+    /// Слово дня («Облачно», «Дождь», «Снег», «Пасмурно»…) — по окну заката.
+    var condKey: String { "qualCond." + quality.wordKey(precip) }
+    /// Знак дня (барабан, лента, сводка) — по окну заката.
+    var signIconName: String { quality.signIconName(precip) }
+    /// Слово и знак на выбранную минуту — по окну вокруг неё (`WeatherDay.wetWindowHours`).
+    func condKey(at minute: Double) -> String { "qualCond." + quality(at: minute).wordKey(precip(at: minute)) }
+    func skyKey(at minute: Double) -> String { "qualSky." + quality(at: minute).wordKey(precip(at: minute)) }
+    func signIconName(at minute: Double) -> String { quality(at: minute).signIconName(precip(at: minute)) }
+}

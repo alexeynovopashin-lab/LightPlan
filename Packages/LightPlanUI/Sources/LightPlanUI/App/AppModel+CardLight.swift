@@ -190,7 +190,7 @@ extension AppModel {
             // Имя — как у веба: en/es/ja/zh начинают с {name}, ru его не пишет (DECISIONS «Строка света»).
             out.append(CardSay(kind: .golden, icon: "warn", text: lexicon.t("light.waitedSunset", [
                 "name": name(p),
-                "cond": lexicon.t("qualCond." + (day?.quality.rawValue ?? "poor")).lowercased(),
+                "cond": lexicon.t(day?.condKey ?? "qualCond.poor").lowercased(),
                 "cloud": "\(day?.cloud ?? 0)"]), bad: true))
         case .inGolden(let p, let w)?:
             out.append(CardSay(kind: .golden, icon: "sun", text: lexicon.t("light.inGolden", [
@@ -317,10 +317,11 @@ extension AppModel {
             let rec = Weather.nearHour(hours, h)
             let cloud = Int((rec?.cloud ?? Double(day.cloud)).rounded())
             let code = rec?.code ?? 0
-            let sky = code >= 51 ? "rain" : (code == 45 || code == 48) ? "cloud" : cloud >= 55 ? "cloud" : cloud >= 25 ? "part" : "sun"
-            let c0 = rec?.temperature ?? Double(day.temperatureBase)
-            let temp = Int((fahrenheit ? c0 * 9 / 5 + 32 : c0).rounded())
-            return WxColumn(minute: c.t, aside: c.aside, sky: sky, temp: "\(temp)°", cloud: "\(cloud)%",
+            let sky = Precip.of(code: code) == .snow ? "snow" : code >= 51 ? "rain"
+                : (code == 45 || code == 48) ? "cloud" : cloud >= 55 ? "cloud" : cloud >= 25 ? "part" : "sun"
+            // Часа нет — «—», а не средняя за сутки (31.2: средняя за час не выдаётся).
+            let temp = rec.map { "\(LightTelemetry.degrees($0.temperature, fahrenheit))°" } ?? "—"
+            return WxColumn(minute: c.t, aside: c.aside, sky: sky, temp: temp, cloud: "\(cloud)%",
                             light: light?.icon, blue: light?.blue ?? false)
         }
         return .columns(out)
@@ -335,8 +336,9 @@ extension AppModel {
     /// пожелание остаётся в записи, но молчит.
     func cardWishMissed(_ s: Session, phase: EventPhase) -> String? {
         let wishes = shownWishes(s.wishes).filter { $0 != .any }
-        guard phase != .after, !wishes.isEmpty, let q = pointDay(anchor(s), s.day)?.day.quality,
-              q == .poor || q == .fog else { return nil }
+        guard phase != .after, !wishes.isEmpty, let day = pointDay(anchor(s), s.day)?.day else { return nil }
+        let q = day.quality
+        guard q == .poor || q == .fog else { return nil }
         if q == .fog && wishes.contains(.fog) { return nil }
         if q == .poor && wishes.contains(.rain) { return nil }
         let words = wishes.enumerated().map { i, w in
@@ -344,7 +346,7 @@ extension AppModel {
             return i == 0 ? x : x.lowercased()
         }
         return lexicon.t("card.wishMissed", ["wish": words.joined(separator: ", "),
-                                             "cond": lexicon.t("qualCond." + q.rawValue).lowercased()])
+                                             "cond": lexicon.t(day.condKey).lowercased()])
     }
 
     // MARK: Сдвиг времени (`#cdMoved`)

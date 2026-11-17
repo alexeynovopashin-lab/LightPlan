@@ -641,7 +641,11 @@
     "cloud.n.errBadCopy": "Файл на Диске — не копия Light Plan, данные на телефоне не тронуты.",
     "cloud.n.errServer": "Яндекс ответил ошибкой {code}.",
     "cloud.n.errSignIn": "Вход не завершился. Если окно Яндекса открыло сайт вместо приложения — в регистрации приложения нет адреса возврата lightplan-oauth://yandex.",
-    "cloud.n.forgotten": "Отключено на этом телефоне. Данные на телефоне и копия на Диске не тронуты. Отозвать доступ приложения совсем можно на id.yandex.ru."
+    "cloud.n.forgotten": "Отключено на этом телефоне. Данные на телефоне и копия на Диске не тронуты. Отозвать доступ приложения совсем можно на id.yandex.ru.",
+    "qualCond.snow": "Снег",
+    "qualCond.overcast": "Пасмурно",
+    "qualSky.snow": "Снег",
+    "qualSky.overcast": "Пасмурно"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1281,7 +1285,11 @@
     "cloud.n.errBadCopy": "The file on Disk is not a Light Plan copy; the phone data is untouched.",
     "cloud.n.errServer": "Yandex answered with error {code}.",
     "cloud.n.errSignIn": "Sign-in did not finish. If the Yandex window opened the website instead of the app, the app registration lacks the return address lightplan-oauth://yandex.",
-    "cloud.n.forgotten": "Disconnected on this phone. The phone data and the Disk copy are untouched. To revoke the app’s access completely, use id.yandex.ru."
+    "cloud.n.forgotten": "Disconnected on this phone. The phone data and the Disk copy are untouched. To revoke the app’s access completely, use id.yandex.ru.",
+    "qualCond.snow": "Snow",
+    "qualCond.overcast": "Overcast",
+    "qualSky.snow": "Snow",
+    "qualSky.overcast": "Overcast"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1921,7 +1929,11 @@
     "cloud.n.errBadCopy": "El archivo de Disk no es una copia de Light Plan; los datos del teléfono no se tocaron.",
     "cloud.n.errServer": "Yandex respondió con el error {code}.",
     "cloud.n.errSignIn": "El inicio de sesión no terminó. Si la ventana de Yandex abrió el sitio web en vez de la app, al registro de la app le falta la dirección de retorno lightplan-oauth://yandex.",
-    "cloud.n.forgotten": "Desconectado en este teléfono. Los datos del teléfono y la copia en Disk no se tocaron. Para revocar el acceso de la app por completo, usa id.yandex.ru."
+    "cloud.n.forgotten": "Desconectado en este teléfono. Los datos del teléfono y la copia en Disk no se tocaron. Para revocar el acceso de la app por completo, usa id.yandex.ru.",
+    "qualCond.snow": "Nieve",
+    "qualCond.overcast": "Cubierto",
+    "qualSky.snow": "Nieve",
+    "qualSky.overcast": "Cubierto"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2557,7 +2569,11 @@
     "cloud.n.errBadCopy": "Disk のファイルは Light Plan のコピーではありません。電話のデータはそのままです。",
     "cloud.n.errServer": "Yandex がエラー {code} を返しました。",
     "cloud.n.errSignIn": "サインインが完了しませんでした。Yandex の画面がアプリではなくサイトを開いた場合、アプリ登録に戻り先 lightplan-oauth://yandex がありません。",
-    "cloud.n.forgotten": "この電話で切断しました。電話のデータと Disk のコピーはそのままです。アクセスを完全に取り消すには id.yandex.ru へ。"
+    "cloud.n.forgotten": "この電話で切断しました。電話のデータと Disk のコピーはそのままです。アクセスを完全に取り消すには id.yandex.ru へ。",
+    "qualCond.snow": "雪",
+    "qualCond.overcast": "曇天",
+    "qualSky.snow": "雪",
+    "qualSky.overcast": "曇天"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -3193,6 +3209,10 @@
     "cloud.n.errBadCopy": "Disk 上的文件不是 Light Plan 副本，手机数据未改动。",
     "cloud.n.errServer": "Yandex 返回错误 {code}。",
     "cloud.n.errSignIn": "登录未完成。如果 Yandex 窗口打开了网站而不是应用，说明应用注册中缺少返回地址 lightplan-oauth://yandex。",
-    "cloud.n.forgotten": "已在本机断开。手机数据和 Disk 副本均未改动。如需彻底撤销应用访问，请前往 id.yandex.ru。"
+    "cloud.n.forgotten": "已在本机断开。手机数据和 Disk 副本均未改动。如需彻底撤销应用访问，请前往 id.yandex.ru。",
+    "qualCond.snow": "雪",
+    "qualCond.overcast": "阴天",
+    "qualSky.snow": "雪",
+    "qualSky.overcast": "阴天"
   }
 }

@@ -26,9 +26,13 @@ struct LightTelemetryTests {
     static func day(quality: DayQuality, sunset: Int? = nil, layers: HourRecord? = nil,
                      wind: Int = 3, windDirection: Double? = nil, gust: Int = 0,
                      trend: [Double] = [40, 40, 40, 40, 40, 40]) -> WeatherDay {
+        // Часы — ровные 20 °C, сухо (31.2: градусы шапки читаются из часов, не из `temperatureBase`).
         WeatherDay(quality: quality, cloud: 45, sunset: sunset, layers: layers,
                    temperatureBase: 20, wind: wind, windDirection: windDirection, gust: gust,
-                   trend: trend, real: true)
+                   trend: trend, real: true,
+                   hours: Dictionary(uniqueKeysWithValues: (0..<24).map { ($0, HourRecord(
+                       cloud: 45, code: 2, temperature: 20, low: 0, mid: 0, high: 0, humidity: 50,
+                       windSpeed: Double(wind), windDirection: windDirection, windGusts: nil)) }))
     }
 
     private static func build(sun: SolarDay, t: Minutes, weather: WeatherDay?, status: WeatherStatus = .live(.direct),
@@ -336,7 +340,8 @@ struct LightTelemetryTests {
                                  lexicon: Self.lexicon, clock: Self.clock, fahrenheit: f)
         }
         #expect(head(false).header.weather?.temperature != head(true).header.weather?.temperature)
-        #expect(head(true).header.weather?.temperature == "\(LightTelemetry.tempOut(20, sun.solarNoon, true))°")
+        #expect(head(false).header.weather?.temperature == "20°")
+        #expect(head(true).header.weather?.temperature == "68°")
     }
 
     @Test func theNewWordsExistInEveryLanguage() {

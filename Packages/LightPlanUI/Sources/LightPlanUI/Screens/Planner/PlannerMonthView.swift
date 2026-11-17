@@ -350,7 +350,7 @@ struct PlannerDayPanel: View {
         let sc = wx?.sunset
         let setColor: Color = sc.map { $0 >= 75 ? pal.brass : $0 >= 50 ? pal.green : $0 >= 28 ? pal.ink : pal.blue } ?? pal.brass
         let golden = goldenMin.flatMap { $0 > 0 ? f.durShort(Int($0.rounded())) : nil }
-        let weather = wx.flatMap { w in f.temp(d).map { LightLineRow.Weather(icon: w.quality.signIconName, temp: "\($0)°") } }
+        let weather = wx.flatMap { w in f.temp(d).map { LightLineRow.Weather(icon: w.signIconName, temp: "\($0)°") } }
         // Показания стоят серединой на оси экрана, не на левом краю рамки: без капсулы справа от них пусто (28.10).
         return LightLineCentre(axis: panelW > 0 ? panelW / 2 - FoldGeometry.inset : nil) {
             LightLineRow(rise: f.fmt(sky.rise), set: f.fmt(sky.set), setColor: setColor, golden: golden,

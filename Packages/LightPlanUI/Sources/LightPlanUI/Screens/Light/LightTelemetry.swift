@@ -141,7 +141,8 @@ public struct LightTelemetry: Equatable, Sendable {
         azimuths: Bool = true
     ) -> LightTelemetry {
         let raw = sun.state(at: t)
-        let quality = weather?.quality
+        // Небо минуты (31.2): осадки — в окне вокруг неё, не за сутки (снег ночью не закрывает вечер).
+        let quality = weather?.quality(at: t)
         // Прогноза нет — одна астрономия; об этом пишем словами, а не рисуем выдуманное.
         let forecastNote: String? = weather == nil
             ? lexicon.t(weatherStatus == .loading ? "wx.loading" : "wx.unavailable") : nil
@@ -163,12 +164,14 @@ public struct LightTelemetry: Equatable, Sendable {
         let header = Header(
             locationName: headerLocationName, dateLabel: headerDateLabel, note: headerNote,
             weather: weather.map { w in
-                Header.Weather(
-                    iconName: w.quality.signIconName,
-                    temperature: "\(tempOut(w.temperatureBase, t, fahrenheit))°",
-                    condition: lexicon.t("qualCond.\(w.quality.rawValue)"),
-                    low: "↓ \(tempOut(w.temperatureBase, 240, fahrenheit))°",
-                    high: "↑ \(tempOut(w.temperatureBase, 960, fahrenheit))°")
+                // Градусы — из часов прогноза (31.2): на минуту — по прямой между часами, ↓/↑ — минимум и максимум часов суток.
+                let range = w.temperatureRange
+                return Header.Weather(
+                    iconName: w.signIconName(at: t),
+                    temperature: "\(degreesText(w.temperature(at: t), fahrenheit))°",
+                    condition: lexicon.t(w.condKey(at: t)),
+                    low: "↓ \(degreesText(range?.low, fahrenheit))°",
+                    high: "↑ \(degreesText(range?.high, fahrenheit))°")
             }
         )
 
@@ -198,7 +201,7 @@ public struct LightTelemetry: Equatable, Sendable {
         }
 
         let sky = weather.map {
-            SkyRow(iconName: $0.quality.signIconName, text: "\(lexicon.t("qualSky.\($0.quality.rawValue)")) · \($0.cloud)%")
+            SkyRow(iconName: $0.signIconName(at: t), text: "\(lexicon.t($0.skyKey(at: t))) · \($0.cloud)%")
         }
         let wind = weather.map { windLine($0, lexicon: lexicon) }
 
@@ -330,12 +333,12 @@ public struct LightTelemetry: Equatable, Sendable {
         let sourceRow = ProRow(label: lexicon.t("pro.source"), value: lexicon.t(Self.sourceKey(weatherStatus)))
         if let weather {
             groups.append(ProGroup(iconName: "cloud", title: lexicon.t("pro.weather"), rows: [
-                ProRow(label: lexicon.t("pro.sky"), value: lexicon.t("qualSky.\(weather.quality.rawValue)")),
+                ProRow(label: lexicon.t("pro.sky"), value: lexicon.t(weather.skyKey(at: t))),
                 ProRow(label: lexicon.t("pro.cloud"), value: "\(weather.cloud)%"),
                 // Спойлер пишет единицу буквой («°C»), не голым знаком градуса —
                 // в шапке и телеметрии её нет, там единица подразумевается,
                 // здесь веб называет её явно (`tempOut(...) + " " + unitLabel()`).
-                ProRow(label: lexicon.t("pro.temp"), value: "\(tempOut(weather.temperatureBase, t, fahrenheit)) \(fahrenheit ? "°F" : "°C")"),
+                ProRow(label: lexicon.t("pro.temp"), value: "\(degreesText(weather.temperature(at: t), fahrenheit)) \(fahrenheit ? "°F" : "°C")"),
                 ProRow(label: lexicon.t("pro.wind"), value: windLine(weather, lexicon: lexicon)),
                 sourceRow,
             ]))
@@ -371,11 +374,15 @@ public struct LightTelemetry: Equatable, Sendable {
         }
     }
 
-    /// `tempAt`+`tempOut` веба. Прогноз всегда приходит в Цельсии; Фаренгейт
-    /// считается из неокруглённого значения, как `tempShow` веба.
-    static func tempOut(_ base: Int, _ t: Minutes, _ fahrenheit: Bool = false) -> Int {
-        let c = Double(base) + 5 * sin((t - 600) / 1440 * 2 * .pi)
-        return Int((fahrenheit ? c * 9 / 5 + 32 : c).rounded())
+    /// Целые градусы из °C прогноза. Фаренгейт считается из неокруглённого значения, как `tempShow` веба; округление — от нуля
+    /// (−0,5 → −1). До 31.2 здесь был `tempAt` веба — средняя за сутки ± 5° синусом с пиком в 16:00, не прогноз (Томск 17.11: «+3» при −0,8).
+    static func degrees(_ celsius: Double, _ fahrenheit: Bool = false) -> Int {
+        Int((fahrenheit ? celsius * 9 / 5 + 32 : celsius).rounded())
+    }
+
+    /// «−1» или «—», если часов прогноза нет: число не выдумывается.
+    static func degreesText(_ celsius: Double?, _ fahrenheit: Bool) -> String {
+        celsius.map { "\(degrees($0, fahrenheit))" } ?? "—"
     }
 
     static func windLine(_ w: WeatherDay, lexicon: Lexicon) -> String {

@@ -218,16 +218,16 @@ extension AppModel {
         guard let (day, hours) = pointDay(p, date) else { return CardPaneWeather(sky: nil, temp: "—", word: "—") }
         let wall = wallNow(at: s)
         let h = wall.day == date ? wall.minutes / 60 : min(23, max(0, Int((Double(t - k * 1440) / 60).rounded())))
-        let c = Weather.nearHour(hours, h)?.temperature ?? Double(day.temperatureBase)
-        let deg = Int((settings.tempUnit == .f ? c * 9 / 5 + 32 : c).rounded())
+        // Часа нет — «—», а не средняя за сутки (31.2).
+        let deg = Weather.nearHour(hours, h).map { "\(LightTelemetry.degrees($0.temperature, settings.tempUnit == .f))" } ?? "—"
         let sky: String
         switch day.quality {
-        case .poor: sky = "rain"
+        case .poor: sky = day.precip == .snow ? "snow" : day.precip == .rain ? "rain" : "cloud"
         case .fog: sky = "cloud"
         case .good: sky = "part"
         default: sky = "clear"
         }
-        return CardPaneWeather(sky: sky, temp: "\(deg)°", word: lexicon.t("qualCond." + day.quality.rawValue))
+        return CardPaneWeather(sky: sky, temp: "\(deg)°", word: lexicon.t(day.condKey))
     }
 
     /// Следующая точка сегодня по часам места (веб `nextPoint`).

@@ -20,9 +20,12 @@ public struct HourRecord: Sendable, Equatable {
     public let windSpeed: Double
     public let windDirection: Double?
     public let windGusts: Double?
+    /// Осадки за час, мм (31.2: окно осадков вокруг заката и выбранного момента, `WeatherDay.wet`). Веб их по часам не хранит.
+    public let precipitation: Double
 
     public init(cloud: Double, code: Int, temperature: Double, low: Double, mid: Double, high: Double,
-                humidity: Double, windSpeed: Double, windDirection: Double?, windGusts: Double?) {
+                humidity: Double, windSpeed: Double, windDirection: Double?, windGusts: Double?, precipitation: Double = 0) {
+        self.precipitation = precipitation
         self.cloud = cloud
         self.code = code
         self.temperature = temperature
@@ -77,9 +80,35 @@ public struct HourlyWeather: Sendable, Equatable {
     }
 }
 
+/// Осадки по коду WMO часа (31.2, Томск 17.11: ночной снег назывался «Дождь»).
+public enum Precip: String, Sendable, Equatable {
+    case rain, snow
+
+    /// 71–77 — снег и снежные зёрна, 85–86 — снегопад-ливень; прочее от 51 (морось, дождь, ледяной дождь, ливень, гроза) — дождь;
+    /// до 51 (ясно, облачно, туман) — осадков нет.
+    public static func of(code: Int) -> Precip? {
+        guard code >= 51 else { return nil }
+        return (71...77).contains(code) || (85...86).contains(code) ? .snow : .rain
+    }
+}
+
 /// Прогноз одних суток, собранный из почасового ответа (порт `buildWx`).
 public struct WeatherDay: Sendable, Equatable {
+    /// Категория дня (31.2): туман утром, осадки в окне заката (`precip`) → `.poor`, иначе — категория закатного балла (`sky`).
+    /// Осадки, кончившиеся за много часов до заката, её не портят — у веба (`webQuality`) их хватало на весь день.
     public let quality: DayQuality
+    /// Небо без осадков: туман утром или категория закатного балла (без ярусов — по облачности дня). Из него `quality(at:)` берёт категорию
+    /// момента, когда вокруг него сухо.
+    public let sky: DayQuality
+    /// Осадки в окне заката (±`wetWindowHours` от его часа); без заката (полярные сутки) — по суткам, как у веба. `nil` — сухо.
+    public let precip: Precip?
+    /// Категория по правилу веба (`buildWx`: осадки за сутки > 0,5 мм или код в 15 ч ≥ 51 → «плохо» на весь день) —
+    /// только для сверки с вебом (`WeatherDayParityTests`); экраны читают `quality`.
+    public let webQuality: DayQuality
+    /// Часы суток 0…23 (местные), из которых собран день: температура и осадки на выбранный момент.
+    public let hours: [Int: HourRecord]
+    /// Температура в 00:00 следующих суток — чтобы между 23:00 и полуночью тоже была прямая, а не ступенька. `nil` — следующих суток нет.
+    public let nextMidnight: Double?
     public let cloud: Int
     /// Закатный балл с поправкой на аэрозоль; `nil` — часа заката в прогнозе нет.
     public let sunset: Int?
@@ -102,9 +131,16 @@ public struct WeatherDay: Sendable, Equatable {
     public let sunrise: Int?
 
     public init(quality: DayQuality, cloud: Int, sunset: Int?, layers: HourRecord?, temperatureBase: Int,
-                wind: Int, windDirection: Double?, gust: Int, trend: [Double], real: Bool, sunrise: Int? = nil) {
+                wind: Int, windDirection: Double?, gust: Int, trend: [Double], real: Bool, sunrise: Int? = nil,
+                sky: DayQuality? = nil, precip: Precip? = nil, webQuality: DayQuality? = nil,
+                hours: [Int: HourRecord] = [:], nextMidnight: Double? = nil) {
         self.sunrise = sunrise
         self.quality = quality
+        self.sky = sky ?? quality
+        self.precip = precip
+        self.webQuality = webQuality ?? quality
+        self.hours = hours
+        self.nextMidnight = nextMidnight
         self.cloud = cloud
         self.sunset = sunset
         self.layers = layers
@@ -118,6 +154,63 @@ public struct WeatherDay: Sendable, Equatable {
 }
 
 extension WeatherDay {
+    /// Полуширина окна осадков, часы (31.2): закат и выбранный момент судятся по часам `h − 2 … h + 2`. Почасовые осадки Open-Meteo —
+    /// сумма за предыдущий час, так что окно видит примерно 3 часа до и 2 после. Два часа — это и сырой воздух с низкими облаками
+    /// сразу после осадков, и ошибка прогноза по времени (час-два); дальше небо уже решают ярусы облаков часа заката, а их балл читает сам.
+    public static let wetWindowHours = 2
+
+    /// Осадки в окне вокруг часа: есть час с кодом ≥ 51 или сумма за окно > 0,5 мм (порог веба на сутки, здесь — на окно).
+    /// Вид — по большинству часов с осадками (поровну — снег); сумма без кодов — дождь.
+    public static func wet(_ hours: [Int: HourRecord], around hour: Int) -> Precip? {
+        let window = (hour - wetWindowHours)...(hour + wetWindowHours)
+        return wet(window.compactMap { hours[$0] })
+    }
+
+    static func wet(_ records: [HourRecord]) -> Precip? {
+        let kinds = records.compactMap { Precip.of(code: $0.code) }
+        let sum = records.reduce(0) { $0 + $1.precipitation }
+        guard !kinds.isEmpty || sum > 0.5 else { return nil }
+        let snow = kinds.filter { $0 == .snow }.count
+        return !kinds.isEmpty && snow * 2 >= kinds.count ? .snow : .rain
+    }
+
+    /// Час суток для минуты, `0…23` (минуты за краем суток держат крайний час).
+    static func hour(of minute: Double) -> Int { Int(min(23, max(0, (minute / 60).rounded()))) }
+
+    /// Осадки около выбранной минуты (окно `wetWindowHours`); часов нет — осадки дня.
+    public func precip(at minute: Double) -> Precip? {
+        hours.isEmpty ? precip : Self.wet(hours, around: Self.hour(of: minute))
+    }
+
+    /// Категория неба на выбранную минуту: туман — как у дня; осадки рядом — `.poor`; сухо — небо дня без осадков (`sky`).
+    public func quality(at minute: Double) -> DayQuality {
+        if sky == .fog { return .fog }
+        if hours.isEmpty { return quality }
+        return precip(at: minute) != nil ? .poor : sky
+    }
+
+    /// Температура на минуту суток, °C, из часов прогноза: между часами — по прямой, за краем — ближайший час.
+    /// `nil` — часов нет вовсе: число не выдумывается (Алексей 02.10, «без имитации»).
+    public func temperature(at minute: Double) -> Double? {
+        guard !hours.isEmpty else { return nil }
+        let m = max(0, minute)
+        let h0 = Int((m / 60).rounded(.down))
+        let a = hours[h0]?.temperature
+        let b = h0 + 1 == 24 ? nextMidnight : hours[h0 + 1]?.temperature
+        switch (a, b) {
+        case let (a?, b?): return a + (b - a) * (m / 60 - Double(h0))
+        case let (a?, nil): return a
+        default: return Weather.nearHour(hours, min(23, h0))?.temperature
+        }
+    }
+
+    /// Минимум и максимум часов суток, °C; `nil` — часов нет.
+    public var temperatureRange: (low: Double, high: Double)? {
+        let t = hours.values.map(\.temperature)
+        guard let low = t.min(), let high = t.max() else { return nil }
+        return (low, high)
+    }
+
     /// Разбирает `"yyyy-MM-ddTHH:mm"` без `DateFormatter`: строка всегда
     /// местная и в этом виде, как её отдаёт Open-Meteo при `timezone=auto`.
     /// `public` — тем же приёмом пользуется слой Data, раскладывая ответ
@@ -175,7 +268,8 @@ extension WeatherDay {
                 cloud: cloud, code: code, temperature: hourly.temperature[i],
                 low: hourly.cloudLow?[i] ?? cloud, mid: hourly.cloudMid?[i] ?? 0, high: hourly.cloudHigh?[i] ?? 0,
                 humidity: hourly.humidity?[i] ?? 50, windSpeed: hourly.windSpeed[i],
-                windDirection: hourly.windDirection?[i], windGusts: hourly.windGusts?[i])
+                windDirection: hourly.windDirection?[i], windGusts: hourly.windGusts?[i],
+                precipitation: hourly.precipitation[i])
             if hour >= 5 && hour <= 9 && (code == 45 || code == 48) { bucket.fogMorning = true }
             buckets[date] = bucket
         }
@@ -192,8 +286,10 @@ extension WeatherDay {
             var sunset: Int?
             var layers: HourRecord?
             var bareForQuality: Int?
+            var setHourForWet: Int?
             if let setMinutes = sun.set {
                 let setHour = Int(min(23, max(0, Sky.jsRound(setMinutes / 60))))
+                setHourForWet = setHour
                 if let lay = Weather.nearHour(bucket.byHour, setHour) {
                     let bare = SunsetScore.score(low: lay.low, mid: lay.mid, high: lay.high, humidity: lay.humidity)
                     let atSunset = Weather.nearHour(air[date] ?? [:], setHour)
@@ -214,18 +310,30 @@ extension WeatherDay {
                 }
             }
 
-            // Дождь и туман перебивают категорию дня; иначе категория из балла.
-            let quality: DayQuality
+            // Веб: дождь за сутки и туман перебивают категорию дня; иначе категория из балла. Хранится только для сверки с вебом.
+            let wetDay = bucket.precipitation > 0.5 || code >= 51
+            let webQuality: DayQuality
             if bucket.fogMorning {
-                quality = .fog
-            } else if bucket.precipitation > 0.5 || code >= 51 {
-                quality = .poor
+                webQuality = .fog
+            } else if wetDay {
+                webQuality = .poor
             } else if let bare = bareForQuality {
-                quality = SunsetScore.category(bare)
+                webQuality = SunsetScore.category(bare)
             } else {
-                quality = SunsetScore.deriveQuality(cloud: cloud, code: code,
-                                                     precipitation: bucket.precipitation, fogMorning: bucket.fogMorning)
+                webQuality = SunsetScore.deriveQuality(cloud: cloud, code: code,
+                                                        precipitation: bucket.precipitation, fogMorning: bucket.fogMorning)
             }
+            // 31.2: небо без осадков — туман или балл; осадки — только в окне заката (без заката — за сутки, как у веба).
+            let sky: DayQuality = bucket.fogMorning ? .fog
+                : bareForQuality.map(SunsetScore.category)
+                ?? SunsetScore.deriveQuality(cloud: cloud, code: 0, precipitation: 0, fogMorning: false)
+            let precip: Precip?
+            if let setHour = setHourForWet {
+                precip = wet(bucket.byHour, around: setHour)
+            } else {
+                precip = wetDay ? (wet(Array(bucket.byHour.values)) ?? .rain) : nil
+            }
+            let quality: DayQuality = sky == .fog ? .fog : precip != nil ? .poor : sky
 
             let meanWind = bucket.winds.isEmpty ? 0 : bucket.winds.reduce(0, +) / Double(bucket.winds.count)
             let meanTemp = bucket.temperatures.isEmpty ? 0 : bucket.temperatures.reduce(0, +) / Double(bucket.temperatures.count)
@@ -239,7 +347,9 @@ extension WeatherDay {
             days[date] = WeatherDay(
                 quality: quality, cloud: Int(cloud), sunset: sunset, layers: layers,
                 temperatureBase: Int(Sky.jsRound(meanTemp)), wind: Int(Sky.jsRound(meanWind)),
-                windDirection: windDirection, gust: Int(Sky.jsRound(bucket.gust)), trend: trend, real: true, sunrise: sunrise)
+                windDirection: windDirection, gust: Int(Sky.jsRound(bucket.gust)), trend: trend, real: true, sunrise: sunrise,
+                sky: sky, precip: precip, webQuality: webQuality,
+                hours: bucket.byHour, nextMidnight: buckets[date.adding(days: 1)]?.byHour[0]?.temperature)
         }
         return (days, hourlyOut)
     }

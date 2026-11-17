@@ -144,13 +144,8 @@ struct Scale30z4Tests {
         #expect(app.light.planShootTime == "00:40")
     }
 
-    @Test("температура на шкале: −40 и 1400 минут — одна и та же температура (суточная кривая периодична)")
-    func temperatureIsPeriodic() {
-        for base in [-5, 4, 20] {
-            #expect(LightTelemetry.tempOut(base, -40) == LightTelemetry.tempOut(base, 1400))
-            #expect(LightTelemetry.tempOut(base, 1500) == LightTelemetry.tempOut(base, 60))
-        }
-    }
+    // «Температура на шкале периодична» (синус `tempOut`) снята в 31.2: градусы теперь из часов прогноза, за краем суток держится
+    // крайний час — `WeatherTruthCoreTests.tomskTemperature` / `nextMidnight`.
 
     // MARK: - Купол и ползунок приходят в одну минуту
 
