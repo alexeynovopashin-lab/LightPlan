@@ -310,6 +310,8 @@ public final class AppModel {
     /// будит перерисовку.
     @ObservationIgnored var nightCache: [String: StarNight] = [:]
     @ObservationIgnored var moonCache: [String: [ClosedRange<Int>]] = [:]
+    @ObservationIgnored var starHoursCache: [String: [ClosedRange<Minutes>]] = [:]
+    @ObservationIgnored var starDarkCache: [String: Bool] = [:]
     /// Сводка дня свёрнута (`dayFold` снимка) — единственное, что планировщик
     /// помнит между запусками.
     public var dayFold: Bool {

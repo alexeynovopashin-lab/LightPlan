@@ -6587,6 +6587,41 @@
         }
       }
     },
+    "card.starsMissed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{wish}. Прогноз на эту ночь — {cond}."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The shoot wanted {wish}. The forecast for that night is {cond}."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La sesión esperaba: {wish}. El pronóstico para esa noche es {cond}."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撮影の希望は{wish}。この夜の予報は{cond}です。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍摄期望{wish}。该夜预报为{cond}。"
+          }
+        }
+      }
+    },
     "card.tune" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -177,7 +177,7 @@ struct FormScreen: View {
     private func subtitle(_ f: EventForm, _ t: Lexicon) -> String {
         if f.mode == .meet { return t.t("form.subMeet") }
         if f.dayUnset { return "" }
-        guard let w = app.formLight(on: f.day, start: f.start), !w.poor else { return t.t("form.subNoWindow") }
+        guard let w = app.formLight(on: f.day, start: f.start, at: app.formAnchor(f)), !w.poor else { return t.t("form.subNoWindow") }
         let clock = clockText
         if f.timeFromLight || f.start == Int(w.start.rounded()) {
             return t.t("form.subFromLight", ["t": clock.fmt(Double(f.start))])
@@ -477,7 +477,7 @@ struct FormScreen: View {
 
     private func startHint(_ f: EventForm, _ t: Lexicon) -> String? {
         guard f.mode != .meet, !f.dayUnset else { return nil }
-        guard let w = app.formLight(on: f.day, start: f.start), !w.poor else { return t.t("day.noWindow") }
+        guard let w = app.formLight(on: f.day, start: f.start, at: app.formAnchor(f)), !w.poor else { return t.t("day.noWindow") }
         return t.t(w.dawn ? "win.dawn" : "win.sunset") + " " + clockText.range(w.start, w.end)
     }
 

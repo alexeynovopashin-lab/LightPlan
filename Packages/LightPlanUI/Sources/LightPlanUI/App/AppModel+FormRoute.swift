@@ -76,23 +76,24 @@ extension AppModel {
         formChanged()
     }
 
-    /// Небо дня для проверки пожеланий. Погода (31.6б) — у места съёмки, тем же путём, что у карточки (`shootDay`); места
-    /// у формы нет — у места приложения, как у веба (`qualityOf`, `dayWeather` смотрят на `LAT`/`LON`). Солнце и луна — пока у
-    /// места приложения. Прогноз места ещё летит — пожелания про погоду молчат, как карточка, пока его нет.
+    /// Небо дня для проверки пожеланий. Погода (31.6б) — у места съёмки, тем же путём, что у карточки (`formDay`); места
+    /// у формы нет — у места приложения, как у веба (`qualityOf`, `dayWeather` смотрят на `LAT`/`LON`). Темнота и луна (31.6в) —
+    /// тоже у места съёмки, теми же правилами, что строка «Звёзды» карточки (`starNightIsDark`, `MoonVsStars`). Прогноз места
+    /// ещё летит — пожелания про погоду молчат, как карточка, пока его нет.
     func wishSky(_ day: CivilDate, form f: EventForm? = nil) -> WishSky {
         let s = f.flatMap(formSession)
         let wx = formDay(s, day)      // `nil` — прогноза нет: пожелания про погоду молчат
-        // «Звёзды» — небом ночи: часы съёмки, если время назвал человек; предложенное правилом — часы окна Млечного Пути.
-        let night = f.flatMap { f in f.wishes.contains(.stars) ? s.flatMap { starSky($0, timed: !f.timeIsProposed) } : nil }
-        let p = place.place
-        let sun = SolarDay(date: day, place: p)
+        // «Звёзды» — небом ночи (`starClouds`, одно с карточкой): часы съёмки, если время назвал человек; предложенное правилом —
+        // часы ночи (окно Млечного Пути, нет окна — темнота ниже −18°, 31.6в).
+        let night = f.flatMap { f in f.wishes.contains(.stars) ? s.flatMap { starClouds($0, timed: !f.timeIsProposed) } : nil }
+        let p = cardPlace(s.flatMap(anchor))
         let moon = MoonVsStars(date: day, place: p)
-        return WishSky(quality: wx?.quality, sunsetScore: wx?.sunset, astroNight: sun.astroB != nil,
+        return WishSky(quality: wx?.quality, sunsetScore: wx?.sunset, astroNight: starNightIsDark(day, p),
                        moonLevel: moon.level?.rawValue, moonPercent: moon.percent,
                        moonFraction: MoonPhase(date: day, minutes: 1320, zone: p.zone).fraction,
                        shootMoon: f.flatMap(shootMoon), dawnFog: wx?.dawnFog ?? false,
                        sunriseScore: wx?.sunrise, dawnQuality: wx?.dawnQuality, atDawn: f.map(formShootsAtDawn) ?? false,
-                       nightSky: night?.look)
+                       nightSky: night)
     }
 
     /// Запись, которую соберёт форма, — для правил карточки (место, утро, луна). Дня у формы нет — `nil`.
@@ -102,10 +103,20 @@ extension AppModel {
     }
 
     /// Прогноз суток для формы (31.6б): у места съёмки — функция карточки `shootDay`; места нет — место приложения.
-    func formDay(_ s: Session?, _ d: CivilDate) -> WeatherDay? {
-        guard let s, anchor(s) != nil else { return light.weather.day(for: d) }
-        return shootDay(s, d)
+    func formDay(_ s: Session?, _ d: CivilDate) -> WeatherDay? { formDay(at: s.flatMap(anchor), d) }
+
+    /// То же по точке (31.6в: подсказка времени). Точка — место приложения (так у новой формы: её место — `repeatHome`) — уже
+    /// загруженный прогноз приложения: тот же прогноз, а ждать прогноз точки значило бы открыть форму без плашки погоды наверху.
+    func formDay(at p: GeoPoint?, _ d: CivilDate) -> WeatherDay? {
+        guard let p, !sameAsAppPlace(p) else { return light.weather.day(for: d) }
+        return pointDay(p, d)?.day
     }
+
+    /// Точка — место приложения (тот же ключ прогноза, ~100 м).
+    func sameAsAppPlace(_ p: GeoPoint) -> Bool { PointWeather.key(cardPlace(p)) == PointWeather.key(place.place) }
+
+    /// Якорь места съёмки формы (`anchor` её записи); места нет — `nil`.
+    func formAnchor(_ f: EventForm) -> GeoPoint? { formSession(f).flatMap(anchor) }
 
     /// Спросить прогноз места съёмки открытой формы (31.6б) — как карточка спрашивает свой (`askCardWeather`): форме он нужен
     /// для пожеланий. Место у формы тоже меняется, поэтому спрашивается при каждой правке; уже спрошенное место не спрашивается.
