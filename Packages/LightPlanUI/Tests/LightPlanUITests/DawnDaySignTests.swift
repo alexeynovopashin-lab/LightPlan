@@ -41,7 +41,7 @@ struct DawnDaySignTests {
     }
 
     /// Москва, 20.09.2026 в `hh:mm`; съёмки 21.09 — утренняя в 06:00 (до конца утреннего золотого часа) и вечерняя в 18:00.
-    static func app(at hh: Int, _ mm: Int = 0, seen: JSONValue? = nil) -> AppModel {
+    static func app(at hh: Int, _ mm: Int = 0, seen: JSONValue? = nil, wishes: [Wish] = []) -> AppModel {
         var snap = Snapshot()
         snap.extra["me"] = .object(["city": .string("Москва"), "cityLat": .number(55.75), "cityLon": .number(37.62), "met": .bool(true)])
         snap.extra["zones"] = .object(["56.0,37.5": .string("Europe/Moscow")])
@@ -51,7 +51,9 @@ struct DawnDaySignTests {
             s.latitude = 55.75; s.longitude = 37.62
             return s
         }
-        snap.sessions = [shoot("am", 360), shoot("pm", 1080)]
+        var am = shoot("am", 360)
+        am.wishes = wishes
+        snap.sessions = [am, shoot("pm", 1080)]
         if let seen { snap.extra["wxSeen"] = seen }
         let now = ISO8601DateFormatter().date(from: String(format: "2026-09-20T%02d:%02d:00+03:00", hh, mm))!
         return AppModel(snapshot: snap, store: nil, language: "ru", zone: TimeZone(identifier: "Europe/Moscow")!, locator: Locator(),
@@ -101,6 +103,18 @@ struct DawnDaySignTests {
         let s = try #require(app.sessions.first { $0.id == "am" })
         let line = try #require(app.cardShift(s, phase: .before))
         #expect(line.text == "Балл рассвета был \(was) из 100, стал \(score).")
+    }
+
+    /// 31.5в: у пожелания «Рассвет» было не слово, а сырой ключ `wish.was.sunrise` (в каталоге были только clear/cloudy/fog/moon/rain/stars/sunset).
+    @Test("карточка утренней съёмки с пожеланием «Рассвет» при дожде на рассвете: «Ожидался рассвет», не ключ")
+    func dawnWishMissedSaysTheWord() async throws {
+        let app = Self.app(at: 12, wishes: [.sunrise])
+        app.openCard(id: "am")
+        await app.pointWeather.settled()
+        let s = try #require(app.sessions.first { $0.id == "am" })
+        let line = try #require(app.cardWishMissed(s, phase: .before))
+        #expect(!line.contains("wish.was."), "сырой ключ: \(line)")
+        #expect(line.hasPrefix("Ожидался рассвет."), "\(line)")
     }
 }
 

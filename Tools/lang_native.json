@@ -658,7 +658,8 @@
     "wc.dullSunriseM": "Балл рассвета {score} из 100. Ярусы облаков против — попробуйте соседний день.",
     "pro.layerHighDawnNote": "подсветка до восхода",
     "wxs.dawnScoreW": "«{who}»: балл рассвета был {a} из 100, стал {b}.",
-    "wxs.dawnScoreM": "Балл рассвета был {a} из 100, стал {b}."
+    "wxs.dawnScoreM": "Балл рассвета был {a} из 100, стал {b}.",
+    "wish.was.sunrise": "Ожидался рассвет"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1315,7 +1316,8 @@
     "wc.dullSunriseM": "Sunrise score {score} out of 100. The cloud layers are against it — try a neighbouring day.",
     "pro.layerHighDawnNote": "glow before sunrise",
     "wxs.dawnScoreW": "“{who}”: the sunrise score was {a} out of 100, now it is {b}.",
-    "wxs.dawnScoreM": "The sunrise score was {a} out of 100, now it is {b}."
+    "wxs.dawnScoreM": "The sunrise score was {a} out of 100, now it is {b}.",
+    "wish.was.sunrise": "sunrise"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1972,7 +1974,8 @@
     "wc.dullSunriseM": "Puntaje del amanecer: {score} de 100. Los niveles de nubes están en contra — prueba con un día vecino.",
     "pro.layerHighDawnNote": "arrebol del alba",
     "wxs.dawnScoreW": "«{who}»: la nota del amanecer era {a} de 100 y ahora es {b}.",
-    "wxs.dawnScoreM": "La nota del amanecer era {a} de 100 y ahora es {b}."
+    "wxs.dawnScoreM": "La nota del amanecer era {a} de 100 y ahora es {b}.",
+    "wish.was.sunrise": "Se esperaba amanecer"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2625,7 +2628,8 @@
     "wc.dullSunriseM": "朝焼けスコア100点中{score}点。雲の層が不利です — 前後の日を試してください。",
     "pro.layerHighDawnNote": "日の出前の輝き",
     "wxs.dawnScoreW": "「{who}」：朝焼けスコアは100点中{a}点でしたが、{b}点になりました。",
-    "wxs.dawnScoreM": "朝焼けスコアは100点中{a}点でしたが、{b}点になりました。"
+    "wxs.dawnScoreM": "朝焼けスコアは100点中{a}点でしたが、{b}点になりました。",
+    "wish.was.sunrise": "朝焼けの予定でした"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -3278,6 +3282,7 @@
     "wc.dullSunriseM": "日出评分{score}（满分100）。云层不利——尝试相邻日期。",
     "pro.layerHighDawnNote": "日出前的霞光",
     "wxs.dawnScoreW": "「{who}」：日出评分原为 {a}／100，现在是 {b}。",
-    "wxs.dawnScoreM": "日出评分原为 {a}／100，现在是 {b}。"
+    "wxs.dawnScoreM": "日出评分原为 {a}／100，现在是 {b}。",
+    "wish.was.sunrise": "原本期待日出"
   }
 }
