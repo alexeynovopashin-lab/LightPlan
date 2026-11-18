@@ -1,5 +1,10 @@
 import SwiftUI
 import LightPlanCore
+#if canImport(UIKit)
+import UIKit
+#else
+import AppKit
+#endif
 
 /// Экран «Свет» — первый настоящий экран приложения (итерация 19). Порт
 /// `#s-today` веба: шапка, купол с показанием, «что дальше» со спарклайном,
@@ -407,6 +412,31 @@ public struct LightScreenView: View {
     /// Размеры подобраны на равновесие плашки, а не списаны с рисунка (Алексей: «делал на глаз»): знак 28, время 13, подпись 12 — боковые
     /// колонки по весу близки к числу в центре (оно стало легче: 30 → 28 pt); стопка чуть опущена к середине плашки.
     static let baseIconSize: CGFloat = 28
+
+    /// 31.5в (Алексей 18.11, вариант «А»: «крупнее та сторона, у которой оценка»): кегль подписи у основания дуги — одно правило на обе
+    /// стороны и оба вида купола. Сторона события наверху (`LightTelemetry.event`) — 12 pt с блоками, 11 pt без блоков; вторая — в 1,2 раза
+    /// мельче (10 pt). События нет (полярные сутки) — обе как главная, как было. Других источников размера нет: до 31.5в подпись внутри
+    /// кнопки (рассвет сегодня, закат) получала на 3 pt меньше высоты и `minimumScaleFactor(0.8)` ужимал её до 0,8 — «рассвет» под кнопкой
+    /// был 118 px против 146 px у завтрашнего (не кнопки).
+    nonisolated static func baseCaptionSize(main: Bool, flat: Bool = false) -> CGFloat {
+        let top: CGFloat = flat ? 11 : 12
+        return main ? top : top / baseCaptionRatio
+    }
+    nonisolated static let baseCaptionRatio: CGFloat = 1.2
+
+    /// Главная ли сторона: у неё оценка (слово балла).
+    nonisolated static func baseCaptionIsMain(_ side: SkyEvent, event: SkyEvent?) -> Bool { event.map { $0 == side } ?? true }
+
+    /// Высота строки подписи — строка главного кегля: вторая сторона мельчит буквы, а не строку, знак и время над ней не сдвигаются.
+    nonisolated static func baseCaptionLine(flat: Bool = false) -> CGFloat {
+        let size = baseCaptionSize(main: true, flat: flat)
+        #if canImport(UIKit)
+        return UIFont.systemFont(ofSize: size, weight: .medium).lineHeight
+        #else
+        let f = NSFont.systemFont(ofSize: size, weight: .medium)
+        return f.ascender - f.descender + f.leading
+        #endif
+    }
     static let baseStackTop: CGFloat = 10
     /// Центр стопки у основания дуги не ближе к краю плашки: полуширина подписи 28 + поле 12.
     static let baseEdgeInset: CGFloat = 40
@@ -511,14 +541,14 @@ public struct LightScreenView: View {
             let riseCaption = t.event == .dawn ? (t.sunset.word ?? model.lexiconWord("light.baseRise")) : model.lexiconWord("light.baseRise")
             if tb.riseIsToday {
                 Button { model.timebar.jumpToSunrise() } label: {
-                    baseLabel(tb.baseRiseEdge, pal, caption: riseCaption)
+                    baseLabel(tb.baseRiseEdge, pal, caption: riseCaption, main: Self.baseCaptionIsMain(.dawn, event: t.event), node: "edge.cap.rise")
                         .padding(8).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .shotNode("edge.rise")
                 .position(x: left, y: y)
             } else {
-                baseLabel(tb.baseRiseEdge, pal, caption: riseCaption).shotNode("edge.rise").position(x: left, y: y)
+                baseLabel(tb.baseRiseEdge, pal, caption: riseCaption, main: Self.baseCaptionIsMain(.dawn, event: t.event), node: "edge.cap.rise").shotNode("edge.rise").position(x: left, y: y)
                     .allowsHitTesting(false)
             }
             if let setEdge = tb.setEdge {
@@ -526,7 +556,7 @@ public struct LightScreenView: View {
                 // (знак и так заката; «закат · спокойный» не влезало: 93 pt при 84 доступных, обрезалось). Нет прогноза — «закат», как было.
                 let caption = t.event == .sunset ? (t.sunset.word ?? model.lexiconWord("light.baseSet")) : model.lexiconWord("light.baseSet")
                 Button { model.timebar.jumpToSunset() } label: {
-                    baseLabel(setEdge, pal, caption: caption)
+                    baseLabel(setEdge, pal, caption: caption, main: Self.baseCaptionIsMain(.sunset, event: t.event), node: "edge.cap.set")
                         .padding(8).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -538,21 +568,19 @@ public struct LightScreenView: View {
     }
 
     @ViewBuilder
-    private func baseLabel(_ content: TimebarState.EdgeContent, _ pal: Palette, caption: String) -> some View {
+    private func baseLabel(_ content: TimebarState.EdgeContent, _ pal: Palette, caption: String, main: Bool, node: String) -> some View {
         switch content {
         case .time(let icon, let minutes):
-            // Знак 19 → 28 pt (×1,47), время 12 → 13, подпись 12 под временем цветом акцента (текст — `brassInk`); время серое как было.
+            // Знак 19 → 28 pt (×1,47), время 12 → 13, подпись под временем цветом акцента (текст — `brassInk`); время серое как было.
+            // Кегль подписи — только `baseCaptionSize` (31.5в): `fixedSize` — слово не ужимается ни шириной, ни высотой, что бы ни предложила
+            // кнопка; все слова (`sunsetS.*`, «рассвет»/«закат», 5 языков) уже 84 pt.
             VStack(spacing: 2) {
                 Icon(icon, size: Self.baseIconSize, line: 1.6).foregroundStyle(pal.sunSign)
                 Text(model.timebar.clockString(minutes))
                     .font(.system(size: 13, weight: .medium).monospacedDigit())
                     .foregroundStyle(pal.ink4)
-                Text(caption)
-                    .font(.system(size: 12, weight: .medium)).tracking(0.2)
-                    .foregroundStyle(pal.brassInk)
-                    .lineLimit(1).minimumScaleFactor(0.8)
-                    .frame(maxWidth: 84)   // подпись не шире 84 pt: на 390 pt основание дуги у самого края плашки
-                    .shotNode("edge.cap", text: caption)
+                baseCaption(caption, pal, size: Self.baseCaptionSize(main: main), line: Self.baseCaptionLine(), node: node)
+                    .frame(width: 84)   // место подписи — 84 pt: на 390 pt основание дуги у самого края плашки
             }
         case .text(let text):
             Text(text)
@@ -561,6 +589,19 @@ public struct LightScreenView: View {
                 .multilineTextAlignment(.center).lineLimit(2)
                 .frame(width: 84)
         }
+    }
+
+    /// Подпись основания: слово кеглем `size` в строке высотой `line`. Смена кегля на конце утреннего золотого часа — плавная (0,2 с,
+    /// буквы перетекают), рамка строки не меняется.
+    private func baseCaption(_ text: String, _ pal: Palette, size: CGFloat, line: CGFloat, tracking: CGFloat = 0.2, node: String) -> some View {
+        Text(text)
+            .font(.system(size: size, weight: .medium)).tracking(tracking)
+            .foregroundStyle(pal.brassInk)
+            .lineLimit(1).fixedSize()
+            .contentTransition(.interpolate)
+            .animation(.easeInOut(duration: 0.2), value: size)
+            .shotNode(node, text: text)
+            .frame(height: line)
     }
 
     /// Вид «Без блоков» (30з.1, `e6a5ccd`): время рассвета и заката — у оснований дуги, знак над временем, в пустой полосе купола под
@@ -573,6 +614,7 @@ public struct LightScreenView: View {
         let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x
         let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x
         let tb = model.timebar
+        // Слово балла только у главной стороны (31.5): вторая — без слова, так что правило кегля (31.5в) здесь — 11 pt у главной.
         let riseWord = t.event == .dawn ? t.sunset.word : nil
         let setWord = t.event == .sunset ? t.sunset.word : nil
         return ZStack(alignment: .topLeading) {
@@ -580,7 +622,8 @@ public struct LightScreenView: View {
             VStack(spacing: 2) {
                 flatBaseLabel(tb.baseRiseEdge, pal)
                 if let word = riseWord {
-                    Text(word).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.brassInk).lineLimit(1)
+                    baseCaption(word, pal, size: Self.baseCaptionSize(main: true, flat: true), line: Self.baseCaptionLine(flat: true), tracking: 0,
+                                node: "edge.word.rise")
                 }
             }
             .shotNode("edge.rise").position(x: left, y: y + 17.5 + (riseWord == nil ? 0 : 7)).allowsHitTesting(false)
@@ -590,7 +633,8 @@ public struct LightScreenView: View {
                     VStack(spacing: 2) {
                         flatBaseLabel(setEdge, pal)
                         if let word = setWord {
-                            Text(word).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.brassInk).lineLimit(1)
+                            baseCaption(word, pal, size: Self.baseCaptionSize(main: true, flat: true), line: Self.baseCaptionLine(flat: true), tracking: 0,
+                                        node: "edge.word.set")
                         }
                     }
                     .padding(8).contentShape(Rectangle())

@@ -168,8 +168,11 @@
   a dawn shoot snaps dawn sky + dawn score (same `wxSeen` format, `sc` = the shoot's event score; words `wxs.dawnScoreW/M`), one extra alert on
   the switch is accepted. Medium widget `BraunIdle.ratedEvent` picks dawn/sunset by `DayLight.event(at:)` = `SkyEvent.pick` (the Light rule on
   moments; no +6° → dawn until `DayLight.noon`, the timeline wakes at `morningEnd`); after sunset it still rates tomorrow's dawn (30.10, unlike Light).
-  Large feet and small hills show both scores, no highlight. Tests `DawnEqualCoreTests`, `DawnEqualTests`, `DawnEqualDomainTests`, `DawnDaySignTests`,
-  `DawnWidgetNoonTests`.
+  Large feet and small hills show both scores, no highlight. **31.5в (Alexey 18.11, variant «А»):** caption under each arc base — the side of
+  `t.event` 12 pt, the other 10 pt (`LightScreenView.baseCaptionSize`, ratio 1.2; flat view: the word stands only on the main side, 11 pt);
+  `fixedSize`, no `minimumScaleFactor` (inside the Button the old caption got 3 pt less height and shrank to 0.8: «рассвет» 117 px vs 143 px
+  outside it); the line keeps the 12 pt height, size change animates 0.2 s. Nodes `edge.cap.rise|set`, `edge.word.rise|set`. Tests `DawnEqualCoreTests`, `DawnEqualTests`, `DawnEqualDomainTests`, `DawnDaySignTests`,
+  `DawnWidgetNoonTests`, `DawnCaptionSizeTests`.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init
