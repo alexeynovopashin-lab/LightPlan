@@ -29,8 +29,22 @@ struct RawPlaceholderTests {
     /// Слоты, которых нет в ru, но Swift их передаёт — сверено с местом вызова.
     static let passed: Set<String> = [
         "light.waitedSunset en", "light.waitedSunset es", "light.waitedSunset ja", "light.waitedSunset zh",  // name(p), как у веба
+        // 31.6: рассветный близнец — тот же вызов (`AppModel.cardSays`, `.badSky`) передаёт `name(p)` обоим; фраза как у заката.
+        "light.waitedSunrise en", "light.waitedSunrise es", "light.waitedSunrise ja", "light.waitedSunrise zh",
         "rep.payFirst zh", "rep.sum zh", "rep.sumMore zh",  // голое число `k` рядом с `n`
     ]
+
+    /// 31.6: «Ожидался рассвет …» на каждом языке — та же фраза, что у заката: имя там же, где у закатной, сырых слотов нет.
+    @Test func waitedSunriseReadsLikeTheSunset() {
+        let p = ["name": "Анна", "cond": "дождь", "cloud": "80"]
+        for lang in Self.langs {
+            let lex = Lexicon(lang)
+            let rise = lex.t("light.waitedSunrise", p), set = lex.t("light.waitedSunset", p)
+            #expect(!rise.contains("{") && !set.contains("{"), "\(lang): «\(rise)» / «\(set)»")
+            #expect(rise.contains("Анна") == set.contains("Анна"), "\(lang): имя — как у заката: «\(rise)» / «\(set)»")
+            #expect(rise.hasPrefix("Анна") == set.hasPrefix("Анна"), "\(lang)")
+        }
+    }
 
     /// Ни у одного ключа (веба и `lang_native.json`) язык не держит слот, которого нет в ru, — кроме `passed`.
     @Test func noLanguageHasASlotRussianLacks() throws {
