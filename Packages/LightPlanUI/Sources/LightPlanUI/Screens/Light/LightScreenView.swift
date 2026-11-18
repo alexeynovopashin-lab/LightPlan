@@ -32,6 +32,7 @@ public struct LightScreenView: View {
     @State private var readoutFrame = CGRect.null
     /// 30з.6: время заката у основания дуги в виде «Без блоков» — кнопка; купол её касания не берёт.
     @State private var flatSetFrame = CGRect.null
+    @State private var flatRiseFrame = CGRect.null
     /// 29.8в.27: сколько необязательных строк («Тени», «Небо», «Ветер») поместилось в закрытый список «Астро» (`LightCollapsedList`).
     @State private var fitRows = 0
     /// На сколько pt (0…12) поднята полоса под дугой сверх 22: только когда без этого не помещается важный набор. Выбирает
@@ -424,6 +425,10 @@ public struct LightScreenView: View {
     }
     nonisolated static let baseCaptionRatio: CGFloat = 1.2
 
+    /// Кнопка ли основание дуги (31.6: одно правило у вида с блоками и без них): закат — всегда, рассвет — пока это рассвет смотримых
+    /// суток (`riseIsToday`; после заката слева стоит завтрашний — касаний он не ловит).
+    nonisolated static func baseIsButton(_ side: SkyEvent, riseIsToday: Bool) -> Bool { side == .sunset || riseIsToday }
+
     /// Главная ли сторона: у неё оценка (слово балла).
     nonisolated static func baseCaptionIsMain(_ side: SkyEvent, event: SkyEvent?) -> Bool { event.map { $0 == side } ?? true }
 
@@ -539,7 +544,7 @@ public struct LightScreenView: View {
             // 31.5: слово балла стоит у события наверху — утром у рассвета, после утреннего золотого часа у заката; у другой стороны —
             // её имя. Рассвет тех же суток — тоже кнопка: ползунок встаёт на восход, небо — прогноз рассвета.
             let riseCaption = t.event == .dawn ? (t.sunset.word ?? model.lexiconWord("light.baseRise")) : model.lexiconWord("light.baseRise")
-            if tb.riseIsToday {
+            if Self.baseIsButton(.dawn, riseIsToday: tb.riseIsToday) {
                 Button { model.timebar.jumpToSunrise() } label: {
                     baseLabel(tb.baseRiseEdge, pal, caption: riseCaption, main: Self.baseCaptionIsMain(.dawn, event: t.event), node: "edge.cap.rise")
                         .padding(8).contentShape(Rectangle())
@@ -619,14 +624,24 @@ public struct LightScreenView: View {
         let setWord = t.event == .sunset ? t.sunset.word : nil
         return ZStack(alignment: .topLeading) {
             // 31.5: слово балла — у события наверху (утром — у рассвета).
-            VStack(spacing: 2) {
+            let riseStack = VStack(spacing: 2) {
                 flatBaseLabel(tb.baseRiseEdge, pal)
                 if let word = riseWord {
                     baseCaption(word, pal, size: Self.baseCaptionSize(main: true, flat: true), line: Self.baseCaptionLine(flat: true), tracking: 0,
                                 node: "edge.word.rise")
                 }
             }
-            .shotNode("edge.rise").position(x: left, y: y + 17.5 + (riseWord == nil ? 0 : 7)).allowsHitTesting(false)
+            if Self.baseIsButton(.dawn, riseIsToday: tb.riseIsToday) {
+                // 31.6: рассвет этих суток — кнопка, как закат и как в виде с блоками: ползунок встаёт на восход.
+                Button { model.timebar.jumpToSunrise() } label: { riseStack.padding(8).contentShape(Rectangle()) }
+                    .buttonStyle(.plain)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.domeSpace)) } action: { flatRiseFrame = $0 }
+                    .shotNode("edge.rise").position(x: left, y: y + 17.5 + (riseWord == nil ? 0 : 7))
+            } else {
+                riseStack
+                    .onAppear { flatRiseFrame = .null }
+                    .shotNode("edge.rise").position(x: left, y: y + 17.5 + (riseWord == nil ? 0 : 7)).allowsHitTesting(false)
+            }
             if let setEdge = tb.setEdge {
                 // 30з.6: как в виде с блоками — тап ставит ползунок на закат, под временем короткое слово балла; купол этот прямоугольник не берёт.
                 Button { model.timebar.jumpToSunset() } label: {
@@ -757,7 +772,7 @@ public struct LightScreenView: View {
     /// Тумблер — 52×26 с полем 7, на 26 от верха и 12 от правого края.
     private func domeAccepts(_ p: CGPoint) -> Bool {
         let swap = CGRect(x: domeSize.width - 12 - 66, y: 26, width: 66, height: 40)
-        if swap.contains(p) || readoutFrame.contains(p) || flatSetFrame.contains(p) { return false }
+        if swap.contains(p) || readoutFrame.contains(p) || flatSetFrame.contains(p) || flatRiseFrame.contains(p) { return false }
         return model.domeMinute(at: p, in: domeSize) != nil
     }
 

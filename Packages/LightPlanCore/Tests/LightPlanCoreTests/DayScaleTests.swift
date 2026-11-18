@@ -108,14 +108,15 @@ struct DayScaleTests {
         #expect(MoonDay(date: d, place: Self.moscow).arc(at: 1500) != nil)
     }
 
-    @Test("«что дальше» в часе до полуночи — до рассвета этих суток, в часе после — до рассвета следующих")
+    /// 31.6: ночью «что дальше» — «До синего часа» (−6° утром); до 31.6 — «До рассвета» (до восхода).
+    @Test("«что дальше» в часе до полуночи — до синего часа этих суток, в часе после — до синего часа следующих")
     func nextLightInTheMargins() {
         let d = SolarDay(date: CivilDate(year: 2026, month: 11, day: 13), place: Self.moscow)
-        let rise = d.rise!
+        let civil = d.civilA!
         let before = d.nextLight(at: -40)
-        #expect(before.key == .toDawn && before.minutes == rise + 40)
+        #expect(before.key == .toBlue && before.minutes == civil + 40)
         let after = d.nextLight(at: 1500)
-        #expect(after.key == .toDawn && after.minutes == rise + 1440 - 1500)
+        #expect(after.key == .toBlue && after.minutes == civil + 1440 - 1500)
         // Сумерки утром (до полудня) и вечером (после) называются по-разному: слева от полуночи ночь этих суток ещё не кончилась.
         let nightBefore = d.state(at: -40), nightAfter = d.state(at: 1500)
         #expect(nightBefore.stars == nightAfter.stars)

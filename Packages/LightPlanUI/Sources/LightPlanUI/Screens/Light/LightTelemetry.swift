@@ -225,7 +225,7 @@ public struct LightTelemetry: Equatable, Sendable {
         }
         let wind = weather.map { windLine($0, lexicon: lexicon) }
 
-        let next = buildNextLight(sun: sun, t: t, weather: weather, lexicon: lexicon)
+        let next = buildNextLight(sun: sun, t: t, event: event, weather: weather, lexicon: lexicon)
 
         let actionSubtitle: String = tone == .stars
             ? (sun.astroB != nil ? clock.range(sun.astroB, (sun.astroA ?? 0) + 1440) : lexicon.t("sun.whiteNight"))
@@ -260,7 +260,7 @@ public struct LightTelemetry: Equatable, Sendable {
 
     // MARK: - «Что дальше» и спарклайн тренда
 
-    private static func buildNextLight(sun: SolarDay, t: Minutes, weather: WeatherDay?, lexicon: Lexicon) -> NextLightInfo {
+    private static func buildNextLight(sun: SolarDay, t: Minutes, event: SkyEvent?, weather: WeatherDay?, lexicon: Lexicon) -> NextLightInfo {
         let nl = sun.nextLight(at: t)
         let label = lexicon.t("next.\(nl.key.rawValue)")
         let value: String
@@ -270,11 +270,13 @@ public struct LightTelemetry: Equatable, Sendable {
             value = lexicon.t(sun.polar == .day ? "sun.noSet" : "sun.noRise")
         }
         guard let weather else { return NextLightInfo(label: label, value: value, trend: nil, trendWord: nil) }
-        let c0 = weather.trend.first ?? 0
-        let c1 = weather.trend.last ?? 0
+        // 31.6: тренд — к окну события наверху (утром — часы вокруг восхода), а не всегда 16…21.
+        let trend = weather.trend(event ?? .sunset)
+        let c0 = trend.first ?? 0
+        let c1 = trend.last ?? 0
         let trendWord = c1 < c0 - 12 ? lexicon.t("trend.clearing")
             : c1 > c0 + 12 ? lexicon.t("trend.closing") : lexicon.t("trend.same")
-        return NextLightInfo(label: label, value: value, trend: weather.trend, trendWord: trendWord)
+        return NextLightInfo(label: label, value: value, trend: trend, trendWord: trendWord)
     }
 
     // MARK: - Спойлер «Подробно»

@@ -659,7 +659,12 @@
     "pro.layerHighDawnNote": "подсветка до восхода",
     "wxs.dawnScoreW": "«{who}»: балл рассвета был {a} из 100, стал {b}.",
     "wxs.dawnScoreM": "Балл рассвета был {a} из 100, стал {b}.",
-    "wish.was.sunrise": "Ожидался рассвет"
+    "wish.was.sunrise": "Ожидался рассвет",
+    "next.toBlue": "До синего часа",
+    "light.waitedSunrise": "Ожидался рассвет, а прогноз обещает {cond} · облачность {cloud}%.",
+    "clash.bothSunriseT": "Обе съёмки просят рассвет",
+    "clash.bothSunriseM": "«{name}» ({when}) тоже ждёт рассвет, а золотой час один.",
+    "ar.afterSunrise": "после рассвета {d}"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1317,7 +1322,12 @@
     "pro.layerHighDawnNote": "glow before sunrise",
     "wxs.dawnScoreW": "“{who}”: the sunrise score was {a} out of 100, now it is {b}.",
     "wxs.dawnScoreM": "The sunrise score was {a} out of 100, now it is {b}.",
-    "wish.was.sunrise": "sunrise"
+    "wish.was.sunrise": "sunrise",
+    "next.toBlue": "Until blue hour",
+    "light.waitedSunrise": "{name} wanted the sunrise, but the forecast says {cond} · {cloud}% cloud.",
+    "clash.bothSunriseT": "Both shoots want the sunrise",
+    "clash.bothSunriseM": "“{name}” ({when}) is waiting for the sunrise too, and there is only one golden hour.",
+    "ar.afterSunrise": "{d} after sunrise"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1975,7 +1985,12 @@
     "pro.layerHighDawnNote": "arrebol del alba",
     "wxs.dawnScoreW": "«{who}»: la nota del amanecer era {a} de 100 y ahora es {b}.",
     "wxs.dawnScoreM": "La nota del amanecer era {a} de 100 y ahora es {b}.",
-    "wish.was.sunrise": "Se esperaba amanecer"
+    "wish.was.sunrise": "Se esperaba amanecer",
+    "next.toBlue": "Hasta la hora azul",
+    "light.waitedSunrise": "{name} esperaba el amanecer, pero el pronóstico anuncia {cond} · nubosidad {cloud}%.",
+    "clash.bothSunriseT": "Las dos sesiones piden el amanecer",
+    "clash.bothSunriseM": "«{name}» ({when}) también espera el amanecer, y la hora dorada es una sola.",
+    "ar.afterSunrise": "{d} después del amanecer"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2629,7 +2644,12 @@
     "pro.layerHighDawnNote": "日の出前の輝き",
     "wxs.dawnScoreW": "「{who}」：朝焼けスコアは100点中{a}点でしたが、{b}点になりました。",
     "wxs.dawnScoreM": "朝焼けスコアは100点中{a}点でしたが、{b}点になりました。",
-    "wish.was.sunrise": "朝焼けの予定でした"
+    "wish.was.sunrise": "朝焼けの予定でした",
+    "next.toBlue": "ブルーアワーまで",
+    "light.waitedSunrise": "{name}は日の出を希望していましたが、予報は{cond} · 雲量{cloud}%です。",
+    "clash.bothSunriseT": "両方の撮影が日の出を希望",
+    "clash.bothSunriseM": "「{name}」（{when}）も日の出を待っていますが、ゴールデンアワーは1回だけです。",
+    "ar.afterSunrise": "日の出から{d}"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -3283,6 +3303,11 @@
     "pro.layerHighDawnNote": "日出前的霞光",
     "wxs.dawnScoreW": "「{who}」：日出评分原为 {a}／100，现在是 {b}。",
     "wxs.dawnScoreM": "日出评分原为 {a}／100，现在是 {b}。",
-    "wish.was.sunrise": "原本期待日出"
+    "wish.was.sunrise": "原本期待日出",
+    "next.toBlue": "直到蓝色时刻",
+    "light.waitedSunrise": "{name}期望日出，但预报为{cond}·云量{cloud}%。",
+    "clash.bothSunriseT": "两次拍摄都要求日出",
+    "clash.bothSunriseM": "“{name}”（{when}）也在等待日出，而只有一个黄金时刻。",
+    "ar.afterSunrise": "日出后{d}"
   }
 }

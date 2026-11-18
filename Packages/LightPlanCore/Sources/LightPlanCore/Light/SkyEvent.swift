@@ -46,4 +46,7 @@ extension WeatherDay {
 
     /// Осадки в окне события.
     public func precip(_ e: SkyEvent) -> Precip? { e == .dawn ? dawnPrecip : precip }
+
+    /// Тренд облачности к окну события (31.6: искра и «затягивает / проясняется» под отсчётом): у рассвета — часы вокруг восхода.
+    public func trend(_ e: SkyEvent) -> [Double] { e == .dawn ? dawnTrend : trend }
 }

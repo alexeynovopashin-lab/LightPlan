@@ -53,6 +53,8 @@ public enum SunTrack {
     /// Строка «до заката …» под временем: что ближайшее и сколько минут до него или после него.
     public enum EventNote: Sendable, Equatable {
         case untilSunrise(Minutes)
+        /// После восхода до конца утреннего золотого часа (31.6, пара `afterSunset`): то же утро, что верх «Света» (`SkyEvent`).
+        case afterSunrise(Minutes)
         case untilSunset(Minutes)
         case afterSunset(Minutes)
         /// Солнце весь день над горизонтом / весь день под ним: события нет.
@@ -60,7 +62,8 @@ public enum SunTrack {
         case polarNight
     }
 
-    /// Ближайшее к `minutes` событие дня: рассвет, закат, или время после заката.
+    /// Ближайшее к `minutes` событие дня: до рассвета, после рассвета (до конца утреннего золотого часа — то утро, о котором
+    /// говорит верх «Света», `SkyEvent.at`), до заката, после заката.
     public static func note(at minutes: Minutes, solar: SolarDay) -> EventNote {
         switch solar.polar {
         case .day: return .polarDay
@@ -68,6 +71,7 @@ public enum SunTrack {
         case .normal: break
         }
         if let r = solar.rise, minutes < r { return .untilSunrise(r - minutes) }
+        if let r = solar.rise, solar.set != nil, SkyEvent.at(minutes, sun: solar) == .dawn { return .afterSunrise(minutes - r) }
         if let s = solar.set {
             return minutes < s ? .untilSunset(s - minutes) : .afterSunset(minutes - s)
         }

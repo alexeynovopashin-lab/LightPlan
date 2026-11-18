@@ -165,8 +165,10 @@ public final class LightScreenModel {
         let sun = timebar.solarDay
         let date = timebar.machine.selectedDate
         let weatherDay = weather.day(for: date)
-        let air = sun.set.map { setMinutes in
-            weather.airSample(for: date, hour: Int(min(23, max(0, (setMinutes / 60).rounded()))))
+        // «Воздух» — в час события наверху (31.6): утром — час восхода (тем же воздухом считается балл рассвета), потом — заката.
+        let eventMinute = SkyEvent.at(t, sun: sun) == .dawn ? sun.rise : sun.set
+        let air = eventMinute.map { m in
+            weather.airSample(for: date, hour: Int(min(23, max(0, (m / 60).rounded()))))
         } ?? weather.airSample(for: date, hour: 19)
 
         return LightTelemetry.build(

@@ -129,6 +129,9 @@ public struct WeatherDay: Sendable, Equatable {
     public let gust: Int
     /// Облачность часов 16…21 — тренд к окну съёмки, не округляется.
     public let trend: [Double]
+    /// Тренд к окну рассвета (31.6, пара `trend`): облачность часов `h − 3 … h + 2` вокруг часа восхода `h` — тоже шесть часов,
+    /// больше до события, чем после, как 16…21 у заката. Восхода нет (полярные сутки) — `trend`.
+    public let dawnTrend: [Double]
     /// `false` — это выдумка (`MockWeather`), не настоящий прогноз.
     public let real: Bool
     /// Рассветный балл (30б.2в-6, слова Алексея 27.10: «та же формула в час рассвета»): ярусы облаков и влажность в час восхода и аэрозоль
@@ -150,7 +153,9 @@ public struct WeatherDay: Sendable, Equatable {
                 wind: Int, windDirection: Double?, gust: Int, trend: [Double], real: Bool, sunrise: Int? = nil,
                 sky: DayQuality? = nil, precip: Precip? = nil, webQuality: DayQuality? = nil,
                 hours: [Int: HourRecord] = [:], nextMidnight: Double? = nil, fog: Bool? = nil, dawnFog: Bool? = nil,
-                dawnLayers: HourRecord? = nil, dawnPrecip: Precip? = nil, dawnQuality: DayQuality? = nil) {
+                dawnLayers: HourRecord? = nil, dawnPrecip: Precip? = nil, dawnQuality: DayQuality? = nil,
+                dawnTrend: [Double]? = nil) {
+        self.dawnTrend = dawnTrend ?? trend
         self.sunrise = sunrise
         self.dawnLayers = dawnLayers
         // Неба рассвета не дали (выдумка, старые тесты) — рассвет повторяет закат целиком: и категорию, и осадки.
@@ -398,6 +403,7 @@ extension WeatherDay {
                 ? (Sky.deg(atan2(bucket.dirY, bucket.dirX)) + 360).truncatingRemainder(dividingBy: 360)
                 : nil
             let trend = [16, 17, 18, 19, 20, 21].map { hh in bucket.byHour[hh]?.cloud ?? cloud }
+            let dawnTrend = riseHourForFog.map { h in ((h - 3)...(h + 2)).map { hh in bucket.byHour[hh]?.cloud ?? cloud } }
 
             days[date] = WeatherDay(
                 quality: quality, cloud: Int(cloud), sunset: sunset, layers: layers,
@@ -405,7 +411,8 @@ extension WeatherDay {
                 windDirection: windDirection, gust: Int(Sky.jsRound(bucket.gust)), trend: trend, real: true, sunrise: sunrise,
                 sky: sky, precip: precip, webQuality: webQuality,
                 hours: bucket.byHour, nextMidnight: buckets[date.adding(days: 1)]?.byHour[0]?.temperature,
-                fog: fog, dawnFog: dawnFog, dawnLayers: dawnLayers, dawnPrecip: dawnPrecip, dawnQuality: dawnQuality)
+                fog: fog, dawnFog: dawnFog, dawnLayers: dawnLayers, dawnPrecip: dawnPrecip, dawnQuality: dawnQuality,
+                dawnTrend: dawnTrend)
         }
         return (days, hourlyOut)
     }

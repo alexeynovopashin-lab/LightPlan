@@ -386,6 +386,41 @@
         }
       }
     },
+    "ar.afterSunrise" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "после рассвета {d}"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{d} after sunrise"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{d} después del amanecer"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日の出から{d}"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日出后{d}"
+          }
+        }
+      }
+    },
     "ar.afterSunset" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7633,6 +7668,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "个人"
+          }
+        }
+      }
+    },
+    "clash.bothSunriseM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{name}» ({when}) тоже ждёт рассвет, а золотой час один."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}” ({when}) is waiting for the sunrise too, and there is only one golden hour."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{name}» ({when}) también espera el amanecer, y la hora dorada es una sola."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「{name}」（{when}）も日の出を待っていますが、ゴールデンアワーは1回だけです。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{name}”（{when}）也在等待日出，而只有一个黄金时刻。"
+          }
+        }
+      }
+    },
+    "clash.bothSunriseT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обе съёмки просят рассвет"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Both shoots want the sunrise"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las dos sesiones piden el amanecer"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "両方の撮影が日の出を希望"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "两次拍摄都要求日出"
           }
         }
       }
@@ -30660,6 +30765,41 @@
         }
       }
     },
+    "light.waitedSunrise" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидался рассвет, а прогноз обещает {cond} · облачность {cloud}%."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{name} wanted the sunrise, but the forecast says {cond} · {cloud}% cloud."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{name} esperaba el amanecer, pero el pronóstico anuncia {cond} · nubosidad {cloud}%."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{name}は日の出を希望していましたが、予報は{cond} · 雲量{cloud}%です。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{name}期望日出，但预报为{cond}·云量{cloud}%。"
+          }
+        }
+      }
+    },
     "light.waitedSunset" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -42276,6 +42416,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "极夜"
+          }
+        }
+      }
+    },
+    "next.toBlue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "До синего часа"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Until blue hour"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta la hora azul"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ブルーアワーまで"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直到蓝色时刻"
           }
         }
       }

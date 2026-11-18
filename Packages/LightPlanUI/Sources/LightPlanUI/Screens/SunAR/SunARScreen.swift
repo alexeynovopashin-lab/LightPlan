@@ -662,6 +662,7 @@ struct SunARScreen: View {
     private var eventNoteText: String {
         switch model.eventNote {
         case .untilSunrise(let m): return t.t("ar.untilDawn", ["d": duration(m)])
+        case .afterSunrise(let m): return t.t("ar.afterSunrise", ["d": duration(m)])
         case .untilSunset(let m): return t.t("ar.untilSunset", ["d": duration(m)])
         case .afterSunset(let m): return t.t("ar.afterSunset", ["d": duration(m)])
         case .polarDay: return t.t("sun.noSetFull")

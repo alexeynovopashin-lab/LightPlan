@@ -14,7 +14,7 @@ extension BigWidget {
         public var tone: LightTone
         /// «Мягкий свет», «Небо закрыто»…
         public var text: String
-        /// «До золотого часа», «До заката», «Золотой час, ещё»…
+        /// «До золотого часа», «Синий час, ещё», «Золотой час, ещё»…
         public var nextLabel: String
         /// «1 ч 13 м»; `nil` — полярные сутки или ночь (подпись говорит сама).
         public var nextValue: String?
@@ -29,8 +29,9 @@ extension BigWidget {
         let sun = SolarDay(date: CivilDate(year: y, month: mo, day: d), place: place)
         let t = Double(h * 60 + mi) + Double(c.second ?? 0) / 60
         let raw = sun.state(at: t)
-        // Экран «Свет»: плохая погода дня заменяет состояние целиком — нейтральный тон, одно деление, без звёзд.
-        let poor = f.rating?.category == .poor
+        // Экран «Свет»: плохая погода дня заменяет состояние целиком — нейтральный тон, одно деление, без звёзд. Небо — события
+        // наверху (31.6, `SkyEvent.at`): до конца утреннего золотого часа — рассвета (`BraunIdle.quality`, правило всех виджетов), потом — заката.
+        let poor = (SkyEvent.at(t, sun: sun) == .dawn ? BraunIdle.quality(.sunrise, f.rating) : f.rating?.category) == .poor
         let stars = poor ? false : raw.stars
         let text = poor ? f.words.extra("rec.overcast", "Небо закрыто") : f.words.extra("rec.\(raw.code.rawValue)", fallbackRec[raw.code] ?? "")
         let next = sun.nextLight(at: t)
@@ -49,7 +50,7 @@ extension BigWidget {
     }
 
     /// Ключи подписей отсчёта (`next.*` словаря): `NextLightKey` не перечисляем, список здесь — для приложения, которое кладёт слова в файл.
-    public static let nextKeys: [NextLightKey] = [.polarDay, .polarNight, .toDawn, .goldenLeft, .toGolden, .toSunset, .blueLeft]
+    public static let nextKeys: [NextLightKey] = [.polarDay, .polarNight, .toDawn, .goldenLeft, .toGolden, .toSunset, .blueLeft, .toBlue]
 
     static let fallbackRec: [LightCode: String] = [
         .noon: "Жёсткий свет", .morning: "Ровный свет", .day: "Ровный свет", .morningWarm: "Мягкий свет", .evening: "Мягкий свет",
@@ -59,6 +60,6 @@ extension BigWidget {
 
     static let fallbackNext: [NextLightKey: String] = [
         .polarDay: "Полярный день", .polarNight: "Полярная ночь", .toDawn: "До рассвета", .goldenLeft: "Золотой час, ещё",
-        .toGolden: "До золотого часа", .toSunset: "До заката", .blueLeft: "Синий час, ещё",
+        .toGolden: "До золотого часа", .toSunset: "До заката", .blueLeft: "Синий час, ещё", .toBlue: "До синего часа",
     ]
 }

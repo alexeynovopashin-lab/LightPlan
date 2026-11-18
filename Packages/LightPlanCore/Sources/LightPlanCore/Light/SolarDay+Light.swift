@@ -8,6 +8,8 @@ public enum ShadowWord: String, Sendable {
 /// Подпись ближайшего светового события. Ключ словаря — `next.<rawValue>`.
 public enum NextLightKey: String, Sendable {
     case polarDay, polarNight, toDawn, goldenLeft, toGolden, toSunset, blueLeft
+    /// «До синего часа» (31.6): ночью — до утреннего синего часа. Только у `nextLight`, у веба такого нет.
+    case toBlue
 }
 
 /// Ближайшее «хорошее» световое событие: подпись и сколько минут до него.
@@ -39,7 +41,38 @@ extension SolarDay {
         return .veryLong
     }
 
-    /// Ближайшее световое событие относительно минуты `t`. Порт `nextLight`.
+    /// Ближайшее световое событие относительно минуты `t` (31.6, Алексей 18.11: «закаты и рассветы равнозначны») — одна лестница
+    /// для обоих концов дня, по тем же границам, что «Подробно» (`pro.goldenAM/PM`, `pro.blueAM/PM`): синий час −6°…−4°, золотой
+    /// −4°…+6°. Утро: ночь «До синего часа» (до −6°) → «Синий час, ещё» (до −4°) → «Золотой час, ещё» (до +6°); день «До золотого
+    /// часа»; вечер — зеркально: «Золотой час, ещё» (до −4°) → «Синий час, ещё» (до −6°) → ночь. Веб (`webNextLight`) утром до
+    /// восхода считал «До рассвета», а вечером до заката — «До заката»: так золотой час вечером и синий утром оставались без имени.
+    ///
+    /// Границы, которых у суток нет (солнце не поднимается до +6° или не опускается до −6° / −4°), пропускаются: зимой за полярным
+    /// кругом золотой час — весь день от −4° до −4°, белой ночью синий — вся ночь. Ночь после вечера считает до утренней границы
+    /// этих суток + 24 ч (как веб считал рассвет), той, что есть: −6°, иначе −4°, иначе +6°; ни одной — «До рассвета», как у веба.
+    public func nextLight(at t: Minutes) -> NextLight {
+        switch polar {
+        case .day: return NextLight(key: .polarDay, minutes: nil)
+        case .night: return NextLight(key: .polarNight, minutes: nil)
+        case .normal: break
+        }
+        let ladder: [(Minutes?, NextLightKey)] = [
+            (civilA, .toBlue), (blueA, .blueLeft), (goldenA, .goldenLeft),
+            (goldenB, .toGolden), (blueB, .goldenLeft), (civilB, .blueLeft),
+        ]
+        for (edge, key) in ladder {
+            if let edge, t < edge { return NextLight(key: key, minutes: edge - t) }
+        }
+        // Ночь после вечера: до первой утренней границы завтра (оценка — эти сутки + 24 ч).
+        let tomorrow: [(Minutes?, NextLightKey)] = [(civilA, .toBlue), (blueA, .blueLeft), (goldenA, .goldenLeft)]
+        for (edge, key) in tomorrow {
+            if let edge { return NextLight(key: key, minutes: edge + 1440 - t) }
+        }
+        return NextLight(key: .toDawn, minutes: (rise ?? 0) + 1440 - t)
+    }
+
+    /// Ближайшее световое событие относительно минуты `t`. Порт `nextLight` веба — только для сверки с вебом (`LightParityTests`);
+    /// экраны читают `nextLight(at:)`.
     ///
     /// **Наследство веба, перенесено как есть.** Вебовский `nextLight`
     /// сравнивает `t` с полями `SUN`, которые бывают `null`, а у JS `null` в
@@ -51,7 +84,7 @@ extension SolarDay {
     /// нет золотого часа — сразу к закату, нет синего — сразу к рассвету.
     /// Поведение разумное, править нечего; но перенесено оно буквально, а не по
     /// смыслу, и расходиться с вебом здесь нельзя.
-    public func nextLight(at t: Minutes) -> NextLight {
+    public func webNextLight(at t: Minutes) -> NextLight {
         switch polar {
         case .day: return NextLight(key: .polarDay, minutes: nil)
         case .night: return NextLight(key: .polarNight, minutes: nil)

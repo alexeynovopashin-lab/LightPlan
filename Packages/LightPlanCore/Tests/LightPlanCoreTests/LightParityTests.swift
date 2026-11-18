@@ -54,7 +54,7 @@ struct LightParityTests {
                 }
 
                 let next = Self.run(d.next, at: t, start: \.t)
-                let n = s.nextLight(at: Double(t))
+                let n = s.webNextLight(at: Double(t))
                 if "next.\(n.key.rawValue)" != next.key {
                     fail("\(at): событие JS \(next.key), Swift next.\(n.key.rawValue)")
                 }
@@ -192,13 +192,13 @@ struct LightParityTests {
         // 66.6° ю. ш., 20 июня 2026: солнце до 6° не поднимается — золотого часа нет.
         let noGolden = SolarDay(date: CivilDate(year: 2026, month: 6, day: 20), latitude: -66.6, longitude: 37, utcOffsetHours: 2)
         #expect(noGolden.goldenA == nil && noGolden.goldenB == nil && noGolden.polar == .normal)
-        #expect(noGolden.nextLight(at: 300).key == .toDawn)
-        #expect(noGolden.nextLight(at: 700).key == .toSunset)   // веб: сразу к закату
+        #expect(noGolden.webNextLight(at: 300).key == .toDawn)
+        #expect(noGolden.webNextLight(at: 700).key == .toSunset)   // веб: сразу к закату
 
         // 78° ю. ш., 29 февраля 2028: после заката солнце не уходит ниже −6° — синего часа нет.
         let noBlue = SolarDay(date: CivilDate(year: 2028, month: 2, day: 29), latitude: -78, longitude: 37, utcOffsetHours: 2)
         #expect(noBlue.civilB == nil && noBlue.polar == .normal)
-        let n = noBlue.nextLight(at: 1300)
+        let n = noBlue.webNextLight(at: 1300)
         #expect(n.key == .toDawn)                                // веб: сразу к рассвету
         #expect(n.minutes == (noBlue.rise! + 1440) - 1300)
     }
