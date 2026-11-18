@@ -54,10 +54,11 @@ public struct LightTelemetry: Equatable, Sendable {
 
     public enum SunsetTone: Equatable, Sendable { case brass, green, ink, blue, muted }
 
+    /// Оценка события наверху (31.5: рассвет до конца утреннего золотого часа, дальше — закат; `LightTelemetry.event`).
     public struct Sunset: Equatable, Sendable {
         public let text: String
         public let tone: SunsetTone
-        /// 30з.6: короткое слово балла («с цветом», «спокойный») — подпись у времени заката на дуге. `nil` — прогноза заката нет.
+        /// 30з.6: короткое слово балла («с цветом», «спокойный») — подпись у времени события на дуге. `nil` — прогноза нет.
         public var word: String? = nil
     }
 
@@ -111,7 +112,13 @@ public struct LightTelemetry: Equatable, Sendable {
     /// «отличного» тона именно он идёт в качестве акцента строк.
     public let stateColor: SkyColor
     public let condition: Condition
+    /// Событие наверху на эту минуту (31.5, `SkyEvent.at`); `nil` — полярные сутки: ни восхода, ни заката.
+    public let event: SkyEvent?
+    /// Оценка события наверху — рассвета утром, заката после утреннего золотого часа (имя поля — с тех пор, как был один закат).
     public let sunset: Sunset
+    /// Подпись строки золотого часа: «Рассвет · ср 18 нояб» / «Закат · ср 18 нояб» (31.5); полярные сутки — «Золотой час».
+    public let goldenLabel: String
+    /// «08:52 · золотой 08:13–09:21»: время восхода (заката) и золотой час этого события; полярные сутки — «—».
     public let golden: String
     public let light: String
     public let shadow: String
@@ -138,7 +145,7 @@ public struct LightTelemetry: Equatable, Sendable {
         weather: WeatherDay?, weatherStatus: WeatherStatus, air: AirSample?,
         headerLocationName: String, headerDateLabel: String, headerNote: String,
         lexicon: Lexicon, clock: ClockText, fahrenheit: Bool = false, terms: Bool = true,
-        azimuths: Bool = true
+        azimuths: Bool = true, eventDateLabel: String? = nil
     ) -> LightTelemetry {
         let raw = sun.state(at: t)
         // Небо минуты (31.2): осадки — в окне вокруг неё, не за сутки (снег ночью не закрывает вечер).
@@ -181,22 +188,35 @@ public struct LightTelemetry: Equatable, Sendable {
             sense: lexicon.t("sun.\(raw.code.rawValue).sense")
         )
 
-        // Закат — главная фича, вынесена наверх: не искать её в астро-деталях.
+        // Событие наверху (31.5, Алексей 18.11: «закаты и рассветы равнозначны»): до конца утреннего золотого часа — рассвет,
+        // дальше — закат тех же суток. Полярные сутки — ни того, ни другого: оценки нет, строка — «Золотой час —», как было.
+        let event = SkyEvent.at(t, sun: sun)
         let sunset: Sunset
-        if let score = weather?.sunset {
+        if let event, let score = weather?.score(event) {
             let word = sunsetWord(score, short: true, lexicon: lexicon)
             sunset = Sunset(text: "\(word) · \(score) / 100",
                             tone: score >= 75 ? .brass : score >= 50 ? .green : score >= 28 ? .ink : .blue, word: word)
         } else {
-            // Прогноза нет вовсе — честная надпись; прогноз есть, а часа заката в нём нет — «нет данных на этот день».
+            // Прогноза нет вовсе — честная надпись; прогноз есть, а часа события в нём нет — «нет данных на этот день».
             sunset = Sunset(text: forecastNote ?? lexicon.t("card.noDataDay"), tone: .muted)
         }
 
-        // Золотой час — окно, не момент: чтобы не спутать его с закатом.
+        // Строка золотого часа — о том же событии: «Рассвет · ср 18 нояб  08:52 · золотой 08:13–09:21» (даты просил Алексей,
+        // «чтобы люди не путались»). Золотой час утром — от −4° до +6° (`blueA…goldenA`), вечером — от +6° до −4°
+        // (`goldenB…blueB`); солнце не поднимается до +6° — край золотого часа у полудня. Полярные сутки — «Золотой час —».
+        let goldenLabel: String
         let golden: String
-        if let goldenB = sun.goldenB, let set = sun.set {
-            golden = lexicon.t("tele.goldenTill", ["range": clock.range(goldenB, sun.blueB), "t": clock.fmt(set)])
-        } else {
+        switch event {
+        case .dawn?:
+            goldenLabel = eventLabel("tele.dawnOn", "tele.sunrise", eventDateLabel, lexicon)
+            golden = lexicon.t("tele.eventGolden", ["t": clock.fmt(sun.rise),
+                                                    "range": tightRange(sun.blueA, sun.goldenA ?? sun.solarNoon, clock)])
+        case .sunset?:
+            goldenLabel = eventLabel("tele.sunsetOn", "tele.sunset", eventDateLabel, lexicon)
+            golden = lexicon.t("tele.eventGolden", ["t": clock.fmt(sun.set),
+                                                    "range": tightRange(sun.goldenB ?? sun.solarNoon, sun.blueB, clock)])
+        case nil:
+            goldenLabel = lexicon.t("tele.golden")
             golden = "—"
         }
 
@@ -212,14 +232,14 @@ public struct LightTelemetry: Equatable, Sendable {
             : clock.range(sun.goldenB, sun.blueB)
 
         let proGroups = buildProGroups(
-            sun: sun, t: t, weather: weather, weatherStatus: weatherStatus,
+            sun: sun, t: t, event: event, weather: weather, weatherStatus: weatherStatus,
             moonSnapshot: moonMode ? moonSnapshot : nil, lexicon: lexicon, clock: clock,
             fahrenheit: fahrenheit, terms: terms, azimuths: azimuths
         )
 
         return LightTelemetry(
             header: header, readout: readout, tone: tone, stateColor: raw.color, condition: condition,
-            sunset: sunset, golden: golden, light: lexicon.t("sun.\(raw.code.rawValue).light"),
+            event: event, sunset: sunset, goldenLabel: goldenLabel, golden: golden, light: lexicon.t("sun.\(raw.code.rawValue).light"),
             shadow: lexicon.t("shadow.\(sun.shadowWord(at: t).rawValue)"), sky: sky, wind: wind,
             forecastNote: forecastNote,
             air: Weather.airWord(air).map { lexicon.t($0.rawValue) },
@@ -260,7 +280,7 @@ public struct LightTelemetry: Equatable, Sendable {
     // MARK: - Спойлер «Подробно»
 
     private static func buildProGroups(
-        sun: SolarDay, t: Minutes, weather: WeatherDay?, weatherStatus: WeatherStatus,
+        sun: SolarDay, t: Minutes, event: SkyEvent?, weather: WeatherDay?, weatherStatus: WeatherStatus,
         moonSnapshot: MoonSnapshot?, lexicon: Lexicon, clock: ClockText, fahrenheit: Bool, terms: Bool,
         azimuths: Bool
     ) -> [ProGroup] {
@@ -346,18 +366,23 @@ public struct LightTelemetry: Equatable, Sendable {
             groups.append(ProGroup(iconName: "cloud", title: lexicon.t("pro.weather"), rows: [sourceRow]))
         }
 
-        // Прогноз заката по ярусам — только когда есть настоящие данные.
-        if let weather, let score = weather.sunset, let layers = weather.layers {
-            let swatch = SkyPalette(weather: weather).map {
-                Swatch(palette: $0, word: sunsetWord(score, short: false, lexicon: lexicon))
+        // Прогноз рассвета и заката по ярусам — только когда есть настоящие данные (31.5: оба, первым — тот, что сейчас наверху;
+        // Алексей 18.11 «Тот, что наверху»). У каждого своё окно неба (`SkyPalette` на ярусах своего часа).
+        if let weather {
+            let order: [SkyEvent] = event == .dawn ? [.dawn, .sunset] : [.sunset, .dawn]
+            for e in order {
+                guard let score = weather.score(e), let layers = weather.layers(e) else { continue }
+                let word = eventWord(score, e, lexicon: lexicon)
+                let swatch = SkyPalette(weather: weather, event: e).map { Swatch(palette: $0, word: word) }
+                groups.append(ProGroup(iconName: e == .dawn ? "sunrise" : "sunset",
+                                       title: lexicon.t(e == .dawn ? "pro.dawnForecast" : "pro.sunsetForecast"), swatch: swatch, rows: [
+                    ProRow(label: lexicon.t("pro.score"), value: lexicon.t("pro.scoreOf", ["n": "\(score)", "word": word])),
+                    ProRow(label: lexicon.t("pro.layerLow"), value: lexicon.t("pro.pctNote", ["n": "\(Int(layers.low.rounded()))", "note": lexicon.t("pro.layerLowNote")])),
+                    ProRow(label: lexicon.t("pro.layerMid"), value: lexicon.t("pro.pctNote", ["n": "\(Int(layers.mid.rounded()))", "note": lexicon.t("pro.layerMidNote")])),
+                    ProRow(label: lexicon.t("pro.layerHigh"), value: lexicon.t("pro.pctNote", ["n": "\(Int(layers.high.rounded()))", "note": lexicon.t(e == .dawn ? "pro.layerHighDawnNote" : "pro.layerHighNote")])),
+                    ProRow(label: lexicon.t("pro.humidity"), value: "\(Int(layers.humidity.rounded()))%"),
+                ]))
             }
-            groups.append(ProGroup(iconName: "sunset", title: lexicon.t("pro.sunsetForecast"), swatch: swatch, rows: [
-                ProRow(label: lexicon.t("pro.score"), value: lexicon.t("pro.scoreOf", ["n": "\(score)", "word": sunsetWord(score, short: false, lexicon: lexicon)])),
-                ProRow(label: lexicon.t("pro.layerLow"), value: lexicon.t("pro.pctNote", ["n": "\(Int(layers.low.rounded()))", "note": lexicon.t("pro.layerLowNote")])),
-                ProRow(label: lexicon.t("pro.layerMid"), value: lexicon.t("pro.pctNote", ["n": "\(Int(layers.mid.rounded()))", "note": lexicon.t("pro.layerMidNote")])),
-                ProRow(label: lexicon.t("pro.layerHigh"), value: lexicon.t("pro.pctNote", ["n": "\(Int(layers.high.rounded()))", "note": lexicon.t("pro.layerHighNote")])),
-                ProRow(label: lexicon.t("pro.humidity"), value: "\(Int(layers.humidity.rounded()))%"),
-            ]))
         }
 
         return groups
@@ -408,7 +433,26 @@ public struct LightTelemetry: Equatable, Sendable {
         return mm != 0 ? lexicon.t("durS.hoursMins", ["h": "\(h)", "m": "\(mm)"]) : lexicon.t("durS.hours", ["h": "\(h)"])
     }
 
-    /// Короткое и длинное слово закатного балла (веб `sunsetShort`/`sunsetWord`).
+    /// Подпись строки события: «Рассвет · ср 18 нояб»; даты нет — одно имя события.
+    private static func eventLabel(_ dated: String, _ plain: String, _ date: String?, _ lexicon: Lexicon) -> String {
+        date.map { lexicon.t(dated, ["d": $0]) } ?? lexicon.t(plain)
+    }
+
+    /// Промежуток без пробелов у тире («08:13–09:21»): строке события тесно рядом с датой (на 390 pt — 342 pt на подпись и значение).
+    /// 12-часовой вид — как у `ClockText.range` (свой формат платформы).
+    static func tightRange(_ a: Minutes?, _ b: Minutes?, _ clock: ClockText) -> String {
+        clock.range(a, b).replacingOccurrences(of: "\u{00A0}–\u{00A0}", with: "–")
+    }
+
+    /// Длинное слово балла события: у заката — веба (`sunsetWord`), у рассвета — свои (`dawnW.*`, 31.5) с теми же порогами.
+    static func eventWord(_ s: Int, _ e: SkyEvent, lexicon: Lexicon) -> String {
+        guard e == .dawn else { return sunsetWord(s, short: false, lexicon: lexicon) }
+        return s >= 75 ? lexicon.t("dawnW.beautiful") : s >= 50 ? lexicon.t("dawnW.color")
+            : s >= 28 ? lexicon.t("dawnW.calm") : lexicon.t("dawnW.none")
+    }
+
+    /// Короткое и длинное слово закатного балла (веб `sunsetShort`/`sunsetWord`). Короткие («красивый», «спокойный») подходят
+    /// и рассвету — им и подписан рассвет на дуге.
     static func sunsetWord(_ s: Int, short: Bool, lexicon: Lexicon) -> String {
         let prefix = short ? "sunsetS" : "sunsetW"
         return s >= 75 ? lexicon.t("\(prefix).beautiful") : s >= 50 ? lexicon.t("\(prefix).color")

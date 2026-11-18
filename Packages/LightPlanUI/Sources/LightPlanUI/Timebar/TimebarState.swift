@@ -191,6 +191,23 @@ public final class TimebarState {
         checkHourMark()
     }
 
+    /// 31.5: тап по рассвету у левого основания дуги — ползунок встаёт на восход смотримого дня (небо — прогноз рассвета). Только пока
+    /// левое основание — рассвет этих суток (`riseIsToday`), не завтрашний.
+    public func jumpToSunrise() {
+        guard riseIsToday, let rise = solarDay.rise else { return }
+        stopGlide()
+        drumGlide = nil
+        withAnimation(.easeOut(duration: 0.2)) { machine.setViewMinute(rise) }
+        checkHourMark()
+    }
+
+    /// Левое основание дуги — восход смотримых суток (до заката), а не завтрашний (`baseRiseEdge`).
+    public var riseIsToday: Bool {
+        guard solarDay.polar == .normal, solarDay.rise != nil else { return false }
+        guard let set = solarDay.set else { return true }
+        return machine.viewMinute <= set
+    }
+
     /// Момент из листа выбора: день и время суток, как `applyDate` веба —
     /// без анимации ленты, барабан встаёт на новый день сразу.
     public func show(day: CivilDate, minute: Minutes) {

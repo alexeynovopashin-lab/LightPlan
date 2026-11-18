@@ -174,8 +174,17 @@ public final class LightScreenModel {
             weather: weatherDay, weatherStatus: weather.status, air: air,
             headerLocationName: headerLocationName, headerDateLabel: headerDateLabel(t: t),
             headerNote: headerNote(t: t),
-            lexicon: lexicon, clock: clock, fahrenheit: fahrenheit, terms: terms, azimuths: azimuths
+            lexicon: lexicon, clock: clock, fahrenheit: fahrenheit, terms: terms, azimuths: azimuths,
+            eventDateLabel: eventDateLabel(date)
         )
+    }
+
+    /// Окно неба купола (зарево у горизонта, подложка «Астро», свет плашки) — прогноз события наверху (31.5): утром рассвета,
+    /// после утреннего золотого часа — заката.
+    public var skyPalette: SkyPalette? {
+        let sun = timebar.solarDay
+        return SkyPalette(weather: weather.day(for: timebar.machine.selectedDate),
+                          event: SkyEvent.at(timebar.machine.viewMinute, sun: sun) ?? .sunset)
     }
 
     /// Слово по ключу словаря — вид зовёт это для подписей, которые
@@ -206,6 +215,12 @@ public final class LightScreenModel {
     private func headerDateLabel(t: Minutes) -> String {
         let d = asFoundationDate(viewDate(t: t))
         return dateText.wdShort(d) + " · " + dateText.dMon(d)
+    }
+
+    /// «ср 18 нояб» — день события в строке золотого часа (31.5): сами сутки ленты, а не день минуты.
+    private func eventDateLabel(_ d: CivilDate) -> String {
+        let date = asFoundationDate(d)
+        return dateText.wdDayMonShort(date)
     }
 
     private func headerNote(t: Minutes) -> String {

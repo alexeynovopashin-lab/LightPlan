@@ -27,9 +27,11 @@ public struct SkyPalette: Sendable, Equatable {
     static let horizonStop = SkyColor(247, 196, 118) // тёплая полоса у самого горизонта
     static let dead = SkyColor(92, 92, 96)           // «свинец»: цвета не будет
 
-    /// `nil` — нет балла заката или часа заката в прогнозе, как у веба.
-    public init?(weather w: WeatherDay?) {
-        guard let w, let score = w.sunset, let L = w.layers else { return nil }
+    /// `nil` — нет балла события или его часа в прогнозе, как у веба. Рассвет (31.5) — та же формула и те же цвета на ярусах и
+    /// влажности часа восхода: физика цвета (рассеяние на ярусах и дымке) одна, а основы для другой, «утренней» палитры в формуле
+    /// нет — цвета не выдумываются.
+    public init?(weather w: WeatherDay?, event: SkyEvent = .sunset) {
+        guard let w, let score = w.score(event), let L = w.layers(event) else { return nil }
         func clamp(_ x: Double, _ a: Double, _ b: Double) -> Double { min(b, max(a, x)) }
         func mixDead(_ c: SkyColor, _ k: Double) -> SkyColor { LightPalette.lerp(Self.dead, c, clamp(k, 0, 1)) }
         let s = Double(score) / 100

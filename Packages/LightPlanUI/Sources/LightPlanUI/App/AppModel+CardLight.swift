@@ -337,7 +337,9 @@ extension AppModel {
     func cardWishMissed(_ s: Session, phase: EventPhase) -> String? {
         let wishes = shownWishes(s.wishes).filter { $0 != .any }
         guard phase != .after, !wishes.isEmpty, let day = pointDay(anchor(s), s.day)?.day else { return nil }
-        let q = day.quality
+        // 31.5: съёмка, начатая до конца утреннего золотого часа, судится небом рассвета (окно ±2 ч у восхода), остальные — заката.
+        let dawn = SkyEvent.at(Double(s.start), sun: cardSun(anchor(s), s.day)) == .dawn
+        let q = dawn ? day.dawnQuality : day.quality
         guard q == .poor || q == .fog else { return nil }
         // 31.4: туман у рассвета сбывает пожелание «Туман», хотя категория дня (окно заката) — уже не туман.
         if wishes.contains(.fog) && (q == .fog || day.dawnFog) { return nil }
@@ -347,7 +349,7 @@ extension AppModel {
             return i == 0 ? x : x.lowercased()
         }
         return lexicon.t("card.wishMissed", ["wish": words.joined(separator: ", "),
-                                             "cond": lexicon.t(day.condKey).lowercased()])
+                                             "cond": lexicon.t(dawn ? day.dawnCondKey : day.condKey).lowercased()])
     }
 
     // MARK: Сдвиг времени (`#cdMoved`)

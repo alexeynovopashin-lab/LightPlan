@@ -48,6 +48,8 @@ extension DayQuality {
 extension WeatherDay {
     /// Слово дня («Облачно», «Дождь», «Снег», «Пасмурно»…) — по окну заката.
     var condKey: String { "qualCond." + quality.wordKey(precip) }
+    /// Слово неба рассвета (31.5): категория и осадки окна у восхода.
+    var dawnCondKey: String { "qualCond." + dawnQuality.wordKey(dawnPrecip) }
     /// Знак дня (барабан, лента, сводка) — по окну заката.
     var signIconName: String { quality.signIconName(precip) }
     /// Слово и знак на выбранную минуту — по окну вокруг неё (`WeatherDay.wetWindowHours`).

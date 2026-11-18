@@ -292,10 +292,18 @@ public struct WishSky: Sendable, Equatable {
     public var shootMoon: ShootMoon?
     /// Туман в окне рассвета (31.4, `WeatherDay.dawnFog`): категория дня судит туман у заката, а пожелание «Туман» сбывается и утром.
     public var dawnFog: Bool
+    /// Рассветный балл (31.5, `WeatherDay.sunrise`): пожелание «Рассвет» судится им, как «Закат» — закатным. `nil` — рассвета
+    /// в прогнозе нет.
+    public var sunriseScore: Int?
+    /// Небо рассвета (31.5, `WeatherDay.dawnQuality`: туман и осадки в окне ±2 ч у восхода); `nil` — как `quality`.
+    public var dawnQuality: DayQuality?
 
     public init(quality: DayQuality?, sunsetScore: Int?, astroNight: Bool, moonLevel: Int?,
-                moonPercent: Int?, moonFraction: Double, shootMoon: ShootMoon? = nil, dawnFog: Bool = false) {
+                moonPercent: Int?, moonFraction: Double, shootMoon: ShootMoon? = nil, dawnFog: Bool = false,
+                sunriseScore: Int? = nil, dawnQuality: DayQuality? = nil) {
         self.dawnFog = dawnFog
+        self.sunriseScore = sunriseScore
+        self.dawnQuality = dawnQuality
         self.quality = quality
         self.sunsetScore = sunsetScore
         self.astroNight = astroNight
@@ -372,7 +380,12 @@ public enum WishCheck {
             } else if q == .poor { return WishClash(key: "noSunset", params: [:], sky: q) }
             return nil
         case .sunrise:
-            return q == .poor ? WishClash(key: "noSunrise", params: [:], sky: q) : nil
+            // 31.5: рассвет наравне с закатом — тот же порог балла и небо в окне рассвета, а не у заката.
+            let dq = sky.dawnQuality ?? q
+            if let s = sky.sunriseScore {
+                if s < 50 { return WishClash(key: "dullSunrise", params: ["score": String(s)]) }
+            } else if dq == .poor { return WishClash(key: "noSunrise", params: [:], sky: dq) }
+            return nil
         case .rain:
             guard let q else { return nil }
             return q != .poor ? WishClash(key: "noRain", params: [:], sky: q) : nil

@@ -130,6 +130,12 @@ public struct DateText: Sendable {
     public func wdShort(_ d: Date) -> String { Self.abbr3(weekdayShort.format(d)).uppercased() }
     /// «воскресенье»
     public func wdFull(_ d: Date) -> String { weekdayLong.format(d) }
+    /// «ср 18 ноя» · «Wed 18 Nov» — день недели и короткая дата внутри строки (31.5: строка события на «Свете»). Платформа пишет
+    /// «Ср» с прописной; посреди строки русский и испанский день недели — строчными, английский остаётся «Wed».
+    public func wdDayMonShort(_ d: Date) -> String {
+        let wd = Self.abbr3(weekdayShort.format(d))
+        return (language.hasPrefix("en") ? wd : wd.lowercased(with: locale)) + " " + dMonShort(d)
+    }
     /// «авг» — короткий месяц сам по себе
     public func monShortOfDate(_ d: Date) -> String { Self.abbr3(part(dmS, d, .month)) }
 

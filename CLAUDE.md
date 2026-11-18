@@ -155,6 +155,14 @@
   Only exception: in Simple the map's sun, compass and «Мои места» are always on (`alwaysOnMapLayers` → `mapLayersShown`), the stored choice is kept for Pro.
   Ghost calendars (№ 128) need nothing: their question comes only from the «Другие календари» toggle, which the Simple sheet has not. Tests `ModeLookTests`,
   `SimpleSubmenusTests`; the view `if`s are held by shots (the nodes `map.layersBtn`, `card.tune`… are absent in Simple).
+- **Dawn equals sunset (31.5, Alexey 18.11 «закаты и рассветы равнозначны»).** `WeatherDay` carries the dawn pair: `sunrise` (score), `dawnLayers`,
+  `dawnPrecip`, `dawnQuality` — the same formula and the same ±2 h windows (31.2/31.4) around the sunrise hour. One rule picks the event of a minute:
+  `SkyEvent.at(t, sun:)` (Core `Light/SkyEvent.swift`) — dawn until the morning golden hour ends (`goldenA`; no +6° that day → solar noon), then the
+  sunset of the same day; polar day/night → `nil`. «Свет»: score word at the active arc base (rise side is a button too, `jumpToSunrise`), row
+  `tele.golden` = «Рассвет · ср 18 ноя  09:05 · золотой 08:38–10:12» (`goldenLabel`), dome palette `model.skyPalette`, «Подробно» has «Прогноз рассвета»
+  and «Прогноз заката», the top one first. Form wish «Рассвет» = dawn score < 50 (`wc.dullSunrise*`) / dawn sky; card «Ожидался …» judges a shoot
+  starting before the morning golden end by the dawn sky; widget dawn word reads `Rating.dawnQuality`. Day category, planner day line, forecast-changed
+  alerts stay on the sunset (open questions in the 31.5 report). Tests `DawnEqualCoreTests`, `DawnEqualTests`, `DawnEqualDomainTests`.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

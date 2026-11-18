@@ -88,7 +88,7 @@ public struct LightScreenView: View {
         let sun = model.timebar.solarDay
         let minute = model.timebar.machine.viewMinute
         let skyNow = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
-                             lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
+                             lightTheme: !pal.dark, palette: model.skyPalette)
         let presence = Self.skyPresence(dark: pal.dark, elevation: sun.elevation(at: minute))
         let headPal = Self.headerPalette(pal, sky: skyNow, presence: presence)
 
@@ -165,7 +165,7 @@ public struct LightScreenView: View {
         let sun = model.timebar.solarDay
         let minute = model.timebar.machine.viewMinute
         let skyNow = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
-                             lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
+                             lightTheme: !pal.dark, palette: model.skyPalette)
         let presence = Self.skyPresence(dark: pal.dark, elevation: sun.elevation(at: minute))
         let headPal = Self.headerPalette(pal, sky: skyNow, presence: presence)
 
@@ -371,7 +371,7 @@ public struct LightScreenView: View {
         DomeView(sun: model.timebar.solarDay, place: model.timebar.place,
                  date: model.timebar.machine.selectedDate, t: model.timebar.machine.viewMinute,
                  nowMinute: model.timebar.nowMinute,
-                 skyPalette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)),
+                 skyPalette: model.skyPalette,
                  astro: model.look.domeSky,
                  swap: model.moon,
                  skyFill: skyFill,
@@ -506,12 +506,25 @@ public struct LightScreenView: View {
         let right = min(fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x - 8, blockWidth - Self.baseEdgeInset)
         let tb = model.timebar
         return ZStack(alignment: .topLeading) {
-            baseLabel(tb.baseRiseEdge, pal, caption: model.lexiconWord("light.baseRise")).shotNode("edge.rise").position(x: left, y: y)
-                .allowsHitTesting(false)
+            // 31.5: слово балла стоит у события наверху — утром у рассвета, после утреннего золотого часа у заката; у другой стороны —
+            // её имя. Рассвет тех же суток — тоже кнопка: ползунок встаёт на восход, небо — прогноз рассвета.
+            let riseCaption = t.event == .dawn ? (t.sunset.word ?? model.lexiconWord("light.baseRise")) : model.lexiconWord("light.baseRise")
+            if tb.riseIsToday {
+                Button { model.timebar.jumpToSunrise() } label: {
+                    baseLabel(tb.baseRiseEdge, pal, caption: riseCaption)
+                        .padding(8).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .shotNode("edge.rise")
+                .position(x: left, y: y)
+            } else {
+                baseLabel(tb.baseRiseEdge, pal, caption: riseCaption).shotNode("edge.rise").position(x: left, y: y)
+                    .allowsHitTesting(false)
+            }
             if let setEdge = tb.setEdge {
                 // 30з.6: закат — кнопка: ползунок встаёт на закат, небо становится прогнозом заката. Подпись — слово балла вместо «закат»
                 // (знак и так заката; «закат · спокойный» не влезало: 93 pt при 84 доступных, обрезалось). Нет прогноза — «закат», как было.
-                let caption = t.sunset.word ?? model.lexiconWord("light.baseSet")
+                let caption = t.event == .sunset ? (t.sunset.word ?? model.lexiconWord("light.baseSet")) : model.lexiconWord("light.baseSet")
                 Button { model.timebar.jumpToSunset() } label: {
                     baseLabel(setEdge, pal, caption: caption)
                         .padding(8).contentShape(Rectangle())
@@ -560,14 +573,23 @@ public struct LightScreenView: View {
         let left = fit.point(CGPoint(x: g.cx - g.rx, y: 0)).x
         let right = fit.point(CGPoint(x: g.cx + g.rx, y: 0)).x
         let tb = model.timebar
+        let riseWord = t.event == .dawn ? t.sunset.word : nil
+        let setWord = t.event == .sunset ? t.sunset.word : nil
         return ZStack(alignment: .topLeading) {
-            flatBaseLabel(tb.baseRiseEdge, pal).shotNode("edge.rise").position(x: left, y: y + 17.5).allowsHitTesting(false)
+            // 31.5: слово балла — у события наверху (утром — у рассвета).
+            VStack(spacing: 2) {
+                flatBaseLabel(tb.baseRiseEdge, pal)
+                if let word = riseWord {
+                    Text(word).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.brassInk).lineLimit(1)
+                }
+            }
+            .shotNode("edge.rise").position(x: left, y: y + 17.5 + (riseWord == nil ? 0 : 7)).allowsHitTesting(false)
             if let setEdge = tb.setEdge {
                 // 30з.6: как в виде с блоками — тап ставит ползунок на закат, под временем короткое слово балла; купол этот прямоугольник не берёт.
                 Button { model.timebar.jumpToSunset() } label: {
                     VStack(spacing: 2) {
                         flatBaseLabel(setEdge, pal)
-                        if let word = t.sunset.word {
+                        if let word = setWord {
                             Text(word).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.brassInk).lineLimit(1)
                         }
                     }
@@ -576,7 +598,7 @@ public struct LightScreenView: View {
                 .buttonStyle(.plain)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.domeSpace)) } action: { flatSetFrame = $0 }
                 .shotNode("edge.set")
-                .position(x: right, y: y + 17.5 + (t.sunset.word == nil ? 0 : 7))
+                .position(x: right, y: y + 17.5 + (setWord == nil ? 0 : 7))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -703,7 +725,7 @@ public struct LightScreenView: View {
         let sun = model.timebar.solarDay
         let minute = model.timebar.machine.viewMinute
         let sky = DomeSky(astro: model.look.domeSky, elevation: sun.elevation(at: minute), morning: minute < sun.solarNoon,
-                          lightTheme: !pal.dark, palette: SkyPalette(weather: model.weather.day(for: model.timebar.machine.selectedDate)))
+                          lightTheme: !pal.dark, palette: model.skyPalette)
         // Text layout stays unchanged; only ink follows its actual height in the sky.
         let fit = DomeFit(size: CGSize(width: max(1, domeSize.width), height: DomeView.height))
         func ink(at y: CGFloat, fallback: Color) -> Color {
@@ -813,7 +835,8 @@ public struct LightScreenView: View {
             }
             // 30з.6: строки «Закат» нет — закат на дуге (время у правого основания с коротким словом балла, тап ставит ползунок на закат);
             // балл и ярусы — в «Подробно», группа «Прогноз заката». Нет прогноза — надпись в шапке (`forecastNote`).
-            plainRow(labelKey: "tele.golden", value: t.golden)
+            // 31.5: подпись — событие наверху с датой («Рассвет · ср 18 нояб»); узел снимка — прежний `tele.golden`.
+            plainRow(labelKey: "tele.golden", label: t.goldenLabel, value: t.golden)
             plainRow(labelKey: "tele.light", value: t.light)
             // «Тени», «Небо», «Ветер» — необязательные строки: в «Астро» стоит столько первых, сколько помещается (`LightCollapsedList`).
             let shown = LightCollapsedList.shown(astro: true, fit: shownFit, hasForecast: t.sky != nil || t.wind != nil)
@@ -836,8 +859,8 @@ public struct LightScreenView: View {
         }
     }
 
-    private func plainRow(labelKey: String, value: String, color: Color? = nil) -> some View {
-        TelemetryRow(labelKey: labelKey, labelText: model.lexiconWord, extra: simpleRowExtra) {
+    private func plainRow(labelKey: String, label: String? = nil, value: String, color: Color? = nil) -> some View {
+        TelemetryRow(labelKey: labelKey, labelText: label.map { l in { _ in l } } ?? model.lexiconWord, extra: simpleRowExtra) {
             Text(value).foregroundStyle(color ?? LightScreenTheme.ink(colorScheme))
                 .shotNode(labelKey, text: value)
         }

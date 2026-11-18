@@ -133,20 +133,34 @@ public struct WeatherDay: Sendable, Equatable {
     public let real: Bool
     /// Рассветный балл (30б.2в-6, слова Алексея 27.10: «та же формула в час рассвета»): ярусы облаков и влажность в час восхода и аэрозоль
     /// того часа, та же `SunsetScore.score`, что у заката. `nil` — рассвета нет (полярные сутки, ночь) или часа восхода в прогнозе нет:
-    /// число не выдумывается. Только средний виджет; на «Свете» оценки рассвета пока нет (ждёт рисунка Claude Design).
+    /// число не выдумывается. Читают виджеты, «Свет» (31.5: верх экрана до конца утреннего золотого часа и группа «Прогноз рассвета»),
+    /// пожелание «Рассвет» в форме.
     public let sunrise: Int?
+    /// Час восхода целиком (31.5, пара `layers`): ярусы и влажность «Прогноза рассвета» и окно неба рассвета (`SkyPalette`).
+    /// `nil` — восхода нет или часа восхода в прогнозе нет.
+    public let dawnLayers: HourRecord?
+    /// Осадки в окне рассвета (31.5, пара `precip`): то же окно ±`wetWindowHours`, что у заката, вокруг часа восхода. `nil` — сухо
+    /// или восхода нет.
+    public let dawnPrecip: Precip?
+    /// Небо рассвета (31.5, пара `quality`): туман в окне рассвета → `.fog`, осадки в нём → `.poor`, иначе — категория рассветного
+    /// балла. Восхода нет (полярные сутки) — категория дня, как было.
+    public let dawnQuality: DayQuality
 
     public init(quality: DayQuality, cloud: Int, sunset: Int?, layers: HourRecord?, temperatureBase: Int,
                 wind: Int, windDirection: Double?, gust: Int, trend: [Double], real: Bool, sunrise: Int? = nil,
                 sky: DayQuality? = nil, precip: Precip? = nil, webQuality: DayQuality? = nil,
-                hours: [Int: HourRecord] = [:], nextMidnight: Double? = nil, fog: Bool? = nil, dawnFog: Bool? = nil) {
+                hours: [Int: HourRecord] = [:], nextMidnight: Double? = nil, fog: Bool? = nil, dawnFog: Bool? = nil,
+                dawnLayers: HourRecord? = nil, dawnPrecip: Precip? = nil, dawnQuality: DayQuality? = nil) {
         self.sunrise = sunrise
+        self.dawnLayers = dawnLayers
+        self.dawnPrecip = dawnPrecip
         self.quality = quality
         self.sky = sky ?? quality
         self.precip = precip
         // Без часов (выдумка `MockWeather`) туман — как у категории: день тумана туманен и утром, как у веба.
         self.fog = fog ?? (quality == .fog)
         self.dawnFog = dawnFog ?? (quality == .fog)
+        self.dawnQuality = dawnQuality ?? quality
         self.webQuality = webQuality ?? quality
         self.hours = hours
         self.nextMidnight = nextMidnight
@@ -330,6 +344,8 @@ extension WeatherDay {
 
             // Рассвет — та же формула в час восхода (`Weather.nearHour` на округлённом часе, как у заката), воздух того же часа.
             var sunrise: Int?
+            var dawnLayers: HourRecord?
+            var bareDawn: Int?
             var riseHourForFog: Int?
             if let riseMinutes = sun.rise {
                 let riseHour = Int(min(23, max(0, Sky.jsRound(riseMinutes / 60))))
@@ -337,6 +353,8 @@ extension WeatherDay {
                 if let lay = Weather.nearHour(bucket.byHour, riseHour) {
                     sunrise = SunsetScore.score(low: lay.low, mid: lay.mid, high: lay.high, humidity: lay.humidity,
                                                  air: Weather.nearHour(air[date] ?? [:], riseHour))
+                    bareDawn = SunsetScore.score(low: lay.low, mid: lay.mid, high: lay.high, humidity: lay.humidity)
+                    dawnLayers = lay
                 }
             }
 
@@ -366,6 +384,10 @@ extension WeatherDay {
                 precip = wetDay ? (wet(Array(bucket.byHour.values)) ?? .rain) : nil
             }
             let quality: DayQuality = fog ? .fog : precip != nil ? .poor : sky
+            // 31.5: небо рассвета — теми же окнами вокруг часа восхода; без восхода — категория дня.
+            let dawnPrecip = riseHourForFog.flatMap { wet(bucket.byHour, around: $0) }
+            let dawnQuality: DayQuality = riseHourForFog == nil ? quality
+                : dawnFog ? .fog : dawnPrecip != nil ? .poor : bareDawn.map(SunsetScore.category) ?? sky
 
             let meanWind = bucket.winds.isEmpty ? 0 : bucket.winds.reduce(0, +) / Double(bucket.winds.count)
             let meanTemp = bucket.temperatures.isEmpty ? 0 : bucket.temperatures.reduce(0, +) / Double(bucket.temperatures.count)
@@ -382,7 +404,7 @@ extension WeatherDay {
                 windDirection: windDirection, gust: Int(Sky.jsRound(bucket.gust)), trend: trend, real: true, sunrise: sunrise,
                 sky: sky, precip: precip, webQuality: webQuality,
                 hours: bucket.byHour, nextMidnight: buckets[date.adding(days: 1)]?.byHour[0]?.temperature,
-                fog: fog, dawnFog: dawnFog)
+                fog: fog, dawnFog: dawnFog, dawnLayers: dawnLayers, dawnPrecip: dawnPrecip, dawnQuality: dawnQuality)
         }
         return (days, hourlyOut)
     }

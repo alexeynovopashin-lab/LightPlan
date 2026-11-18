@@ -86,7 +86,8 @@ extension AppModel {
         return WishSky(quality: wx?.quality, sunsetScore: wx?.sunset, astroNight: sun.astroB != nil,
                        moonLevel: moon.level?.rawValue, moonPercent: moon.percent,
                        moonFraction: MoonPhase(date: day, minutes: 1320, zone: p.zone).fraction,
-                       shootMoon: f.flatMap(shootMoon), dawnFog: wx?.dawnFog ?? false)
+                       shootMoon: f.flatMap(shootMoon), dawnFog: wx?.dawnFog ?? false,
+                       sunriseScore: wx?.sunrise, dawnQuality: wx?.dawnQuality)
     }
 
     /// Луна во время съёмки из формы (30г.12, вариант А): ответ строки «Луна» карточки на ещё не сохранённую запись,

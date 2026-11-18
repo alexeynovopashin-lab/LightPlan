@@ -137,8 +137,13 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         /// Туман в окне рассвета (31.4, `WeatherDay.dawnFog`): категория дня судит туман у заката, утро — своим окном.
         /// Нет в файле старого вида — `nil`: тогда, как раньше, туман утра — это категория дня «туман».
         public var dawnFog: Bool?
+        /// Небо рассвета (31.5, `WeatherDay.dawnQuality`: туман и осадки в окне рассвета, иначе категория рассветного балла) — пара
+        /// `quality` у заката. Кодом `DayQuality`; нет в файле старого вида — `nil`: тогда, как раньше, `dawnFog` и балл.
+        public var dawnQuality: String?
 
-        public init(day: String, score: Int?, quality: DayQuality, sunrise: Int? = nil, clouds: Int? = nil, dawnFog: Bool? = nil) {
+        public init(day: String, score: Int?, quality: DayQuality, sunrise: Int? = nil, clouds: Int? = nil, dawnFog: Bool? = nil,
+                    dawnQuality: DayQuality? = nil) {
+            self.dawnQuality = dawnQuality?.rawValue
             self.day = day
             self.score = score
             self.sunrise = sunrise

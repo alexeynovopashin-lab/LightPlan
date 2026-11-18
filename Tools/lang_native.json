@@ -645,7 +645,18 @@
     "qualCond.snow": "Снег",
     "qualCond.overcast": "Пасмурно",
     "qualSky.snow": "Снег",
-    "qualSky.overcast": "Пасмурно"
+    "qualSky.overcast": "Пасмурно",
+    "tele.dawnOn": "Рассвет · {d}",
+    "tele.sunsetOn": "Закат · {d}",
+    "tele.eventGolden": "{t} · золотой {range}",
+    "pro.dawnForecast": "Прогноз рассвета",
+    "dawnW.beautiful": "рассвет обещает быть красивым",
+    "dawnW.color": "рассвет с цветом",
+    "dawnW.calm": "спокойный рассвет",
+    "dawnW.none": "цвета почти не будет",
+    "wc.dullSunriseT": "Рассвет не обещает цвета",
+    "wc.dullSunriseM": "Балл рассвета {score} из 100. Ярусы облаков против — попробуйте соседний день.",
+    "pro.layerHighDawnNote": "подсветка до восхода"
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1289,7 +1300,18 @@
     "qualCond.snow": "Snow",
     "qualCond.overcast": "Overcast",
     "qualSky.snow": "Snow",
-    "qualSky.overcast": "Overcast"
+    "qualSky.overcast": "Overcast",
+    "tele.dawnOn": "Sunrise · {d}",
+    "tele.sunsetOn": "Sunset · {d}",
+    "tele.eventGolden": "{t} · golden {range}",
+    "pro.dawnForecast": "Sunrise forecast",
+    "dawnW.beautiful": "the sunrise promises to be beautiful",
+    "dawnW.color": "sunrise with colour",
+    "dawnW.calm": "a calm sunrise",
+    "dawnW.none": "almost no colour",
+    "wc.dullSunriseT": "The sunrise promises no colour",
+    "wc.dullSunriseM": "Sunrise score {score} out of 100. The cloud layers are against it — try a neighbouring day.",
+    "pro.layerHighDawnNote": "glow before sunrise"
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -1933,7 +1955,18 @@
     "qualCond.snow": "Nieve",
     "qualCond.overcast": "Cubierto",
     "qualSky.snow": "Nieve",
-    "qualSky.overcast": "Cubierto"
+    "qualSky.overcast": "Cubierto",
+    "tele.dawnOn": "Amanecer · {d}",
+    "tele.sunsetOn": "Atardecer · {d}",
+    "tele.eventGolden": "{t} · dorada {range}",
+    "pro.dawnForecast": "Pronóstico del amanecer",
+    "dawnW.beautiful": "el amanecer promete ser hermoso",
+    "dawnW.color": "amanecer con color",
+    "dawnW.calm": "un amanecer tranquilo",
+    "dawnW.none": "casi no habrá color",
+    "wc.dullSunriseT": "El amanecer no promete color",
+    "wc.dullSunriseM": "Puntaje del amanecer: {score} de 100. Los niveles de nubes están en contra — prueba con un día vecino.",
+    "pro.layerHighDawnNote": "arrebol del alba"
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2573,7 +2606,18 @@
     "qualCond.snow": "雪",
     "qualCond.overcast": "曇天",
     "qualSky.snow": "雪",
-    "qualSky.overcast": "曇天"
+    "qualSky.overcast": "曇天",
+    "tele.dawnOn": "日の出 · {d}",
+    "tele.sunsetOn": "日の入り · {d}",
+    "tele.eventGolden": "{t} · ゴールデン {range}",
+    "pro.dawnForecast": "朝焼け予報",
+    "dawnW.beautiful": "美しい朝焼けになりそうです",
+    "dawnW.color": "色づく朝焼け",
+    "dawnW.calm": "穏やかな朝焼け",
+    "dawnW.none": "ほとんど色づきません",
+    "wc.dullSunriseT": "朝焼けの色は期待できません",
+    "wc.dullSunriseM": "朝焼けスコア100点中{score}点。雲の層が不利です — 前後の日を試してください。",
+    "pro.layerHighDawnNote": "日の出前の輝き"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -3213,6 +3257,17 @@
     "qualCond.snow": "雪",
     "qualCond.overcast": "阴天",
     "qualSky.snow": "雪",
-    "qualSky.overcast": "阴天"
+    "qualSky.overcast": "阴天",
+    "tele.dawnOn": "日出·{d}",
+    "tele.sunsetOn": "日落·{d}",
+    "tele.eventGolden": "{t}·黄金{range}",
+    "pro.dawnForecast": "日出预报",
+    "dawnW.beautiful": "日出将会很美",
+    "dawnW.color": "有色彩的日出",
+    "dawnW.calm": "平静的日出",
+    "dawnW.none": "几乎没有颜色",
+    "wc.dullSunriseT": "日出没有颜色",
+    "wc.dullSunriseM": "日出评分{score}（满分100）。云层不利——尝试相邻日期。",
+    "pro.layerHighDawnNote": "日出前的霞光"
   }
 }
