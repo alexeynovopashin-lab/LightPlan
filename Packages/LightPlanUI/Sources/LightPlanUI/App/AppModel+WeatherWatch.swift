@@ -128,7 +128,8 @@ extension AppModel {
         let who = name.isEmpty ? words.typeName(s) : name
         let text: String
         if WeatherShift.saysScore(say.was, say.now) {
-            text = lexicon.t("wxs.scoreW", ["a": "\(say.was.sunset ?? 0)", "b": "\(say.now.sunset ?? 0)", "who": who])
+            text = lexicon.t(shootsAtDawn(s) ? "wxs.dawnScoreW" : "wxs.scoreW",
+                             ["a": "\(say.was.sunset ?? 0)", "b": "\(say.now.sunset ?? 0)", "who": who])
         } else {
             text = lexicon.t("wxs.skyW", ["a": lexicon.t("qualCond." + say.was.quality.rawValue).lowercased(),
                                           "b": lexicon.t("qualCond." + say.now.quality.rawValue).lowercased(),

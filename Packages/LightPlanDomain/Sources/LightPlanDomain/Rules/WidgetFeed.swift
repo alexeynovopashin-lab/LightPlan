@@ -352,7 +352,8 @@ extension WidgetFeed.Spot {
         guard let place else { return nil }
         let sun = SolarDay(date: day, place: place)
         func at(_ m: Minutes?) -> Date? { m.map { moment(minutes: $0, on: day, place: place) } }
-        return WidgetFeed.DayLight(day: day, sunrise: at(sun.rise), golden: at(sun.goldenB), sunset: at(sun.set), polar: sun.polar, goldenEnd: at(sun.goldenA))
+        return WidgetFeed.DayLight(day: day, sunrise: at(sun.rise), golden: at(sun.goldenB), sunset: at(sun.set), polar: sun.polar, goldenEnd: at(sun.goldenA),
+                                   noon: at(sun.solarNoon))
     }
 
     /// Начало вечернего золотого часа (солнце опускается до 6°) в день `day` по часам места; `nil` — в этот день
@@ -379,5 +380,22 @@ extension WidgetFeed {
         public var polar: SolarDay.PolarState
         /// Конец утреннего золотого часа (солнце поднялось на 6°); `nil` — солнце до 6° не поднимается. До него виджет оценивает рассвет, после — закат.
         public var goldenEnd: Date? = nil
+        /// Солнечный полдень (31.5б): конец утра, когда солнце до 6° не поднимается, — как `SkyEvent.morningEnd` у «Света».
+        public var noon: Date? = nil
+
+        /// Конец утра — то же, что `SkyEvent.morningEnd(_:)` у экранов: конец утреннего золотого часа, без него — полдень. Свет собран
+        /// без полудня (тесты старого вида) — середина между восходом и закатом, иначе сам восход.
+        public var morningEnd: Date? {
+            if let goldenEnd { return goldenEnd }
+            if let noon { return noon }
+            if let r = sunrise, let s = sunset { return Date(timeIntervalSince1970: (r.timeIntervalSince1970 + s.timeIntervalSince1970) / 2) }
+            return sunrise
+        }
+
+        /// Событие момента `t` этих суток — `SkyEvent.pick`, одно правило с верхом «Света» (31.5б): до конца утра рассвет, дальше закат.
+        public func event(at t: Date) -> SkyEvent? {
+            guard let end = morningEnd ?? sunset else { return nil }
+            return SkyEvent.pick(t, rise: sunrise, set: sunset, morningEnd: end, polar: polar)
+        }
     }
 }

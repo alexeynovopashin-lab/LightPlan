@@ -93,4 +93,26 @@ struct DawnEqualCoreTests {
             #expect(SkyEvent.at(low.solarNoon - 1, sun: low) == .dawn && SkyEvent.at(low.solarNoon, sun: low) == .sunset)
         }
     }
+
+    @Test("31.5б: знак дня — до полудня рассвет, после закат; небо и осадки события; одна функция выбора на минутах и на моментах")
+    func dayEventAndEventSky() throws {
+        #expect(SkyEvent.ofDay(nowMinute: 0) == .dawn && SkyEvent.ofDay(nowMinute: 11 * 60 + 59) == .dawn)
+        #expect(SkyEvent.ofDay(nowMinute: 12 * 60) == .sunset && SkyEvent.ofDay(nowMinute: 23 * 60 + 59) == .sunset)
+        let sun = SolarDay(date: WeatherTruthCoreTests.date, place: Self.tomsk)
+        let riseHour = Int((try #require(sun.rise) / 60).rounded())
+        let morning = WeatherTruthCoreTests.day([riseHour: (1.2, 61)])
+        #expect(morning.quality(.dawn) == .poor && morning.precip(.dawn) == .rain)
+        #expect(morning.quality(.sunset) == morning.quality && morning.precip(.sunset) == nil)
+        // `pick` на моментах даёт то же, что `at` на минутах.
+        let base = Date(timeIntervalSince1970: 0)
+        func d(_ m: Minutes?) -> Date? { m.map { base.addingTimeInterval($0 * 60) } }
+        for t: Minutes in [0, 300, try #require(sun.goldenA) - 1, try #require(sun.goldenA), 720, 1439] {
+            #expect(SkyEvent.pick(d(t)!, rise: d(sun.rise), set: d(sun.set), morningEnd: d(SkyEvent.morningEnd(sun))!, polar: sun.polar)
+                    == SkyEvent.at(t, sun: sun))
+        }
+        // Выдумка без неба рассвета: рассвет повторяет закат целиком — и капли тоже.
+        let wet = WeatherDay(quality: .poor, cloud: 90, sunset: 10, layers: nil, temperatureBase: 0, wind: 0, windDirection: nil, gust: 0,
+                             trend: [], real: true, precip: .snow)
+        #expect(wet.quality(.dawn) == .poor && wet.precip(.dawn) == .snow)
+    }
 }

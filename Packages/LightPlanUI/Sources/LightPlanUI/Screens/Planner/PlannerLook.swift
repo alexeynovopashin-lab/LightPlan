@@ -89,6 +89,14 @@ struct PlannerFacts {
     /// Настоящий прогноз дня; `nil` — его нет (28ж: выдумка не подставляется).
     func weather(_ d: CivilDate) -> WeatherDay? { app.light.weather.day(for: d) }
 
+    /// Событие знака и цвета дня (31.5б, Алексей 18.11 «Да, все «б»»): до полудня по часам места — рассвет, после — закат.
+    var dayEvent: SkyEvent { SkyEvent.ofDay(nowMinute: Double(app.nowMinute)) }
+
+    /// Небо дня для его знака и цвета: категория и осадки окна события `dayEvent`; прогноза нет — `nil`.
+    func daySky(_ d: CivilDate) -> (quality: DayQuality, precip: Precip?)? {
+        weather(d).map { ($0.quality(dayEvent), $0.precip(dayEvent)) }
+    }
+
     /// Надпись вместо погоды, когда прогноза нет: «Прогноз недоступен» или, пока
     /// первый ответ не пришёл, «Прогноз загружается…».
     var forecastNote: String {

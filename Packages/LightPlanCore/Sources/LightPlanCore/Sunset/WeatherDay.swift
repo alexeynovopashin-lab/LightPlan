@@ -139,8 +139,8 @@ public struct WeatherDay: Sendable, Equatable {
     /// Час восхода целиком (31.5, пара `layers`): ярусы и влажность «Прогноза рассвета» и окно неба рассвета (`SkyPalette`).
     /// `nil` — восхода нет или часа восхода в прогнозе нет.
     public let dawnLayers: HourRecord?
-    /// Осадки в окне рассвета (31.5, пара `precip`): то же окно ±`wetWindowHours`, что у заката, вокруг часа восхода. `nil` — сухо
-    /// или восхода нет.
+    /// Осадки в окне рассвета (31.5, пара `precip`): то же окно ±`wetWindowHours`, что у заката, вокруг часа восхода. `nil` — сухо.
+    /// Восхода нет — осадки дня, как `dawnQuality` = категория дня (31.5б: знак дня утром не теряет капли полярной ночью).
     public let dawnPrecip: Precip?
     /// Небо рассвета (31.5, пара `quality`): туман в окне рассвета → `.fog`, осадки в нём → `.poor`, иначе — категория рассветного
     /// балла. Восхода нет (полярные сутки) — категория дня, как было.
@@ -153,7 +153,8 @@ public struct WeatherDay: Sendable, Equatable {
                 dawnLayers: HourRecord? = nil, dawnPrecip: Precip? = nil, dawnQuality: DayQuality? = nil) {
         self.sunrise = sunrise
         self.dawnLayers = dawnLayers
-        self.dawnPrecip = dawnPrecip
+        // Неба рассвета не дали (выдумка, старые тесты) — рассвет повторяет закат целиком: и категорию, и осадки.
+        self.dawnPrecip = dawnQuality == nil ? (dawnPrecip ?? precip) : dawnPrecip
         self.quality = quality
         self.sky = sky ?? quality
         self.precip = precip
@@ -385,7 +386,7 @@ extension WeatherDay {
             }
             let quality: DayQuality = fog ? .fog : precip != nil ? .poor : sky
             // 31.5: небо рассвета — теми же окнами вокруг часа восхода; без восхода — категория дня.
-            let dawnPrecip = riseHourForFog.flatMap { wet(bucket.byHour, around: $0) }
+            let dawnPrecip = riseHourForFog.map { wet(bucket.byHour, around: $0) } ?? precip
             let dawnQuality: DayQuality = riseHourForFog == nil ? quality
                 : dawnFog ? .fog : dawnPrecip != nil ? .poor : bareDawn.map(SunsetScore.category) ?? sky
 

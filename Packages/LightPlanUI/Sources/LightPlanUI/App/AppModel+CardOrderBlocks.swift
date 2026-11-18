@@ -271,10 +271,13 @@ extension AppModel {
     // MARK: Тревога «прогноз переменился»
 
     /// Прогноз якоря съёмки на её день, каким он сейчас (веб `wxSnap`); нет
-    /// настоящего прогноза — нет и снимка.
+    /// настоящего прогноза — нет и снимка. 31.5б (Алексей 18.11 «Да, все «б»»): утренняя съёмка (`shootsAtDawn`) — небо и балл
+    /// рассвета, остальные — заката. Память `wxSeen` формата не меняет: в поле `sunset` лежит балл события съёмки. Цена: у уже
+    /// запомненной утренней съёмки первое сравнение идёт от закатного числа — одно лишнее уведомление допустимо (DECISIONS 18.11).
     func cardSkySnap(_ s: Session) -> SkySnap? {
         guard let d = pointDay(anchor(s), s.day)?.day else { return nil }
-        return SkySnap(quality: d.quality, sunset: d.sunset)
+        let e: SkyEvent = shootsAtDawn(s) ? .dawn : .sunset
+        return SkySnap(quality: d.quality(e), sunset: d.score(e))
     }
 
     /// Уведомления включены (веб `notifOn`): главный тумблер и свой; чего нет в
@@ -293,7 +296,7 @@ extension AppModel {
         let title = WeatherShift.isUp(was, now) ? "wxs.upT" : WeatherShift.gap(was, now) == 3 ? "wxs.badT" : "wxs.downT"
         let text: String
         if WeatherShift.saysScore(was, now) {
-            text = lexicon.t("wxs.scoreM", ["a": "\(was.sunset ?? 0)", "b": "\(now.sunset ?? 0)"])
+            text = lexicon.t(shootsAtDawn(s) ? "wxs.dawnScoreM" : "wxs.scoreM", ["a": "\(was.sunset ?? 0)", "b": "\(now.sunset ?? 0)"])
         } else {
             text = lexicon.t("wxs.skyM", ["a": lexicon.t("qualCond." + was.quality.rawValue).lowercased(),
                                            "b": lexicon.t("qualCond." + now.quality.rawValue).lowercased()])

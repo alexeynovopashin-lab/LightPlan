@@ -334,11 +334,17 @@ extension AppModel {
     /// пожеланием (туман ↔ туман, осадки ↔ дождь) — ошибка 13 веба.
     /// Без «Луны» (30г.6, опись № 147) «Ожидалась луна» не говорится, без «Звёзд» (30г.7) — «Ожидались звёзды»:
     /// пожелание остаётся в записи, но молчит.
+    /// Утренняя съёмка (31.5): начинается до конца утреннего золотого часа у своего якоря (`SkyEvent.at`, то же правило, что верх
+    /// «Света»). Её судят небом рассвета: строка «Ожидался …» карточки и тревога «прогноз сменился» (31.5б).
+    func shootsAtDawn(_ s: Session) -> Bool {
+        SkyEvent.at(Double(s.start), sun: cardSun(anchor(s), s.day)) == .dawn
+    }
+
     func cardWishMissed(_ s: Session, phase: EventPhase) -> String? {
         let wishes = shownWishes(s.wishes).filter { $0 != .any }
         guard phase != .after, !wishes.isEmpty, let day = pointDay(anchor(s), s.day)?.day else { return nil }
         // 31.5: съёмка, начатая до конца утреннего золотого часа, судится небом рассвета (окно ±2 ч у восхода), остальные — заката.
-        let dawn = SkyEvent.at(Double(s.start), sun: cardSun(anchor(s), s.day)) == .dawn
+        let dawn = shootsAtDawn(s)
         let q = dawn ? day.dawnQuality : day.quality
         guard q == .poor || q == .fog else { return nil }
         // 31.4: туман у рассвета сбывает пожелание «Туман», хотя категория дня (окно заката) — уже не туман.

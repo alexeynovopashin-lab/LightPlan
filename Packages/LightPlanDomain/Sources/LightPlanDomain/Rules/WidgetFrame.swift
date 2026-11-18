@@ -263,7 +263,7 @@ extension WidgetFeed {
             cal.timeZone = tz
             for off in 0...2 {
                 let day = today.adding(days: off)
-                if let l = spot.light(on: day) { add(l.sunrise); add(l.sunset); add(l.golden); add(l.goldenEnd) }
+                if let l = spot.light(on: day) { add(l.sunrise); add(l.sunset); add(l.golden); add(l.morningEnd) }
                 add(cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day)))
             }
         }

@@ -77860,6 +77860,76 @@
         }
       }
     },
+    "wxs.dawnScoreM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Балл рассвета был {a} из 100, стал {b}."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The sunrise score was {a} out of 100, now it is {b}."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La nota del amanecer era {a} de 100 y ahora es {b}."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "朝焼けスコアは100点中{a}点でしたが、{b}点になりました。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日出评分原为 {a}／100，现在是 {b}。"
+          }
+        }
+      }
+    },
+    "wxs.dawnScoreW" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{who}»: балл рассвета был {a} из 100, стал {b}."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“{who}”: the sunrise score was {a} out of 100, now it is {b}."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«{who}»: la nota del amanecer era {a} de 100 y ahora es {b}."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「{who}」：朝焼けスコアは100点中{a}点でしたが、{b}点になりました。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「{who}」：日出评分原为 {a}／100，现在是 {b}。"
+          }
+        }
+      }
+    },
     "wxs.downT" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -84,16 +84,23 @@ struct WidgetRatedEventTests {
         #expect(BraunIdle.ratedEvent(dec) == nil, "полярная ночь тоже")
     }
 
-    @Test func aSunThatNeverReachesSixDegreesIsRatedUntilItsSunrise() throws {
+    /// 31.5б (Алексей 18.11 «Да, все «б»»: виджет — как верх «Света»): без +6° за день рассвет держится до полудня, а не до восхода, как с 27.10.
+    @Test func aSunThatNeverReachesSixDegreesIsRatedUntilNoon() throws {
         var f = feed().frame(at: tsk(8, 30))
         var day = try #require(f.day)
-        let rise = try #require(day.sunrise)
+        let rise = try #require(day.sunrise), noon = try #require(day.noon)
         day.goldenEnd = nil
         f.day = day
         f.now = rise.addingTimeInterval(-60)
         #expect(BraunIdle.ratedEvent(f)?.kind == .sunrise)
         f.now = rise.addingTimeInterval(60)
-        #expect(BraunIdle.ratedEvent(f)?.kind == .sunset, "золотого часа нет — после восхода уже закат")
+        #expect(BraunIdle.ratedEvent(f)?.kind == .sunrise, "золотого часа нет — рассвет до полудня")
+        f.now = noon.addingTimeInterval(-60)
+        #expect(BraunIdle.ratedEvent(f)?.kind == .sunrise)
+        f.now = noon
+        #expect(BraunIdle.ratedEvent(f)?.kind == .sunset)
+        let sun = SolarDay(date: day.day, place: try #require(f.place.place))
+        #expect(day.morningEnd == noon && day.event(at: noon) == SkyEvent.at(sun.solarNoon, sun: sun))
     }
 
     // MARK: Слово оценки

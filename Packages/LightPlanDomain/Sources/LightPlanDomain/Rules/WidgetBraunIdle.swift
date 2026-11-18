@@ -209,8 +209,11 @@ public enum BraunIdle {
 
     /// Какое событие виджет оценивает в момент `f.now` (место «Света», его сутки):
     /// - после заката — рассвет завтра;
-    /// - до конца утреннего золотого часа (солнце ниже 6°; нет такого — до самого восхода) — рассвет сегодня, и ночью до рассвета тоже;
+    /// - до конца утреннего золотого часа (солнце ниже 6°; нет такого — до полудня) — рассвет сегодня, и ночью до рассвета тоже;
     /// - иначе, до заката, — закат сегодня.
+    /// Выбор «рассвет или закат сегодня» — `DayLight.event(at:)` = `SkyEvent.pick`, та же функция, что у верха «Света» (31.5б, Алексей
+    /// 18.11 «Да, все «б»»); до 31.5б без +6° за день виджет переходил на закат уже в восход. После заката — завтрашний рассвет, как было
+    /// (30.10): здесь виджет и «Свет» расходятся намеренно — «Свет» после заката говорит о закате того же дня.
     /// В полночь «сегодня» сменяется, а событие нет: вчерашнее «завтра» становится сегодняшним рассветом. Нет события (полярные сутки:
     /// ни восхода, ни заката) — `nil`.
     /// Слово: у заката — категория дня (как было); у рассвета — «туман», если утром туман, иначе категория рассветного балла.
@@ -220,11 +223,11 @@ public enum BraunIdle {
             guard let rise = f.tomorrow?.sunrise else { return nil }
             return event(.sunrise, tomorrow: true, at: rise, rating: f.tomorrowRating)
         }
-        if let rise = today.sunrise, f.now < (today.goldenEnd ?? rise) {
-            return event(.sunrise, tomorrow: false, at: rise, rating: f.rating)
+        switch today.event(at: f.now) {
+        case .dawn?: return today.sunrise.map { event(.sunrise, tomorrow: false, at: $0, rating: f.rating) }
+        case .sunset?: return today.sunset.map { event(.sunset, tomorrow: false, at: $0, rating: f.rating) }
+        case nil: return nil
         }
-        if let set = today.sunset { return event(.sunset, tomorrow: false, at: set, rating: f.rating) }
-        return nil
     }
 
     private static func event(_ kind: LightKind, tomorrow: Bool, at: Date, rating: WidgetFeed.Rating?) -> RatedEvent {

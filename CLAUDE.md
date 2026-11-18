@@ -161,8 +161,15 @@
   sunset of the same day; polar day/night → `nil`. «Свет»: score word at the active arc base (rise side is a button too, `jumpToSunrise`), row
   `tele.golden` = «Рассвет · ср 18 ноя  09:05 · золотой 08:38–10:12» (`goldenLabel`), dome palette `model.skyPalette`, «Подробно» has «Прогноз рассвета»
   and «Прогноз заката», the top one first. Form wish «Рассвет» = dawn score < 50 (`wc.dullSunrise*`) / dawn sky; card «Ожидался …» judges a shoot
-  starting before the morning golden end by the dawn sky; widget dawn word reads `Rating.dawnQuality`. Day category, planner day line, forecast-changed
-  alerts stay on the sunset (open questions in the 31.5 report). Tests `DawnEqualCoreTests`, `DawnEqualTests`, `DawnEqualDomainTests`.
+  starting before the morning golden end by the dawn sky (`AppModel.shootsAtDawn`); widget dawn word reads `Rating.dawnQuality`.
+  **31.5б (Alexey 18.11 «Да, все «б»»):** day sign/colour (Light ribbon/drum `TimebarState.weatherSignName`, planner week rows and month via
+  `PlannerFacts.daySky`) = `SkyEvent.ofDay(nowMinute:)`: before 12:00 on the place's clock the dawn sky (`WeatherDay.quality(.dawn)`/`precip(.dawn)`),
+  after it the sunset sky, all days at once; the month day line keeps the sunset score colour on the sunset time. «Прогноз сменился» (`cardSkySnap`):
+  a dawn shoot snaps dawn sky + dawn score (same `wxSeen` format, `sc` = the shoot's event score; words `wxs.dawnScoreW/M`), one extra alert on
+  the switch is accepted. Medium widget `BraunIdle.ratedEvent` picks dawn/sunset by `DayLight.event(at:)` = `SkyEvent.pick` (the Light rule on
+  moments; no +6° → dawn until `DayLight.noon`, the timeline wakes at `morningEnd`); after sunset it still rates tomorrow's dawn (30.10, unlike Light).
+  Large feet and small hills show both scores, no highlight. Tests `DawnEqualCoreTests`, `DawnEqualTests`, `DawnEqualDomainTests`, `DawnDaySignTests`,
+  `DawnWidgetNoonTests`.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

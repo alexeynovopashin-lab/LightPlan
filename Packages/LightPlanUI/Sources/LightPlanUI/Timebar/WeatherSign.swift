@@ -50,8 +50,11 @@ extension WeatherDay {
     var condKey: String { "qualCond." + quality.wordKey(precip) }
     /// Слово неба рассвета (31.5): категория и осадки окна у восхода.
     var dawnCondKey: String { "qualCond." + dawnQuality.wordKey(dawnPrecip) }
-    /// Знак дня (барабан, лента, сводка) — по окну заката.
+    /// Знак дня по окну заката (сводка дня месяца до 31.5б и всё, что знает только закат).
     var signIconName: String { quality.signIconName(precip) }
+    /// Знак дня по окну события (31.5б): барабан и лента «Света», строки недели и месяц планировщика берут событие
+    /// `SkyEvent.ofDay` — до полудня рассвет, после закат.
+    func signIconName(_ e: SkyEvent) -> String { quality(e).signIconName(precip(e)) }
     /// Слово и знак на выбранную минуту — по окну вокруг неё (`WeatherDay.wetWindowHours`).
     func condKey(at minute: Double) -> String { "qualCond." + quality(at: minute).wordKey(precip(at: minute)) }
     func skyKey(at minute: Double) -> String { "qualSky." + quality(at: minute).wordKey(precip(at: minute)) }

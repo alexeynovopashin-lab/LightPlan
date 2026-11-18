@@ -510,9 +510,13 @@ public final class TimebarState {
 
     /// Погодный знак дня — только там, где есть настоящий прогноз
     /// (инвариант «прибор не врёт»): выдумки хранилище не отдаёт вовсе.
+    /// 31.5б: до полудня по часам места — небо рассвета, после — заката (`SkyEvent.ofDay`), у всех дней ленты разом.
     public func weatherSignName(offset: Int) -> String? {
-        weather?.day(for: date(offset: offset))?.signIconName
+        weather?.day(for: date(offset: offset))?.signIconName(dayEvent)
     }
+
+    /// Событие знаков дня ленты: по минуте «сейчас» сегодняшних суток места, не по ползунку.
+    public var dayEvent: SkyEvent { SkyEvent.ofDay(nowMinute: minutesNowRelative(to: wallNow().day)) }
 
     /// Фаза луны в этот день, в полдень — как в вебе (`moonPhase(date, 720)`).
     /// У луны, в отличие от погоды, ограничения нет: фаза считается точно на

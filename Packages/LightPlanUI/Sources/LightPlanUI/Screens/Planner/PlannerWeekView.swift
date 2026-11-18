@@ -51,7 +51,6 @@ private struct WeekRow: View {
         let st = app.planner
         let today = f.today
         let isToday = day == today, sel = day == st.selected, open = st.weekOpen == day
-        let wx = f.weather(day)
         let weekend = WeekStart.isWeekend(day)
         HStack(alignment: .top, spacing: 10) {
             Button {
@@ -65,7 +64,7 @@ private struct WeekRow: View {
                         .foregroundStyle(isToday ? pal.brassInk : weekend ? pal.weekend : pal.ink7)
                         .frame(height: 12)
                     // Знак и градусы — из прогноза; без него колонка пуста (надпись — в раскрытом дне).
-                    if let wx, let deg = f.temp(day) {
+                    if let wx = f.daySky(day), let deg = f.temp(day) {
                         VStack(spacing: 1) {
                             Icon(wx.quality.weekSignName(wx.precip), size: 17).foregroundStyle(pal.ink4)
                             Text("\(deg)°").font(webFont(11)).monospacedDigit().foregroundStyle(pal.ink4)
