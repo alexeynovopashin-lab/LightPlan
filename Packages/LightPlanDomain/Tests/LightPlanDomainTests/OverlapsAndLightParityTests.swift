@@ -42,7 +42,8 @@ struct OverlapsAndLightParityTests {
         #expect(total > 3000)
         #expect(bad.isEmpty, "наложения: \(bad.count) расхождений из \(total)\n  \(bad.prefix(5).joined(separator: "\n  "))")
         /* Сетка обязана задевать каждый род наложения, иначе совпадение ничего не доказывает */
-        for k in ClashKind.allCases { #expect((kinds[k.rawValue] ?? 0) > 0, "в эталоне нет ни одного «\(k)»") }
+        // `bothSunrise` (31.6) — только у приложения: в эталоне веба его нет.
+        for k in ClashKind.allCases where k != .bothSunrise { #expect((kinds[k.rawValue] ?? 0) > 0, "в эталоне нет ни одного «\(k)»") }
         #expect(said > 3000)
     }
 

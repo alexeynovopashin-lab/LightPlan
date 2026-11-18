@@ -27,7 +27,8 @@ struct MapSummaryTests {
     @Test("Просто днём: окна света, луна, точка, ближайшее — без измерений астро")
     func simpleDay() {
         let s = build(13 * 60, pro: false)
-        #expect(labels(s) == ["map.golden", "map.blue", "map.moon", "map.spot", "map.next"])
+        // 31.6: окна утра и вечера наравне, подписи «Подробно» «Света».
+        #expect(labels(s) == ["pro.goldenAM", "pro.goldenPM", "pro.blueAM", "pro.bluePM", "map.moon", "map.spot", "map.next"])
         #expect(s.rows.first { $0.label == "map.spot" }?.tone == .warm)
     }
 

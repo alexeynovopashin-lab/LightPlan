@@ -32,6 +32,18 @@ public struct MapSummary: Equatable, Sendable {
         public let label: String
         public let text: String
         public let tone: Tone
+
+        /// Имя строки в снимке пары (`fold.<node>`): ключ без «map.»; у окон света (31.6, подписи `pro.*`) вечерние — прежние
+        /// `golden` / `blue` веба, утренние — свои `goldenAM` / `blueAM`.
+        public var node: String {
+            switch label {
+            case "pro.goldenPM": "golden"
+            case "pro.bluePM": "blue"
+            case "pro.goldenAM": "goldenAM"
+            case "pro.blueAM": "blueAM"
+            default: String(label.dropFirst(4))
+            }
+        }
     }
 
     public let rows: [Row]
@@ -89,8 +101,11 @@ public struct MapSummary: Equatable, Sendable {
             guard let a, let b else { return "—" }
             return lexicon.t("map.rangeDir", ["range": clock.range(a, b), "dir": dir(sun.azimuth(at: a))])
         }
-        rows.append(Row(label: "map.golden", text: window(sun.goldenB, sun.blueB), tone: .ink))
-        rows.append(Row(label: "map.blue", text: window(sun.blueB, sun.civilB), tone: .ink))
+        // 31.6: утро и вечер наравне — четыре строки, подписи и границы те же, что в «Подробно» «Света» (`pro.goldenAM` …).
+        rows.append(Row(label: "pro.goldenAM", text: window(sun.blueA, sun.goldenA), tone: .ink))
+        rows.append(Row(label: "pro.goldenPM", text: window(sun.goldenB, sun.blueB), tone: .ink))
+        rows.append(Row(label: "pro.blueAM", text: window(sun.civilA, sun.blueA), tone: .ink))
+        rows.append(Row(label: "pro.bluePM", text: window(sun.blueB, sun.civilB), tone: .ink))
 
         let moonText: String
         if moonNow.altitude > 0 {

@@ -47,22 +47,35 @@ extension AppModel {
 
     // MARK: - Открытие
 
-    /// Окно света дня в месте приложения — подсказка времени (веб `dayWindow`): вечернее,
-    /// золотой час и до конца синего; в тумане — утреннее; «плохо» — окна нет. Без окна
-    /// (полярная ночь и день) — `nil`.
-    func formLight(on day: CivilDate) -> FormLightWindow? {
+    /// Окно света дня в месте приложения — подсказка времени (веб `dayWindow`): вечернее — золотой час вечера (`goldenB…blueB`),
+    /// утреннее — золотой час утра (`blueA…goldenA`). 31.6 (Алексей 18.11: «закаты и рассветы равнозначны»): каждое окно судится своим
+    /// небом — вечернее небом заката (`quality`), утреннее небом рассвета (`dawnQuality`); дождь или туман в окне — окно не годится.
+    /// Какое предлагать: вечернее, как было, а если время съёмки утреннее (`start` до конца утреннего золотого часа — то же правило
+    /// `SkyEvent.at`, что у карточки, `shootsAtDawn`) — утреннее; не годится первое — второе; оба — «окна нет» (`poor`). До 31.6
+    /// туман у заката давал утреннее окно, не глядя на небо рассвета, а дождь у заката — «окна нет» и при ясном рассвете.
+    /// Прогноза нет — по одной астрономии. Окна нет у суток вовсе (полярные ночь и день) — `nil`.
+    func formLight(on day: CivilDate, start: Int? = nil) -> FormLightWindow? {
         let sun = SolarDay(date: day, place: place.place)
-        // Прогноза нет — окно по одной астрономии (вечернее), без «плохо»/«туман».
-        switch light.weather.day(for: day)?.quality {
-        case .poor?:
-            return FormLightWindow(start: 0, end: 0, poor: true)
-        case .fog?:
-            guard let a = sun.blueA, let b = sun.goldenA, b > a else { return nil }
-            return FormLightWindow(start: a, end: b, dawn: true)
-        default:
-            guard let a = sun.goldenB, let b = sun.blueB, b > a else { return nil }
-            return FormLightWindow(start: a, end: b)
+        let wx = light.weather.day(for: day)
+        func fits(_ e: SkyEvent) -> Bool {
+            guard let q = wx?.quality(e) else { return true }
+            return q != .poor && q != .fog
         }
+        func window(_ e: SkyEvent) -> FormLightWindow? {
+            switch e {
+            case .dawn:
+                guard let a = sun.blueA, let b = sun.goldenA, b > a else { return nil }
+                return FormLightWindow(start: a, end: b, dawn: true)
+            case .sunset:
+                guard let a = sun.goldenB, let b = sun.blueB, b > a else { return nil }
+                return FormLightWindow(start: a, end: b)
+            }
+        }
+        let morning = start.map { SkyEvent.at(Double($0), sun: sun) == .dawn } ?? false
+        let order: [SkyEvent] = morning ? [.dawn, .sunset] : [.sunset, .dawn]
+        let good = order.filter(fits)
+        guard !good.isEmpty else { return FormLightWindow(start: 0, end: 0, poor: true) }
+        return good.lazy.compactMap(window).first
     }
 
     /// Новая съёмка или встреча. Черновик с набранным текстом на **тот же день** поднимается
@@ -103,8 +116,10 @@ extension AppModel {
         formIsDraft = false
         let genre = lastFormGenre
         formTimeAsk = nil
+        let proposed = formDefaultStart(d)
         form = EventForm.new(id: Self.newRecordId(now()), day: d, start: start, fromLight: fromLight,
-                             proposed: formDefaultStart(d), mode: mode, genre: genre, prefs: genrePrefs[genre], light: formLight(on: d), step: settings.timeStep,
+                             proposed: proposed, mode: mode, genre: genre, prefs: genrePrefs[genre],
+                             light: formLight(on: d, start: start ?? proposed), step: settings.timeStep,
                              home: repeatHome, genreRate: genreRate(genre), currency: settings.currency)
     }
 
@@ -173,7 +188,7 @@ extension AppModel {
     public func pickFormGenre(_ g: Genre, sub: SubGenre? = nil) {
         guard var f = form else { return }
         let duration = f.duration
-        f.pick(g, sub: sub, prefs: genrePrefs[g], light: formLight(on: f.day), genreRate: genreRate(g))
+        f.pick(g, sub: sub, prefs: genrePrefs[g], light: formLight(on: f.day, start: f.start), genreRate: genreRate(g))
         // Длительность жанра меняет и начало под заказанный свет, и то, что съёмка накрывает (ревью к b49866e).
         if f.duration != duration { formTimeAsk = f.settleTime(formTimeFacts(f)) }
         lastFormGenre = g
@@ -499,7 +514,7 @@ extension AppModel {
         // сохранённой записи время не переписываем (веб `renderGenres`, `swapped`).
         if var f = form, !enabledGenres.contains(f.genre), let first = enabledGenres.first {
             let duration = f.duration
-            f.pick(first, prefs: genrePrefs[first], light: formLight(on: f.day), genreRate: genreRate(first))
+            f.pick(first, prefs: genrePrefs[first], light: formLight(on: f.day, start: f.start), genreRate: genreRate(first))
             if f.duration != duration { formTimeAsk = f.settleTime(formTimeFacts(f)) }
             form = f
             formChanged()

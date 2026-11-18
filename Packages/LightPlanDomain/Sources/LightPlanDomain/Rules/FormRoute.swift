@@ -297,10 +297,18 @@ public struct WishSky: Sendable, Equatable {
     public var sunriseScore: Int?
     /// Небо рассвета (31.5, `WeatherDay.dawnQuality`: туман и осадки в окне ±2 ч у восхода); `nil` — как `quality`.
     public var dawnQuality: DayQuality?
+    /// Съёмка утренняя (31.6): начинается до конца утреннего золотого часа — правило карточки (`AppModel.shootsAtDawn`), одно на
+    /// форму и карточку. Тогда «Ясно», «Облачно», «Туман», «Дождь» и облака под «Луной» судятся небом рассвета, как строка
+    /// «Ожидался …» карточки; иначе — небом заката.
+    public var atDawn: Bool
+
+    /// Небо самой съёмки: рассвета у утренней, заката у остальных.
+    public var shootSky: DayQuality? { atDawn ? (dawnQuality ?? quality) : quality }
 
     public init(quality: DayQuality?, sunsetScore: Int?, astroNight: Bool, moonLevel: Int?,
                 moonPercent: Int?, moonFraction: Double, shootMoon: ShootMoon? = nil, dawnFog: Bool = false,
-                sunriseScore: Int? = nil, dawnQuality: DayQuality? = nil) {
+                sunriseScore: Int? = nil, dawnQuality: DayQuality? = nil, atDawn: Bool = false) {
+        self.atDawn = atDawn
         self.dawnFog = dawnFog
         self.sunriseScore = sunriseScore
         self.dawnQuality = dawnQuality
@@ -387,7 +395,7 @@ public enum WishCheck {
             } else if dq == .poor { return WishClash(key: "noSunrise", params: [:], sky: dq) }
             return nil
         case .rain:
-            guard let q else { return nil }
+            guard let q = sky.shootSky else { return nil }
             return q != .poor ? WishClash(key: "noRain", params: [:], sky: q) : nil
         case .moon:
             // Время съёмки известно (30г.12): сначала — будет ли луна на небе, как в строке карточки; «почти новая —
@@ -401,9 +409,10 @@ public enum WishCheck {
                     return WishClash(key: "newMoon", params: ["pct": String(Int((sky.moonFraction * 100).rounded()))])
                 }
             }
-            return q == .poor ? WishClash(key: "moonCloud", params: [:], sky: q) : nil
+            let mq = sky.shootSky
+            return mq == .poor ? WishClash(key: "moonCloud", params: [:], sky: mq) : nil
         case .clear, .cloudy, .fog:
-            guard let q else { return nil }
+            guard let q = sky.shootSky else { return nil }
             // 31.4: туман у рассвета — тоже туман (веб считал «Туманом» весь день по туману 5–9 ч).
             if w == .fog && sky.dawnFog { return nil }
             return q != want[w] ? WishClash(key: "wrongWx", params: [:], sky: q, wish: w) : nil

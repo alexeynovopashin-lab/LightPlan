@@ -338,15 +338,18 @@ struct PlannerDayPanel: View {
             .motionGeo("dp.bar")
     }
 
+    /// Длина золотого часа в строке дня — вечерняя, от +6° до заката (31.6). До 31.6 туман у заката подменял её утренней
+    /// (`восход − goldenA` — отрицательная, и строка теряла длину вовсе); утренний вариант строки — 31.7.
+    nonisolated static func goldenMinutes(_ sky: SolarDay) -> Double? {
+        sky.set.flatMap { s in sky.goldenB.map { s - $0 } }
+    }
+
     /// Основная часть (`.dp-bar-main`): показания в строку без переноса, ширина её сжимается вместе с плашкой,
     /// лишнее срезается (`overflow: hidden`), прозрачность уходит за 0,25 с.
     private func main(_ pal: Palette, shut: Bool) -> some View {
         let d = app.planner.selected
         let sky = f.sky(d), wx = f.weather(d)
-        let fog = wx?.quality == .fog
-        let goldenMin: Double? = fog
-            ? sky.rise.flatMap { r in sky.goldenA.map { r - $0 } }
-            : sky.set.flatMap { s in sky.goldenB.map { s - $0 } }
+        let goldenMin = Self.goldenMinutes(sky)
         let sc = wx?.sunset
         let setColor: Color = sc.map { $0 >= 75 ? pal.brass : $0 >= 50 ? pal.green : $0 >= 28 ? pal.ink : pal.blue } ?? pal.brass
         let golden = goldenMin.flatMap { $0 > 0 ? f.durShort(Int($0.rounded())) : nil }

@@ -85,20 +85,38 @@ extension AppModel {
         return (day, hourly[d] ?? [:])
     }
 
-    /// Плохое ли небо (дождь, туман) у якоря в эти сутки — только по прогнозу.
-    private func skyIsBad(_ s: Session, _ d: CivilDate) -> Bool {
-        guard let q = pointDay(anchor(s), d)?.day.quality else { return false }
+    /// Плохое ли небо (дождь, туман) у якоря в эти сутки — только по прогнозу. `event` — чьё небо: заката (категория дня) или
+    /// рассвета (`dawnQuality`, 31.6).
+    private func skyIsBad(_ s: Session, _ d: CivilDate, _ event: SkyEvent = .sunset) -> Bool {
+        guard let q = pointDay(anchor(s), d)?.day.quality(event) else { return false }
         return q == .poor || q == .fog
     }
 
     // MARK: Свет
 
-    /// Золотой час (веб `lightCase`, только «Закат» — Алексей 29.09).
-    func cardLightCase(_ s: Session, phase: EventPhase) -> LightCase? {
+    /// Золотой час (веб `lightCase`, только «Закат» — Алексей 29.09; 31.6 — и «Рассвет», утренним окном).
+    func cardLightCase(_ s: Session, phase: EventPhase) -> LightCase? { cardLight(s, phase: phase)?.light }
+
+    /// Свет записи и чьё это окно. Пожелали и закат, и рассвет — первым спрашивается событие самой съёмки (`shootsAtDawn`):
+    /// утренняя — о рассвете, остальные — о закате; молчит первое — говорит второе.
+    func cardLight(_ s: Session, phase: EventPhase) -> (light: LightCase, event: SkyEvent)? {
         guard phase != .after else { return nil }
-        return LightCase.of(s, route: lightRoute(s), spots: snapshot.spots, studios: snapshot.studios,
-                            evening: { p, d in let sun = self.cardSun(p, d); return EveningLight(goldenB: sun.goldenB, blueB: sun.blueB) },
-                            skyIsBad: { self.skyIsBad(s, $0) })
+        let route = lightRoute(s)
+        func ask(_ e: SkyEvent) -> LightCase? {
+            switch e {
+            case .sunset:
+                LightCase.of(s, route: route, spots: snapshot.spots, studios: snapshot.studios,
+                             evening: { p, d in let sun = self.cardSun(p, d); return EveningLight(goldenB: sun.goldenB, blueB: sun.blueB) },
+                             skyIsBad: { self.skyIsBad(s, $0) })
+            case .dawn:
+                LightCase.ofDawn(s, route: route, spots: snapshot.spots, studios: snapshot.studios,
+                                 morning: { p, d in let sun = self.cardSun(p, d); return MorningLight(blueA: sun.blueA, goldenA: sun.goldenA) },
+                                 skyIsBad: { self.skyIsBad(s, $0, .dawn) })
+            }
+        }
+        let order: [SkyEvent] = s.wishes.contains(.sunrise) && shootsAtDawn(s) ? [.dawn, .sunset] : [.sunset, .dawn]
+        for e in order { if let c = ask(e) { return (c, e) } }
+        return nil
     }
 
     private func starNight(_ p: GeoPoint?, _ d: CivilDate) -> StarNight {
@@ -184,13 +202,16 @@ extension AppModel {
         func name(_ p: LightPoint?) -> String { p?.name ?? lexicon.t("card.shootPoint") }
         func range(_ w: ClosedRange<Int>) -> String { f.range(Double(w.lowerBound), Double(w.upperBound)) }
         var out: [CardSay] = []
-        switch cardLightCase(s, phase: phase) {
+        let light = cardLight(s, phase: phase)
+        switch light?.light {
         case .badSky(let p, let d)?:
             let day = pointDay(anchor(s), d)?.day
+            let dawn = light?.event == .dawn
             // Имя — как у веба: en/es/ja/zh начинают с {name}, ru его не пишет (DECISIONS «Строка света»).
-            out.append(CardSay(kind: .golden, icon: "warn", text: lexicon.t("light.waitedSunset", [
+            // 31.6: у «Рассвета» — «Ожидался рассвет, а …», небо рассвета.
+            out.append(CardSay(kind: .golden, icon: "warn", text: lexicon.t(dawn ? "light.waitedSunrise" : "light.waitedSunset", [
                 "name": name(p),
-                "cond": lexicon.t(day?.condKey ?? "qualCond.poor").lowercased(),
+                "cond": lexicon.t((dawn ? day?.dawnCondKey : day?.condKey) ?? "qualCond.poor").lowercased(),
                 "cloud": "\(day?.cloud ?? 0)"]), bad: true))
         case .inGolden(let p, let w)?:
             out.append(CardSay(kind: .golden, icon: "sun", text: lexicon.t("light.inGolden", [
@@ -273,7 +294,11 @@ extension AppModel {
         switch code {
         case .golden: return ("golden", false)
         case .dawn, .dawning: return ("sunrise", false)
-        case .blue: return ("sunset", true)
+        case .blue:
+            // 31.6: утренний синий час — знак рассвета (веб рисовал закат и утром).
+            let k = dayIndex(t)
+            let morning = Double(t - k * 1440) < cardSun(p, s.date(ofDay: k)).solarNoon
+            return (morning ? "sunrise" : "sunset", true)
         default: return ("sunset", false)
         }
     }

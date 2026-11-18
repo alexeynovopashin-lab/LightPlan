@@ -53,13 +53,15 @@ public enum ClashKind: String, CaseIterable, Sendable {
     case tripTight
     /// Две съёмки одного дня заказали закат, а золотой час один.
     case bothSunset
+    /// Две съёмки одного дня заказали рассвет (31.6, пара `bothSunset`: «закаты и рассветы равнозначны»). У веба нет.
+    case bothSunrise
 
     /// Вес: 3 — нельзя, 2 — впритык, 1 — спор за свет.
     public var weight: Int {
         switch self {
         case .dayBusy, .timeBusy, .overlap, .tripDay, .tripFar: 3
         case .tripShort, .tripTight: 2
-        case .bothSunset: 1
+        case .bothSunset, .bothSunrise: 1
         }
     }
 }
@@ -243,6 +245,9 @@ public enum Overlaps {
             /* Спор за свет — единственное предупреждение из световой модели. */
             if c.wishes.contains(.sunset) && s.wishes.contains(.sunset) {
                 out.append(clash(.bothSunset))
+            }
+            if c.wishes.contains(.sunrise) && s.wishes.contains(.sunrise) {
+                out.append(clash(.bothSunrise))
             }
         }
         return out.enumerated()

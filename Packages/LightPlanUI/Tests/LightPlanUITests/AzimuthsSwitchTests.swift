@@ -91,7 +91,7 @@ struct AzimuthsSwitchTests {
         #expect(degreeRows.allSatisfy { k in on.rows.contains { $0.label == k } })
         #expect(!off.rows.contains { degreeRows.contains($0.label) })
         #expect(off.rows.map(\.label) == on.rows.map(\.label).filter { !degreeRows.contains($0) })
-        for k in ["map.golden", "map.blue"] {
+        for k in ["pro.goldenAM", "pro.goldenPM", "pro.blueAM", "pro.bluePM"] {
             #expect(off.rows.first { $0.label == k } == on.rows.first { $0.label == k }, "\(k)")
         }
     }

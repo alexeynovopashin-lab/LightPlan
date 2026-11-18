@@ -13,6 +13,18 @@ public struct EveningLight: Hashable, Sendable {
     }
 }
 
+/// Утреннее окно света одних суток (31.6, пара `EveningLight`): золотой час от −4° до +6° (`blueA`…`goldenA`) — те же границы,
+/// что «Золотой час утром» в «Подробно» и строка рассвета на «Свете». Солнце не поднимается до +6° — `goldenA` нет, окна нет.
+public struct MorningLight: Hashable, Sendable {
+    public let blueA: Double?
+    public let goldenA: Double?
+
+    public init(blueA: Double?, goldenA: Double?) {
+        self.blueA = blueA
+        self.goldenA = goldenA
+    }
+}
+
 /// Точка дня, о которой говорит свет: этап маршрута или сама съёмка (`nil`).
 public struct LightPoint: Hashable, Sendable {
     /// Минуты от полуночи первого дня.
@@ -69,9 +81,28 @@ public enum LightCase: Hashable, Sendable {
         // три — съёмка звёзд в 22:00 слышала «мимо золотого часа, сдвиньте».
         // Алексей 29.09: «да, убрать, звездам не нужен свет».
         guard s.wishes.contains(.sunset) else { return nil }
+        return probe(s, route: route, spots: spots, studios: studios,
+                     window: { p, d in let w = evening(p, d); return (w.goldenB, w.blueB) }, skyIsBad: skyIsBad)
+    }
+
+    /// Свет записи с пожеланием «Рассвет» (31.6, Алексей 18.11: «закаты и рассветы равнозначны»): то же правило, что у «Заката»,
+    /// по утреннему окну — точка в золотом часе утра, мимо него не больше чем на три часа, плохое небо рассвета. Тот же допуск
+    /// `goldEarly` к началу окна. `skyIsBad` — небо рассвета (`WeatherDay.dawnQuality`).
+    public static func ofDawn(_ s: Session, route: [RoutePoint], spots: [Spot], studios: [Studio],
+                              morning: (GeoPoint?, CivilDate) -> MorningLight,
+                              skyIsBad: (CivilDate) -> Bool) -> LightCase? {
+        guard s.wishes.contains(.sunrise) else { return nil }
+        return probe(s, route: route, spots: spots, studios: studios,
+                     window: { p, d in let w = morning(p, d); return (w.blueA, w.goldenA) }, skyIsBad: skyIsBad)
+    }
+
+    /// Общее у заката и рассвета: окно (`start`, `end`) — золотой час места точки в её сутки.
+    private static func probe(_ s: Session, route: [RoutePoint], spots: [Spot], studios: [Studio],
+                              window light: (GeoPoint?, CivilDate) -> (Double?, Double?),
+                              skyIsBad: (CivilDate) -> Bool) -> LightCase? {
         let at = Stops.skyPoint(of: s, spots: spots, studios: studios)
-        let gate = evening(at, s.day)
-        guard gate.goldenB != nil, gate.blueB != nil else { return nil }
+        let gate = light(at, s.day)
+        guard gate.0 != nil, gate.1 != nil else { return nil }
 
         struct Probe { let point: LightPoint; let at: GeoPoint?; let day: Int }
         let probes: [Probe]
@@ -88,8 +119,8 @@ public enum LightCase: Hashable, Sendable {
         /* Свет считается в момент события: точка второго дня сверяется с окном
            своих суток, сдвинутым на эти сутки, и солнце — места самой точки. */
         func window(_ p: Probe) -> GoldenWindow? {
-            let w = evening(p.at, s.date(ofDay: p.day))
-            guard let b = w.goldenB, let e = w.blueB else { return nil }
+            let w = light(p.at, s.date(ofDay: p.day))
+            guard let b = w.0, let e = w.1 else { return nil }
             let shift = Double(p.day * 1440)
             return GoldenWindow(start: b + shift, end: e + shift)
         }

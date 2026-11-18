@@ -87,7 +87,15 @@ extension AppModel {
                        moonLevel: moon.level?.rawValue, moonPercent: moon.percent,
                        moonFraction: MoonPhase(date: day, minutes: 1320, zone: p.zone).fraction,
                        shootMoon: f.flatMap(shootMoon), dawnFog: wx?.dawnFog ?? false,
-                       sunriseScore: wx?.sunrise, dawnQuality: wx?.dawnQuality)
+                       sunriseScore: wx?.sunrise, dawnQuality: wx?.dawnQuality, atDawn: f.map(formShootsAtDawn) ?? false)
+    }
+
+    /// Утренняя ли съёмка формы (31.6): правило карточки `shootsAtDawn` на ещё не сохранённой записи — форма и карточка судят
+    /// пожелания одним небом.
+    func formShootsAtDawn(_ f: EventForm) -> Bool {
+        guard !f.dayUnset else { return false }
+        return shootsAtDawn(f.session(orgName: nil, and: "", studios: snapshot.studios, spots: snapshot.spots,
+                                      homeCity: homeCityName, now: now()))
     }
 
     /// Луна во время съёмки из формы (30г.12, вариант А): ответ строки «Луна» карточки на ещё не сохранённую запись,

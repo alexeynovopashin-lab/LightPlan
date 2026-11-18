@@ -610,7 +610,7 @@ struct MapScreenView: View {
                     TelemetryRow(labelKey: row.label, labelText: { app.lexicon.t($0) }) {
                         Text(row.text)
                             .foregroundStyle(color(row.tone, pal))
-                            .shotNode("fold." + row.label.dropFirst(4), text: row.text)
+                            .shotNode("fold." + row.node, text: row.text)
                     }
                 }
             }
