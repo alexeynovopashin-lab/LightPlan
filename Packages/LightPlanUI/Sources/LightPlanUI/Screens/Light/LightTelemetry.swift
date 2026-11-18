@@ -227,8 +227,12 @@ public struct LightTelemetry: Equatable, Sendable {
 
         let next = buildNextLight(sun: sun, t: t, event: event, weather: weather, lexicon: lexicon)
 
+        // Подпись под «Запланировать съёмку» (31.6б) — золотой час того же события, что строка сводки: утром до конца утреннего
+        // золотого часа — утренний, дальше — вечерний. До 31.6б она всегда была вечерней. Полярные сутки — как было.
         let actionSubtitle: String = tone == .stars
             ? (sun.astroB != nil ? clock.range(sun.astroB, (sun.astroA ?? 0) + 1440) : lexicon.t("sun.whiteNight"))
+            : event == .dawn ? clock.range(sun.blueA, sun.goldenA ?? sun.solarNoon)
+            : event == .sunset ? clock.range(sun.goldenB ?? sun.solarNoon, sun.blueB)
             : clock.range(sun.goldenB, sun.blueB)
 
         let proGroups = buildProGroups(

@@ -42,4 +42,25 @@ struct DawnRestCoreNewTests {
         let s = DawnRestCoreTests.sun
         #expect(s.nextLight(at: 60).key == .toBlue)
     }
+
+    /// 31.6б: небо над отрезками минут — то же число, что над окном Млечного Пути с теми же отрезками; пусто — `nil`.
+    @Test("небо ночи над отрезками = небо над окном")
+    func milkyWaySkyOverSpans() {
+        let d = CivilDate(year: 2026, month: 8, day: 12)
+        let w = MilkyWayWindow(date: d, place: Place(latitude: 31.78, longitude: 35.22, zone: ZoneID("Asia/Jerusalem")!))
+        var hourly: [CivilDate: [Int: HourRecord]] = [:]
+        for k in 0...1 {
+            var day: [Int: HourRecord] = [:]
+            for h in 0..<24 {
+                day[h] = HourRecord(cloud: Double(h * 4), code: 0, temperature: 20, low: 0, mid: 0, high: 0,
+                                   humidity: 60, windSpeed: 1, windDirection: nil, windGusts: nil)
+            }
+            hourly[d.adding(days: k)] = day
+        }
+        #expect(!w.spans.isEmpty)
+        let a = MilkyWaySky.over(date: d, window: w, hourly: hourly, air: [:])
+        let b = MilkyWaySky.over(date: d, spans: w.spans.map { $0.from...$0.to }, hourly: hourly, air: [:])
+        #expect(a != nil && a == b)
+        #expect(MilkyWaySky.over(date: d, spans: [], hourly: hourly, air: [:]) == nil)
+    }
 }

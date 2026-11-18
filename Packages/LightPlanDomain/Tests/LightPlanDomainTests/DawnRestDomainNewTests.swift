@@ -48,4 +48,15 @@ struct DawnRestDomainNewTests {
         #expect(LightCase.of(s, route: [], spots: [], studios: [], evening: { _, _ in EveningLight(goldenB: 1100, blueB: 1170) },
                              skyIsBad: { _ in false }) == nil)
     }
+
+    /// 31.6б: «Звёзды» — облаками ночи (`nightSky`), небо дня их больше не судит; ночного прогноза нет — облачность не называется.
+    @Test("«Звёзды» судятся небом ночи, а не заката")
+    func starsUseTheNightSky() {
+        func sky(day: DayQuality, night: DayQuality?) -> WishSky {
+            WishSky(quality: day, sunsetScore: nil, astroNight: true, moonLevel: 0, moonPercent: 0, moonFraction: 0.5, nightSky: night)
+        }
+        #expect(WishCheck.check(.stars, sky: sky(day: .poor, night: .excellent), city: false) == nil)
+        #expect(WishCheck.check(.stars, sky: sky(day: .excellent, night: .poor), city: false)?.stars == [.clouds(sky: .poor)])
+        #expect(WishCheck.check(.stars, sky: sky(day: .poor, night: nil), city: false) == nil)
+    }
 }

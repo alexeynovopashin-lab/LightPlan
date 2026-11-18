@@ -76,10 +76,14 @@ extension AppModel {
         formChanged()
     }
 
-    /// Небо дня для проверки пожеланий — у места приложения, как у веба
-    /// (`qualityOf`, `dayWeather`, `computeSun` смотрят на `LAT`/`LON`).
+    /// Небо дня для проверки пожеланий. Погода (31.6б) — у места съёмки, тем же путём, что у карточки (`shootDay`); места
+    /// у формы нет — у места приложения, как у веба (`qualityOf`, `dayWeather` смотрят на `LAT`/`LON`). Солнце и луна — пока у
+    /// места приложения. Прогноз места ещё летит — пожелания про погоду молчат, как карточка, пока его нет.
     func wishSky(_ day: CivilDate, form f: EventForm? = nil) -> WishSky {
-        let wx = light.weather.day(for: day)      // `nil` — прогноза нет: пожелания про погоду молчат
+        let s = f.flatMap(formSession)
+        let wx = formDay(s, day)      // `nil` — прогноза нет: пожелания про погоду молчат
+        // «Звёзды» — небом ночи: часы съёмки, если время назвал человек; предложенное правилом — часы окна Млечного Пути.
+        let night = f.flatMap { f in f.wishes.contains(.stars) ? s.flatMap { starSky($0, timed: !f.timeIsProposed) } : nil }
         let p = place.place
         let sun = SolarDay(date: day, place: p)
         let moon = MoonVsStars(date: day, place: p)
@@ -87,15 +91,33 @@ extension AppModel {
                        moonLevel: moon.level?.rawValue, moonPercent: moon.percent,
                        moonFraction: MoonPhase(date: day, minutes: 1320, zone: p.zone).fraction,
                        shootMoon: f.flatMap(shootMoon), dawnFog: wx?.dawnFog ?? false,
-                       sunriseScore: wx?.sunrise, dawnQuality: wx?.dawnQuality, atDawn: f.map(formShootsAtDawn) ?? false)
+                       sunriseScore: wx?.sunrise, dawnQuality: wx?.dawnQuality, atDawn: f.map(formShootsAtDawn) ?? false,
+                       nightSky: night?.look)
+    }
+
+    /// Запись, которую соберёт форма, — для правил карточки (место, утро, луна). Дня у формы нет — `nil`.
+    func formSession(_ f: EventForm) -> Session? {
+        guard !f.dayUnset else { return nil }
+        return f.session(orgName: nil, and: "", studios: snapshot.studios, spots: snapshot.spots, homeCity: homeCityName, now: now())
+    }
+
+    /// Прогноз суток для формы (31.6б): у места съёмки — функция карточки `shootDay`; места нет — место приложения.
+    func formDay(_ s: Session?, _ d: CivilDate) -> WeatherDay? {
+        guard let s, anchor(s) != nil else { return light.weather.day(for: d) }
+        return shootDay(s, d)
+    }
+
+    /// Спросить прогноз места съёмки открытой формы (31.6б) — как карточка спрашивает свой (`askCardWeather`): форме он нужен
+    /// для пожеланий. Место у формы тоже меняется, поэтому спрашивается при каждой правке; уже спрошенное место не спрашивается.
+    func askFormWeather() {
+        guard let f = form, f.mode != .meet, let s = formSession(f), let a = anchor(s), forecastReaches(s.day) else { return }
+        pointWeather.ask(cardPlace(a))
     }
 
     /// Утренняя ли съёмка формы (31.6): правило карточки `shootsAtDawn` на ещё не сохранённой записи — форма и карточка судят
     /// пожелания одним небом.
     func formShootsAtDawn(_ f: EventForm) -> Bool {
-        guard !f.dayUnset else { return false }
-        return shootsAtDawn(f.session(orgName: nil, and: "", studios: snapshot.studios, spots: snapshot.spots,
-                                      homeCity: homeCityName, now: now()))
+        formSession(f).map(shootsAtDawn) ?? false
     }
 
     /// Луна во время съёмки из формы (30г.12, вариант А): ответ строки «Луна» карточки на ещё не сохранённую запись,

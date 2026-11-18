@@ -85,10 +85,34 @@ extension AppModel {
         return (day, hourly[d] ?? [:])
     }
 
+    /// Прогноз суток у места записи — им судят небо и карточка («плохое небо», «Ожидался …»), и форма (31.6б: пожелания).
+    /// Места у записи нет — `nil`: карточка без места о погоде молчит, а форма берёт место приложения (`formDay`).
+    func shootDay(_ s: Session, _ d: CivilDate) -> WeatherDay? { pointDay(anchor(s), d)?.day }
+
+    /// Небо ночи для «Звёзд» (31.6б): облака часов самой съёмки (`timed`) или, если время не называли, часов окна Млечного
+    /// Пути — того же окна, по которому строка «Звёзды» карточки ищет ночь (`starNight`). Оценка — `MilkyWaySky` («Небо» группы
+    /// «Млечный Путь» на «Карте»). Место — якорь записи, прогноз точки (без воздуха, как у карточки); якоря нет — место приложения.
+    /// `nil` — окна нет (ядро низко, луна закрыла, не темнеет) или прогноза на эти часы нет.
+    func starSky(_ s: Session, timed: Bool) -> MilkyWaySky? {
+        let a = anchor(s)
+        let spans: [ClosedRange<Minutes>]
+        if timed {
+            spans = [Double(s.start)...Double(max(s.start, s.endMinute))]
+        } else {
+            let w = MilkyWayWindow(date: s.day, place: cardPlace(a))
+            guard w.dark else { return nil }
+            spans = w.spans.map { $0.from...$0.to }
+        }
+        guard !spans.isEmpty else { return nil }
+        guard let a else { return light.weather.milkyWaySky(for: s.day, spans: spans) }
+        guard forecastReaches(s.day), case .ready(_, let hourly)? = pointWeather.state(at: cardPlace(a)) else { return nil }
+        return MilkyWaySky.over(date: s.day, spans: spans, hourly: hourly, air: [:])
+    }
+
     /// Плохое ли небо (дождь, туман) у якоря в эти сутки — только по прогнозу. `event` — чьё небо: заката (категория дня) или
     /// рассвета (`dawnQuality`, 31.6).
     private func skyIsBad(_ s: Session, _ d: CivilDate, _ event: SkyEvent = .sunset) -> Bool {
-        guard let q = pointDay(anchor(s), d)?.day.quality(event) else { return false }
+        guard let q = shootDay(s, d)?.quality(event) else { return false }
         return q == .poor || q == .fog
     }
 
@@ -185,7 +209,9 @@ extension AppModel {
         let parts = why.map { r -> String in
             switch r {
             case .notDark: lexicon.t("light.noStars.dark")
-            case .clouds(let q): lexicon.t("light.noStars.clouds", ["sky": lexicon.t("qualSky." + q.rawValue).lowercased()])
+            // 31.6б: небо ночи — словом «Карты» для той же оценки («затянуто», «местами облачно», «дымка»), не словом дня
+            // («дождь» у ночи с облачностью ≥ 70 % был бы неправдой).
+            case .clouds(let q): lexicon.t("light.noStars.clouds", ["sky": lexicon.t("mwSky." + q.rawValue).lowercased()])
             case .moon(let pct): lexicon.t("light.noStars.moon", ["p": "\(pct)"])
             case .coreLow: lexicon.t("light.noStars.low")
             case .city: lexicon.t("light.noStars.city")
@@ -367,7 +393,7 @@ extension AppModel {
 
     func cardWishMissed(_ s: Session, phase: EventPhase) -> String? {
         let wishes = shownWishes(s.wishes).filter { $0 != .any }
-        guard phase != .after, !wishes.isEmpty, let day = pointDay(anchor(s), s.day)?.day else { return nil }
+        guard phase != .after, !wishes.isEmpty, let day = shootDay(s, s.day) else { return nil }
         // 31.5: съёмка, начатая до конца утреннего золотого часа, судится небом рассвета (окно ±2 ч у восхода), остальные — заката.
         let dawn = shootsAtDawn(s)
         let q = dawn ? day.dawnQuality : day.quality

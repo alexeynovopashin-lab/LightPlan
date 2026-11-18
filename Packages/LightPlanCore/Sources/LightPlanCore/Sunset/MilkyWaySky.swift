@@ -32,15 +32,23 @@ public struct MilkyWaySky: Sendable, Equatable {
         hourly: [CivilDate: [Int: HourRecord]], air: [CivilDate: [Int: AirSample]]
     ) -> MilkyWaySky? {
         guard window.dark, !window.spans.isEmpty else { return nil }
+        return over(date: date, spans: window.spans.map { $0.from...$0.to }, hourly: hourly, air: air)
+    }
 
+    /// То же небо над любыми отрезками (31.6б): форма судит облака «Звёзд» часами самой съёмки, когда время назвал
+    /// человек. Отрезки — минуты от полуночи `date`, за полночь — больше 1440. Пусто или ни одного часа в прогнозе — `nil`.
+    public static func over(
+        date: CivilDate, spans: [ClosedRange<Minutes>],
+        hourly: [CivilDate: [Int: HourRecord]], air: [CivilDate: [Int: AirSample]]
+    ) -> MilkyWaySky? {
         var cloudSum = 0.0, humiditySum = 0.0, sampleCount = 0
         var aodMax = -1.0, dustMax = -1.0
         // По настоящим отрезкам, а не по оболочке from–to: между ними бывает
         // час, когда луна взошла или ядро просело, и погода того часа к
         // съёмке отношения не имеет.
-        for span in window.spans {
-            var x = span.from
-            while x <= span.to {
+        for span in spans {
+            var x = span.lowerBound
+            while x <= span.upperBound {
                 let dayOffset = Int((x / 1440).rounded(.down))
                 let day = date.adding(days: dayOffset)
                 let wrapped = x.truncatingRemainder(dividingBy: 1440)

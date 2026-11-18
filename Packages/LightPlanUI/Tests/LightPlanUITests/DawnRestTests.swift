@@ -131,8 +131,11 @@ struct DawnRestTests {
         await app.light.weather.settled()
         app.openForm(day: Self.day, start: 360, fromLight: false)
         app.form?.wishes = [.rain]   // пресет жанра кладёт свои пожелания — здесь только одно
+        await app.pointWeather.settled()
         let f = try #require(app.form)
         #expect(f.wishes.contains(.rain))
+        #expect(app.pointWeather.states.values.contains { if case .ready = $0 { true } else { false } },
+                "прогноз места пришёл — иначе «молчит» ничего не доказывает")
         #expect(app.formWishWarning(f) == nil, "\(String(describing: app.formWishWarning(f)))")
         app.closeForm()
         app.openCard(id: "am")
@@ -147,6 +150,7 @@ struct DawnRestTests {
         await app.light.weather.settled()
         app.openForm(day: Self.day, start: 360, fromLight: false)
         app.form?.wishes = [.clear]   // пресет жанра кладёт свои пожелания — здесь только одно
+        await app.pointWeather.settled()   // 31.6б: форма судит погодой места съёмки и ждёт её, как карточка
         let f = try #require(app.form)
         let warn = try #require(app.formWishWarning(f))
         #expect(warn.message.contains(Self.lexicon.t("qualSky.poor").lowercased()), "\(warn.message)")
@@ -160,6 +164,7 @@ struct DawnRestTests {
         await evening.light.weather.settled()
         evening.openForm(day: Self.day, start: 17 * 60, fromLight: false)
         evening.form?.wishes = [.clear]
+        await evening.pointWeather.settled()
         let ef = try #require(evening.form)
         #expect(evening.formWishWarning(ef)?.message.contains(Self.lexicon.t("qualSky.poor").lowercased()) != true)
     }

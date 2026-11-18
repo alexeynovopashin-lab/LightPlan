@@ -301,14 +301,20 @@ public struct WishSky: Sendable, Equatable {
     /// форму и карточку. Тогда «Ясно», «Облачно», «Туман», «Дождь» и облака под «Луной» судятся небом рассвета, как строка
     /// «Ожидался …» карточки; иначе — небом заката.
     public var atDawn: Bool
+    /// Небо ночи для «Звёзд» (31.6б): облака часов съёмки или часов окна Млечного Пути — оценка `MilkyWaySky.look`, та же, что
+    /// строка «Небо» группы «Млечный Путь» на «Карте». `nil` — прогноза на эти часы нет (или окна нет): облачность не называется.
+    /// До 31.6б «Звёзды» судились небом заката (`quality`).
+    public var nightSky: DayQuality?
 
     /// Небо самой съёмки: рассвета у утренней, заката у остальных.
     public var shootSky: DayQuality? { atDawn ? (dawnQuality ?? quality) : quality }
 
     public init(quality: DayQuality?, sunsetScore: Int?, astroNight: Bool, moonLevel: Int?,
                 moonPercent: Int?, moonFraction: Double, shootMoon: ShootMoon? = nil, dawnFog: Bool = false,
-                sunriseScore: Int? = nil, dawnQuality: DayQuality? = nil, atDawn: Bool = false) {
+                sunriseScore: Int? = nil, dawnQuality: DayQuality? = nil, atDawn: Bool = false,
+                nightSky: DayQuality? = nil) {
         self.atDawn = atDawn
+        self.nightSky = nightSky
         self.dawnFog = dawnFog
         self.sunriseScore = sunriseScore
         self.dawnQuality = dawnQuality
@@ -374,8 +380,8 @@ public enum WishCheck {
         case .any: return nil
         case .stars:
             // Все сработавшие причины сразу (30г.11, Алексей 12.11 «сделать форму как карточку»), условия — прежние веба:
-            // белая ночь, небо не ясное по прогнозу, луна засветит (уровень 2), точка в черте города.
-            let why = StarsBlock.ordered(notDark: !sky.astroNight, clouds: q.flatMap { $0 == .excellent ? nil : $0 },
+            // белая ночь, небо не ясное по прогнозу, луна засветит (уровень 2), точка в черте города. Небо — ночное (31.6б).
+            let why = StarsBlock.ordered(notDark: !sky.astroNight, clouds: sky.nightSky.flatMap { $0 == .excellent ? nil : $0 },
                                          moonPercent: sky.moonLevel == 2 ? (sky.moonPercent ?? 0) : nil,
                                          coreLow: false, city: city)
             if !why.isEmpty { return WishClash(key: "starsNone", params: [:], stars: why) }

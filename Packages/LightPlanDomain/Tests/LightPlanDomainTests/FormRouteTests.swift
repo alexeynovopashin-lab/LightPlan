@@ -235,7 +235,8 @@ import LightPlanDomain
     // MARK: замысел против прогноза — ветви веба `wishCheck`
 
     func sky(_ q: DayQuality, sunset: Int? = nil, night: Bool = true, moon: Int? = 0, pct: Int? = 0, frac: Double = 0.5) -> WishSky {
-        WishSky(quality: q, sunsetScore: sunset, astroNight: night, moonLevel: moon, moonPercent: pct, moonFraction: frac)
+        // 31.6б: «Звёзды» судятся небом ночи — здесь оно то же, что небо дня, чтобы ветви и порядок причин проверялись как раньше.
+        WishSky(quality: q, sunsetScore: sunset, astroNight: night, moonLevel: moon, moonPercent: pct, moonFraction: frac, nightSky: q)
     }
 
     /// 28ж: нет настоящего прогноза — пожелания про погоду молчат (выдумка не судья),

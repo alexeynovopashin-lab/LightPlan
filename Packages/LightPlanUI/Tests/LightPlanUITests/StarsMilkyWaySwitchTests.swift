@@ -320,9 +320,10 @@ struct StarsMilkyWaySwitchTests {
     @Test func noStarsLineJoinsEveryReasonInOrder() {
         let app = model()
         let all: [StarsBlock] = [.notDark, .clouds(sky: .good), .moon(percent: 91), .coreLow, .city]
-        #expect(app.noStarsLine([.clouds(sky: .poor)]) == "Млечного Пути не будет видно. По прогнозу дождь.")
+        // 31.6б: облачность — небо ночи, словом «Карты» (`mwSky`).
+        #expect(app.noStarsLine([.clouds(sky: .poor)]) == "Млечного Пути не будет видно. По прогнозу затянуто.")
         #expect(app.noStarsLine([.notDark, .clouds(sky: .good), .city])
-                == "Млечного Пути не будет видно. Недостаточно темно, по прогнозу облачно с прояснениями, точка в черте города.")
+                == "Млечного Пути не будет видно. Недостаточно темно, по прогнозу местами облачно, точка в черте города.")
         #expect(app.noStarsLine([.notDark]) == "Млечного Пути не будет видно. Недостаточно темно.")
         #expect(app.noStarsLine([.coreLow]) == "Млечного Пути не будет видно. Ядро низко над горизонтом.")
         #expect(app.noStarsLine([.moon(percent: 91)]) == "Млечного Пути не будет видно. Луна засветит небо (91%).")
@@ -431,14 +432,16 @@ struct StarsMilkyWaySwitchTests {
 
     /// 30г.11 (Алексей 12.11 «сделать форму как карточку»): плашка формы о «Звёздах» называет все сработавшие причины
     /// словами строки карточки — заголовок «Млечного Пути не будет видно», текст — причины через запятую. Форма у дома
-    /// (точка в черте города), 21.09 с луной 77 %: дождь — «по прогнозу дождь», луна, город; 5 % облаков — то же с «переменно»
-    /// (так считает прогноз); белая ночь 21.06.2027 (без прогноза) — «недостаточно темно» первой и город последней.
+    /// (точка в черте города), 21.09 с луной 77 %, съёмка в 23:00: ночь затянута (95 %) — «по прогнозу затянуто», луна, город;
+    /// ночь ясная (5 %) — луна и город, облачности нет (31.6б: небо ночи; до него ясная ночь называлась «переменно» по небу заката);
+    /// белая ночь 21.06.2027 (без прогноза) — «недостаточно темно» первой и город последней.
     @Test func formStarsWarningNamesEveryReasonLikeTheCard() async throws {
         func warning(rain: Bool, day: CivilDate) async throws -> WishWarning {
             let app = model(rain: rain)
             await app.light.weather.settled()
-            app.openForm(day: day)
+            app.openForm(day: day, start: 23 * 60, fromLight: false)
             app.toggleFormWish(.stars)
+            await app.pointWeather.settled()
             let form = try #require(app.form)
             #expect(form.sessionPlace.isCity, "форма у дома — в черте города")
             return try #require(app.formWishWarning(form))
@@ -446,10 +449,10 @@ struct StarsMilkyWaySwitchTests {
         let sep = CivilDate(year: 2026, month: 9, day: 21)
         let wet = try await warning(rain: true, day: sep)
         #expect(wet.title == "Млечного Пути не будет видно")
-        #expect(wet.message == "По прогнозу дождь, луна засветит небо (77%), точка в черте города.", "«\(wet.message)»")
+        #expect(wet.message == "По прогнозу затянуто, луна засветит небо (77%), точка в черте города.", "«\(wet.message)»")
         let dry = try await warning(rain: false, day: sep)
         #expect(dry.title == wet.title)
-        #expect(dry.message == "По прогнозу переменно, луна засветит небо (77%), точка в черте города.", "«\(dry.message)»")
+        #expect(dry.message == "Луна засветит небо (77%), точка в черте города.", "«\(dry.message)»")
         let white = try await warning(rain: false, day: CivilDate(year: 2027, month: 6, day: 21))
         #expect(white.message == "Недостаточно темно, точка в черте города.", "«\(white.message)»")
     }

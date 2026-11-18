@@ -96,6 +96,11 @@ public final class WeatherStore {
         MilkyWaySky.over(date: date, window: window, hourly: hourlyByDay, air: air)
     }
 
+    /// То же небо над отрезками минут этих суток (31.6б: часы съёмки «Звёзд» в форме).
+    public func milkyWaySky(for date: CivilDate, spans: [ClosedRange<Minutes>]) -> MilkyWaySky? {
+        MilkyWaySky.over(date: date, spans: spans, hourly: hourlyByDay, air: air)
+    }
+
     /// Аэрозоль и пыль в час `hour` этих суток; `nil` — на этот час данных
     /// нет (веб `airAt`). Экран «Свет» (итерация 19) зовёт это для строки
     /// «Воздух» — единственный, кроме `milkyWaySky`, читатель воздуха снаружи.

@@ -341,7 +341,7 @@ public final class AppModel {
 
     // MARK: - Форма записи (итерация 23; правила — `AppModel+Form`)
     /// Открытая форма записи; `nil` — закрыта. Смена записи — открытие: плашка про погоду запоминается (30г.14).
-    public var form: EventForm? { didSet { formWarnFollow(from: oldValue) } }
+    public var form: EventForm? { didSet { formWarnFollow(from: oldValue); askFormWeather() } }
     /// Вид плашки про погоду, с которым форма открылась (30г.14, `AppModel+FormTrip`): пока он тот же и пожелания не
     /// трогали, плашка стоит наверху; первая правка пожеланий стирает его до следующего открытия.
     var formWishTop: String?

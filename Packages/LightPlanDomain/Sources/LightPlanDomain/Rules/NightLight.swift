@@ -45,7 +45,8 @@ public struct StarNight: Hashable, Sendable {
 public enum StarsBlock: Hashable, Sendable {
     /// Небо не темнеет (белые ночи).
     case notDark
-    /// По прогнозу небо дня не ясное (`sky` — его слово). Только у формы: карточка прогноза в этой строке не читает.
+    /// По прогнозу небо ночи не ясное (`sky` — оценка `MilkyWaySky.look`, слово `mwSky.<sky>`; 31.6б, до него — небо дня и
+    /// `qualSky`). Только у формы: карточка прогноза в этой строке не читает.
     case clouds(sky: DayQuality)
     /// Луна засветит небо; освещена на `percent` %.
     case moon(percent: Int)
