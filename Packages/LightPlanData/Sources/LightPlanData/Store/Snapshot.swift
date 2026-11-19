@@ -123,61 +123,86 @@ extension Snapshot: Codable {
         init?(intValue: Int) { nil }
     }
 
+    /// Строгое чтение — как всегда: одна неразобранная запись роняет весь снимок (`StoreError.corrupted`). Щадящее
+    /// (31.11) — только когда строгое уже упало и `Store` читает свой файл: в `userInfo` лежит `SnapshotSalvage`,
+    /// неразобранная запись раздела выпадает (счёт в `dropped`), неразобранное поле берёт значение «нет ключа»
+    /// (`fields`), раздел не массивом — в `lostSections`, и тогда снимок не годится (решает `ImportedFile.salvage`).
     public init(from decoder: Decoder) throws {
         self.init()
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        sessions = try c.decodeIfPresent([Session].self, forKey: .sessions) ?? []
-        orgs = try c.decodeIfPresent([Org].self, forKey: .orgs) ?? []
-        clients = try c.decodeIfPresent([Client].self, forKey: .clients) ?? []
-        clientsAssembled = try c.decodeIfPresent(Bool.self, forKey: .clientsAssembled) ?? false
-        blocks = try c.decodeIfPresent([Block].self, forKey: .blocks) ?? []
-        spots = try c.decodeIfPresent([Spot].self, forKey: .spots) ?? []
-        studios = try c.decodeIfPresent([Studio].self, forKey: .studios) ?? []
-        trashed = try c.decodeIfPresent([TrashedItem].self, forKey: .trashed) ?? []
-        myDocs = try c.decodeIfPresent([Attachment].self, forKey: .myDocs) ?? []
-        trashedDocs = try c.decodeIfPresent([TrashedDoc].self, forKey: .trashedDocs) ?? []
+        let salvage = decoder.userInfo[SnapshotSalvage.key] as? SnapshotSalvage
 
-        let loc = try c.decodeIfPresent([String: Double].self, forKey: .loc)
+        func records<T: Decodable>(_ key: CodingKeys) throws -> [T] {
+            guard let salvage else { return try c.decodeIfPresent([T].self, forKey: key) ?? [] }
+            guard c.contains(key), (try? c.decodeNil(forKey: key)) != true else { return [] }
+            guard let items = try? c.decode([SalvagedItem<T>].self, forKey: key) else {
+                salvage.lostSections.append(key.stringValue)
+                return []
+            }
+            salvage.dropped += items.filter { $0.value == nil }.count
+            return items.compactMap(\.value)
+        }
+        func soft<T>(_ fallback: @autoclosure () -> T, _ get: () throws -> T) throws -> T {
+            guard let salvage else { return try get() }
+            do { return try get() } catch { salvage.fields += 1; return fallback() }
+        }
+
+        sessions = try records(.sessions)
+        orgs = try records(.orgs)
+        clients = try records(.clients)
+        clientsAssembled = try soft(false) { try c.decodeIfPresent(Bool.self, forKey: .clientsAssembled) ?? false }
+        blocks = try records(.blocks)
+        spots = try records(.spots)
+        studios = try records(.studios)
+        trashed = try records(.trashed)
+        myDocs = try records(.myDocs)
+        trashedDocs = try records(.trashedDocs)
+
+        let loc = try soft(nil) { try c.decodeIfPresent([String: Double].self, forKey: .loc) }
         locLatitude = loc?["lat"]
         locLongitude = loc?["lon"]
-        theme = try c.decodeIfPresent(String.self, forKey: .theme)
-        clock = try c.decodeIfPresent(String.self, forKey: .clock)
-        tempUnit = try c.decodeIfPresent(String.self, forKey: .tempUnit)
-        currency = try c.decodeLenient(Currency.self, forKey: .currency)
-        timeStep = try c.decodeIfPresent(Int.self, forKey: .timeStep)
-        travelMin = try c.decodeIfPresent(Int.self, forKey: .travelMin)
-        pro = try c.decodeIfPresent(Bool.self, forKey: .pro) ?? false
+        theme = try soft(nil) { try c.decodeIfPresent(String.self, forKey: .theme) }
+        clock = try soft(nil) { try c.decodeIfPresent(String.self, forKey: .clock) }
+        tempUnit = try soft(nil) { try c.decodeIfPresent(String.self, forKey: .tempUnit) }
+        currency = try soft(nil) { try c.decodeLenient(Currency.self, forKey: .currency) }
+        timeStep = try soft(nil) { try c.decodeIfPresent(Int.self, forKey: .timeStep) }
+        travelMin = try soft(nil) { try c.decodeIfPresent(Int.self, forKey: .travelMin) }
+        pro = try soft(false) { try c.decodeIfPresent(Bool.self, forKey: .pro) ?? false }
         appMode = try? c.decodeIfPresent(String.self, forKey: .appMode)
         astroOff = try? c.decodeIfPresent([String].self, forKey: .astroOff)
-        ribbonMode = try c.decodeIfPresent(String.self, forKey: .ribbonMode)
-        drumSlot = try c.decodeIfPresent(String.self, forKey: .drumSlot)
-        mapFold = try c.decodeIfPresent(Bool.self, forKey: .mapFold) ?? true
-        mapLabels = try c.decodeIfPresent(Bool.self, forKey: .mapLabels) ?? false
-        mapLayers = try c.decodeIfPresent([String: Bool].self, forKey: .mapLayers)
-        dayFold = try c.decodeIfPresent(Bool.self, forKey: .dayFold) ?? false
-        manualEnd = try c.decodeIfPresent(Bool.self, forKey: .manualEnd) ?? false
-        practice = try c.decodeIfPresent(String.self, forKey: .practice)
-        genres = try c.decodeLenientArray(Genre.self, forKey: .genres)
-        genrePrefs = try c.decodeLenientDictionary(keyedBy: Genre.self, valueType: GenrePrefs.self, forKey: .genrePrefs)
-        defaultRate = try c.decodeIfPresent(Decimal.self, forKey: .defaultRate) ?? 0
+        ribbonMode = try soft(nil) { try c.decodeIfPresent(String.self, forKey: .ribbonMode) }
+        drumSlot = try soft(nil) { try c.decodeIfPresent(String.self, forKey: .drumSlot) }
+        mapFold = try soft(true) { try c.decodeIfPresent(Bool.self, forKey: .mapFold) ?? true }
+        mapLabels = try soft(false) { try c.decodeIfPresent(Bool.self, forKey: .mapLabels) ?? false }
+        mapLayers = try soft(nil) { try c.decodeIfPresent([String: Bool].self, forKey: .mapLayers) }
+        dayFold = try soft(false) { try c.decodeIfPresent(Bool.self, forKey: .dayFold) ?? false }
+        manualEnd = try soft(false) { try c.decodeIfPresent(Bool.self, forKey: .manualEnd) ?? false }
+        practice = try soft(nil) { try c.decodeIfPresent(String.self, forKey: .practice) }
+        genres = try soft([]) { try c.decodeLenientArray(Genre.self, forKey: .genres) }
+        genrePrefs = try soft([:]) { try c.decodeLenientDictionary(keyedBy: Genre.self, valueType: GenrePrefs.self, forKey: .genrePrefs) }
+        defaultRate = try soft(0) { try c.decodeIfPresent(Decimal.self, forKey: .defaultRate) ?? 0 }
         packs = Pack.genrePacks(from: try? c.decodeIfPresent(JSONValue.self, forKey: .packs))
-        delivery = try c.decodeIfPresent(DeliverySetting.self, forKey: .delivery) ?? .standard
-        equipment = try c.decodeIfPresent([String].self, forKey: .equipment) ?? []
+        delivery = try soft(.standard) { try c.decodeIfPresent(DeliverySetting.self, forKey: .delivery) ?? .standard }
+        equipment = try soft([]) { try c.decodeIfPresent([String].self, forKey: .equipment) ?? [] }
         musicApp = try? c.decodeIfPresent(String.self, forKey: .musicApp)
         weekStart = try? c.decodeIfPresent(String.self, forKey: .weekStart)
         lightView = try? c.decodeIfPresent(String.self, forKey: .lightView)
         // Запись без имени или без адреса веб при чтении отбрасывает молча; не массив — как пусто.
         let lossy = (try? c.decodeIfPresent([LossyPlaylist].self, forKey: .playlists)).flatMap { $0 } ?? []
         playlists = Music.clean(lossy.compactMap(\.value))
-        cardOrder = try c.decodeLenientDictionaryOfArrays(keyedBy: GenreGroup.self, elementType: CardBlock.self, forKey: .cardOrder)
-        cardOff = try c.decodeLenientDictionaryOfArrays(keyedBy: GenreGroup.self, elementType: CardBlock.self, forKey: .cardOff)
-        sync = try c.decodeIfPresent(String.self, forKey: .sync) ?? "off"
+        cardOrder = try soft([:]) {
+            try c.decodeLenientDictionaryOfArrays(keyedBy: GenreGroup.self, elementType: CardBlock.self, forKey: .cardOrder)
+        }
+        cardOff = try soft([:]) {
+            try c.decodeLenientDictionaryOfArrays(keyedBy: GenreGroup.self, elementType: CardBlock.self, forKey: .cardOff)
+        }
+        sync = try soft("off") { try c.decodeIfPresent(String.self, forKey: .sync) ?? "off" }
 
         let dyn = try decoder.container(keyedBy: DynamicKey.self)
         let known = Set(CodingKeys.allCases.map(\.stringValue))
         var rest: [String: JSONValue] = [:]
         for key in dyn.allKeys where !known.contains(key.stringValue) {
-            rest[key.stringValue] = try dyn.decode(JSONValue.self, forKey: key)
+            rest[key.stringValue] = try soft(nil) { try dyn.decode(JSONValue.self, forKey: key) }
         }
         extra = rest
     }
@@ -238,4 +263,21 @@ extension Snapshot: Codable {
             try dyn.encode(v, forKey: key)
         }
     }
+}
+
+/// Счёт щадящего чтения (31.11, см. `Snapshot.init(from:)`): живёт одно чтение, потом читается `ImportedFile.salvage`.
+final class SnapshotSalvage: @unchecked Sendable {
+    static let key = CodingUserInfoKey(rawValue: "lightplan.snapshotSalvage")!
+    /// Записей разделов (съёмки, организации, клиенты, …), которые не разобрались и выпали.
+    var dropped = 0
+    /// Полей настроек, которые не разобрались и взяли значение «нет ключа».
+    var fields = 0
+    /// Разделы, которые в файле есть, но не массив: их записи пропали бы целиком.
+    var lostSections: [String] = []
+}
+
+/// Элемент раздела, не разобравшийся, — `nil` (как `LossyPlaylist`, но для любой записи).
+private struct SalvagedItem<T: Decodable>: Decodable {
+    let value: T?
+    init(from decoder: Decoder) throws { value = try? T(from: decoder) }
 }

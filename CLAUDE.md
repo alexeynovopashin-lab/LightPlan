@@ -511,6 +511,16 @@
   Disconnect = forget locally (`/revoke_token` needs the secret). Restore writes the file via `Store.importArchive(data:)` (own copy to `backups/`), then
   `storeFrozen` stops every write and `after` callback, and a full-screen plate asks to reopen the app. UI `CloudSection` (chapter «Данные и облако», Pro/Astro
   only — Simple sheet has no data chapter). Tests `CloudYandexTests` (fake Disk: PKCE, `OAuth` header, 401/507, refresh), `CloudAppTests`; shots `-LPShotCloud off|on|pushing|pushed|error|ask|soon|restored` with `-LPShotChapter data`.
+- **Damaged data file (31.11).** `Store.load` never lets a file that did not read be replaced silently. Absent file = first launch, `damage == nil`.
+  Present but not decoded (not JSON, cut, no `sessions`, a section not an array) → original bytes copied next to it as `light-plan.broken-YYYY-MM-DD-HHmmss.json`
+  (same bytes already copied → no new one; newest `Store.brokenKept` = 3 kept), `damage.kind = .damaged`, throws as before. Strict decode failed but
+  `ImportedFile.salvage` (lossy `Snapshot.init`, only when `SnapshotSalvage` is in `userInfo`; a good file never takes this path) loses no whole section →
+  the readable records are returned, `.salvaged(dropped:)`, copy as above. Bytes unreadable (no access) → `.unreadable`, no copy, and `write` refuses for
+  the rest of the launch (`writesHeld`). Start writes live in `AppModel.settleStart`: skipped for damaged/unreadable (before 31.11 the genre-folder seed
+  wrote the empty snapshot over the file at once), salvaged records written back at once. Last good file: `light-plan.prev.json`, a hard link made
+  before the first write of a launch whose file read strictly. Alert `RootView` ← `AppModel.dataDamage` / `dataDamageWords` (`data.*` in
+  `lang_native.json`; «Восстановить из облака» hint only with the Disk connected and not in Simple). Copies sit in the app's Application Support —
+  not visible in Files. Tests `StoreBackupTests`, `DataDamageTests`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

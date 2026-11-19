@@ -378,6 +378,8 @@ public final class AppModel {
     let store: Store?
     /// Файл данных больше не пишется: в него только что легла копия из облака (31.1), а в памяти — прежние данные.
     @ObservationIgnored var storeFrozen = false
+    /// Файл данных на старте не прочитался (31.11): пока не `nil`, `RootView` показывает окно (`dataDamageWords`).
+    var dataDamage: StoreDamage?
     /// Блок «Облако» в «Данных и облаке» (31.1) и его проводка; без проводки (тесты, снимки) облака нет.
     var cloud = CloudState()
     @ObservationIgnored var cloudWiring: CloudWiring?
@@ -703,8 +705,9 @@ public final class AppModel {
 
     /// Снимок на старте. `fresh` — файла данных ещё нет. Тестовая копия ветки на свежей установке
     /// получает засев (город Алексея и его студия лежат в нём); данные, которые уже есть,
-    /// и основное приложение засев не видят. Не разобрался файл — пустой снимок в памяти,
-    /// файл не трогаем, пока человек сам что-нибудь не поменяет.
+    /// и основное приложение засев не видят. Не разобрался файл — пустой снимок в памяти, копия
+    /// исходника рядом с файлом (`Store.load`, 31.11), файл не трогаем, пока человек сам что-нибудь
+    /// не поменяет (`settleStart`); разобралась часть — она и приходит.
     static func startSnapshot(store: Store, fresh: Bool, bundleID: String?, now: Date = Date()) async -> Snapshot {
         var snapshot = (try? await store.load()) ?? Snapshot()
         if fresh, bundleID != ClientContacts.mainBundleID, let seed = TestSeed.snapshot(now: now) {
@@ -727,22 +730,13 @@ public final class AppModel {
         // Основное приложение «Light Plan» (`Novopashin.LightPlan`) не засеивается.
         let seeded = dir.map { !FileManager.default.fileExists(atPath: $0.appendingPathComponent("light-plan.json").path) }
             ?? false
+        var damage: StoreDamage?
         if let store {
             snapshot = await Self.startSnapshot(store: store, fresh: seeded, bundleID: Bundle.main.bundleIdentifier)
+            damage = await store.damage
         }
-        // Клиенты из уже записанных съёмок — один раз на файл данных (шаг К1, справка `clients_reference.md` § 3.8).
-        let assembled = Self.assembleClients(into: &snapshot, language: AppLanguage.current, now: Date())
-        // Годовщина пары из свадьбы — в снимок (К6, § 2.4): экраны считают её сами, запись — для облака.
-        let settled = Self.settleAnniversaries(in: &snapshot, now: Date())
-        if assembled || settled {
-            try? await store?.saveNow(snapshot)
-        }
-        // Пустая жанровая папка на каждый включённый жанр — один раз, пишется сразу (веб `mbSeeded`).
-        if RefLibrary.seedGenreFolders(in: &snapshot.extra, genres: Moodboard.enabledGenres(snapshot.genres).map(\.rawValue),
-                                       newId: { UUID().uuidString.lowercased() },
-                                       now: Date().timeIntervalSince1970 * 1000) {
-            try? await store?.saveNow(snapshot)
-        }
+        // Клиенты, годовщины, жанровые папки; поверх повреждённого файла старт не пишет (31.11).
+        await Self.settleStart(&snapshot, store: store, damage: damage)
         let language = AppLanguage.current
         let locale = Locale(identifier: language)
         let hub = NetworkPolicyHub(mode: Self.netMode(of: snapshot), detector: .live())
@@ -766,6 +760,7 @@ public final class AppModel {
                         // Место и слежение — в памяти телефона (29.8в.12); тесты и снимки пар живут в памяти запуска.
                         placeMemory: DevicePlaceMemory(), modeMemory: DeviceAppModeMemory(),
                         arBodies: DeviceBodiesSettings(), now: clock)
+        model.dataDamage = damage   // окно «Файл данных повреждён» (31.11)
         // Картинки мудборда — рядом со снимком, в папке вложений (`docs/17` § 6).
         model.refImages = dir.map { RefImageStore(directory: $0.appendingPathComponent("attachments", isDirectory: true)) }
         model.pinterest = PinterestClient.live(config: PinterestConfig.load())

@@ -13662,6 +13662,286 @@
         }
       }
     },
+    "data.brokenCloud" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если на Яндекс.Диске есть копия, её можно вернуть: Настройки → «Данные и облако» → «Восстановить из облака»."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If there is a copy on Yandex Disk, you can bring it back: Settings → “Data and cloud” → “Restore from the cloud”."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si hay una copia en Yandex Disk, puedes recuperarla: Ajustes → «Datos y nube» → «Restaurar desde la nube»."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yandex Disk にコピーがあれば戻せます：設定 →「データとクラウド」→「クラウドから復元」。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如果 Yandex Disk 上有副本，可以恢复：设置 →「数据与云」→「从云恢复」。"
+          }
+        }
+      }
+    },
+    "data.brokenM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение не смогло прочитать свои данные и открылось пустым. Повреждённый файл не стёрт: его копия сохранена внутри приложения."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app couldn’t read its data and opened empty. The damaged file was not erased: a copy of it is kept inside the app."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La app no pudo leer los datos guardados y se abrió vacía. El archivo dañado no se borró: se guardó una copia dentro de la app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリがデータを読み込めず、空の状態で開きました。壊れたファイルは消していません。そのコピーをアプリ内に保存しました。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用无法读取数据，打开时是空的。损坏的文件没有被删除：它的副本已保存在应用内。"
+          }
+        }
+      }
+    },
+    "data.brokenOk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Понятно"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Got it"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entendido"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "知道了"
+          }
+        }
+      }
+    },
+    "data.brokenT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл данных повреждён"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The data file is damaged"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo de datos está dañado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "データファイルが壊れています"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数据文件已损坏"
+          }
+        }
+      }
+    },
+    "data.partM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропущено записей: {n}, остальное на месте. Файл целиком сохранён копией внутри приложения."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entries skipped: {n}; everything else is in place. The whole file is kept as a copy inside the app."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registros omitidos: {n}; todo lo demás sigue en la app. El archivo completo se guardó como copia dentro de la app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読み込めなかった項目：{n}。それ以外はそのまま残っています。ファイル全体のコピーをアプリ内に保存しました。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳过的记录：{n} 条，其余都在。整个文件已作为副本保存在应用内。"
+          }
+        }
+      }
+    },
+    "data.partT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часть данных не прочиталась"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Part of the data couldn’t be read"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una parte de los datos no se pudo leer"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "データの一部を読み込めませんでした"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "部分数据无法读取"
+          }
+        }
+      }
+    },
+    "data.unreadM" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение не смогло прочитать свои данные. Файл не тронут, и поверх него ничего не запишется — правки до перезапуска не сохранятся. Закройте приложение (смахните его вверх в списке приложений) и откройте снова."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app couldn’t read its data. The file is untouched and nothing will be written over it, so changes made before a restart won’t be saved. Close the app (swipe it up in the app switcher) and open it again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La app no pudo leer los datos guardados. El archivo está intacto y no se escribirá nada encima, así que los cambios hechos antes de reiniciar no se guardarán. Cierra la app (deslízala hacia arriba en el selector de apps) y vuelve a abrirla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリがデータを読み込めませんでした。ファイルには手を付けておらず、上書きもしません。そのため再起動までの変更は保存されません。アプリを閉じて（アプリ切り替えで上にスワイプ）、もう一度開いてください。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用无法读取数据。文件未被改动，也不会被覆盖，因此重启前的修改不会保存。请关闭应用（在应用切换器中向上滑），然后重新打开。"
+          }
+        }
+      }
+    },
+    "data.unreadT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл данных не открылся"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The data file didn’t open"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo de datos no se abrió"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "データファイルを開けませんでした"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数据文件无法打开"
+          }
+        }
+      }
+    },
     "dawnW.beautiful" : {
       "extractionState" : "manual",
       "localizations" : {

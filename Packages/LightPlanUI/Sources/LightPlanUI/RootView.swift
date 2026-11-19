@@ -264,6 +264,13 @@ private struct Shell: View {
         } message: {
             Text(app.lexicon.t("calm.goneM"))
         }
+        // Файл данных на старте не прочитался (31.11): системное окно, как у «Календарь удалён», одна кнопка.
+        .alert(app.dataDamageWords?.title ?? "", isPresented: Binding(
+            get: { app.dataDamage != nil }, set: { if !$0 { app.dismissDataDamage() } })) {
+            Button(app.lexicon.t("data.brokenOk"), role: .cancel) { app.dismissDataDamage() }
+        } message: {
+            Text(app.dataDamageWords?.message ?? "")
+        }
         // Жест «назад» от левого края (28з): один распознаватель на окно, слои записываются `.edgeBack`.
         .background { EdgeBackHost(app: app) }
         #if os(iOS)

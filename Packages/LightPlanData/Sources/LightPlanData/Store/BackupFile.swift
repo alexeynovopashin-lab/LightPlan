@@ -32,6 +32,28 @@ struct BackupFile: Codable {
 enum ImportedFile {
     private struct Envelope: Decodable { let data: Snapshot }
 
+    /// Щадящее чтение своего файла (31.11), когда строгое `decode` уже упало: та же форма (конверт или голый дамп,
+    /// ключ `sessions` обязателен), но неразобранные записи выпадают поштучно. Годится, только если ни один раздел
+    /// не пропал целиком — иначе `nil`: снимок без всех съёмок нельзя выдавать за «часть не прочиталась».
+    /// Ответ — снимок и сколько записей и полей выпало.
+    static func salvage(_ raw: Data) -> (snapshot: Snapshot, dropped: Int)? {
+        guard !raw.isEmpty,
+              let top = (try? JSONSerialization.jsonObject(with: raw)) as? [String: Any] else { return nil }
+        let log = SnapshotSalvage()
+        let decoder = JSONDecoder()
+        decoder.userInfo[SnapshotSalvage.key] = log
+        let snapshot: Snapshot?
+        if let data = top["data"] as? [String: Any], data["sessions"] != nil {
+            snapshot = try? decoder.decode(Envelope.self, from: raw).data
+        } else if top["sessions"] != nil {
+            snapshot = try? decoder.decode(Snapshot.self, from: raw)
+        } else {
+            snapshot = nil
+        }
+        guard let snapshot, log.lostSections.isEmpty else { return nil }
+        return (snapshot, log.dropped + log.fields)
+    }
+
     static func decode(_ raw: Data) throws -> Snapshot {
         guard !raw.isEmpty else { throw StoreError.truncated }
 
