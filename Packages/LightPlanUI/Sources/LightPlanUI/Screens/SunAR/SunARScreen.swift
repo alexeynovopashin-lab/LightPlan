@@ -18,6 +18,7 @@ struct SunARScreen: View {
     @State private var lookStart: SunARModel.Look?
     @State private var glide: Task<Void, Never>?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.scenePhase) private var scenePhase
 
     init(app: AppModel, target: SunARTarget) {
         self.app = app
@@ -158,11 +159,17 @@ struct SunARScreen: View {
             }
         }
         .task {
-            // «Сейчас» едет, север мог стать истинным (включили геолокацию, пока экран открыт).
+            // «Сейчас» едет, север мог стать истинным (включили геолокацию, пока экран открыт); живая минута (31.9)
+            // встаёт на новую минуту на её границе.
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(10))
-                model.refreshNow()
+                try? await Task.sleep(for: .seconds(model.secondsToNextTick))
+                model.tick()
             }
+        }
+        // 31.9: фон дольше 15 минут — при возврате снова «сейчас».
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { model.sceneWentToBackground() }
+            if phase == .active { model.sceneBecameActive() }
         }
         .onDisappear { model.stop() }
         .accessibilityElement(children: .contain)
@@ -713,7 +720,8 @@ struct SunARScreen: View {
         let n = model.wallNow
         model.jump(to: n.day, minutes: model.minutes)
         let from = model.minutes, to = n.minutes
-        guard !PlanMotion.still, abs(to - from) > 1 else { model.set(minutes: to); return }
+        // Доехали — минута снова живая (31.9); ручку перехватили пальцем — глайд отменён, время стоит.
+        guard !PlanMotion.still, abs(to - from) > 1 else { model.jump(to: n.day, minutes: to, live: true); return }
         glide = Task { @MainActor in
             let frames = 18
             for i in 1...frames {
@@ -723,6 +731,8 @@ struct SunARScreen: View {
                 model.set(minutes: from + (to - from) * eased)
                 try? await Task.sleep(for: .milliseconds(16))
             }
+            guard !Task.isCancelled else { return }
+            model.jump(to: n.day, minutes: to, live: true)
         }
     }
 }

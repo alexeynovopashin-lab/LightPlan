@@ -183,6 +183,13 @@
   `fixedSize`, no `minimumScaleFactor` (inside the Button the old caption got 3 pt less height and shrank to 0.8: «рассвет» 117 px vs 143 px
   outside it); the line keeps the 12 pt height, size change animates 0.2 s. Nodes `edge.cap.rise|set`, `edge.word.rise|set`. Tests `DawnEqualCoreTests`, `DawnEqualTests`, `DawnEqualDomainTests`, `DawnDaySignTests`,
   `DawnWidgetNoonTests`, `DawnCaptionSizeTests`.
+- **Arc clock follows time (31.9, Alexey 19.11 «Да, 31.9»).** `TimebarState.isLive`: on only by `jumpToNow` (launch, «↺», return after a
+  background longer than `TimebarState.staleAfterBackground` = 15 min), off by any move of time (slider, dome, ribbon/drum shift, sunrise/sunset tap,
+  `show(day:minute:)`). Live → `followNow()` sets the place's current minute (new day at midnight), no animation/haptics; `nowButtonVisible` is never
+  on while live. Tick = `LiveClockHost` in `RootView` (`Timebar/LiveClock.swift`): one `Task` sleeping to the minute boundary, only while the scene is
+  active and «Свет»/«Карта» is the tab. AR (own `TimebarState`): live when opened at «now» (`SunARModel.opensLive`: entry moment ≤ 15 min old) or after its «↺» glide
+  (`jump(..., live: true)`); its 10 s loop sleeps to the minute boundary and calls `tick()`; no threshold haptic while live; `scenePhase` in `SunARScreen`.
+  Tests `TimebarLiveClockTests`, `SunARLiveClockTests`.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init
