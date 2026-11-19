@@ -339,6 +339,21 @@ struct CalendarReverseAppTests {
         #expect(app.snapshot.sessions[0].start == 660)
     }
 
+    /// Ждать условия; настоящие секунды — только страховка от зависания, не замер: исход не зависит от того, сколько их
+    /// прошло (31.10). `false` — за `limit` не дождались.
+    private func until(_ limit: Duration = .seconds(30), _ done: @MainActor () -> Bool) async -> Bool {
+        let end = ContinuousClock.now + limit
+        while !done() {
+            if ContinuousClock.now > end { return false }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return true
+    }
+
+    /// Цепочка «запись → уведомление → проход → запись» под нагрузкой (31.10). Раньше тест ждал 1,2 с и считал, что
+    /// цепочка к этому времени затихла; в полном прогоне главный поток отставал, и затихание приходилось на следующие
+    /// 0,6 с (замер 19.11: записей 3 → 4). Теперь ждём условия: серия записывающих проходов по уведомлению дошла до
+    /// предела (3), очередь пуста — и тогда своё уведомление базы обязано пройти вхолостую.
     @Test func aCalendarThatKeepsRewritingOurFieldsDoesNotMakeTheAppRewriteForever() async throws {
         // Система нормализует заметки по-своему, и событие всегда «расходится». Уведомление базы будит проход, проход
         // пишет, запись будит уведомление… Цепочка обязана оборваться сама.
@@ -347,14 +362,21 @@ struct CalendarReverseAppTests {
         let app = model(store: store, watch: true)
         app.calendarSettle = .milliseconds(30)
         await on(app)
-        try await Task.sleep(for: .milliseconds(1200))
+        let capped = await until { app.calendarWatchStreak >= 3 }
+        #expect(capped, "серия по уведомлениям не дошла до предела: \(app.calendarWatchStreak), записей \(store.writeCounts.saves)")
         await settle(app)
         let after = store.writeCounts.saves
-        try await Task.sleep(for: .milliseconds(600))
+        // Ещё одно уведомление базы (как от нашей же последней записи): проход по нему обязан не писать. Ждём, пока
+        // приложение его приняло (`calendarGen` вырос), и конца очереди — без расчёта на время.
+        let gen = app.calendarGen
+        store.userEdit("нет такого") { _ in }
+        let heard = await until { app.calendarGen > gen }
+        #expect(heard, "уведомление базы не дошло до приложения")
         await settle(app)
         #expect(store.writeCounts.saves == after)         // остановилась
         #expect(after <= 8)                                // и не раскрутилась
         // Прошло время, и человек действительно подвинул событие — уведомление не глохнет под старым счётчиком.
+        // Окно серии сравнивает настоящие часы (`Date`): 0,4 с сна под нагрузкой только длиннее, проверке это не мешает.
         app.calendarStreakWindow = 0.2
         try await Task.sleep(for: .milliseconds(400))
         let ev = try #require(event(store, "Свадьба · Анна"))
@@ -363,8 +385,8 @@ struct CalendarReverseAppTests {
                                                  allDay: false, offsetSeconds: $0.offsetSeconds, locationTitle: $0.locationTitle,
                                                  latitude: $0.latitude, longitude: $0.longitude, url: $0.url, notes: $0.notes,
                                                  modified: Date().addingTimeInterval(60)) }
-        for _ in 0..<40 where app.snapshot.sessions[0].start != 660 { try await Task.sleep(for: .milliseconds(50)); await settle(app) }
-        #expect(app.snapshot.sessions[0].start == 660)
+        let moved = await until { app.snapshot.sessions[0].start == 660 }
+        #expect(moved, "сдвиг в Календаре не вернулся в съёмку: начало \(app.snapshot.sessions[0].start)")
         // Вернулись в приложение — человек рядом, проход разрешён снова.
         app.syncCalendarMirror(force: true); await settle(app)
         #expect(store.writeCounts.saves >= after + 1)

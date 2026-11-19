@@ -73,6 +73,8 @@ final class BinFlight {
     private(set) var busy = false
 
     @ObservationIgnored private var runs = 0
+    /// Часы полёта: в приложении настоящие (`BinClock.live`), тест подаёт свои и шагает расписание сам (31.10).
+    @ObservationIgnored var clock: BinClock = .live
     /// Номер полёта в процессе и сколько раз он сам позвал смятие: журналы (`BinLog`) помечают строки номером, тест
     /// читает только свой полёт — чужие стирания параллельных тестов в его журнал не попадают.
     @ObservationIgnored let id: Int = BinFlight.takeID()
@@ -119,9 +121,10 @@ final class BinFlight {
         up = false
         shown = true
         SoundCenter.prepare()
-        let t0 = ContinuousClock.now
+        let clock = clock
+        let t0 = clock.now()
         Task { @MainActor in
-            func at(_ s: Double) async { try? await Task.sleep(until: t0 + .milliseconds(Int((s * 1000).rounded())), clock: .continuous) }
+            func at(_ s: Double) async { await clock.sleep(until: t0 + BinClock.ms(s)) }
             BinLog.note(n, "rise", flight: id)
             withAnimation(BinTimeline.riseCurve) { up = true }
             await at(BinTimeline.flyAt)
@@ -136,10 +139,10 @@ final class BinFlight {
             } completion: { landed = true }
             await at(BinTimeline.gulpAtTotal)
             var spare = 0
-            while !landed && spare < 12 { try? await Task.sleep(for: .milliseconds(8)); spare += 1 }
+            while !landed && spare < 12 { await clock.sleep(until: clock.now() + 0.008); spare += 1 }
             BinLog.note(n, "gulp", flight: id)
-            let g0 = ContinuousClock.now
-            func after(_ s: Double) async { try? await Task.sleep(until: g0 + .milliseconds(Int((s * 1000).rounded())), clock: .continuous) }
+            let g0 = clock.now()
+            func after(_ s: Double) async { await clock.sleep(until: g0 + BinClock.ms(s)) }
             var tx = Transaction(); tx.disablesAnimations = true
             withTransaction(tx) { commit() }
             withAnimation(BinTimeline.easeOut(BinTimeline.gulpPeakAt * BinTimeline.gulp)) { gulpScale = BinTimeline.gulpPeak }
@@ -161,6 +164,26 @@ final class BinFlight {
             busy = false
         }
     }
+}
+
+/// Часы полёта в секундах. `live` — непрерывные часы системы: сон до метки, как `Task.sleep(until:clock: .continuous)`
+/// раньше. Тест подаёт ручные часы и сам переводит их от метки к метке: фазы и паузы проверяются по расписанию, а не по
+/// тому, как быстро главный поток успел их отработать под нагрузкой полного прогона (31.10).
+struct BinClock: Sendable {
+    /// Сейчас, секунды от произвольной точки.
+    var now: @Sendable @MainActor () -> Double
+    /// Спать до метки `now()`; метка в прошлом — сразу.
+    var wait: @Sendable @MainActor (_ until: Double) async -> Void
+
+    @MainActor func sleep(until t: Double) async { await wait(t) }
+
+    /// Секунды, округлённые до миллисекунды: так метки считались до 31.10.
+    static func ms(_ s: Double) -> Double { (s * 1000).rounded() / 1000 }
+
+    private static let origin = ContinuousClock.now
+    static let live = BinClock(
+        now: { let d = ContinuousClock.now - origin; return Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18 },
+        wait: { t in try? await Task.sleep(until: origin + .nanoseconds(Int64((t * 1e9).rounded())), clock: .continuous) })
 }
 
 /// Тесты и стенд: свой ответ на «Уменьшить движение».

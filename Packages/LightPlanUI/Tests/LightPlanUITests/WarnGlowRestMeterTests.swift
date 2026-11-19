@@ -12,30 +12,12 @@ import Testing
 /// замер в покое — 0,14 мс на кадр, в полном прогоне — 5,15). Теперь: (1) расписание — чистая последовательность дат
 /// без часов и экрана; (2) на живом экране — условие, а не время: ждём восьмой пересчёт сколько понадобится и
 /// проверяем, что их не больше, чем помещается в прошедшее время (нагрузка может только замедлить, не ускорить).
+///
+/// 31.10: живой экран отсюда ушёл в `WarnGlowLiveScreenTests` (XCTest). В полном прогоне ждать «сколько понадобится» не
+/// помогло: 19.11 за 114 с один пересчёт, сон 300 мс длился 43 с — главный поток занят соседними тестами без просвета,
+/// и экран не рисуется вовсе. XCTest этого пакета идёт раньше параллельных тестов Swift Testing, при свободном потоке.
 @MainActor
 struct WarnGlowRestMeterTests {
-
-    private struct Plate: View {
-        let name: String
-        var body: some View {
-            Text("Предупреждение").padding(14).frame(width: 300)
-                .background(Color.gray.opacity(0.3), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .padding(20)
-                .modifier(WarnGlow(rgb: (201, 102, 61), alpha: 0.32, meterName: name))
-        }
-    }
-
-    /// Окно с плашкой; пока жив результат, плашка на экране.
-    private func host(name: String) -> UIWindow {
-        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-        let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 800))
-        window.frame = CGRect(x: 0, y: 0, width: 390, height: 400)
-        window.rootViewController = UIHostingController(rootView: Plate(name: name))
-        window.makeKeyAndVisible()
-        return window
-    }
-
-    private func hits(_ name: String) -> Int { EdgeBackMeter.snapshot()[name, default: 0] }
 
     /// Записи расписания за три секунды от любой точки: ровно по `step`, не по кадру (без `minimumInterval` там было
     /// бы 361 запись на 120 Гц; на 60 Гц — 181, как в замере до правки).
@@ -51,30 +33,4 @@ struct WarnGlowRestMeterTests {
         let gaps = zip(dates, dates.dropFirst()).map { $1.timeIntervalSince($0) }
         #expect((gaps.min() ?? 0) >= WarnGlow.step - 0.001, "самый короткий зазор \(gaps.min() ?? 0) с")
     }
-
-    /// На экране свечение пересчитывается и не чаще расписания: ждём восемь пересчётов (до 60 с — под нагрузкой
-    /// полного прогона хватает и секунд, а зависший экран всё равно красный), считаем, сколько их влезало в время.
-    @Test func glowRecalculatesOnScheduleNotEveryFrame() async {
-        let name = "WarnGlow.test.\(UUID().uuidString)"       // свой счёт: другие экраны со свечением не в зачёте
-        let window = host(name: name)
-        defer { window.isHidden = true }
-        try? await Task.sleep(for: .milliseconds(300))      // первая отрисовка
-        let clock = ContinuousClock()
-        let hits0 = hits(name)
-        let t0 = clock.now
-        var got = 0
-        while got < 8, clock.now - t0 < .seconds(60) {
-            try? await Task.sleep(for: .milliseconds(20))
-            got = hits(name) - hits0
-        }
-        let elapsed = (clock.now - t0).seconds
-        let line = "hits=\(got) за \(String(format: "%.2f", elapsed)) с, расписание даёт не больше \(Int(elapsed / WarnGlow.step) + 2)"
-        try? (line + "\n").write(toFile: "/tmp/cc-warn-meter.txt", atomically: true, encoding: .utf8)
-        #expect(got >= 8, "свечение замерло: \(line)")
-        #expect(got <= Int(elapsed / WarnGlow.step) + 2, "пересчётов больше, чем отпускает расписание: \(line)")
-    }
-}
-
-private extension Duration {
-    var seconds: Double { Double(components.seconds) + Double(components.attoseconds) / 1e18 }
 }

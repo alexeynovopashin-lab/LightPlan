@@ -60,48 +60,107 @@ struct BinFlightTests {
         #expect(BinTimeline.lift == TabBarView.height + 26)
     }
 
-    private static func withSound<T>(_ on: Bool, _ body: () async -> T) async -> T {
+    private static func withSound<T>(_ on: Bool, _ body: () async throws -> T) async rethrows -> T {
         let was = UserDefaults.standard.object(forKey: SoundCenter.enabledKey)
         defer { UserDefaults.standard.set(was, forKey: SoundCenter.enabledKey) }
         UserDefaults.standard.set(on, forKey: SoundCenter.enabledKey)
-        return await body()
+        return try await body()
     }
 
     private static func trashPlays(since n: Int) -> [SoundPlay] {
         Array(SoundCenter.journal.dropFirst(n)).filter { $0.cue == .trash }
     }
 
-    @Test func oneDeletionIsOneSoundAndOnePhaseSequence() async {
-        await Self.withSound(true) {
+    /// Ручные часы полёта (31.10): время стоит, пока тест не переведёт его к метке, на которой спит полёт. Раньше тест
+    /// мерил настоящие секунды между строками журнала, и под нагрузкой полного прогона главный поток отрабатывал метку
+    /// на 50–250 мс позже (замер 19.11: «rise → fly» 0,04 и 0,25 вместо 0,2; «hide» не успевал за 1,5 с), а пропавшая
+    /// фаза роняла весь процесс тестов выходом за край массива.
+    @MainActor
+    final class StepClock {
+        private(set) var now = 100.0
+        private var sleeper: (at: Double, wake: CheckedContinuation<Void, Never>)?
+        var clock: BinClock {
+            BinClock(now: { [unowned self] in now }, wait: { [unowned self] t in
+                guard t > now else { return }
+                await withCheckedContinuation { sleeper = (t, $0) }
+            })
+        }
+        /// Ждать, пока полёт уснёт до метки или `done()`. Настоящие секунды — только страховка от зависания (30 с), не
+        /// замер: исход не зависит от того, сколько их прошло. `false` — так и не дождались.
+        func settle(or done: @MainActor () -> Bool) async -> Bool {
+            let guardUntil = ContinuousClock.now + .seconds(30)
+            while sleeper == nil && !done() {
+                if ContinuousClock.now > guardUntil { return false }
+                // Сон, а не `yield`: пустой круг на главном потоке не даёт обернуться циклу событий и душит соседние тесты.
+                try? await Task.sleep(for: .milliseconds(2))
+            }
+            return true
+        }
+        /// Перевести часы на метку спящего и разбудить его.
+        func advance() {
+            guard let s = sleeper else { return }
+            sleeper = nil
+            now = s.at
+            s.wake.resume()
+        }
+    }
+
+    /// Порядок и паузы полёта — по ручным часам: фаза отмечается в момент, на который её поставило расписание, и так же
+    /// под любой нагрузкой. Строки журнала берутся только этого полёта (журнал общий на процесс).
+    @Test func oneDeletionIsOneSoundAndOnePhaseSequence() async throws {
+        try await Self.withSound(true) {
             BinFlightControl.calm(false)
             defer { BinFlightControl.reset() }
-            BinLog.reset()
-            // Движок прогрет, как в приложении (`Haptics.prepare`): первая сборка узлов — не часть полёта.
             SoundCenter.prepare()
+            let steps = StepClock()
             let flight = BinFlight()
+            flight.clock = steps.clock
+            let t0 = steps.now
             let before = SoundCenter.journal.count
-            var commits = 0, commitAt = 0.0
-            let start = ProcessInfo.processInfo.systemUptime
-            flight.fly(subjects: ["x"]) { commits += 1; commitAt = ProcessInfo.processInfo.systemUptime - start }
+            var commits = 0, commitAt = -1.0
+            flight.fly(subjects: ["x"]) { commits += 1; commitAt = steps.now - t0 }
             #expect(commits == 0, "запись стирается в глоток, не сразу")
-            try? await Task.sleep(for: .milliseconds(1500))
-            // Журнал общий на процесс, а параллельные тесты других наборов тоже стирают с полётом: читаем строки
-            // только этого полёта (допуск 34 мс прежний).
-            let mine = BinLog.journal.filter { $0.flight == flight.id }
-            let phases = mine.map(\.phase)
-            #expect(phases == ["rise", "fly", "gulp", "leave", "hide"], "\(phases)")
-            let t = mine.map(\.at)
-            let want = [0.2, 0.43, 0.32, 0.34]
-            for i in 0..<4 {
-                #expect(abs((t[i + 1] - t[i]) - want[i]) < 0.034, "интервал \(i): \(t[i + 1] - t[i]) ≠ \(want[i])")
+            // Фаза → момент ручных часов, когда она появилась в журнале.
+            var at: [String: Double] = [:]
+            var phases: [String] = []
+            @MainActor func mine() -> [String] { BinLog.journal.filter { $0.flight == flight.id }.map(\.phase) }
+            var stalled = false
+            for _ in 0..<40 {
+                guard await steps.settle(or: { mine().contains("hide") }) else { stalled = true; break }
+                for p in mine() where at[p] == nil { at[p] = steps.now - t0; phases.append(p) }
+                if phases.contains("hide") { break }
+                if !phases.contains("gulp") { #expect(commits == 0, "до глотка запись цела: \(phases)") }
+                steps.advance()
             }
+            #expect(!stalled, "полёт не уснул и не кончился за 30 с: \(phases)")
+            #expect(phases == ["rise", "fly", "gulp", "leave", "hide"], "\(phases)")
+            try #require(phases.count == 5, "фаз \(phases.count): дальше сверять нечего")
+            // Расписание беты (`deleteToBin`): полёт через 0,2; глоток на 0,43 полёта, но не раньше, чем анимация плашки
+            // кончилась (добавка до 12 × 8 мс); уезд через 0,32 после глотка; скрыт ещё через 0,34.
+            let fly = at["fly"]!, gulp = at["gulp"]!, leave = at["leave"]!, hide = at["hide"]!
+            try? "fly=\(fly) gulp=\(gulp) leave=\(leave) hide=\(hide)\n".write(toFile: "/tmp/cc-bin-steps.txt", atomically: true, encoding: .utf8)
+            #expect(at["rise"] == 0)
+            #expect(abs(fly - 0.2) < 1e-9, "fly на \(fly)")
+            #expect(gulp >= 0.63 - 1e-9 && gulp <= 0.63 + 12 * 0.008 + 1e-9, "gulp на \(gulp)")
+            #expect(abs(leave - gulp - 0.32) < 1e-9, "leave на \(leave), глоток на \(gulp)")
+            #expect(abs(hide - leave - 0.34) < 1e-9, "hide на \(hide), уезд на \(leave)")
             #expect(commits == 1)
-            #expect(abs(commitAt - 0.63) < 0.05, "commit на \(commitAt)")
+            #expect(abs(commitAt - gulp) < 1e-9, "commit на \(commitAt), глоток на \(gulp)")
             // Одно смятие на стирание: этот полёт позвал звук один раз; в общем журнале звук именно беты.
             #expect(flight.sounds == 1)
             let plays = Self.trashPlays(since: before)
             #expect(!plays.isEmpty && plays.allSatisfy { $0.gain == 0.165 && $0.event == "binTrash" })
             #expect(!flight.shown && !flight.busy && flight.subjects.isEmpty)
+        }
+    }
+
+    /// Настоящие часы полёта не будят раньше метки: под нагрузкой они могут только опоздать (31.10).
+    @Test func liveClockNeverWakesBeforeTheMark() async {
+        let c = BinClock.live
+        for d in [0.0, 0.008, 0.05] {
+            let mark = c.now() + d
+            await c.sleep(until: mark)
+            #expect(c.now() >= mark, "проснулись на \(mark - c.now()) с раньше метки")
         }
     }
 
