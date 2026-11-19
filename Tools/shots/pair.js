@@ -59,13 +59,14 @@ if (args.help) {
   --part [<мс>,...]   разрез месяца при входе в день, кадр на мс от старта (29.2а; по умолчанию 170); только он: --screens part
   --partyear [<мс>,...]   тот же разрез при входе тапом по числу в ленте года (29.2б); только он: --screens partyear
   --cards / --phases / --forms / --layers / --sheets / --chapters   перебор отдельных экранов (см. шапку файла)
-  --form-busy form   --form-reopen   с --forms (30г.14): другая съёмка на время формы (наложение) / «Сохранить» и открыть снова
+  --form-busy form   --form-reopen [card]   с --forms (30г.14): другая съёмка на время формы (наложение) / «Сохранить» и открыть снова (card — карточку, 31.8)
   --rec-mode pro|astro|astro~moon   режим засева карточек и форм (30г.6; без флага «Просто»); --cards moon — съёмка с «Луной», --cards stars — со «Звёздами» (30г.7)
   --only-spoiler   только раскрытое «Подробно» «Света» и (30г.7) «Карты», режимы не «Просто»
   --form-day yyyy-mm-dd --form-wish stars   форма (--forms) на этот день с нажатым пожеланием: плашка «замысел против прогноза» (30г.11)
   --form-start <минуты>   с --form-day: начало съёмки в форме (30г.12: «Луна» по времени съёмки, 1260 = 21:00)
   --dome-moon   купол «Света» и «Карты» как после нажатия «Солнце или луна» (30г.6, только натив; без «Луны» — солнце)
   --native-only   без веба и сверки, только native.png
+  --now yyyy-mm-ddThh:mm   «сейчас» приложения (часы Барнаула) вместо момента экрана (31.8: поздняя ночь «Звёзд» в мае; вместе с --forecast на эти дни)
   --skip-build   --out <папка>   --forecast <файл>   --no-sheets --no-pick   --help   эта справка`);
   process.exit(0);
 }
@@ -285,7 +286,7 @@ async function nativeShot(udid, sc, dir) {
   run('xcrun', ['simctl', 'ui', udid, 'appearance', sc.theme]);
   run('xcrun', ['simctl', 'launch', udid, BUNDLE,
     '-AppleLanguages', '(ru)', '-AppleLocale', 'ru_RU',
-    '-LPShotNow', (sc.at || MOMENTS[sc.moment]) + ':00' + OFFSET, '-LPShotZone', ZONE,
+    '-LPShotNow', (sc.at || args.now || MOMENTS[sc.moment]) + ':00' + OFFSET, '-LPShotZone', ZONE,
     '-LPShotSeed', sc.seed, '-LPShotForecast', NATIVE_FORECAST,
     '-LPShotAir', path.join(FX, 'air_barnaul.json'), '-LPShotName', path.join(FX, 'place_barnaul.json'),
     '-LPShotScreen', sc.screen, ...(sc.chapter ? ['-LPShotChapter', sc.chapter] : []),
@@ -298,7 +299,7 @@ async function nativeShot(udid, sc, dir) {
     ...(args['form-scroll'] ? ['-LPShotFormScroll', args['form-scroll']] : []),
     // 30г.14: наложение на время формы и повторное открытие сохранённой съёмки (плашки под своим блоком).
     ...(args['form-busy'] ? ['-LPShotFormBusy', args['form-busy']] : []),
-    ...(args['form-reopen'] ? ['-LPShotFormReopen', '1'] : []),
+    ...(args['form-reopen'] ? ['-LPShotFormReopen', args['form-reopen']] : []),
     ...(sc.form ? ['-LPShotSheet', 'form', '-LPShotWay', sc.form] : []),
     // 30г.11: `--form-day 2027-06-21 --form-wish stars` — форма на этот день с нажатым пожеланием (плашка «замысел против прогноза»).
     ...(sc.form && args['form-day'] ? ['-LPShotFormDay', args['form-day']] : []),

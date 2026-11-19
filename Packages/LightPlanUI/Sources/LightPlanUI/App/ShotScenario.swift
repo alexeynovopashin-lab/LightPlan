@@ -205,8 +205,9 @@ extension AppModel {
                                                                  end: f.start + f.duration, duration: f.duration, genre: .portrait))
                         }
                         // 30г.14: `LPShotFormReopen 1` — «Сохранить» и открыть ту же съёмку снова (повторное открытие).
-                        if UserDefaults.standard.string(forKey: "LPShotFormReopen") != nil, let id = app.form?.id, app.saveForm() != nil {
-                            app.openForm(editing: id)
+                        // 31.8: `LPShotFormReopen card` — «Сохранить» и открыть карточку этой съёмки (карточка судит ту же ночь, что форма).
+                        if let mode = UserDefaults.standard.string(forKey: "LPShotFormReopen"), let id = app.form?.id, app.saveForm() != nil {
+                            if mode == "card" { app.openCard(id: id) } else { app.openForm(editing: id) }
                         }
                     }
                 }
