@@ -663,6 +663,7 @@
     "next.toBlue": "До синего часа",
     "light.waitedSunrise": "Ожидался рассвет, а прогноз обещает {cond} · облачность {cloud}%.",
     "card.starsMissed": "{wish}. Прогноз на эту ночь — {cond}.",
+    "card.starsMissedShoot": "{wish}. Прогноз на время съёмки — {cond}.",
     "clash.bothSunriseT": "Обе съёмки просят рассвет",
     "clash.bothSunriseM": "«{name}» ({when}) тоже ждёт рассвет, а золотой час один.",
     "ar.afterSunrise": "после рассвета {d}"
@@ -1327,6 +1328,7 @@
     "next.toBlue": "Until blue hour",
     "light.waitedSunrise": "{name} wanted the sunrise, but the forecast says {cond} · {cloud}% cloud.",
     "card.starsMissed": "The shoot wanted {wish}. The forecast for that night is {cond}.",
+    "card.starsMissedShoot": "The shoot wanted {wish}. The forecast for the shoot hours is {cond}.",
     "clash.bothSunriseT": "Both shoots want the sunrise",
     "clash.bothSunriseM": "“{name}” ({when}) is waiting for the sunrise too, and there is only one golden hour.",
     "ar.afterSunrise": "{d} after sunrise"
@@ -1991,6 +1993,7 @@
     "next.toBlue": "Hasta la hora azul",
     "light.waitedSunrise": "{name} esperaba el amanecer, pero el pronóstico anuncia {cond} · nubosidad {cloud}%.",
     "card.starsMissed": "La sesión esperaba: {wish}. El pronóstico para esa noche es {cond}.",
+    "card.starsMissedShoot": "La sesión esperaba: {wish}. El pronóstico para las horas de la sesión es {cond}.",
     "clash.bothSunriseT": "Las dos sesiones piden el amanecer",
     "clash.bothSunriseM": "«{name}» ({when}) también espera el amanecer, y la hora dorada es una sola.",
     "ar.afterSunrise": "{d} después del amanecer"
@@ -2651,6 +2654,7 @@
     "next.toBlue": "ブルーアワーまで",
     "light.waitedSunrise": "{name}は日の出を希望していましたが、予報は{cond} · 雲量{cloud}%です。",
     "card.starsMissed": "撮影の希望は{wish}。この夜の予報は{cond}です。",
+    "card.starsMissedShoot": "撮影の希望は{wish}。撮影時間の予報は{cond}です。",
     "clash.bothSunriseT": "両方の撮影が日の出を希望",
     "clash.bothSunriseM": "「{name}」（{when}）も日の出を待っていますが、ゴールデンアワーは1回だけです。",
     "ar.afterSunrise": "日の出から{d}"
@@ -3311,6 +3315,7 @@
     "next.toBlue": "直到蓝色时刻",
     "light.waitedSunrise": "{name}期望日出，但预报为{cond}·云量{cloud}%。",
     "card.starsMissed": "拍摄期望{wish}。该夜预报为{cond}。",
+    "card.starsMissedShoot": "拍摄期望{wish}。拍摄时段预报为{cond}。",
     "clash.bothSunriseT": "两次拍摄都要求日出",
     "clash.bothSunriseM": "“{name}”（{when}）也在等待日出，而只有一个黄金时刻。",
     "ar.afterSunrise": "日出后{d}"

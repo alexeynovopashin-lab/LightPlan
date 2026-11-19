@@ -6622,6 +6622,41 @@
         }
       }
     },
+    "card.starsMissedShoot" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{wish}. Прогноз на время съёмки — {cond}."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The shoot wanted {wish}. The forecast for the shoot hours is {cond}."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La sesión esperaba: {wish}. El pronóstico para las horas de la sesión es {cond}."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撮影の希望は{wish}。撮影時間の予報は{cond}です。"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍摄期望{wish}。拍摄时段预报为{cond}。"
+          }
+        }
+      }
+    },
     "card.tune" : {
       "extractionState" : "manual",
       "localizations" : {

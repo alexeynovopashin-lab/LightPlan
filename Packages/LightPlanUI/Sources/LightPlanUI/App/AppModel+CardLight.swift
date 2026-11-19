@@ -122,12 +122,25 @@ extension AppModel {
 
     /// Темнеет ли в ночь этих суток (31.6в) — одно правило на «недостаточно темно» формы и карточки: есть темнота ниже −18°
     /// от полудня до полудня (`StarNightHours.dark`), а не вечерний переход −18° и не утро самих суток.
-    func starNightIsDark(_ d: CivilDate, _ pl: Place) -> Bool {
+    func starNightIsDark(_ d: CivilDate, _ pl: Place) -> Bool { starDark(d, pl) != nil }
+
+    /// Темнота ночи этих суток (`StarNightHours.dark`, шкала суток `d`), с кэшем; не темнеет — `nil`.
+    func starDark(_ d: CivilDate, _ pl: Place) -> ClosedRange<Minutes>? {
         let key = "\(PointWeather.key(pl))|\(d)"
         if let hit = starDarkCache[key] { return hit }
-        let v = StarNightHours.dark(date: d, place: pl) != nil
+        let v = StarNightHours.dark(date: d, place: pl)
         starDarkCache[key] = v
         return v
+    }
+
+    /// Касаются ли часы съёмки темноты (31.8): ночи своих суток (вечер и за полночь) или хвоста прошлой ночи утром. Нет — съёмка
+    /// днём или в сумерки, и строка «Ожидались звёзды» говорит о часах съёмки, а не «на эту ночь».
+    func shootTouchesDark(_ s: Session) -> Bool {
+        let pl = cardPlace(anchor(s))
+        let hours = Double(s.start)...Double(max(s.start, s.endMinute))
+        let tonight = starDark(s.day, pl)
+        let lastNight = starDark(s.day.adding(days: -1), pl).map { ($0.lowerBound - 1440)...($0.upperBound - 1440) }
+        return [tonight, lastNight].contains { $0?.overlaps(hours) == true }
     }
 
     /// Плохое ли небо (дождь, туман) у якоря в эти сутки — только по прогнозу. `event` — чьё небо: заката (категория дня) или
@@ -426,7 +439,8 @@ extension AppModel {
     /// со временем человека. `nil` — «Звёзд» нет (или не видны), ночь ясная, не темнеет или прогноза нет.
     func cardStarsMissed(_ s: Session) -> String? {
         guard shownWishes(s.wishes).contains(.stars), let q = starClouds(s, timed: true) else { return nil }
-        return lexicon.t("card.starsMissed", ["wish": lexicon.t("wish.was.stars"), "cond": lexicon.t("mwSky." + q.rawValue).lowercased()])
+        // 31.8: судятся часы съёмки; съёмка мимо темноты (днём, в сумерки) — «Прогноз на время съёмки», а не «на эту ночь».
+        return lexicon.t(shootTouchesDark(s) ? "card.starsMissed" : "card.starsMissedShoot", ["wish": lexicon.t("wish.was.stars"), "cond": lexicon.t("mwSky." + q.rawValue).lowercased()])
     }
 
     private func cardDayWishMissed(_ s: Session) -> String? {
