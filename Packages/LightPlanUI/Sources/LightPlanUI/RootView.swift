@@ -47,6 +47,9 @@ public struct RootView: View {
             if phase == .background, let app { app.commitOrgTels(); app.commitClientTels(); Task { await app.flush() } }
             // Ушли в фон — попросить iOS разбудить нас ради прогноза (30.6) или снять просьбу, если следить не за чем.
             if phase == .background, let app { app.scheduleWeatherWake(); app.debugWeatherBackgroundRun() }
+            // Часы дуги (31.9): после фона дольше 15 минут — снова «сейчас», даже если время двигали.
+            if phase == .background, let app { app.light.timebar.sceneWentToBackground() }
+            if phase == .active, let app { app.light.timebar.sceneBecameActive() }
             // Вернулись на экран — если прогноза или воздуха всё ещё нет, спросить сразу (28ж): раньше один
             // сорвавшийся запрос оставлял приложение без прогноза до перезапуска.
             if phase == .active, let app { app.light.weather.resume(); app.sweepMbBins() }
@@ -275,6 +278,8 @@ private struct Shell: View {
         // Escape выводит из режима, если поверх нет листа (веб `mbSortKey`). Отдельным видом: флаг режима,
         // прочитанный в этом теле, пересобирал бы при входе в режим весь корень (замер 29.3б: 49,8 мс CPU на кадр).
         .background { MbSortEscape(app: app) }
+        // Минутный ход часов дуги (31.9): отдельным видом, чтобы фаза окна не пересобирала корень.
+        .background { LiveClockHost(app: app) }
         // Ушли с экрана — вышли из режима (веб `go` → `mbSortOff`).
         .onChange(of: app.tab) { app.mbSort.off() }
         #if DEBUG && os(iOS)
@@ -350,4 +355,15 @@ private struct FormCover: ViewModifier {
 
 #Preview {
     RootView()
+}
+
+/// 31.9: ход живого времени таймбара — только пока окно на экране и открыта «Свет» или «Карта» (у них один таймбар).
+private struct LiveClockHost: View {
+    let app: AppModel
+    @Environment(\.scenePhase) private var phase
+
+    var body: some View {
+        Color.clear.allowsHitTesting(false)
+            .liveClock(app.light.timebar, running: phase == .active && (app.tab == .light || app.tab == .map), now: app.now)
+    }
 }

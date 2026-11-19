@@ -68,6 +68,15 @@ public final class TimebarState {
     /// его оставила машина (`machine.drumOffset`).
     public private(set) var drumGlide: Double?
 
+    /// 31.9 (Алексей 19.11, «Да, 31.9»): время «живое» — человек его не двигал, ползунок и часы дуги идут за настоящим
+    /// временем (`followNow` раз в минуту, `LiveClock`). Включает только `jumpToNow` (запуск, «↺», возврат после долгого фона),
+    /// выключает любое движение времени пальцем или листом. Явный флаг, а не «ближе двух минут к сейчас»: та мерка
+    /// зажигала «↺» сама собой через две минуты стояния.
+    public private(set) var isLive = false
+    /// Фон дольше этого — при возврате снова «сейчас» и живое время, даже если время двигали (31.9; 15 мин — выбор оркестратора).
+    public static let staleAfterBackground: TimeInterval = 15 * 60
+    private var backgroundSince: Date?
+
     public init(place: Place, date: CivilDate, weather: WeatherStore? = nil,
                 language: String = "ru", ribbonMode: RibbonMode = .drum,
                 clockPreference: ClockPreference = .auto, scale: DayScale = .calendar,
@@ -114,6 +123,8 @@ public final class TimebarState {
         // и оставлял сутки прежнего места (замер 19а: Томск с восходом Москвы).
         solarDay = SolarDay(date: machine.selectedDate, place: newPlace)
         solarDayDate = machine.selectedDate
+        // Живое время в новом месте — его «сейчас» (другой пояс — другие часы), не минута прежнего.
+        if isLive { followNow() }
     }
 
     public func setRibbonMode(_ mode: RibbonMode) {
@@ -132,6 +143,7 @@ public final class TimebarState {
 
     public func dragSlider(x: Double, width: Double, thumb: Double) {
         sliderHolding = true
+        isLive = false
         touches += 1
         let outcome = machine.dragSlider(x: x, width: width, thumb: thumb)
         switch outcome {
@@ -177,6 +189,7 @@ public final class TimebarState {
     /// ленты (DECISIONS «Два контроля синхронны…»), тот же щелчок на каждом
     /// часе (`TICK_MIN` веба = 60).
     public func dragDome(to minute: Minutes) {
+        isLive = false
         machine.setViewMinute(minute)
         checkHourMark()
     }
@@ -185,6 +198,7 @@ public final class TimebarState {
     /// Полярный день и ночь заката не имеют — ничего не делает.
     public func jumpToSunset() {
         guard let set = solarDay.set, solarDay.polar == .normal else { return }
+        isLive = false
         stopGlide()
         drumGlide = nil
         withAnimation(.easeOut(duration: 0.2)) { machine.setViewMinute(set) }
@@ -195,6 +209,7 @@ public final class TimebarState {
     /// левое основание — рассвет этих суток (`riseIsToday`), не завтрашний.
     public func jumpToSunrise() {
         guard riseIsToday, let rise = solarDay.rise else { return }
+        isLive = false
         stopGlide()
         drumGlide = nil
         withAnimation(.easeOut(duration: 0.2)) { machine.setViewMinute(rise) }
@@ -211,6 +226,7 @@ public final class TimebarState {
     /// Момент из листа выбора: день и время суток, как `applyDate` веба —
     /// без анимации ленты, барабан встаёт на новый день сразу.
     public func show(day: CivilDate, minute: Minutes) {
+        isLive = false
         stopGlide()
         drumGlide = nil
         machine.show(day: day, minute: minute)
@@ -232,6 +248,8 @@ public final class TimebarState {
     public func dragRibbon(translation: Double, clipWidth: Double) {
         stopGlide()
         touches += 1
+        // Касание без сдвига (тап по ячейке начинается так же) времени не двигает; тап по соседней ячейке — `drumTap`.
+        if translation != 0 { isLive = false }
         let shift = machine.dragRibbon(translation: translation, clipWidth: clipWidth)
         if machine.ribbonMode == .lane { checkHourMark() }
         if shift != 0 {
@@ -271,6 +289,7 @@ public final class TimebarState {
         guard offset != 0, !glideTicker.isActive else { return }
         let shift = machine.tapDrumCell(offset: offset)
         guard shift != 0 else { return }
+        isLive = false
         syncSolarDay()
         dayFlipped()
         let from = machine.settleDrum()
@@ -419,8 +438,9 @@ public final class TimebarState {
 
     /// Метка видна, только когда отмотали от настоящего момента больше чем
     /// на две минуты — как в вебе.
+    /// 31.9: живое время «↺» не зажигает никогда — даже если минутный ход ещё не догнал часы (вкладка была скрыта).
     public var nowButtonVisible: Bool {
-        abs(machine.viewMinute - minutesNowRelative(to: machine.selectedDate)) > 2
+        !isLive && abs(machine.viewMinute - minutesNowRelative(to: machine.selectedDate)) > 2
     }
 
     /// «Сейчас» на шкале выбранных суток — `nil`, если выбран не
@@ -441,11 +461,53 @@ public final class TimebarState {
     public func jumpToNow() {
         stopGlide()
         drumGlide = nil
+        isLive = true
         let wall = wallNow()
         withAnimation(.easeOut(duration: 0.2)) {
             _ = machine.jumpToNow(day: wall.day, minute: Double(wall.minutes))
         }
         syncSolarDay()
+    }
+
+    // MARK: - Живое время (31.9)
+
+    /// Минутный ход: живое время встаёт на настоящую минуту места, в полночь — и на новый день («сегодня» остаётся
+    /// сегодня). Без анимации и без щелчка/вибрации: часы идут сами, палец их не вёл. Двинутое время, ползунок
+    /// под пальцем, срыв и доводка барабана — не трогает. `true` — время сдвинулось.
+    @discardableResult
+    public func followNow() -> Bool {
+        guard isLive, !sliderHolding, !snapping, !glideTicker.isActive, bleedFrom == nil else { return false }
+        let wall = wallNow()
+        let minute = Double(wall.minutes)
+        guard wall.day != machine.selectedDate || machine.viewMinute != minute else { return false }
+        _ = machine.jumpToNow(day: wall.day, minute: minute)
+        drumGlide = nil
+        syncSolarDay()
+        hourMark = Self.hourIndex(machine.viewMinute)
+        return true
+    }
+
+    /// Приложение ушло в фон (`scenePhase == .background`): запомнить когда.
+    public func sceneWentToBackground() {
+        backgroundSince = now()
+    }
+
+    /// Вернулись на экран: после фона дольше `staleAfterBackground` — снова «сейчас» и живое время, даже если время
+    /// двигали; короче — двинутое стоит, живое догоняет часы.
+    public func sceneBecameActive() {
+        defer { backgroundSince = nil }
+        if let since = backgroundSince, now().timeIntervalSince(since) > Self.staleAfterBackground {
+            jumpToNow()
+        } else {
+            followNow()
+        }
+    }
+
+    /// Секунды до следующей границы минуты (+50 мс, чтобы проснуться уже в новой минуте). Пояса мест сдвинуты на целые
+    /// минуты, так что граница минуты места — граница минуты UTC.
+    public static func secondsToNextMinute(after date: Date) -> TimeInterval {
+        let t = date.timeIntervalSince1970
+        return 60 - (t - (t / 60).rounded(.down) * 60) + 0.05
     }
 
     // MARK: - Края: восход и закат
