@@ -108,6 +108,12 @@
   **Nothing is written:** the moon wish, the map layer key and the AR device flag stay as they were and come back with the switch. Not here (30г.7): moon rows inside the Milky Way
   group (`map.moonGlare`, `mpro.moonNow`), the AR Milky Way eye note. Shots: `--modes astro~moon`, `--dome-moon`, `--cards moon --rec-mode <m>`,
   `--forms portrait --rec-mode <m>`; `Tools/shots/ar.js --mode astro` (without it the seed is Simple: no moon).
+- **Stars night after midnight (31.8, Alexey 19.11 «А, с подсветкой»).** Night D = evening D + morning D+1 (`StarNightHours`, 31.6в). When D's
+  darkness starts only after midnight (Kyiv 23–28.05/15–22.07, Tomsk 27.04–2.05/10–16.08), `LightGoal.of(.stars, sun:, night:)` gives the window past 1440
+  and the form's proposal moves to D+1 (`EventForm.moveStart` normalises minutes outside 0..<1440 into the date) with the date capsule lit (`dateShifted`);
+  `nightOf` keeps the chosen date, `lightDay` is whose light/night the form follows (time facts, `wishSky` darkness/moon/clouds, draft key `night`).
+  The person touching date or time clears it; dropping «Звёзды» returns to the chosen date. Card «Ожидались звёзды»: shoot hours off the darkness →
+  `card.starsMissedShoot` «Прогноз на время съёмки». Tests `StarsAfterMidnightTests` (Domain), `StarsRest8Tests` (UI).
 - **Form «Луна» by the shoot time (30г.12, Alexey 12.11 «А сейчас»).** `WishCheck` `.moon` reads `WishSky.shootMoon` (`ShootMoon`, Domain
   `Rules/FormRoute.swift`), built by `AppModel.shootMoon(_:)` from the card's own answer `moonAnswer` (`NightLight.moon`) on the unsaved
   form record: moon not up during the shoot → plate `wc.moonAwayT` + the card's words (`moonWords`: `light.missMoon` / `light.moonNone`);

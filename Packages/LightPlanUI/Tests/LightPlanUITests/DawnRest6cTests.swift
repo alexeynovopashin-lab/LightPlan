@@ -54,13 +54,13 @@ struct DawnRest6cTests {
         }
         func fetchAir(at place: Place) async throws -> [CivilDate: [Int: AirSample]] { [:] }
     }
-    private struct SilentGeocoder: ReverseGeocoding {
+    struct SilentGeocoder: ReverseGeocoding {
         func answer(for c: GeoCoordinate) async throws -> GeocodeAnswer {
             GeocodeAnswer(locality: nil, region: nil, country: nil, zoneIdentifier: nil)
         }
     }
-    private struct NoCities: CityLookup { func cities(matching query: String) async throws -> [CityHit] { [] } }
-    private final class Locator: DeviceLocating {
+    struct NoCities: CityLookup { func cities(matching query: String) async throws -> [CityHit] { [] } }
+    final class Locator: DeviceLocating {
         var isAlreadyAuthorized: Bool { false }
         func currentFix() async -> DeviceFix { .unavailable }
     }

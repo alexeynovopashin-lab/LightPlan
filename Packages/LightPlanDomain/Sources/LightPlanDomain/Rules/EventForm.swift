@@ -48,6 +48,14 @@ public struct EventForm: Equatable, Sendable {
     public var timeFromLight: Bool
     /// Время сдвинуто без вопроса (шаг 30д): подсвечено, пока его не тронут руками. Живёт, пока открыта форма.
     public var timeShifted = false
+    /// Дата, что выбрал человек, когда правило «Звёзд» перенесло форму на следующую (31.8, Алексей 19.11 «А, с подсветкой»): ночь
+    /// 27.05 в Киеве тёмная только 28.05 с 00:33 — форма стоит на 28.05, дата подсвечена (`dateShifted`), а свет считается по
+    /// ночи 27.05 (`lightDay`). Дату или время тронул человек — `nil`.
+    public var nightOf: CivilDate?
+    /// Дату поставило правило, а не человек: подсвечена, как время при сдвиге (30д).
+    public var dateShifted: Bool { nightOf != nil }
+    /// Чью ночь (чей свет) следует время формы: выбранная человеком дата, даже если правило перенесло форму за полночь.
+    public var lightDay: CivilDate { nightOf ?? day }
     /// На что уже ответили «Оставить» (шаг 30д): в этой форме про то же больше не спрашиваем.
     public var timeAsksDeclined: Set<TimeAsk.Kind> = []
 
@@ -275,6 +283,7 @@ public struct EventForm: Equatable, Sendable {
 
     /// Начало правят руками: предложенное светом перестаёт быть предложенным, длительность остаётся.
     public mutating func setStart(day d: CivilDate? = nil, minute m: Int? = nil) {
+        if d != nil || m != nil { nightOf = nil }
         if let d { day = d; dayUnset = false }
         if let m {
             let old = (start: start, end: start + duration)
@@ -454,6 +463,8 @@ extension EventForm {
         var orderPerson: String, orderPhone: String, persons: [[String]], guests: Int
         /// «На связи через»: отношение, имя, телефон (шаг «Поле-2»); старый черновик ключа не знает.
         var via: [String]?
+        /// Дата, что выбрал человек, если правило «Звёзд» перенесло форму за полночь (31.8): год, месяц, день.
+        var night: [Int]?
         var notes: String, brief: String, models: String
         /// Повтор (веб `repDraft`): пишется, только когда правило выбрано.
         var repRule: String?, repN: Int?, repOn: [String]?
@@ -490,6 +501,7 @@ extension EventForm {
                       orderPerson: orderPerson, orderPhone: orderPhone,
                       persons: persons.map { [$0.name, $0.phone] }, guests: guests,
                       via: viaName.isEmpty && viaPhone.isEmpty ? nil : [viaRelation.rawValue, viaName, viaPhone],
+                      night: nightOf.map { [$0.year, $0.month, $0.day] },
                       notes: notes, brief: brief, models: models,
                       repRule: repeatRule?.rawValue, repN: repeatRule == nil ? nil : repeatCount,
                       repOn: repeatRule == nil ? nil : repeatBlocks.map(\.rawValue).sorted(),
@@ -523,6 +535,7 @@ extension EventForm {
         f.gear = d.gear ?? []; f.docs = d.docs ?? []; f.playlist = d.playlist ?? ""
         f.tripOn = d.trip ?? false; f.tripManual = d.tripManual ?? false; f.bookingRef = d.bookingRef
         f.persons = d.persons.map { Person(name: $0.first ?? "", phone: $0.count > 1 ? $0[1] : "") }
+        if let n = d.night, n.count == 3 { f.nightOf = CivilDate(year: n[0], month: n[1], day: n[2]) }
         if let v = d.via, v.count == 3 {
             f.viaRelation = ViaRelation(rawValue: v[0]) ?? .organizer; f.viaName = v[1]; f.viaPhone = v[2]
         }

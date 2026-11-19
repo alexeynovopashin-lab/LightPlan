@@ -85,12 +85,16 @@ extension AppModel {
         let wx = formDay(s, day)      // `nil` — прогноза нет: пожелания про погоду молчат
         // «Звёзды» — небом ночи (`starClouds`, одно с карточкой): часы съёмки, если время назвал человек; предложенное правилом —
         // часы ночи (окно Млечного Пути, нет окна — темнота ниже −18°, 31.6в).
-        let night = f.flatMap { f in f.wishes.contains(.stars) ? s.flatMap { starClouds($0, timed: !f.timeIsProposed) } : nil }
+        // Ночь — выбранной человеком даты (31.8): правило «Звёзд» могло перенести форму за полночь, на D+1, а ночь — D.
+        let nightDay = f?.lightDay ?? day
+        let night = f.flatMap { f in
+            f.wishes.contains(.stars) ? s.flatMap { starClouds($0, timed: !f.timeIsProposed, night: nightDay) } : nil
+        }
         let p = cardPlace(s.flatMap(anchor))
-        let moon = MoonVsStars(date: day, place: p)
-        return WishSky(quality: wx?.quality, sunsetScore: wx?.sunset, astroNight: starNightIsDark(day, p),
+        let moon = MoonVsStars(date: nightDay, place: p)
+        return WishSky(quality: wx?.quality, sunsetScore: wx?.sunset, astroNight: starNightIsDark(nightDay, p),
                        moonLevel: moon.level?.rawValue, moonPercent: moon.percent,
-                       moonFraction: MoonPhase(date: day, minutes: 1320, zone: p.zone).fraction,
+                       moonFraction: MoonPhase(date: nightDay, minutes: 1320, zone: p.zone).fraction,
                        shootMoon: f.flatMap(shootMoon), dawnFog: wx?.dawnFog ?? false,
                        sunriseScore: wx?.sunrise, dawnQuality: wx?.dawnQuality, atDawn: f.map(formShootsAtDawn) ?? false,
                        nightSky: night)

@@ -23,7 +23,11 @@ public struct LightGoal: Sendable, Equatable {
 
     /// Окно по солнцу дня. Закат — от начала золотого часа до конца синего, рассвет — наоборот, от начала синего
     /// до конца золотого. Нет такого света (полярные сутки, белая ночь) или он за пределами дня — предлагать нечего.
-    public static func of(_ w: Wish, sun: SolarDay) -> LightGoal? {
+    ///
+    /// `night` — темнота ночи этих суток (`StarNightHours.dark`, шкала суток). 31.8 (Алексей 19.11 «А, с подсветкой»): если вечером
+    /// темноты нет, а после полуночи есть (Киев 23–28.05 и 15–22.07, Томск 27.04–2.05 и 10–16.08), окно «Звёзд» — эта темнота,
+    /// за 1440: ночь D — вечер D и утро D+1, как в 31.6в. Форма ставит следующую дату (`EventForm.nightOf`). Без `night` — как до 31.8.
+    public static func of(_ w: Wish, sun: SolarDay, night: ClosedRange<Minutes>? = nil) -> LightGoal? {
         func m(_ v: Double) -> Int { Int(v.rounded()) }
         let goal: LightGoal?
         switch w {
@@ -34,6 +38,9 @@ public struct LightGoal: Sendable, Equatable {
             guard let a = sun.blueA, let e = sun.rise, let b = sun.goldenA else { return nil }
             goal = LightGoal(wish: w, event: m(e), from: m(a), to: m(b))
         case .stars:
+            if sun.astroB.map({ $0 >= 1440 }) ?? true, let n = night, n.lowerBound >= 1440 {
+                return LightGoal(wish: w, event: m(n.lowerBound), from: m(n.lowerBound), to: m(n.upperBound), darkUntil: sun.astroA.map(m))
+            }
             guard let a = sun.astroB else { return nil }
             goal = LightGoal(wish: w, event: m(a), from: m(a), to: m(sun.astroA ?? 0) + 1440, darkUntil: sun.astroA.map(m))
         default:
@@ -41,6 +48,14 @@ public struct LightGoal: Sendable, Equatable {
         }
         guard let goal, (0..<1440).contains(goal.from) else { return nil }
         return goal
+    }
+}
+
+extension LightGoal {
+    /// То же окно на шкале суток на `days` позже (минуты меньше на 1440 за сутки): цель ночи D для формы, что уже стоит на D+1.
+    public func shifted(days: Int) -> LightGoal {
+        let k = days * 1440
+        return LightGoal(wish: wish, event: event - k, from: from - k, to: to - k, darkUntil: darkUntil.map { $0 - k })
     }
 }
 
@@ -151,14 +166,20 @@ extension EventForm {
         public var goals: [LightGoal]
         public var defaultStart: Int
         public var step: Int
-        /// Конец занятого, что накрывает съёмку с такими началом и длительностью.
-        public var busy: (Int, Int) -> Int?
+        /// Конец занятого, что накрывает съёмку в этот день с такими началом и длительностью. День — потому что правило
+        /// «Звёзд» может перенести форму за полночь (31.8), и занятость смотрится уже у новой даты.
+        public var busyOn: (CivilDate, Int, Int) -> Int?
 
-        public init(goals: [LightGoal], defaultStart: Int, step: Int, busy: @escaping (Int, Int) -> Int?) {
+        public init(goals: [LightGoal], defaultStart: Int, step: Int, busyOn: @escaping (CivilDate, Int, Int) -> Int?) {
             self.goals = goals
             self.defaultStart = defaultStart
             self.step = step
-            self.busy = busy
+            self.busyOn = busyOn
+        }
+
+        /// Занятость без дня — у дня формы, каким бы он ни был (тесты правил времени).
+        public init(goals: [LightGoal], defaultStart: Int, step: Int, busy: @escaping (Int, Int) -> Int?) {
+            self.init(goals: goals, defaultStart: defaultStart, step: step) { _, s, d in busy(s, d) }
         }
     }
 
@@ -172,6 +193,7 @@ extension EventForm {
             timeIsProposed = true
             timeFromLight = true
         } else {
+            if let n = nightOf { day = n; nightOf = nil }   // пожелание «Звёзд» сняли — дата, что выбрал человек
             if facts.defaultStart != start { moveStart(to: facts.defaultStart) }
             timeShifted = false
             timeIsProposed = true
@@ -204,7 +226,8 @@ extension EventForm {
 
     private func busyAsk(_ facts: TimeFacts) -> TimeAsk? {
         guard !timeAsksDeclined.contains(.busy),
-              let spot = ShootTime.freeSpot(start: start, duration: duration, step: facts.step, busy: facts.busy) else { return nil }
+              let spot = ShootTime.freeSpot(start: start, duration: duration, step: facts.step,
+                                            busy: { [day] in facts.busyOn(day, $0, $1) }) else { return nil }
         return TimeAsk(kind: .busy, at: spot.until, to: spot.to, keep: start)
     }
 
@@ -233,7 +256,15 @@ extension EventForm {
     }
 
     /// Начало меняет правило, а не человек: часы точек дня едут за ним так же, как при правке руками.
+    /// Минута за полночью (31.8: темнота ночи D только после полуночи) — следующая дата; меньше нуля — предыдущая. Дата,
+    /// которую выбрал человек, помнится в `nightOf`, пока правило держит форму на другой дате: дата подсвечена.
     private mutating func moveStart(to m: Int) {
-        setStart(minute: m)
+        let chosen = nightOf ?? day
+        var d = day, x = m
+        while x >= 1440 { x -= 1440; d = d.adding(days: 1) }
+        while x < 0 { x += 1440; d = d.adding(days: -1) }
+        setStart(minute: x)
+        day = d
+        nightOf = d == chosen ? nil : chosen
     }
 }

@@ -424,7 +424,7 @@ struct FormScreen: View {
             FormGroup {
                 timeRow("form.start", t.t("form.start"), sub: startHint(f, t),
                         date: f.dayUnset ? t.t("form.pickDate") : dates.dMonShortYear(carrier(f.day)), time: clock.fmt(Double(f.start)),
-                        openDate: picker == .startDate, openTime: picker == .startTime, lit: f.timeShifted,
+                        openDate: picker == .startDate, openTime: picker == .startTime, lit: f.timeShifted, dateLit: f.dateShifted,
                         pickDate: { toggle(.startDate) }, pickTime: { toggle(.startTime) }, pal)
                 if picker == .startDate {
                     FormDateGrid(selected: f.day, dates: dates, date: carrier, weekStart: app.weekStart) { d in
@@ -459,14 +459,16 @@ struct FormScreen: View {
     }
 
     private func timeRow(_ node: String, _ label: String, sub: String?, date: String, time: String,
-                         openDate: Bool, openTime: Bool, lit: Bool = false, pickDate: @escaping () -> Void, pickTime: @escaping () -> Void,
+                         openDate: Bool, openTime: Bool, lit: Bool = false, dateLit: Bool = false,
+                         pickDate: @escaping () -> Void, pickTime: @escaping () -> Void,
                          _ pal: Palette) -> some View {
         VStack(alignment: .trailing, spacing: 4) {
             HStack(spacing: 12) {
                 Text(label).font(.system(size: 16)).foregroundStyle(pal.ink)
                 Spacer()
                 HStack(spacing: 6) {    // `.caps` веба: зазор 6
-                    FormCapsule(node: node + "Date", text: date, open: openDate, action: pickDate)
+                    // Дату перенесло правило «Звёзд» за полночь (31.8, «А, с подсветкой») — подсвечена, как время при сдвиге.
+                    FormCapsule(node: node + "Date", text: date, open: openDate, lit: dateLit, action: pickDate)
                     FormCapsule(node: node + "Val", text: time, open: openTime, lit: lit, action: pickTime)
                 }
             }

@@ -89,8 +89,9 @@ extension AppModel {
         formPicked = []
         if let data = draftStore.load(), let draft = EventForm.fromDraft(data), draft.hasTypedContent {
             // Черновик встречи без даты называть датой нечем — он поднимается без вопроса.
-            if !draft.dayUnset, draft.day != d {
-                draftAsk = DraftAsk(draftDay: draft.day, askedDay: d, start: start, fromLight: fromLight, mode: mode)
+            // Дата черновика — выбранная человеком (31.8: правило «Звёзд» могло перенести форму за полночь).
+            if !draft.dayUnset, draft.lightDay != d {
+                draftAsk = DraftAsk(draftDay: draft.lightDay, askedDay: d, start: start, fromLight: fromLight, mode: mode)
                 return
             }
             formIsDraft = true
@@ -279,16 +280,20 @@ extension AppModel {
     /// Свет дня — у места приложения, как подсказка под «Начало» (`formLight`) и пожелания (`wishSky`).
     func formTimeFacts(_ f: EventForm) -> EventForm.TimeFacts {
         // Солнце места съёмки (31.6в): время под свет пожеланий — по свету того места, где снимают.
-        let sun = SolarDay(date: f.day, place: cardPlace(formAnchor(f)))
+        // 31.8: свет — ночи даты, что выбрал человек (`lightDay`), даже если правило «Звёзд» перенесло форму за полночь; окна —
+        // на шкалу дня формы. Темнота ночи — для «Звёзд», что темнеют только после полуночи.
+        let pl = cardPlace(formAnchor(f))
+        let sun = SolarDay(date: f.lightDay, place: pl)
+        let night = starDark(f.lightDay, pl), lag = f.day.ordinal - f.lightDay.ordinal
         let probe = f.session(orgName: nil, and: "", studios: snapshot.studios, spots: snapshot.spots,
                               homeCity: homeCityName, now: now())
         let skip = snapshot.sessions.firstIndex { $0.id == f.id }
         let point = GeoPoint(f.sessionPlace.latitude, f.sessionPlace.longitude)
         // Свет только видимых пожеланий: без «Звёзд» (30г.7, опись № 200) всплывашки «Звёзды» днём нет и время само
         // не сдвигается, хотя пожелание в форме остаётся.
-        return EventForm.TimeFacts(goals: shownWishes(f.wishes).compactMap { LightGoal.of($0, sun: sun) },
-                                   defaultStart: formDefaultStart(f.day), step: settings.timeStep) { [self] start, duration in
-            ShootTime.busyUntil(ClashCandidate(day: f.day, start: start, end: start + duration, placeKey: probe.placeKey,
+        return EventForm.TimeFacts(goals: shownWishes(f.wishes).compactMap { LightGoal.of($0, sun: sun, night: night)?.shifted(days: lag) },
+                                   defaultStart: formDefaultStart(f.lightDay), step: settings.timeStep) { [self] day, start, duration in
+            ShootTime.busyUntil(ClashCandidate(day: day, start: start, end: start + duration, placeKey: probe.placeKey,
                                                skipIndex: skip, wishes: f.wishes, point: point, trip: false, tripOff: false),
                                 sessions: snapshot.sessions, blocks: snapshot.blocks, context: clashContext)
         }

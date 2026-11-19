@@ -93,21 +93,23 @@ extension AppModel {
     /// человек, часов ночи `StarNightHours` (31.6в, Алексей «1Б»: окно Млечного Пути этой ночи, нет окна — темнота ниже −18°).
     /// Оценка — `MilkyWaySky` («Небо» группы «Млечный Путь» на «Карте»). Место — якорь записи, прогноз точки (без воздуха, как у
     /// карточки); якоря нет — место приложения. `nil` — не темнеет (белые ночи, полярный день) или прогноза на эти часы нет.
-    func starSky(_ s: Session, timed: Bool) -> MilkyWaySky? {
+    /// `night` (31.8) — чья ночь, если время поставило правило: форма, перенесённая за полночь, стоит на D+1, а судит ночь D.
+    func starSky(_ s: Session, timed: Bool, night: CivilDate? = nil) -> MilkyWaySky? {
         let a = anchor(s)
+        let d = timed ? s.day : night ?? s.day
         let spans: [ClosedRange<Minutes>] = timed ? [Double(s.start)...Double(max(s.start, s.endMinute))]
-            : starHours(s.day, cardPlace(a))
+            : starHours(d, cardPlace(a))
         guard !spans.isEmpty else { return nil }
         // Место приложения — его прогноз (с воздухом), как у формы (`formDay(at:)`): одна функция, форма и карточка не расходятся.
-        guard let a, !sameAsAppPlace(a) else { return light.weather.milkyWaySky(for: s.day, spans: spans) }
-        guard forecastReaches(s.day), case .ready(_, let hourly)? = pointWeather.state(at: cardPlace(a)) else { return nil }
-        return MilkyWaySky.over(date: s.day, spans: spans, hourly: hourly, air: [:])
+        guard let a, !sameAsAppPlace(a) else { return light.weather.milkyWaySky(for: d, spans: spans) }
+        guard forecastReaches(d), case .ready(_, let hourly)? = pointWeather.state(at: cardPlace(a)) else { return nil }
+        return MilkyWaySky.over(date: d, spans: spans, hourly: hourly, air: [:])
     }
 
     /// Облачность ночи, о которой говорят «Звёзды» (31.6в): оценка `starSky`, кроме «прозрачно». Один порог на плашку формы и
     /// строку карточки «Ожидались звёзды. Прогноз на эту ночь — …».
-    func starClouds(_ s: Session, timed: Bool) -> DayQuality? {
-        guard let q = starSky(s, timed: timed)?.look, q != .excellent else { return nil }
+    func starClouds(_ s: Session, timed: Bool, night: CivilDate? = nil) -> DayQuality? {
+        guard let q = starSky(s, timed: timed, night: night)?.look, q != .excellent else { return nil }
         return q
     }
 
