@@ -113,7 +113,11 @@
   and the form's proposal moves to D+1 (`EventForm.moveStart` normalises minutes outside 0..<1440 into the date) with the date capsule lit (`dateShifted`);
   `nightOf` keeps the chosen date, `lightDay` is whose light/night the form follows (time facts, `wishSky` darkness/moon/clouds, draft key `night`).
   The person touching date or time clears it; dropping «Звёзды» returns to the chosen date. Card «Ожидались звёзды»: shoot hours off the darkness →
-  `card.starsMissedShoot` «Прогноз на время съёмки». Tests `StarsAfterMidnightTests` (Domain), `StarsRest8Tests` (UI).
+  `card.starsMissedShoot` «Прогноз на время съёмки». **Rule time is remembered (Alexey 19.11 «Б»):** a saved «Звёзды» shoot whose time the form's rule
+  set carries `Session.ruleNight` (key `ruleNight` `{n,d,m}` = night, day, start); `nightByRule` is valid only while day and start are unchanged, and then
+  the card and a reopened form judge that whole night (clouds, darkness, moon) like the form did. The person touching the time drops it (`setStart`);
+  the web drops it on re-save → shoot hours again; a broken mark decodes as nil. Time ask past midnight names the date: `time.moveQDay`.
+  Tests `StarsAfterMidnightTests` + `RuleNightRecordTests` (Domain), `StarsRest8Tests` (UI).
 - **Form «Луна» by the shoot time (30г.12, Alexey 12.11 «А сейчас»).** `WishCheck` `.moon` reads `WishSky.shootMoon` (`ShootMoon`, Domain
   `Rules/FormRoute.swift`), built by `AppModel.shootMoon(_:)` from the card's own answer `moonAnswer` (`NightLight.moon`) on the unsaved
   form record: moon not up during the shoot → plate `wc.moonAwayT` + the card's words (`moonWords`: `light.missMoon` / `light.moonNone`);

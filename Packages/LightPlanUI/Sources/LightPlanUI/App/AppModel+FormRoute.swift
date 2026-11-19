@@ -85,10 +85,11 @@ extension AppModel {
         let wx = formDay(s, day)      // `nil` — прогноза нет: пожелания про погоду молчат
         // «Звёзды» — небом ночи (`starClouds`, одно с карточкой): часы съёмки, если время назвал человек; предложенное правилом —
         // часы ночи (окно Млечного Пути, нет окна — темнота ниже −18°, 31.6в).
-        // Ночь — выбранной человеком даты (31.8): правило «Звёзд» могло перенести форму за полночь, на D+1, а ночь — D.
-        let nightDay = f?.lightDay ?? day
+        // Ночь — выбранной человеком даты (31.8): правило «Звёзд» могло перенести форму за полночь, на D+1, а ночь — D. Время
+        // поставило правило (и в правке записи, пока его не трогали, «Б») — облака ночи; время человека — часы съёмки.
+        let nightDay = f.map { $0.ruleNight ?? $0.lightDay } ?? day
         let night = f.flatMap { f in
-            f.wishes.contains(.stars) ? s.flatMap { starClouds($0, timed: !f.timeIsProposed, night: nightDay) } : nil
+            f.wishes.contains(.stars) ? s.flatMap { starClouds($0, timed: f.ruleNight == nil, night: nightDay) } : nil
         }
         let p = cardPlace(s.flatMap(anchor))
         let moon = MoonVsStars(date: nightDay, place: p)

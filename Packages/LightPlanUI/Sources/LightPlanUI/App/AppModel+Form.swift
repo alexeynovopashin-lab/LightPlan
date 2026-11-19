@@ -331,7 +331,11 @@ extension AppModel {
         case .busy:
             return (lexicon.t("time.busyT", ["t": at]), lexicon.t("time.busyQ", ["t": to]), lexicon.t("time.busyGo"), keep)
         case .light(let w):
-            return (lexicon.t("time." + w.rawValue + "T", ["t": at]), lexicon.t("time.moveQ", ["t": to]), lexicon.t("time.move"), keep)
+            // 31.8: начало уходит за полночь («Звёзды» в день, когда темно только после полуночи) — вопрос называет и дату.
+            let shift = a.to >= 1440 ? 1 : a.to < 0 ? -1 : 0
+            let question = shift == 0 || form == nil ? lexicon.t("time.moveQ", ["t": to])
+                : lexicon.t("time.moveQDay", ["d": DateText(language: language).dMon(carrier(form!.day.adding(days: shift))), "t": to])
+            return (lexicon.t("time." + w.rawValue + "T", ["t": at]), question, lexicon.t("time.move"), keep)
         }
     }
 

@@ -42,7 +42,9 @@ import LightPlanDomain
         s.rentRequest = RentRequest(id: "rq1", status: .requested, newEnd: "13:30")
         s.route = [RoutePoint(start: 660, end: 780, name: "Сборы", placeText: "Люмен, зал Белый", studioId: "st1", hallId: "h1"),
                    RoutePoint(start: 840, name: "Загс", placeText: "Дворец бракосочетаний")]
-        s.wishes = [.sunset, .clear]
+        s.wishes = [.sunset, .clear, .stars]
+        // 31.8: время «Звёздам» поставило правило — метка за дату и начало записи, правка без касания времени её хранит.
+        s.ruleNight = RuleNight(night: day.adding(days: -1), day: day, start: 660)
         s.wishWarning = WishWarning(title: "Закат под вопросом", message: "облачно к вечеру")
         s.deadline = .days(30)
         s.delivered = true

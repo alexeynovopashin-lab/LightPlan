@@ -440,9 +440,11 @@ extension AppModel {
     /// Строка «Ожидались звёзды. Прогноз на эту ночь — …»: время карточки всегда названо — облака часов съёмки, как у формы
     /// со временем человека. `nil` — «Звёзд» нет (или не видны), ночь ясная, не темнеет или прогноза нет.
     func cardStarsMissed(_ s: Session) -> String? {
-        guard shownWishes(s.wishes).contains(.stars), let q = starClouds(s, timed: true) else { return nil }
-        // 31.8: судятся часы съёмки; съёмка мимо темноты (днём, в сумерки) — «Прогноз на время съёмки», а не «на эту ночь».
-        return lexicon.t(shootTouchesDark(s) ? "card.starsMissed" : "card.starsMissedShoot", ["wish": lexicon.t("wish.was.stars"), "cond": lexicon.t("mwSky." + q.rawValue).lowercased()])
+        // 31.8 («Б»): время поставило правило формы — ночь, что судила форма; время человека — часы съёмки, и съёмка мимо
+        // темноты (днём, в сумерки) говорит «Прогноз на время съёмки», а не «на эту ночь».
+        let rule = s.nightByRule
+        guard shownWishes(s.wishes).contains(.stars), let q = starClouds(s, timed: rule == nil, night: rule) else { return nil }
+        return lexicon.t(rule != nil || shootTouchesDark(s) ? "card.starsMissed" : "card.starsMissedShoot", ["wish": lexicon.t("wish.was.stars"), "cond": lexicon.t("mwSky." + q.rawValue).lowercased()])
     }
 
     private func cardDayWishMissed(_ s: Session) -> String? {

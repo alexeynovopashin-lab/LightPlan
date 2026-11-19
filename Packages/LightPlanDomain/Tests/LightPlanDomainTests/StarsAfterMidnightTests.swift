@@ -85,3 +85,44 @@ import LightPlanCore
         #expect(back.day == d.adding(days: 1) && back.start == 33)
     }
 }
+
+/// 31.8, п. 2 «Б»: запись помнит, что время «Звёздам» поставило правило, — за те дату и начало, что в метке.
+@Suite struct RuleNightRecordTests {
+    func decode(_ json: String) throws -> Session { try JSONDecoder().decode(Session.self, from: Data(json.utf8)) }
+
+    @Test("запись без метки (веб пересохранил) читается и судит часы съёмки; метка переживает запись-чтение")
+    func recordWithAndWithoutTheMark() throws {
+        let plain = try decode(#"{"id":"a","date":"2027-05-28","min":1,"wish":["stars"]}"#)
+        #expect(plain.ruleNight == nil && plain.nightByRule == nil)
+        let marked = try decode(#"{"id":"b","date":"2027-05-29","min":1,"wish":["stars"],"ruleNight":{"n":"2027-05-28","d":"2027-05-29","m":1}}"#)
+        #expect(marked.nightByRule == CivilDate(year: 2027, month: 5, day: 28))
+        let back = try decode(String(decoding: try JSONEncoder().encode(marked), as: UTF8.self))
+        #expect(back.ruleNight == marked.ruleNight && back.extra["ruleNight"] == nil)
+        let broken = try decode(#"{"id":"c","date":"2027-05-29","min":1,"ruleNight":{"n":"вчера"}}"#)
+        #expect(broken.ruleNight == nil && broken.id == "c", "испорченная метка не роняет запись")
+    }
+
+    @Test("время или дату сдвинули (лента, Календарь, форма) — метка больше не ручается")
+    func markVouchesOnlyForItsTime() throws {
+        var s = try decode(#"{"id":"b","date":"2027-05-29","min":1,"ruleNight":{"n":"2027-05-28","d":"2027-05-29","m":1}}"#)
+        s.start = 30
+        #expect(s.nightByRule == nil)
+        s.start = 1; s.day = CivilDate(year: 2027, month: 5, day: 30)
+        #expect(s.nightByRule == nil)
+    }
+
+    @Test("форма пишет метку только за время правила и только со «Звёздами»; правка без касания времени её хранит")
+    func formWritesTheMark() throws {
+        let d = CivilDate(year: 2027, month: 5, day: 27)
+        var f = EventForm.new(id: "n", day: d, start: nil, fromLight: false, genre: .portrait, light: nil, step: 1)
+        f.wishes = [.stars]
+        let s = f.session(orgName: nil, and: "", studios: [], spots: [], homeCity: "", now: Date())
+        #expect(s.nightByRule == d)
+        var plain = f; plain.wishes = [.sunset]
+        #expect(plain.session(orgName: nil, and: "", studios: [], spots: [], homeCity: "", now: Date()).ruleNight == nil)
+        var edit = EventForm.editing(s)
+        #expect(edit.ruleNight == d && edit.session(orgName: nil, and: "", studios: [], spots: [], homeCity: "", now: Date()).nightByRule == d)
+        edit.setStart(minute: s.start + 5)
+        #expect(edit.ruleNight == nil && edit.session(orgName: nil, and: "", studios: [], spots: [], homeCity: "", now: Date()).ruleNight == nil)
+    }
+}

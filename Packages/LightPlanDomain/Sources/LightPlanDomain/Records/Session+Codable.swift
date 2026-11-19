@@ -16,7 +16,7 @@ extension Session: Codable {
         case pay, rate, units, expense, prepay, currency
         case guests, trip, tripManual, tripPlace, brief, models, breed
         case docs, gear, playlist
-        case questSent, questOff, fromMeetOn, fromMeetId, grewOn, grewToId, dayMoved
+        case questSent, questOff, fromMeetOn, fromMeetId, grewOn, grewToId, dayMoved, ruleNight
         case route, synced, telLog, rep, doneAt, icsSig, icsAt, mt, calTitle
     }
 
@@ -91,6 +91,7 @@ extension Session: Codable {
         grewOn = try c.decodeIfPresent(String.self, forKey: .grewOn).flatMap { CivilDate(snapshotString: $0) }
         grewToId = try c.decodeIfPresent(String.self, forKey: .grewToId)
         dayMoved = try c.decodeIfPresent(DayMoved.self, forKey: .dayMoved)
+        ruleNight = try? c.decodeIfPresent(RuleNight.self, forKey: .ruleNight)   // испорченная метка — нет метки, запись живёт
 
         route = try c.decodeIfPresent([RoutePoint].self, forKey: .route) ?? []
         calendar = try c.decodeLenient(CalendarService.self, forKey: .synced)
@@ -177,6 +178,7 @@ extension Session: Codable {
         try c.encodeIfPresent(grewOn?.snapshotString, forKey: .grewOn)
         try c.encodeIfPresent(grewToId, forKey: .grewToId)
         try c.encodeIfPresent(dayMoved, forKey: .dayMoved)
+        try c.encodeIfPresent(ruleNight, forKey: .ruleNight)
 
         try c.encode(route, forKey: .route)
         try c.encodeLenient(calendar, forKey: .synced)

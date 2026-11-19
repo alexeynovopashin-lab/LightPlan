@@ -70490,6 +70490,41 @@
         }
       }
     },
+    "time.moveQDay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сдвинуть начало на {d}, {t}?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move the start to {d}, {t}?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Mover el inicio al {d}, a las {t}?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開始を {d} {t} に移動しますか?"
+          }
+        },
+        "zh" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把开始时间移到 {d} {t}?"
+          }
+        }
+      }
+    },
     "time.starsT" : {
       "extractionState" : "manual",
       "localizations" : {

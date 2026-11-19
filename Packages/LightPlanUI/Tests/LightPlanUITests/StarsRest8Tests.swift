@@ -64,7 +64,7 @@ struct StarsRest8Tests {
     nonisolated static let kyiv = T.City(name: "Киев", lat: 50.45, lon: 30.52, zone: "Europe/Kiev")
 
     /// Город приложения `city`, «сейчас» — накануне `day`; пояса Киева и мест `DawnRest6cTests` — в снимке (как после геокодера).
-    static func app(city: T.City, day: CivilDate) -> AppModel {
+    static func app(city: T.City, day: CivilDate, weather: WeatherSource = T.NightSky(dark: 0)) -> AppModel {
         var snap = Snapshot()
         snap.extra["me"] = .object(["city": .string(city.name), "cityLat": .number(city.lat), "cityLon": .number(city.lon), "met": .bool(true)])
         var zones: [String: JSONValue] = [:]
@@ -75,7 +75,7 @@ struct StarsRest8Tests {
         let eve = day.adding(days: -1)
         let now = cal.date(from: DateComponents(year: eve.year, month: eve.month, day: eve.day, hour: 12))!
         let app = AppModel(snapshot: snap, store: nil, language: "ru", zone: tz, locator: T.Locator(),
-                           geocoder: T.SilentGeocoder(), cityLookup: T.NoCities(), weatherSource: T.NightSky(dark: 0), now: { now })
+                           geocoder: T.SilentGeocoder(), cityLookup: T.NoCities(), weatherSource: weather, now: { now })
         app.draftStore = MemoryDraftStore()
         app.update { $0.mode = .astro }
         return app
@@ -129,5 +129,99 @@ struct StarsRest8Tests {
         #expect(f.day == day.adding(days: 1) && f.dateShifted)
         #expect(app.wishSky(f.day, form: f).astroNight, "ночь 28.05 тёмная 00:49–01:01")
         #expect(!(app.formWishWarning(f)?.message.hasPrefix("Недостаточно темно") ?? false), "\(String(describing: app.formWishWarning(f)?.message))")
+    }
+
+    // MARK: - П. 2 «Б» (Алексей 19.11): время поставило правило — карточка судит ту же ночь, что форма
+
+    /// Облачность 90 % с 21:00 до 07:00 по поясу места (Томск), 0 — в остальные часы: часы съёмки 19:08–20:08 ясные, ночь затянута.
+    struct LateClouds: WeatherSource {
+        let first = CivilDate(year: 2026, month: 12, day: 1)
+        func fetchHourly(at place: Place) async throws -> HourlyWeather {
+            var time: [String] = [], cloud: [Double] = []
+            for k in 0..<60 {
+                let d = first.adding(days: k)
+                for h in 0..<24 {
+                    time.append(String(format: "%04d-%02d-%02dT%02d:00", d.year, d.month, d.day, h))
+                    cloud.append(h >= 21 || h < 7 ? 90 : 0)
+                }
+            }
+            let n = time.count
+            return HourlyWeather(time: time, cloud: cloud, humidity: Array(repeating: 50, count: n), temperature: Array(repeating: -5, count: n),
+                                 windSpeed: Array(repeating: 2, count: n), precipitation: Array(repeating: 0, count: n),
+                                 weatherCode: Array(repeating: 0, count: n))
+        }
+        func fetchAir(at place: Place) async throws -> [CivilDate: [Int: AirSample]] { [:] }
+    }
+
+    func cloudWord(_ app: AppModel) -> String? {
+        guard let f = app.form, let m = app.formWishWarning(f)?.message.lowercased(), let r = m.range(of: "по прогнозу ") else { return nil }
+        return String(m[r.upperBound...].prefix { $0.isLetter || $0 == " " }).trimmingCharacters(in: .whitespaces)
+    }
+
+    @Test("Томск 21.12, время поставило правило (19:08): форма до «Сохранить», карточка и правка говорят об одной ночи; тронули время — часы съёмки")
+    func ruleTimeCardJudgesTheSameNight() async throws {
+        let app = Self.app(city: T.tomsk, day: T.winter, weather: LateClouds())
+        await app.light.weather.settled()
+        app.openForm(day: T.winter, start: nil, fromLight: false)
+        app.toggleFormWish(.stars)
+        await app.pointWeather.settled()
+        #expect(app.form?.start == 19 * 60 + 8 && app.form?.timeIsProposed == true)
+        let word = try #require(cloudWord(app), "форма судит ночь: облака 21:00–07:00")
+        let saved = try #require(app.saveForm())
+        app.openCard(id: saved.id)
+        await app.pointWeather.settled()
+        let s = try #require(app.sessions.first { $0.id == saved.id })
+        #expect(s.nightByRule == T.winter)
+        #expect(app.cardWishMissed(s, phase: .before) == "Ожидались звёзды. Прогноз на эту ночь — \(word).",
+                "\(String(describing: app.cardWishMissed(s, phase: .before)))")
+        app.closeCard()
+        app.openForm(editing: s.id)
+        await app.pointWeather.settled()
+        #expect(cloudWord(app) == word, "правка записи, время не тронуто — та же ночь")
+        // Человек сам поставил время (то же 19:10 рядом) — метка уходит, судятся часы съёмки 19:10–20:10: ясно
+        app.form?.setStart(minute: 19 * 60 + 10)
+        let moved = try #require(app.saveForm())
+        #expect(moved.nightByRule == nil)
+        #expect(app.cardWishMissed(moved, phase: .before) == nil, "\(String(describing: app.cardWishMissed(moved, phase: .before)))")
+    }
+
+    @Test("Киев 28.05 → 29.05 00:01 сохранена: строка «Звёзды» карточки судит ночь 28.05 — не «Недостаточно темно»")
+    func savedMovedShootIsNotTooLight() async throws {
+        let day = CivilDate(year: 2027, month: 5, day: 28)
+        let (app, f) = try await starsForm(Self.kyiv, day)
+        #expect(f.day == day.adding(days: 1))
+        let saved = try #require(app.saveForm())
+        #expect(saved.nightByRule == day)
+        guard case .starsNone(let why)? = app.cardStars(saved, phase: .before) else { return }   // окно нашлось — тем более не «светло»
+        #expect(why.first != .notDark, "\(why)")
+    }
+
+    // MARK: - всплывашка: начало уходит за полночь — вопрос называет дату
+
+    @Test("Киев 27.05, время названо (15:00), нажаты «Звёзды»: «Сдвинуть начало на 28 мая, 00:17?»; обычный день — без даты")
+    func timeAskNamesTheDate() async throws {
+        let day = CivilDate(year: 2027, month: 5, day: 27)
+        let app = Self.app(city: Self.kyiv, day: day)
+        await app.light.weather.settled()
+        app.openForm(day: day, start: 15 * 60, fromLight: false)
+        app.toggleFormWish(.stars)
+        let ask = try #require(app.formTimeAsk)
+        #expect(app.formTimeAskWords(ask).question == "Сдвинуть начало на 28 мая, 00:17?", "\(app.formTimeAskWords(ask).question)")
+        app.answerFormTime(ask, move: true)
+        #expect(app.form?.day == day.adding(days: 1) && app.form?.start == 17 && app.form?.dateShifted == true)
+        let plain = Self.app(city: T.tomsk, day: T.winter)
+        await plain.light.weather.settled()
+        plain.openForm(day: T.winter, start: 15 * 60, fromLight: false)
+        plain.toggleFormWish(.stars)
+        let a2 = try #require(plain.formTimeAsk)
+        #expect(plain.formTimeAskWords(a2).question == "Сдвинуть начало на 19:08?", "\(plain.formTimeAskWords(a2).question)")
+    }
+
+    @Test("слова «Сдвинуть начало на {d}, {t}?» на пяти языках: без сырых слотов")
+    func timeAskDayWords() {
+        for lang in ["ru", "en", "es", "ja", "zh"] {
+            let t = Lexicon(lang).t("time.moveQDay", ["d": "28", "t": "00:17"])
+            #expect(!t.contains("{") && t != "time.moveQDay" && t.contains("28") && t.contains("00:17"), "\(lang): «\(t)»")
+        }
     }
 }

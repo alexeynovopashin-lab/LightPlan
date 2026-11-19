@@ -137,6 +137,16 @@ public struct Session: Sendable, Hashable, Identifiable {
     public var grewToId: String?
     /// `dayMoved` — время сдвинуто на ленте: было и строка в заметке.
     public var dayMoved: DayMoved?
+    /// `ruleNight` — время «Звёздам» поставило правило формы, а не человек (31.8, Алексей 19.11 «Б»): карточка судит ту же ночь,
+    /// что форма. Только у нас: веб ключа не знает и при пересохранении теряет — тогда карточка судит часы съёмки.
+    public var ruleNight: RuleNight?
+
+    /// Чью ночь судят «Звёзды», если время поставило правило и с тех пор его никто не трогал: метка ручается только за ту дату
+    /// и минуту начала, что в ней записаны. Перетащили на ленте, сдвинули в Календаре, поправили в форме — `nil`, часы съёмки.
+    public var nightByRule: CivilDate? {
+        guard let r = ruleNight, r.day == day, r.start == start else { return nil }
+        return r.night
+    }
 
     /// `route` — точки дня, в порядке, в каком их составил фотограф.
     public var route: [RoutePoint] = []
@@ -360,6 +370,37 @@ public struct WishWarning: Sendable, Hashable {
     public init(title: String, message: String) {
         self.title = title
         self.message = message
+    }
+}
+
+/// Метка «время поставило правило» (31.8): чья ночь (`n`) и за какие дату (`d`) и начало (`m`) метка ручается.
+public struct RuleNight: Sendable, Hashable, Codable {
+    public var night: CivilDate
+    public var day: CivilDate
+    public var start: Int
+
+    public init(night: CivilDate, day: CivilDate, start: Int) {
+        self.night = night
+        self.day = day
+        self.start = start
+    }
+
+    enum CodingKeys: String, CodingKey { case n, d, m }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        guard let n = CivilDate(snapshotString: try c.decode(String.self, forKey: .n)),
+              let d = CivilDate(snapshotString: try c.decode(String.self, forKey: .d)) else {
+            throw DecodingError.dataCorruptedError(forKey: .n, in: c, debugDescription: "дата метки не разобралась")
+        }
+        self.init(night: n, day: d, start: try c.decode(Int.self, forKey: .m))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(night.snapshotString, forKey: .n)
+        try c.encode(day.snapshotString, forKey: .d)
+        try c.encode(start, forKey: .m)
     }
 }
 

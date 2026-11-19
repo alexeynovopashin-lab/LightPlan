@@ -52,6 +52,11 @@ public struct EventForm: Equatable, Sendable {
     /// 27.05 в Киеве тёмная только 28.05 с 00:33 — форма стоит на 28.05, дата подсвечена (`dateShifted`), а свет считается по
     /// ночи 27.05 (`lightDay`). Дату или время тронул человек — `nil`.
     public var nightOf: CivilDate?
+    /// Правка записи, чьё время «Звёздам» поставило правило (31.8, «Б»): чья ночь. Человек тронул дату или время — `nil`.
+    public var keptRuleNight: CivilDate?
+    /// Чью ночь судят «Звёзды» формы, если время поставило правило (новая форма — `lightDay`, правка — метка записи); время
+    /// человека — `nil`, судятся часы съёмки. Это же пишется в запись (`Session.ruleNight`), чтобы карточка судила ту же ночь.
+    public var ruleNight: CivilDate? { timeIsProposed ? lightDay : keptRuleNight }
     /// Дату поставило правило, а не человек: подсвечена, как время при сдвиге (30д).
     public var dateShifted: Bool { nightOf != nil }
     /// Чью ночь (чей свет) следует время формы: выбранная человеком дата, даже если правило перенесло форму за полночь.
@@ -178,6 +183,7 @@ public struct EventForm: Equatable, Sendable {
         f.contact = s.contact
         f.clientPhone = s.clientPhone
         if let v = s.via { f.viaRelation = v.relation; f.viaName = v.name; f.viaPhone = v.phone }
+        f.keptRuleNight = s.nightByRule
         f.breed = s.breed
         f.orgId = s.orgId
         f.orderPerson = s.orderPerson
@@ -283,7 +289,7 @@ public struct EventForm: Equatable, Sendable {
 
     /// Начало правят руками: предложенное светом перестаёт быть предложенным, длительность остаётся.
     public mutating func setStart(day d: CivilDate? = nil, minute m: Int? = nil) {
-        if d != nil || m != nil { nightOf = nil }
+        if d != nil || m != nil { nightOf = nil; keptRuleNight = nil }
         if let d { day = d; dayUnset = false }
         if let m {
             let old = (start: start, end: start + duration)
@@ -412,6 +418,8 @@ public struct EventForm: Equatable, Sendable {
         s.contact = contactLine(orgName: orgName, and: and)
         s.clientPhone = clientPhone.trimmingCharacters(in: .whitespaces)
         s.via = filledVia
+        // 31.8 («Б»): время «Звёздам» поставило правило — запись помнит чью ночь, за эти дату и начало.
+        s.ruleNight = wishes.contains(.stars) ? ruleNight.map { RuleNight(night: $0, day: day, start: start) } : nil
         s.orgId = orgId
         s.orderPerson = orderPerson.trimmingCharacters(in: .whitespaces)
         s.orderPhone = orderPhone.trimmingCharacters(in: .whitespaces)

@@ -133,7 +133,8 @@ public enum NightLight: Hashable, Sendable {
             }
         }
         if let (p, w, d) = near { return .starsNear(point: p.point, window: w, gap: d) }
-        let n = night(ps.first?.at ?? Stops.skyPoint(of: s, spots: spots, studios: studios), s.day)
+        // Время поставило правило формы (31.8, «Б») — ночь та, что судила форма (Киев 29.05 00:01 — ночь 28.05), иначе суток записи.
+        let n = night(ps.first?.at ?? Stops.skyPoint(of: s, spots: spots, studios: studios), s.nightByRule ?? s.day)
         return .starsNone(StarsBlock.all(night: n, city: s.placeIsCity))
     }
 
