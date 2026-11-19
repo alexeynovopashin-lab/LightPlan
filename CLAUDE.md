@@ -177,7 +177,9 @@
   background longer than `TimebarState.staleAfterBackground` = 15 min), off by any move of time (slider, dome, ribbon/drum shift, sunrise/sunset tap,
   `show(day:minute:)`). Live → `followNow()` sets the place's current minute (new day at midnight), no animation/haptics; `nowButtonVisible` is never
   on while live. Tick = `LiveClockHost` in `RootView` (`Timebar/LiveClock.swift`): one `Task` sleeping to the minute boundary, only while the scene is
-  active and «Свет»/«Карта» is the tab. AR's own timebar uses `show` → never live (its picked minute stays at the opening moment). Tests `TimebarLiveClockTests`.
+  active and «Свет»/«Карта» is the tab. AR (own `TimebarState`): live when opened at «now» (`SunARModel.opensLive`: entry moment ≤ 15 min old) or after its «↺» glide
+  (`jump(..., live: true)`); its 10 s loop sleeps to the minute boundary and calls `tick()`; no threshold haptic while live; `scenePhase` in `SunARScreen`.
+  Tests `TimebarLiveClockTests`, `SunARLiveClockTests`.
 - **Exact Sun on every screen (29.8в.25).** `SolarDay(date:place:)` (and `MilkyWayWindow`/`MoonVsStars(date:place:)`, `WeatherDay.buildDays(time: .iau)`,
   `AstroNight(time: .iau)`) default to `.iau`: the AR Sun (`Solar/ExactSun.swift`: Meeus ch. 25 + IAU sidereal time, 3 theory evaluations per day,
   parabola in between), ≤ 0.01° and ≤ 0.12 min vs Horizons (Tromsø polar edge ≤ 0.54 min), 11 µs per day. The bench init

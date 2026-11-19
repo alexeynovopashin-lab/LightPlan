@@ -224,9 +224,10 @@ public final class TimebarState {
     }
 
     /// Момент из листа выбора: день и время суток, как `applyDate` веба —
-    /// без анимации ленты, барабан встаёт на новый день сразу.
-    public func show(day: CivilDate, minute: Minutes) {
-        isLive = false
+    /// без анимации ленты, барабан встаёт на новый день сразу. `live` — этот момент и есть «сейчас» (AR открывается
+    /// и возвращается кнопкой «↺» на дробной минуте, 31.9): время после него идёт само.
+    public func show(day: CivilDate, minute: Minutes, live: Bool = false) {
+        isLive = live
         stopGlide()
         drumGlide = nil
         machine.show(day: day, minute: minute)

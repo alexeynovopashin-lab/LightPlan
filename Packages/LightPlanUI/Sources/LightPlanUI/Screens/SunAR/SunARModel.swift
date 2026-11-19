@@ -450,7 +450,8 @@ final class SunARModel {
         timebar = TimebarState(place: target.place, date: wall.day, weather: nil, language: language,
                                clockPreference: clockPreference,
                                now: { MainActor.assumeIsolated { clock().date } })
-        timebar.show(day: wall.day, minute: wall.minutes)
+        // 31.9: открыли на «сейчас» — минута AR идёт за временем, пока её не тронули (как «Свет»).
+        timebar.show(day: wall.day, minute: wall.minutes, live: Self.opensLive(target.moment, now: clock()))
         self.source = source
         #if os(iOS)
         #if DEBUG
@@ -656,8 +657,11 @@ final class SunARModel {
         guard new.place != old else { return }
         glow = nil
         timebar.setPlace(new.place)
-        let wall = SunTrack.wallClock(of: instant, in: new.place)
-        timebar.show(day: wall.day, minute: wall.minutes)
+        // Живое время в новом месте само встаёт на его «сейчас» (`setPlace`); двинутое — то же мгновение.
+        if !timebar.isLive {
+            let wall = SunTrack.wallClock(of: instant, in: new.place)
+            timebar.show(day: wall.day, minute: wall.minutes)
+        }
         lastAltitude = nil
     }
 
@@ -671,7 +675,8 @@ final class SunARModel {
     func minuteMoved() {
         let altitude = sun.altitude
         defer { lastAltitude = altitude; lastDay = day }
-        guard let was = lastAltitude, lastDay == day else { return }
+        // Живое время (31.9) порог переходит само — палец ручку не вёл, отдачи нет.
+        guard let was = lastAltitude, lastDay == day, !timebar.isLive else { return }
         if SunTrack.thresholdsCrossed(from: was, to: altitude) > 0 {
             if let thresholdHaptic { thresholdHaptic() } else { timebar.haptics.detent() }
         }
@@ -682,15 +687,46 @@ final class SunARModel {
         SunTrack.wallClock(of: now ?? clock(), in: place)
     }
 
-    func jump(to day: CivilDate, minutes m: Double) {
-        timebar.show(day: day, minute: m)
+    /// `live` — встали на «сейчас» (кнопка «↺»): дальше минута идёт за временем (31.9).
+    func jump(to day: CivilDate, minutes m: Double, live: Bool = false) {
+        timebar.show(day: day, minute: m, live: live)
     }
 
-    /// «Сейчас» одним шагом: выбранный момент — текущий.
+    /// «Сейчас» одним шагом: выбранный момент — текущий, и он снова идёт за временем.
     func jumpToNow() {
         nowMoment = clock()
         let n = nowTarget(now: nowMoment)
-        jump(to: n.day, minutes: n.minutes)
+        jump(to: n.day, minutes: n.minutes, live: true)
+    }
+
+    // MARK: - Живое время (31.9)
+
+    /// Минута AR идёт за временем: открыта на «сейчас» или возвращена «↺», и человек её с тех пор не двигал.
+    var isLive: Bool { timebar.isLive }
+
+    /// Вход несёт момент нажатия «AR»; плашка перед входом может задержать его. Момент не старше
+    /// `TimebarState.staleAfterBackground` (и не из будущего дальше минуты) — это «сейчас», экран идёт за временем.
+    /// Момент снимка или отладки (`-LPSunARMoment`) далеко от часов — стоит.
+    static func opensLive(_ moment: Moment, now: Moment) -> Bool {
+        let age = Double(now.milliseconds - moment.milliseconds) / 1000
+        return age >= -60 && age <= TimebarState.staleAfterBackground
+    }
+
+    /// Ход экрана: маркер «сейчас» и север (`refreshNow`), живая минута — на минуту места (`followNow`).
+    func tick() {
+        refreshNow()
+        timebar.followNow()
+    }
+
+    /// Сколько спать до следующего хода: не дольше 10 с (маркер «сейчас», север), и просыпаться на границе минуты.
+    var secondsToNextTick: Double { min(10, TimebarState.secondsToNextMinute(after: clock().date)) }
+
+    func sceneWentToBackground() { timebar.sceneWentToBackground() }
+
+    /// Вернулись из фона: дольше 15 минут — снова «сейчас» и живое время, даже если минуту двигали (31.9).
+    func sceneBecameActive() {
+        refreshNow()
+        timebar.sceneBecameActive()
     }
 
     /// Выбранный день и минута в таймбаре — отсюда «сейчас» плавно едет кадр за кадром (экран).
