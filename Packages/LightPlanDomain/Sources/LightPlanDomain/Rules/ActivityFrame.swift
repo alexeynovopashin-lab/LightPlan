@@ -196,7 +196,10 @@ extension ActivityFrame {
         let stops = s.stops.sorted { $0.at < $1.at }
         var points = stops.map { Point(at: $0.at, time: clock($0.date), word: word($0.name), sign: $0.sign) }
         var names = stops.map(\.name)
-        if s.wantsSunset, let g = spot.light(on: WidgetFeed.Spot.day(of: s.startDate, in: tz))?.golden {
+        // Золотой час «Заката» — вечерний, «Рассвета» (31.7, зеркально) — утренний; оба пожелания — оба часа, что попали в съёмку.
+        let light = spot.light(on: WidgetFeed.Spot.day(of: s.startDate, in: tz))
+        let goldens = [s.wantsDawn ? light?.morningGolden : nil, s.wantsSunset ? light?.golden : nil].compactMap { $0 }
+        for g in goldens {
             let ms = Moment(g).milliseconds
             if ms >= s.start, ms <= s.end {
                 let i = points.firstIndex { $0.at > ms } ?? points.count

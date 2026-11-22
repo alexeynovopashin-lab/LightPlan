@@ -294,9 +294,10 @@ struct WidgetFrameTests {
         let minutes = line.dates.filter { $0 > now && $0 <= golden }
         #expect(minutes.count >= 178, "три часа по минуте: \(minutes.count)")
         #expect(line.dates.contains(golden), "в золотой час круг гаснет — это событие")
+        // 31.7: после вечернего золотого часа круг считает до завтрашнего утреннего — минуты идут и вечером (до 31.7 — с полуночи).
         let after = line.dates.filter { $0 > golden && $0 < tsk(0, day: 25) }
-        #expect(after.count <= 1, "после золотого часа и до полуночи минут нет: \(after.count)")
-        #expect(Set(line.dates.filter { $0 > tsk(0, day: 25) }.prefix(3)).contains(tsk(0, 1, day: 25)), "с полуночи считается завтрашний")
+        #expect(after.count >= 60, "после золотого часа минуты идут к завтрашнему утреннему: \(after.count)")
+        #expect(line.dates.contains(tsk(0, 1, day: 25)), "и после полуночи")
     }
 
     /// 30и.13 (Б2): на большом всегда идут Солнце и Луна, «через N» и кольцо блока отсчёта; 30и.16 — ещё и отсчёт «до золотого часа 1 ч 13 м»

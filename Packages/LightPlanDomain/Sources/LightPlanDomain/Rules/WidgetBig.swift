@@ -44,6 +44,11 @@ public enum BigWidget {
                    nextRise: f.tomorrow?.sunrise, moonCycle: phase.cycle)
     }
 
+    /// Время середины ножек — золотой час того события, что наверху «Света» (31.7, Алексей 19.11, вопрос 2 «А»): до конца утреннего
+    /// золотого часа утренний, потом вечерний (`DayLight.goldenNow`). Большой и после заката остаётся на сегодняшних сутках (ножки —
+    /// сегодняшние восход и закат), поэтому вечером здесь сегодняшний вечерний, а не завтрашний утренний, как у среднего. Полярные сутки — `nil`.
+    public static func golden(_ f: WidgetFrame) -> Date? { f.day.flatMap { $0.goldenNow(at: f.now) } }
+
     /// Слово света под временем на куполе (заглавными): «НОЧЬ», «ВЕЧЕРЕЕТ»… Слова — словарь приложения (`sun.<code>.label`), запасные русские.
     public static func phaseWord(_ code: LightCode, _ w: WidgetFeed.Words) -> String {
         w.extra("phase.\(code.rawValue)", fallbackPhase[code] ?? code.rawValue).uppercased()

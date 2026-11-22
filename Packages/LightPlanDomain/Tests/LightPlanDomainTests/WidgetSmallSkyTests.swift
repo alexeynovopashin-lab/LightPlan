@@ -88,7 +88,7 @@ struct WidgetSmallSkyTests {
         guard case .sunsets(let cells, let best) = SmallSky.window(f) else { Issue.record("ждали закаты"); return }
         #expect(cells.map(\.day) == ["вс", "пн", "вт"])
         #expect(cells.map(\.score) == [82, nil, 41], "часа заката в прогнозе нет — числа нет")
-        #expect(best == 0)
+        #expect(best?.day == 0 && best?.event == .sunset, "рассветных баллов в этом прогнозе нет — лучший из закатов")
     }
 
     @Test func theBestDayIsTheHighestScoreAndTheEarlierOnATie() {

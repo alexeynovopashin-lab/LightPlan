@@ -123,14 +123,21 @@ private struct WeekRow: View {
                         .shotNode("wk.bin")
                     }
                     Spacer(minLength: 0)
+                    // 31.7: рассвет наравне с закатом — у свободного дня оба золотых часа («золотой час 08:40 · 15:57»), у занятого
+                    // восход и закат значками («↑ 09:07 · ↓ 17:04»); до 31.7 — только вечерние.
                     if sky.set == nil && sky.goldenB == nil {
                         EmptyView()
                     } else if shoots.isEmpty {
                         Icon("golden", size: 14)
-                        Text(f.t.t("week.goldenAt", ["t": f.fmt(sky.goldenB ?? sky.set)]))
+                        Text(PlannerWeekBody.freeGolden(sky, t: f.t, fmt: f.fmt))
                     } else {
+                        if sky.rise != nil {
+                            Icon("sunrise", size: 14)
+                            Text(f.fmt(sky.rise))
+                            Text("·")
+                        }
                         Icon("sunset", size: 14)
-                        Text(f.t.t("week.sunsetAt", ["t": f.fmt(sky.set)]))
+                        Text(f.fmt(sky.set))
                     }
                 }
                 .font(webFont(12)).monospacedDigit()
@@ -202,7 +209,9 @@ private struct WeekRow: View {
         return VStack(alignment: .leading, spacing: 4) {
             det(pal, "sunrise", f.t.t("tele.sunrise"), f.fmt(sky.rise), gold: false)
             if sky.set != nil { det(pal, "sunset", f.t.t("tele.sunset"), f.fmt(sky.set), gold: false) }
-            if sky.goldenB != nil { det(pal, "clock", f.t.t("tele.golden"), f.range(sky.goldenB, sky.blueB), gold: true) }
+            // 31.7: оба золотых часа — «Золотой час утром 08:40–10:14», «Золотой час вечером 15:57–17:31» (до 31.7 — один вечерний).
+            if sky.blueA != nil { det(pal, "clock", f.t.t("pro.goldenAM"), f.range(sky.blueA, sky.goldenA), gold: true) }
+            if sky.goldenB != nil { det(pal, "clock", f.t.t(sky.blueA != nil ? "pro.goldenPM" : "tele.golden"), f.range(sky.goldenB, sky.blueB), gold: true) }
             Text(wx.map { PlannerWeekBody.wxLine(f.t, cloud: $0.cloud, wind: $0.wind) } ?? f.forecastNote)
                 .font(webFont(12)).foregroundStyle(pal.ink4)
         }
@@ -217,5 +226,15 @@ private struct WeekRow: View {
             Text(v).monospacedDigit().foregroundStyle(gold ? pal.brassInk : pal.ink2)
         }
         .font(webFont(12.5))
+    }
+}
+
+extension PlannerWeekBody {
+    /// Строка свободного дня недели: начала обоих золотых часов («золотой час 08:40 · 15:57», `week.goldenAt`); нет утреннего — один вечерний
+    /// (или закат), как до 31.7.
+    nonisolated static func freeGolden(_ sky: SolarDay, t: Lexicon, fmt: (Double?) -> String) -> String {
+        let evening = sky.goldenB ?? sky.set
+        let times = [sky.blueA, evening].compactMap { $0 }.map(fmt)
+        return t.t("week.goldenAt", ["t": times.joined(separator: " · ")])
     }
 }

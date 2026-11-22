@@ -292,7 +292,8 @@ struct WidgetBraunIdleViewTests {
         let L = BraunLayout(plan: plan, size: Plate.pro.size, medium: true, bare: true)
         #expect(L.bare && L.diameter == 116 && L.cx == 74 && L.cy == 96)
         #expect(L.drum == CGRect(x: 146, y: 38, width: 202, height: 116))
-        #expect(L.rows.map { $0.light?.kind } == [nil, .sunrise, .golden, .sunset, nil], "рассвет, золотой час в центре, закат")
+        // 31.7: сверху — утренний золотой час (до 31.7 место было пустым): барабан знает оба золотых часа.
+        #expect(L.rows.map { $0.light?.kind } == [.golden, .sunrise, .golden, .sunset, nil], "утренний ◐, рассвет, вечерний ◐ в центре, закат")
         #expect(L.rows.map(\.slot.y) == [0, 22, 44, 72, 94] && L.rows.map(\.slot.height) == [22, 22, 28, 22, 22])
         #expect(L.rows[3].extra == "тёплый" && L.rows[1].extra == nil && L.rows[2].extra == nil, "оценка только у заката")
         #expect(L.windowWidth > 0 && L.header.size == 15)

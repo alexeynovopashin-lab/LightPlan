@@ -94,13 +94,27 @@ public enum SmallSky {
     public struct SunsetCell: Equatable, Sendable {
         /// «вс».
         public var day: String
+        /// Балл заката.
         public var score: Int?
+        /// Балл рассвета (31.7).
+        public var dawn: Int? = nil
+
+        public init(day: String, score: Int?, dawn: Int? = nil) { self.day = day; self.score = score; self.dawn = dawn }
+    }
+
+    /// Какой из шести баллов окошка лучший: день и событие.
+    public struct Best: Equatable, Sendable {
+        public var day: Int
+        public var event: SkyEvent
+
+        public init(day: Int, event: SkyEvent) { self.day = day; self.event = event }
     }
 
     public enum Window: Equatable, Sendable {
         case shoot(ShootCell)
-        /// Закаты трёх следующих дней; `best` — индекс дня с наибольшим баллом (у ничьей — ранний), `nil` — баллов нет.
-        case sunsets([SunsetCell], best: Int?)
+        /// Три следующих дня парой «рассвет · закат» (31.7, Алексей 19.11, вопрос 1 «А»; до 31.7 — одни закаты); `best` — лучший из шести
+        /// баллов (у ничьей — ранний: день раньше, в дне рассвет раньше заката), `nil` — баллов нет. Над ним — красный флажок.
+        case sunsets([SunsetCell], best: Best?)
     }
 
     public static func window(_ f: WidgetFrame) -> Window {
@@ -114,8 +128,9 @@ public enum SmallSky {
                                     line: "\(f.weekday(start, in: s.zone).lowercased()) · \(f.clock(start, in: s.zone))",
                                     names: named.isEmpty ? s.shoot.title : named, genre: s.shoot.genre))
         }
-        let cells = f.ahead.map { SunsetCell(day: f.weekday($0.noon, in: f.zone).lowercased(), score: $0.rating?.score) }
-        return .sunsets(cells, best: best(cells.map(\.score)))
+        let cells = f.ahead.map { SunsetCell(day: f.weekday($0.noon, in: f.zone).lowercased(), score: $0.rating?.score, dawn: $0.rating?.sunrise) }
+        let six = cells.flatMap { [$0.dawn, $0.score] }
+        return .sunsets(cells, best: best(six).map { Best(day: $0 / 2, event: $0 % 2 == 0 ? .dawn : .sunset) })
     }
 
     /// Индекс наибольшего балла; у ничьей — ранний день; баллов нет — `nil`.

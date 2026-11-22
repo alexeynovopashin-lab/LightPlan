@@ -386,7 +386,10 @@ struct WidgetLiveTests {
         #expect(rect == ["12:00–13:54", "Свадьба", "Студия «Томсон»"], Comment(rawValue: "\(rect)"))
         #expect(!rect.joined().contains("Анна") && !rect.joined().contains("Игорь"))
         #expect(LockCircularView(frame: now).label == "4:10", Comment(rawValue: "\(String(describing: LockCircularView(frame: now).label))"))
-        #expect(LockCircularView(frame: frame(at: tsk(18, 30))).label == nil, "после золотого часа круг без цифр")
+        // 31.7: после вечернего золотого часа круг считает до завтрашнего утреннего (до 31.7 — был без цифр).
+        let eve = frame(at: tsk(18, 30))
+        #expect(eve.nextGolden?.at == eve.tomorrow?.morningGolden && eve.nextGolden != nil)
+        #expect(LockCircularView(frame: eve).label == eve.nextGolden.map { ColonCount.text($0.at.timeIntervalSince(eve.now)) }, "после золотого часа — до завтрашнего утреннего")
         // Без съёмок прямоугольник — ближайший свет тем же рисунком, а не прочерк.
         let free = frame(at: tsk(12, 52), shoots: [])
         #expect(LockRectangularView(frame: free).lines.count == 3 && LockRectangularView(frame: free).lines[1] == "Закат", Comment(rawValue: "\(LockRectangularView(frame: free).lines)"))

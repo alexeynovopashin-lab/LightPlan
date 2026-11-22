@@ -1,5 +1,6 @@
 import SwiftUI
 import LightPlanDomain
+import LightPlanCore
 
 /// Малый виджет «окно неба» (30и.15, вариант Н2 листа `docs/30i13_big_widget.html` § 12; Алексей 16.11 «Н2, в код»). Правила — `SmallSky` (Domain).
 ///
@@ -37,8 +38,6 @@ struct SmallSkyCanvas: View {
     static let sunOrbit: CGFloat = 68, sunR: CGFloat = 9
     static let moonOrbit: CGFloat = 50, moonR: CGFloat = 24
     static let window = CGRect(x: 14, y: 114, width: 142, height: 42)
-    /// Знак заката в окошке пустой недели (30и.16: было 14).
-    static let sunsetSign: CGFloat = 21
 
     private var look: SmallSky.Look { SmallSky.look(frame) }
     private var gold: Color { SkyInk.c(0xF4B400) }
@@ -197,18 +196,102 @@ struct SmallSkyCanvas: View {
                 .frame(width: R.width - 56, alignment: .leading).position(x: 52 + (R.width - 56) / 2, y: 148 - R.minY - 0.36 * 11)
             }
         case .sunsets(let cells, let best):
+            // 31.7 (Алексей 19.11, вопрос 1 «А»): у дня пара «рассвет · закат». Пара 11 pt не влезала в колонку 38 pt рядом с клеткой знака (замер
+            // «48 · 72» = 38,8 pt), поэтому клетки знака больше нет: три колонки по 47 pt (`Pairs`). До 31.7 — знак заката 21 pt и закаты 16 pt.
+            // Золотой знак (Алексей 16.11 «солнышко крупнее и цветным») встал на место красного флажка: над лучшим числом, ↑ или ↓ (оркестратор 19.11).
             ZStack(alignment: .topLeading) {
-                // Знак заката — крупный и золотой, как Солнце в окне (30и.16, Алексей 16.11: «солнышко надо сделать крупнее и цветным»): 14 → 21 pt,
-                // серые чернила → золото Солнца; занимает клетку до первой черты (x 28) с полями 3,5.
-                WidgetIcon(name: BraunSign.light(.sunset), size: Self.sunsetSign, line: 1.7).foregroundStyle(gold).position(x: 14, y: 21)
-                ForEach([28.0, 66, 104], id: \.self) { divider(x: $0) }
+                ForEach(Pairs.dividers, id: \.self) { divider(x: $0) }
                 ForEach(cells.indices, id: \.self) { i in
-                    let cx = 47.0 + 38 * Double(i), c = cells[i], good = (c.score ?? 0) >= 75
-                    text(c.day, 9, .medium, color: pal.muted).position(x: cx, y: 129 - R.minY - 0.36 * 9)
-                    text(c.score.map(String.init) ?? "—", 16, .semibold, color: good ? pal.amber : pal.text)
-                        .position(x: cx, y: 148 - R.minY - 0.36 * 16)
+                    let cx = Pairs.centre(i), c = cells[i], p = Pairs.layout(c)
+                    let mark = Pairs.mark(c, best: best?.day == i ? best?.event : nil)
+                    text(c.day, 9, .medium, color: pal.muted).position(x: cx + mark.labelX, y: Pairs.labelY)
+                    if let e = best?.day == i ? best?.event : nil, let sx = mark.signX {
+                        WidgetIcon(name: BraunSign.light(e == .dawn ? .sunrise : .sunset), size: Pairs.sign, line: 1.7).foregroundStyle(gold)
+                            .frame(width: Pairs.sign, height: Pairs.sign).position(x: cx + sx, y: Pairs.signY)
+                    }
+                    ForEach(p.items.indices, id: \.self) { k in
+                        let it = p.items[k]
+                        text(it.text, p.size, it.dot ? .regular : .semibold, color: it.dot ? pal.muted : it.color(pal))
+                            .position(x: cx + it.x, y: 148 - R.minY - 0.36 * p.size)
+                    }
                 }
             }
+        }
+    }
+
+    /// Пары окошка: где стоят балл рассвета, точка и балл заката в колонке дня. Считает по замеру шрифта (`BraunText`), чтобы флажок встал
+    /// ровно над лучшим числом, а «100 · 100» — не вышел за черту (тогда точка без пробелов).
+    enum Pairs {
+        static let size = 11.0
+        static let column: CGFloat = 142.0 / 3   // ширина окошка `SmallSkyCanvas.window` на три дня
+        static var dividers: [CGFloat] { [column, 2 * column] }
+        static func centre(_ i: Int) -> CGFloat { column * (CGFloat(i) + 0.5) }
+
+        struct Item {
+            var text: String
+            var x: CGFloat
+            var dot: Bool
+            var score: Int?
+            func color(_ pal: BraunPalette) -> Color { score == nil ? pal.dim : ((score ?? 0) >= 75 ? pal.amber : pal.text) }
+        }
+
+        struct Layout {
+            var items: [Item]
+            var width: CGFloat
+            /// Кегль пары: 11, а в колонке, где и с точкой без пробелов не влезает («100 · 100» = 49,2 pt), — меньше, но не ниже `minSize`.
+            var size: CGFloat = 11
+            /// Центр числа события от центра колонки — над ним флажок.
+            var dawnX: CGFloat
+            var sunsetX: CGFloat
+        }
+
+        /// Нижний предел кегля пары (оркестратор 19.11: «нижний предел ~0,9 — 11 → 10 pt»).
+        static let minSize = 10.0
+
+        static func layout(_ c: SmallSky.SunsetCell) -> Layout {
+            let a = c.dawn.map(String.init) ?? "—", b = c.score.map(String.init) ?? "—"
+            // 11 pt с пробелами у точки → 11 pt без них (поле 2 pt до черты) → 10,5 → 10 pt без них (поле ≥ 0,75 pt; «100 · 100» в 10 pt = 45,3 pt, поле 0,99): ужимается только эта колонка.
+            let tries: [(Double, Bool, CGFloat)] = [(size, true, 4), (size, false, 4), (10.5, false, 1.5), (minSize, false, 1.5)]
+            func width(_ k: Double, _ roomy: Bool) -> CGFloat {
+                let w = { (t: String) in CGFloat(BraunText.width(t, size: k, semibold: true, mono: true)) }
+                return w(a) + w(b) + CGFloat(BraunText.width("·", size: k, semibold: false)) + 2 * gap(roomy)
+            }
+            let pick = tries.first { width($0.0, $0.1) <= column - $0.2 } ?? tries[tries.count - 1]
+            let k = pick.0, roomy = pick.1
+            func w(_ t: String) -> CGFloat { CGFloat(BraunText.width(t, size: k, semibold: true, mono: true)) }
+            let dot = CGFloat(BraunText.width("·", size: k, semibold: false))
+            let g = gap(roomy)
+            let total = w(a) + g + dot + g + w(b)
+            let left = -total / 2
+            let ax = left + w(a) / 2, dx = left + w(a) + g + dot / 2, bx = left + w(a) + g + dot + g + w(b) / 2
+            return Layout(items: [Item(text: a, x: ax, dot: false, score: c.dawn), Item(text: "·", x: dx, dot: true, score: nil),
+                                  Item(text: b, x: bx, dot: false, score: c.score)],
+                          width: total, size: CGFloat(k), dawnX: ax, sunsetX: bx)
+        }
+
+        /// Зазор вокруг точки: 3 pt, а если пара так не влезает (балл 100) — 1 pt.
+        static func gap(_ roomy: Bool) -> CGFloat { roomy ? 3 : 1 }
+
+        /// Золотой знак лучшего события: 21 pt, как знак заката до 31.7. Предел — ширина колонки, не высота окошка: рисунок знака занимает
+        /// 0,79 размера в ширину (x 2,5…21,5 из 24) и 0,52 в высоту; над «100 · 100» (центр числа в 13,4 pt от середины колонки) при 21 pt
+        /// до черты остаётся 2 pt, при 24 — 0,7 pt.
+        static let sign: CGFloat = 21
+        /// Центр рамки знака: середина рисунка (y 4…16,5 из 24) — на 12 pt от верха окошка, над цифрами (их верх ≈ 26 pt).
+        static let signY: CGFloat = 12 + (0.5 - 10.25 / 24) * sign
+        static let labelY: CGFloat = 129 - 114 - 0.36 * 9   // 114 = верх окошка `SmallSkyCanvas.window`
+
+        /// Половина рисунка знака с половиной линии 1,7 (в pt).
+        static let signHalf: CGFloat = (21.5 - 2.5) / 24 / 2 * sign + 0.75
+
+        /// Где в колонке стоят подпись дня и знак (от середины колонки): у лучшего дня знак — над лучшим числом, подпись — над другим.
+        /// Оба не подходят к черте ближе 1,5 / 1 pt: рядом с «100» число стоит в 13,8 pt от середины, знак тогда сдвинут к середине на ≤ 0,7 pt.
+        static func mark(_ c: SmallSky.SunsetCell, best: SkyEvent?) -> (labelX: CGFloat, signX: CGFloat?) {
+            guard let best else { return (0, nil) }
+            let p = layout(c)
+            let (l, s) = best == .dawn ? (p.sunsetX, p.dawnX) : (p.dawnX, p.sunsetX)
+            func clamp(_ x: CGFloat, _ lim: CGFloat) -> CGFloat { min(lim, max(-lim, x)) }
+            let lw = CGFloat(BraunText.width(c.day, size: 9, semibold: true)) / 2
+            return (clamp(l, column / 2 - 1 - lw), clamp(s, column / 2 - 1.5 - signHalf))
         }
     }
 
@@ -222,8 +305,9 @@ struct SmallSkyCanvas: View {
         switch SmallSky.window(frame) {
         case .shoot:
             Pointer(down: false).fill(pal.flag).frame(width: 8, height: 12).position(x: R.minX + 5, y: R.minY + 21)
-        case .sunsets(_, let best):
-            if let best { Pointer(down: true).fill(pal.flag).frame(width: 9.2, height: 8).position(x: R.minX + 47 + 38 * CGFloat(best), y: R.minY - 0) }
+        case .sunsets:
+            // 31.7: у дней вместо красного флажка — золотой знак лучшего события внутри окошка (`Pairs.mark`).
+            EmptyView()
         }
     }
 

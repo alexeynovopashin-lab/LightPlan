@@ -65,13 +65,23 @@ public enum BraunIdle {
     }
 
     /// Роль каждого из трёх времён света: прошедшее тусклое, ближайшее янтарное, дальнее основным цветом. Все прошли — все тусклые.
-    /// Времени нет (полярные сутки) — оно считается прошедшим: «—» тусклым.
+    /// Времени нет (полярные сутки) — оно считается прошедшим: «—» тусклым. Ближайшее — самое раннее из будущих, а не первое по месту:
+    /// с 31.7 утром в строке «◐» стоит утренний золотой час (08:40), он раньше восхода над ним (09:07).
     public static func roles(now: Date, _ times: [Date?]) -> [Role] {
-        let next = times.firstIndex { ($0 ?? .distantPast) > now }
+        let future = times.indices.filter { (times[$0] ?? .distantPast) > now }
+        let next = future.min { times[$0]! < times[$1]! }
         return times.indices.map { i in
-            guard let next else { return .past }
-            return i < next ? .past : (i == next ? .next : .far)
+            guard let next, let t = times[i], t > now else { return .past }
+            return i == next ? .next : .far
         }
+    }
+
+    /// Время строки «◐» левой колонки (31.7, Алексей 19.11, вопрос 2 «А»): золотой час того события, что наверху «Света», — до конца
+    /// утреннего золотого часа утренний, потом вечерний (`DayLight.goldenNow`); после заката — завтрашний утренний: виджет уже говорит
+    /// о завтрашнем рассвете (30.10, `ratedEvent`). Полярные сутки — `nil` («—»).
+    public static func golden(_ f: WidgetFrame) -> Date? {
+        if isNight(f) { return f.tomorrow?.morningGolden }
+        return f.day.flatMap { $0.goldenNow(at: f.now) }
     }
 
     /// Балл на столбике: доля заливки 0…1 от низа; чёрточки 6 × 0,5 на 20 / 40 / 60 / 80.
@@ -89,18 +99,23 @@ public enum BraunIdle {
         public var tomorrow: Bool
     }
 
-    /// Барабан света: события сегодняшних суток по порядку — рассвет, золотой час, закат; в центре ближайшее к «сейчас» (на доске в 15:18 —
-    /// золотой час), по сторонам предыдущее и следующее. После заката к ним добавляется завтрашний рассвет и встаёт в центр (на доске Е он
-    /// ближайший). До рассвета в центре сегодняшний рассвет. Полярные сутки: событий нет, барабан пуст.
-    /// Возвращает пять мест −2 … +2; нет события — `nil`, остальные стоят на своих местах (как у барабана маршрута).
+    /// Барабан света: события сегодняшних суток по времени — утренний золотой час, рассвет, вечерний золотой час, закат (31.7: утренний
+    /// золотой час равен вечернему; до 31.7 — только вечерний); в центре ближайшее к «сейчас» (на доске в 15:18 — золотой час), по сторонам
+    /// предыдущее и следующее. После заката к ним добавляются завтрашние утренний золотой час и рассвет, ближайший из них встаёт в центр (на
+    /// доске Е — рассвет). Полярные сутки: событий нет, барабан пуст. Возвращает пять мест −2 … +2; нет события — `nil`, остальные стоят на
+    /// своих местах (как у барабана маршрута).
     public static func lightDrum(_ f: WidgetFrame) -> [LightItem?] {
         var items: [LightItem] = []
-        if let d = f.day {
-            if let r = d.sunrise { items.append(LightItem(kind: .sunrise, at: r, tomorrow: false)) }
+        func day(_ d: WidgetFeed.DayLight, tomorrow: Bool) {
+            if let m = d.morningGolden { items.append(LightItem(kind: .golden, at: m, tomorrow: tomorrow)) }
+            if let r = d.sunrise { items.append(LightItem(kind: .sunrise, at: r, tomorrow: tomorrow)) }
+            guard !tomorrow else { return }
             if let g = d.golden { items.append(LightItem(kind: .golden, at: g, tomorrow: false)) }
             if let s = d.sunset { items.append(LightItem(kind: .sunset, at: s, tomorrow: false)) }
         }
-        if isNight(f), let r = f.tomorrow?.sunrise { items.append(LightItem(kind: .sunrise, at: r, tomorrow: true)) }
+        if let d = f.day { day(d, tomorrow: false) }
+        if isNight(f), let t = f.tomorrow { day(t, tomorrow: true) }
+        items.sort { $0.at < $1.at }
         let centre = items.firstIndex { $0.at > f.now } ?? max(0, items.count - 1)
         return BraunDrum.neighbours(items, current: items.isEmpty ? nil : centre)
     }
@@ -169,26 +184,36 @@ public enum BraunIdle {
         return f.words[.noShootsUntil].replacingOccurrences(of: "{d}", with: dayAndNumber(end, in: f.zone, f))
     }
 
-    /// Строка заката следующего дня под «съёмок нет»: «пн 26», время заката, балл или (часа в прогнозе нет) слово неба.
+    /// Строка следующего дня под «съёмок нет»: «пн 26», рассвет и закат — время и балл каждого (31.7, Алексей 19.11, вопрос 1 «А»: у дня
+    /// две оценки; до 31.7 — только закат), или (обоих баллов в прогнозе нет) слово неба.
     public struct SunsetRow: Equatable, Sendable {
         public var day: String
+        /// Время заката.
         public var time: String
+        /// Балл заката.
         public var score: Int?
+        /// Слово неба — только когда нет ни одного балла.
         public var word: String?
-        /// Облачность в час заката, % (большой виджет рисует её рядом с полоской балла); `nil` — нет в прогнозе.
+        /// Облачность в час заката, % (с 31.7 строки не рисуют её: двум оценкам с временем и полоской на большом не хватает ширины); `nil` — нет в прогнозе.
         public var clouds: Int? = nil
+        /// Время восхода и рассветный балл (31.7).
+        public var riseTime: String = "—"
+        public var riseScore: Int? = nil
     }
 
-    /// Закаты на три дня вперёд — только когда неделя пуста (Алексей 16.11). Прогноза на день нет — строка с одним временем:
-    /// время заката считается на месте, оценку не выдумываем. Ровно столько дней, сколько есть в `ahead`.
+    /// Дни на три вперёд — только когда неделя пуста (Алексей 16.11). Прогноза на день нет — строка с одними временами: время
+    /// считается на месте, оценку не выдумываем. Ровно столько дней, сколько есть в `ahead`.
     public static func sunsetRows(_ f: WidgetFrame) -> [SunsetRow] {
         guard emptyWeekLine(f) != nil else { return [] }
         return f.ahead.map { a in
-            SunsetRow(day: dayAndNumber(a.noon, in: f.zone, f),
-                      time: a.sunset.map { f.clock($0, in: f.zone) } ?? "—",
-                      score: a.rating?.score,
-                      word: a.rating?.score == nil ? a.rating?.category.map { f.words.sky($0) } : nil,
-                      clouds: a.rating?.clouds)
+            let none = a.rating?.score == nil && a.rating?.sunrise == nil
+            return SunsetRow(day: dayAndNumber(a.noon, in: f.zone, f),
+                             time: a.sunset.map { f.clock($0, in: f.zone) } ?? "—",
+                             score: a.rating?.score,
+                             word: none ? a.rating?.category.map { f.words.sky($0) } : nil,
+                             clouds: a.rating?.clouds,
+                             riseTime: a.sunrise.map { f.clock($0, in: f.zone) } ?? "—",
+                             riseScore: a.rating?.sunrise)
         }
     }
 
