@@ -338,10 +338,17 @@ struct PlannerDayPanel: View {
             .motionGeo("dp.bar")
     }
 
-    /// Длина золотого часа в строке дня — вечерняя, от +6° до заката (31.6). До 31.6 туман у заката подменял её утренней
-    /// (`восход − goldenA` — отрицательная, и строка теряла длину вовсе); утренний вариант строки — 31.7.
-    nonisolated static func goldenMinutes(_ sky: SolarDay) -> Double? {
-        sky.set.flatMap { s in sky.goldenB.map { s - $0 } }
+    /// Длина золотого часа в строке дня: у заката — вечерняя, от +6° до заката (31.6); у рассвета (31.7, Алексей 19.11, вопрос 2 «А») —
+    /// утренняя, от восхода до +6°, зеркально. Какая — как у знака дня (`SkyEvent.ofDay`): до полудня утренняя, после — вечерняя. До 31.6 туман
+    /// у заката подменял её утренней (`восход − goldenA` — отрицательная, и строка теряла длину вовсе).
+    nonisolated static func goldenMinutes(_ sky: SolarDay, _ e: SkyEvent = .sunset) -> Double? {
+        e == .dawn ? sky.goldenA.flatMap { a in sky.rise.map { a - $0 } } : sky.set.flatMap { s in sky.goldenB.map { s - $0 } }
+    }
+
+    /// Цвет времени по баллу события — одна шкала у восхода и заката (31.7: до 31.7 восход был всегда серым): от 75 — латунь, от 50 —
+    /// зелёный, от 28 — чернила, ниже — синий; балла нет — `none`.
+    nonisolated static func scoreColor(_ score: Int?, _ pal: Palette, none: Color) -> Color {
+        score.map { $0 >= 75 ? pal.brass : $0 >= 50 ? pal.green : $0 >= 28 ? pal.ink : pal.blue } ?? none
     }
 
     /// Основная часть (`.dp-bar-main`): показания в строку без переноса, ширина её сжимается вместе с плашкой,
@@ -349,14 +356,14 @@ struct PlannerDayPanel: View {
     private func main(_ pal: Palette, shut: Bool) -> some View {
         let d = app.planner.selected
         let sky = f.sky(d), wx = f.weather(d)
-        let goldenMin = Self.goldenMinutes(sky)
-        let sc = wx?.sunset
-        let setColor: Color = sc.map { $0 >= 75 ? pal.brass : $0 >= 50 ? pal.green : $0 >= 28 ? pal.ink : pal.blue } ?? pal.brass
+        let goldenMin = Self.goldenMinutes(sky, f.dayEvent)
+        let setColor = Self.scoreColor(wx?.sunset, pal, none: pal.brass)
+        let riseColor = Self.scoreColor(wx?.sunrise, pal, none: pal.ink2)
         let golden = goldenMin.flatMap { $0 > 0 ? f.durShort(Int($0.rounded())) : nil }
         let weather = wx.flatMap { w in f.temp(d).map { LightLineRow.Weather(icon: w.signIconName(f.dayEvent), temp: "\($0)°") } }
         // Показания стоят серединой на оси экрана, не на левом краю рамки: без капсулы справа от них пусто (28.10).
         return LightLineCentre(axis: panelW > 0 ? panelW / 2 - FoldGeometry.inset : nil) {
-            LightLineRow(rise: f.fmt(sky.rise), set: f.fmt(sky.set), setColor: setColor, golden: golden,
+            LightLineRow(rise: f.fmt(sky.rise), set: f.fmt(sky.set), setColor: setColor, golden: golden, riseColor: riseColor,
                          weather: weather, note: f.forecastNote, pal: pal)
         }
         // Показания остаются полной ширины (`fixedSize`), сжимается одна надпись «прогноза нет» (`lineLimit(1)` +
@@ -591,19 +598,30 @@ struct PlannerDayList: View {
         return it.kind == .meet ? f.t.t("day.meet") : it.kind == .event ? f.t.t("day.event") : f.words.typeName(s)
     }
 
-    /// Свободный день — не «пусто», а час, ради которого его открывают.
-    private func free(_ pal: Palette) -> some View {
-        let sky = f.sky(app.planner.selected)
-        let say: String = if let a = sky.goldenB, let b = sky.blueB {
-            f.t.t("day.goldenSpan", ["a": f.fmt(a), "b": f.fmt(b)])
-        } else if let t = sky.goldenB ?? sky.set {
-            f.t.t("week.goldenAt", ["t": f.fmt(t)])
-        } else {
-            f.t.t("day.freeDay")
+    /// Строка свободного дня: оба золотых часа «золотой час 08:40–10:14 · 15:57–17:31» (`week.goldenAt`); есть только один — «с … до …»
+    /// (`day.goldenSpan`), как было; нет промежутка — начало или закат; ничего — «свободный день».
+    nonisolated static func freeLine(_ sky: SolarDay, t: Lexicon, clock: ClockText) -> String {
+        let fmt = clock.fmt
+        let spans = [(sky.blueA, sky.goldenA), (sky.goldenB, sky.blueB)].compactMap { p -> (Double, Double)? in
+            guard let a = p.0, let b = p.1 else { return nil }
+            return (a, b)
         }
+        if spans.count == 2 {
+            // 24 часа — «08:40–10:14» без пробелов (строке нужно влезть в 350 pt), 12 — как `range` («8:40–10:14 AM»).
+            let one = { (p: (Double, Double)) in clock.is12 ? clock.range(p.0, p.1) : "\(fmt(p.0))–\(fmt(p.1))" }
+            return t.t("week.goldenAt", ["t": spans.map(one).joined(separator: " · ")])
+        }
+        if let s = spans.first { return t.t("day.goldenSpan", ["a": fmt(s.0), "b": fmt(s.1)]) }
+        if let x = sky.goldenB ?? sky.set { return t.t("week.goldenAt", ["t": fmt(x)]) }
+        return t.t("day.freeDay")
+    }
+
+    /// Свободный день — не «пусто», а час, ради которого его открывают: утренний и вечерний золотой час (31.7; до 31.7 — только вечерний).
+    private func free(_ pal: Palette) -> some View {
+        let say = Self.freeLine(f.sky(app.planner.selected), t: f.t, clock: f.clock)
         return HStack(spacing: 10) {
             Icon("golden", size: 17).foregroundStyle(pal.brass)
-            Text(say).font(webFont(13)).foregroundStyle(pal.ink3)
+            Text(say).font(webFont(13)).foregroundStyle(pal.ink3).lineLimit(1)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 12)

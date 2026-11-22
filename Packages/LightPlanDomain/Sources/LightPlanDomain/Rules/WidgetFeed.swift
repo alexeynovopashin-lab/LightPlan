@@ -90,6 +90,9 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
         public var spot: Spot?
         /// Съёмке нужен закат: Алексей 24.10 — «свет, если съемке он нужен»; это пожелание «Закат» в карточке.
         public var wantsSunset: Bool
+        /// Съёмке нужен рассвет — пожелание «Рассвет» (31.7: золотой час утра в строке экрана блокировки и точка «Золотой» на плашке
+        /// съёмки, как у «Заката»). Пишется только `true`; нет в файле старого вида — `nil`, как «не нужен».
+        public var wantsSunrise: Bool? = nil
         public var rents: [Rent]
         public var stops: [Stop]
         /// Код жанра (`wedding`): по нему подписи берут «до конца свадьбы», а не «съёмки». Нет в файле старого вида — общее слово.
@@ -100,8 +103,9 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
 
         public init(id: String, start: Int64, end: Int64, open: Bool = false, title: String, place: String = "",
                     spot: Spot? = nil, wantsSunset: Bool = false, rents: [Rent] = [], stops: [Stop] = [],
-                    genre: String? = nil, names: String? = nil) {
+                    genre: String? = nil, names: String? = nil, wantsSunrise: Bool = false) {
             self.id = id
+            self.wantsSunrise = wantsSunrise ? true : nil
             self.start = start
             self.end = end
             self.open = open
@@ -117,6 +121,8 @@ public struct WidgetFeed: Codable, Sendable, Equatable {
 
         public var startDate: Date { Moment(milliseconds: start).date }
         public var endDate: Date { Moment(milliseconds: end).date }
+        /// Пожелание «Рассвет» (файл старого вида — нет).
+        public var wantsDawn: Bool { wantsSunrise == true }
     }
 
     /// Оценка заката одного дня (30б.2в-5): то, что приложение знает из настоящего прогноза и чего не вычислит расширение.
@@ -353,7 +359,7 @@ extension WidgetFeed.Spot {
         let sun = SolarDay(date: day, place: place)
         func at(_ m: Minutes?) -> Date? { m.map { moment(minutes: $0, on: day, place: place) } }
         return WidgetFeed.DayLight(day: day, sunrise: at(sun.rise), golden: at(sun.goldenB), sunset: at(sun.set), polar: sun.polar, goldenEnd: at(sun.goldenA),
-                                   noon: at(sun.solarNoon))
+                                   noon: at(sun.solarNoon), morningGolden: at(sun.blueA))
     }
 
     /// Начало вечернего золотого часа (солнце опускается до 6°) в день `day` по часам места; `nil` — в этот день
@@ -382,6 +388,16 @@ extension WidgetFeed {
         public var goldenEnd: Date? = nil
         /// Солнечный полдень (31.5б): конец утра, когда солнце до 6° не поднимается, — как `SkyEvent.morningEnd` у «Света».
         public var noon: Date? = nil
+        /// Начало утреннего золотого часа (солнце поднялось до −4°, `blueA`; 31.7) — пара `golden` у рассвета: утренний золотой час
+        /// идёт от него до `goldenEnd`. `nil` — солнце −4° снизу вверх не проходит.
+        public var morningGolden: Date? = nil
+
+        /// Начало золотого часа события (31.7): у рассвета — утренний (`morningGolden`), у заката — вечерний (`golden`).
+        public func goldenStart(_ e: SkyEvent) -> Date? { e == .dawn ? morningGolden : golden }
+
+        /// Золотой час, о котором говорит верх «Света» в момент `t` этих суток (31.7, Алексей 19.11, вопрос 2 «А»): до конца утреннего
+        /// золотого часа — утренний, дальше — вечерний (`event(at:)` = `SkyEvent.pick`). Полярные сутки — `nil`.
+        public func goldenNow(at t: Date) -> Date? { event(at: t).flatMap(goldenStart) }
 
         /// Конец утра — то же, что `SkyEvent.morningEnd(_:)` у экранов: конец утреннего золотого часа, без него — полдень. Свет собран
         /// без полудня (тесты старого вида) — середина между восходом и закатом, иначе сам восход.

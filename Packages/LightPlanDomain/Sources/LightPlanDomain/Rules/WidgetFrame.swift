@@ -55,7 +55,7 @@ public struct WidgetFrame: Equatable, Sendable {
         /// Свет того дня, который съёмка рисует на плашке: у ещё не начавшейся — день её начала (завтрашняя — завтрашний свет),
         /// у идущей — сегодня; по часам и месту самой съёмки, как и золотой час.
         public var day: WidgetFeed.DayLight?
-        /// Начало золотого часа, если съёмке нужен закат и этот час ещё не прошёл целиком.
+        /// Начало золотого часа, если съёмке нужен закат (вечерний) или рассвет (утренний, 31.7) и этот час ещё не прошёл целиком.
         public var golden: Date?
         public var countdown: Countdown?
         /// Следующая точка маршрута и все оставшиеся (первая в `left` — следующая).
@@ -94,13 +94,16 @@ public struct WidgetFrame: Equatable, Sendable {
     /// Сколько суток и строк занимает неделя среднего вида: семь суток от сегодняшних, три строки (больше в высоту не влезает).
     public static let weekDays = 7, weekRows = 3
 
-    /// Закат одного из следующих дней: полдень дня (от него день недели и число), время заката (`nil` — полярные сутки) и оценка, если она есть.
+    /// Рассвет и закат одного из следующих дней: полдень дня (от него день недели и число), время восхода и заката (`nil` — полярные
+    /// сутки) и оценка (в ней оба балла), если она есть. До 31.7 — только закат: имя осталось прежним.
     public struct SunsetAhead: Equatable, Sendable {
         public var noon: Date
         public var sunset: Date?
         public var rating: WidgetFeed.Rating?
+        /// Восход того дня (31.7, Алексей 19.11, вопрос 1 «А»: у каждого дня две оценки — рассвет и закат).
+        public var sunrise: Date? = nil
     }
-    /// Закаты дней с завтрашнего: ими средний вид заполняет пустую неделю (Алексей 16.11: «чтобы пространство не пустовало»).
+    /// Дни с завтрашнего: ими средний, большой и малый виды заполняют пустую неделю (Алексей 16.11: «чтобы пространство не пустовало»).
     public var ahead: [SunsetAhead] = []
     /// Сколько дней: столько строк влезает под строку «съёмок нет» (три, как строк недели).
     public static let aheadDays = 3
@@ -151,13 +154,24 @@ extension WidgetFeed {
 
     private func spot(of shoot: Shoot) -> Spot { shoot.spot ?? place }
 
+    /// Чей золотой час нужен съёмке (31.7): «Закат» — вечерний, «Рассвет» — утренний, как зеркало; оба пожелания — тот, что у её
+    /// начала по правилу верха «Света» (`DayLight.event(at:)`: начало до конца утреннего золотого часа — утренний). Ни одного — `nil`.
+    static func goldenEvent(of s: Shoot, light l: DayLight) -> SkyEvent? {
+        switch (s.wantsDawn, s.wantsSunset) {
+        case (true, true): return l.event(at: s.startDate) ?? .sunset
+        case (true, false): return .dawn
+        case (false, true): return .sunset
+        case (false, false): return nil
+        }
+    }
+
     func shootFrame(_ s: Shoot, at now: Date) -> WidgetFrame.ShootFrame {
         let tz = zone(of: s)
         let nowDay = Spot.day(of: now, in: tz), startDay = Spot.day(of: s.startDate, in: tz)
         var golden: Date?
-        if s.wantsSunset, let l = spot(of: s).light(on: startDay), let g = l.golden {
-            // Золотой час «нужен» до заката: пока он не кончился, строка про него остаётся.
-            if now < (l.sunset ?? g.addingTimeInterval(3600)) { golden = g }
+        if let l = spot(of: s).light(on: startDay), let e = Self.goldenEvent(of: s, light: l), let g = l.goldenStart(e) {
+            // Золотой час «нужен» до своего события — заката или (31.7) восхода: пока оно не прошло, строка про него остаётся.
+            if now < ((e == .dawn ? l.sunrise : l.sunset) ?? g.addingTimeInterval(3600)) { golden = g }
         }
         let live = s.startDate <= now
         var countdown: WidgetFrame.Countdown?
@@ -193,7 +207,8 @@ extension WidgetFeed {
         f.ahead = (1...WidgetFrame.aheadDays).compactMap { off in
             let d = today.adding(days: off)
             guard let noon = Self.noon(of: d, in: tz) else { return nil }
-            return WidgetFrame.SunsetAhead(noon: noon, sunset: spot.light(on: d)?.sunset, rating: rating(on: d))
+            let l = spot.light(on: d)
+            return WidgetFrame.SunsetAhead(noon: noon, sunset: l?.sunset, rating: rating(on: d), sunrise: l?.sunrise)
         }
         f.url = Self.dayURL(today)
 
@@ -263,7 +278,7 @@ extension WidgetFeed {
             cal.timeZone = tz
             for off in 0...2 {
                 let day = today.adding(days: off)
-                if let l = spot.light(on: day) { add(l.sunrise); add(l.sunset); add(l.golden); add(l.morningEnd) }
+                if let l = spot.light(on: day) { add(l.sunrise); add(l.sunset); add(l.golden); add(l.morningEnd); add(l.morningGolden) }
                 add(cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day)))
             }
         }
@@ -335,22 +350,49 @@ extension WidgetFeed {
             }
             return running + day
         case .circular:
-            guard let tz = place.timeZone, let today = place.today(at: now) else { return [] }
-            var cal = Calendar(identifier: .gregorian)
-            cal.timeZone = tz
-            return (0...2).flatMap { off -> [Date] in
-                let day = today.adding(days: off)
-                guard let g = place.light(on: day)?.golden,
-                      let midnight = cal.date(from: DateComponents(year: day.year, month: day.month, day: day.day))
-                else { return [] }
-                return Self.marks(max(midnight, now), min(g, end), step: 60)
-            }
+            // 31.7: круг считает до ближайшего золотого часа — утреннего или вечернего, поэтому минуты идут без перерыва до последнего
+            // золотого часа трёх суток (до 31.7 — от полуночи до вечернего, после его начала круг пустел до полуночи).
+            guard let today = place.today(at: now) else { return [] }
+            let starts = Self.goldenStarts(place, today: today, days: 3)
+            guard let last = starts.last(where: { $0 > now }) else { return [] }
+            return Self.marks(now, min(last, end), step: 60)
         case .large:
             // 30и.13 (Б2): на куполе ходят Солнце и Луна, у съёмок «через N», у блока отсчёта — кольцо точек; всё это статичные цифры, их
             // меняет лента. 30и.16: на куполе отсчёт «до золотого часа 1 ч 13 м» по минутам (как экран «Свет»), поэтому запись — каждую минуту.
             // 180 записей — 3 часа, дальше просит новую ленту (`Schedule.reload`): ≈ 8 перезагрузок в сутки при бюджете WidgetKit 40–70.
             return Self.marks(now, end, step: 60)
         }
+    }
+}
+
+extension WidgetFeed {
+    /// Начала золотых часов — утренних и вечерних — суток `today` и следующих (`days` всего), по времени.
+    static func goldenStarts(_ spot: Spot, today: CivilDate, days: Int) -> [Date] {
+        (0..<days).flatMap { off -> [Date] in
+            guard let l = spot.light(on: today.adding(days: off)) else { return [] }
+            return [l.morningGolden, l.golden].compactMap { $0 }
+        }.sorted()
+    }
+}
+
+extension WidgetFrame {
+    /// Ближайший золотой час для круга экрана блокировки (31.7, «зеркально закату»): до какого начала считать и от какого момента идёт
+    /// дуга пройденного пути. Утренний и вечерний равны: утром круг считает до утреннего (08:40), днём — до вечернего (15:57), после его
+    /// начала — до завтрашнего утреннего. Дуга — от предыдущего события: у вечернего от восхода (как до 31.7), у утреннего — от вчерашнего
+    /// вечернего золотого часа (у сегодняшнего утра его в кадре нет — за 12 часов до цели). `nil` — золотого часа впереди нет (полярные сутки).
+    public var nextGolden: (at: Date, from: Date)? {
+        var starts: [(at: Date, from: Date?)] = []
+        if let d = day {
+            if let m = d.morningGolden { starts.append((m, nil)) }
+            if let g = d.golden { starts.append((g, d.sunrise)) }
+        }
+        if let t = tomorrow {
+            if let m = t.morningGolden { starts.append((m, day?.golden)) }
+            if let g = t.golden { starts.append((g, t.sunrise)) }
+        }
+        guard let next = starts.filter({ $0.at > now }).min(by: { $0.at < $1.at }) else { return nil }
+        let from = next.from.flatMap { $0 < next.at ? $0 : nil } ?? next.at.addingTimeInterval(-12 * 3600)
+        return (next.at, from)
     }
 }
 

@@ -45,17 +45,18 @@ struct LockInlineView: View {
     }
 }
 
-/// Круглый виджет экрана блокировки (30б.2в, `accessoryCircular`, ~76 pt): отсчёт до золотого часа — «4:10» с двоеточием по
-/// середине цифр, вокруг дуга пройденного пути от рассвета до золотого часа. Без имён: экран виден на заблокированном телефоне.
+/// Круглый виджет экрана блокировки (30б.2в, `accessoryCircular`, ~76 pt): отсчёт до ближайшего золотого часа — утреннего или вечернего
+/// (31.7, `WidgetFrame.nextGolden`; до 31.7 — всегда вечернего) — «4:10» с двоеточием по середине цифр, вокруг дуга пройденного пути от
+/// предыдущего события. Без имён: экран виден на заблокированном телефоне.
 /// Цвет — `Color.primary`: на экране блокировки система красит содержимое сама (приглушённо), свои цвета ей не нужны.
 struct LockCircularView: View {
     let frame: WidgetFrame
     var alpha = false
 
-    /// До золотого часа и доля пути от рассвета (или от полуночи, если рассвета нет).
+    /// До ближайшего золотого часа и доля пути от предыдущего события.
     var goldenLeft: (left: TimeInterval, progress: Double)? {
-        guard let d = frame.day, let g = d.golden, g > frame.now else { return nil }
-        let from = d.sunrise ?? g.addingTimeInterval(-12 * 3600)
+        guard let next = frame.nextGolden else { return nil }
+        let g = next.at, from = next.from
         let total = g.timeIntervalSince(from)
         return (g.timeIntervalSince(frame.now), total > 0 ? min(1, max(0, frame.now.timeIntervalSince(from) / total)) : 0)
     }

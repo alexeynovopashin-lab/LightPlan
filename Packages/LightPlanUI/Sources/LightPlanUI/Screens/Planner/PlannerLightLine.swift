@@ -82,6 +82,8 @@ struct LightLineRow: View {
     let setColor: Color
     /// Длина золотого часа («57 мин»); `nil` — золотого часа нет, места под него тоже.
     let golden: String?
+    /// Цвет времени восхода — по рассветному баллу, той же шкалой, что закат (31.7); по умолчанию серый, как до 31.7.
+    var riseColor: Color? = nil
     let weather: Weather?
     /// Слово вместо погоды, когда прогноза нет.
     let note: String
@@ -89,7 +91,7 @@ struct LightLineRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            item("sunrise", rise, pal.ink2, node: "dp.rise")
+            item("sunrise", rise, riseColor ?? pal.ink2, node: "dp.rise")
             item("sunset", set, setColor, node: "dp.set")
             if let golden { item("golden", golden, pal.ink4, weight: 500, node: "dp.gold") }
             Rectangle().fill(pal.hairline).frame(width: 1, height: 12).fixedSize()

@@ -127,7 +127,7 @@ struct LargeFeet: View {
     /// от колонки между ножками, минус зазор 8. На 364 pt строки помещаются как есть; на 338 строка мельчает (до 0,7, как задано), а не заходит
     /// под соседнюю (Алексей 16.11: «будь внимателен к текстам, чтобы не наползали»).
     static func sideWidth(frame: WidgetFrame, iw: CGFloat, inset: CGFloat) -> CGFloat {
-        let time = frame.day?.golden.map { frame.clock($0, in: frame.zone) } ?? "—"
+        let time = BigWidget.golden(frame).map { frame.clock($0, in: frame.zone) } ?? "—"
         let centre = max(BraunText.width(time, size: 17, semibold: true, mono: true) + 15 + 5, BraunText.width(frame.words[.golden], size: 11, semibold: false))
         return max(0, (iw - 2 * inset - CGFloat(centre)) / 2 - 8)
     }
@@ -147,7 +147,8 @@ struct LargeFeet: View {
                 Spacer(minLength: 0)
                 cell(frame.words[.sunset], "sunset", frame.day?.sunset, line: BigWidget.scoreLine(.sunset, rating, frame.words), accent: false, align: .trailing)
             }
-            cell(frame.words[.golden], "sun", frame.day?.golden, line: nil, accent: true, align: .center)
+            // Середина — золотой час события наверху «Света» (31.7): утром утренний, потом вечерний.
+            cell(frame.words[.golden], "sun", BigWidget.golden(frame), line: nil, accent: true, align: .center)
         }
         .padding(.horizontal, inset)
         .frame(width: iw, alignment: .top)

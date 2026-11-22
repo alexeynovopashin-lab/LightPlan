@@ -235,15 +235,17 @@ struct WidgetLargeStatesTests {
     /// Теперь колонки общие: у трёх полосок одно начало и один конец (±0,5 pt), на обоих размерах и в обеих темах. Полоска — самый длинный
     /// сплошной отрезок дорожки или заливки в строке (текст ни того ни другого цвета не бывает). Длина полоски на 338 pt — не меньше 48 pt.
     @Test func theSunsetBarsHaveOneLength() throws {
+        // 31.7: у дня две полоски — рассвета и заката (Алексей 19.11, вопрос 1 «А»); облачность ушла из строки. Полоски рассвета — одна колонка,
+        // заката — другая: у всех трёх строк одно начало и один конец каждой (±0,5 pt).
         let fc: [WidgetFeed.Rating] = [.init(day: "2026-10-24", score: 61, quality: .good),
-                                       .init(day: "2026-10-25", score: 61, quality: .good, clouds: 99),
-                                       .init(day: "2026-10-26", score: 38, quality: .plain, clouds: 0),
-                                       .init(day: "2026-10-27", score: 58, quality: .good, clouds: 80)]
+                                       .init(day: "2026-10-25", score: 61, quality: .good, sunrise: 40, clouds: 99),
+                                       .init(day: "2026-10-26", score: 38, quality: .plain, sunrise: 90, clouds: 0),
+                                       .init(day: "2026-10-27", score: 58, quality: .good, sunrise: 12, clouds: 80)]
         let f = Self.frame(at: Self.tsk(16, 28), shoots: [], forecast: fc)
         for size in Self.sizes {
             for dark in [true, false] {
                 let px = try render(plate(f, size, dark: dark), scale: 4)
-                // Полоска — дорожка (чернила × 0,10 по подложке блока) или цветная заливка; серый текст ни тем ни другим не бывает длиннее 50 pt.
+                // Полоска — дорожка (чернила × 0,10 по подложке блока) или цветная заливка; серый текст ни тем ни другим не бывает.
                 let track = dark ? 13 + (236 - 13) * 0.10 : 250 + (17 - 250) * 0.10
                 func isBar(_ c: (Double, Double, Double)) -> Bool {
                     let sat = max(c.0, c.1, c.2) - min(c.0, c.1, c.2)
@@ -252,26 +254,31 @@ struct WidgetLargeStatesTests {
                 var bars: [(y: Double, from: Double, to: Double)] = []
                 var y = Double(size.height) * 0.6
                 while y < Double(size.height) - 16 {
-                    var best = (0.0, 0.0), runStart: Double? = nil, x = 20.0
+                    var runs: [(Double, Double)] = [], runStart: Double? = nil, x = 20.0
                     while x < Double(size.width) - 20 {
                         let ink = isBar(px.rgb(x, y))
                         if ink, runStart == nil { runStart = x }
-                        if !ink, let a = runStart { if x - a > best.1 - best.0 { best = (a, x) }; runStart = nil }
+                        if !ink, let a = runStart { if x - a > 15, x - a < Double(size.width) * 0.3 { runs.append((a, x)) }; runStart = nil }
                         x += 0.25
                     }
-                    if best.1 - best.0 > 30, best.1 - best.0 < Double(size.width) * 0.5 {
-                        // Соседние строки пикселей одной полоски — одна полоска (y — последняя найденная строка).
-                        if let last = bars.last, y - last.y < 1 { bars[bars.count - 1] = (y, min(last.from, best.0), max(last.to, best.1)) }
-                        else { bars.append((y, best.0, best.1)) }
+                    for r in runs {
+                        // Соседние строки пикселей одной полоски — одна полоска (у скруглённых концов строка короче, поэтому — по перекрытию).
+                        if let i = bars.lastIndex(where: { y - $0.y < 1 && r.0 < $0.to && r.1 > $0.from }) { bars[i] = (y, min(bars[i].from, r.0), max(bars[i].to, r.1)) }
+                        else { bars.append((y, r.0, r.1)) }
                     }
                     y += 0.25
                 }
                 let name = "\(Int(size.width)) \(dark ? "тёмная" : "светлая")"
-                #expect(bars.count == 3, "\(name): полосок \(bars.count): \(bars)")
-                #expect(bars.allSatisfy { $0.to - $0.from >= (size.width < 364 ? 48 : 70) }, "\(name): полоски короткие \(bars.map { $0.to - $0.from })")
-                if let a = bars.first {
-                    for b in bars.dropFirst() {
-                        #expect(abs(b.from - a.from) <= 0.5 && abs(b.to - a.to) <= 0.5, "\(name): полоски \(bars.map { ($0.from, $0.to) })")
+                #expect(bars.count == 6, "\(name): полосок \(bars.count): \(bars)")
+                let mid = Double(size.width) / 2
+                let dawn = bars.filter { $0.to < mid }, sunset = bars.filter { $0.from > mid }
+                #expect(dawn.count == 3 && sunset.count == 3, "\(name): рассвет слева, закат справа: \(bars.map { ($0.from, $0.to) })")
+                #expect(bars.allSatisfy { $0.to - $0.from >= (size.width < 364 ? 18 : 30) }, "\(name): полоски короткие \(bars.map { $0.to - $0.from })")
+                for group in [dawn, sunset] {
+                    if let a = group.first {
+                        for b in group.dropFirst() {
+                            #expect(abs(b.from - a.from) <= 0.5 && abs(b.to - a.to) <= 0.5, "\(name): полоски \(group.map { ($0.from, $0.to) })")
+                        }
                     }
                 }
             }

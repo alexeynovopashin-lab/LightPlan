@@ -183,6 +183,16 @@
   `fixedSize`, no `minimumScaleFactor` (inside the Button the old caption got 3 pt less height and shrank to 0.8: «рассвет» 117 px vs 143 px
   outside it); the line keeps the 12 pt height, size change animates 0.2 s. Nodes `edge.cap.rise|set`, `edge.word.rise|set`. Tests `DawnEqualCoreTests`, `DawnEqualTests`, `DawnEqualDomainTests`, `DawnDaySignTests`,
   `DawnWidgetNoonTests`, `DawnCaptionSizeTests`.
+- **Dawn in widgets and planner (31.7, Alexey 19.11 «по твоим советам, но только в бету»: sketch `light_plan:Light_Plan/docs/dawn_31_7_sketch_2026-11-19.html`, А/А).**
+  `DayLight.morningGolden` (= `blueA`, −4° rising; the morning golden hour is `morningGolden…goldenEnd`), `goldenStart(_:)`, `goldenNow(at:)` (= `SkyEvent.pick`).
+  «Three days ahead» (`BraunIdle.sunsetRows`, `SunsetAhead.sunrise`, row `riseTime`/`riseScore`; sky word only when both scores are missing): medium = day · ↑ score · ↓ score
+  (no times), big = day · ↑ time bar score · ↓ time bar score (sunset-hour clouds left the row; bars go first when 12-hour clocks do not fit 278 pt — `BraunSunsetRow.bars`),
+  small window = three columns of 47 pt with «48 · 72» 11 pt (the ☀︎ cell is gone: the pair did not fit 38 pt); the red flag became the gold ↑/↓ sign 21 pt over the best of six inside the window (`SmallSky.Best`, tie → earlier; `Pairs.mark` keeps it 1.5 pt off the column line, the day word moves over the other number). «100 · 100» (49.2 pt at 11) is the only pair that does not fit: that column alone goes down to 10.5 → 10 pt (`Pairs.layout`, floor `minSize`; orchestrator 19.11, option 4), the others stay 11.
+  One golden time: medium «◐» = `BraunIdle.golden` (after sunset tomorrow's morning, 30.10), big feet = `BigWidget.golden` (today's sunset after sunset — big stays on today),
+  light drum has both golden hours by time. Lock circle = `WidgetFrame.nextGolden` (nearest morning/evening, minute entries all day). Shoots: `Shoot.wantsSunrise` (written only
+  when true) → `ShootFrame.golden` morning (until sunrise; both wishes → by start, `goldenEvent`), Live Activity gold point for each wished golden inside the shoot.
+  Planner: month row golden length by `SkyEvent.ofDay` (`goldenMinutes(_:_:)`), sunrise coloured by the dawn score (`scoreColor`), free day «золотой час 08:40–10:14 · 15:57–17:31»
+  (`freeLine`); week busy «↑ 09:07 · ↓ 17:04», free «золотой час 08:40 · 15:57» (`freeGolden`), open day «Золотой час утром / вечером». No new words. Tests `DawnWidgetsTests`, `DawnWidgetsViewTests`.
 - **Arc clock follows time (31.9, Alexey 19.11 «Да, 31.9»).** `TimebarState.isLive`: on only by `jumpToNow` (launch, «↺», return after a
   background longer than `TimebarState.staleAfterBackground` = 15 min), off by any move of time (slider, dome, ribbon/drum shift, sunrise/sunset tap,
   `show(day:minute:)`). Live → `followNow()` sets the place's current minute (new day at midnight), no animation/haptics; `nowButtonVisible` is never

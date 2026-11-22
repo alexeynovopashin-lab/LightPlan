@@ -94,7 +94,7 @@ struct CountdownBlock: View {
     // MARK: Съёмок нет
 
     /// Строка «до сб 21 съёмок нет» с длиной дня справа и закаты трёх следующих дней под ней (Алексей 16.11: «чтобы пространство не пустовало»;
-    /// закаты — то же правило, что у среднего: `BraunIdle.sunsetRows`, строка `BraunSunsetRow`, на большом с «/ 100»).
+    /// дни — то же правило, что у среднего: `BraunIdle.sunsetRows`, строка `BraunSunsetRow`, на большом со временем и полоской у рассвета и заката, 31.7).
     private func empty(size: CGSize) -> some View {
         let sunsets = BraunIdle.sunsetRows(frame)
         let cols = BraunSunsetRow.Cols.of(sunsets)

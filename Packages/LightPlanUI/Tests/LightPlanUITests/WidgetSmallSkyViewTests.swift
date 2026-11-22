@@ -134,8 +134,10 @@ struct WidgetSmallSkyViewTests {
 
     // MARK: Указатель
 
-    /// Красный флажок Braun: у даты съёмки — на левом краю окошка, у закатов — над лучшим днём (здесь вс 25 с 82).
-    @Test func theRedPointerMarksTheDateOrTheBestSunset() throws {
+    /// Красный флажок Braun — у даты съёмки на левом краю окошка. У дней без съёмок его место занял золотой знак лучшего события (31.7,
+    /// оркестратор 19.11): над лучшим числом, внутри окошка; красного над окошком больше нет. Здесь лучший — закат вс 25 (82).
+    @Test func theRedPointerMarksTheDateAndTheGoldSignTheBestEvent() throws {
+        let gold = hex(0xF4B400)
         for w in Self.sizes {
             let k = Double(w) / 170
             for dark in [true, false] {
@@ -143,8 +145,24 @@ struct WidgetSmallSkyViewTests {
                 let shoot = try render(plate(Self.frame(.night), w, dark: dark))
                 #expect(dist(shoot.rgb(16 * k, 135 * k), flag) < 50, "\(Int(w)) \(dark): нет флажка у даты")
                 let sunsets = try render(plate(Self.frame(.emptyWeek), w, dark: dark))
-                #expect(dist(sunsets.rgb(61 * k, 112 * k), flag) < 50, "\(Int(w)) \(dark): нет указателя над лучшим закатом")
-                #expect(dist(sunsets.rgb(99 * k, 112 * k), flag) > 120, "\(Int(w)) \(dark): указатель не над лучшим")
+                guard case .sunsets(let cells, let best?) = SmallSky.window(Self.frame(.emptyWeek)) else { Issue.record("ждали дни с баллом"); return }
+                typealias P = SmallSkyCanvas.Pairs
+                func golds(_ cx: Double) -> Int {   // золотые пиксели в рамке знака 21 × 21 вокруг (cx, 114 + signY)
+                    var n = 0
+                    let s = Double(P.sign), cy = 114 + Double(P.signY)
+                    for iy in stride(from: cy - s / 2, to: cy + s / 2, by: 0.33) {
+                        for ix in stride(from: cx - s / 2, to: cx + s / 2, by: 0.33) where dist(sunsets.rgb(ix * k, iy * k), gold) < 90 { n += 1 }
+                    }
+                    return n
+                }
+                let p = P.layout(cells[best.day])
+                let x = 14 + Double(P.centre(best.day) + (best.event == .dawn ? p.dawnX : p.sunsetX))
+                #expect(golds(x) > 40, "\(Int(w)) \(dark): нет золотого знака над лучшим (x \(x), \(golds(x)) px)")
+                let other = (0..<3).first { $0 != best.day }!
+                #expect(golds(14 + Double(P.centre(other))) == 0, "\(Int(w)) \(dark): знак не только над лучшим")
+                var red = 0
+                for ix in stride(from: 14.0, to: 156, by: 0.5) where dist(sunsets.rgb(ix * k, 112 * k), flag) < 50 { red += 1 }
+                #expect(red == 0, "\(Int(w)) \(dark): красный флажок над окошком остался")
             }
         }
     }

@@ -338,8 +338,10 @@ struct BraunIdleContent: View {
     }
 
     private func dayRows(_ d: WidgetFeed.DayLight) -> some View {
-        let roles = BraunIdle.roles(now: frame.now, [d.sunrise, d.golden, d.sunset])
-        let rise = timeText(d.sunrise), golden = timeText(d.golden), set = timeText(d.sunset)
+        // «◐» — золотой час события наверху «Света» (31.7): утром утренний, после его конца вечерний.
+        let g = BraunIdle.golden(frame)
+        let roles = BraunIdle.roles(now: frame.now, [d.sunrise, g, d.sunset])
+        let rise = timeText(d.sunrise), golden = timeText(g), set = timeText(d.sunset)
         // Что оценивается — рассвет (до конца утреннего золотого часа) или закат; подпись и столбик идут за ним.
         let rated = BraunIdle.ratedEvent(frame)
         let rating = BraunIdle.ratingLine(frame).map { Self.ratingFit($0, icon: true) }
@@ -391,9 +393,10 @@ struct BraunIdleContent: View {
         }
     }
 
-    /// Е: ближайшее — завтрашний рассвет янтарём; золотой час и закат сегодняшние, тусклые.
+    /// Е: ближайшее — завтрашний рассвет янтарём; под ним его золотой час (завтрашний утренний, 31.7: до 31.7 — сегодняшний вечерний,
+    /// тусклым) основным цветом и сегодняшний закат тусклым.
     private var eveningRows: some View {
-        let rise = timeText(frame.tomorrow?.sunrise), golden = timeText(frame.day?.golden), set = timeText(frame.day?.sunset)
+        let rise = timeText(frame.tomorrow?.sunrise), golden = timeText(BraunIdle.golden(frame)), set = timeText(frame.day?.sunset)
         return ZStack(alignment: .topLeading) {
             WidgetIcon(name: BraunSign.light(.sunrise), size: 26, line: 1.5).foregroundStyle(pal.amber).frame(width: 26, height: 26).offset(x: 16, y: 44)
             Text(rise).font(.system(size: fitted(rise, [22, 20, 18, 16], semibold: true, avail: (BraunIdle.ratedEvent(frame)?.score != nil ? BraunGauge.x - 2 : 160) - 50), weight: .semibold))
@@ -406,15 +409,15 @@ struct BraunIdleContent: View {
                     .frame(width: rating.width, height: 14, alignment: .leading).offset(x: rating.x, y: 76)
             }
             if let gauge = BraunIdle.ratedEvent(frame)?.score { BraunGauge(pal: pal, score: gauge, height: BraunGauge.height(plate: H)).offset(x: BraunGauge.x, y: BraunGauge.top) }
-            dim(BraunSign.light(.golden), golden, signY: y(106, 102), textY: y(104, 100))
+            dim(BraunSign.light(.golden), golden, signY: y(106, 102), textY: y(104, 100), color: pal.text)
             dim(BraunSign.light(.sunset), set, signY: y(128, 122), textY: y(126, 120))
         }
     }
 
-    private func dim(_ sign: String, _ text: String, signY: Double, textY: Double) -> some View {
+    private func dim(_ sign: String, _ text: String, signY: Double, textY: Double, color: Color? = nil) -> some View {
         ZStack(alignment: .topLeading) {
-            WidgetIcon(name: sign, size: 14, line: 1.5).foregroundStyle(pal.dim).frame(width: 14, height: 14).offset(x: 16, y: signY)
-            Text(text).font(.system(size: 13, weight: .medium)).monospacedDigit().foregroundStyle(pal.dim).lineLimit(1)
+            WidgetIcon(name: sign, size: 14, line: 1.5).foregroundStyle(color ?? pal.dim).frame(width: 14, height: 14).offset(x: 16, y: signY)
+            Text(text).font(.system(size: 13, weight: .medium)).monospacedDigit().foregroundStyle(color ?? pal.dim).lineLimit(1)
                 .frame(width: 90, height: 18, alignment: .leading).offset(x: 36, y: textY)
         }
     }
@@ -428,13 +431,14 @@ struct BraunIdleContent: View {
             let size = [13.0, 12, 11].first { BraunText.width(line, size: $0, semibold: false) <= w } ?? 11
             Text(line).font(.system(size: size, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
                 .frame(width: w, height: 18, alignment: .leading).offset(x: x, y: 16)
-            // Под строкой — закаты трёх следующих дней (Алексей 16.11: «чтобы пространство не пустовало»). Кончаются выше бирки «α» (её квадрат —
-            // 12…28 pt от правого нижнего угла), на всех сборках одинаково: 3 × 32 на 170 pt, 3 × 28 на 158 pt.
+            // Под строкой — три следующих дня, рассвет и закат (Алексей 16.11: «чтобы пространство не пустовало»; 31.7 — обе оценки). Кончаются
+            // выше бирки «α» (её квадрат — 12…28 pt от правого нижнего угла), на всех сборках одинаково: 3 × 32 на 170 pt, 3 × 28 на 158 pt.
             let sunsets = BraunIdle.sunsetRows(frame)
             if !sunsets.isEmpty {
                 let top = 40.0, rowH = min(34, (H - 30 - top - BraunIdle.weekRowGap * Double(sunsets.count - 1)) / Double(sunsets.count))
+                let cols = BraunSunsetRow.Cols.of(sunsets)
                 VStack(spacing: BraunIdle.weekRowGap) {
-                    ForEach(sunsets.indices, id: \.self) { i in BraunSunsetRow(row: sunsets[i], pal: pal, width: w, height: rowH) }
+                    ForEach(sunsets.indices, id: \.self) { i in BraunSunsetRow(row: sunsets[i], pal: pal, width: w, height: rowH, cols: cols) }
                 }
                 .frame(width: w, alignment: .topLeading).offset(x: x, y: top)
             }
@@ -450,84 +454,104 @@ struct BraunIdleContent: View {
     }
 }
 
-/// Закат следующего дня (пустая неделя): знак заката 14, «пн 26» 11, время 13 semibold; справа балл числом, как в линзе столбика слева («82»,
-/// без «/ 100»: с ним на 338 pt строка выходила в поле), или слово неба. Без полей: знак стоит на x строки «до сб 31 съёмок нет». День, время и
-/// балл не режутся; мельчает (11 → 9, `wordSize`) и режется только слово неба. Балл от 75 (порог «красивого» заката экрана «Свет») — янтарём: такой закат стоит заметить.
+/// День впереди (пустая неделя, 31.7, Алексей 19.11, вопрос 1 «А»): «пн 26» 11 и две оценки — ↑ рассвет и ↓ закат, знак 14 и балл 13 semibold
+/// («82», как в линзе столбика слева). Средний — без времени (оно сдвигается на минуту в день, а оценка решает, ехать ли); большой — со временем
+/// и полоской балла у каждого события (`wide`). Балл от 75 (порог «красивого» заката экрана «Свет») — янтарём, и знак тоже: такой свет стоит
+/// заметить. Нет ни одного балла — слово неба справа (11 → 9, `wordSize`, режется только оно). День, время и баллы не режутся.
+/// До 31.7 строка была закатом: знак заката · день · время · (полоска · облачность · «82 / 100» на большом).
 struct BraunSunsetRow: View {
     let row: BraunIdle.SunsetRow
     let pal: BraunPalette
     let width: Double
     let height: Double
-    /// Большой виджет: места хватает на «82 / 100», как в ножках купола; средний — одно число.
+    /// Большой виджет: время и полоска у каждого события.
     var wide = false
-    /// Колонки большого, общие на все строки (30и.16б, Алексей 16.11: «полоски разной длинны»): без них полоска брала остаток строки,
-    /// а «вт 17» шире «чт 19», «99 %» шире «0 %» — полоски начинались и кончались на разных x.
+    /// Колонки, общие на все строки (30и.16б, Алексей 16.11: «полоски разной длинны»): без них «вт 17» шире «чт 19», и полоски и баллы
+    /// начинались бы на разных x.
     var cols: Cols? = nil
 
     struct Cols: Equatable {
-        var day: Double, time: Double, clouds: Double, score: Double
+        var day: Double, time: Double, score: Double
 
-        /// Ширина колонки — самая широкая строка из всех; облачность и балл — по самым широким возможным («100 %», «100 / 100»),
-        /// чтобы полоска не прыгала от дня к дню. Нет облачности ни в одной строке — её колонки нет.
+        /// Ширина колонки — самая широкая строка из всех; балл — по самому широкому возможному «100», чтобы он не прыгал от дня к дню.
         static func of(_ rows: [BraunIdle.SunsetRow]) -> Cols {
             let day = rows.map { BraunText.width($0.day, size: 11, semibold: false) }.max() ?? 0
-            let time = rows.map { BraunText.width($0.time, size: 13, semibold: true, mono: true) }.max() ?? 0
-            let clouds = rows.contains { $0.clouds != nil } ? 13 + 2 + BraunText.width("100 %", size: 11, semibold: false, mono: true) : 0
-            // Балл — по «100 / 100»; слово неба (строка без балла) уже этого не бывает, иначе мельчает до 0,75.
-            let score = BraunText.width("100", size: 13, semibold: true, mono: true) + BraunText.width(" / 100", size: 11, semibold: false, mono: true)
-            return Cols(day: ceil(day) + 1, time: ceil(time) + 1, clouds: ceil(clouds) + 1, score: ceil(score) + 1)
+            let time = rows.flatMap { [$0.riseTime, $0.time] }.map { BraunText.width($0, size: 13, semibold: true, mono: true) }.max() ?? 0
+            let score = BraunText.width("100", size: 13, semibold: true, mono: true)
+            return Cols(day: ceil(day) + 1, time: ceil(time) + 1, score: ceil(score) + 1)
         }
     }
 
-    /// Кегль слова неба: 11 → 10 → 9, первый, что влезает в остаток строки после знака, дня и времени; не влез и 9 — режется «…».
+    static let gap = 4.0
+    /// Знак → время большого: 3 pt (на 4 испанские 12-часовые «7:05 p. m.» без полосок хотели 279 pt из 278).
+    static let signGap = 3.0
+    static let signSize = 14.0
+    /// Самая узкая полоска балла большого: уже неё строка не влезает (проверяет `WidgetBraunIdleViewTests`).
+    static let minBar = 16.0
+
+    /// Сколько строка хочет в ширину при заданных колонках (без полоски — её минимум): день, и у каждого события знак, время (большой),
+    /// полоска (большой) и балл.
+    static func need(_ c: Cols, wide: Bool) -> Double {
+        let half = signSize + (wide ? signGap + c.time + gap + minBar : 0) + gap + c.score
+        return c.day + 2 * gap + 2 * half + (wide ? 2 * gap : 6)
+    }
+
+    /// Кегль слова неба: 11 → 10 → 9, первый, что влезает в остаток строки после дня; не влез и 9 — режется «…».
     static func wordSize(_ row: BraunIdle.SunsetRow, width: Double) -> Double {
         guard let word = row.word else { return 11 }
-        let rest = width - 14 - BraunText.width(row.day, size: 11, semibold: false) - BraunText.width(row.time, size: 13, semibold: true, mono: true) - 5 * 3 - 4
+        let rest = width - BraunText.width(row.day, size: 11, semibold: false) - 8
         return [11.0, 10, 9].first { BraunText.width(word, size: $0, semibold: false) <= rest } ?? 9
     }
 
-    var body: some View {
-        if let cols { columns(cols) } else { free }
-    }
+    /// Полоски большого стоят, если с ними строка влезает; нет (12-часовые часы «10:14 AM» на 338 pt) — уходят они, а не кегль и не балл.
+    static func bars(_ c: Cols, width: Double) -> Bool { need(c, wide: true) <= width }
 
-    /// Большой: строка в колонках общей ширины — знак · день · время · полоска (остаток) · облачность · балл или слово неба. Края полосок
-    /// у всех строк на одних x; строка без балла держит пустое место полоски, облачность стоит в своей колонке.
-    private func columns(_ c: Cols) -> some View {
-        let good = (row.score ?? 0) >= 75
-        return HStack(spacing: Self.gap) {
-            WidgetIcon(name: BraunSign.light(.sunset), size: 14, line: 1.5).frame(width: 14, height: 14).foregroundStyle(good ? pal.amber : pal.muted)
+    var body: some View {
+        let c = cols ?? Cols.of([row])
+        let bars = wide && Self.bars(c, width: width)
+        HStack(spacing: Self.gap) {
             Text(row.day).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1).fixedSize()
                 .frame(width: CGFloat(c.day), alignment: .leading)
-            Text(row.time).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(pal.text).lineLimit(1).fixedSize()
-                .frame(width: CGFloat(c.time), alignment: .leading)
-            Group {
-                if let score = row.score { bar(score) } else { Color.clear.frame(height: Self.barHeight) }
+            if row.score == nil && row.riseScore == nil, let word = row.word {
+                Spacer(minLength: 4)
+                Text(word).font(.system(size: Self.wordSize(row, width: width), weight: .medium)).foregroundStyle(pal.muted).lineLimit(1)
+            } else {
+                Spacer(minLength: wide ? Self.gap : 6)
+                half(.sunrise, time: row.riseTime, score: row.riseScore, c, bars: bars)
+                Spacer(minLength: wide ? Self.gap : 6)
+                half(.sunset, time: row.time, score: row.score, c, bars: bars)
             }
-            .frame(minWidth: 24, maxWidth: .infinity)
-            if c.clouds > 1 {
-                Group {
-                    if let clouds = row.clouds {
-                        HStack(spacing: 2) {
-                            WidgetIcon(name: "cloud", size: 13, line: 1.5).frame(width: 13, height: 13)
-                            Text("\(clouds) %").font(.system(size: 11, weight: .medium)).monospacedDigit().lineLimit(1).fixedSize()
-                        }
-                        .foregroundStyle(pal.muted)
-                    } else { Color.clear }
-                }
-                .frame(width: CGFloat(c.clouds), alignment: .leading)
-            }
-            Group {
-                if let score = row.score {
-                    (Text("\(score)").font(.system(size: 13, weight: .semibold)).foregroundStyle(good ? pal.amber : pal.text)
-                     + Text(" / 100").font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted)).monospacedDigit()
-                } else if let word = row.word {
-                    Text(word).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted).minimumScaleFactor(0.75)
-                }
-            }
-            .lineLimit(1)
-            .frame(width: CGFloat(c.score), alignment: .trailing)
         }
         .frame(width: width, height: height, alignment: .leading)
+    }
+
+    /// Одно событие: знак, (большой) время и полоска, балл. Нет балла — «—» тусклым, полоски нет (место её остаётся).
+    private func half(_ kind: BraunIdle.LightKind, time: String, score: Int?, _ c: Cols, bars: Bool) -> some View {
+        let good = (score ?? 0) >= 75
+        // Зазоры заданы явно (spacing 0): у `Spacer` в HStack с зазором их было бы два, и строка без полосок вышла бы шире `need`.
+        return HStack(spacing: 0) {
+            WidgetIcon(name: BraunSign.light(kind), size: Self.signSize, line: 1.5).frame(width: Self.signSize, height: Self.signSize)
+                .foregroundStyle(good ? pal.amber : pal.muted)
+            if wide {
+                Text(time).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(pal.text).lineLimit(1).fixedSize()
+                    .frame(width: CGFloat(c.time), alignment: .leading)
+                    .padding(.leading, Self.signGap)
+                if bars {
+                    Group {
+                        if let score { bar(score) } else { Color.clear.frame(height: Self.barHeight) }
+                    }
+                    .frame(minWidth: Self.minBar, maxWidth: .infinity)
+                    .padding(.leading, Self.gap)
+                } else {
+                    Spacer(minLength: 0)
+                }
+            }
+            Text(score.map(String.init) ?? "—").font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                .foregroundStyle(score == nil ? pal.dim : (good ? pal.amber : pal.text)).lineLimit(1).fixedSize()
+                .frame(width: CGFloat(c.score), alignment: .trailing)
+                .padding(.leading, Self.gap)
+        }
+        .frame(maxWidth: wide ? .infinity : nil)
     }
 
     private func bar(_ score: Int) -> some View {
@@ -541,75 +565,6 @@ struct BraunSunsetRow: View {
             }
             .frame(width: w, height: h).clipShape(Capsule())
             .frame(maxHeight: .infinity)
-        }
-    }
-
-    static let gap = 4.0
-
-    private var free: some View {
-        let good = (row.score ?? 0) >= 75
-        return HStack(spacing: 5) {
-            WidgetIcon(name: BraunSign.light(.sunset), size: 14, line: 1.5).frame(width: 14, height: 14).foregroundStyle(good ? pal.amber : pal.muted)
-            Text(row.day).font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted).lineLimit(1).fixedSize()
-            Text(row.time).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(pal.text).lineLimit(1).fixedSize()
-            if wide { middle }
-            // Хвост берёт весь остаток строки и прижат вправо: со `Spacer` остаток делился пополам и слово резалось при свободном месте.
-            Group {
-                if let score = row.score {
-                    (Text("\(score)").font(.system(size: 13, weight: .semibold)).foregroundStyle(good ? pal.amber : pal.text)
-                     + Text(wide ? " / 100" : "").font(.system(size: 11, weight: .medium)).foregroundStyle(pal.muted)).monospacedDigit()
-                } else if let word = row.word {
-                    Text(word).font(.system(size: Self.wordSize(row, width: width), weight: .medium)).foregroundStyle(pal.muted)
-                }
-            }
-            .lineLimit(1).padding(.leading, 4)
-            .frame(maxWidth: wide && row.score != nil ? nil : .infinity, alignment: .trailing)
-            .fixedSize(horizontal: wide && row.score != nil, vertical: false)
-        }
-        .frame(width: width, height: height, alignment: .leading)
-    }
-
-    /// Середина строки большого (30и.16, Алексей 16.11: «полоски оценок и облачность»): полоска балла цветами шкалы (как трубка среднего —
-    /// `BraunGauge.scale`, длина по `BraunIdle.gaugeLevel`) и облачность часа заката «☁ 40 %». Нет балла — полоски нет, остаётся слово неба
-    /// справа; нет облачности — нет и её.
-    @ViewBuilder private var middle: some View {
-        if let score = row.score {
-            GeometryReader { g in
-                let w = g.size.width, h = Self.barHeight
-                ZStack(alignment: .leading) {
-                    Capsule().fill(pal.ink(0.10))
-                    LinearGradient(stops: BraunGauge.scale, startPoint: .leading, endPoint: .trailing)
-                        .frame(width: w, height: h)
-                        .mask(alignment: .leading) { Capsule().frame(width: max(h, w * BraunIdle.gaugeLevel(score: score)), height: h) }
-                }
-                .frame(width: w, height: h).clipShape(Capsule())
-                .frame(maxHeight: .infinity)
-            }
-            .frame(minWidth: 24, maxWidth: .infinity)
-            .padding(.leading, 6)
-        } else {
-            Spacer(minLength: 0)
-        }
-        if let cols, cols.clouds > 1 {
-            // Колонка облачности стоит и в строке без неё: иначе полоска этой строки была бы длиннее.
-            Group {
-                if let clouds = row.clouds {
-                    HStack(spacing: 2) {
-                        WidgetIcon(name: "cloud", size: 14, line: 1.5).frame(width: 14, height: 14)
-                        Text("\(clouds) %").font(.system(size: 11, weight: .medium)).monospacedDigit().lineLimit(1).fixedSize()
-                    }
-                    .foregroundStyle(pal.muted)
-                } else { Color.clear }
-            }
-            .frame(width: cols.clouds, alignment: .leading)
-            .padding(.leading, 6)
-        } else if let clouds = row.clouds {
-            HStack(spacing: 2) {
-                WidgetIcon(name: "cloud", size: 14, line: 1.5).frame(width: 14, height: 14)
-                Text("\(clouds) %").font(.system(size: 11, weight: .medium)).monospacedDigit().lineLimit(1).fixedSize()
-            }
-            .foregroundStyle(pal.muted)
-            .padding(.leading, 4)
         }
     }
 

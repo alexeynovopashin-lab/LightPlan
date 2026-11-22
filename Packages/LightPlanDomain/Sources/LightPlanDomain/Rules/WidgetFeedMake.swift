@@ -57,7 +57,7 @@ extension WidgetFeed {
                 id: s.id, start: moment(s.start), end: end, open: open, title: title(s), place: s.placeText,
                 spot: point.map { Spot(name: "", latitude: $0.latitude, longitude: $0.longitude, zone: "fixed:\(Int((off * 3600).rounded()))") },
                 wantsSunset: s.wishes.contains(.sunset), rents: rents, stops: stops,
-                genre: s.genre?.rawValue, names: who.isEmpty ? nil : who))
+                genre: s.genre?.rawValue, names: who.isEmpty ? nil : who, wantsSunrise: s.wishes.contains(.sunrise)))
         }
         out.sort { ($0.start, $0.id) < ($1.start, $1.id) }
         return WidgetFeed(place: place, shoots: Array(out.prefix(40)), words: words, forecast: forecast, lang: lang, clock12: clock12)

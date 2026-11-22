@@ -132,13 +132,16 @@ struct WidgetBraunIdleTests {
         let f = feed()
         let at = f.frame(at: tsk(15, 18))
         let d = BraunIdle.lightDrum(at)
-        #expect(d.map { $0?.kind } == [nil, .sunrise, .golden, .sunset, nil], "доска, 15:18: рассвет, золотой час в центре, закат; завтрашний рассвет днём не лезет")
+        // 31.7: в барабане и утренний золотой час (до 31.7 — только вечерний): по времени — ◐ утро, ↑, ◐ вечер, ↓.
+        #expect(d.map { $0?.kind } == [.golden, .sunrise, .golden, .sunset, nil], "доска, 15:18: утренний ◐, рассвет, вечерний ◐ в центре, закат; завтрашний рассвет днём не лезет")
         #expect(d.allSatisfy { $0?.tomorrow != true })
+        #expect(d[2]?.at == at.day?.golden)
         let dawn = f.frame(at: tsk(5))
-        #expect(BraunIdle.lightDrum(dawn).map { $0?.kind } == [nil, nil, .sunrise, .golden, .sunset], "до рассвета в центре сегодняшний рассвет")
+        #expect(BraunIdle.lightDrum(dawn).map { $0?.kind } == [nil, nil, .golden, .sunrise, .golden], "до рассвета в центре сегодняшний утренний золотой час")
         let set = try #require(at.day?.sunset)
         let night = BraunIdle.lightDrum(f.frame(at: set.addingTimeInterval(300)))
-        #expect(night.map { $0?.kind } == [.golden, .sunset, .sunrise, nil, nil] && night[2]?.tomorrow == true, "после заката в центре завтрашний рассвет")
+        #expect(night.map { $0?.kind } == [.golden, .sunset, .golden, .sunrise, nil] && night[2]?.tomorrow == true && night[3]?.tomorrow == true,
+                "после заката в центре завтрашний утренний золотой час, за ним завтрашний рассвет")
     }
 
     @Test func theDrumRowsAreOfOneHeightAndTheEdgesFade() {
