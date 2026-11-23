@@ -385,6 +385,9 @@ public final class AppModel {
     @ObservationIgnored var cloudWiring: CloudWiring?
     /// Файлы картинок мудборда (шаг 5г); `nil` — в тестах без диска и до `live()`.
     var refImages: RefImageStore?
+    /// Своя аватарка (31.13): файл, память установки (заглушка, очередь) и связь с ядром. В тестах — в памяти, без файла.
+    var avatar = AvatarState()
+    @ObservationIgnored var avatarWiring = AvatarWiring()
     /// Читалка Pinterest (28м); `nil` — в этой сборке нет ключа, и Pinterest выключен с надписью.
     var pinterest: (any PinterestReading)?
     /// Читалка прямых ссылок на фото (28н.1): работает и без ключа (напрямую), с ключом — ещё и через наш сервер; `nil` — в тестах.
@@ -780,6 +783,7 @@ public final class AppModel {
         model.debugContactsProbe()  // замер на настоящей книге симулятора (`-LPContactsProbe`, Debug)
         model.attachPlaceCatalog(BundledPlaceCatalog())  // общий список студий из сборки, если он там есть (30е.1)
         model.attachCloud()         // Яндекс.Диск: копия данных и картинок туда и обратно (31.1)
+        model.attachAvatar(dir)     // своя аватарка: файл рядом со снимком, пропуск в Keychain, ядра пока нет (31.13)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)

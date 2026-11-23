@@ -155,6 +155,11 @@ extension AppModel {
         #endif
         app.startChapter = s.chapter
         app.showsBuildLine = false
+        #if DEBUG
+        // 31.13: `-LPShotAvatar cat|dog|person` — заглушка; `photo` — нарисованное фото; `crop` — экран обрезки;
+        // `forget` — окно «Удалить мои данные?» (с фото). Память — только этого запуска.
+        if let raw = UserDefaults.standard.string(forKey: "LPShotAvatar") { app.shotAvatar(raw) }
+        #endif
         // Лист «Когда смотрим» (19в) открыт сразу, как после тапа по показаниям.
         if s.screen == .light, s.chapter == "pick" { app.light.pickerOpen = true }
         // Карточка (25): `LPShotSheet card`, запись — `LPShotWay <id>` (без него — первая съёмка дня).

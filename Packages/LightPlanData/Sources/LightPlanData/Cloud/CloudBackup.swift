@@ -10,6 +10,9 @@ import Foundation
 public struct CloudBackup: Sendable {
     public static let copyName = "light-plan-iphone.json"
     public static let imagesFolder = "iphone-images"
+    /// Своя аватарка (31.13, Алексей 23.11 «Да, класть»): квадрат JPEG рядом с копией. Нет фото на телефоне — файл на Диске
+    /// не трогается (удалять файлы Диска приложение не умеет); восстановление кладёт его, только если на телефоне фото нет.
+    public static let avatarName = "iphone-avatar.jpg"
 
     let provider: any CloudProvider
     let tokens: any CloudTokenStore
@@ -61,7 +64,7 @@ public struct CloudBackup: Sendable {
 
     // MARK: Выгрузка
 
-    public func push(copy: Data, images: RefImageStore?, progress: Progress? = nil) async throws -> Pushed {
+    public func push(copy: Data, images: RefImageStore?, avatar: Data? = nil, progress: Progress? = nil) async throws -> Pushed {
         try await withToken { t in
             let local = images.map { store in store.names().filter(RefImageStore.isSafe) } ?? []
             var remote: [String: Int64] = [:]
@@ -73,10 +76,11 @@ public struct CloudBackup: Sendable {
                 return remote[name] == Int64(data.count) ? nil : (name, data)
             }
             // Места не хватит — сказать до начала, а не оборвать на середине. Неизвестно, сколько места, — не мешаем.
-            let need = Int64(copy.count) + todo.reduce(Int64(0)) { $0 + Int64($1.1.count) }
+            let need = Int64(copy.count) + Int64(avatar?.count ?? 0) + todo.reduce(Int64(0)) { $0 + Int64($1.1.count) }
             if let free = try? await provider.account(t).freeBytes, free < need { throw CloudFailure.noSpace }
             // Копия первой: она важнее картинок, и сорвись выгрузка на кадре — данные уже на Диске.
             try await provider.upload(copy, to: Self.copyName, token: t)
+            if let avatar { try await provider.upload(avatar, to: Self.avatarName, token: t) }
             if !todo.isEmpty { try await provider.ensureFolder(Self.imagesFolder, token: t) }
             progress?(0, todo.count)
             for (i, (name, data)) in todo.enumerated() {
@@ -100,6 +104,11 @@ public struct CloudBackup: Sendable {
         guard let data else { throw CloudFailure.noCopy }
         guard (try? ImportedFile.decode(data)) != nil else { throw CloudFailure.badCopy }
         return data
+    }
+
+    /// Аватарка с Диска; нет файла — `nil`.
+    public func pullAvatar() async throws -> Data? {
+        try await withToken { try await provider.download(Self.avatarName, token: $0) }
     }
 
     /// Картинки с Диска, которых нет на телефоне. Возвращает, сколько легло.

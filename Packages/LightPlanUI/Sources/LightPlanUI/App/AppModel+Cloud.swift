@@ -170,13 +170,13 @@ extension AppModel {
         cloud.busy = .pushing(done: 0, total: nil)
         cloud.line = lexicon.t("cloud.n.pushing")
         cloud.error = false
-        let snap = snapshot, images = refImages
+        let snap = snapshot, images = refImages, face = avatar.jpeg
         Task {
             do {
                 // Тот же конверт, что пишет «Поделиться копией» (`Store.exportArchive`) и читает веб: из снимка в памяти —
                 // он правдивее файла, в который отложенная запись могла ещё не дойти.
                 let copy = try CloudBackup.copy(of: snap)
-                let pushed = try await backup.push(copy: copy, images: images) { done, total in
+                let pushed = try await backup.push(copy: copy, images: images, avatar: face) { done, total in
                     Task { @MainActor in self.cloudProgress(.pushing(done: done, total: total)) }
                 }
                 var r = cloud.record
@@ -232,10 +232,14 @@ extension AppModel {
         cloud.busy = .pulling(done: 0, total: nil)
         cloud.line = lexicon.t("cloud.reading")
         cloud.error = false
-        let images = refImages
+        let images = refImages, faceStore = avatar.jpeg == nil ? avatarWiring.store : nil
         Task {
             do {
                 let data = try await backup.pullCopy()
+                // Своя аватарка (31.13): только если на телефоне её нет — своё фото копия не затирает.
+                if let faceStore, let face = try? await backup.pullAvatar(), AvatarImage.decodedSize(face) != nil {
+                    faceStore.save(face)
+                }
                 if let images {
                     _ = try await backup.pullImages(into: images) { done, total in
                         Task { @MainActor in self.cloudProgress(.pulling(done: done, total: total)) }

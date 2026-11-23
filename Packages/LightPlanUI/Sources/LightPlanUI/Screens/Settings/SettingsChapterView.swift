@@ -43,8 +43,10 @@ struct SettingsChapterView: View {
     // MARK: - Профиль
 
     @ViewBuilder private var profile: some View {
+        // Своя аватарка (31.13): круг, «Выбрать фото» / «Изменить», подпись «кто видит».
+        ProfileAvatarHeader(app: app)
         // Имя (30и.11): шапка настроек показывает его под аватаром; пишется сразу, как город.
-        SecLabel(text: t.t("set.myName"), first: true)
+        SecLabel(text: t.t("set.myName"))
         TextField("", text: Binding(get: { app.myName }, set: { app.setMyName($0) }),
                   prompt: Text(t.t("set.myNamePh")).foregroundStyle(Palette(colorScheme).ink8))
             .modifier(SetInputStyle())
@@ -55,6 +57,8 @@ struct SettingsChapterView: View {
         // «Мой телефон», «ID приложения», «Прежние ID» — итерация 23; контакты — 28.
         ProfilePhoneSection(app: app)
         contactsRow
+        // «Мои данные» → «Удалить мои данные · телефон, фото» (31.13), видна всегда.
+        ProfileForgetSection(app: app)
     }
 
     // MARK: - Вид

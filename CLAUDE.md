@@ -531,6 +531,18 @@
   before the first write of a launch whose file read strictly. Alert `RootView` ← `AppModel.dataDamage` / `dataDamageWords` (`data.*` in
   `lang_native.json`; «Восстановить из облака» hint only with the Disk connected and not in Simple). Copies sit in the app's Application Support —
   not visible in Files. Tests `StoreBackupTests`, `DataDamageTests`.
+- **Own avatar and «Удалить мои данные» (31.13, sketch `light_plan:Light_Plan/docs/avatar_31_13_sketch_2026-11-23.html`, Alexey 19–23.11).** Only the
+  photographer's own photo. Profile top: `ProfileAvatarHeader` (`Screens/Settings/ProfileAvatar.swift`) — system Photos picker (no library permission) →
+  `AvatarCropScreen` (always black, pan/pinch, circle shows the crop; geometry `AvatarCrop`) → `AvatarImage.square` = JPEG 512×512 ≤ 300 KB, no metadata copied
+  (ImageIO writes only pixel size/colour space into EXIF). File `avatar.jpg` next to the snapshot (`AvatarStore`), never in `light-plan.json`; replace erases the old
+  one at once. No photo → initials of the name; no name → the install's stub `AvatarStub` cat/dog/person (`cat`, `dog`, genre `portrait`), chosen at random once
+  per install (`AvatarRecord` in UserDefaults), never sent anywhere. Bottom: «Мои данные» → «Удалить мои данные · телефон, фото» (always shown) → alert →
+  `forgetMe`: photo erased on the phone too, then `DELETE /v1/me`; shoots, clients, number stay. **The word «ядро» never appears in the UI.**
+  Core side (`LightPlanData/Core/`): `CoreClient` per `docs/core_requirements_2026-11-19.md` (`POST /v1/devices`, `PATCH /v1/devices/me`, `PUT/DELETE /v1/me/avatar`,
+  `DELETE /v1/me`), `HTTPCoreClient` (home by number's country: +7 and CIS → ru, else world, `CoreHome`), pass in Keychain (`KeychainCorePassStore`). **No core server
+  yet: `live()` wires `AbsentCoreClient` — no network call, every request waits in `CoreQueue` (avatar / forget) silently**; `CoreSync.run` on change and on return
+  to the app (`syncCore`). Registration only for a photo and only with a mobile number. Yandex Disk copy carries `iphone-avatar.jpg`; restore takes it only if the
+  phone has none. Tests `CoreLinkTests` (Data), `AvatarTests` (UI). Shots: `-LPShotAvatar cat|dog|person|photo|crop|forget` with `-LPShotChapter profile`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it
   App Groups work; iCloud, Push, WeatherKit do not (measured 2026-09-19).
 

@@ -675,7 +675,20 @@
     "data.unreadT": "Файл данных не открылся",
     "data.unreadM": "Приложение не смогло прочитать свои данные. Файл не тронут, и поверх него ничего не запишется — правки до перезапуска не сохранятся. Закройте приложение (смахните его вверх в списке приложений) и откройте снова.",
     "data.brokenCloud": "Если на Яндекс.Диске есть копия, её можно вернуть: Настройки → «Данные и облако» → «Восстановить из облака».",
-    "data.brokenOk": "Понятно"
+    "data.brokenOk": "Понятно",
+    "av.pick": "Выбрать фото",
+    "av.change": "Изменить",
+    "av.pickOther": "Выбрать другое фото",
+    "av.remove": "Удалить фото",
+    "av.note": "Фото видит любой, кто знает ваш номер.",
+    "av.unreadable": "Это фото не открылось. Выберите другое.",
+    "av.cropHint": "Двигайте и увеличивайте",
+    "my.data": "Мои данные",
+    "my.delete": "Удалить мои данные",
+    "my.deleteSub": "телефон, фото",
+    "my.deleteNote": "Стирает с сервера ваш номер телефона и фото. Съёмки и клиенты в приложении остаются.",
+    "my.deleteQ": "Удалить мои данные?",
+    "my.deleteText": "С сервера сотрутся ваш номер телефона и фото. Фото исчезнет и здесь. Съёмки, клиенты и номер в приложении останутся."
   },
   "en": {
     "blk.removed": "{name} · removed",
@@ -1349,7 +1362,20 @@
     "data.unreadT": "The data file didn’t open",
     "data.unreadM": "The app couldn’t read its data. The file is untouched and nothing will be written over it, so changes made before a restart won’t be saved. Close the app (swipe it up in the app switcher) and open it again.",
     "data.brokenCloud": "If there is a copy on Yandex Disk, you can bring it back: Settings → “Data and cloud” → “Restore from the cloud”.",
-    "data.brokenOk": "Got it"
+    "data.brokenOk": "Got it",
+    "av.pick": "Choose photo",
+    "av.change": "Edit",
+    "av.pickOther": "Choose another photo",
+    "av.remove": "Remove photo",
+    "av.note": "Anyone who knows your number can see the photo.",
+    "av.unreadable": "This photo did not open. Choose another one.",
+    "av.cropHint": "Move and zoom",
+    "my.data": "My data",
+    "my.delete": "Delete my data",
+    "my.deleteSub": "phone, photo",
+    "my.deleteNote": "Erases your phone number and photo from the server. Shoots and clients stay in the app.",
+    "my.deleteQ": "Delete my data?",
+    "my.deleteText": "Your phone number and photo will be erased from the server. The photo will disappear here too. Shoots, clients and the number stay in the app."
   },
   "es": {
     "blk.removed": "{name} · quitado",
@@ -2023,7 +2049,20 @@
     "data.unreadT": "El archivo de datos no se abrió",
     "data.unreadM": "La app no pudo leer los datos guardados. El archivo está intacto y no se escribirá nada encima, así que los cambios hechos antes de reiniciar no se guardarán. Cierra la app (deslízala hacia arriba en el selector de apps) y vuelve a abrirla.",
     "data.brokenCloud": "Si hay una copia en Yandex Disk, puedes recuperarla: Ajustes → «Datos y nube» → «Restaurar desde la nube».",
-    "data.brokenOk": "Entendido"
+    "data.brokenOk": "Entendido",
+    "av.pick": "Elegir foto",
+    "av.change": "Editar",
+    "av.pickOther": "Elegir otra foto",
+    "av.remove": "Quitar foto",
+    "av.note": "Cualquiera que conozca tu número puede ver la foto.",
+    "av.unreadable": "Esta foto no se abrió. Elige otra.",
+    "av.cropHint": "Mueve y amplía",
+    "my.data": "Mis datos",
+    "my.delete": "Borrar mis datos",
+    "my.deleteSub": "teléfono, foto",
+    "my.deleteNote": "Borra del servidor tu número de teléfono y tu foto. Las sesiones y los clientes se quedan en la app.",
+    "my.deleteQ": "¿Borrar mis datos?",
+    "my.deleteText": "Tu número de teléfono y tu foto se borrarán del servidor. La foto desaparecerá también aquí. Las sesiones, los clientes y el número se quedan en la app."
   },
   "ja": {
     "blk.removed": "{name} · 削除しました",
@@ -2693,7 +2732,20 @@
     "data.unreadT": "データファイルを開けませんでした",
     "data.unreadM": "アプリがデータを読み込めませんでした。ファイルには手を付けておらず、上書きもしません。そのため再起動までの変更は保存されません。アプリを閉じて（アプリ切り替えで上にスワイプ）、もう一度開いてください。",
     "data.brokenCloud": "Yandex Disk にコピーがあれば戻せます：設定 →「データとクラウド」→「クラウドから復元」。",
-    "data.brokenOk": "OK"
+    "data.brokenOk": "OK",
+    "av.pick": "写真を選ぶ",
+    "av.change": "編集",
+    "av.pickOther": "別の写真を選ぶ",
+    "av.remove": "写真を削除",
+    "av.note": "あなたの番号を知っている人は誰でもこの写真を見られます。",
+    "av.unreadable": "この写真は開けませんでした。別の写真を選んでください。",
+    "av.cropHint": "移動と拡大",
+    "my.data": "マイデータ",
+    "my.delete": "マイデータを削除",
+    "my.deleteSub": "電話番号、写真",
+    "my.deleteNote": "サーバーから電話番号と写真を消去します。撮影とクライアントはアプリに残ります。",
+    "my.deleteQ": "マイデータを削除しますか？",
+    "my.deleteText": "サーバーから電話番号と写真が消去されます。写真はこの端末からも消えます。撮影、クライアント、番号はアプリに残ります。"
   },
   "zh": {
     "blk.removed": "{name} · 已移除",
@@ -3363,6 +3415,19 @@
     "data.unreadT": "数据文件无法打开",
     "data.unreadM": "应用无法读取数据。文件未被改动，也不会被覆盖，因此重启前的修改不会保存。请关闭应用（在应用切换器中向上滑），然后重新打开。",
     "data.brokenCloud": "如果 Yandex Disk 上有副本，可以恢复：设置 →「数据与云」→「从云恢复」。",
-    "data.brokenOk": "知道了"
+    "data.brokenOk": "知道了",
+    "av.pick": "选择照片",
+    "av.change": "编辑",
+    "av.pickOther": "选择其他照片",
+    "av.remove": "删除照片",
+    "av.note": "知道你号码的人都能看到这张照片。",
+    "av.unreadable": "这张照片无法打开，请选择其他照片。",
+    "av.cropHint": "移动和缩放",
+    "my.data": "我的数据",
+    "my.delete": "删除我的数据",
+    "my.deleteSub": "电话、照片",
+    "my.deleteNote": "从服务器上抹去你的电话号码和照片。拍摄和客户仍保留在应用中。",
+    "my.deleteQ": "删除我的数据？",
+    "my.deleteText": "你的电话号码和照片将从服务器上抹去，照片在这里也会消失。拍摄、客户和号码仍保留在应用中。"
   }
 }

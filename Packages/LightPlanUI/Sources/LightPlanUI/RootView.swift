@@ -57,6 +57,8 @@ public struct RootView: View {
             if phase == .active, let app { app.syncAlerts(force: true) }
             // И плашка на экране блокировки: съёмка могла начаться или кончиться, пока нас не было; длинный день продлевается (30б.3).
             if phase == .active, let app { app.syncActivity(.foreground) }
+            // И то, что ждёт ядра (фото, «Удалить мои данные»): без связи — молча ждёт дальше (31.13).
+            if phase == .active, let app { app.syncCore() }
             // И Календарь iPhone сверяется с данными: событие могли удалить руками, право — выдать или отнять (30.3).
             if phase == .active, let app { app.syncCalendarMirror(force: true); app.syncContacts(force: true); if app.ghostWanted { app.scheduleGhostReload() } }
             // Доступ к геопозиции могли дать или отнять в настройках iPhone; слежение берёт свежую точку (29.8в.12).

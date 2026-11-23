@@ -55,9 +55,11 @@ struct RubricLabel: View {
     }
 }
 
-/// Круг с инициалами вместо фото (аватар — отдельный шаг: выбор из «Фото» и хранение ещё не сделаны).
+/// Круг без фото: инициалы имени; без имени — заглушка установки (кошка, собака или человек; Алексей 23.11 — вместо
+/// диафрагмы). Фото рисует `AvatarCircle` (31.13).
 struct AvatarPlaceholder: View {
     let initials: String
+    var stub: AvatarStub = .cat
     var size: CGFloat = 88
     @Environment(\.colorScheme) private var colorScheme
     var body: some View {
@@ -66,7 +68,11 @@ struct AvatarPlaceholder: View {
             Circle().fill(LinearGradient(colors: pal.dark ? [Color(hex: 0x6F6A5F), Color(hex: 0x3D3A33)] : [Color(hex: 0x8D8D93), Color(hex: 0x5F5F66)],
                                          startPoint: .topLeading, endPoint: .bottomTrailing))
             if initials.isEmpty {
-                Icon("aperture", size: size * 0.42, line: 1.6).foregroundStyle(.white)
+                let icon = AppModel.stubIcon(stub)
+                Group {
+                    if icon.genre { Icon(genre: icon.name, size: size * 0.5, line: 1.6) } else { Icon(icon.name, size: size * 0.5, line: 1.6) }
+                }
+                .foregroundStyle(.white).shotNode("avatar.stub", text: stub.rawValue)
             } else {
                 Text(initials).font(.system(size: size * 0.36, weight: .semibold)).foregroundStyle(.white)
             }
@@ -85,7 +91,7 @@ struct AccountPoster: View {
         let pal = Palette(colorScheme), t = app.lexicon
         let name = app.myName
         VStack(spacing: 0) {
-            AvatarPlaceholder(initials: app.myInitials).shotNode("account.avatar")
+            AvatarCircle(app: app).shotNode("account.avatar")
             Text(name.isEmpty ? t.t("set.myNameNone") : name)
                 .font(.system(size: 22, weight: .semibold)).foregroundStyle(name.isEmpty ? pal.ink4 : pal.ink)
                 .lineLimit(1).minimumScaleFactor(0.7)

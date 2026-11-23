@@ -194,6 +194,20 @@ struct CloudYandexTests {
         #expect(disk.file("app:/light-plan-iphone.json") != nil, "копия на Диске остаётся")
     }
 
+    @Test("Своя аватарка едет рядом с копией и возвращается (31.13, «Да, класть»)")
+    func avatarRidesWithTheCopy() async throws {
+        let disk = FakeYandexDisk()
+        let tokens = InMemoryCloudTokenStore()
+        let backup = CloudBackup(provider: try await Self.connect(disk, tokens), tokens: tokens)
+        _ = try await backup.push(copy: try Self.copy("one"), images: nil)
+        #expect(disk.file("app:/iphone-avatar.jpg") == nil, "нет фото — файла нет")
+        #expect(try await backup.pullAvatar() == nil)
+        let face = Data(repeating: 7, count: 900)
+        _ = try await backup.push(copy: try Self.copy("two"), images: nil, avatar: face)
+        #expect(disk.file("app:/iphone-avatar.jpg") == face)
+        #expect(try await backup.pullAvatar() == face)
+    }
+
     @Test("Ключ отозван в Яндекс ID: одно обновление, потом «подключите заново», ключ забыт")
     func revokedToken() async throws {
         let disk = FakeYandexDisk()
