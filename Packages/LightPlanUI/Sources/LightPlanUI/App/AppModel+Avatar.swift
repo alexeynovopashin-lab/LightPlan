@@ -35,14 +35,22 @@ struct AvatarWiring {
 
 extension AppModel {
 
-    /// Живая проводка: файл рядом со снимком, память в UserDefaults, пропуск в Keychain. Сервера ядра нет —
-    /// `AbsentCoreClient`: ни одного запроса в сеть, очередь ждёт.
+    /// Живая проводка: файл рядом со снимком, память в UserDefaults, пропуск в Keychain, ядро — дом ru (31.14,
+    /// `CoreAddress.live`; номера не из РФ и СНГ ждут в очереди без сети). Снимки (`-LPShot…`, Debug) в сеть ядра не ходят:
+    /// засеянный номер не должен регистрироваться на настоящем сервере.
     func attachAvatar(_ dir: URL?) {
         avatarWiring.store = dir.map { AvatarStore(directory: $0) }
         avatarWiring.records = DefaultsAvatarRecordStore()
         avatarWiring.passes = KeychainCorePassStore()
-        avatarWiring.client = AbsentCoreClient()
+        avatarWiring.client = Self.liveCoreClient(arguments: ProcessInfo.processInfo.arguments)
         loadAvatar()
+    }
+
+    nonisolated static func liveCoreClient(arguments: [String]) -> any CoreClient {
+        #if DEBUG
+        if arguments.contains(where: { $0.hasPrefix("-LPShot") }) { return AbsentCoreClient() }
+        #endif
+        return HTTPCoreClient(base: CoreAddress.live)
     }
 
     /// Прочитать файл и память установки; заглушку выбрать, если её ещё нет.

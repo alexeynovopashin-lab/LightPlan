@@ -539,8 +539,12 @@
   per install (`AvatarRecord` in UserDefaults), never sent anywhere. Bottom: «Мои данные» → «Удалить мои данные · телефон, фото» (always shown) → alert →
   `forgetMe`: photo erased on the phone too, then `DELETE /v1/me`; shoots, clients, number stay. **The word «ядро» never appears in the UI.**
   Core side (`LightPlanData/Core/`): `CoreClient` per `docs/core_requirements_2026-11-19.md` (`POST /v1/devices`, `PATCH /v1/devices/me`, `PUT/DELETE /v1/me/avatar`,
-  `DELETE /v1/me`), `HTTPCoreClient` (home by number's country: +7 and CIS → ru, else world, `CoreHome`), pass in Keychain (`KeychainCorePassStore`). **No core server
-  yet: `live()` wires `AbsentCoreClient` — no network call, every request waits in `CoreQueue` (avatar / forget) silently**; `CoreSync.run` on change and on return
+  `DELETE /v1/me`), `HTTPCoreClient` (home by number's country: +7 and CIS → ru, else world, `CoreHome`), pass in Keychain (`KeychainCorePassStore`). **31.14: `live()` wires
+  `HTTPCoreClient(base: CoreAddress.live)` — only the ru home exists** (Yandex Cloud Function, `CoreAddress.ru`, public URL; Alexey 23.11 «Пока … только с РФ»): sections by query
+  `?op=health|devices|devices/me|me/avatar|me` (the Yandex gateway drops any path after the function URL), pass only in `X-Core-Pass` (any `Authorization` → gateway 403);
+  every call first asks `health` (good answer kept `HTTPCoreClient.healthTTL` = 10 min, a failed one never) and calls only sections in its `api` (`deleteMe` counts as
+  `devices`); world numbers have no address → `.unavailable` with no request. Every failure waits in `CoreQueue` (avatar / forget) silently; `-LPShot…` runs (Debug) keep
+  `AbsentCoreClient` (`AppModel.liveCoreClient`) so a seeded number never registers. Server contract: `Event_OS:server/core/routes.mjs`. `CoreSync.run` on change and on return
   to the app (`syncCore`). Registration only for a photo and only with a mobile number. Yandex Disk copy carries `iphone-avatar.jpg`; restore takes it only if the
   phone has none. Tests `CoreLinkTests` (Data), `AvatarTests` (UI). Shots: `-LPShotAvatar cat|dog|person|photo|crop|forget` with `-LPShotChapter profile`.
 - Signing: team `4A3PUKS9R9`, bundle id `Novopashin.LightPlan`, free team. On it

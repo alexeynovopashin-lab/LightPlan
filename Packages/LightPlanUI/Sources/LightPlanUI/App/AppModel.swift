@@ -783,7 +783,7 @@ public final class AppModel {
         model.debugContactsProbe()  // замер на настоящей книге симулятора (`-LPContactsProbe`, Debug)
         model.attachPlaceCatalog(BundledPlaceCatalog())  // общий список студий из сборки, если он там есть (30е.1)
         model.attachCloud()         // Яндекс.Диск: копия данных и картинок туда и обратно (31.1)
-        model.attachAvatar(dir)     // своя аватарка: файл рядом со снимком, пропуск в Keychain, ядра пока нет (31.13)
+        model.attachAvatar(dir)     // своя аватарка: файл рядом со снимком, пропуск в Keychain, ядро — дом ru (31.13, 31.14)
         // Ответы клиентов, что ждут сохранения записи: лежат рядом со снимком; давнее (30 дней) стирается.
         if let dir {
             let qs = QuestDraftStore(directory: dir)

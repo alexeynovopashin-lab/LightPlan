@@ -148,6 +148,13 @@ struct AvatarTests {
         #expect(a.avatarWiring.records.load().queue.isEmpty)
     }
 
+    /// 31.14: живая сборка говорит с домом ru по HTTP; снимки (`-LPShot…`) — без сети, чтобы засеянный номер не ушёл на сервер.
+    @Test func liveBuildTalksToTheRussianHomeAndShotsStayOffline() {
+        #expect(AppModel.liveCoreClient(arguments: ["LightPlan"]) is HTTPCoreClient)
+        #expect(AppModel.liveCoreClient(arguments: ["LightPlan", "-LPShotAvatar", "photo"]) is AbsentCoreClient)
+        #expect(AppModel.liveCoreClient(arguments: ["LightPlan", "-LPShotNow", "2026-11-24T12:00:00+03:00"]) is AbsentCoreClient)
+    }
+
     @Test func withoutTheServerThePhotoWaitsQuietly() async {
         let a = app()   // ядра нет: AbsentCoreClient
         a.setAvatar(Data(repeating: 1, count: 10))
